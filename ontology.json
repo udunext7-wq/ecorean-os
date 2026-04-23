@@ -1,0 +1,368 @@
+{
+  "version": "2.0",
+  "description": "ECOREAN 공정 온톨로지 자동연결 규칙",
+  "rules": [
+    {
+      "id": "R001",
+      "trigger": "P076",
+      "triggerName": "LGS 경량틀 (벽체)",
+      "requires": ["P078", "P079"],
+      "requiresNames": ["석고보드 단면 (9.5T)", "석고보드 단면 (12.5T)"],
+      "defaultTarget": "P079",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "LGS 경량틀 설치 시 석고보드 마감 필수"
+    },
+    {
+      "id": "R002",
+      "trigger": "P077",
+      "triggerName": "LGS 경량틀 (천장)",
+      "requires": ["P078", "P079", "P084"],
+      "requiresNames": ["석고보드 단면 (9.5T)", "석고보드 단면 (12.5T)", "경량 천장 텍스 마감"],
+      "defaultTarget": "P078",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "LGS 천장틀 설치 시 마감재 필수"
+    },
+    {
+      "id": "R003",
+      "trigger": "P040",
+      "triggerName": "바닥 자기질 타일 (300)",
+      "requires": ["P047", "P017"],
+      "requiresNames": ["타일 줄눈 시공", "우레탄 방수 (욕실)"],
+      "defaultTarget": "P047",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "바닥타일 시공 시 줄눈 및 하부 방수 권장"
+    },
+    {
+      "id": "R004",
+      "trigger": "P041",
+      "triggerName": "바닥 자기질 타일 (600)",
+      "requires": ["P047", "P017"],
+      "requiresNames": ["타일 줄눈 시공", "우레탄 방수 (욕실)"],
+      "defaultTarget": "P047",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "바닥타일 600 → 줄눈+방수"
+    },
+    {
+      "id": "R005",
+      "trigger": "P042",
+      "triggerName": "바닥 포세린 타일 (800)",
+      "requires": ["P047", "P017", "P036"],
+      "requiresNames": ["타일 줄눈 시공", "우레탄 방수 (욕실)", "셀프레벨링 (바닥평탄화)"],
+      "defaultTarget": "P047",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "대형 포세린 → 줄눈+방수+평탄화"
+    },
+    {
+      "id": "R006",
+      "trigger": "P120",
+      "triggerName": "강마루 시공 (12T)",
+      "requires": ["P064", "P063"],
+      "requiresNames": ["목재 몰딩 설치", "목재 걸레받이 설치"],
+      "defaultTarget": "P064",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "강마루 시공 시 몰딩+걸레받이 필수"
+    },
+    {
+      "id": "R007",
+      "trigger": "P121",
+      "triggerName": "강마루 시공 (18T)",
+      "requires": ["P064", "P063"],
+      "requiresNames": ["목재 몰딩 설치", "목재 걸레받이 설치"],
+      "defaultTarget": "P064",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "강마루 18T → 몰딩+걸레받이"
+    },
+    {
+      "id": "R008",
+      "trigger": "P122",
+      "triggerName": "원목마루 시공",
+      "requires": ["P064", "P063", "P110"],
+      "requiresNames": ["목재 몰딩 설치", "목재 걸레받이 설치", "목재 오일 스테인"],
+      "defaultTarget": "P064",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "원목마루 → 몰딩+걸레받이+오일스테인"
+    },
+    {
+      "id": "R009",
+      "trigger": "P043",
+      "triggerName": "벽 세라믹 타일 (300)",
+      "requires": ["P047"],
+      "requiresNames": ["타일 줄눈 시공"],
+      "defaultTarget": "P047",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "벽 타일 → 줄눈 시공"
+    },
+    {
+      "id": "R010",
+      "trigger": "P044",
+      "triggerName": "벽 대형 타일 (600)",
+      "requires": ["P048"],
+      "requiresNames": ["타일 줄눈 시공 (광폭)"],
+      "defaultTarget": "P048",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "대형 벽타일 → 광폭 줄눈"
+    },
+    {
+      "id": "R011",
+      "trigger": "P017",
+      "triggerName": "우레탄 방수 (욕실)",
+      "requires": ["P022"],
+      "requiresNames": ["욕실 방수 보호몰탈"],
+      "defaultTarget": "P022",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "욕실 방수 위 보호몰탈 필수"
+    },
+    {
+      "id": "R012",
+      "trigger": "P082",
+      "triggerName": "방수석고보드 (욕실용)",
+      "requires": ["P017", "P043"],
+      "requiresNames": ["우레탄 방수 (욕실)", "벽 세라믹 타일 (300)"],
+      "defaultTarget": "P043",
+      "relation": "RECOMMENDS",
+      "priority": 2,
+      "description": "욕실 방수석고보드 → 방수+타일 권장"
+    },
+    {
+      "id": "R013",
+      "trigger": "P054",
+      "triggerName": "대리석 바닥 시공",
+      "requires": ["P059", "P060"],
+      "requiresNames": ["석재 연마/왁스", "석재 코킹 처리"],
+      "defaultTarget": "P059",
+      "relation": "RECOMMENDS",
+      "priority": 2,
+      "description": "대리석 → 연마/왁스+코킹"
+    },
+    {
+      "id": "R014",
+      "trigger": "P055",
+      "triggerName": "화강석 바닥 시공",
+      "requires": ["P059", "P060"],
+      "requiresNames": ["석재 연마/왁스", "석재 코킹 처리"],
+      "defaultTarget": "P059",
+      "relation": "RECOMMENDS",
+      "priority": 2,
+      "description": "화강석 → 연마+코킹"
+    },
+    {
+      "id": "R015",
+      "trigger": "P099",
+      "triggerName": "수성페인트 (내부 벽)",
+      "requires": ["P106", "P105"],
+      "requiresNames": ["퍼티 작업", "페인트 하도 처리 (프라이머)"],
+      "defaultTarget": "P106",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "벽 도장 전 퍼티+프라이머 필수"
+    },
+    {
+      "id": "R016",
+      "trigger": "P100",
+      "triggerName": "수성페인트 (천장)",
+      "requires": ["P105"],
+      "requiresNames": ["페인트 하도 처리 (프라이머)"],
+      "defaultTarget": "P105",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "천장 도장 전 프라이머 필수"
+    },
+    {
+      "id": "R017",
+      "trigger": "P112",
+      "triggerName": "실크 도배",
+      "requires": ["P117"],
+      "requiresNames": ["초배지 작업"],
+      "defaultTarget": "P117",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "실크도배 → 초배 필수"
+    },
+    {
+      "id": "R018",
+      "trigger": "P113",
+      "triggerName": "천연벽지 도배",
+      "requires": ["P117"],
+      "requiresNames": ["초배지 작업"],
+      "defaultTarget": "P117",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "천연벽지 → 초배 필수"
+    },
+    {
+      "id": "R019",
+      "trigger": "P089",
+      "triggerName": "AL 창호 설치 (단열)",
+      "requires": ["P185", "P184"],
+      "requiresNames": ["EVA 폼 충전", "코킹 방수 실리콘"],
+      "defaultTarget": "P185",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "창호 설치 → 폼 충전+코킹 필수"
+    },
+    {
+      "id": "R020",
+      "trigger": "P090",
+      "triggerName": "PVC 창호 설치",
+      "requires": ["P185", "P184"],
+      "requiresNames": ["EVA 폼 충전", "코킹 방수 실리콘"],
+      "defaultTarget": "P185",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "PVC창호 → 폼+코킹"
+    },
+    {
+      "id": "R021",
+      "trigger": "P156",
+      "triggerName": "보일러 교체 (콘덴싱)",
+      "requires": ["P155", "P164"],
+      "requiresNames": ["난방 배관 설치 (온수)", "가스 배관 (LNG)"],
+      "defaultTarget": "P155",
+      "relation": "RECOMMENDS",
+      "priority": 2,
+      "description": "보일러 교체 → 배관+가스배관 점검 권장"
+    },
+    {
+      "id": "R022",
+      "trigger": "P161",
+      "triggerName": "샤워부스 설치",
+      "requires": ["P017", "P197"],
+      "requiresNames": ["우레탄 방수 (욕실)", "드레인 설치 (선형)"],
+      "defaultTarget": "P017",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "샤워부스 → 방수+선형드레인 필수"
+    },
+    {
+      "id": "R023",
+      "trigger": "P074",
+      "triggerName": "목재 데크 설치",
+      "requires": ["P110", "P021"],
+      "requiresNames": ["목재 오일 스테인", "방수 줄눈 처리"],
+      "defaultTarget": "P110",
+      "relation": "RECOMMENDS",
+      "priority": 2,
+      "description": "목재 데크 → 오일스테인+줄눈 권장"
+    },
+    {
+      "id": "R024",
+      "trigger": "P107",
+      "triggerName": "에폭시 바닥 도장",
+      "requires": ["P036", "P105"],
+      "requiresNames": ["셀프레벨링 (바닥평탄화)", "페인트 하도 처리 (프라이머)"],
+      "defaultTarget": "P036",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "에폭시 도장 전 평탄화+프라이머 필수"
+    },
+    {
+      "id": "R025",
+      "trigger": "P138",
+      "triggerName": "외단열 시스템 (EIFS)",
+      "requires": ["P039", "P103"],
+      "requiresNames": ["외벽 스타코 미장", "탄성도료 외벽"],
+      "defaultTarget": "P039",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "외단열 → 스타코미장+탄성도료 마감"
+    },
+    {
+      "id": "R026",
+      "trigger": "P065",
+      "triggerName": "문틀 설치 (ABS)",
+      "requires": ["P066", "P191"],
+      "requiresNames": ["문짝 설치 (ABS)", "문선 설치 (ABS)"],
+      "defaultTarget": "P066",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "문틀 → 문짝+문선 세트"
+    },
+    {
+      "id": "R027",
+      "trigger": "P016",
+      "triggerName": "우레탄 방수 (평지붕)",
+      "requires": ["P025"],
+      "requiresNames": ["방수 테스트 (물채움)"],
+      "defaultTarget": "P025",
+      "relation": "RECOMMENDS",
+      "priority": 2,
+      "description": "평지붕 방수 후 물채움 테스트 권장"
+    },
+    {
+      "id": "R028",
+      "trigger": "P026",
+      "triggerName": "190블록 쌓기",
+      "requires": ["P034"],
+      "requiresNames": ["벽 시멘트 미장"],
+      "defaultTarget": "P034",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "블록조적 → 미장 마감 필수"
+    },
+    {
+      "id": "R029",
+      "trigger": "P123",
+      "triggerName": "온돌마루 시공",
+      "requires": ["P064", "P063"],
+      "requiresNames": ["목재 몰딩 설치", "목재 걸레받이 설치"],
+      "defaultTarget": "P064",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "온돌마루 → 몰딩+걸레받이"
+    },
+    {
+      "id": "R030",
+      "trigger": "P131",
+      "triggerName": "헤링본 강마루",
+      "requires": ["P064", "P063", "P036"],
+      "requiresNames": ["목재 몰딩 설치", "목재 걸레받이 설치", "셀프레벨링 (바닥평탄화)"],
+      "defaultTarget": "P036",
+      "relation": "REQUIRES",
+      "priority": 1,
+      "description": "헤링본 → 평탄화+몰딩+걸레받이"
+    }
+  ],
+  "groups": [
+    {
+      "id": "G001",
+      "name": "욕실 기본 패키지",
+      "processes": ["P017", "P022", "P082", "P043", "P047", "P158", "P159", "P162"],
+      "description": "욕실 리모델링 기본 구성"
+    },
+    {
+      "id": "G002",
+      "name": "주방 기본 패키지",
+      "processes": ["P069", "P070", "P071", "P160", "P164"],
+      "description": "주방 리모델링 기본 구성"
+    },
+    {
+      "id": "G003",
+      "name": "거실 기본 패키지",
+      "processes": ["P120", "P064", "P063", "P112", "P099", "P145"],
+      "description": "거실 리모델링 기본 구성"
+    },
+    {
+      "id": "G004",
+      "name": "내벽 경량파티션 패키지",
+      "processes": ["P076", "P079", "P189", "P099"],
+      "description": "경량파티션 완성 패키지"
+    },
+    {
+      "id": "G005",
+      "name": "전체 철거 패키지",
+      "processes": ["P001", "P002", "P003", "P005", "P006", "P008", "P009", "P014"],
+      "description": "전체 철거 기본 구성"
+    }
+  ]
+}

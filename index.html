@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ECOREAN 전문 건설 공사 견적 OS — 234개 공정 DB, 온톨로지 연결, 견적서 출력">
+  <meta name="theme-color" content="#0f0f0f">
+  <title>ECOREAN 전문견적 OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ════════════ 로그인 오버레이 ════════════ -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">ECOREAN</div>
+    <div class="login-sub">PROFESSIONAL ESTIMATE OS v2.0</div>
+    <div class="login-divider"></div>
+    <div class="login-field">
+      <label>USER ID</label>
+      <input type="text" id="loginId" placeholder="아이디를 입력하세요"
+             autocomplete="username" spellcheck="false">
+    </div>
+    <div class="login-field">
+      <label>PASSWORD</label>
+      <input type="password" id="loginPw" placeholder="비밀번호를 입력하세요"
+             autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="loginBtn">로그인</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-footer">234 공정 DB · 온톨로지 연결 · 견적서 출력</div>
+  </div>
+</div>
+
+<!-- ════════════ 앱 컨테이너 ════════════ -->
+<div id="appContainer" style="display:none">
+
+  <!-- 헤더 -->
+  <header id="appHeader">
+    <div class="header-left">
+      <div class="header-logo">ECOREAN</div>
+    </div>
+    <div class="header-tagline">PROFESSIONAL ESTIMATE OS v2.0 &nbsp;·&nbsp; 234 공정 DB &nbsp;·&nbsp; Alt+숫자: 탭 전환</div>
+    <div class="header-right">
+      <span class="header-user" id="headerUser">ECOREAN</span>
+      <button class="header-logout" id="logoutBtn">로그아웃</button>
+    </div>
+  </header>
+
+  <!-- 탭바 -->
+  <nav id="tabBar"></nav>
+
+  <!-- 탭 콘텐츠 -->
+  <main id="tabContent"></main>
+
+</div>
+
+<!-- ════════════ 스크립트 ════════════ -->
+<script src="js/calc.js"></script>
+<script src="js/graph.js"></script>
+<script src="js/modules.js"></script>
+<script src="js/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const VALID_ID = 'ECOREAN';
+  const VALID_PW = '0801';
+
+  /* ─── 로그인 처리 ─── */
+  function tryLogin() {
+    const id    = document.getElementById('loginId').value.trim();
+    const pw    = document.getElementById('loginPw').value;
+    const errEl = document.getElementById('loginError');
+
+    if (id === VALID_ID && pw === VALID_PW) {
+      errEl.textContent = '';
+      sessionStorage.setItem('ecorean_auth', '1');
+      sessionStorage.setItem('ecorean_user', id);
+      bootApp(id);
+    } else {
+      errEl.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+      document.getElementById('loginPw').value = '';
+      document.getElementById('loginPw').focus();
+      /* 흔들기 애니메이션 */
+      const box = document.querySelector('.login-box');
+      box.classList.remove('shake');
+      void box.offsetWidth;
+      box.classList.add('shake');
+    }
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', tryLogin);
+  document.getElementById('loginId').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('loginPw').focus();
+  });
+  document.getElementById('loginPw').addEventListener('keydown', e => {
+    if (e.key === 'Enter') tryLogin();
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    sessionStorage.removeItem('ecorean_auth');
+    sessionStorage.removeItem('ecorean_user');
+    document.getElementById('loginId').value = '';
+    document.getElementById('loginPw').value = '';
+    UI.showLogin();
+    setTimeout(() => document.getElementById('loginId').focus(), 50);
+  });
+
+  /* ─── 앱 부팅 ─── */
+  async function bootApp(user) {
+    UI.showApp();
+    UI.updateHeaderInfo(user || sessionStorage.getItem('ecorean_user') || 'ECOREAN');
+    const content = document.getElementById('tabContent');
+    content.innerHTML = '<div class="loading" style="padding:60px;text-align:center">데이터 로딩 중...</div>';
+    try {
+      await CALC.init();
+      UI.init();
+    } catch (e) {
+      content.innerHTML =
+        `<div class="error">초기화 오류: ${e.message}<br>
+         <small>db.json / ontology.json 파일이 같은 폴더에 있는지 확인하세요.</small><br>
+         <small>※ 로컬 파일은 반드시 HTTP 서버(Live Server 등)를 통해 열어야 합니다.</small></div>`;
+    }
+  }
+
+  /* 세션 유지 시 자동 부팅 */
+  if (sessionStorage.getItem('ecorean_auth') === '1') {
+    bootApp();
+  } else {
+    document.getElementById('loginId').focus();
+  }
+
+})();
+</script>
+</body>
+</html>
