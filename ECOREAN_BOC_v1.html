@@ -720,6 +720,46 @@ input,button,select,textarea{font-family:inherit}button{cursor:pointer}
         <div class="sopt"><input type="checkbox" id="sp-epoxy" onchange="recalc()"><label for="sp-epoxy">에폭시 바닥 <span style="font-size:9px;color:var(--accent)">[R16: 셀프레벨링+프라이머 자동]</span></label></div>
         <div class="sopt"><input type="checkbox" id="sp-marble" onchange="recalc()"><label for="sp-marble">대리석/화강석 <span style="font-size:9px;color:var(--accent)">[R17: 석재연마 자동]</span></label></div>
         <div class="sopt"><input type="checkbox" id="sp-masonry" onchange="recalc()"><label for="sp-masonry">조적(블록쌓기) <span style="font-size:9px;color:var(--accent)">[R18: 시멘트미장 자동]</span></label></div>
+        <div class="sopt"><input type="checkbox" id="sp-snd4t" onchange="recalc()"><label for="sp-snd4t">층간소음 매트 4T</label></div>
+        <div class="sopt"><input type="checkbox" id="sp-ins-bd" onchange="recalc()"><label for="sp-ins-bd">내단열 비드법 100mm</label></div>
+        <div class="sopt"><input type="checkbox" id="sp-expcon" onchange="recalc()"><label for="sp-expcon">노출콘크리트 마감</label></div>
+        <div class="sopt"><input type="checkbox" id="sp-microcem" onchange="recalc()"><label for="sp-microcem">마이크로시멘트</label></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scope-card">
+    <div class="scope-hd"><h4>🏪 상업공간</h4></div>
+    <div class="scope-body">
+      <div class="scope-opts">
+        <div class="sopt"><input type="checkbox" id="com-sign" onchange="recalc()"><label for="com-sign">간판 설치 (LED)</label></div>
+        <div class="sopt"><input type="checkbox" id="com-counter" onchange="recalc()"><label for="com-counter">카운터 제작</label></div>
+        <div class="sopt"><input type="checkbox" id="com-kitchen" onchange="recalc()"><label for="com-kitchen">업소용 주방설비 (싱크+후드+그리스트랩)</label></div>
+        <div class="sopt"><input type="checkbox" id="com-autodr" onchange="recalc()"><label for="com-autodr">자동문 설치</label></div>
+        <div class="sopt"><input type="checkbox" id="com-fsd" onchange="recalc()"><label for="com-fsd">방화셔터 설치</label></div>
+        <div class="sopt"><input type="checkbox" id="com-spr" onchange="recalc()"><label for="com-spr">스프링클러 시스템</label></div>
+        <div class="sopt"><input type="checkbox" id="com-cctv" onchange="recalc()"><label for="com-cctv">CCTV 시스템</label></div>
+        <div class="sopt"><input type="checkbox" id="com-pos" onchange="recalc()"><label for="com-pos">POS 배선</label></div>
+        <div class="sopt"><input type="checkbox" id="com-duct" onchange="recalc()"><label for="com-duct">공조 덕트</label></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scope-card">
+    <div class="scope-hd"><h4>🏗️ 건축·구조</h4></div>
+    <div class="scope-body">
+      <div class="scope-opts">
+        <div class="sopt"><input type="checkbox" id="str-mas-cb" onchange="recalc()"><label for="str-mas-cb">조적(시멘트벽돌)</label></div>
+        <div class="sopt"><input type="checkbox" id="str-mas-rb" onchange="recalc()"><label for="str-mas-rb">조적(적벽돌)</label></div>
+        <div class="sopt"><input type="checkbox" id="str-concrete" onchange="recalc()"><label for="str-concrete">콘크리트 타설</label></div>
+        <div class="sopt"><input type="checkbox" id="str-steel" onchange="recalc()"><label for="str-steel">철골 제작·설치</label></div>
+        <div class="sopt"><input type="checkbox" id="str-alc" onchange="recalc()"><label for="str-alc">ALC 블럭</label></div>
+        <div class="sopt"><input type="checkbox" id="str-wpu" onchange="recalc()"><label for="str-wpu">옥상 방수(우레탄)</label></div>
+        <div class="sopt"><input type="checkbox" id="str-ext-stone" onchange="recalc()"><label for="str-ext-stone">외벽 석재마감</label></div>
+        <div class="sopt"><input type="checkbox" id="str-stair-tile" onchange="recalc()"><label for="str-stair-tile">계단 타일마감</label></div>
+        <div class="sopt"><input type="checkbox" id="str-stair-rail" onchange="recalc()"><label for="str-stair-rail">계단 핸드레일(스틸)</label></div>
+        <div class="sopt"><input type="checkbox" id="str-terrace" onchange="recalc()"><label for="str-terrace">테라스 조성</label></div>
+        <div class="sopt"><input type="checkbox" id="str-scaffold" onchange="recalc()"><label for="str-scaffold">가설 비계 설치</label></div>
       </div>
     </div>
   </div>
@@ -1243,6 +1283,40 @@ const DB = {
   EXT_STC:  {nm:"스타코+탄성도료",   cat:"발코니",unit:"㎡", lb:30000, mt:13000, wr:0.05, dur:2, f:"balArea*2"},
   // [R22] WPC 목재 데크 — cost-items:FIN_DK
   FLR_DK:   {nm:"WPC 목재 데크",     cat:"발코니",unit:"㎡", lb:28000, mt:52000, wr:0.05, dur:1, f:"balArea"},
+  // ── 특수마감 ──
+  SND_4T:   {nm:"층간소음 매트 4T",  cat:"방음단열",unit:"㎡",lb:5000,  mt:8000,  wr:0.05, dur:1, f:"dryFloorArea"},
+  INS_BD1:  {nm:"내단열 비드법100mm",cat:"방음단열",unit:"㎡",lb:13000, mt:12000, wr:0.05, dur:1, f:"wallArea"},
+  SPC_CC:   {nm:"노출콘크리트 마감", cat:"특수마감",unit:"㎡",lb:35000, mt:25000, wr:0.05, dur:2, f:"wallArea+ceilingArea"},
+  SPC_MC:   {nm:"마이크로시멘트",    cat:"특수마감",unit:"㎡",lb:40000, mt:35000, wr:0.05, dur:2, f:"wallArea+ceilingArea"},
+  // ── 상업공간 ──
+  COM_SGL:  {nm:"간판 설치(LED)",    cat:"상업공간",unit:"EA",lb:120000,mt:400000,wr:0.05, dur:1, f:"1"},
+  COM_CNT:  {nm:"카운터 제작",       cat:"상업공간",unit:"EA",lb:200000,mt:500000,wr:0.05, dur:2, f:"1"},
+  COM_SNK:  {nm:"업소용 싱크대",     cat:"상업공간",unit:"EA",lb:80000, mt:200000,wr:0.05, dur:1, f:"1"},
+  COM_HD:   {nm:"업소용 후드",       cat:"상업공간",unit:"EA",lb:100000,mt:300000,wr:0.05, dur:1, f:"1"},
+  COM_GTP:  {nm:"그리스트랩",        cat:"상업공간",unit:"EA",lb:80000, mt:150000,wr:0.05, dur:1, f:"1"},
+  COM_ADR:  {nm:"자동문 설치",       cat:"상업공간",unit:"EA",lb:300000,mt:1500000,wr:0.05,dur:1, f:"1"},
+  COM_FSD:  {nm:"방화셔터 설치",     cat:"상업공간",unit:"EA",lb:200000,mt:800000,wr:0.05, dur:1, f:"1"},
+  COM_SPK:  {nm:"스프링클러 설치",   cat:"상업공간",unit:"EA",lb:50000, mt:80000, wr:0.05, dur:1, f:"Math.ceil(totalArea/12)"},
+  COM_FDT:  {nm:"화재감지기",        cat:"상업공간",unit:"EA",lb:20000, mt:30000, wr:0.05, dur:1, f:"Math.ceil(totalArea/20)"},
+  COM_EM:   {nm:"비상조명 설치",     cat:"상업공간",unit:"EA",lb:30000, mt:50000, wr:0.05, dur:1, f:"Math.ceil(totalArea/30)"},
+  COM_CTV:  {nm:"CCTV 설치",        cat:"상업공간",unit:"EA",lb:50000, mt:80000, wr:0.05, dur:1, f:"Math.max(1,Math.ceil(totalArea/25))"},
+  COM_ACS:  {nm:"출입통제 설치",     cat:"상업공간",unit:"EA",lb:80000, mt:150000,wr:0.05, dur:1, f:"1"},
+  COM_POS:  {nm:"POS 배선",         cat:"상업공간",unit:"EA",lb:50000, mt:30000, wr:0.05, dur:1, f:"1"},
+  COM_DKT:  {nm:"공조 덕트 설치",   cat:"상업공간",unit:"m", lb:80000, mt:60000, wr:0.05, dur:1, f:"Math.sqrt(totalArea)*3"},
+  // ── 건축·구조 ──
+  STR_MB:   {nm:"조적(시멘트벽돌)", cat:"건축구조",unit:"㎡",lb:35000, mt:22000, wr:0.05, dur:2, f:"newWallArea||wallArea*0.3"},
+  STR_RB:   {nm:"조적(적벽돌)",     cat:"건축구조",unit:"㎡",lb:40000, mt:35000, wr:0.05, dur:2, f:"newWallArea||wallArea*0.3"},
+  STR_FW:   {nm:"거푸집 설치",      cat:"건축구조",unit:"㎡",lb:80000, mt:50000, wr:0.05, dur:2, f:"wallArea*0.2"},
+  STR_CON:  {nm:"콘크리트 타설",    cat:"건축구조",unit:"㎥",lb:50000, mt:70000, wr:0.05, dur:1, f:"totalArea*0.15"},
+  STR_CUR:  {nm:"콘크리트 양생",    cat:"건축구조",unit:"㎡",lb:10000, mt:5000,  wr:0.05, dur:3, f:"totalArea*0.2"},
+  STR_STL:  {nm:"철골 제작·설치",   cat:"건축구조",unit:"톤",lb:200000,mt:350000,wr:0.05, dur:3, f:"Math.max(1,Math.ceil(totalArea/30))"},
+  STR_ALC:  {nm:"ALC 블럭",         cat:"건축구조",unit:"㎡",lb:25000, mt:30000, wr:0.05, dur:1, f:"newWallArea||wallArea*0.2"},
+  STR_WPU:  {nm:"옥상 방수(우레탄)",cat:"건축구조",unit:"㎡",lb:22000, mt:28000, wr:0.05, dur:1, f:"totalArea*0.8"},
+  STR_EXT:  {nm:"외벽 석재마감",    cat:"건축구조",unit:"㎡",lb:80000, mt:150000,wr:0.05, dur:2, f:"wallArea*0.5"},
+  STR_HR1:  {nm:"계단 타일마감",    cat:"건축구조",unit:"m", lb:35000, mt:25000, wr:0.05, dur:1, f:"Math.max(1,(S.spaces||[]).length*3)"},
+  STR_RL_S: {nm:"계단 핸드레일(스틸)",cat:"건축구조",unit:"m",lb:60000,mt:80000, wr:0.05, dur:1, f:"Math.max(1,(S.spaces||[]).length*3)"},
+  TER_OUT:  {nm:"테라스 조성",      cat:"건축구조",unit:"㎡",lb:40000, mt:50000, wr:0.05, dur:2, f:"balArea||totalArea*0.1"},
+  MGT_SC:   {nm:"가설 비계 설치",   cat:"현장관리",unit:"㎡",lb:15000, mt:8000,  wr:0.05, dur:1, f:"wallArea*0.5"},
 };
 
 // 자재 등급 계수
@@ -1465,6 +1539,50 @@ function getSelectedProcesses() {
     addAuto('FLR_OS', 'R22: 데크→오일스테인 자동');
     addAuto('TILE_GRF', 'R22: 데크→줄눈처리 자동');
   }
+  // 특수공정 추가항목
+  if(document.getElementById('sp-snd4t')?.checked)    add('SND_4T',  '층간소음 매트 4T');
+  if(document.getElementById('sp-ins-bd')?.checked)   add('INS_BD1', '내단열 비드법 100mm');
+  if(document.getElementById('sp-expcon')?.checked)   add('SPC_CC',  '노출콘크리트 마감');
+  if(document.getElementById('sp-microcem')?.checked) add('SPC_MC',  '마이크로시멘트');
+
+  // ── 상업공간 ──
+  if(document.getElementById('com-sign')?.checked)    add('COM_SGL', '간판 설치(LED)');
+  if(document.getElementById('com-counter')?.checked) add('COM_CNT', '카운터 제작');
+  if(document.getElementById('com-kitchen')?.checked) {
+    add('COM_SNK', '업소용 싱크대');
+    add('COM_HD',  '업소용 후드');
+    add('COM_GTP', '그리스트랩');
+  }
+  if(document.getElementById('com-autodr')?.checked)  add('COM_ADR', '자동문 설치');
+  if(document.getElementById('com-fsd')?.checked)     add('COM_FSD', '방화셔터 설치');
+  if(document.getElementById('com-spr')?.checked) {
+    add('COM_SPK', '스프링클러 설치');
+    add('COM_FDT', '화재감지기');
+    add('COM_EM',  '비상조명 설치');
+  }
+  if(document.getElementById('com-cctv')?.checked) {
+    add('COM_CTV', 'CCTV 설치');
+    add('COM_ACS', '출입통제 설치');
+  }
+  if(document.getElementById('com-pos')?.checked)     add('COM_POS', 'POS 배선');
+  if(document.getElementById('com-duct')?.checked)    add('COM_DKT', '공조 덕트 설치');
+
+  // ── 건축·구조 ──
+  if(document.getElementById('str-mas-cb')?.checked)    add('STR_MB',  '조적(시멘트벽돌)');
+  if(document.getElementById('str-mas-rb')?.checked)    add('STR_RB',  '조적(적벽돌)');
+  if(document.getElementById('str-concrete')?.checked) {
+    add('STR_FW',  '거푸집 설치');
+    add('STR_CON', '콘크리트 타설');
+    add('STR_CUR', '콘크리트 양생');
+  }
+  if(document.getElementById('str-steel')?.checked)     add('STR_STL', '철골 제작·설치');
+  if(document.getElementById('str-alc')?.checked)       add('STR_ALC', 'ALC 블럭');
+  if(document.getElementById('str-wpu')?.checked)       add('STR_WPU', '옥상 방수(우레탄)');
+  if(document.getElementById('str-ext-stone')?.checked) add('STR_EXT', '외벽 석재마감');
+  if(document.getElementById('str-stair-tile')?.checked) add('STR_HR1', '계단 타일마감');
+  if(document.getElementById('str-stair-rail')?.checked) add('STR_RL_S','계단 핸드레일(스틸)');
+  if(document.getElementById('str-terrace')?.checked)    add('TER_OUT', '테라스 조성');
+  if(document.getElementById('str-scaffold')?.checked)   add('MGT_SC',  '가설 비계 설치');
 
   // ── 설비 ──
   // [규칙] 갈바나이즈관 → 배관 전면 교체 강제 + 경고
@@ -1528,6 +1646,7 @@ function recalc() {
 
   const ctx = {
     floorArea: t.fa, wallArea: t.wa, ceilingArea: t.ca,
+    totalArea: t.fa,
     perimeter: t.pr, windowCount: t.wn, doorCount: t.dn,
     wetFloorArea: t.wetFA, wetWallArea: t.wetWA,
     dryFloorArea: t.dryFA, balArea: t.balFA,
