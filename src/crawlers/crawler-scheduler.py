@@ -8,6 +8,7 @@ ECOREAN 크롤러 스케줄러
 import sys
 import json
 import logging
+import importlib.util
 import schedule
 import time
 from datetime import datetime
@@ -16,6 +17,17 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent
 LOG_DIR = BASE_DIR.parent.parent / '생성파일저장'
 LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _load(filename: str):
+    """하이픈 포함 파일명 동적 로드"""
+    spec = importlib.util.spec_from_file_location(
+        filename.replace('-', '_').replace('.py', ''),
+        BASE_DIR / filename,
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,14 +43,12 @@ log = logging.getLogger('crawler-scheduler')
 def run_labor_crawler():
     try:
         now = datetime.now()
-        # 반기마다 (1월, 7월)
         if now.month not in (1, 7):
             log.info('[노임단가] 비실행 월 — 1월/7월에만 실행')
             return
         log.info('[노임단가] 크롤링 시작')
-        sys.path.insert(0, str(BASE_DIR))
-        from labor_rate_crawler import run
-        result = run()
+        mod = _load('labor-rate-crawler.py')
+        result = mod.run()
         log.info(f'[노임단가] 완료 — {len(result)}개 직종')
     except Exception as e:
         log.error(f'[노임단가] 오류: {e}')
@@ -47,9 +57,8 @@ def run_labor_crawler():
 def run_material_crawler():
     try:
         log.info('[자재물가] 크롤링 시작')
-        sys.path.insert(0, str(BASE_DIR))
-        from material_price_crawler import run
-        run()
+        mod = _load('material-price-crawler.py')
+        mod.run()
         log.info('[자재물가] 완료')
     except Exception as e:
         log.error(f'[자재물가] 오류: {e}')
@@ -63,20 +72,24 @@ def run_ontology_crawler():
             log.info('[온톨로지] 비실행일 — 매월 1일에만 실행')
             return
         log.info('[온톨로지] 후보 생성 시작')
-        sys.path.insert(0, str(BASE_DIR))
-        from ontology_crawler import run
-        result = run()
+        mod = _load('ontology-crawler.py')
+        result = mod.run()
         log.info(f'[온톨로지] 완료 — {len(result)}개 후보')
     except Exception as e:
         log.error(f'[온톨로지] 오류: {e}')
 
 
 def run_all_daily():
-    """매일 새벽 2시 실행"""
+    """매일 새벽 2시 실행 (force=True 이면 날짜 조건 무시)"""
+    force = '--run-now' in sys.argv
     log.info('=== 일일 크롤러 배치 시작 ===')
-    run_labor_crawler()
-    run_material_crawler()
-    run_ontology_crawler()
+    if force:
+        log.info('[강제 실행] 날짜 조건 무시하고 모두 실행')
+        _run_forced()
+    else:
+        run_labor_crawler()
+        run_material_crawler()
+        run_ontology_crawler()
     log.info('=== 일일 크롤러 배치 완료 ===')
 
     # 실행 로그 JSON 저장
@@ -94,6 +107,33 @@ def run_all_daily():
     logs.append(log_entry)
     logs = logs[-30:]  # 최근 30건만 유지
     log_file.write_text(json.dumps(logs, ensure_ascii=False, indent=2), encoding='utf-8')
+
+
+def _run_forced():
+    """날짜 조건 무시하고 모든 크롤러 강제 실행"""
+    log.info('[노임단가] 강제 실행')
+    try:
+        mod = _load('labor-rate-crawler.py')
+        result = mod.run()
+        log.info(f'[노임단가] 완료 — {len(result)}개 직종')
+    except Exception as e:
+        log.error(f'[노임단가] 오류: {e}')
+
+    log.info('[자재물가] 강제 실행')
+    try:
+        mod = _load('material-price-crawler.py')
+        mod.run()
+        log.info('[자재물가] 완료')
+    except Exception as e:
+        log.error(f'[자재물가] 오류: {e}')
+
+    log.info('[온톨로지] 강제 실행')
+    try:
+        mod = _load('ontology-crawler.py')
+        result = mod.run()
+        log.info(f'[온톨로지] 완료 — {len(result)}개 후보')
+    except Exception as e:
+        log.error(f'[온톨로지] 오류: {e}')
 
 
 def setup_schedule():

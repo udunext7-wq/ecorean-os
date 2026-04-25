@@ -139,8 +139,11 @@ def build_labor_roles(rates: dict) -> list:
 
 def generate_update_report(old_roles: list, new_roles: list) -> str:
     """변경사항 리포트 생성"""
-    old_map = {r['name']: r['dailyRate'] for r in old_roles}
-    new_map = {r['name']: r['dailyRate'] for r in new_roles}
+    # 구 포맷 호환: 딕트가 아닌 항목은 무시
+    old_map = {r['name']: r['dailyRate'] for r in old_roles
+               if isinstance(r, dict) and 'name' in r and 'dailyRate' in r}
+    new_map = {r['name']: r['dailyRate'] for r in new_roles
+               if isinstance(r, dict) and 'name' in r and 'dailyRate' in r}
     lines = [
         f'# 노임단가 업데이트 보고서',
         f'생성일시: {datetime.now().strftime("%Y-%m-%d %H:%M")}',
