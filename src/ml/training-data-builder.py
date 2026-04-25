@@ -168,4 +168,5 @@ if __name__ == '__main__':
     records = build_all()
     stats = get_stats()
     print(f'\n학습 데이터: {stats["count"]}건 | 공정: {stats.get("processCount",0)}개')
-    print(f'ML 활성화: {"가능" if stats["activated"] else f"불가 ({stats[\"remaining\"]}건 더 필요)"}')
+    ml_status = "가능" if stats["activated"] else f'불가 ({stats.get("remaining",0)}건 더 필요)'
+    print(f'ML 활성화: {ml_status}')
