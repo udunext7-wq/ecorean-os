@@ -1157,6 +1157,10 @@ const DB = {
   BAL_INSUL:{nm:"발코니 단열재",cat:"발코니",  unit:"㎡", lb:15000, mt:25000, wr:0.05, dur:1, f:"balArea"},
   BAL_EXP:  {nm:"발코니 확장",  cat:"발코니",  unit:"EA", lb:300000,mt:500000,wr:0,    dur:3, f:"1"},
   CLN_FN:   {nm:"준공청소",     cat:"준공",    unit:"㎡", lb:4000,  mt:1000,  wr:0,    dur:1, f:"floorArea"},
+  // [R11] 창호교체→우레탄폼+코킹 자동 포함
+  WIN_PU:   {nm:"창호 우레탄폼+코킹",cat:"창호",  unit:"m",  lb:8000,  mt:5000,  wr:0,    dur:1, f:"windowCount*3"},
+  // [R12] 욕실방수→보호몰탈 타설 자동 포함
+  WTP_PM:   {nm:"보호몰탈 타설",     cat:"방수",  unit:"㎡", lb:15000, mt:12000, wr:0.05, dur:1, f:"wetFloorArea"},
 };
 
 // 자재 등급 계수
@@ -1234,8 +1238,9 @@ function getSelectedProcesses() {
   const hasKitchen = t.kitFA > 0 || (S.kitchenScope && S.kitchenScope !== 'none');
 
   // auto=true → 온톨로지 규칙으로 자동 포함된 항목 (견적서에 [자동] 뱃지 표시)
-  const add     = (id, note='')       => { if(DB[id]) selected.push({id, note, auto:false}); };
-  const addAuto = (id, note='')       => { if(DB[id]) selected.push({id, note, auto:true});  };
+  // dedup: 동일 ID 중복 추가 방지
+  const add     = (id, note='')       => { if(DB[id] && !selected.some(s=>s.id===id)) selected.push({id, note, auto:false}); };
+  const addAuto = (id, note='')       => { if(DB[id] && !selected.some(s=>s.id===id)) selected.push({id, note, auto:true});  };
 
   // ── 사전공정 ──
   // [규칙] 철거 발생 → 보양·폐기물처리 자동 포함
@@ -1245,8 +1250,16 @@ function getSelectedProcesses() {
   add('PRE_DM_W');
   addAuto('PRE_WS', '철거→폐기물처리 자동 포함');
 
-  // ── 방수 ── CONDITIONAL: 자동 포함 금지 — 욕실 있으면 진단 경고만
-  // (욕실 방수는 진단 엔진이 경고, 사용자가 직접 발코니 방수 체크)
+  // ── 방수 ──
+  // [CONDITIONAL] WTP_BT: 자동 포함 금지, 욕실 방수 체크박스로만 선택
+  // [R12] WTP_BT → WTP_PM 보호몰탈 자동 포함
+  const bathSpaces = S.spaces.filter(sp => sp.type === 'bathroom');
+  bathSpaces.forEach((sp, i) => {
+    if(document.getElementById(`bt${i}-wp`)?.checked) {
+      add('WTP_BT', '욕실방수');
+      addAuto('WTP_PM', 'R12: 욕실방수→보호몰탈 자동');
+    }
+  });
   if(t.balFA > 0 && document.getElementById('bal-wp')?.checked) add('WTP_BAL');
 
   // ── 미장 ──
@@ -1263,13 +1276,16 @@ function getSelectedProcesses() {
   if(document.getElementById('bal-floor')?.checked) add('TILE_BAL');
 
   // ── 목공·구조 ──
-  // [규칙] LGS 경량칸막이 → 석고보드 자동 포함
+  // [R1] LGS 경량칸막이 선택 → LGS_WL 포함 (GYP_WL은 전체 벽 경로로 자동 처리)
   if(document.getElementById('lv-lgs')?.checked) {
-    add('LGS_FR', 'LGS 경량칸막이');
-    addAuto('LGS_GB', 'LGS→석고보드 자동 포함');
+    add('LGS_WL', 'LGS 경량칸막이');
   }
   if(t.wa > 0) { add('GYP_WL'); add('GYP_CL'); }
-  if(document.getElementById('lv-indirect')?.checked) add('GYP_ID');
+  // [R19] 간접등박스 → LGS 경량틀 자동 포함
+  if(document.getElementById('lv-indirect')?.checked) {
+    add('GYP_ID');
+    addAuto('LGS_WL', 'R19: 간접등박스→LGS틀 자동');
+  }
 
   // ── 창호 ──
   // [규칙] 창호 교체 → 우레탄폼 시공 자동 포함
@@ -1314,6 +1330,7 @@ function getSelectedProcesses() {
   }
   if(document.getElementById('plb-boiler')?.checked || age > 15) {
     add('PLB_BLR', age > 15 && !document.getElementById('plb-boiler')?.checked ? '노후 보일러 교체 권장' : '');
+    addAuto('PLB_HTF', 'R14: 보일러교체→난방배관 점검 자동');  // [R14]
   }
   if(document.getElementById('plb-heat')?.checked) add('PLB_HTF');
   if(hasBath) { add('PLB_SAN'); add('PLB_WF'); }  // 욕실 있을 때만
@@ -1486,12 +1503,20 @@ function generateAll() {
   const asb = S.hasAsbestos;
   const hasAbatement = lines.some(l=>l.id==='ASB_RM'||(l.nm&&l.nm.includes('석면')));
 
+  // [R2] 욕실타일 있는데 방수 없음
   if(hasBath&&!hasWaterproof) diags.push({code:'W001',t:'warn',m:'욕실이 있으나 방수 공정이 없습니다. 누수 위험이 높습니다.'});
+  // [R3] 타일 있는데 줄눈 없음
   if(hasTile&&!hasGrout)       diags.push({code:'W002',t:'warn',m:'타일 공정에 줄눈 시공이 없습니다. 위생·내구성 저하 우려.'});
   if(age>=30&&hasEle&&!hasPanel) diags.push({code:'I001',t:'info',m:'건물 축'+age+'년: 분전반 노후 가능성 — 교체 여부 확인 권장.'});
   if(asb&&!hasAbatement)       diags.push({code:'E001',t:'error',m:'석면 의심 건물인데 석면 해체·제거 공정이 없습니다. 법적 의무 공정.'});
   if((pipe==='galvanized'||pipe==='galv')&&hasPlb&&!hasPlbRG)
     diags.push({code:'W003',t:'warn',m:'아연도금(갈바나이즈) 배관이 감지되었으나 배관교체 공정이 없습니다.'});
+  // [R13] 샤워부스 있는데 욕실방수 없음
+  const hasShower = S.spaces.some((sp,i)=>sp.type==='bathroom'&&document.getElementById(`bt${i}-sh`)?.checked);
+  if(hasShower&&!hasWaterproof) diags.push({code:'W004',t:'warn',m:'샤워부스 설치 시 욕실방수(WTP_BT) 필수 — 방수 공정을 추가하세요.'});
+  // [R23] 욕실 있는데 WTP 없음 재확인
+  const hasBathroomWp = lines.some(l=>l.id==='WTP_BT');
+  if(hasBath&&totals.wetFA>0&&!hasBathroomWp) diags.push({code:'W005',t:'warn',m:'욕실 방수석고보드 사용 시 욕실방수+벽타일 필수 — 체크 권장.'});
   if(!diags.length) diags.push({code:'OK',t:'ok',m:'누락 공정 없음 — 견적 정상.'});
 
   const da = document.getElementById('finalDiags');
@@ -1514,7 +1539,7 @@ function generateAll() {
     const c = l.cat||'기타';
     if(!cats[c]) cats[c]={rows:[],sub:0};
     cats[c].rows.push(l);
-    cats[c].sub += l.amt||0;
+    cats[c].sub += l.sup||0;
   });
 
   let html = '';
@@ -1698,6 +1723,7 @@ function updateBathroomScopes(){
           <div class="slevel none-active" onclick="this.parentElement.querySelectorAll('.slevel').forEach(s=>s.classList.remove('active'));this.classList.add('active');recalc()">유지</div>
         </div>
         <div class="scope-opts">
+          <div class="sopt"><input type="checkbox" id="bt${i}-wp" checked onchange="recalc()"><label for="bt${i}-wp">욕실방수 <span style="color:var(--red);font-size:9px">●필수</span></label></div>
           <div class="sopt"><input type="checkbox" id="bt${i}-tile" checked onchange="recalc()"><label for="bt${i}-tile">타일 전체</label>
             <select id="bt${i}-tilegrade" onchange="recalc()"><option>국산</option><option selected>수입 포세린</option><option>대형 슬랩</option></select>
           </div>
@@ -2603,23 +2629,40 @@ function renderRuleManager() {
   const container = document.getElementById('ruleManagerList');
   if(!container) return;
 
-  // 현재 적용 중인 규칙 (하드코딩 + 런타임)
+  // ontology-rules.json 23개 규칙 전체 (DB ID 매핑 완료 기준)
   const builtinRules = [
-    {id:'R001', trigger:'TILE_BT/BW', triggered:'TILE_GRF/GRW', type:'AUTO_INCLUDE', condition:'타일 선택 시', status:'active', note:'타일→줄눈 자동 포함'},
-    {id:'R002', trigger:'WLP_PP',     triggered:'WLP_UB',        type:'AUTO_INCLUDE', condition:'도배 선택 시', status:'active', note:'도배→초배 자동 포함'},
-    {id:'R003', trigger:'FLR_HW/LV',  triggered:'FLR_SK',        type:'AUTO_INCLUDE', condition:'바닥재 선택 시', status:'active', note:'바닥재→걸레받이 자동'},
-    {id:'R004', trigger:'PNT_WP',     triggered:'PNT_PT+PNT_PRM',type:'AUTO_INCLUDE', condition:'수성페인트 시', status:'active', note:'수성페인트→퍼티+프라이머'},
-    {id:'R005', trigger:'LGS_FR',     triggered:'LGS_GB',        type:'AUTO_INCLUDE', condition:'LGS 선택 시', status:'active', note:'LGS→석고보드 자동'},
-    {id:'R006', trigger:'DEM_*',      triggered:'PRE_BY+PRE_WS', type:'AUTO_INCLUDE', condition:'항상', status:'active', note:'철거→보양+폐기물 자동'},
-    {id:'R007', trigger:'WIN_SYS',    triggered:'WIN_PU',        type:'AUTO_INCLUDE', condition:'창호교체 시', status:'active', note:'창호→우레탄폼 자동'},
-    {id:'R008', trigger:'PLB_*',      triggered:'PLB_RG',        type:'FORCED',       condition:'갈바나이즈관 감지', status:'active', note:'배관 강제교체'},
-    {id:'R009', trigger:'TILE_BT',    triggered:'WTP_BT',        type:'WARN_IF_MISSING',condition:'욕실타일 있을 때', status:'active', note:'욕실방수 누락 경고'},
-    {id:'R010', trigger:'MSN_FL',     triggered:'MSN_SL',        type:'AUTO_INCLUDE', condition:'노후/레벨불량 시', status:'active', note:'미장→셀프레벨링 자동'},
+    {id:'R001', trigger:'LGS_WL',      triggered:'GYP_WL',          type:'AUTO_INCLUDE',    condition:'LGS 선택 시',    status:'active', note:'LGS 경량틀→석고보드 자동'},
+    {id:'R002', trigger:'TILE_BT',     triggered:'WTP_BT+WTP_PM',   type:'WARN_CONDITIONAL',condition:'욕실/습식 CONDITIONAL',status:'active', note:'바닥타일→방수+보호몰탈 경고'},
+    {id:'R003', trigger:'TILE_BT/BW',  triggered:'TILE_GRF/GRW',    type:'AUTO_INCLUDE',    condition:'타일 선택 시',   status:'active', note:'타일→줄눈 자동 포함'},
+    {id:'R004', trigger:'(헤링본)',     triggered:'MSN_SL',          type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'헤링본→셀프레벨링 (DB ID 미정)'},
+    {id:'R005', trigger:'(대형포세린)', triggered:'MSN_SL',          type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'대형포세린→셀프레벨링 (DB ID 미정)'},
+    {id:'R006', trigger:'FLR_HW',      triggered:'FLR_SK',          type:'AUTO_INCLUDE',    condition:'바닥재 선택 시', status:'active', note:'강마루/원목→걸레받이 자동'},
+    {id:'R007', trigger:'(원목마루)',   triggered:'(오일스테인)',     type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'원목마루→오일스테인 (DB ID 미정)'},
+    {id:'R008', trigger:'PNT_WB',      triggered:'PNT_PT+PNT_PR',   type:'AUTO_INCLUDE',    condition:'수성페인트 선택 시',status:'active', note:'수성페인트→퍼티+프라이머 자동'},
+    {id:'R009', trigger:'PNT_WB',      triggered:'PNT_PR',          type:'AUTO_INCLUDE',    condition:'천장도장 시',    status:'active', note:'수성페인트(천장)→프라이머 자동'},
+    {id:'R010', trigger:'WLP_PP',      triggered:'WLP_UB',          type:'AUTO_INCLUDE',    condition:'도배 선택 시',   status:'active', note:'실크/천연벽지→초배 자동'},
+    {id:'R011', trigger:'WIN_SYS',     triggered:'WIN_PU',          type:'AUTO_INCLUDE',    condition:'창호교체 시',    status:'active', note:'창호→EVA폼+코킹 자동'},
+    {id:'R012', trigger:'WTP_BT',      triggered:'WTP_PM',          type:'AUTO_INCLUDE',    condition:'욕실방수 선택 시',status:'active', note:'욕실방수→보호몰탈 자동'},
+    {id:'R013', trigger:'BAT_SH',      triggered:'WTP_BT',          type:'WARN_CONDITIONAL',condition:'샤워부스 설치 시',status:'active', note:'샤워부스→욕실방수 경고'},
+    {id:'R014', trigger:'PLB_BLR',     triggered:'PLB_HTF',         type:'AUTO_INCLUDE',    condition:'보일러교체 시',  status:'active', note:'보일러교체→난방배관 자동'},
+    {id:'R015', trigger:'DR_INT',      triggered:'(built-in)',       type:'AUTO_INCLUDE',    condition:'항상',           status:'active', note:'문틀+문짝+문선 세트 (DR_INT 포함)'},
+    {id:'R016', trigger:'(에폭시)',     triggered:'MSN_SL+PNT_PR',   type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'에폭시바닥→셀프레벨링+프라이머 (DB 미정)'},
+    {id:'R017', trigger:'(대리석)',     triggered:'(석재연마)',       type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'대리석→석재연마/왁스 (DB 미정)'},
+    {id:'R018', trigger:'(조적)',       triggered:'MSN_FL',          type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'조적→시멘트미장 (조적 DB 미정)'},
+    {id:'R019', trigger:'GYP_ID',      triggered:'LGS_WL',          type:'AUTO_INCLUDE',    condition:'간접등박스 시',  status:'active', note:'간접등박스→LGS틀 자동'},
+    {id:'R020', trigger:'TILE_BT/BW',  triggered:'(진단경고)',       type:'WARN_CONDITIONAL',condition:'욕실 리모델링',  status:'active', note:'욕실타일→철거 여부 확인 제안'},
+    {id:'R021', trigger:'(외단열)',     triggered:'(스타코)',         type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'외단열→스타코+탄성도료 (DB 미정)'},
+    {id:'R022', trigger:'(목재데크)',   triggered:'(오일스테인)',     type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'목재데크→오일스테인+줄눈 (DB 미정)'},
+    {id:'R023', trigger:'GYP_WL(욕실)',triggered:'WTP_BT+TILE_BW',  type:'WARN_CONDITIONAL',condition:'욕실',           status:'active', note:'방수석고보드→욕실방수+벽타일 경고'},
+    // 기존 강제 규칙
+    {id:'R-F1', trigger:'철거공정',    triggered:'PRE_BY+PRE_WS',   type:'FORCED',          condition:'항상',           status:'active', note:'철거→보양+폐기물 강제 포함'},
+    {id:'R-F2', trigger:'갈바나이즈관',triggered:'PLB_RG',          type:'FORCED',          condition:'배관 불량 감지', status:'active', note:'갈바나이즈관 감지→배관 강제교체'},
+    {id:'R-F3', trigger:'노후(>20년)', triggered:'ELE_RG',          type:'FORCED',          condition:'건축연도 20년+', status:'active', note:'20년 초과→전기배선 권장'},
   ];
 
   const html = `
     <div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:11px;color:var(--dim)">${builtinRules.length}개 규칙 활성 중</div>
+      <div style="font-size:11px;color:var(--dim)">${builtinRules.filter(r=>r.status==='active').length}개 활성 / ${builtinRules.filter(r=>r.status==='n/a').length}개 미구현 (총 ${builtinRules.length}개)</div>
       <button class="btn" style="font-size:10px;padding:5px 12px" onclick="showAddRuleModal()">+ 규칙 추가 (승인 필요)</button>
     </div>
     <table class="tbl" style="font-size:10px">
@@ -2644,7 +2687,7 @@ function renderRuleManager() {
           }">${r.type}</span></td>
           <td style="color:var(--dim);font-size:9px">${r.condition}</td>
           <td style="color:var(--text);font-size:9px">${r.note}</td>
-          <td><span style="font-size:8px;color:var(--green)">● 활성</span></td>
+          <td><span style="font-size:8px;color:${r.status==='active'?'var(--green)':r.status==='n/a'?'var(--dim)':'var(--orange)'}">${r.status==='active'?'● 활성':r.status==='n/a'?'○ 미구현':'● 경고'}</span></td>
         </tr>`).join('')}
       </tbody>
     </table>`;
