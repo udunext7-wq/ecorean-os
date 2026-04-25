@@ -1,0 +1,199 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "totalCount": 23,
+    "description": "공정 온톨로지 자동연결 규칙",
+    "relationshipTypes": {
+      "필수": "반드시 선행 또는 후행해야 하는 공정",
+      "권장": "품질을 위해 권장하는 공정",
+      "선택": "선택적으로 추가하는 공정",
+      "제안": "현장 상황에 따라 제안하는 공정"
+    }
+  },
+  "rules": [
+    {
+      "triggerProcess": "LGS 경량틀 (천장/벽)",
+      "relationshipType": "필수",
+      "autoLinkProcess": "석고보드 (9.5T or 12.5T)",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "골조 완료 후"
+    },
+    {
+      "triggerProcess": "바닥 타일 시공",
+      "relationshipType": "필수",
+      "autoLinkProcess": "욕실방수 + 보호몰탈",
+      "condition": "욕실/습식공간",
+      "quantityCalc": "타일면적 × 1.1",
+      "note": "방수 선행 필수"
+    },
+    {
+      "triggerProcess": "바닥 타일 시공",
+      "relationshipType": "필수",
+      "autoLinkProcess": "타일 줄눈 시공",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "양생 24h"
+    },
+    {
+      "triggerProcess": "헤링본 바닥타일",
+      "relationshipType": "필수",
+      "autoLinkProcess": "셀프레벨링 (평탄화)",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "평탄도 ±2mm"
+    },
+    {
+      "triggerProcess": "대형 포세린 (800↑)",
+      "relationshipType": "필수",
+      "autoLinkProcess": "셀프레벨링 + 클립",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "레이탄스 제거"
+    },
+    {
+      "triggerProcess": "강마루/원목/온돌마루",
+      "relationshipType": "필수",
+      "autoLinkProcess": "목재 몰딩 + 걸레받이",
+      "condition": "항상",
+      "quantityCalc": "둘레 기반",
+      "note": "실리콘 마감"
+    },
+    {
+      "triggerProcess": "원목마루",
+      "relationshipType": "권장",
+      "autoLinkProcess": "목재 오일스테인",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "1년 주기"
+    },
+    {
+      "triggerProcess": "수성페인트 (벽)",
+      "relationshipType": "필수",
+      "autoLinkProcess": "퍼티 + 프라이머",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "2회 샌딩"
+    },
+    {
+      "triggerProcess": "수성페인트 (천장)",
+      "relationshipType": "필수",
+      "autoLinkProcess": "프라이머 도포",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "흡수율 조절"
+    },
+    {
+      "triggerProcess": "실크/천연벽지 도배",
+      "relationshipType": "필수",
+      "autoLinkProcess": "초배지 작업",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "이음 보강"
+    },
+    {
+      "triggerProcess": "창호 설치 (PVC/AL)",
+      "relationshipType": "필수",
+      "autoLinkProcess": "EVA 폼 충전 + 코킹",
+      "condition": "항상",
+      "quantityCalc": "둘레 m",
+      "note": "기밀성"
+    },
+    {
+      "triggerProcess": "욕실방수",
+      "relationshipType": "필수",
+      "autoLinkProcess": "보호몰탈 타설",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "두께 30mm"
+    },
+    {
+      "triggerProcess": "샤워부스 설치",
+      "relationshipType": "필수",
+      "autoLinkProcess": "욕실방수 + 선형드레인",
+      "condition": "항상",
+      "quantityCalc": "바닥면적",
+      "note": "기울기 1/100"
+    },
+    {
+      "triggerProcess": "보일러 교체",
+      "relationshipType": "권장",
+      "autoLinkProcess": "난방배관 + 가스배관 점검",
+      "condition": "항상",
+      "quantityCalc": "없음",
+      "note": "기밀시험"
+    },
+    {
+      "triggerProcess": "문틀 설치",
+      "relationshipType": "필수",
+      "autoLinkProcess": "문짝 + 문선",
+      "condition": "항상",
+      "quantityCalc": "EA",
+      "note": "세트 시공"
+    },
+    {
+      "triggerProcess": "에폭시 바닥",
+      "relationshipType": "필수",
+      "autoLinkProcess": "셀프레벨링 + 프라이머",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "산업용"
+    },
+    {
+      "triggerProcess": "대리석/화강석",
+      "relationshipType": "권장",
+      "autoLinkProcess": "석재 연마/왁스 + 코킹",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "정기관리"
+    },
+    {
+      "triggerProcess": "조적 (블록쌓기)",
+      "relationshipType": "필수",
+      "autoLinkProcess": "시멘트 미장",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "수직수평"
+    },
+    {
+      "triggerProcess": "간접등박스",
+      "relationshipType": "선택",
+      "autoLinkProcess": "LGS 경량틀 or 목재틀",
+      "condition": "항상",
+      "quantityCalc": "박스 둘레",
+      "note": "틀 방식 선택"
+    },
+    {
+      "triggerProcess": "욕실 타일 시공",
+      "relationshipType": "제안",
+      "autoLinkProcess": "욕실 철거 여부 확인",
+      "condition": "욕실 리모델링",
+      "quantityCalc": "없음",
+      "note": "덧방 or 철거"
+    },
+    {
+      "triggerProcess": "외단열 (EIFS)",
+      "relationshipType": "필수",
+      "autoLinkProcess": "외벽 스타코 + 탄성도료",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "망 매입"
+    },
+    {
+      "triggerProcess": "목재 데크",
+      "relationshipType": "권장",
+      "autoLinkProcess": "오일스테인 + 줄눈처리",
+      "condition": "항상",
+      "quantityCalc": "동일면적",
+      "note": "1년 주기"
+    },
+    {
+      "triggerProcess": "방수석고보드",
+      "relationshipType": "권장",
+      "autoLinkProcess": "욕실방수 + 벽타일",
+      "condition": "욕실",
+      "quantityCalc": "동일면적",
+      "note": "욕실 필수"
+    }
+  ]
+}

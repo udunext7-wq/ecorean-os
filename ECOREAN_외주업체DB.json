@@ -1,0 +1,220 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "createdAt": "2026-04-25",
+    "description": "ECOREAN 외주업체·특수공사 단가 DB",
+    "warning": "외주 단가는 현장 조건에 따라 변동 폭이 큼. 반드시 현장 확인 후 견적"
+  },
+  "items": [
+    {
+      "subId": "SUB-001",
+      "category": "양중·운반",
+      "name": "사다리차 임차 (8m)",
+      "unit": "회",
+      "priceMin": 150000,
+      "priceMax": 250000,
+      "priceTypical": 180000,
+      "notes": "반일 기준. 층수·거리·시간에 따라 변동. 서울 기준"
+    },
+    {
+      "subId": "SUB-002",
+      "category": "양중·운반",
+      "name": "사다리차 임차 (14m)",
+      "unit": "회",
+      "priceMin": 250000,
+      "priceMax": 400000,
+      "priceTypical": 300000,
+      "notes": "10층 이상 고층용. 1일 기준"
+    },
+    {
+      "subId": "SUB-003",
+      "category": "양중·운반",
+      "name": "인력 운반 (계단 양중)",
+      "unit": "시간",
+      "priceMin": 30000,
+      "priceMax": 50000,
+      "priceTypical": 40000,
+      "notes": "인력 2명 기준. 엘리베이터 없는 저층"
+    },
+    {
+      "subId": "SUB-004",
+      "category": "양중·운반",
+      "name": "1톤 트럭 임차",
+      "unit": "회",
+      "priceMin": 150000,
+      "priceMax": 300000,
+      "priceTypical": 200000,
+      "notes": "자재 운반·폐기물 반출. 반일~1일 기준"
+    },
+    {
+      "subId": "SUB-010",
+      "category": "석면해체",
+      "name": "석면 텍스처 해체 (인증업체)",
+      "unit": "㎡",
+      "priceMin": 80000,
+      "priceMax": 150000,
+      "priceTypical": 110000,
+      "notes": "산안법 허가 인증업체. 기관 신고·모니터링 포함. 1990년 이전 건물"
+    },
+    {
+      "subId": "SUB-011",
+      "category": "석면해체",
+      "name": "석면 조사 (공인기관)",
+      "unit": "건",
+      "priceMin": 300000,
+      "priceMax": 800000,
+      "priceTypical": 500000,
+      "notes": "석면 함유 여부 공인 시험기관 조사. 철거 전 필수"
+    },
+    {
+      "subId": "SUB-020",
+      "category": "에어컨",
+      "name": "에어컨 이설 (분리·재설치)",
+      "unit": "대",
+      "priceMin": 150000,
+      "priceMax": 300000,
+      "priceTypical": 200000,
+      "notes": "거주중 공사 시 필수. 냉매관 추가 시 별도"
+    },
+    {
+      "subId": "SUB-021",
+      "category": "에어컨",
+      "name": "에어컨 냉매관 연장 (m당)",
+      "unit": "m",
+      "priceMin": 30000,
+      "priceMax": 60000,
+      "priceTypical": 45000,
+      "notes": "동관+피복+가스 충전 포함"
+    },
+    {
+      "subId": "SUB-022",
+      "category": "에어컨",
+      "name": "에어컨 배관 슬리브 처리",
+      "unit": "개",
+      "priceMin": 30000,
+      "priceMax": 80000,
+      "priceTypical": 50000,
+      "notes": "벽 관통 처리. 방수·단열 포함"
+    },
+    {
+      "subId": "SUB-030",
+      "category": "폐기물",
+      "name": "혼합 건설폐기물 처리",
+      "unit": "톤",
+      "priceMin": 60000,
+      "priceMax": 150000,
+      "priceTypical": 90000,
+      "notes": "허가업체 위탁. 서울 기준. 폐기물 종류·처리장 거리에 따라 변동"
+    },
+    {
+      "subId": "SUB-031",
+      "category": "폐기물",
+      "name": "석면 폐기물 처리 (별도)",
+      "unit": "톤",
+      "priceMin": 800000,
+      "priceMax": 2000000,
+      "priceTypical": 1200000,
+      "notes": "지정폐기물 특수 처리. 반드시 인증업체"
+    },
+    {
+      "subId": "SUB-032",
+      "category": "폐기물",
+      "name": "폐가구·가전 처리",
+      "unit": "식",
+      "priceMin": 100000,
+      "priceMax": 300000,
+      "priceTypical": 180000,
+      "notes": "철거 시 발생 폐가전·가구 처리"
+    },
+    {
+      "subId": "SUB-040",
+      "category": "청소",
+      "name": "준공청소 (전문업체 외주)",
+      "unit": "㎡",
+      "priceMin": 8000,
+      "priceMax": 15000,
+      "priceTypical": 10000,
+      "notes": "33평 기준 약 35~50만원. 자체 시공 시 4,000원/㎡"
+    },
+    {
+      "subId": "SUB-041",
+      "category": "청소",
+      "name": "창호·유리 청소",
+      "unit": "EA",
+      "priceMin": 20000,
+      "priceMax": 50000,
+      "priceTypical": 30000,
+      "notes": "창호 1개소 기준"
+    },
+    {
+      "subId": "SUB-050",
+      "category": "가스",
+      "name": "도시가스 배관 연결",
+      "unit": "건",
+      "priceMin": 200000,
+      "priceMax": 500000,
+      "priceTypical": 300000,
+      "notes": "도시가스 공사업체. 한국가스안전공사 검사 포함"
+    },
+    {
+      "subId": "SUB-051",
+      "category": "가스",
+      "name": "가스레인지→인덕션 전환",
+      "unit": "건",
+      "priceMin": 100000,
+      "priceMax": 250000,
+      "priceTypical": 150000,
+      "notes": "가스 밸브 막음 + 콘센트 추가"
+    },
+    {
+      "subId": "SUB-060",
+      "category": "수도",
+      "name": "수도미터기 교체",
+      "unit": "건",
+      "priceMin": 100000,
+      "priceMax": 200000,
+      "priceTypical": 150000,
+      "notes": "한국수도공사·지자체 신청 필요"
+    },
+    {
+      "subId": "SUB-061",
+      "category": "소방",
+      "name": "소방시설 점검·교체",
+      "unit": "건",
+      "priceMin": 200000,
+      "priceMax": 600000,
+      "priceTypical": 350000,
+      "notes": "소방시설공사업 등록 업체. 감지기·스프링클러"
+    },
+    {
+      "subId": "SUB-070",
+      "category": "특수",
+      "name": "발코니 확장 허가 대행",
+      "unit": "건",
+      "priceMin": 300000,
+      "priceMax": 800000,
+      "priceTypical": 500000,
+      "notes": "행정사·건축사 대행. 지자체별 상이"
+    },
+    {
+      "subId": "SUB-071",
+      "category": "특수",
+      "name": "인터폰·CCTV 설치",
+      "unit": "건",
+      "priceMin": 200000,
+      "priceMax": 500000,
+      "priceTypical": 300000,
+      "notes": "세대 단위 기준"
+    },
+    {
+      "subId": "SUB-072",
+      "category": "특수",
+      "name": "방화문 설치",
+      "unit": "EA",
+      "priceMin": 500000,
+      "priceMax": 1200000,
+      "priceTypical": 700000,
+      "notes": "자재+시공. 방화인정 제품 필수"
+    }
+  ]
+}

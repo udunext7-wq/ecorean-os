@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECOREAN — 공정표</title>
+<style>
+:root{
+  --bg:#070707; --bg2:#0f0f0f; --bg3:#181818;
+  --gold:#C9A84C; --gold2:rgba(201,168,76,.15);
+  --text:#e8e0d0; --dim:rgba(255,255,255,.3);
+  --border:rgba(201,168,76,.18);
+  --critical:#ff6644;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;min-height:100vh}
+
+/* ── 헤더 ── */
+header{
+  padding:16px 28px;border-bottom:1px solid var(--border);
+  background:var(--bg2);display:flex;align-items:center;
+  justify-content:space-between;position:sticky;top:0;z-index:50;
+}
+.logo{font-size:11px;letter-spacing:.22em;color:var(--gold);font-weight:700;text-transform:uppercase}
+.logo em{color:var(--dim);font-style:normal;font-weight:400;margin-left:8px;letter-spacing:.04em}
+.kpi-bar{display:flex;gap:24px}
+.kpi{text-align:center}
+.kpi-v{font-size:18px;font-weight:700;color:var(--gold);line-height:1}
+.kpi-l{font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-top:3px}
+
+/* ── 탭 ── */
+.tabs{display:flex;gap:2px;padding:12px 28px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.tab{
+  padding:6px 18px;border-radius:6px;font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .2s;color:var(--dim);background:transparent;
+  border:1px solid transparent;letter-spacing:.04em;
+}
+.tab.active{background:var(--gold2);color:var(--gold);border-color:var(--border)}
+.tab:hover:not(.active){color:var(--text)}
+
+/* ── 간트 래퍼 ── */
+.gantt-wrap{display:flex;overflow-x:auto;min-height:calc(100vh - 140px)}
+
+/* ── 공정명 컬럼 ── */
+.gantt-names{
+  width:200px;flex-shrink:0;border-right:1px solid var(--border);
+  background:var(--bg2);position:sticky;left:0;z-index:20;
+}
+.gantt-name-header{
+  height:52px;padding:0 16px;display:flex;align-items:center;
+  border-bottom:1px solid var(--border);
+  font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;
+}
+.name-row{
+  height:36px;padding:0 16px;display:flex;align-items:center;
+  border-bottom:1px solid rgba(255,255,255,.04);
+  font-size:11px;cursor:pointer;transition:background .15s;
+  gap:8px;
+}
+.name-row:hover{background:rgba(255,255,255,.03)}
+.name-row.critical{color:var(--critical)}
+.name-row.critical::before{content:'★';font-size:9px;color:var(--critical);flex-shrink:0}
+.name-row:not(.critical)::before{content:'';width:9px}
+.cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.float-badge{
+  margin-left:auto;font-size:9px;padding:1px 5px;
+  border-radius:8px;background:rgba(255,255,255,.06);color:var(--dim);
+  flex-shrink:0;
+}
+
+/* ── 간트 차트 영역 ── */
+.gantt-chart{flex:1;min-width:600px}
+.gantt-header{
+  height:52px;display:flex;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:var(--bg3);z-index:10;
+}
+.day-col{
+  flex-shrink:0;text-align:center;border-right:1px solid rgba(255,255,255,.05);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.day-col .dow{font-size:9px;color:var(--dim);letter-spacing:.05em}
+.day-col .day{font-size:11px;font-weight:600;color:var(--text)}
+.day-col.weekend{background:rgba(255,255,255,.015)}
+.day-col.today-col{background:rgba(201,168,76,.08);border-right:1px solid rgba(201,168,76,.4)}
+
+/* 간트 행 */
+.gantt-row{
+  height:36px;display:flex;align-items:center;position:relative;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.gantt-row.critical-row{background:rgba(255,102,68,.03)}
+.day-cell{
+  flex-shrink:0;height:100%;
+  border-right:1px solid rgba(255,255,255,.04);
+}
+.day-cell.weekend{background:rgba(255,255,255,.012)}
+.day-cell.today-cell{background:rgba(201,168,76,.06)}
+
+/* 간트 바 */
+.gantt-bar{
+  position:absolute;height:22px;border-radius:4px;
+  top:50%;transform:translateY(-50%);
+  display:flex;align-items:center;padding:0 8px;
+  font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;
+  z-index:5;cursor:pointer;transition:opacity .2s;
+  box-shadow:0 1px 8px rgba(0,0,0,.4);
+}
+.gantt-bar:hover{opacity:.85;z-index:10;}
+.gantt-bar.critical-bar{
+  box-shadow:0 0 8px rgba(255,102,68,.4),0 1px 8px rgba(0,0,0,.4);
+}
+
+/* ── 탭 패널들 ── */
+.panel{display:none;padding:24px 28px}
+.panel.active{display:block}
+
+/* 자재발주 테이블 */
+.order-table{width:100%;border-collapse:collapse;font-size:12px}
+.order-table th{
+  text-align:left;padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  font-size:9px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;
+  font-weight:600;
+}
+.order-table td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--text)}
+.order-table tr:hover td{background:rgba(255,255,255,.02)}
+.urgent{color:var(--critical);font-weight:700}
+.deadline-chip{
+  display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;
+}
+.deadline-chip.ok{background:rgba(78,210,140,.12);color:#4ed28c;border:1px solid rgba(78,210,140,.25)}
+.deadline-chip.warn{background:rgba(255,170,68,.12);color:#ffaa44;border:1px solid rgba(255,170,68,.25)}
+.deadline-chip.urgent{background:rgba(255,68,85,.12);color:#ff4455;border:1px solid rgba(255,68,85,.25)}
+
+/* 크리티컬패스 */
+.cp-chain{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:20px}
+.cp-item{
+  padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;
+  background:rgba(255,102,68,.12);color:var(--critical);
+  border:1px solid rgba(255,102,68,.25);
+}
+.cp-arrow{color:var(--dim);font-size:14px}
+
+/* 인력투입 */
+.labor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:16px}
+.labor-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;
+}
+.labor-date{font-size:10px;color:var(--dim);margin-bottom:6px;letter-spacing:.06em}
+.labor-count{font-size:22px;font-weight:700;color:var(--gold);line-height:1}
+.labor-unit{font-size:10px;color:var(--dim)}
+.labor-names{font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ECOREAN <em>공정표 / 간트차트</em></div>
+  <div class="kpi-bar">
+    <div class="kpi"><div class="kpi-v" id="kpi-dur">—</div><div class="kpi-l">총 공사일수</div></div>
+    <div class="kpi"><div class="kpi-v" id="kpi-cp">—</div><div class="kpi-l">크리티컬 공정</div></div>
+    <div class="kpi"><div class="kpi-v" id="kpi-order">—</div><div class="kpi-l">발주 항목</div></div>
+    <div class="kpi"><div class="kpi-v" id="kpi-end">—</div><div class="kpi-l">예정 완료</div></div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="gantt">간트 차트</button>
+  <button class="tab" data-tab="orders">자재 발주표</button>
+  <button class="tab" data-tab="critical">크리티컬 패스</button>
+  <button class="tab" data-tab="labor">인력 투입표</button>
+</div>
+
+<!-- 간트 차트 탭 -->
+<div id="tab-gantt" class="panel active">
+  <div class="gantt-wrap" id="gantt-wrap"></div>
+</div>
+
+<!-- 자재 발주표 -->
+<div id="tab-orders" class="panel">
+  <table class="order-table" id="order-table">
+    <thead><tr>
+      <th>자재명</th><th>발주 마감일</th><th>리드타임</th><th>연결 공정</th>
+      <th>공정 착수</th><th>발주 트리거</th><th>상태</th>
+    </tr></thead>
+    <tbody id="order-body"></tbody>
+  </table>
+</div>
+
+<!-- 크리티컬 패스 -->
+<div id="tab-critical" class="panel">
+  <div style="font-size:12px;color:var(--dim);margin-bottom:12px">
+    ★ 크리티컬 패스 — 이 공정들이 지연되면 전체 공기가 늘어납니다.
+  </div>
+  <div class="cp-chain" id="cp-chain"></div>
+  <div style="margin-top:32px;font-size:11px;color:var(--dim)">
+    <div style="margin-bottom:8px;color:var(--text)">공정별 여유일수 (Float)</div>
+    <div id="float-list"></div>
+  </div>
+</div>
+
+<!-- 인력 투입표 -->
+<div id="tab-labor" class="panel">
+  <div style="font-size:12px;color:var(--dim);margin-bottom:16px">일별 투입 인력 현황</div>
+  <div class="labor-grid" id="labor-grid"></div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// 공정 데이터
+// ════════════════════════════════════════════════════════
+const PROCESSES = [
+  {id:'PRE_BY', name:'보양',         dur:1, dep:[],                     cat:'사전공정', color:'#888'},
+  {id:'PRE_DM', name:'철거',         dur:3, dep:['PRE_BY'],             cat:'사전공정', color:'#888'},
+  {id:'PRE_WS', name:'폐기물 반출',  dur:1, dep:['PRE_DM'],             cat:'사전공정', color:'#888'},
+  {id:'LGS_WL', name:'LGS 경량벽체',dur:3, dep:['PRE_DM'],             cat:'구조공정', color:'#C9A84C'},
+  {id:'LGS_CL', name:'LGS 천장틀',  dur:2, dep:['PRE_DM'],             cat:'구조공정', color:'#C9A84C'},
+  {id:'GYP_WL', name:'석고보드 벽',  dur:2, dep:['LGS_WL'],            cat:'구조공정', color:'#C9A84C'},
+  {id:'GYP_CL', name:'석고보드 천장',dur:2, dep:['LGS_CL'],            cat:'구조공정', color:'#C9A84C'},
+  {id:'WTP_BT', name:'욕실 방수',    dur:2, dep:['PRE_DM'],             cat:'습식공정', color:'#4a9eff'},
+  {id:'PLB_RG', name:'설비 배관',    dur:3, dep:['PRE_DM'],             cat:'설비공정', color:'#44ddff'},
+  {id:'ELE_RG', name:'전기 배선',    dur:3, dep:['PRE_DM'],             cat:'전기공정', color:'#ffdd44'},
+  {id:'MSN_FL', name:'바닥 미장',    dur:2, dep:['PLB_RG','WTP_BT'],   cat:'습식공정', color:'#4a9eff'},
+  {id:'TILE_BT',name:'욕실 타일',    dur:3, dep:['WTP_BT','MSN_FL'],   cat:'습식공정', color:'#4a9eff'},
+  {id:'TILE_KT',name:'주방 타일',    dur:1, dep:['MSN_FL'],             cat:'습식공정', color:'#4a9eff'},
+  {id:'TILE_FL',name:'바닥 타일',    dur:3, dep:['MSN_FL'],             cat:'습식공정', color:'#4a9eff'},
+  {id:'WD_FR',  name:'목공 골조',    dur:4, dep:['GYP_WL','GYP_CL','ELE_RG'], cat:'목공골조', color:'#e8a84c'},
+  {id:'WD_CL',  name:'목공 천장마감',dur:2, dep:['WD_FR'],             cat:'목공골조', color:'#e8a84c'},
+  {id:'WIN_SYS',name:'시스템창호',   dur:2, dep:['WD_FR'],              cat:'창호금속', color:'#7ed9a8'},
+  {id:'ELE_FN', name:'전기 마감',    dur:2, dep:['WD_CL','GYP_CL'],    cat:'전기공정', color:'#ffdd44'},
+  {id:'ELE_LT', name:'조명 설치',    dur:1, dep:['ELE_FN'],             cat:'전기공정', color:'#ffdd44'},
+  {id:'PLB_FN', name:'설비 마감',    dur:2, dep:['TILE_BT'],            cat:'설비공정', color:'#44ddff'},
+  {id:'PLB_SAN',name:'위생도기',     dur:1, dep:['PLB_FN'],             cat:'설비공정', color:'#44ddff'},
+  {id:'PNT_PT', name:'퍼티',         dur:2, dep:['GYP_WL','WD_CL'],    cat:'도장공정', color:'#ff8844'},
+  {id:'PNT_PR', name:'프라이머',     dur:1, dep:['PNT_PT'],             cat:'도장공정', color:'#ff8844'},
+  {id:'PNT_WB', name:'수성페인트',   dur:2, dep:['PNT_PR'],             cat:'도장공정', color:'#ff8844'},
+  {id:'WLP_UB', name:'초배',         dur:1, dep:['PNT_WB'],             cat:'수장공정', color:'#cc88ff'},
+  {id:'WLP_PP', name:'도배',         dur:2, dep:['WLP_UB'],             cat:'수장공정', color:'#cc88ff'},
+  {id:'FLR_HW', name:'강마루·LVT',  dur:2, dep:['TILE_FL','PNT_WB'],  cat:'수장공정', color:'#cc88ff'},
+  {id:'FLR_SK', name:'걸레받이 몰딩',dur:1, dep:['FLR_HW'],            cat:'수장공정', color:'#cc88ff'},
+  {id:'FUR_KIT',name:'주방가구',     dur:2, dep:['TILE_KT','PLB_FN'],  cat:'가구공정', color:'#ff88cc'},
+  {id:'FUR_WRD',name:'붙박이장',     dur:2, dep:['WLP_PP','FLR_HW'],   cat:'가구공정', color:'#ff88cc'},
+  {id:'DR_INT', name:'실내문',       dur:1, dep:['WLP_PP','FLR_HW'],   cat:'도어공정', color:'#88ccff'},
+  {id:'CLN_FN', name:'준공청소',     dur:1, dep:['FUR_KIT','FUR_WRD','DR_INT','ELE_LT','PLB_SAN'], cat:'준공인도', color:'#fff'},
+];
+
+const MATERIAL_ORDERS = [
+  {name:'시스템창호', pid:'WIN_SYS', lead:21, trigger:'계약금 수령'},
+  {name:'수입타일',   pid:'TILE_BT', lead:18, trigger:'계약금 수령'},
+  {name:'주방가구',   pid:'FUR_KIT', lead:25, trigger:'실측 확정'},
+  {name:'붙박이장',   pid:'FUR_WRD', lead:18, trigger:'목공 착수 전'},
+  {name:'강마루·LVT',pid:'FLR_HW',  lead:5,  trigger:'타일 완료 후'},
+  {name:'실내도어',   pid:'DR_INT',  lead:18, trigger:'목공 골조 후'},
+  {name:'위생도기',   pid:'PLB_SAN', lead:7,  trigger:'설비배관 후'},
+  {name:'조명·스위치',pid:'ELE_LT',  lead:5,  trigger:'전기배선 후'},
+  {name:'도배지',     pid:'WLP_PP',  lead:2,  trigger:'도장 완료 후'},
+];
+
+// ════════════════════════════════════════════════════════
+// 스케줄 계산
+// ════════════════════════════════════════════════════════
+const DAY_W = 32; // 하루 픽셀 폭
+const START_DATE = new Date('2026-05-04'); // 월요일 착공
+
+function addWorkDays(date, n){
+  const d=new Date(date); let added=0;
+  while(added<n){d.setDate(d.getDate()+1);if(d.getDay()!==0&&d.getDay()!==6)added++;}
+  return d;
+}
+
+// 위상 정렬
+function topoSort(procs){
+  const inDeg={}, adj={};
+  procs.forEach(p=>{inDeg[p.id]=0;adj[p.id]=[];});
+  procs.forEach(p=>p.dep.forEach(d=>{if(adj[d]){adj[d].push(p.id);inDeg[p.id]++;}}));
+  const q=Object.entries(inDeg).filter(([,v])=>v===0).map(([k])=>k);
+  const sorted=[];
+  while(q.length){
+    const id=q.shift(); const p=procs.find(x=>x.id===id); if(p) sorted.push(p);
+    (adj[id]||[]).forEach(nx=>{inDeg[nx]--;if(inDeg[nx]===0)q.push(nx);});
+  }
+  return sorted;
+}
+
+// CPM
+function cpm(procs){
+  const sorted=topoSort(procs);
+  const pm=Object.fromEntries(procs.map(p=>[p.id,p]));
+  const ES={},EF={};
+  sorted.forEach(p=>{
+    ES[p.id]=p.dep.length?Math.max(...p.dep.map(d=>EF[d]??0)):0;
+    EF[p.id]=ES[p.id]+p.dur;
+  });
+  const total=Math.max(...Object.values(EF));
+  const LS={},LF={};
+  [...sorted].reverse().forEach(p=>{
+    const succs=sorted.filter(s=>s.dep.includes(p.id));
+    LF[p.id]=succs.length?Math.min(...succs.map(s=>LS[s.id])):total;
+    LS[p.id]=LF[p.id]-p.dur;
+  });
+  const float={};
+  const cp=[];
+  sorted.forEach(p=>{float[p.id]=LS[p.id]-ES[p.id];if(float[p.id]===0)cp.push(p.id);});
+  return {sorted,ES,EF,LS,LF,float,cp,total};
+}
+
+const {sorted,ES,EF,float,cp,total} = cpm(PROCESSES);
+
+// 날짜 매핑
+function getDate(workDayOffset){
+  return addWorkDays(new Date(START_DATE.getTime()-86400000), workDayOffset);
+}
+
+// 전체 날짜 범위 (주말 포함)
+const endDate = getDate(total+2);
+const days=[];
+let cur=new Date(START_DATE);
+while(cur<=endDate){days.push(new Date(cur));cur.setDate(cur.getDate()+1);}
+
+// 작업일 인덱스 (날짜 → 픽셀 X)
+function dateToX(d){
+  let wd=0,c=new Date(START_DATE);
+  while(c<d){if(c.getDay()!==0&&c.getDay()!==6)wd++;c.setDate(c.getDate()+1);}
+  // 실제 달력일 기준 X
+  const diffMs=d-START_DATE;
+  const diffDays=diffMs/86400000;
+  return Math.round(diffDays)*DAY_W;
+}
+
+function workDateToX(wd){
+  return dateToX(getDate(wd));
+}
+
+// ════════════════════════════════════════════════════════
+// KPI
+// ════════════════════════════════════════════════════════
+document.getElementById('kpi-dur').textContent=total+'일';
+document.getElementById('kpi-cp').textContent=cp.length+'개';
+document.getElementById('kpi-order').textContent=MATERIAL_ORDERS.length+'건';
+const endD=getDate(total);
+document.getElementById('kpi-end').textContent=`${endD.getMonth()+1}/${endD.getDate()}`;
+
+// ════════════════════════════════════════════════════════
+// 간트 차트 렌더링
+// ════════════════════════════════════════════════════════
+function renderGantt(){
+  const wrap=document.getElementById('gantt-wrap');
+  wrap.innerHTML='';
+
+  // 이름 컬럼
+  const nameCol=document.createElement('div');
+  nameCol.className='gantt-names';
+  const nameHdr=document.createElement('div');
+  nameHdr.className='gantt-name-header';
+  nameHdr.textContent='공정명';
+  nameCol.appendChild(nameHdr);
+
+  sorted.forEach(p=>{
+    const row=document.createElement('div');
+    row.className='name-row'+(cp.includes(p.id)?' critical':'');
+    const dot=document.createElement('div');
+    dot.className='cat-dot';
+    dot.style.background=p.color;
+    row.appendChild(dot);
+    const name=document.createElement('span');
+    name.textContent=p.name;
+    row.appendChild(name);
+    if(float[p.id]>0){
+      const badge=document.createElement('span');
+      badge.className='float-badge';
+      badge.textContent='+'+float[p.id]+'일';
+      row.appendChild(badge);
+    }
+    nameCol.appendChild(row);
+  });
+  wrap.appendChild(nameCol);
+
+  // 차트 컬럼
+  const chartDiv=document.createElement('div');
+  chartDiv.className='gantt-chart';
+
+  // 날짜 헤더
+  const hdr=document.createElement('div');
+  hdr.className='gantt-header';
+  const totalW=days.length*DAY_W;
+  hdr.style.width=totalW+'px';
+  const today=new Date().toDateString();
+  days.forEach(d=>{
+    const cell=document.createElement('div');
+    cell.className='day-col'+(d.getDay()===0||d.getDay()===6?' weekend':'')+(d.toDateString()===today?' today-col':'');
+    cell.style.width=DAY_W+'px';
+    const dow=['일','월','화','수','목','금','토'][d.getDay()];
+    cell.innerHTML=`<div class="dow">${dow}</div><div class="day">${d.getDate()}</div>`;
+    hdr.appendChild(cell);
+  });
+  chartDiv.appendChild(hdr);
+
+  // 공정 행
+  sorted.forEach(p=>{
+    const row=document.createElement('div');
+    row.className='gantt-row'+(cp.includes(p.id)?' critical-row':'');
+    row.style.width=totalW+'px';
+    row.style.position='relative';
+
+    // 셀 배경
+    days.forEach(d=>{
+      const cell=document.createElement('div');
+      cell.className='day-cell'+(d.getDay()===0||d.getDay()===6?' weekend':'')+(d.toDateString()===today?' today-cell':'');
+      cell.style.width=DAY_W+'px';
+      row.appendChild(cell);
+    });
+
+    // 간트 바
+    const startX=workDateToX(ES[p.id]);
+    const barW=Math.max(DAY_W*p.dur-2, 8);
+    const bar=document.createElement('div');
+    bar.className='gantt-bar'+(cp.includes(p.id)?' critical-bar':'');
+    bar.style.left=(startX+1)+'px';
+    bar.style.width=barW+'px';
+    bar.style.background=p.color;
+    bar.style.color=p.color==='#fff'?'#000':'rgba(0,0,0,.75)';
+    bar.textContent=p.name;
+    bar.title=`${p.name}\n착수: D+${ES[p.id]}일\n완료: D+${EF[p.id]}일\n여유: ${float[p.id]}일`;
+    row.appendChild(bar);
+    chartDiv.appendChild(row);
+  });
+
+  // 오늘 라인
+  const todayX=dateToX(new Date());
+  if(todayX>0&&todayX<totalW){
+    const line=document.createElement('div');
+    line.style.cssText=`position:absolute;left:${todayX+200}px;top:52px;bottom:0;width:1px;background:rgba(201,168,76,.5);z-index:15;pointer-events:none`;
+    wrap.appendChild(line);
+  }
+
+  wrap.appendChild(chartDiv);
+}
+
+// ════════════════════════════════════════════════════════
+// 자재 발주표
+// ════════════════════════════════════════════════════════
+function renderOrders(){
+  const tbody=document.getElementById('order-body');
+  tbody.innerHTML='';
+  const pm=Object.fromEntries(PROCESSES.map(p=>[p.id,p]));
+  const today=new Date();
+
+  MATERIAL_ORDERS.forEach(m=>{
+    const proc=pm[m.pid];
+    if(!proc) return;
+    const procStart=getDate(ES[proc.id]);
+    const deadline=new Date(procStart); deadline.setDate(deadline.getDate()-m.lead);
+    const daysLeft=Math.round((deadline-today)/86400000);
+    const status=daysLeft<0?'urgent':daysLeft<7?'warn':'ok';
+    const statusLabel=daysLeft<0?`D${daysLeft}`:daysLeft===0?'오늘':daysLeft<7?`D-${daysLeft}일`:`D-${daysLeft}일`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="font-weight:700;color:var(--text)">${m.name}</td>
+      <td class="${daysLeft<0?'urgent':''}">${deadline.toLocaleDateString('ko-KR')}</td>
+      <td>${m.lead}일</td>
+      <td>${proc.name}</td>
+      <td>${procStart.toLocaleDateString('ko-KR')}</td>
+      <td style="color:var(--dim)">${m.trigger}</td>
+      <td><span class="deadline-chip ${status}">${statusLabel}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// 크리티컬 패스
+// ════════════════════════════════════════════════════════
+function renderCritical(){
+  const chain=document.getElementById('cp-chain');
+  chain.innerHTML='';
+  const pm=Object.fromEntries(PROCESSES.map(p=>[p.id,p]));
+  cp.forEach((id,i)=>{
+    const p=pm[id];
+    if(!p) return;
+    const item=document.createElement('div');
+    item.className='cp-item';
+    item.textContent=`${p.name} (${p.dur}일)`;
+    chain.appendChild(item);
+    if(i<cp.length-1){
+      const arr=document.createElement('span');
+      arr.className='cp-arrow';arr.textContent='→';
+      chain.appendChild(arr);
+    }
+  });
+
+  const fl=document.getElementById('float-list');
+  fl.innerHTML='';
+  const nonCrit=sorted.filter(p=>float[p.id]>0).sort((a,b)=>float[a.id]-float[b.id]);
+  nonCrit.forEach(p=>{
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px';
+    const dot=document.createElement('div');
+    dot.style.cssText=`width:7px;height:7px;border-radius:50%;background:${p.color};flex-shrink:0`;
+    div.innerHTML=`<span style="color:var(--text);min-width:120px">${p.name}</span><span style="color:var(--dim)">여유 <b style="color:#4dd99a">${float[p.id]}일</b></span>`;
+    div.insertBefore(dot,div.firstChild);
+    fl.appendChild(div);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// 인력 투입표
+// ════════════════════════════════════════════════════════
+function renderLabor(){
+  const grid=document.getElementById('labor-grid');
+  grid.innerHTML='';
+  const laborMap={};
+  const LABOR_MAP={
+    '사전공정':['철거공','보양공'],
+    '구조공정':['목수'],
+    '습식공정':['방수공','타일공','미장공'],
+    '전기공정':['전기공'],
+    '설비공정':['설비공'],
+    '목공골조':['목수'],
+    '창호금속':['창호공'],
+    '도장공정':['도장공'],
+    '수장공정':['도배공','마루공'],
+    '가구공정':['가구공'],
+    '도어공정':['목수'],
+    '준공인도':['청소부'],
+  };
+  sorted.forEach(p=>{
+    for(let wd=ES[p.id];wd<EF[p.id];wd++){
+      const d=getDate(wd);
+      const dow=d.getDay();
+      if(dow===0||dow===6) continue;
+      const ds=d.toLocaleDateString('ko-KR');
+      if(!laborMap[ds]) laborMap[ds]={date:ds,procs:[],workers:0};
+      const roles=LABOR_MAP[p.cat]||['작업자'];
+      laborMap[ds].procs.push(p.name);
+      laborMap[ds].workers+=roles.length;
+    }
+  });
+  const entries=Object.values(laborMap).slice(0,28);
+  entries.forEach(e=>{
+    const card=document.createElement('div');
+    card.className='labor-card';
+    card.innerHTML=`
+      <div class="labor-date">${e.date}</div>
+      <div><span class="labor-count">${e.workers}</span><span class="labor-unit">명</span></div>
+      <div class="labor-names">${[...new Set(e.procs)].slice(0,3).join(', ')}${e.procs.length>3?'…':''}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// 탭 전환
+// ════════════════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 초기 렌더
+renderGantt();
+renderOrders();
+renderCritical();
+renderLabor();
+</script>
+</body>
+</html>

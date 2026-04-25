@@ -1,0 +1,560 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "createdAt": "2026-04-25",
+    "description": "ECOREAN 공정 일정 템플릿 — 착공일 기준 자동 스케줄"
+  },
+  "items": [
+    {
+      "processId": "PRE_BY",
+      "processName": "보양",
+      "defaultStartDay": 1,
+      "defaultDuration": 1,
+      "predecessors": [],
+      "successors": [
+        "PRE_DM_F",
+        "PRE_DM_T",
+        "PRE_DM_W"
+      ],
+      "criticalPath": true,
+      "workerRole": "보통인부",
+      "minWorkers": 2,
+      "notes": "착공 첫날 전 공간 보양 완료"
+    },
+    {
+      "processId": "PRE_DM_F",
+      "processName": "바닥재 철거",
+      "defaultStartDay": 2,
+      "defaultDuration": 2,
+      "predecessors": [
+        "PRE_BY"
+      ],
+      "successors": [
+        "MSN_FL"
+      ],
+      "criticalPath": true,
+      "workerRole": "철거공",
+      "minWorkers": 2
+    },
+    {
+      "processId": "PRE_DM_T",
+      "processName": "타일 철거",
+      "defaultStartDay": 2,
+      "defaultDuration": 2,
+      "predecessors": [
+        "PRE_BY"
+      ],
+      "successors": [
+        "WTP_BT"
+      ],
+      "criticalPath": true,
+      "workerRole": "철거공",
+      "minWorkers": 2
+    },
+    {
+      "processId": "PRE_DM_W",
+      "processName": "도배 제거",
+      "defaultStartDay": 2,
+      "defaultDuration": 1,
+      "predecessors": [
+        "PRE_BY"
+      ],
+      "successors": [
+        "GYP_WL"
+      ],
+      "criticalPath": false,
+      "workerRole": "도배공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "PRE_WS",
+      "processName": "폐기물 반출",
+      "defaultStartDay": 4,
+      "defaultDuration": 1,
+      "predecessors": [
+        "PRE_DM_F",
+        "PRE_DM_T"
+      ],
+      "successors": [],
+      "criticalPath": false,
+      "workerRole": "보통인부",
+      "minWorkers": 2,
+      "notes": "폐기물 차량 예약 필요 (1주 전)"
+    },
+    {
+      "processId": "PLB_RG",
+      "processName": "급배수 배관",
+      "defaultStartDay": 3,
+      "defaultDuration": 3,
+      "predecessors": [
+        "PRE_DM_T"
+      ],
+      "successors": [
+        "MSN_FL",
+        "WTP_BT"
+      ],
+      "criticalPath": true,
+      "workerRole": "배관공(수도)",
+      "minWorkers": 1,
+      "notes": "배관 완료 후 방수 선행 필수"
+    },
+    {
+      "processId": "ELE_RG",
+      "processName": "전기 배선",
+      "defaultStartDay": 3,
+      "defaultDuration": 3,
+      "predecessors": [
+        "PRE_DM_W"
+      ],
+      "successors": [
+        "GYP_WL",
+        "ELE_PNL"
+      ],
+      "criticalPath": true,
+      "workerRole": "내선전공",
+      "minWorkers": 1,
+      "notes": "배선 완료 후 석고보드 덮기"
+    },
+    {
+      "processId": "WTP_BT",
+      "processName": "욕실 방수",
+      "defaultStartDay": 5,
+      "defaultDuration": 2,
+      "predecessors": [
+        "PLB_RG"
+      ],
+      "successors": [
+        "TILE_BT"
+      ],
+      "criticalPath": true,
+      "workerRole": "방수공",
+      "minWorkers": 1,
+      "curringHours": 48,
+      "notes": "방수 후 48시간 양생 필수. 누수 테스트 후 타일 진행"
+    },
+    {
+      "processId": "GYP_WL",
+      "processName": "석고보드 벽",
+      "defaultStartDay": 5,
+      "defaultDuration": 2,
+      "predecessors": [
+        "ELE_RG"
+      ],
+      "successors": [
+        "PNT_PT"
+      ],
+      "criticalPath": false,
+      "workerRole": "건축목공",
+      "minWorkers": 2
+    },
+    {
+      "processId": "GYP_CL",
+      "processName": "석고보드 천장",
+      "defaultStartDay": 7,
+      "defaultDuration": 2,
+      "predecessors": [
+        "GYP_WL"
+      ],
+      "successors": [
+        "PNT_PT"
+      ],
+      "criticalPath": false,
+      "workerRole": "건축목공",
+      "minWorkers": 2
+    },
+    {
+      "processId": "LGS_WL",
+      "processName": "LGS 경량벽체",
+      "defaultStartDay": 5,
+      "defaultDuration": 3,
+      "predecessors": [
+        "ELE_RG"
+      ],
+      "successors": [
+        "GYP_WL"
+      ],
+      "criticalPath": false,
+      "workerRole": "건축목공",
+      "minWorkers": 2
+    },
+    {
+      "processId": "MSN_FL",
+      "processName": "바닥 미장",
+      "defaultStartDay": 7,
+      "defaultDuration": 2,
+      "predecessors": [
+        "PLB_RG",
+        "PRE_DM_F"
+      ],
+      "successors": [
+        "FLR_WB"
+      ],
+      "criticalPath": true,
+      "workerRole": "미장공",
+      "minWorkers": 1,
+      "curringHours": 24,
+      "notes": "미장 24시간 양생 후 바닥재 시공"
+    },
+    {
+      "processId": "MSN_SL",
+      "processName": "셀프레벨링",
+      "defaultStartDay": 9,
+      "defaultDuration": 1,
+      "predecessors": [
+        "MSN_FL"
+      ],
+      "successors": [
+        "FLR_WB"
+      ],
+      "criticalPath": false,
+      "workerRole": "미장공",
+      "minWorkers": 1,
+      "curringHours": 12
+    },
+    {
+      "processId": "TILE_BT",
+      "processName": "욕실 바닥타일",
+      "defaultStartDay": 8,
+      "defaultDuration": 3,
+      "predecessors": [
+        "WTP_BT"
+      ],
+      "successors": [
+        "TILE_GRF"
+      ],
+      "criticalPath": true,
+      "workerRole": "타일공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "TILE_BW",
+      "processName": "욕실 벽타일",
+      "defaultStartDay": 8,
+      "defaultDuration": 3,
+      "predecessors": [
+        "WTP_BT"
+      ],
+      "successors": [
+        "TILE_GRW"
+      ],
+      "criticalPath": true,
+      "workerRole": "타일공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "TILE_GRF",
+      "processName": "줄눈(바닥)",
+      "defaultStartDay": 11,
+      "defaultDuration": 1,
+      "predecessors": [
+        "TILE_BT"
+      ],
+      "successors": [
+        "BAT_FIX"
+      ],
+      "criticalPath": false,
+      "workerRole": "줄눈공",
+      "minWorkers": 1,
+      "notes": "줄눈재 경화 12h 후 도기 설치"
+    },
+    {
+      "processId": "TILE_GRW",
+      "processName": "줄눈(벽)",
+      "defaultStartDay": 11,
+      "defaultDuration": 1,
+      "predecessors": [
+        "TILE_BW"
+      ],
+      "successors": [
+        "BAT_FIX"
+      ],
+      "criticalPath": false,
+      "workerRole": "줄눈공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "WIN_SYS",
+      "processName": "시스템창호 설치",
+      "defaultStartDay": 10,
+      "defaultDuration": 2,
+      "predecessors": [
+        "GYP_CL"
+      ],
+      "successors": [
+        "PNT_PT"
+      ],
+      "criticalPath": false,
+      "workerRole": "창호공",
+      "minWorkers": 2,
+      "leadTimeDays": 21,
+      "notes": "리드타임 21일 필수 → 착공 전 발주"
+    },
+    {
+      "processId": "PNT_PT",
+      "processName": "퍼티",
+      "defaultStartDay": 12,
+      "defaultDuration": 2,
+      "predecessors": [
+        "GYP_WL",
+        "GYP_CL",
+        "WIN_SYS"
+      ],
+      "successors": [
+        "PNT_PR"
+      ],
+      "criticalPath": true,
+      "workerRole": "도장공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "PNT_PR",
+      "processName": "프라이머",
+      "defaultStartDay": 14,
+      "defaultDuration": 1,
+      "predecessors": [
+        "PNT_PT"
+      ],
+      "successors": [
+        "WLP_UB",
+        "PNT_WB"
+      ],
+      "criticalPath": true,
+      "workerRole": "도장공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "WLP_UB",
+      "processName": "초배",
+      "defaultStartDay": 15,
+      "defaultDuration": 1,
+      "predecessors": [
+        "PNT_PR"
+      ],
+      "successors": [
+        "WLP_PP"
+      ],
+      "criticalPath": true,
+      "workerRole": "도배공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "WLP_PP",
+      "processName": "도배",
+      "defaultStartDay": 16,
+      "defaultDuration": 2,
+      "predecessors": [
+        "WLP_UB"
+      ],
+      "successors": [
+        "FLR_WB"
+      ],
+      "criticalPath": true,
+      "workerRole": "도배공",
+      "minWorkers": 2,
+      "notes": "도배 완료 후 바닥재 시공. 역순 불가"
+    },
+    {
+      "processId": "FLR_WB",
+      "processName": "강마루 시공",
+      "defaultStartDay": 18,
+      "defaultDuration": 2,
+      "predecessors": [
+        "WLP_PP",
+        "MSN_FL"
+      ],
+      "successors": [
+        "FLR_SK"
+      ],
+      "criticalPath": true,
+      "workerRole": "플로어링마루시공공",
+      "minWorkers": 1,
+      "leadTimeDays": 5,
+      "notes": "바닥재 현장 반입 후 24h 이상 적치"
+    },
+    {
+      "processId": "FLR_SK",
+      "processName": "걸레받이 몰딩",
+      "defaultStartDay": 20,
+      "defaultDuration": 1,
+      "predecessors": [
+        "FLR_WB"
+      ],
+      "successors": [
+        "ELE_OUT"
+      ],
+      "criticalPath": false,
+      "workerRole": "내장공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "ELE_OUT",
+      "processName": "콘센트·스위치",
+      "defaultStartDay": 20,
+      "defaultDuration": 1,
+      "predecessors": [
+        "GYP_WL"
+      ],
+      "successors": [
+        "ELE_DL"
+      ],
+      "criticalPath": false,
+      "workerRole": "내선전공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "ELE_DL",
+      "processName": "다운라이트",
+      "defaultStartDay": 21,
+      "defaultDuration": 1,
+      "predecessors": [
+        "ELE_OUT"
+      ],
+      "successors": [
+        "CLN_FN"
+      ],
+      "criticalPath": false,
+      "workerRole": "내선전공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "BAT_FIX",
+      "processName": "욕실 도기 설치",
+      "defaultStartDay": 12,
+      "defaultDuration": 1,
+      "predecessors": [
+        "TILE_GRF",
+        "TILE_GRW"
+      ],
+      "successors": [
+        "BAT_EXH"
+      ],
+      "criticalPath": false,
+      "workerRole": "위생공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "BAT_EXH",
+      "processName": "환풍기",
+      "defaultStartDay": 13,
+      "defaultDuration": 1,
+      "predecessors": [
+        "BAT_FIX"
+      ],
+      "successors": [
+        "BAT_DOOR"
+      ],
+      "criticalPath": false,
+      "workerRole": "내선전공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "BAT_DOOR",
+      "processName": "욕실 도어",
+      "defaultStartDay": 14,
+      "defaultDuration": 1,
+      "predecessors": [
+        "BAT_EXH"
+      ],
+      "successors": [],
+      "criticalPath": false,
+      "workerRole": "창호공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "BAT_CEIL",
+      "processName": "욕실 천장(루버)",
+      "defaultStartDay": 13,
+      "defaultDuration": 1,
+      "predecessors": [
+        "TILE_BW"
+      ],
+      "successors": [
+        "BAT_EXH"
+      ],
+      "criticalPath": false,
+      "workerRole": "건축목공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "FUR_KIT",
+      "processName": "주방가구 설치",
+      "defaultStartDay": 20,
+      "defaultDuration": 2,
+      "predecessors": [
+        "TILE_KT",
+        "PLB_KIT"
+      ],
+      "successors": [
+        "FUR_TOP"
+      ],
+      "criticalPath": false,
+      "workerRole": "건축목공",
+      "minWorkers": 2,
+      "leadTimeDays": 25,
+      "notes": "리드타임 25일 → 착공 전 즉시 발주"
+    },
+    {
+      "processId": "FUR_TOP",
+      "processName": "주방 상판",
+      "defaultStartDay": 22,
+      "defaultDuration": 1,
+      "predecessors": [
+        "FUR_KIT"
+      ],
+      "successors": [
+        "PLB_WF"
+      ],
+      "criticalPath": false,
+      "workerRole": "건축목공",
+      "minWorkers": 2,
+      "leadTimeDays": 10
+    },
+    {
+      "processId": "FUR_WRD",
+      "processName": "붙박이장",
+      "defaultStartDay": 20,
+      "defaultDuration": 2,
+      "predecessors": [
+        "WLP_PP"
+      ],
+      "successors": [],
+      "criticalPath": false,
+      "workerRole": "건축목공",
+      "minWorkers": 2,
+      "leadTimeDays": 18,
+      "notes": "리드타임 18일 → 착공 전 발주"
+    },
+    {
+      "processId": "PLB_WF",
+      "processName": "수전 설치",
+      "defaultStartDay": 23,
+      "defaultDuration": 1,
+      "predecessors": [
+        "FUR_TOP"
+      ],
+      "successors": [
+        "CLN_FN"
+      ],
+      "criticalPath": false,
+      "workerRole": "위생공",
+      "minWorkers": 1
+    },
+    {
+      "processId": "CLN_FN",
+      "processName": "준공청소",
+      "defaultStartDay": 24,
+      "defaultDuration": 1,
+      "predecessors": [
+        "FUR_KIT",
+        "FLR_SK",
+        "ELE_DL",
+        "BAT_DOOR"
+      ],
+      "successors": [],
+      "criticalPath": true,
+      "workerRole": "보통인부",
+      "minWorkers": 2,
+      "notes": "입주 전 최종 청소. 고객 검수 동행"
+    }
+  ]
+}

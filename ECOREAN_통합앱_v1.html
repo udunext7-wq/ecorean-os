@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ECOREAN 자동견적 OS</title>
+<style>
+:root{--bg:#070707;--bg2:#0f0f0f;--bg3:#161616;--gold:#C9A84C;--gold2:rgba(201,168,76,.15);--gold3:rgba(201,168,76,.08);--text:#e8e0d0;--dim:#888;--border:rgba(201,168,76,.18);--border2:rgba(255,255,255,.07);--green:#5ddd9a;--blue:#5aadff;--red:#ff5564;--orange:#ffaa44;--r:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+input,button,select{font-family:inherit}
+button{cursor:pointer}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:rgba(201,168,76,.3);border-radius:2px}
+#hdr{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:52px;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border)}
+.logo{font-size:11px;letter-spacing:.25em;color:var(--gold);font-weight:800;text-transform:uppercase}
+.logo em{color:var(--dim);font-style:normal;font-weight:400;margin-left:8px;letter-spacing:.04em;font-size:10px}
+.kpis{display:flex;gap:20px}
+.kpi{text-align:right}
+.kpiv{font-size:16px;font-weight:800;color:var(--gold);line-height:1}
+.kpil{font-size:9px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+#tabs{display:flex;gap:2px;padding:8px 24px;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border2)}
+.tab{padding:6px 16px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;color:var(--dim);background:transparent;border:1px solid transparent;letter-spacing:.03em}
+.tab.act{background:var(--gold2);color:var(--gold);border-color:var(--border)}
+.tab:hover:not(.act){color:var(--text);background:var(--bg3)}
+#main{display:flex;flex:1;overflow:hidden}
+#left{width:300px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border2);background:var(--bg2)}
+.sec{border-bottom:1px solid var(--border2)}
+.sechd{padding:11px 18px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.sechd h3{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
+.secbg{font-size:9px;padding:2px 7px;border-radius:10px;background:var(--gold2);color:var(--gold);font-weight:700;margin-left:auto}
+.secbody{padding:12px 18px;display:none}
+.secbody.open{display:block}
+.chev{font-size:10px;color:var(--dim);transition:transform .2s}
+.chev.open{transform:rotate(90deg)}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:10px;color:var(--dim);margin-bottom:4px;letter-spacing:.04em}
+.field input,.field select{width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);font-size:11px;transition:border-color .15s}
+.field input:focus,.field select:focus{outline:none;border-color:var(--gold)}
+.frow{display:flex;gap:8px}
+.frow .field{flex:1}
+.spcard{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;position:relative}
+.spnm{font-size:11px;font-weight:700;margin-bottom:4px}
+.spinfo{font-size:10px;color:var(--dim)}
+.spdel{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:rgba(255,85,100,.15);border:none;color:var(--red);font-size:10px}
+.btn{width:100%;padding:8px;border-radius:var(--r);border:1px solid var(--border);background:var(--gold2);color:var(--gold);font-size:11px;font-weight:700;transition:all .15s;letter-spacing:.04em}
+.btn:hover{background:rgba(201,168,76,.25)}
+.btnsm{padding:5px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);color:var(--dim);font-size:10px;font-weight:600;transition:all .15s}
+.btnsm:hover{border-color:var(--gold);color:var(--gold)}
+.pgrp{margin-bottom:12px}
+.pgrphd{font-size:9px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--gold2)}
+.pitm{display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer}
+.pitm input{accent-color:var(--gold);width:13px;height:13px}
+.pitm label{font-size:11px;color:var(--text);cursor:pointer;flex:1}
+.pitm .pu{font-size:9px;color:var(--dim);margin-left:auto}
+.pkgbs{display:flex;gap:6px;margin-top:6px}
+.pkgb{flex:1;padding:7px 0;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);color:var(--dim);font-size:10px;font-weight:700;transition:all .15s}
+.pkgb.act{border-color:var(--gold);background:var(--gold2);color:var(--gold)}
+#right{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.view{display:none;flex:1;overflow-y:auto;padding:20px 24px}
+.view.act{display:block}
+.egrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.ecard{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px 18px}
+.ecard.gold{border-color:var(--border);background:var(--gold3)}
+.ecard .lbl{font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.ecard .val{font-size:22px;font-weight:800;color:var(--gold);line-height:1}
+.ecard .sub{font-size:10px;color:var(--dim);margin-top:4px}
+.etbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:20px}
+.etbl th{padding:9px 12px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:5}
+.etbl td{padding:8px 12px;border-bottom:1px solid var(--border2)}
+.etbl tr:hover td{background:var(--bg2)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.atag{font-size:8px;padding:1px 5px;border-radius:6px;background:rgba(93,221,154,.1);color:var(--green);border:1px solid rgba(93,221,154,.2);margin-left:4px}
+.catrow td{background:var(--bg3);color:var(--gold);font-weight:700;font-size:10px}
+.diag{border-radius:var(--r);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;font-size:11px}
+.diag.warn{background:rgba(255,170,68,.08);border:1px solid rgba(255,170,68,.2);color:var(--orange)}
+.diag.info{background:rgba(90,173,255,.08);border:1px solid rgba(90,173,255,.2);color:var(--blue)}
+.diag.ok{background:rgba(93,221,154,.08);border:1px solid rgba(93,221,154,.2);color:var(--green)}
+.obt{padding:8px 18px;border-radius:var(--r);border:1px solid var(--border);background:var(--gold2);color:var(--gold);font-size:11px;font-weight:700;transition:all .15s;letter-spacing:.04em}
+.obt:hover{background:rgba(201,168,76,.3)}
+.obt.s{background:var(--bg3);border-color:var(--border2);color:var(--dim)}
+.obt.s:hover{border-color:var(--gold);color:var(--gold)}
+.obts{display:flex;gap:8px;margin-bottom:20px}
+#cprev{background:#fff;color:#111;border-radius:12px;padding:32px 36px;font-family:sans-serif;max-width:720px;margin:0 auto}
+#cprev h1{font-size:20px;font-weight:800;margin-bottom:4px}
+#cprev .sub{font-size:12px;color:#666;margin-bottom:24px}
+#cprev table{width:100%;border-collapse:collapse;font-size:12px}
+#cprev th{background:#f5f5f5;padding:8px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.05em}
+#cprev td{padding:7px 12px;border-bottom:1px solid #eee}
+#cprev .trow td{background:#f9f5ec;font-weight:800;font-size:14px}
+#statusbar{padding:6px 24px;background:var(--bg2);border-top:1px solid var(--border2);font-size:10px;color:var(--dim);display:flex;align-items:center;gap:16px;flex-shrink:0}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.gantt-wrap{overflow:auto;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2)}
+</style>
+</head>
+<body>
+<div id="hdr">
+  <div class="logo">ECOREAN <em>자동견적 OS v1.0</em></div>
+  <div class="kpis">
+    <div class="kpi"><div class="kpiv" id="hv1">₩0</div><div class="kpil">VAT포함 합계</div></div>
+    <div class="kpi"><div class="kpiv" id="hv2">—</div><div class="kpil">㎡당 단가</div></div>
+    <div class="kpi"><div class="kpiv" id="hv3">—일</div><div class="kpil">예상 공기</div></div>
+    <div class="kpi"><div class="kpiv" id="hv4">0</div><div class="kpil">공정 수</div></div>
+  </div>
+</div>
+<div id="tabs">
+  <button class="tab act" data-v="estimate">📊 견적결과</button>
+  <button class="tab" data-v="customer">📄 고객 견적서</button>
+  <button class="tab" data-v="schedule">📅 공정표</button>
+  <button class="tab" data-v="material">📦 발주표</button>
+  <button class="tab" data-v="dbmgr">⚙️ DB관리</button>
+</div>
+<div id="main">
+<div id="left">
+  <div class="sec">
+    <div class="sechd" onclick="ts(this)"><h3>📋 프로젝트</h3><span class="chev open">▶</span></div>
+    <div class="secbody open">
+      <div class="field"><label>현장명</label><input id="pnm" type="text" placeholder="강남구 역삼동 OO아파트 101호"></div>
+      <div class="field"><label>고객명</label><input id="cnm" type="text" placeholder="고객 이름"></div>
+      <div class="frow">
+        <div class="field"><label>착공일</label><input id="sdate" type="date" value="2026-05-04"></div>
+        <div class="field"><label>총면적(㎡)</label><input id="tarea" type="number" placeholder="59.5" step="0.1" min="0" oninput="calc()"></div>
+      </div>
+      <div class="field"><label>패키지 등급</label>
+        <div class="pkgbs">
+          <button class="pkgb act" onclick="setPkg('표준',1.0,this)">표준 ×1.0</button>
+          <button class="pkgb" onclick="setPkg('고급',1.3,this)">고급 ×1.3</button>
+          <button class="pkgb" onclick="setPkg('프리미엄',1.7,this)">프리미엄 ×1.7</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sechd" onclick="ts(this)"><h3>📐 공간 실측</h3><span class="secbg" id="spbg">0개</span><span class="chev open">▶</span></div>
+    <div class="secbody open">
+      <div class="frow"><div class="field"><label>공간명</label><input id="snm" type="text" placeholder="거실"></div><div class="field"><label>유형</label><select id="stype"><option>거실</option><option>침실</option><option>주방</option><option>욕실</option><option>발코니</option><option>현관</option><option>기타</option></select></div></div>
+      <div class="frow"><div class="field"><label>면적(㎡)</label><input id="sarea" type="number" placeholder="25.0" step="0.1" min="0"></div><div class="field"><label>천장고(m)</label><input id="sh" type="number" placeholder="2.4" step="0.1" value="2.4"></div></div>
+      <div class="frow"><div class="field"><label>창호 수</label><input id="swin" type="number" placeholder="2" min="0" value="0"></div><div class="field" style="display:flex;align-items:flex-end;padding-bottom:2px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px"><input type="checkbox" id="swet" style="accent-color:var(--blue)"> 습식공간</label></div></div>
+      <button class="btn" onclick="addSp()">+ 공간 추가</button>
+      <div id="splist" style="margin-top:10px"></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sechd" onclick="ts(this)"><h3>🔨 공정 선택</h3><span class="secbg" id="pbg">0개</span><span class="chev open">▶</span></div>
+    <div class="secbody open">
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button class="btnsm" onclick="allP()">전체선택</button>
+        <button class="btnsm" onclick="noneP()">전체해제</button>
+        <button class="btnsm" onclick="stdP()">표준세트</button>
+      </div>
+      <div id="plist"></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sechd" onclick="ts(this)"><h3>🏗️ 현장 조건</h3><span class="chev">▶</span></div>
+    <div class="secbody">
+      <div class="frow"><div class="field"><label>층수</label><input id="flv" type="number" value="5" min="1" oninput="calc()"></div><div class="field" style="display:flex;align-items:flex-end;padding-bottom:2px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px"><input type="checkbox" id="helev" checked onchange="calc()"> 엘리베이터</label></div></div>
+      <div class="field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="resid" onchange="calc()"> <span style="font-size:11px">거주중 공사</span></label></div>
+    </div>
+  </div>
+</div>
+<div id="right">
+  <!-- 견적결과 -->
+  <div class="view act" id="view-estimate">
+    <div class="obts"><button class="obt" onclick="sv('customer')">📄 고객용 견적서</button><button class="obt s" onclick="sv('schedule')">📅 공정표</button><button class="obt s" onclick="sv('material')">📦 발주표</button></div>
+    <div class="egrid">
+      <div class="ecard gold"><div class="lbl">최종합계 (VAT포함)</div><div class="val" id="rf">₩0</div><div class="sub" id="rp">평당 0원</div></div>
+      <div class="ecard"><div class="lbl">공급가</div><div class="val" id="rs" style="font-size:18px;color:var(--text)">₩0</div><div class="sub" id="rpkg">표준 ×1.0</div></div>
+      <div class="ecard"><div class="lbl">도급합계</div><div class="val" id="rc" style="font-size:18px;color:var(--text)">₩0</div><div class="sub">경비+이윤 포함</div></div>
+      <div class="ecard"><div class="lbl">공과잡비 2%</div><div class="val" id="rm" style="font-size:16px;color:var(--dim)">₩0</div></div>
+      <div class="ecard"><div class="lbl">현장관리비 3%</div><div class="val" id="rmg" style="font-size:16px;color:var(--dim)">₩0</div></div>
+      <div class="ecard"><div class="lbl">이윤+VAT</div><div class="val" id="rv" style="font-size:16px;color:var(--dim)">₩0</div></div>
+    </div>
+    <div id="diags" style="margin-bottom:16px"></div>
+    <table class="etbl"><thead><tr><th style="width:180px">공정명</th><th>단위</th><th class="num">수량</th><th class="num">노무비</th><th class="num">자재비</th><th class="num">공급가</th><th>비고</th></tr></thead><tbody id="etbody"></tbody></table>
+  </div>
+  <!-- 고객 견적서 -->
+  <div class="view" id="view-customer">
+    <div class="obts"><button class="obt" onclick="window.print()">🖨️ 인쇄</button><button class="obt s" onclick="dlCust()">⬇️ HTML 저장</button></div>
+    <div id="cprev"><h1>인테리어 공사 견적서</h1><div class="sub" id="cpsub">ECOREAN | 고객: — | 현장: —</div><table><thead><tr><th>No</th><th>공정명</th><th>단위</th><th style="text-align:right">수량</th><th style="text-align:right">금액</th></tr></thead><tbody id="cptbody"></tbody><tfoot><tr class="trow"><td colspan="4" style="text-align:right;font-weight:800;padding:8px 12px">합계 (VAT포함)</td><td style="text-align:right;padding:8px 12px" id="cptotal">₩0</td></tr></tfoot></table><p style="margin-top:20px;font-size:11px;color:#888">※ 유효기간 30일 | 추가공사 별도 협의</p></div>
+  </div>
+  <!-- 공정표 -->
+  <div class="view" id="view-schedule">
+    <div style="font-size:11px;color:var(--dim);margin-bottom:12px">★ 빨간 공정 = 크리티컬 패스</div>
+    <div class="gantt-wrap"><div id="ginner"></div></div>
+  </div>
+  <!-- 발주표 -->
+  <div class="view" id="view-material">
+    <table class="etbl" id="mattbl"><thead><tr><th>자재명</th><th>발주마감</th><th>리드타임</th><th>연결공정</th><th>착수예정</th><th>트리거</th><th>상태</th></tr></thead><tbody id="matbody"></tbody></table>
+  </div>
+  <!-- DB관리 -->
+  <div class="view" id="view-dbmgr">
+    <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center">
+      <button class="obt" onclick="document.getElementById('fu').click()">📤 JSON 업로드</button>
+      <input type="file" id="fu" accept=".json" style="display:none" onchange="upload(this)">
+      <button class="obt s" onclick="expDB()">⬇️ DB 내보내기</button>
+      <span style="font-size:10px;color:var(--dim)">현재 DB: <b id="dbcnt" style="color:var(--gold)">0</b>개</span>
+    </div>
+    <table class="etbl" style="font-size:10px"><thead><tr><th>공정명</th><th>단위</th><th class="num">노무비</th><th class="num">자재비</th><th class="num">기본단가</th><th>소요일</th><th>상태</th></tr></thead><tbody id="dbtbody"></tbody></table>
+  </div>
+</div>
+</div>
+<div id="statusbar"><div class="sdot"></div><span id="stmsg">준비 완료</span><span style="margin-left:auto;color:var(--dim)">ECOREAN 자동견적 OS v1.0</span></div>
+<script>
+let DB=[
+  {id:"PRE_BY",nm:"보양",cat:"사전공정",unit:"㎡",lb:3000,mt:2000,eq:0,ac:0,wr:0.05,dur:1,pm:"AUTO",f:"floorArea"},
+  {id:"PRE_DM",nm:"기존 마루·장판 철거",cat:"사전공정",unit:"㎡",lb:8000,mt:0,eq:0,ac:500,wr:0,dur:3,pm:"AUTO",f:"floorArea"},
+  {id:"PRE_DT",nm:"기존 타일 철거",cat:"사전공정",unit:"㎡",lb:12000,mt:0,eq:0,ac:500,wr:0,dur:2,pm:"AUTO",f:"wetArea"},
+  {id:"PRE_WS",nm:"폐기물 반출",cat:"사전공정",unit:"톤",lb:50000,mt:80000,eq:0,ac:0,wr:0,dur:1,pm:"AUTO",f:"floorArea*0.05"},
+  {id:"WTP_BT",nm:"욕실 방수 (우레탄 2회)",cat:"방수",unit:"㎡",lb:35000,mt:25000,eq:0,ac:3000,wr:0.05,dur:2,pm:"AUTO",f:"wetArea"},
+  {id:"MSN_FL",nm:"바닥 미장",cat:"미장",unit:"㎡",lb:18000,mt:8000,eq:0,ac:1000,wr:0.05,dur:2,pm:"AUTO",f:"floorArea"},
+  {id:"TILE_BT",nm:"욕실 타일 시공",cat:"타일",unit:"㎡",lb:45000,mt:35000,eq:0,ac:8000,wr:0.1,dur:3,pm:"AUTO",f:"wetArea*2.5"},
+  {id:"TILE_FL",nm:"바닥 타일 (600×600)",cat:"타일",unit:"㎡",lb:38000,mt:45000,eq:0,ac:8000,wr:0.1,dur:3,pm:"SELECT",f:"floorArea*0.5"},
+  {id:"TILE_GR",nm:"줄눈 시공",cat:"타일",unit:"㎡",lb:5000,mt:3000,eq:0,ac:500,wr:0.05,dur:1,pm:"AUTO",f:"wetArea*2.5"},
+  {id:"LGS_WL",nm:"LGS 경량벽체",cat:"목공·구조",unit:"㎡",lb:22000,mt:18000,eq:0,ac:3000,wr:0.05,dur:3,pm:"SELECT",f:"wallArea*0.3"},
+  {id:"GYP_WL",nm:"석고보드 벽",cat:"목공·구조",unit:"㎡",lb:18000,mt:12000,eq:0,ac:2000,wr:0.05,dur:2,pm:"AUTO",f:"wallArea"},
+  {id:"GYP_CL",nm:"석고보드 천장",cat:"목공·구조",unit:"㎡",lb:20000,mt:12000,eq:0,ac:2000,wr:0.05,dur:2,pm:"AUTO",f:"ceilingArea"},
+  {id:"WIN_SYS",nm:"시스템창호",cat:"창호",unit:"EA",lb:120000,mt:350000,eq:0,ac:15000,wr:0,dur:2,pm:"QTY",f:"windowCount"},
+  {id:"DR_INT",nm:"실내문 (여닫이)",cat:"도어",unit:"EA",lb:80000,mt:180000,eq:0,ac:10000,wr:0,dur:1,pm:"QTY",f:"0"},
+  {id:"PNT_PT",nm:"퍼티 (초벌+재벌)",cat:"도장",unit:"㎡",lb:8000,mt:4000,eq:0,ac:500,wr:0.05,dur:2,pm:"AUTO",f:"wallArea+ceilingArea"},
+  {id:"PNT_PR",nm:"프라이머 도포",cat:"도장",unit:"㎡",lb:5000,mt:3000,eq:0,ac:500,wr:0.05,dur:1,pm:"AUTO",f:"wallArea+ceilingArea"},
+  {id:"PNT_WB",nm:"수성페인트 내부",cat:"도장",unit:"㎡",lb:8000,mt:5000,eq:0,ac:1000,wr:0.05,dur:2,pm:"AUTO",f:"wallArea+ceilingArea"},
+  {id:"WLP_UB",nm:"초배 (부직포)",cat:"도배",unit:"㎡",lb:4000,mt:2500,eq:0,ac:500,wr:0.05,dur:1,pm:"AUTO",f:"wallArea+ceilingArea"},
+  {id:"WLP_PP",nm:"실크 도배",cat:"도배",unit:"㎡",lb:6000,mt:4500,eq:0,ac:500,wr:0.1,dur:2,pm:"AUTO",f:"wallArea+ceilingArea"},
+  {id:"FLR_HW",nm:"강마루 시공 (HB급)",cat:"바닥재",unit:"㎡",lb:20000,mt:28000,eq:0,ac:3000,wr:0.08,dur:2,pm:"AUTO",f:"floorArea"},
+  {id:"FLR_SK",nm:"걸레받이 몰딩",cat:"바닥재",unit:"m",lb:4000,mt:3000,eq:0,ac:500,wr:0.05,dur:1,pm:"AUTO",f:"perimeter*0.4"},
+  {id:"PLB_RG",nm:"설비 배관",cat:"설비",unit:"m",lb:25000,mt:18000,eq:0,ac:3000,wr:0,dur:3,pm:"AUTO",f:"floorArea*0.5"},
+  {id:"PLB_SAN",nm:"위생도기 (변기)",cat:"설비",unit:"EA",lb:60000,mt:0,eq:0,ac:5000,wr:0,dur:1,pm:"QTY",f:"0"},
+  {id:"ELE_RG",nm:"전기 배선",cat:"전기",unit:"m",lb:15000,mt:8000,eq:0,ac:2000,wr:0,dur:3,pm:"AUTO",f:"floorArea*0.8"},
+  {id:"ELE_DL",nm:"LED 다운라이트",cat:"전기",unit:"EA",lb:15000,mt:25000,eq:0,ac:2000,wr:0,dur:0,pm:"QTY",f:"0"},
+  {id:"FUR_KIT",nm:"주방 시스템키친",cat:"가구",unit:"식",lb:200000,mt:0,eq:0,ac:20000,wr:0,dur:2,pm:"SELECT",f:"0"},
+  {id:"FUR_WRD",nm:"침실 붙박이장",cat:"가구",unit:"㎡",lb:80000,mt:0,eq:0,ac:10000,wr:0,dur:2,pm:"SELECT",f:"0"},
+  {id:"CLN_FN",nm:"준공청소",cat:"준공",unit:"㎡",lb:4000,mt:1000,eq:0,ac:500,wr:0,dur:1,pm:"AUTO",f:"floorArea"},
+];
+const ONT=[
+  {tr:"LGS_WL",lk:"GYP_WL",c:"always"},
+  {tr:"TILE_BT",lk:"WTP_BT",c:"wetArea>0"},
+  {tr:"TILE_BT",lk:"TILE_GR",c:"always"},
+  {tr:"FLR_HW",lk:"FLR_SK",c:"always"},
+  {tr:"PNT_WB",lk:"PNT_PT",c:"always"},
+  {tr:"PNT_WB",lk:"PNT_PR",c:"always"},
+  {tr:"WLP_PP",lk:"WLP_UB",c:"always"},
+];
+const LEADS=[
+  {nm:"시스템창호",pid:"WIN_SYS",lead:21,tr:"계약금 수령"},
+  {nm:"주방가구",pid:"FUR_KIT",lead:25,tr:"실측 확정"},
+  {nm:"붙박이장",pid:"FUR_WRD",lead:18,tr:"목공 완료 전"},
+  {nm:"강마루·LVT",pid:"FLR_HW",lead:5,tr:"타일 완료 후"},
+  {nm:"실내도어",pid:"DR_INT",lead:18,tr:"목공 완료 전"},
+  {nm:"LED 조명",pid:"ELE_DL",lead:5,tr:"전기배선 후"},
+  {nm:"도배지",pid:"WLP_PP",lead:2,tr:"도장 완료 후"},
+];
+const GPROCS=[
+  {nm:"보양",dur:1,dep:[],c:"#888"},
+  {nm:"철거",dur:3,dep:["보양"],c:"#888"},
+  {nm:"욕실 방수",dur:2,dep:["철거"],c:"#4a9eff"},
+  {nm:"설비 배관",dur:3,dep:["철거"],c:"#44ddff"},
+  {nm:"전기 배선",dur:3,dep:["철거"],c:"#ffdd44"},
+  {nm:"목공 골조",dur:4,dep:["전기 배선"],c:"#C9A84C"},
+  {nm:"석고보드",dur:2,dep:["목공 골조"],c:"#C9A84C"},
+  {nm:"바닥 미장",dur:2,dep:["설비 배관"],c:"#4a9eff"},
+  {nm:"욕실 타일",dur:3,dep:["욕실 방수"],c:"#4a9eff"},
+  {nm:"바닥 타일",dur:3,dep:["바닥 미장"],c:"#4a9eff"},
+  {nm:"창호",dur:2,dep:["목공 골조"],c:"#7ed9a8"},
+  {nm:"퍼티·프라이머",dur:3,dep:["석고보드"],c:"#ff8844"},
+  {nm:"수성페인트",dur:2,dep:["퍼티·프라이머"],c:"#ff8844"},
+  {nm:"초배·도배",dur:3,dep:["수성페인트"],c:"#cc88ff"},
+  {nm:"강마루·LVT",dur:2,dep:["바닥 타일"],c:"#cc88ff"},
+  {nm:"전기 마감",dur:2,dep:["석고보드"],c:"#ffdd44"},
+  {nm:"설비 마감",dur:2,dep:["욕실 타일"],c:"#44ddff"},
+  {nm:"주방가구",dur:2,dep:["강마루·LVT"],c:"#ff88cc"},
+  {nm:"붙박이장",dur:2,dep:["초배·도배"],c:"#ff88cc"},
+  {nm:"실내문",dur:1,dep:["초배·도배"],c:"#88ccff"},
+  {nm:"준공청소",dur:1,dep:["주방가구","붙박이장","실내문"],c:"#fff"},
+];
+
+let spaces=[],selP=new Set(),pkgM=1.0,pkgNm="표준",lastR=null;
+
+window.onload=()=>{renderPL();stdP();renderDB();calc()};
+
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('act'));
+  b.classList.add('act');
+  sv(b.dataset.v);
+}));
+
+function sv(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('act'));
+  document.getElementById('view-'+id)?.classList.add('act');
+  if(id==='customer')rCust();
+  if(id==='schedule')rGantt();
+  if(id==='material')rMat();
+}
+
+function ts(hd){const b=hd.nextElementSibling,c=hd.querySelector('.chev');b.classList.toggle('open');c.classList.toggle('open')}
+
+function addSp(){
+  const nm=document.getElementById('snm').value.trim()||'공간'+(spaces.length+1);
+  const tp=document.getElementById('stype').value;
+  const ar=parseFloat(document.getElementById('sarea').value)||0;
+  const h=parseFloat(document.getElementById('sh').value)||2.4;
+  const wn=parseInt(document.getElementById('swin').value)||0;
+  const wt=document.getElementById('swet').checked;
+  if(ar<=0){st('면적을 입력하세요');return}
+  spaces.push({id:Date.now(),nm,tp,ar,h,wn,wt});rSp();calc();
+  document.getElementById('snm').value='';document.getElementById('sarea').value='';
+  st('"'+nm+'" 추가 — 총 '+spaces.length+'개');
+}
+function delSp(id){spaces=spaces.filter(s=>s.id!==id);rSp();calc()}
+function rSp(){
+  document.getElementById('splist').innerHTML=spaces.map(s=>`<div class="spcard"><div class="spnm">${s.nm} <span style="color:var(--dim);font-weight:400;font-size:10px">${s.tp}</span></div><div class="spinfo">${s.ar}㎡ · 천장${s.h}m · 창${s.wn}${s.wt?' · 💧습식':''}</div><button class="spdel" onclick="delSp(${s.id})">✕</button></div>`).join('');
+  document.getElementById('spbg').textContent=spaces.length+'개';
+}
+
+function renderPL(){
+  const g={};DB.forEach(p=>{if(!g[p.cat])g[p.cat]=[];g[p.cat].push(p)});
+  document.getElementById('plist').innerHTML=Object.entries(g).map(([cat,items])=>`<div class="pgrp"><div class="pgrphd">${cat}</div>${items.map(p=>`<div class="pitm"><input type="checkbox" id="c${p.id}" ${selP.has(p.id)?'checked':''} onchange="tP('${p.id}',this.checked)"><label for="c${p.id}">${p.nm}</label><span class="pu">${p.unit}</span></div>`).join('')}</div>`).join('');
+}
+function tP(id,on){on?selP.add(id):selP.delete(id);document.getElementById('pbg').textContent=selP.size+'개';calc()}
+function allP(){DB.forEach(p=>{selP.add(p.id);const c=document.getElementById('c'+p.id);if(c)c.checked=true});document.getElementById('pbg').textContent=selP.size+'개';calc()}
+function noneP(){selP.clear();document.querySelectorAll('#plist input').forEach(c=>c.checked=false);document.getElementById('pbg').textContent='0개';calc()}
+function stdP(){const s=["PRE_BY","PRE_DM","PRE_WS","WTP_BT","MSN_FL","TILE_BT","TILE_GR","GYP_WL","GYP_CL","PNT_PT","PNT_PR","PNT_WB","WLP_UB","WLP_PP","FLR_HW","FLR_SK","PLB_RG","ELE_RG","CLN_FN"];selP=new Set(s);DB.forEach(p=>{const c=document.getElementById('c'+p.id);if(c)c.checked=selP.has(p.id)});document.getElementById('pbg').textContent=selP.size+'개';calc()}
+function setPkg(nm,m,btn){pkgNm=nm;pkgM=m;document.querySelectorAll('.pkgb').forEach(b=>b.classList.remove('act'));btn.classList.add('act');calc()}
+
+function calc(){
+  const ta=spaces.reduce((s,sp)=>s+sp.ar,0)||parseFloat(document.getElementById('tarea').value)||0;
+  const wa=spaces.filter(s=>s.wt).reduce((s,sp)=>s+sp.ar,0);
+  const fa=ta,ca=ta;
+  const wla=spaces.reduce((s,sp)=>s+sp.ar*(sp.h/2.4)*3.2,0)||ta*3.2;
+  const wn=spaces.reduce((s,sp)=>s+sp.wn,0);
+  const per=ta>0?Math.sqrt(ta)*4:0;
+  const flv=parseInt(document.getElementById('flv').value)||5;
+  const hel=document.getElementById('helev').checked;
+  const res=document.getElementById('resid').checked;
+  const ctx={totalArea:ta,wetArea:wa,floorArea:fa,wallArea:wla,ceilingArea:ca,windowCount:wn,perimeter:per};
+
+  const auto=new Set();
+  DB.forEach(p=>{
+    if(!selP.has(p.id))return;
+    ONT.filter(r=>r.tr===p.id).forEach(r=>{
+      try{const ok=r.c==='always'||new Function(...Object.keys(ctx),`return !!(${r.c})`)(...Object.values(ctx));if(ok&&!selP.has(r.lk))auto.add(r.lk)}catch(e){}
+    });
+  });
+
+  const lines=[];
+  [...selP,...auto].forEach(id=>{
+    const p=DB.find(d=>d.id===id);if(!p)return;
+    let qty=0;
+    if(p.pm!=='QTY'){try{qty=new Function(...Object.keys(ctx),`return ${p.f||'totalArea'}`)(...Object.values(ctx))}catch(e){qty=ta}}
+    if(qty<=0)return;
+    const qw=qty*(1+p.wr);
+    let da=0;
+    if(flv>=15&&!hel)da=(p.lb+p.mt)*0.30;
+    else if(flv>=10)da=(p.lb+p.mt)*0.15;
+    else if(flv>=5)da=(p.lb+p.mt)*0.08;
+    if(res)da+=(p.lb+p.mt)*0.10;
+    const sup=qw*(p.lb*pkgM+p.mt)+p.eq+p.ac+da;
+    lines.push({id:p.id,nm:p.nm,cat:p.cat,unit:p.unit,qty:Math.round(qty*10)/10,lb:p.lb,mt:p.mt,sup:Math.round(sup),auto:auto.has(id)});
+  });
+
+  const ts2=lines.reduce((s,l)=>s+l.sup,0);
+  const ct=ts2*1.15,fv=ct*1.10;
+  const misc=ts2*0.02,mg=ts2*0.03;
+  lastR={lines,totalSupply:ts2,contractTotal:ct,finalWithVAT:fv,totalArea:ta,pkgName:pkgNm,pkgMultiplier:pkgM};
+
+  const fmt=n=>n>=100000000?(n/100000000).toFixed(1)+'억':Math.round(n/10000)+'만원';
+  const ff=n=>'₩'+n.toLocaleString();
+  document.getElementById('hv1').textContent=fmt(fv);
+  document.getElementById('hv2').textContent=ta>0?fmt(fv/ta)+'/㎡':'—';
+  document.getElementById('hv3').textContent=Math.ceil(ta/3)+'일';
+  document.getElementById('hv4').textContent=lines.length;
+  document.getElementById('rf').textContent=ff(Math.round(fv));
+  document.getElementById('rp').textContent=ta>0?'평당 '+ff(Math.round(fv/(ta/3.306))):'';
+  document.getElementById('rs').textContent=ff(Math.round(ts2));
+  document.getElementById('rpkg').textContent=pkgNm+' ×'+pkgM;
+  document.getElementById('rc').textContent=ff(Math.round(ct));
+  document.getElementById('rm').textContent=ff(Math.round(misc));
+  document.getElementById('rmg').textContent=ff(Math.round(mg));
+  document.getElementById('rv').textContent=ff(Math.round(ct*0.10+(fv-ct)));
+
+  const d=[];
+  if(wa>0&&!lines.some(l=>l.cat==='방수'))d.push({t:'warn',m:'욕실이 있으나 방수 공정이 없습니다.'});
+  if(lines.some(l=>l.cat==='타일')&&!lines.some(l=>l.nm.includes('줄눈')))d.push({t:'warn',m:'타일 공정에 줄눈 시공이 없습니다.'});
+  if(lines.some(l=>l.cat==='도배')&&!lines.some(l=>l.nm.includes('퍼티')))d.push({t:'info',m:'도배 전 퍼티 처리를 확인하세요.'});
+  if(lines.some(l=>l.nm.includes('마루'))&&!lines.some(l=>l.nm.includes('걸레받이')))d.push({t:'warn',m:'바닥재에 걸레받이가 없습니다.'});
+  if(!d.length)d.push({t:'ok',m:'누락 공정 없음 — 정상입니다.'});
+  document.getElementById('diags').innerHTML=d.map(x=>`<div class="diag ${x.t}">${x.t==='warn'?'⚠️':x.t==='info'?'ℹ️':'✅'} ${x.m}</div>`).join('');
+
+  const g={};lines.forEach(l=>{if(!g[l.cat])g[l.cat]=[];g[l.cat].push(l)});
+  let tb='';Object.entries(g).forEach(([cat,it])=>{
+    tb+=`<tr class="catrow"><td colspan="7">▶ ${cat}</td></tr>`;
+    it.forEach(l=>{tb+=`<tr><td>${l.nm}${l.auto?'<span class="atag">자동</span>':''}</td><td>${l.unit}</td><td class="num">${l.qty.toLocaleString()}</td><td class="num">${l.lb.toLocaleString()}</td><td class="num">${l.mt.toLocaleString()}</td><td class="num" style="color:var(--gold)">${l.sup.toLocaleString()}</td><td></td></tr>`});
+  });
+  document.getElementById('etbody').innerHTML=tb;
+  st('계산완료 — '+lines.length+'개 공정 | 합계 '+fmt(fv));
+}
+
+function rCust(){
+  if(!lastR)return;
+  const {lines,finalWithVAT}=lastR;
+  document.getElementById('cpsub').textContent='ECOREAN | 고객: '+(document.getElementById('cnm').value||'—')+' | 현장: '+(document.getElementById('pnm').value||'—');
+  let tb='',no=1;
+  const g={};lines.forEach(l=>{if(!g[l.cat])g[l.cat]=[];g[l.cat].push(l)});
+  Object.entries(g).forEach(([cat,it])=>{
+    tb+=`<tr><td colspan="5" style="background:#f5f5f5;font-weight:700;font-size:11px;padding:6px 12px">${cat}</td></tr>`;
+    it.forEach(l=>{tb+=`<tr><td>${no++}</td><td>${l.nm}</td><td>${l.unit}</td><td style="text-align:right">${l.qty.toLocaleString()}</td><td style="text-align:right">${l.sup.toLocaleString()}</td></tr>`});
+  });
+  document.getElementById('cptbody').innerHTML=tb;
+  document.getElementById('cptotal').textContent='₩'+Math.round(finalWithVAT).toLocaleString();
+}
+function dlCust(){const h=document.getElementById('cprev').outerHTML;const b=new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ECOREAN 견적서</title></head><body style="font-family:sans-serif;padding:40px">${h}</body></html>`],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ECOREAN_견적서.html';a.click()}
+
+function topo(procs){
+  const ind={},adj={};procs.forEach(p=>{ind[p.nm]=0;adj[p.nm]=[]});
+  procs.forEach(p=>p.dep.forEach(d=>{if(adj[d]){adj[d].push(p.nm);ind[p.nm]++}}));
+  const q=Object.entries(ind).filter(([,v])=>v===0).map(([k])=>k),s=[];
+  while(q.length){const nm=q.shift();const p=procs.find(x=>x.nm===nm);if(p)s.push(p);(adj[nm]||[]).forEach(nx=>{ind[nx]--;if(ind[nx]===0)q.push(nx)})}
+  return s;
+}
+function rGantt(){
+  const sorted=topo(GPROCS);const ES={},EF={};
+  sorted.forEach(p=>{ES[p.nm]=p.dep.length?Math.max(...p.dep.map(d=>EF[d]??0)):0;EF[p.nm]=ES[p.nm]+p.dur});
+  const tot=Math.max(...Object.values(EF));
+  const LS={},LF={};
+  [...sorted].reverse().forEach(p=>{const sc=sorted.filter(s=>s.dep.includes(p.nm));LF[p.nm]=sc.length?Math.min(...sc.map(s=>LS[s.nm])):tot;LS[p.nm]=LF[p.nm]-p.dur});
+  const cp=new Set(sorted.filter(p=>LS[p.nm]===ES[p.nm]).map(p=>p.nm));
+  const DW=28,NW=130,TW=NW+tot*DW+20;
+  let h=`<div style="display:flex;background:var(--bg3);border-bottom:1px solid var(--border2);position:sticky;top:0;z-index:10;width:${TW}px"><div style="width:${NW}px;flex-shrink:0;padding:8px 12px;font-size:9px;color:var(--dim)">공정명</div>`;
+  for(let d=0;d<tot;d++)h+=`<div style="width:${DW}px;flex-shrink:0;text-align:center;padding:8px 0;font-size:9px;color:var(--dim);border-left:1px solid var(--border2)">D+${d+1}</div>`;
+  h+='</div>';
+  sorted.forEach(p=>{
+    const ic=cp.has(p.nm);const sx=ES[p.nm]*DW;const bw=p.dur*DW-4;
+    h+=`<div style="display:flex;align-items:center;height:32px;border-bottom:1px solid rgba(255,255,255,.04);width:${TW}px;${ic?'background:rgba(255,102,68,.03)':''}"><div style="width:${NW}px;flex-shrink:0;padding:0 12px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${ic?'#ff6644':'var(--text)'};">${ic?'★ ':''}${p.nm}</div><div style="flex:1;position:relative;height:100%"><div style="position:absolute;left:${sx+2}px;top:50%;transform:translateY(-50%);width:${bw}px;height:20px;border-radius:3px;background:${p.c};display:flex;align-items:center;padding:0 6px;font-size:9px;font-weight:700;color:rgba(0,0,0,.75);overflow:hidden;white-space:nowrap;${ic?'box-shadow:0 0 8px '+p.c+'66':''}">${p.nm}</div></div></div>`;
+  });
+  h+=`<div style="padding:10px 12px;font-size:10px;color:var(--dim);border-top:1px solid var(--border2)">총 공사일수: <b style="color:var(--gold)">${tot}일</b> | 크리티컬 패스: <b style="color:#ff6644">${cp.size}개</b></div>`;
+  document.getElementById('ginner').style.width=TW+'px';
+  document.getElementById('ginner').innerHTML=h;
+}
+
+function rMat(){
+  const sd=new Date(document.getElementById('sdate').value||'2026-05-04');
+  const td=new Date();
+  function awd(date,n){const d=new Date(date);let a=0;while(a<n){d.setDate(d.getDate()+1);if(d.getDay()!==0&&d.getDay()!==6)a++}return d}
+  const sorted=topo(GPROCS);const ES={},EF={};
+  sorted.forEach(p=>{ES[p.nm]=p.dep.length?Math.max(...p.dep.map(d=>EF[d]??0)):0;EF[p.nm]=ES[p.nm]+p.dur});
+  let tb='';
+  LEADS.forEach(m=>{
+    const p=DB.find(d=>d.id===m.pid);if(!p)return;
+    const pd=awd(sd,10);const dl=new Date(pd);dl.setDate(dl.getDate()-m.lead);
+    const dl2=Math.round((dl-td)/86400000);
+    const st2=dl2<0?'urgent':dl2<7?'warn':'ok';
+    const sc={urgent:'var(--red)',warn:'var(--orange)',ok:'var(--green)'}[st2];
+    const sl=dl2<0?'D'+dl2:'D-'+dl2+'일';
+    tb+=`<tr><td style="font-weight:700">${m.nm}</td><td>${dl.toLocaleDateString('ko-KR')}</td><td>${m.lead}일</td><td>${p.nm}</td><td>${pd.toLocaleDateString('ko-KR')}</td><td style="color:var(--dim);font-size:10px">${m.tr}</td><td><span style="font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid ${sc};color:${sc};font-weight:700">${sl}</span></td></tr>`;
+  });
+  document.getElementById('matbody').innerHTML=tb;
+}
+
+function renderDB(){
+  document.getElementById('dbcnt').textContent=DB.length;
+  document.getElementById('dbtbody').innerHTML=DB.map(p=>`<tr><td style="font-weight:700">${p.nm}</td><td style="color:var(--dim)">${p.unit}</td><td class="num" style="color:var(--blue)">${p.lb.toLocaleString()}</td><td class="num" style="color:var(--green)">${p.mt.toLocaleString()}</td><td class="num" style="color:var(--gold)">${(p.lb+p.mt).toLocaleString()}</td><td style="text-align:center;color:var(--dim)">${p.dur}일</td><td><span style="font-size:9px;padding:1px 6px;border-radius:6px;background:${p.lb+p.mt>0?'rgba(93,221,154,.1)':'rgba(255,85,100,.1)'};color:${p.lb+p.mt>0?'var(--green)':'var(--red)'}">${p.lb+p.mt>0?'입력됨':'미입력'}</span></td></tr>`).join('');
+}
+function upload(input){
+  const f=input.files[0];if(!f)return;st('"'+f.name+'" 로드 중...');
+  const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.items){DB=d.items.map(x=>({id:x.itemId||x.code||x.id,nm:x.itemName||x.name,cat:x.majorCategory||x.category||'기타',unit:x.unit,lb:x.laborCost||0,mt:x.materialCost||0,eq:x.equipmentCost||0,ac:x.accessoryCost||0,wr:x.wasteRate||0.05,dur:x.defaultDuration||1,pm:x.triggerType||'SELECT',f:x.quantityFormula||'totalArea'}));renderPL();renderDB();calc();st('✅ DB 업데이트 — '+DB.length+'개 공정')}}catch(e){st('❌ 오류: '+e.message)}};r.readAsText(f);
+}
+function expDB(){const b=new Blob([JSON.stringify({_meta:{version:'1.0',exportedAt:new Date().toISOString()},items:DB},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ECOREAN_DB.json';a.click()}
+function st(msg){document.getElementById('stmsg').textContent=msg}
+</script>
+</body>
+</html>

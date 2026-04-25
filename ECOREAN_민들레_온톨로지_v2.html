@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECOREAN — 3D 온톨로지 궤도</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+canvas{display:block}
+
+/* HTML 라벨 레이어 */
+#labels{position:fixed;inset:0;pointer-events:none}
+.lbl{
+  position:absolute;transform:translate(-50%,-50%);
+  white-space:nowrap;pointer-events:none;
+  font-weight:700;letter-spacing:.02em;
+  text-shadow:0 0 12px currentColor,0 0 24px currentColor;
+  transition:opacity .25s;
+}
+
+/* HUD 상단 */
+#hud{
+  position:fixed;top:0;left:0;right:0;z-index:20;
+  padding:18px 28px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.88) 60%,transparent);
+  display:flex;align-items:center;justify-content:space-between;
+  pointer-events:none;
+}
+.logo{font-size:11px;letter-spacing:.28em;color:#C9A84C;font-weight:800;text-transform:uppercase}
+.logo em{color:rgba(255,255,255,.25);font-style:normal;font-weight:400;margin-left:10px;letter-spacing:.05em;font-size:10px}
+.stat{font-size:10px;color:rgba(255,255,255,.25);letter-spacing:.06em}
+.stat b{color:#C9A84C;font-weight:700}
+
+/* 범례 */
+#legend{
+  position:fixed;left:24px;bottom:80px;z-index:20;
+  background:rgba(4,4,6,.82);border:1px solid rgba(201,168,76,.15);
+  border-radius:10px;padding:14px 18px;backdrop-filter:blur(16px);
+}
+.lg{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:10px;color:rgba(255,255,255,.45)}
+.lg:last-child{margin-bottom:0}
+.ld{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.ll{font-size:10px;font-weight:600}
+
+/* 하단 필터 */
+#filters{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:20;
+  display:flex;gap:5px;align-items:center;
+  background:rgba(4,4,6,.85);border:1px solid rgba(201,168,76,.18);
+  border-radius:40px;padding:8px 18px;backdrop-filter:blur(18px);
+}
+.fb{
+  padding:5px 14px;border-radius:20px;border:1px solid;cursor:pointer;
+  font-size:10px;font-weight:700;letter-spacing:.04em;background:transparent;
+  transition:all .2s;
+}
+.fb[data-t="major"]    {border-color:#C9A84C;color:#C9A84C}
+.fb[data-t="middle"]   {border-color:#5aadff;color:#5aadff}
+.fb[data-t="material"] {border-color:#4dd99a;color:#4dd99a}
+.fb[data-t="finance"]  {border-color:#ffaa44;color:#ffaa44}
+.fb[data-t="risk"]     {border-color:#ff4455;color:#ff4455}
+.fb.on[data-t="major"]    {background:#C9A84C;color:#000}
+.fb.on[data-t="middle"]   {background:#5aadff;color:#000}
+.fb.on[data-t="material"] {background:#4dd99a;color:#000}
+.fb.on[data-t="finance"]  {background:#ffaa44;color:#000}
+.fb.on[data-t="risk"]     {background:#ff4455;color:#000}
+.sep{width:1px;height:18px;background:rgba(255,255,255,.1);margin:0 2px}
+
+/* 사이드 패널 */
+#panel{
+  position:fixed;right:0;top:0;bottom:0;width:290px;z-index:30;
+  background:rgba(4,4,8,.95);border-left:1px solid rgba(201,168,76,.14);
+  padding:26px 22px;transform:translateX(100%);
+  transition:transform .3s cubic-bezier(.22,1,.36,1);
+  overflow-y:auto;backdrop-filter:blur(24px);
+}
+#panel.open{transform:translateX(0)}
+#pc{
+  position:absolute;top:14px;right:14px;
+  width:26px;height:26px;border:1px solid rgba(201,168,76,.28);
+  border-radius:50%;cursor:pointer;background:transparent;
+  color:rgba(255,255,255,.35);font-size:13px;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+#pc:hover{border-color:#C9A84C;color:#C9A84C}
+#pt{font-size:9px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:5px}
+#pn{font-size:21px;font-weight:800;color:#C9A84C;margin-bottom:4px;line-height:1.2}
+#plevel{font-size:10px;color:rgba(255,255,255,.25);margin-bottom:18px;letter-spacing:.05em}
+.psec h4{
+  font-size:9px;letter-spacing:.14em;color:rgba(255,255,255,.22);
+  text-transform:uppercase;margin:14px 0 7px;
+  border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:4px;
+}
+.prow{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 0;font-size:11px;color:rgba(255,255,255,.65);
+  border-bottom:1px solid rgba(255,255,255,.03);
+}
+.pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ptag{
+  margin-left:auto;font-size:9px;padding:2px 6px;
+  border-radius:8px;border:1px solid;flex-shrink:0;
+}
+
+/* 힌트 */
+#hint{
+  position:fixed;right:24px;bottom:80px;z-index:20;
+  font-size:10px;color:rgba(255,255,255,.22);line-height:2;text-align:right;
+}
+
+/* 로딩 */
+#loading{
+  position:fixed;inset:0;background:#000;z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity .8s;
+}
+.lt{font-size:10px;letter-spacing:.35em;color:#C9A84C;text-transform:uppercase;margin-bottom:22px}
+#bw{width:160px;height:1px;background:rgba(201,168,76,.12)}
+#b{height:1px;background:linear-gradient(90deg,#7a5c1a,#C9A84C,#e8d080);width:0;transition:width .05s}
+#loading.hide{opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="lt">ECOREAN · Ontology Orbit</div>
+  <div id="bw"><div id="b"></div></div>
+</div>
+
+<div id="labels"></div>
+
+<div id="hud">
+  <div class="logo">ECOREAN <em>공정 온톨로지 — 궤도 시각화</em></div>
+  <div class="stat">노드 <b id="nc">51</b> &nbsp;/&nbsp; 관계 <b id="lc">52</b></div>
+</div>
+
+<div id="legend">
+  <div class="lg"><div class="ld" style="background:#C9A84C"></div><span class="ll" style="color:#C9A84C">대분류</span> <span>18 공정 / 1궤도</span></div>
+  <div class="lg"><div class="ld" style="background:#5aadff"></div><span class="ll" style="color:#5aadff">중분류</span> <span>20 공정 / 2궤도</span></div>
+  <div class="lg"><div class="ld" style="background:#4dd99a"></div><span class="ll" style="color:#4dd99a">자재</span>   <span>8개 / 3궤도</span></div>
+  <div class="lg"><div class="ld" style="background:#ffaa44"></div><span class="ll" style="color:#ffaa44">자금</span>   <span>3개 / 3궤도</span></div>
+  <div class="lg"><div class="ld" style="background:#ff4455"></div><span class="ll" style="color:#ff4455">리스크</span> <span>2개 / 3궤도</span></div>
+</div>
+
+<div id="filters">
+  <button class="fb on" data-t="major">대분류</button>
+  <button class="fb on" data-t="middle">중분류</button>
+  <div class="sep"></div>
+  <button class="fb on" data-t="material">자재</button>
+  <button class="fb on" data-t="finance">자금</button>
+  <button class="fb on" data-t="risk">리스크</button>
+</div>
+
+<div id="panel">
+  <button id="pc">✕</button>
+  <div id="pt"></div>
+  <div id="pn"></div>
+  <div id="plevel"></div>
+  <div id="pconns"></div>
+</div>
+
+<div id="hint">
+  드래그 — 회전<br>
+  스크롤 — 줌<br>
+  클릭 — 상세 / 더블클릭 — 자동
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// 1. RAW DATA
+// ══════════════════════════════════════════════════════════
+const RAW_NODES = [
+  // major (18)
+  {id:"기획관리",    lbl:"기획관리",    t:"major"},
+  {id:"사전공정",    lbl:"사전공정",    t:"major"},
+  {id:"구조경량철골",lbl:"구조·철골",   t:"major"},
+  {id:"습식공정",    lbl:"습식공정",    t:"major"},
+  {id:"창호금속",    lbl:"창호·금속",   t:"major"},
+  {id:"목공골조",    lbl:"목공골조",    t:"major"},
+  {id:"전기공정",    lbl:"전기공정",    t:"major"},
+  {id:"설비공정",    lbl:"설비공정",    t:"major"},
+  {id:"에어컨공조",  lbl:"공조",        t:"major"},
+  {id:"도장공정",    lbl:"도장공정",    t:"major"},
+  {id:"수장공정",    lbl:"수장공정",    t:"major"},
+  {id:"가구공정",    lbl:"가구공정",    t:"major"},
+  {id:"도어공정",    lbl:"도어공정",    t:"major"},
+  {id:"스마트홈",    lbl:"스마트홈",    t:"major"},
+  {id:"욕실마감",    lbl:"욕실마감",    t:"major"},
+  {id:"주방마감",    lbl:"주방마감",    t:"major"},
+  {id:"발코니",      lbl:"발코니",      t:"major"},
+  {id:"준공인도",    lbl:"준공·인도",   t:"major"},
+  // middle (20)
+  {id:"LGS경량벽체", lbl:"LGS벽체",    t:"middle", parent:"구조경량철골"},
+  {id:"석고보드",    lbl:"석고보드",    t:"middle", parent:"구조경량철골"},
+  {id:"방수",        lbl:"방수",        t:"middle", parent:"습식공정"},
+  {id:"미장",        lbl:"미장",        t:"middle", parent:"습식공정"},
+  {id:"타일시공",    lbl:"타일시공",    t:"middle", parent:"습식공정"},
+  {id:"도배",        lbl:"도배",        t:"middle", parent:"수장공정"},
+  {id:"바닥재",      lbl:"바닥재",      t:"middle", parent:"수장공정"},
+  {id:"몰딩",        lbl:"몰딩",        t:"middle", parent:"수장공정"},
+  {id:"수성페인트",  lbl:"수성페인트",  t:"middle", parent:"도장공정"},
+  {id:"철거",        lbl:"철거",        t:"middle", parent:"사전공정"},
+  {id:"보양",        lbl:"보양",        t:"middle", parent:"사전공정"},
+  {id:"폐기물처리",  lbl:"폐기물",      t:"middle", parent:"사전공정"},
+  {id:"배선공사",    lbl:"배선공사",    t:"middle", parent:"전기공정"},
+  {id:"조명",        lbl:"조명",        t:"middle", parent:"전기공정"},
+  {id:"급배수배관",  lbl:"급배수",      t:"middle", parent:"설비공정"},
+  {id:"위생도기",    lbl:"위생도기",    t:"middle", parent:"설비공정"},
+  {id:"시스템창호",  lbl:"시스템창호",  t:"middle", parent:"창호금속"},
+  {id:"주방가구",    lbl:"주방가구",    t:"middle", parent:"가구공정"},
+  {id:"붙박이가구",  lbl:"붙박이장",    t:"middle", parent:"가구공정"},
+  {id:"준공청소",    lbl:"준공청소",    t:"middle", parent:"준공인도"},
+  // material (8)
+  {id:"줄눈재",      lbl:"줄눈재",      t:"material", parent:"타일시공"},
+  {id:"압착시멘트",  lbl:"압착시멘트",  t:"material", parent:"타일시공"},
+  {id:"우레탄방수재",lbl:"우레탄방수",  t:"material", parent:"방수"},
+  {id:"퍼티",        lbl:"퍼티",        t:"material", parent:"수성페인트"},
+  {id:"프라이머",    lbl:"프라이머",    t:"material", parent:"수성페인트"},
+  {id:"걸레받이",    lbl:"걸레받이",    t:"material", parent:"바닥재"},
+  {id:"우레탄폼",    lbl:"우레탄폼",    t:"material", parent:"시스템창호"},
+  {id:"셀프레벨링",  lbl:"셀프레벨링",  t:"material", parent:"타일시공"},
+  // finance (3)
+  {id:"계약금",      lbl:"계약금",      t:"finance",  parent:"사전공정"},
+  {id:"중도금",      lbl:"중도금",      t:"finance",  parent:"전기공정"},
+  {id:"잔금",        lbl:"잔금",        t:"finance",  parent:"준공인도"},
+  // risk (2)
+  {id:"추가공사리스크",lbl:"추가공사↑",t:"risk", parent:"철거"},
+  {id:"자재지연리스크",lbl:"자재지연",  t:"risk", parent:"시스템창호"},
+];
+
+const RAW_LINKS = [
+  {s:"LGS경량벽체",t:"석고보드",      ty:"required",  lb:"필수"},
+  {s:"타일시공",   t:"방수",           ty:"required",  lb:"필수(욕실)"},
+  {s:"타일시공",   t:"줄눈재",         ty:"required",  lb:"필수"},
+  {s:"타일시공",   t:"압착시멘트",     ty:"material",  lb:"자재"},
+  {s:"방수",       t:"우레탄방수재",   ty:"material",  lb:"자재"},
+  {s:"바닥재",     t:"걸레받이",       ty:"required",  lb:"필수"},
+  {s:"바닥재",     t:"몰딩",           ty:"required",  lb:"필수"},
+  {s:"수성페인트", t:"퍼티",           ty:"required",  lb:"필수"},
+  {s:"수성페인트", t:"프라이머",       ty:"required",  lb:"필수"},
+  {s:"철거",       t:"보양",           ty:"required",  lb:"선행"},
+  {s:"철거",       t:"폐기물처리",     ty:"required",  lb:"필수"},
+  {s:"시스템창호", t:"우레탄폼",       ty:"required",  lb:"필수"},
+  {s:"타일시공",   t:"셀프레벨링",     ty:"conditional",lb:"조건"},
+  {s:"도배",       t:"퍼티",           ty:"required",  lb:"초배"},
+  {s:"사전공정",   t:"구조경량철골",   ty:"sequence"},
+  {s:"구조경량철골",t:"습식공정",      ty:"sequence"},
+  {s:"습식공정",   t:"전기공정",       ty:"sequence"},
+  {s:"전기공정",   t:"설비공정",       ty:"sequence"},
+  {s:"설비공정",   t:"목공골조",       ty:"sequence"},
+  {s:"목공골조",   t:"도장공정",       ty:"sequence"},
+  {s:"도장공정",   t:"수장공정",       ty:"sequence"},
+  {s:"수장공정",   t:"가구공정",       ty:"sequence"},
+  {s:"가구공정",   t:"도어공정",       ty:"sequence"},
+  {s:"도어공정",   t:"준공인도",       ty:"sequence"},
+  {s:"계약금",     t:"사전공정",       ty:"finance",   lb:"착공"},
+  {s:"계약금",     t:"시스템창호",     ty:"finance",   lb:"발주"},
+  {s:"계약금",     t:"주방가구",       ty:"finance",   lb:"발주"},
+  {s:"중도금",     t:"전기공정",       ty:"finance",   lb:"투입"},
+  {s:"중도금",     t:"설비공정",       ty:"finance",   lb:"투입"},
+  {s:"잔금",       t:"준공인도",       ty:"finance",   lb:"인도"},
+  {s:"철거",       t:"추가공사리스크", ty:"risk",      lb:"35%"},
+  {s:"시스템창호", t:"자재지연리스크", ty:"risk",      lb:"지연"},
+];
+
+// ══════════════════════════════════════════════════════════
+// 2. COLORS
+// ══════════════════════════════════════════════════════════
+const C3 = {center:0xC9A84C, major:0xC9A84C, middle:0x5aadff, material:0x4dd99a, finance:0xffaa44, risk:0xff4455};
+const CH = {center:'#C9A84C', major:'#C9A84C', middle:'#5aadff', material:'#4dd99a', finance:'#ffaa44', risk:'#ff4455'};
+const LK_C3 = {required:0xddaa33, sequence:0x3366ee, finance:0xffaa44, material:0x4dd99a, risk:0xff4455, conditional:0x887733};
+const LK_CH = {required:'#ddaa33', sequence:'#3366ee', finance:'#ffaa44', material:'#4dd99a', risk:'#ff4455', conditional:'#887733'};
+const SIZES = {center:14, major:7, middle:4.5, material:3, finance:4, risk:3.5};
+const LEVELS_LBL = {center:'BOC 허브', major:'1궤도 — 대분류', middle:'2궤도 — 중분류', material:'3궤도 — 자재', finance:'3궤도 — 자금', risk:'3궤도 — 리스크'};
+const LINK_LBL = {required:'필수 연결', sequence:'공정 순서', finance:'자금 트리거', material:'자재 연결', risk:'리스크', conditional:'조건부'};
+
+// ══════════════════════════════════════════════════════════
+// 3. THREE.JS SCENE
+// ══════════════════════════════════════════════════════════
+const W=()=>window.innerWidth, H=()=>window.innerHeight;
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(W(),H());
+renderer.setClearColor(0x010108,1);
+document.body.insertBefore(renderer.domElement, document.getElementById('labels'));
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x010108, 0.0022);
+
+const cam = new THREE.PerspectiveCamera(52, W()/H(), 0.1, 3000);
+cam.position.set(0,0,300);
+
+// 조명
+scene.add(new THREE.AmbientLight(0xffffff,0.4));
+const pl1=new THREE.PointLight(0xC9A84C,4,800); pl1.position.set(80,60,130); scene.add(pl1);
+const pl2=new THREE.PointLight(0x2244cc,2.5,500); pl2.position.set(-100,-70,80); scene.add(pl2);
+const pl3=new THREE.PointLight(0x00bbaa,2,400); pl3.position.set(0,130,-80); scene.add(pl3);
+
+// 별
+const sg=new THREE.BufferGeometry();
+const sa=new Float32Array(9000);
+for(let i=0;i<9000;i+=3){sa[i]=(Math.random()-.5)*2400;sa[i+1]=(Math.random()-.5)*2400;sa[i+2]=(Math.random()-.5)*2400;}
+sg.setAttribute('position',new THREE.BufferAttribute(sa,3));
+scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:.55,transparent:true,opacity:.35})));
+
+// 골드 파티클
+const dg=new THREE.BufferGeometry();
+const da=new Float32Array(1500);
+for(let i=0;i<1500;i+=3){da[i]=(Math.random()-.5)*500;da[i+1]=(Math.random()-.5)*500;da[i+2]=(Math.random()-.5)*500;}
+dg.setAttribute('position',new THREE.BufferAttribute(da,3));
+const dustPts=new THREE.Points(dg,new THREE.PointsMaterial({color:0xC9A84C,size:1.1,transparent:true,opacity:.18,blending:THREE.AdditiveBlending}));
+scene.add(dustPts);
+
+// ══════════════════════════════════════════════════════════
+// 4. 궤도 시스템 구축
+// ══════════════════════════════════════════════════════════
+const nm = {};
+
+// 중심 노드
+const center = {
+  id:'CENTER', lbl:'ECOREAN\nBOC', t:'center',
+  orbitRadius:0, orbitSpeed:0, orbitAngle:0,
+  tiltX:0, tiltY:0, tiltPhase:0,
+  _parent:null, _worldPos:new THREE.Vector3(0,0,0), vis:true
+};
+nm['CENTER'] = center;
+
+// major 노드들 — 중심 궤도, 구면 균등 분포
+const majorNodes = RAW_NODES.filter(n=>n.t==='major');
+majorNodes.forEach((n,i)=>{
+  // 황금각 분포로 구면에 균등 배치
+  const phi = Math.acos(1 - 2*(i+.5)/majorNodes.length);
+  const theta = Math.PI*(1+Math.sqrt(5))*i;
+  const d = {
+    ...n,
+    orbitRadius: 90,
+    orbitSpeed: 0.06 + Math.random()*0.08,
+    orbitAngle: theta,        // 초기 위상
+    tiltX: phi,               // 궤도면 기울기 (극각)
+    tiltY: theta,             // 궤도면 방위각
+    tiltPhase: Math.random()*Math.PI*2,
+    _parent: center,
+    _worldPos: new THREE.Vector3(),
+    vis: true,
+  };
+  nm[n.id] = d;
+});
+
+// middle 노드들 — 부모 major 궤도
+RAW_NODES.filter(n=>n.t==='middle').forEach((n,i)=>{
+  const parent = nm[n.parent] || center;
+  // 부모 주위에 균등 분배
+  const siblings = RAW_NODES.filter(x=>x.t==='middle'&&x.parent===n.parent);
+  const idx = siblings.indexOf(n);
+  const cnt = siblings.length;
+  const d = {
+    ...n,
+    orbitRadius: 38,
+    orbitSpeed: 0.12 + Math.random()*0.12,
+    orbitAngle: (idx/cnt)*Math.PI*2,
+    tiltX: Math.random()*Math.PI,
+    tiltY: Math.random()*Math.PI*2,
+    tiltPhase: Math.random()*Math.PI*2,
+    _parent: parent,
+    _worldPos: new THREE.Vector3(),
+    vis: true,
+  };
+  nm[n.id] = d;
+});
+
+// leaf 노드들 (material, finance, risk)
+RAW_NODES.filter(n=>n.t!=='major'&&n.t!=='middle').forEach((n,i)=>{
+  const parent = nm[n.parent] || center;
+  const d = {
+    ...n,
+    orbitRadius: 22,
+    orbitSpeed: 0.22 + Math.random()*0.18,
+    orbitAngle: Math.random()*Math.PI*2,
+    tiltX: Math.random()*Math.PI,
+    tiltY: Math.random()*Math.PI*2,
+    tiltPhase: Math.random()*Math.PI*2,
+    _parent: parent,
+    _worldPos: new THREE.Vector3(),
+    vis: true,
+  };
+  nm[n.id] = d;
+});
+
+const allNodes = [center, ...Object.values(nm).filter(n=>n.id!=='CENTER')];
+
+// 위치 계산 함수
+function calcWorldPos(node, time){
+  if(!node._parent){
+    node._worldPos.set(0,0,0);
+    return;
+  }
+  const a = node.orbitAngle + time * node.orbitSpeed;
+  // 로컬 궤도 위치
+  const lx = Math.cos(a) * node.orbitRadius;
+  const ly = Math.sin(a) * node.orbitRadius;
+
+  // 궤도면 회전 (tiltX, tiltY)
+  const cx=Math.cos(node.tiltX), sx=Math.sin(node.tiltX);
+  const cy=Math.cos(node.tiltY), sy=Math.sin(node.tiltY);
+
+  // X축 회전
+  const y1 = ly*cx;
+  const z1 = ly*sx;
+  // Y축 회전
+  const x2 = lx*cy + z1*sy;
+  const z2 = -lx*sy + z1*cy;
+
+  const p = node._parent._worldPos;
+  node._worldPos.set(p.x+x2, p.y+y1, p.z+z2);
+}
+
+// ══════════════════════════════════════════════════════════
+// 5. 메시 생성
+// ══════════════════════════════════════════════════════════
+const pivot = new THREE.Group();
+scene.add(pivot);
+const meshes = [];
+
+// 노드 메시
+for(const n of allNodes){
+  const r = SIZES[n.t]||4;
+  const col = C3[n.t];
+
+  // 메인 구
+  const mat = new THREE.MeshPhongMaterial({
+    color:col, emissive:col, emissiveIntensity: n.t==='center'?.5:.4,
+    shininess:180, transparent:true, opacity: n.t==='center'?1:.9,
+  });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(r,28,28), mat);
+  pivot.add(mesh);
+  mesh.userData.node = n;
+  n._mesh = mesh;
+  if(n.t!=='center') meshes.push(mesh);
+
+
+
+  // major / center 노드 링
+  if(n.t==='major'||n.t==='center'){
+    const rCount = n.t==='center'?3:2;
+    n._rings=[];
+    for(let ri=0;ri<rCount;ri++){
+      const rs=n.t==='center'?(1.6+ri*.5):(1.5+ri*.45);
+      const rm=new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:n.t==='center'?.2-.06*ri:.14,blending:THREE.AdditiveBlending,depthWrite:false});
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(r*rs,.25+ri*.05,6,64),rm);
+      ring.rotation.x=Math.PI/2*(ri+1);
+      ring.rotation.y=Math.random()*Math.PI;
+      mesh.add(ring);
+      n._rings.push(ring);
+    }
+  }
+
+  // HTML 라벨
+  const el=document.createElement('div');
+  el.className='lbl';
+  el.textContent=n.lbl;
+  el.style.color=CH[n.t];
+  el.style.fontSize=n.t==='center'?'14px':n.t==='major'?'12px':'10px';
+  el.style.fontWeight=n.t==='major'||n.t==='center'?'800':'600';
+  document.getElementById('labels').appendChild(el);
+  n._el = el;
+}
+
+// 궤도 링 (시각적 궤도 경로) — major 노드만
+for(const n of allNodes.filter(x=>x.t==='major')){
+  const geo = new THREE.TorusGeometry(n.orbitRadius,.15,4,120);
+  const mat = new THREE.MeshBasicMaterial({color:0xC9A84C,transparent:true,opacity:.04,blending:THREE.AdditiveBlending,depthWrite:false});
+  const ring = new THREE.Mesh(geo,mat);
+  // 궤도면 방향으로 회전
+  ring.rotation.x = n.tiltX;
+  ring.rotation.y = n.tiltY;
+  pivot.add(ring);
+  n._orbitRing = ring;
+}
+
+// ══════════════════════════════════════════════════════════
+// 6. 동적 관계선 (매 프레임 위치 갱신)
+// ══════════════════════════════════════════════════════════
+const dynLinks = [];
+
+// 부모-자식 스템 (민들레 줄기)
+for(const n of allNodes){
+  if(!n._parent) continue;
+  const pts=[new THREE.Vector3(),new THREE.Vector3()];
+  const geo=new THREE.BufferGeometry().setFromPoints(pts);
+  const isMajorStem = n.t==='major';
+  const op = isMajorStem?.55:n.t==='middle'?.35:.22;
+  const col = isMajorStem?0xC9A84C:C3[n.t];
+  const mat=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false});
+  const line=new THREE.Line(geo,mat);
+  pivot.add(line);
+  dynLinks.push({type:'stem', sNode:n._parent, tNode:n, line, baseOp:op});
+  n._stemLine = line;
+}
+
+// 관계 링크 (RAW_LINKS)
+const relLinks = RAW_LINKS.map(lk=>{
+  const sn=nm[lk.s], tn=nm[lk.t];
+  if(!sn||!tn) return null;
+  const pts=[new THREE.Vector3(),new THREE.Vector3()];
+  const geo=new THREE.BufferGeometry().setFromPoints(pts);
+  const col=LK_C3[lk.ty]||0x444488;
+  const op = lk.ty==='required'?.45:lk.ty==='sequence'?.3:lk.ty==='finance'?.4:.25;
+  const mat=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false});
+  const line=new THREE.Line(geo,mat);
+  pivot.add(line);
+  return {type:'rel', sNode:sn, tNode:tn, line, baseOp:op, ty:lk.ty, lb:lk.lb};
+}).filter(Boolean);
+
+function updateLines(){
+  for(const l of dynLinks){
+    const pa=l.line.geometry.attributes.position.array;
+    pa[0]=l.sNode._worldPos.x; pa[1]=l.sNode._worldPos.y; pa[2]=l.sNode._worldPos.z;
+    pa[3]=l.tNode._worldPos.x; pa[4]=l.tNode._worldPos.y; pa[5]=l.tNode._worldPos.z;
+    l.line.geometry.attributes.position.needsUpdate=true;
+  }
+  for(const l of relLinks){
+    if(!l._line&&l.line){
+      const pa=l.line.geometry.attributes.position.array;
+      pa[0]=l.sNode._worldPos.x; pa[1]=l.sNode._worldPos.y; pa[2]=l.sNode._worldPos.z;
+      pa[3]=l.tNode._worldPos.x; pa[4]=l.tNode._worldPos.y; pa[5]=l.tNode._worldPos.z;
+      l.line.geometry.attributes.position.needsUpdate=true;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// 7. 카메라 컨트롤
+// ══════════════════════════════════════════════════════════
+let isDown=false, lx=0, ly=0, rotY=0, rotX=0, autoRot=true;
+const cv=renderer.domElement;
+
+cv.addEventListener('mousedown',e=>{isDown=true;lx=e.clientX;ly=e.clientY;autoRot=false;});
+cv.addEventListener('mouseup',()=>{isDown=false;});
+cv.addEventListener('mouseleave',()=>{isDown=false;});
+cv.addEventListener('mousemove',e=>{
+  if(isDown){rotY+=(e.clientX-lx)*.004;rotX+=(e.clientY-ly)*.004;lx=e.clientX;ly=e.clientY;}
+});
+cv.addEventListener('wheel',e=>{cam.position.z=Math.max(50,Math.min(700,cam.position.z+e.deltaY*.3));},{passive:true});
+cv.addEventListener('dblclick',()=>{autoRot=true;});
+cv.addEventListener('touchstart',e=>{isDown=true;lx=e.touches[0].clientX;ly=e.touches[0].clientY;autoRot=false;},{passive:true});
+cv.addEventListener('touchend',()=>{isDown=false;});
+cv.addEventListener('touchmove',e=>{if(isDown){rotY+=(e.touches[0].clientX-lx)*.004;rotX+=(e.touches[0].clientY-ly)*.004;lx=e.touches[0].clientX;ly=e.touches[0].clientY;}},{passive:true});
+
+// ══════════════════════════════════════════════════════════
+// 8. 레이캐스팅 & 선택
+// ══════════════════════════════════════════════════════════
+const rc=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+let selNode=null;
+
+cv.addEventListener('click',e=>{
+  mouse.x=(e.clientX/W())*2-1;
+  mouse.y=-(e.clientY/H())*2+1;
+  rc.setFromCamera(mouse,cam);
+  const hits=rc.intersectObjects(meshes);
+  if(hits.length) selectNode(hits[0].object.userData.node);
+  else clearSel();
+});
+
+function selectNode(n){
+  selNode=n;
+  // 이 노드와 연결된 모든 노드 ID
+  const conn=new Set([n.id]);
+  if(n._parent) conn.add(n._parent.id);
+  allNodes.filter(x=>x._parent===n).forEach(x=>conn.add(x.id));
+  RAW_LINKS.forEach(l=>{if(l.s===n.id){conn.add(l.t);}if(l.t===n.id){conn.add(l.s);}});
+
+  // 노드 밝기
+  allNodes.forEach(nd=>{
+    if(!nd._mesh) return;
+    const act=conn.has(nd.id)||nd.id===n.id;
+    nd._mesh.material.opacity=act?.98:.12;
+    nd._mesh.material.emissiveIntensity=act?.6:.03;
+    if(nd._el) nd._el.style.opacity=act?'1':'.08';
+  });
+
+  // 스템 선
+  dynLinks.forEach(l=>{
+    const act=l.sNode.id===n.id||l.tNode.id===n.id||conn.has(l.sNode.id)&&conn.has(l.tNode.id);
+    l.line.material.opacity=act?l.baseOp*1.5:.03;
+  });
+  // 관계선
+  relLinks.forEach(l=>{
+    const act=l.sNode.id===n.id||l.tNode.id===n.id;
+    l.line.material.opacity=act?.9:.02;
+  });
+
+  openPanel(n);
+}
+
+function clearSel(){
+  selNode=null;
+  allNodes.forEach(nd=>{
+    if(!nd._mesh||!nd.vis) return;
+    nd._mesh.material.opacity=nd.t==='center'?1:.9;
+    nd._mesh.material.emissiveIntensity=nd.t==='center'?.5:.4;
+    if(nd._el) nd._el.style.opacity='1';
+  });
+  dynLinks.forEach(l=>l.line.material.opacity=l.baseOp);
+  relLinks.forEach(l=>{
+    const op=l.ty==='required'?.45:l.ty==='sequence'?.3:l.ty==='finance'?.4:.25;
+    l.line.material.opacity=op;
+  });
+  document.getElementById('panel').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════════════════
+// 9. 패널
+// ══════════════════════════════════════════════════════════
+function openPanel(n){
+  document.getElementById('pt').textContent=(n.t==='center'?'핵심 허브':['major','middle','material','finance','risk'].includes(n.t)?LEVELS_LBL[n.t]:'');
+  document.getElementById('pt').style.color=CH[n.t];
+  document.getElementById('pn').textContent=n.lbl;
+  document.getElementById('plevel').textContent=
+    n._parent&&n._parent.id!=='CENTER'?`상위: ${n._parent.lbl}`:n._parent?'상위: ECOREAN BOC':'';
+
+  // 연결 수집
+  const conns={};
+  RAW_LINKS.forEach(lk=>{
+    const isS=lk.s===n.id,isT=lk.t===n.id;
+    if(!isS&&!isT) return;
+    const other=isS?lk.t:lk.s,dir=isS?'→':'←';
+    if(!conns[lk.ty]) conns[lk.ty]=[];
+    conns[lk.ty].push({other,dir,lb:lk.lb});
+  });
+  // 자식 노드
+  const children=allNodes.filter(nd=>nd._parent===n&&nd.id!=='CENTER');
+  if(children.length){
+    conns['_children']=(conns['_children']||[]);
+    children.forEach(c=>conns['_children'].push({other:c.lbl,dir:'↳',lb:null}));
+  }
+
+  let html='';
+  for(const [ty,items] of Object.entries(conns)){
+    if(!items.length) continue;
+    const label=ty==='_children'?'포함 노드':(LINK_LBL[ty]||ty);
+    html+=`<div class="psec"><h4>${label}</h4>`;
+    items.forEach(it=>{
+      const nd2=nm[it.other];
+      const c2=nd2?CH[nd2.t]:'#888';
+      const lc=ty==='_children'?'rgba(255,255,255,.25)':(LK_CH[ty]||'#888');
+      html+=`<div class="prow"><div class="pdot" style="background:${c2}"></div><span style="color:rgba(255,255,255,.3)">${it.dir}</span><span>${it.other}</span>${it.lb?`<span class="ptag" style="color:${lc};border-color:${lc}">${it.lb}</span>`:''}</div>`;
+    });
+    html+='</div>';
+  }
+  document.getElementById('pconns').innerHTML=html||'<div style="color:rgba(255,255,255,.2);font-size:11px;margin-top:10px">직접 연결 없음</div>';
+  document.getElementById('panel').classList.add('open');
+}
+document.getElementById('pc').addEventListener('click',clearSel);
+
+// ══════════════════════════════════════════════════════════
+// 10. 필터
+// ══════════════════════════════════════════════════════════
+const atypes=new Set(['major','middle','material','finance','risk']);
+document.querySelectorAll('.fb').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const ty=btn.dataset.t;btn.classList.toggle('on');
+    atypes.has(ty)?atypes.delete(ty):atypes.add(ty);
+    clearSel();
+    allNodes.forEach(n=>{
+      if(n.t==='center') return;
+      n.vis=atypes.has(n.t);
+      if(n._mesh){
+        n._mesh.visible=n.vis;
+        if(n._el) n._el.style.display=n.vis?'':'none';
+      }
+      if(n._stemLine) n._stemLine.visible=n.vis;
+    });
+    relLinks.forEach(l=>{
+      l.line.visible=l.sNode.vis&&l.tNode.vis;
+    });
+    document.getElementById('nc').textContent=allNodes.filter(n=>n.vis||n.t==='center').length;
+  });
+});
+
+// ══════════════════════════════════════════════════════════
+// 11. 라벨 투영
+// ══════════════════════════════════════════════════════════
+const vp=new THREE.Vector3();
+function updateLabels(){
+  for(const n of allNodes){
+    if(!n._el) continue;
+    if(n.vis===false&&n.t!=='center'){n._el.style.display='none';continue;}
+    n._el.style.display='';
+
+    vp.copy(n._worldPos);
+    vp.applyMatrix4(pivot.matrixWorld);
+    vp.project(cam);
+    if(vp.z>1){n._el.style.display='none';continue;}
+
+    const sx=(vp.x*.5+.5)*W();
+    const sy=(-.5*vp.y+.5)*H();
+    const r=SIZES[n.t]||4;
+    // 화면상 반지름 추정
+    const dist=cam.position.z;
+    const screenR=r*(H()*.5/Math.tan(cam.fov*Math.PI/360))/(dist);
+    n._el.style.left=sx+'px';
+    n._el.style.top=(sy+screenR+11)+'px';
+    // 거리 기반 페이드
+    const fade=Math.max(.12,Math.min(1,(550-dist)/400));
+    n._el.style.opacity=String(
+      n.t==='center'?1:
+      n.t==='major'?Math.max(.35,fade):
+      Math.max(.12,fade*.85)
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// 12. 애니메이션
+// ══════════════════════════════════════════════════════════
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const t=clock.getElapsedTime();
+
+  // 궤도 위치 계산 (레벨 순서대로)
+  // center
+  center._worldPos.set(0,0,0);
+  // major
+  for(const n of allNodes.filter(x=>x.t==='major')) calcWorldPos(n,t);
+  // middle
+  for(const n of allNodes.filter(x=>x.t==='middle')) calcWorldPos(n,t);
+  // leaf
+  for(const n of allNodes.filter(x=>x.t!=='major'&&x.t!=='middle'&&x.t!=='center')) calcWorldPos(n,t);
+
+  // 메시 위치 동기화
+  for(const n of allNodes){
+    if(n._mesh) n._mesh.position.copy(n._worldPos);
+  }
+
+  // 라인 갱신
+  updateLines();
+
+  // 카메라 회전
+  if(autoRot){rotY+=.0014;rotX=Math.sin(t*.065)*.09;}
+  pivot.rotation.y=rotY;
+  pivot.rotation.x=rotX;
+
+  // 파티클 회전
+  dustPts.rotation.y=t*.01;
+  dustPts.rotation.x=t*.006;
+
+  // 조명 살랑
+  pl1.position.set(Math.sin(t*.27)*120,Math.cos(t*.18)*80,130);
+  pl2.position.set(Math.cos(t*.22)*110,Math.sin(t*.16)*70,70);
+
+  // 링 회전
+  for(const n of allNodes){
+    if(n._rings) n._rings.forEach((r,i)=>{r.rotation.z+=(.008-i*.002);r.rotation.x+=(.003+i*.001);});
+    // 맥동 (major, center)
+    if((n.t==='major'||n.t==='center')&&n._mesh){
+      const pulse=1+Math.sin(t*1.4+n.orbitAngle)*.045;
+      n._mesh.scale.setScalar(pulse);
+      n._mesh.material.emissiveIntensity=.35+Math.sin(t*1.7+n.orbitAngle)*.18;
+    }
+  }
+
+  pivot.updateMatrixWorld(true);
+  updateLabels();
+  renderer.render(scene,cam);
+}
+
+window.addEventListener('resize',()=>{
+  cam.aspect=W()/H();cam.updateProjectionMatrix();
+  renderer.setSize(W(),H());
+});
+
+// 로딩 완료
+setTimeout(()=>{
+  document.getElementById('loading').classList.add('hide');
+  setTimeout(()=>{try{document.getElementById('loading').remove();}catch(e){}},900);
+  animate();
+},400);
+</script>
+</body>
+</html>

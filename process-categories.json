@@ -1,0 +1,1081 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "totalCount": 147,
+    "description": "공정 코드별 노출 방식·입력 타입·모듈 분류",
+    "exposureTypes": {
+      "AUTO": "공간/면적 데이터만으로 자동 계산",
+      "SELECT": "모듈에서 직접 선택·입력 필요",
+      "QTY": "수량/면적 직접 입력 필요",
+      "CONDITIONAL": "특정 조건 충족 시만 자동 활성"
+    }
+  },
+  "items": [
+    {
+      "code": "MNG_PM",
+      "exposure": "AUTO",
+      "inputType": "set",
+      "module": "config",
+      "formula": "fixed1",
+      "enabled": true
+    },
+    {
+      "code": "MNG_DS",
+      "exposure": "AUTO",
+      "inputType": "set",
+      "module": "config",
+      "formula": "fixed1",
+      "enabled": true
+    },
+    {
+      "code": "PRE_PR",
+      "exposure": "CONDITIONAL",
+      "inputType": "area",
+      "module": "config",
+      "condition": "demolition!==없음",
+      "formula": "totF",
+      "enabled": true
+    },
+    {
+      "code": "PRE_FL",
+      "exposure": "AUTO",
+      "inputType": "area",
+      "module": "config",
+      "formula": "dryF",
+      "enabled": true
+    },
+    {
+      "code": "PRE_TL",
+      "exposure": "AUTO",
+      "inputType": "area",
+      "module": "config",
+      "formula": "wetF",
+      "enabled": true
+    },
+    {
+      "code": "PRE_WL",
+      "exposure": "AUTO",
+      "inputType": "area",
+      "module": "config",
+      "formula": "totW*0.45",
+      "enabled": true
+    },
+    {
+      "code": "PRE_CL",
+      "exposure": "AUTO",
+      "inputType": "area",
+      "module": "config",
+      "formula": "totF*0.55",
+      "enabled": true
+    },
+    {
+      "code": "PRE_WS",
+      "exposure": "AUTO",
+      "inputType": "qty",
+      "module": "config",
+      "formula": "waste",
+      "enabled": true
+    },
+    {
+      "code": "PRE_KT",
+      "exposure": "AUTO",
+      "inputType": "set",
+      "module": "config",
+      "formula": "fixed1",
+      "enabled": true
+    },
+    {
+      "code": "FIN_PT",
+      "exposure": "AUTO",
+      "inputType": "area",
+      "module": "finish",
+      "formula": "wallCeil",
+      "enabled": true
+    },
+    {
+      "code": "FIN_ML",
+      "exposure": "AUTO",
+      "inputType": "qty",
+      "module": "space",
+      "formula": "mlEA",
+      "enabled": true
+    },
+    {
+      "code": "FIN_BB",
+      "exposure": "AUTO",
+      "inputType": "qty",
+      "module": "space",
+      "formula": "mlEA",
+      "enabled": true
+    },
+    {
+      "code": "FIN_SL",
+      "exposure": "AUTO",
+      "inputType": "len",
+      "module": "space",
+      "formula": "totF*0.26",
+      "enabled": true
+    },
+    {
+      "code": "ELE_WR",
+      "exposure": "AUTO",
+      "inputType": "qty",
+      "module": "elec",
+      "formula": "wpts",
+      "enabled": true
+    },
+    {
+      "code": "END_CL",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "handover",
+      "enabled": true
+    },
+    {
+      "code": "END_FI",
+      "exposure": "SELECT",
+      "inputType": "set",
+      "module": "handover",
+      "enabled": true
+    },
+    {
+      "code": "END_BK",
+      "exposure": "SELECT",
+      "inputType": "set",
+      "module": "handover",
+      "enabled": true
+    },
+    {
+      "code": "CARP_CF",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "carp",
+      "enabled": true
+    },
+    {
+      "code": "CARP_CB",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "carp",
+      "enabled": true
+    },
+    {
+      "code": "CARP_AW",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "carp",
+      "enabled": true
+    },
+    {
+      "code": "CARP_DW",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "carp",
+      "enabled": true
+    },
+    {
+      "code": "CARP_DW2",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "carp",
+      "enabled": true
+    },
+    {
+      "code": "FIN_MR",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_MR2",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_MR3",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_SP",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_SP2",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_LV",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_LV2",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_OW",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_OW2",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_JP",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_CR",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_PA",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_PA2",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_PA3",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_PA4",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_PA5",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_PA6",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_WP",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_WP2",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_WP3",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_WP4",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_WC",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_FM",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_AW",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_AW2",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_MC",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_DK",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_TX",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "FIN_MT",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "finish",
+      "enabled": true
+    },
+    {
+      "code": "WIN_SY",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_SY2",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_SY3",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_SYL",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_AL",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_AL2",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_FD",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_MD",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_MD2",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_EN",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "door",
+      "enabled": true
+    },
+    {
+      "code": "WIN_SC",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_SC2",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "WIN_GL",
+      "exposure": "SELECT",
+      "inputType": "area",
+      "module": "window",
+      "enabled": true
+    },
+    {
+      "code": "CARP_DW",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "door",
+      "enabled": true
+    },
+    {
+      "code": "CAB_KT_L",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_KT_U",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_KT_D",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_KT_C",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_CT_IM",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_CT_QZ",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_CT_CE",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_CT_MR",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_CT_SS",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_BL",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_BL2",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_BL3",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_SH",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_TL",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_IS",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_TV",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_BK",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_WD",
+      "exposure": "SELECT",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_VN",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "CAB_VN2",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "KIT_HV",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "KIT_HV2",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "KIT_CP",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "KIT_IH",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "KIT_OV",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "KIT_DW",
+      "exposure": "SELECT",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "ELE_OT",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_OT2",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_OT3",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_SW",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_SW2",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_LT",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_LT2",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_LT3",
+      "exposure": "QTY",
+      "inputType": "len",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_IL",
+      "exposure": "QTY",
+      "inputType": "len",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_DB",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_DB2",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_AC",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_VN",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_VN2",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_IP",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_TV",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_HL",
+      "exposure": "QTY",
+      "inputType": "area",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_FD",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "ELE_EV",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "elec",
+      "enabled": true
+    },
+    {
+      "code": "PLM_WBS",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_WBD",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_WBF",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_TLS",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_TLD",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_TLI",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_TLB",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_SHS",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_SHD",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_SHF",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_SHR",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_BTS",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_BTD",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_BTI",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_SKS",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_SKF",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_WMS",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_DWS",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_BL",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_HW",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_TP",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_TR",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_TD",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_OD",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "PLM_GS",
+      "exposure": "QTY",
+      "inputType": "qty",
+      "module": "plumb",
+      "enabled": true
+    },
+    {
+      "code": "CAB_BL_HG",
+      "exposure": "QTY",
+      "inputType": "len",
+      "module": "furn",
+      "enabled": true
+    },
+    {
+      "code": "PRE_BT",
+      "exposure": "CONDITIONAL",
+      "inputType": "qty",
+      "module": "config",
+      "condition": "wetCnt>0",
+      "formula": "wetCnt",
+      "enabled": true
+    },
+    {
+      "code": "PRE_LF",
+      "exposure": "CONDITIONAL",
+      "inputType": "qty",
+      "module": "config",
+      "condition": "myFloor>4",
+      "formula": "fixed1",
+      "enabled": true
+    },
+    {
+      "code": "PRE_EV",
+      "exposure": "CONDITIONAL",
+      "inputType": "qty",
+      "module": "config",
+      "condition": "myFloor>=4",
+      "formula": "floor-3",
+      "enabled": true
+    },
+    {
+      "code": "WET_WP",
+      "exposure": "CONDITIONAL",
+      "inputType": "area",
+      "module": "tile",
+      "condition": "wetF>0",
+      "formula": "wetF*1.2",
+      "enabled": true
+    },
+    {
+      "code": "WET_GR",
+      "exposure": "CONDITIONAL",
+      "inputType": "area",
+      "module": "tile",
+      "condition": "tiles>0",
+      "formula": "tileArea",
+      "enabled": true
+    },
+    {
+      "code": "WET_KT",
+      "exposure": "CONDITIONAL",
+      "inputType": "area",
+      "module": "plumb",
+      "condition": "kitSinks>0 && !tileHasApron",
+      "formula": "sinkApron",
+      "enabled": true
+    },
+    {
+      "code": "BTH_CL",
+      "exposure": "CONDITIONAL",
+      "inputType": "area",
+      "module": "space",
+      "condition": "wetCnt>0",
+      "formula": "wetF",
+      "enabled": true
+    },
+    {
+      "code": "BTH_MR",
+      "exposure": "CONDITIONAL",
+      "inputType": "qty",
+      "module": "space",
+      "condition": "wetCnt>0",
+      "formula": "wetCnt",
+      "enabled": true
+    },
+    {
+      "code": "BTH_AC",
+      "exposure": "CONDITIONAL",
+      "inputType": "qty",
+      "module": "space",
+      "condition": "wetCnt>0",
+      "formula": "wetCnt",
+      "enabled": true
+    },
+    {
+      "code": "BTH_VN",
+      "exposure": "CONDITIONAL",
+      "inputType": "qty",
+      "module": "space",
+      "condition": "wetCnt>0",
+      "formula": "wetCnt",
+      "enabled": true
+    },
+    {
+      "code": "AC_IN",
+      "exposure": "CONDITIONAL",
+      "inputType": "qty",
+      "module": "elec",
+      "condition": "ac>0",
+      "formula": "ac",
+      "enabled": true
+    }
+  ]
+}
