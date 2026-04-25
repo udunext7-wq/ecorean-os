@@ -1641,15 +1641,15 @@ input::placeholder { font-size: 13px !important }
   </div>
 </div>
 <div id="tabs">
-  <button class="tab act" data-v="estimate">견적 마법사</button>
-  <button class="tab" data-v="projects">프로젝트</button>
-  <button class="tab" data-v="presets">프리셋</button>
-  <button class="tab" data-v="reports">보고서</button>
-  <button class="tab" data-v="completion">완료보고</button>
-  <button class="tab" data-v="approval">승인함 <span class="tbadge" id="approval-badge">0</span></button>
-  <button class="tab" data-v="dbmgr">DB관리</button>
-  <button class="tab" data-v="ontology">온톨로지</button>
-  <button class="tab" data-v="aiengine">AI 엔진</button>
+  <button class="tab act" data-v="estimate" onclick="switchToTab('estimate')">견적 마법사</button>
+  <button class="tab" data-v="projects" onclick="switchToTab('projects')">프로젝트</button>
+  <button class="tab" data-v="presets" onclick="switchToTab('presets')">프리셋</button>
+  <button class="tab" data-v="reports" onclick="switchToTab('reports')">보고서</button>
+  <button class="tab" data-v="completion" onclick="switchToTab('completion')">완료보고</button>
+  <button class="tab" data-v="approval" onclick="switchToTab('approval')">승인함 <span class="tbadge" id="approval-badge">0</span></button>
+  <button class="tab" data-v="dbmgr" onclick="switchToTab('dbmgr')">DB관리</button>
+  <button class="tab" data-v="ontology" onclick="switchToTab('ontology')">온톨로지</button>
+  <button class="tab" data-v="aiengine" onclick="switchToTab('aiengine')">AI 엔진</button>
   <div class="tab-slider" id="tab-slider"></div>
 </div>
 <div id="main">
@@ -3958,48 +3958,56 @@ function toggleEstimateUI(isEstimate){
   if(hb)hb.style.display=isEstimate?'flex':d;
   if(nv)nv.style.display=isEstimate?'flex':d;
 }
-(function initTabs(){
-  function activateTab(v){
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('act'));
-    const btn=document.querySelector('[data-v="'+v+'"]');
-    if(btn) btn.classList.add('act');
-    document.querySelectorAll('.view').forEach(vv=>{
-      vv.classList.remove('act');
-      vv.style.display='none';
-    });
-    const view=document.getElementById('view-'+v);
-    if(view){ view.classList.add('act'); view.style.display=(v==='estimate')?'':'block'; }
-    toggleEstimateUI(v==='estimate');
-    // 탭별 렌더 호출
-    try{
-      if(v==='projects')  renderProjects();
-      if(v==='presets')   renderPresets();
-      if(v==='approval')  { renderApproval(); renderApprovalLog(); }
-      if(v==='dbmgr')     { if(typeof renderDB2==='function') renderDB2(); if(typeof renderRuleManager==='function') renderRuleManager(); }
-      if(v==='completion')updCmpSel();
-      if(v==='ontology')  { renderOntologyView(); renderDandelion(); }
-      if(v==='aiengine')  renderAIEngineView();
-      if(v==='reports')   { if(typeof renderReportList==='function') renderReportList(); }
-    }catch(e){ console.warn('tab render error',v,e); }
-    // Fabric.js CAD 캔버스 offset 재계산
-    if(v==='estimate' && window.fc){
-      requestAnimationFrame(()=>{
-        try{
-          const wrap=document.getElementById('cad-canvas-wrap');
-          if(wrap){ const nw=Math.max(400,wrap.clientWidth-220),nh=Math.max(500,window.innerHeight-400); window.fc.setWidth(nw); window.fc.setHeight(nh); }
-          window.fc.calcOffset(); window.fc.renderAll();
-        }catch(e){}
-      });
-    }
-    // 상단바 KPI 업데이트
-    bocRefreshCounters();
-  }
-  document.querySelectorAll('#tabs .tab').forEach(b=>{
-    b.addEventListener('click', ()=> activateTab(b.dataset.v||'estimate'));
+// ── 탭 전환 (onclick 직접 연결용 전역 함수) ──────────────────────
+window.switchToTab = function(tabId){
+  // 1. 모든 view 숨기기 (display:none 인라인)
+  document.querySelectorAll('[id^="view-"]').forEach(el=>{
+    el.style.display='none';
+    el.classList.remove('act');
   });
-  window.gotoTab=function(v){ activateTab(v); };
-  window.activateTab=activateTab;
-})();
+  // 2. 선택한 view 표시
+  const target=document.getElementById('view-'+tabId);
+  if(target){
+    target.classList.add('act');
+    // estimate는 CSS flex 규칙 적용을 위해 인라인 제거, 나머지 block
+    target.style.display = (tabId==='estimate') ? '' : 'block';
+  }
+  // 3. 탭 버튼 act 클래스
+  document.querySelectorAll('#tabs .tab').forEach(b=>{
+    b.classList.toggle('act', (b.dataset.v||b.getAttribute('data-v'))===tabId);
+  });
+  // 4. 견적 마법사 전용 요소 토글
+  const isEst=(tabId==='estimate');
+  ['stepbar','hud-bar','nav'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display=isEst?'':'none';
+  });
+  // 5. 탭별 렌더링
+  try{
+    if(tabId==='projects')   { if(typeof renderProjects==='function') renderProjects(); }
+    if(tabId==='presets')    { if(typeof renderPresets==='function')  renderPresets(); }
+    if(tabId==='approval')   { if(typeof renderApproval==='function') renderApproval(); if(typeof renderApprovalLog==='function') renderApprovalLog(); }
+    if(tabId==='dbmgr')      { if(typeof renderDB2==='function') renderDB2(); if(typeof renderRuleManager==='function') renderRuleManager(); }
+    if(tabId==='completion') { if(typeof updCmpSel==='function') updCmpSel(); }
+    if(tabId==='ontology')   { if(typeof renderOntologyView==='function') renderOntologyView(); if(typeof renderDandelion==='function') renderDandelion(); }
+    if(tabId==='aiengine')   { if(typeof renderAIEngineView==='function') renderAIEngineView(); }
+    if(tabId==='reports')    { if(typeof renderReportList==='function') renderReportList(); }
+  }catch(e){ console.warn('[switchToTab] render error',tabId,e); }
+  // 6. estimate 탭 복귀 시 Fabric.js 재계산
+  if(tabId==='estimate' && window.fc){
+    requestAnimationFrame(()=>{
+      try{
+        const wrap=document.getElementById('cad-canvas-wrap');
+        if(wrap){ const nw=Math.max(400,wrap.clientWidth-220),nh=Math.max(500,window.innerHeight-400); window.fc.setWidth(nw); window.fc.setHeight(nh); }
+        window.fc.calcOffset(); window.fc.renderAll();
+      }catch(e){}
+    });
+  }
+  try{ if(typeof bocRefreshCounters==='function') bocRefreshCounters(); }catch(e){}
+};
+// 하위 호환 aliases
+window.gotoTab    = window.switchToTab;
+window.activateTab= window.switchToTab;
 
 // localStorage
 function bocSave(){
@@ -4058,9 +4066,11 @@ function updHdrBoc(){
 window.addEventListener('load',()=>{
   bocLoad();
   renderDB2();renderSpaceCards();updateBathroomScopes();
-  if(S.buildAge>0 && S.spaces.length>0) recalc();
-  else { safeTxt('hv1','₩0'); safeTxt('hv2','₩0'); safeTxt('hv3','₩0'); safeTxt('hv4','—'); safeTxt('hv5','—'); }
+  // 항상 recalc 실행 → spaces 없으면 0만원 표시 (올바른 초기화)
+  try{ recalc(); }catch(e){ console.warn('recalc init error',e); }
   setInterval(bocSave,30000);
+  // 초기 탭 상태 강제 설정 (estimate 탭 active)
+  switchToTab('estimate');
 });
 
 // ── 프로젝트 ──
@@ -6213,7 +6223,17 @@ function fcInit(){
   fc.on('selection:created',  e=>fcUpdateProps(e.selected[0]));
   fc.on('selection:updated',  e=>fcUpdateProps(e.selected[0]));
   fc.on('selection:cleared',  ()=>fcUpdateProps(null));
-  fc.on('object:modified',    ()=>{ fcSyncSummary(); fcDebounceApply(); });
+  fc.on('object:modified',    (e)=>{
+    // 크기 조절 후 spaceData에 실제 mm값 동기화
+    const obj=e.target;
+    if(obj&&obj.spaceData){
+      const wMm=Math.round(obj.getScaledWidth()*PX2MM);
+      const hMm=Math.round(obj.getScaledHeight()*PX2MM);
+      if(wMm>0&&wMm<50000) obj.spaceData.width=wMm;
+      if(hMm>0&&hMm<50000) obj.spaceData.length=hMm;
+    }
+    fcSyncSummary(); fcDebounceApply();
+  });
   fc.on('object:moving',      fcOnObjectMoving);
   fc.on('object:scaling',     fcOnObjectScaling);
 
@@ -6804,22 +6824,23 @@ window.fcPropSet=function(key,val){
 };
 window.fcPropResize=function(key,valMm){
   const obj=fc.getActiveObject(); if(!obj||!obj.spaceData) return;
-  if(valMm<MIN_MM) return;
+  // 입력 범위 제한 500~30000mm
+  if(valMm<500){ alert('최소 500mm'); return; }
+  if(valMm>30000){ alert('최대 30000mm'); valMm=4000; }
   const valPx=valMm*MM2PX;
   const items=obj._objects||[];
-  const outer=items[0]; // first rect = outer
+  // scaleX/scaleY만 변경 — outer.width는 그대로 유지 (이중 스케일링 방지)
+  // getScaledWidth() = obj.width * scaleX = valPx (정확)
   if(key==='w'){
-    obj.scaleX=valPx/obj.width;
-    outer&&outer.set('width',valPx);
-    items.find(o=>o.fcRole==='inner')?.set('width',Math.max(1,valPx-WALL_T*MM2PX*2));
+    obj.scaleX = (obj.width > 0) ? valPx/obj.width : 1;
   } else {
-    obj.scaleY=valPx/obj.height;
-    outer&&outer.set('height',valPx);
-    items.find(o=>o.fcRole==='inner')?.set('height',Math.max(1,valPx-WALL_T*MM2PX*2));
+    obj.scaleY = (obj.height > 0) ? valPx/obj.height : 1;
   }
+  // spaceData에 직접 기록 (fcSyncToSpaces 독립적으로도 정확)
+  obj.spaceData[key==='w'?'width':'length'] = valMm;
   // 면적 텍스트 업데이트
-  const wMm=Math.round(obj.getScaledWidth()*PX2MM);
-  const hMm=Math.round(obj.getScaledHeight()*PX2MM);
+  const wMm = obj.spaceData.width  || Math.round(obj.getScaledWidth()*PX2MM);
+  const hMm = obj.spaceData.length || Math.round(obj.getScaledHeight()*PX2MM);
   items.find(o=>o.fcRole==='areaText')?.set('text',(wMm/1000*hMm/1000).toFixed(2)+'㎡');
   fc.renderAll(); fcSyncSingleSpace(obj); fcSyncSummary();
 };
@@ -6876,8 +6897,15 @@ function fcSyncToSpaces(){
   fc.getObjects().forEach(obj=>{
     if(!obj.spaceData) return;
     const d=obj.spaceData;
-    const wMm=Math.round(obj.getScaledWidth()*PX2MM);
-    const hMm=Math.round(obj.getScaledHeight()*PX2MM);
+    // spaceData에 저장된 값 우선, 없으면 getScaledWidth()*PX2MM 계산
+    // (fcPropResize에서 scaleX만 바꾸면 getScaledWidth()가 이중 반영될 수 있어서)
+    const wMm = d.width  || Math.round(obj.getScaledWidth()*PX2MM);
+    const hMm = d.length || Math.round(obj.getScaledHeight()*PX2MM);
+    // 비정상 값 방어
+    const safeW = Math.max(100, Math.min(50000, wMm));
+    const safeH = Math.max(100, Math.min(50000, hMm));
+    d.width  = safeW;
+    d.length = safeH;
     const dCnt=fc.getObjects().filter(o=>o.doorData&&o.doorData.roomId===d.id).length;
     const wCnt=fc.getObjects().filter(o=>o.winData&&o.winData.roomId===d.id).length;
     // windows/doors: props 패널에서 입력한 치수 배열 우선, 없으면 캔버스 오브젝트 카운트로 기본값
@@ -6885,7 +6913,7 @@ function fcSyncToSpaces(){
     const drs=d.doors&&d.doors.length?d.doors:Array.from({length:Math.max(1,dCnt)},()=>({type:'여닫이',w:DOOR_W,h:2100}));
     newSpaces.push({
       id:d.id, name:d.name, type:d.type,
-      width:wMm, length:hMm, height:d.ceilH||CEIL_H,
+      width:safeW, length:safeH, height:d.ceilH||CEIL_H,
       windows:wins, doors:drs,
       corners:4, wet:d.wet||d.type==='bathroom', roof:d.roof||false, floor2:d.floor2||false,
       tileH:2400, beamH:0
