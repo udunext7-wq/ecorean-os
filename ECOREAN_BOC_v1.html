@@ -612,13 +612,39 @@ input,button,select,textarea{font-family:inherit}button{cursor:pointer}
     <div class="scope-hd"><h4>🛋️ 거실·침실 공통</h4></div>
     <div class="scope-body">
       <div class="scope-opts" id="livingOpts">
-        <div class="sopt"><input type="checkbox" id="lv-floor" checked onchange="recalc()"><label for="lv-floor">바닥재 교체</label>
-          <select id="lv-floor-type" onchange="recalc()">
+        <div class="sopt"><input type="checkbox" id="lv-floor" checked onchange="onFloorTypeChange()"><label for="lv-floor">바닥재 교체</label>
+          <select id="lv-floor-type" onchange="onFloorTypeChange()">
             <option value="hardwood" selected>강마루</option>
             <option value="lvt">LVT</option>
             <option value="herringbone">헤링본 강마루 ✦</option>
             <option value="wood">원목마루 ✦</option>
             <option value="vinyl">장판</option>
+          </select>
+        </div>
+        <!-- 장판 세부 등급 (장판 선택 시 표시) -->
+        <div class="sopt" id="vinyl-grade-row" style="display:none;padding-left:20px">
+          <label style="color:var(--dim);font-size:11px">장판 등급</label>
+          <select id="lv-vinyl-grade" onchange="recalc()" style="font-size:11px">
+            <option value="VNL_20" selected>2.0T 표준 (lb:6k/mt:8k)</option>
+            <option value="VNL_18">1.8T 보급형 (lb:5k/mt:6k)</option>
+            <option value="VNL_25">2.5T 두꺼운 (lb:7k/mt:11k)</option>
+            <option value="VNL_30">3.0T 소음저감 (lb:8k/mt:14k)</option>
+            <option value="VNL_FR">방염 (복도·계단) (lb:7k/mt:13k)</option>
+            <option value="VNL_AB">항균 (어린이방) (lb:7k/mt:15k)</option>
+          </select>
+        </div>
+        <!-- LVT 세부 등급 (LVT 선택 시 표시) -->
+        <div class="sopt" id="lvt-grade-row" style="display:none;padding-left:20px">
+          <label style="color:var(--dim);font-size:11px">LVT 등급</label>
+          <select id="lv-lvt-grade" onchange="recalc()" style="font-size:11px">
+            <option value="LVT_30" selected>3.0T 표준 (lb:12k/mt:15k)</option>
+            <option value="LVT_20">2.0T 보급형 (lb:10k/mt:12k)</option>
+            <option value="LVT_45">4.5T 고급 (lb:14k/mt:20k)</option>
+            <option value="LVT_50">5.0T 상업용 (lb:15k/mt:25k)</option>
+            <option value="LVT_HB">헤링본 LVT (lb:14k/mt:22k)</option>
+            <option value="LVT_LG">대형판 600x1200 (lb:15k/mt:28k)</option>
+            <option value="DT_AD">데코타일 접착식 (lb:10k/mt:13k)</option>
+            <option value="DT_CL">데코타일 클릭식 (lb:11k/mt:16k)</option>
           </select>
         </div>
         <div class="sopt"><input type="checkbox" id="lv-wp" checked onchange="recalc()"><label for="lv-wp">도배</label>
@@ -1181,6 +1207,22 @@ const DB = {
   WIN_PU:   {nm:"창호 우레탄폼+코킹",cat:"창호",  unit:"m",  lb:8000,  mt:5000,  wr:0,    dur:1, f:"windowCount*3"},
   // [R12] 욕실방수→보호몰탈 타설 자동 포함
   WTP_PM:   {nm:"보호몰탈 타설",     cat:"방수",  unit:"㎡", lb:15000, mt:12000, wr:0.05, dur:1, f:"wetFloorArea"},
+  // 장판 세부 라인업 — cost-items-v2:VNL_*
+  VNL_18:   {nm:"장판 1.8T (보급)",  cat:"바닥재",unit:"㎡", lb:5000,  mt:6000,  wr:0.05, dur:1, f:"dryFloorArea"},
+  VNL_20:   {nm:"장판 2.0T (표준)",  cat:"바닥재",unit:"㎡", lb:6000,  mt:8000,  wr:0.05, dur:1, f:"dryFloorArea"},
+  VNL_25:   {nm:"장판 2.5T (두꺼운)",cat:"바닥재",unit:"㎡", lb:7000,  mt:11000, wr:0.05, dur:1, f:"dryFloorArea"},
+  VNL_30:   {nm:"장판 3.0T (소음저감)",cat:"바닥재",unit:"㎡",lb:8000,  mt:14000, wr:0.05, dur:1, f:"dryFloorArea"},
+  VNL_FR:   {nm:"장판 방염",          cat:"바닥재",unit:"㎡", lb:7000,  mt:13000, wr:0.05, dur:1, f:"dryFloorArea"},
+  VNL_AB:   {nm:"장판 항균",          cat:"바닥재",unit:"㎡", lb:7000,  mt:15000, wr:0.05, dur:1, f:"dryFloorArea"},
+  // LVT 세부 라인업 — cost-items-v2:LVT_*
+  LVT_20:   {nm:"LVT 2.0T (보급)",   cat:"바닥재",unit:"㎡", lb:10000, mt:12000, wr:0.08, dur:1, f:"dryFloorArea"},
+  LVT_30:   {nm:"LVT 3.0T (표준)",   cat:"바닥재",unit:"㎡", lb:12000, mt:15000, wr:0.08, dur:1, f:"dryFloorArea"},
+  LVT_45:   {nm:"LVT 4.5T (고급)",   cat:"바닥재",unit:"㎡", lb:14000, mt:20000, wr:0.08, dur:1, f:"dryFloorArea"},
+  LVT_50:   {nm:"LVT 5.0T (상업용)", cat:"바닥재",unit:"㎡", lb:15000, mt:25000, wr:0.08, dur:2, f:"dryFloorArea"},
+  LVT_HB:   {nm:"LVT 헤링본",        cat:"바닥재",unit:"㎡", lb:14000, mt:22000, wr:0.08, dur:2, f:"dryFloorArea"},
+  LVT_LG:   {nm:"LVT 대형판",        cat:"바닥재",unit:"㎡", lb:15000, mt:28000, wr:0.08, dur:2, f:"dryFloorArea"},
+  DT_AD:    {nm:"데코타일 접착식",    cat:"바닥재",unit:"㎡", lb:10000, mt:13000, wr:0.05, dur:1, f:"dryFloorArea"},
+  DT_CL:    {nm:"데코타일 클릭식",    cat:"바닥재",unit:"㎡", lb:11000, mt:16000, wr:0.05, dur:1, f:"dryFloorArea"},
   // [R4] 헤링본 강마루/SPC — cost-items:FIN_MR2/FIN_SP2
   FLR_HB:   {nm:"헤링본 강마루",     cat:"바닥재",unit:"㎡", lb:36000, mt:39000, wr:0.10, dur:2, f:"dryFloorArea"},
   // [R7] 원목마루/오일스테인 — cost-items:FIN_OW/FIN_PA6
@@ -1217,6 +1259,15 @@ const GRADE_MAT = {
 };
 
 // 양중비 계수
+function onFloorTypeChange() {
+  const t = document.getElementById('lv-floor-type')?.value || 'hardwood';
+  const vRow = document.getElementById('vinyl-grade-row');
+  const lRow = document.getElementById('lvt-grade-row');
+  if(vRow) vRow.style.display = (t === 'vinyl') ? 'flex' : 'none';
+  if(lRow) lRow.style.display = (t === 'lvt')   ? 'flex' : 'none';
+  recalc();
+}
+
 function getHoistMul() {
   const fl = parseInt(document.getElementById('floorLevel').value)||1;
   if (!S.hasElev) return fl>=20?1.35:fl>=15?1.30:fl>=10?1.20:fl>=5?1.12:1.05;
@@ -1367,8 +1418,16 @@ function getSelectedProcesses() {
     } else if(flType === 'wood') {
       add('FLR_OW', '원목마루');
       addAuto('FLR_OS', 'R7: 원목마루→오일스테인 자동');  // [R7]
+    } else if(flType === 'vinyl') {
+      // 장판 세부 등급 선택 반영
+      const vGrade = document.getElementById('lv-vinyl-grade')?.value || 'VNL_20';
+      add(vGrade, '장판 ' + (document.getElementById('lv-vinyl-grade')?.options[document.getElementById('lv-vinyl-grade')?.selectedIndex]?.text||''));
+    } else if(flType === 'lvt') {
+      // LVT 세부 등급 선택 반영
+      const lGrade = document.getElementById('lv-lvt-grade')?.value || 'LVT_30';
+      add(lGrade, 'LVT ' + (document.getElementById('lv-lvt-grade')?.options[document.getElementById('lv-lvt-grade')?.selectedIndex]?.text||''));
     } else {
-      add('FLR_HW');
+      add('FLR_HW');  // 강마루 기본
     }
     addAuto('FLR_SK', 'R6: 바닥재→걸레받이 자동');  // [R6]
   }
