@@ -585,6 +585,329 @@ button { cursor: pointer }
   .hkpiv,.logo-name { color:#000!important }
   .gold,.chd,.kcard .kv { color:#333!important }
 }
+
+/* ══════════════════════════════════════════════════
+   ECOREAN BOC — Design Overhaul v2
+══════════════════════════════════════════════════ */
+
+/* ── Sidebar HUD ─────────────────────────────────── */
+#sidebar {
+  width: 220px; flex-shrink: 0;
+  background: linear-gradient(160deg, rgba(3,3,5,.97) 0%, rgba(13,13,26,.93) 100%);
+  border-right: 1px solid rgba(201,168,76,.2);
+  font-family: var(--font-mono);
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+  gap: 0;
+}
+.sb-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(201,168,76,.08);
+}
+.sb-section:last-child { border-bottom: none }
+.sb-title {
+  display: flex; align-items: center;
+  font-size: 8px; font-weight: 700; letter-spacing: .18em;
+  color: var(--gold); text-transform: uppercase;
+  margin-bottom: 10px; gap: 8px;
+}
+.sb-title::before, .sb-title::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,.35));
+}
+.sb-title::before { background: linear-gradient(90deg, rgba(201,168,76,.35), transparent) }
+.sb-title::after  { background: linear-gradient(90deg, transparent, rgba(201,168,76,.35)) }
+.sb-row {
+  display: flex; align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(201,168,76,.04);
+}
+.sb-row:last-child { border-bottom: none }
+.sb-row .lbl {
+  font-size: 9px; color: rgba(201,168,76,.5);
+  letter-spacing: .04em; white-space: nowrap; flex-shrink: 0;
+  min-width: 52px;
+}
+.sb-row .dots {
+  flex: 1; border-bottom: 1px dotted rgba(201,168,76,.2);
+  margin: 0 5px; height: 1px; align-self: flex-end; margin-bottom: 3px;
+}
+.sb-row .val {
+  font-size: 10px; color: #fff; text-align: right;
+  font-family: var(--font-mono); white-space: nowrap;
+  transition: color .3s, opacity .3s;
+}
+.sb-row .val.gold { color: var(--gold-bright) }
+.sb-row .val.updating {
+  animation: val-update .3s ease;
+}
+@keyframes val-update {
+  0%   { opacity: .3; transform: translateY(-3px) }
+  100% { opacity: 1;  transform: none }
+}
+#sb-warnings { padding: 8px 12px }
+#sb-warnings .sb-warn {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 9px; color: var(--orange); margin-bottom: 5px;
+  font-family: var(--font-mono);
+}
+#sb-warnings .sb-warn::before {
+  content: '';
+  display: inline-block; width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 8px solid var(--orange);
+  flex-shrink: 0;
+}
+#sb-warnings .sb-warn.danger { color: var(--red) }
+#sb-warnings .sb-warn.danger::before { border-bottom-color: var(--red) }
+
+/* ── Building Type Cards ─────────────────────────── */
+.btn-group.btype-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-top: 8px;
+}
+.bgoption.btype {
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 14px 8px; gap: 10px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--border2);
+  border-radius: var(--r); transition: all .2s;
+  min-height: 80px;
+}
+.bgoption.btype:hover { border-color: rgba(201,168,76,.3); background: var(--gold4) }
+.bgoption.btype.active {
+  border-color: var(--gold) !important;
+  background: var(--gold3) !important;
+  box-shadow: 0 0 18px rgba(201,168,76,.12), inset 0 0 20px rgba(201,168,76,.04);
+}
+.bgoption.btype.active .btype-icon * { stroke: var(--gold-bright) }
+.bgoption.btype .btype-label { font-size: 9px; color: var(--dim); letter-spacing: .04em; text-align: center }
+.bgoption.btype.active .btype-label { color: var(--gold) }
+.btype-icon { display: flex; align-items: flex-end; justify-content: center; height: 32px }
+.btype-icon svg * { transition: stroke .2s }
+
+/* ── Step Bar — HUD Diamond ──────────────────────── */
+.step-dot, .sdot {
+  width: 22px !important; height: 22px !important;
+  border-radius: 4px !important;
+  transform: rotate(45deg);
+  border: 1.5px solid var(--border2) !important;
+  background: var(--raised) !important;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .25s;
+  box-shadow: none !important;
+}
+.step-dot span, .sdot span { transform: rotate(-45deg); display: block }
+.step-dot.active, .sdot.active, .step-dot.act, .sdot.act {
+  border-color: var(--gold) !important;
+  background: var(--gold2) !important;
+  box-shadow: 0 0 14px rgba(201,168,76,.3), 0 0 4px rgba(201,168,76,.5) !important;
+  animation: diamond-pulse 2s infinite;
+}
+@keyframes diamond-pulse {
+  0%,100% { box-shadow: 0 0 8px rgba(201,168,76,.3) }
+  50%      { box-shadow: 0 0 20px rgba(201,168,76,.6), 0 0 4px rgba(201,168,76,.8) }
+}
+.step-dot.done, .sdot.done {
+  border-color: var(--green) !important;
+  background: var(--green) !important;
+  box-shadow: 0 0 10px rgba(93,221,154,.4) !important;
+  animation: none !important;
+}
+.step-line, .sline {
+  flex: 1; height: 1px; margin: 0 6px;
+  background: repeating-linear-gradient(90deg,
+    var(--border2) 0px, var(--border2) 4px,
+    transparent 4px, transparent 8px) !important;
+  transition: background .3s !important;
+}
+.step-line.done, .sline.done {
+  background: linear-gradient(90deg, var(--green), rgba(93,221,154,.4)) !important;
+}
+
+/* ── LED Condition Buttons ───────────────────────── */
+.bgoption.led-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  background: rgba(255,255,255,.03);
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  color: var(--dim); cursor: pointer; transition: all .2s;
+}
+.bgoption.led-btn::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  flex-shrink: 0; transition: all .2s;
+}
+.bgoption.led-btn.led-good::before  { background: var(--green); opacity: .4 }
+.bgoption.led-btn.led-fair::before  { background: var(--orange); opacity: .4 }
+.bgoption.led-btn.led-poor::before  { background: var(--red); opacity: .4 }
+.bgoption.led-btn.active {
+  border-color: currentColor;
+}
+.bgoption.led-btn.led-good.active  {
+  color: var(--green); border-color: rgba(93,221,154,.4);
+  background: rgba(93,221,154,.07);
+}
+.bgoption.led-btn.led-good.active::before {
+  opacity: 1; box-shadow: 0 0 8px var(--green), 0 0 3px var(--green);
+  animation: led-pulse-g 1.5s infinite;
+}
+.bgoption.led-btn.led-fair.active  {
+  color: var(--orange); border-color: rgba(255,170,68,.4);
+  background: rgba(255,170,68,.07);
+}
+.bgoption.led-btn.led-fair.active::before {
+  opacity: 1; box-shadow: 0 0 8px var(--orange), 0 0 3px var(--orange);
+  animation: led-pulse-o 1.5s infinite;
+}
+.bgoption.led-btn.led-poor.active  {
+  color: var(--red); border-color: rgba(255,85,100,.4);
+  background: rgba(255,85,100,.07);
+}
+.bgoption.led-btn.led-poor.active::before {
+  opacity: 1; box-shadow: 0 0 8px var(--red), 0 0 3px var(--red);
+  animation: led-pulse-r 1.5s infinite;
+}
+@keyframes led-pulse-g { 0%,100%{box-shadow:0 0 4px var(--green)} 50%{box-shadow:0 0 12px var(--green)} }
+@keyframes led-pulse-o { 0%,100%{box-shadow:0 0 4px var(--orange)} 50%{box-shadow:0 0 12px var(--orange)} }
+@keyframes led-pulse-r { 0%,100%{box-shadow:0 0 4px var(--red)} 50%{box-shadow:0 0 12px var(--red)} }
+
+/* ── Input Fields — Underline Only ───────────────── */
+.field input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=time]),
+.field select,
+.field textarea {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(201,168,76,.25) !important;
+  border-radius: 0 !important;
+  padding: 6px 2px !important;
+  color: var(--text) !important;
+  position: relative;
+}
+.field input:not([type=checkbox]):not([type=file]):not([type=time]):focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none !important;
+  border-bottom-color: var(--gold) !important;
+  color: var(--gold-bright) !important;
+  text-shadow: 0 0 12px rgba(201,168,76,.4) !important;
+}
+
+/* Scan animation on focus wrapper */
+.field { position: relative }
+.field::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0;
+  width: 0; height: 1px;
+  background: var(--gold-bright);
+  transition: width .4s cubic-bezier(.4,0,.2,1);
+  pointer-events: none;
+}
+.field:focus-within::after { width: 100% }
+
+/* ── Custom Select Arrow ─────────────────────────── */
+.field select {
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23C9A84C' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 4px center !important;
+  padding-right: 22px !important;
+  cursor: pointer;
+}
+.field select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ── inp-group underline style ───────────────────── */
+.inp-group {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid rgba(201,168,76,.25);
+  transition: border-color .2s;
+}
+.inp-group:focus-within { border-bottom-color: var(--gold) }
+.inp-group input {
+  flex: 1; background: transparent !important;
+  border: none !important; border-bottom: none !important;
+  padding: 6px 2px !important; color: var(--text); font-size: 12px;
+}
+.inp-group input:focus { outline: none; color: var(--gold-bright); text-shadow: 0 0 10px rgba(201,168,76,.3) }
+.unit-badge {
+  font-size: 9px; color: var(--gold-dim); padding: 0 4px;
+  display: flex; align-items: center; font-family: var(--font-mono);
+  letter-spacing: .04em;
+}
+
+/* ── Alert / Warning — CSS Triangle ─────────────── */
+.alert.warn, .alert.danger {
+  padding-left: 14px;
+}
+.alert.warn::before, .alert.danger::before {
+  content: '';
+  display: inline-block; width: 0; height: 0; flex-shrink: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+}
+.alert.warn::before   { border-bottom: 10px solid var(--orange) }
+.alert.danger::before { border-bottom: 10px solid var(--red) }
+.alert { font-family: var(--font-mono); font-size: 10.5px }
+
+/* ── Card Title ──────────────────────────────────── */
+.card-title {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .14em;
+  color: var(--gold); text-transform: uppercase;
+  margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--gold3);
+  font-family: var(--font-body);
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title::before {
+  content: '';
+  width: 2px; height: 12px;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold-dim));
+  border-radius: 1px; flex-shrink: 0;
+}
+.page-title {
+  font-size: 16px; font-weight: 600; color: var(--gold);
+  margin-bottom: 4px; font-family: var(--font-head);
+  letter-spacing: .06em;
+}
+.page-sub { font-size: 11px; color: var(--dim); margin-bottom: 18px; line-height: 1.6 }
+
+/* ── bgoption default (non-LED, non-btype) ───────── */
+.btn-group { display: flex; gap: 4px; flex-wrap: wrap }
+.bgoption:not(.btype):not(.led-btn) {
+  padding: 5px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  background: rgba(255,255,255,.03);
+  font-size: 10px; color: var(--dim);
+  cursor: pointer; transition: all .15s;
+  font-family: var(--font-body);
+}
+.bgoption:not(.btype):not(.led-btn):hover { border-color: rgba(201,168,76,.3); color: var(--text) }
+.bgoption:not(.btype):not(.led-btn).active {
+  border-color: var(--gold);
+  background: var(--gold2);
+  color: var(--gold);
+}
+
+/* ── scope-card scope-hd h4 ─────────────────────── */
+.scope-hd h4 {
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: .06em; color: var(--text2);
+  text-transform: uppercase;
+}
+
+/* ── Tab icon dots ───────────────────────────────── */
+.tab-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: currentColor; opacity: .5; flex-shrink: 0;
+}
+.tab.act .tab-dot { opacity: 1; background: var(--gold-bright) }
+
 </style>
 </head>
 <body>
@@ -607,8 +930,8 @@ button { cursor: pointer }
   </div>
   <div class="tb-right">
     <div class="tb-clock" id="tb-clock">--:--:--</div>
-    <div class="tb-icon-btn" title="알림">🔔</div>
-    <div class="tb-icon-btn" title="설정">⚙️</div>
+    <div class="tb-icon-btn" title="알림"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+    <div class="tb-icon-btn" title="설정"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
     <div class="tb-user">
       <div class="tb-avatar">EC</div>
       <div class="tb-uname">대표</div>
@@ -616,13 +939,13 @@ button { cursor: pointer }
   </div>
 </div>
 <div id="tabs">
-  <button class="tab act" data-v="estimate">📊 견적 마법사</button>
-  <button class="tab" data-v="projects">📁 프로젝트</button>
-  <button class="tab" data-v="presets">⭐ 프리셋</button>
-  <button class="tab" data-v="reports">📄 보고서</button>
-  <button class="tab" data-v="completion">✅ 완료보고</button>
-  <button class="tab" data-v="approval">🔐 승인함 <span class="tbadge" id="approval-badge">0</span></button>
-  <button class="tab" data-v="dbmgr">⚙️ DB관리</button>
+  <button class="tab act" data-v="estimate">견적 마법사</button>
+  <button class="tab" data-v="projects">프로젝트</button>
+  <button class="tab" data-v="presets">프리셋</button>
+  <button class="tab" data-v="reports">보고서</button>
+  <button class="tab" data-v="completion">완료보고</button>
+  <button class="tab" data-v="approval">승인함 <span class="tbadge" id="approval-badge">0</span></button>
+  <button class="tab" data-v="dbmgr">DB관리</button>
   <div class="tab-slider" id="tab-slider"></div>
 </div>
 <div id="main">
@@ -631,61 +954,61 @@ button { cursor: pointer }
 <div class="view act" id="view-estimate">
 <div id="stepbar">
   <div class="step-item">
-    <div class="step-dot active" id="sd0" onclick="goStep(0)">1</div>
+    <div class="step-dot active" id="sd0" onclick="goStep(0)"><span>1</span></div>
     <span class="step-label active" id="sl0">건물 기본</span>
     <div class="step-line" id="sline0"></div>
   </div>
   <div class="step-item">
-    <div class="step-dot" id="sd1" onclick="goStep(1)">2</div>
+    <div class="step-dot" id="sd1" onclick="goStep(1)"><span>2</span></div>
     <span class="step-label" id="sl1">공간 실측</span>
     <div class="step-line" id="sline1"></div>
   </div>
   <div class="step-item">
-    <div class="step-dot" id="sd2" onclick="goStep(2)">3</div>
+    <div class="step-dot" id="sd2" onclick="goStep(2)"><span>3</span></div>
     <span class="step-label" id="sl2">기존 상태</span>
     <div class="step-line" id="sline2"></div>
   </div>
   <div class="step-item">
-    <div class="step-dot" id="sd3" onclick="goStep(3)">4</div>
+    <div class="step-dot" id="sd3" onclick="goStep(3)"><span>4</span></div>
     <span class="step-label" id="sl3">공사 범위</span>
     <div class="step-line" id="sline3"></div>
   </div>
   <div class="step-item">
-    <div class="step-dot" id="sd4" onclick="goStep(4)">5</div>
+    <div class="step-dot" id="sd4" onclick="goStep(4)"><span>5</span></div>
     <span class="step-label" id="sl4">자재 등급</span>
     <div class="step-line" id="sline4"></div>
   </div>
   <div class="step-item">
-    <div class="step-dot" id="sd5" onclick="goStep(5)">6</div>
+    <div class="step-dot" id="sd5" onclick="goStep(5)"><span>6</span></div>
     <span class="step-label" id="sl5">일정</span>
   </div>
 </div>
 
 <div id="main">
 
-<!-- ── 사이드바 요약 ── -->
+<!-- ── 사이드바 HUD ── -->
 <div id="sidebar">
   <div class="sb-section">
-    <div class="sb-title">건물 정보</div>
-    <div class="sb-row"><span class="lbl">유형</span><span class="val" id="sb-btype">—</span></div>
-    <div class="sb-row"><span class="lbl">연식</span><span class="val" id="sb-age">—</span></div>
-    <div class="sb-row"><span class="lbl">층수</span><span class="val" id="sb-floor">—</span></div>
-    <div class="sb-row"><span class="lbl">접근성</span><span class="val" id="sb-access">—</span></div>
+    <div class="sb-title">STRUCTURE</div>
+    <div class="sb-row"><span class="lbl">유형</span><span class="dots"></span><span class="val" id="sb-btype">APT</span></div>
+    <div class="sb-row"><span class="lbl">연식</span><span class="dots"></span><span class="val" id="sb-age">—</span></div>
+    <div class="sb-row"><span class="lbl">층수</span><span class="dots"></span><span class="val" id="sb-floor">—</span></div>
+    <div class="sb-row"><span class="lbl">접근성</span><span class="dots"></span><span class="val" id="sb-access">—</span></div>
   </div>
   <div class="sb-section">
-    <div class="sb-title">면적 요약</div>
-    <div class="sb-row"><span class="lbl">총 바닥면적</span><span class="val gold" id="sb-fa">0 ㎡</span></div>
-    <div class="sb-row"><span class="lbl">총 벽면적</span><span class="val" id="sb-wa">0 ㎡</span></div>
-    <div class="sb-row"><span class="lbl">총 천장면적</span><span class="val" id="sb-ca">0 ㎡</span></div>
-    <div class="sb-row"><span class="lbl">총 둘레</span><span class="val" id="sb-pr">0 m</span></div>
+    <div class="sb-title">AREA</div>
+    <div class="sb-row"><span class="lbl">바닥</span><span class="dots"></span><span class="val gold" id="sb-fa">0.00 ㎡</span></div>
+    <div class="sb-row"><span class="lbl">벽면</span><span class="dots"></span><span class="val" id="sb-wa">0.00 ㎡</span></div>
+    <div class="sb-row"><span class="lbl">천장</span><span class="dots"></span><span class="val" id="sb-ca">0.00 ㎡</span></div>
+    <div class="sb-row"><span class="lbl">둘레</span><span class="dots"></span><span class="val" id="sb-pr">0.0 m</span></div>
   </div>
   <div class="sb-section">
-    <div class="sb-title">견적 요약</div>
-    <div class="sb-row"><span class="lbl">공급가</span><span class="val" id="sb-sup">₩0</span></div>
-    <div class="sb-row"><span class="lbl">도급합계</span><span class="val" id="sb-con">₩0</span></div>
-    <div class="sb-row"><span class="lbl">VAT포함 합계</span><span class="val gold" id="sb-fin">₩0</span></div>
-    <div class="sb-row"><span class="lbl">㎡당 단가</span><span class="val" id="sb-sqm">—</span></div>
-    <div class="sb-row"><span class="lbl">평당 단가</span><span class="val" id="sb-pyg">—</span></div>
+    <div class="sb-title">ESTIMATE</div>
+    <div class="sb-row"><span class="lbl">공급가</span><span class="dots"></span><span class="val" id="sb-sup">₩0</span></div>
+    <div class="sb-row"><span class="lbl">도급</span><span class="dots"></span><span class="val" id="sb-con">₩0</span></div>
+    <div class="sb-row"><span class="lbl">최종</span><span class="dots"></span><span class="val gold" id="sb-fin">₩0</span></div>
+    <div class="sb-row"><span class="lbl">㎡단가</span><span class="dots"></span><span class="val" id="sb-sqm">—</span></div>
+    <div class="sb-row"><span class="lbl">평단가</span><span class="dots"></span><span class="val" id="sb-pyg">—</span></div>
   </div>
   <div id="sb-warnings"></div>
 </div>
@@ -700,13 +1023,13 @@ button { cursor: pointer }
 
   <!-- 도면 업로드 카드 -->
   <div class="card" style="border:1.5px dashed var(--accent);background:rgba(99,179,237,.04)">
-    <div class="card-title" style="color:var(--accent)">📐 도면 업로드 (선택) — 공간 자동 입력</div>
+    <div class="card-title" style="color:var(--accent)">DRAWING — 도면 업로드 (선택)</div>
     <div style="font-size:10px;color:var(--dim);margin-bottom:12px">DXF 또는 PDF 도면을 업로드하면 공간·면적이 STEP 2에 자동 입력됩니다. 파서 서버가 실행 중이어야 합니다.</div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <label style="cursor:pointer">
         <input type="file" id="drawingFile" accept=".dxf,.dwg,.pdf" style="display:none" onchange="uploadDrawing(this)">
         <div class="btn" style="font-size:11px;padding:8px 16px;background:var(--accent);color:#111;border-radius:6px;font-weight:700">
-          📂 도면 선택 (.dxf / .dwg / .pdf)
+          도면 선택 (.dxf / .dwg / .pdf)
         </div>
       </label>
       <div id="drawingStatus" style="font-size:10px;color:var(--dim)">파일 미선택</div>
@@ -716,14 +1039,14 @@ button { cursor: pointer }
       <div style="font-size:10px;color:var(--accent);font-weight:700;margin-bottom:6px">파싱 결과 미리보기</div>
       <div id="drawingPreviewList" style="font-size:10px;color:var(--text);line-height:1.8"></div>
       <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn" style="font-size:10px;padding:6px 14px;background:var(--green);color:#111;font-weight:700" onclick="applyDrawingSpaces()">✅ 공간 자동 입력 적용</button>
+        <button class="btn" style="font-size:10px;padding:6px 14px;background:var(--green);color:#111;font-weight:700" onclick="applyDrawingSpaces()">적용</button>
         <button class="btn" style="font-size:10px;padding:6px 12px" onclick="cancelDrawing()">취소</button>
       </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">📋 프로젝트 기본</div>
+    <div class="card-title">PROJECT — 기본 정보</div>
     <div class="grid g2">
       <div class="field"><label>현장명 <span class="req">*</span></label><input id="projName" type="text" placeholder="예: 강남구 역삼동 OO아파트 101호"></div>
       <div class="field"><label>고객명</label><input id="custName" type="text" placeholder="고객 이름"></div>
@@ -733,16 +1056,34 @@ button { cursor: pointer }
   </div>
 
   <div class="card">
-    <div class="card-title">🏢 건물 유형</div>
+    <div class="card-title">BUILDING — 건물 유형</div>
     <div class="field" style="margin-bottom:14px">
       <label>건물 유형 <span class="req">*</span></label>
-      <div class="btn-group" style="margin-top:6px">
-        <button class="bgoption active" onclick="setBuildType('apartment',this)">아파트</button>
-        <button class="bgoption" onclick="setBuildType('villa',this)">빌라·연립</button>
-        <button class="bgoption" onclick="setBuildType('officetel',this)">오피스텔</button>
-        <button class="bgoption" onclick="setBuildType('house1',this)">단독주택 단층</button>
-        <button class="bgoption" onclick="setBuildType('house2',this)">단독주택 2층</button>
-        <button class="bgoption" onclick="setBuildType('commercial',this)">상가·사무실</button>
+      <div class="btn-group btype-grid" style="margin-top:6px">
+        <button class="bgoption btype active" onclick="setBuildType('apartment',this)">
+          <div class="btype-icon"><svg width="28" height="32" viewBox="0 0 28 32" fill="none"><rect x="4" y="2" width="20" height="30" stroke="currentColor" stroke-width="1.2"/><rect x="7" y="5" width="4" height="4" fill="currentColor" opacity=".4"/><rect x="13" y="5" width="4" height="4" fill="currentColor" opacity=".4"/><rect x="17" y="5" width="4" height="4" fill="currentColor" opacity=".4"/><rect x="7" y="11" width="4" height="4" fill="currentColor" opacity=".4"/><rect x="13" y="11" width="4" height="4" fill="currentColor" opacity=".4"/><rect x="17" y="11" width="4" height="4" fill="currentColor" opacity=".4"/><rect x="7" y="17" width="4" height="4" fill="currentColor" opacity=".4"/><rect x="13" y="17" width="4" height="4" fill="currentColor" opacity=".4"/><rect x="10" y="22" width="8" height="10" stroke="currentColor" stroke-width="1.2"/></svg></div>
+          <div class="btype-label">아파트</div>
+        </button>
+        <button class="bgoption btype" onclick="setBuildType('villa',this)">
+          <div class="btype-icon"><svg width="36" height="28" viewBox="0 0 36 28" fill="none"><rect x="2" y="8" width="32" height="20" stroke="currentColor" stroke-width="1.2"/><rect x="6" y="12" width="5" height="5" fill="currentColor" opacity=".4"/><rect x="15" y="12" width="5" height="5" fill="currentColor" opacity=".4"/><rect x="25" y="12" width="5" height="5" fill="currentColor" opacity=".4"/><rect x="14" y="18" width="8" height="10" stroke="currentColor" stroke-width="1.2"/><path d="M0 8h36" stroke="currentColor" stroke-width="1.2"/></svg></div>
+          <div class="btype-label">빌라·연립</div>
+        </button>
+        <button class="bgoption btype" onclick="setBuildType('officetel',this)">
+          <div class="btype-icon"><svg width="20" height="36" viewBox="0 0 20 36" fill="none"><rect x="2" y="2" width="16" height="34" stroke="currentColor" stroke-width="1.2"/><rect x="5" y="5" width="4" height="3" fill="currentColor" opacity=".35"/><rect x="11" y="5" width="4" height="3" fill="currentColor" opacity=".35"/><rect x="5" y="10" width="4" height="3" fill="currentColor" opacity=".35"/><rect x="11" y="10" width="4" height="3" fill="currentColor" opacity=".35"/><rect x="5" y="15" width="4" height="3" fill="currentColor" opacity=".35"/><rect x="11" y="15" width="4" height="3" fill="currentColor" opacity=".35"/><rect x="5" y="20" width="4" height="3" fill="currentColor" opacity=".35"/><rect x="7" y="27" width="6" height="9" stroke="currentColor" stroke-width="1.2"/></svg></div>
+          <div class="btype-label">오피스텔</div>
+        </button>
+        <button class="bgoption btype" onclick="setBuildType('house1',this)">
+          <div class="btype-icon"><svg width="36" height="28" viewBox="0 0 36 28" fill="none"><polygon points="18,2 34,14 2,14" stroke="currentColor" stroke-width="1.2" fill="currentColor" fill-opacity=".1"/><rect x="4" y="14" width="28" height="14" stroke="currentColor" stroke-width="1.2"/><rect x="14" y="18" width="8" height="10" stroke="currentColor" stroke-width="1.2"/><rect x="6" y="17" width="5" height="5" fill="currentColor" opacity=".4"/><rect x="25" y="17" width="5" height="5" fill="currentColor" opacity=".4"/></svg></div>
+          <div class="btype-label">단독 단층</div>
+        </button>
+        <button class="bgoption btype" onclick="setBuildType('house2',this)">
+          <div class="btype-icon"><svg width="36" height="32" viewBox="0 0 36 32" fill="none"><polygon points="18,2 34,12 2,12" stroke="currentColor" stroke-width="1.2" fill="currentColor" fill-opacity=".1"/><rect x="4" y="12" width="28" height="20" stroke="currentColor" stroke-width="1.2"/><rect x="14" y="22" width="8" height="10" stroke="currentColor" stroke-width="1.2"/><rect x="6" y="14" width="5" height="5" fill="currentColor" opacity=".4"/><rect x="25" y="14" width="5" height="5" fill="currentColor" opacity=".4"/><line x1="4" y1="20" x2="32" y2="20" stroke="currentColor" stroke-width=".8" stroke-dasharray="2,2"/></svg></div>
+          <div class="btype-label">단독 2층</div>
+        </button>
+        <button class="bgoption btype" onclick="setBuildType('commercial',this)">
+          <div class="btype-icon"><svg width="40" height="26" viewBox="0 0 40 26" fill="none"><rect x="2" y="4" width="36" height="22" stroke="currentColor" stroke-width="1.2"/><rect x="5" y="8" width="8" height="8" fill="currentColor" opacity=".35"/><rect x="16" y="8" width="8" height="8" fill="currentColor" opacity=".35"/><rect x="27" y="8" width="8" height="8" fill="currentColor" opacity=".35"/><rect x="16" y="17" width="8" height="9" stroke="currentColor" stroke-width="1.2"/><path d="M0 4h40" stroke="currentColor" stroke-width="1.5"/><path d="M0 4 Q20 0 40 4" stroke="currentColor" stroke-width="1" fill="none"/></svg></div>
+          <div class="btype-label">상가·사무실</div>
+        </button>
       </div>
     </div>
     <div class="grid g3">
@@ -770,7 +1111,7 @@ button { cursor: pointer }
   </div>
 
   <div class="card">
-    <div class="card-title">🚛 현장 접근성 <span style="font-size:10px;color:var(--dim);font-weight:400">(단가에 직접 반영)</span></div>
+    <div class="card-title">ACCESS — 현장 접근성 <span style="font-size:10px;color:var(--dim);font-weight:400">(단가에 직접 반영)</span></div>
     <div class="grid g2" style="margin-bottom:14px">
       <div class="field">
         <label>엘리베이터</label>
@@ -839,7 +1180,7 @@ button { cursor: pointer }
   <div class="page-sub">각 공간의 정확한 치수를 입력하세요. 벽면적·창호공제·둘레가 자동 계산됩니다.</div>
 
   <div class="card">
-    <div class="card-title">➕ 공간 추가</div>
+    <div class="card-title">+ 공간 추가</div>
     <div class="grid g4" style="margin-bottom:12px">
       <div class="field">
         <label>공간명 <span class="req">*</span></label>
@@ -906,9 +1247,9 @@ button { cursor: pointer }
       <div class="field">
         <label>특이사항</label>
         <div class="btn-group" style="margin-top:4px">
-          <button class="bgoption" id="spWetBtn" onclick="toggleSpOpt('wet',this)">💧 습식</button>
-          <button class="bgoption" id="spRoofBtn" onclick="toggleSpOpt('roof',this)">🏠 경사천장</button>
-          <button class="bgoption" id="spFloorBtn" onclick="toggleSpOpt('floor2',this)">⬆️ 2층</button>
+          <button class="bgoption" id="spWetBtn" onclick="toggleSpOpt('wet',this)">습식</button>
+          <button class="bgoption" id="spRoofBtn" onclick="toggleSpOpt('roof',this)">경사천장</button>
+          <button class="bgoption" id="spFloorBtn" onclick="toggleSpOpt('floor2',this)">2층</button>
         </div>
       </div>
     </div>
@@ -933,7 +1274,7 @@ button { cursor: pointer }
   </div>
 
   <div class="card" id="totalMeasCard" style="border-color:var(--border)">
-    <div class="card-title">📐 면적 합산 요약</div>
+    <div class="card-title"> 면적 합산 요약</div>
     <div class="grid g4">
       <div><div class="smv">총 바닥면적<span id="tot-fa" style="color:var(--gold);font-size:16px">0 ㎡</span></div></div>
       <div><div class="smv">총 순 벽면적<span id="tot-wa" style="color:var(--green)">0 ㎡</span></div></div>
@@ -955,7 +1296,7 @@ button { cursor: pointer }
   <div class="page-sub">철거 전 확인한 기존 상태를 입력합니다. 공사 범위와 리스크가 자동 반영됩니다.</div>
 
   <div class="card">
-    <div class="card-title">🪵 바닥·벽·천장 기존 상태</div>
+    <div class="card-title">SURFACE — 바닥·벽·천장</div>
     <div class="grid g3">
       <div class="field">
         <label>기존 바닥재 종류</label>
@@ -980,9 +1321,9 @@ button { cursor: pointer }
       <div class="field">
         <label>바닥 수평 상태</label>
         <div class="btn-group" style="margin-top:4px">
-          <button class="bgoption active" onclick="setOpt('floorLevel2','good',this)">양호</button>
-          <button class="bgoption" onclick="setOpt('floorLevel2','fair',this)">보통</button>
-          <button class="bgoption" onclick="setOpt('floorLevel2','poor',this)">불량</button>
+          <button class="bgoption active" onclick="setOpt('floorLevel2','good',this)">GOOD</button>
+          <button class="bgoption led-btn led-fair" onclick="setOpt('floorLevel2','fair',this)">FAIR</button>
+          <button class="bgoption led-btn led-poor" onclick="setOpt('floorLevel2','poor',this)">POOR</button>
         </div>
       </div>
       <div class="field">
@@ -997,7 +1338,7 @@ button { cursor: pointer }
         <label>결로·곰팡이 여부</label>
         <div class="btn-group" style="margin-top:4px">
           <button class="bgoption active" onclick="setOpt('hasCondensation',false,this)">없음</button>
-          <button class="bgoption" onclick="setOpt('hasCondensation',true,this)">있음 ⚠️</button>
+          <button class="bgoption" onclick="setOpt('hasCondensation',true,this)">있음 [!]</button>
         </div>
       </div>
       <div class="field">
@@ -1012,14 +1353,14 @@ button { cursor: pointer }
   </div>
 
   <div class="card">
-    <div class="card-title">🔧 설비·배관 상태 <span style="font-size:10px;color:var(--orange);font-weight:400">※ 가장 중요한 체크 항목</span></div>
+    <div class="card-title">SYSTEM — 설비·배관 <span style="font-size:10px;color:var(--orange);font-weight:400">※ 가장 중요한 체크 항목</span></div>
     <div class="grid g3">
       <div class="field">
         <label>급수관 재질 <span class="req">*</span></label>
         <select id="pipeMaterial" onchange="updateExistWarnings()">
           <option value="pb">PB관 (양호)</option>
           <option value="copper">동관 (양호)</option>
-          <option value="galvanized">갈바나이즈관 ⚠️ 교체 필수</option>
+          <option value="galvanized">갈바나이즈관 [교체 필수]</option>
           <option value="unknown">확인 불가</option>
         </select>
         <div class="hint" id="pipeHint"></div>
@@ -1037,38 +1378,38 @@ button { cursor: pointer }
       <div class="field">
         <label>배수 경사·상태</label>
         <div class="btn-group" style="margin-top:4px">
-          <button class="bgoption active" onclick="setOpt('drainCondition','good',this)">양호</button>
-          <button class="bgoption" onclick="setOpt('drainCondition','fair',this)">보통</button>
-          <button class="bgoption" onclick="setOpt('drainCondition','poor',this)">불량 ⚠️</button>
+          <button class="bgoption led-btn led-good active" onclick="setOpt('drainCondition','good',this)">GOOD</button>
+          <button class="bgoption led-btn led-fair" onclick="setOpt('drainCondition','fair',this)">FAIR</button>
+          <button class="bgoption" onclick="setOpt('drainCondition','poor',this)">불량 [!]</button>
         </div>
       </div>
       <div class="field">
         <label>기존 방수 하자 (욕실)</label>
         <div class="btn-group" style="margin-top:4px">
           <button class="bgoption active" onclick="setOpt('hasLeak',false,this)">없음</button>
-          <button class="bgoption" onclick="setOpt('hasLeak',true,this)">있음 ⚠️</button>
+          <button class="bgoption" onclick="setOpt('hasLeak',true,this)">있음 [!]</button>
         </div>
       </div>
       <div class="field">
         <label>전기 배선 상태</label>
         <div class="btn-group" style="margin-top:4px">
-          <button class="bgoption active" onclick="setOpt('wireCondition','good',this)">양호</button>
-          <button class="bgoption" onclick="setOpt('wireCondition','fair',this)">보통</button>
-          <button class="bgoption" onclick="setOpt('wireCondition','poor',this)">불량</button>
+          <button class="bgoption led-btn led-good active" onclick="setOpt('wireCondition','good',this)">GOOD</button>
+          <button class="bgoption led-btn led-fair" onclick="setOpt('wireCondition','fair',this)">FAIR</button>
+          <button class="bgoption led-btn led-poor" onclick="setOpt('wireCondition','poor',this)">POOR</button>
         </div>
       </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">⚠️ 위험 요소</div>
+    <div class="card-title">[!] 위험 요소</div>
     <div class="grid g3">
       <div class="field">
         <label>석면 의심 <span style="font-size:9px;color:var(--dim)">(1990년 이전 건물)</span></label>
         <div class="btn-group" style="margin-top:4px">
           <button class="bgoption active" onclick="setOpt('hasAsbestos',false,this)">없음</button>
-          <button class="bgoption" onclick="setOpt('hasAsbestos','suspect',this)">의심 ⚠️</button>
-          <button class="bgoption" onclick="setOpt('hasAsbestos',true,this)">확인 🚨</button>
+          <button class="bgoption" onclick="setOpt('hasAsbestos','suspect',this)">의심 [!]</button>
+          <button class="bgoption" onclick="setOpt('hasAsbestos',true,this)">확인 </button>
         </div>
       </div>
       <div class="field">
@@ -1076,7 +1417,7 @@ button { cursor: pointer }
         <div class="btn-group" style="margin-top:4px">
           <button class="bgoption active" onclick="setOpt('hasCrack',false,this)">없음</button>
           <button class="bgoption" onclick="setOpt('hasCrack','minor',this)">미세 균열</button>
-          <button class="bgoption" onclick="setOpt('hasCrack','major',this)">구조 균열 🚨</button>
+          <button class="bgoption" onclick="setOpt('hasCrack','major',this)">구조 균열 </button>
         </div>
       </div>
       <div class="field">
@@ -1099,7 +1440,7 @@ button { cursor: pointer }
 
   <!-- 주방 -->
   <div class="scope-card">
-    <div class="scope-hd"><h4>🍳 주방</h4></div>
+    <div class="scope-hd"><h4>주방</h4></div>
     <div class="scope-body">
       <div class="scope-level" style="margin-bottom:10px">
         <div class="slevel active" onclick="setScopeLevel('kitchen','full',this)">전체 리모델링</div>
@@ -1125,15 +1466,15 @@ button { cursor: pointer }
 
   <!-- 거실·침실 -->
   <div class="scope-card">
-    <div class="scope-hd"><h4>🛋️ 거실·침실 공통</h4></div>
+    <div class="scope-hd"><h4>거실·침실 공통</h4></div>
     <div class="scope-body">
       <div class="scope-opts" id="livingOpts">
         <div class="sopt"><input type="checkbox" id="lv-floor" checked onchange="onFloorTypeChange()"><label for="lv-floor">바닥재 교체</label>
           <select id="lv-floor-type" onchange="onFloorTypeChange()">
             <option value="hardwood" selected>강마루</option>
             <option value="lvt">LVT</option>
-            <option value="herringbone">헤링본 강마루 ✦</option>
-            <option value="wood">원목마루 ✦</option>
+            <option value="herringbone">헤링본 강마루 </option>
+            <option value="wood">원목마루 </option>
             <option value="vinyl">장판</option>
           </select>
         </div>
@@ -1178,7 +1519,7 @@ button { cursor: pointer }
 
   <!-- 창호·도어 -->
   <div class="scope-card">
-    <div class="scope-hd"><h4>🪟 창호·도어</h4></div>
+    <div class="scope-hd"><h4> 창호·도어</h4></div>
     <div class="scope-body">
       <div class="scope-opts">
         <div class="sopt"><input type="checkbox" id="win-replace" onchange="toggleWinOpts();recalc()"><label for="win-replace">창호 교체</label></div>
@@ -1198,7 +1539,7 @@ button { cursor: pointer }
 
   <!-- 전기·설비 -->
   <div class="scope-card">
-    <div class="scope-hd"><h4>⚡ 전기·설비</h4></div>
+    <div class="scope-hd"><h4> 전기·설비</h4></div>
     <div class="scope-body">
       <div class="scope-opts">
         <div class="sopt"><input type="checkbox" id="ele-panel" onchange="recalc()"><label for="ele-panel">분전반 교체</label></div>
@@ -1215,7 +1556,7 @@ button { cursor: pointer }
 
   <!-- 발코니 -->
   <div class="scope-card">
-    <div class="scope-hd"><h4>🌿 발코니</h4></div>
+    <div class="scope-hd"><h4> 발코니</h4></div>
     <div class="scope-body">
       <div class="scope-opts">
         <div class="sopt"><input type="checkbox" id="bal-expand" onchange="recalc()"><label for="bal-expand">발코니 확장</label></div>
@@ -1230,7 +1571,7 @@ button { cursor: pointer }
 
   <!-- 특수 공정 (온톨로지 R4·R5·R16·R17·R18) -->
   <div class="scope-card">
-    <div class="scope-hd"><h4>⚗️ 특수 공정</h4></div>
+    <div class="scope-hd"><h4> 특수 공정</h4></div>
     <div class="scope-body">
       <div class="scope-opts">
         <div class="sopt"><input type="checkbox" id="sp-epoxy" onchange="recalc()"><label for="sp-epoxy">에폭시 바닥 <span style="font-size:9px;color:var(--accent)">[R16: 셀프레벨링+프라이머 자동]</span></label></div>
@@ -1245,7 +1586,7 @@ button { cursor: pointer }
   </div>
 
   <div class="scope-card">
-    <div class="scope-hd"><h4>🏪 상업공간</h4></div>
+    <div class="scope-hd"><h4>상업공간</h4></div>
     <div class="scope-body">
       <div class="scope-opts">
         <div class="sopt"><input type="checkbox" id="com-sign" onchange="recalc()"><label for="com-sign">간판 설치 (LED)</label></div>
@@ -1262,7 +1603,7 @@ button { cursor: pointer }
   </div>
 
   <div class="scope-card">
-    <div class="scope-hd"><h4>🏗️ 건축·구조</h4></div>
+    <div class="scope-hd"><h4>건축·구조</h4></div>
     <div class="scope-body">
       <div class="scope-opts">
         <div class="sopt"><input type="checkbox" id="str-mas-cb" onchange="recalc()"><label for="str-mas-cb">조적(시멘트벽돌)</label></div>
@@ -1328,7 +1669,7 @@ button { cursor: pointer }
 <!-- ═══ STEP 6: 견적 결과 & 일정 ═══ -->
 <div class="step-page" id="page5">
   <div class="page-title">STEP 6 — 견적 결과 확인 & 일정</div>
-  <div class="page-sub">⚡ <b>견적 생성</b> 버튼을 클릭하면 최종 견적이 계산됩니다. 공간을 추가할수록 실시간으로 변동됩니다.</div>
+  <div class="page-sub"> <b>견적 생성</b> 버튼을 클릭하면 최종 견적이 계산됩니다. 공간을 추가할수록 실시간으로 변동됩니다.</div>
 
   <!-- KPI 카드 4개 (실시간 업데이트) -->
   <div class="kgrid" style="margin-bottom:14px">
@@ -1389,15 +1730,15 @@ button { cursor: pointer }
       </table>
     </div>
     <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-      <button class="btn" onclick="printReport('customer')">📄 고객용 견적서</button>
-      <button class="btn ghost" onclick="printReport('internal')">🔒 내부 원가 보고서</button>
-      <button class="btn ghost" onclick="saveProject()">💾 프로젝트 저장</button>
+      <button class="btn" onclick="printReport('customer')"> 고객용 견적서</button>
+      <button class="btn ghost" onclick="printReport('internal')"> 내부 원가 보고서</button>
+      <button class="btn ghost" onclick="saveProject()"> 프로젝트 저장</button>
     </div>
   </div>
 
   <!-- 일정 -->
   <div class="card">
-    <div class="chd">📅 계약·공사 일정</div>
+    <div class="chd"> 계약·공사 일정</div>
     <div class="grid g3">
       <div class="field"><label>계약 예정일</label><input id="contractDate" type="date"></div>
       <div class="field"><label>착공 예정일 <span class="req">*</span></label><input id="startDate" type="date" oninput="updateSchedule()"></div>
@@ -1407,7 +1748,7 @@ button { cursor: pointer }
   </div>
 
   <div class="card">
-    <div class="chd">💰 계약 조건</div>
+    <div class="chd"> 계약 조건</div>
     <div class="grid g3">
       <div class="field"><label>계약금 비율</label>
         <div class="inp-group"><input id="depositRate" type="number" value="30" min="10" max="50" oninput="updatePaySchedule()"><div class="unit-badge">%</div></div>
@@ -1423,7 +1764,7 @@ button { cursor: pointer }
   </div>
 
   <div class="card" style="border-color:var(--border)">
-    <div class="chd">📋 자재 발주 D-Day</div>
+    <div class="chd"> 자재 발주 D-Day</div>
     <div id="leadTimeSummary">착공일을 입력하면 자동 계산됩니다.</div>
   </div>
 </div>
@@ -1434,7 +1775,7 @@ button { cursor: pointer }
     <div class="btns">
       <button class="nbtn prev" id="prevBtn" onclick="prevStep()" style="display:none">← 이전</button>
       <button class="nbtn next" id="nextBtn" onclick="nextStep()">다음 →</button>
-      <button class="nbtn go" id="genBtn" onclick="genAll()" style="display:none">⚡ 견적 생성</button>
+      <button class="nbtn go" id="genBtn" onclick="genAll()" style="display:none"> 견적 생성</button>
     </div>
   </div>
 </div>
@@ -1442,10 +1783,10 @@ button { cursor: pointer }
 <!-- 프로젝트 탭 -->
 <div class="view" id="view-projects">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <h2 style="font-size:16px;font-weight:800;color:var(--gold)">📁 저장된 프로젝트</h2>
+    <h2 style="font-size:16px;font-weight:800;color:var(--gold)"> 저장된 프로젝트</h2>
     <div class="btns">
       <button class="btn" onclick="newProject()">+ 새 프로젝트</button>
-      <button class="btn ghost" onclick="document.getElementById('projImport').click()">📤 JSON 가져오기</button>
+      <button class="btn ghost" onclick="document.getElementById('projImport').click()"> JSON 가져오기</button>
       <input type="file" id="projImport" accept=".json" style="display:none" onchange="doImportProject(this)">
     </div>
   </div>
@@ -1455,7 +1796,7 @@ button { cursor: pointer }
 <!-- 프리셋 탭 -->
 <div class="view" id="view-presets">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <h2 style="font-size:16px;font-weight:800;color:var(--gold)">⭐ 프리셋 목록</h2>
+    <h2 style="font-size:16px;font-weight:800;color:var(--gold)">프리셋 목록</h2>
     <button class="btn" onclick="showModal('presetModal')">+ 현재 입력값으로 저장</button>
   </div>
   <div id="presetList" class="item-list"></div>
@@ -1464,18 +1805,18 @@ button { cursor: pointer }
 <!-- 보고서 탭 -->
 <div class="view" id="view-reports">
   <div class="grid g2" style="margin-bottom:14px">
-    <div class="card" style="cursor:pointer;border-color:var(--border)" onclick="printReport('customer')"><div style="font-size:24px;margin-bottom:8px">📄</div><div style="font-size:13px;font-weight:700;color:var(--gold)">고객용 견적서</div><div style="font-size:10px;color:var(--dim);margin-top:4px">공급가만 표시 · 서명란 포함</div></div>
-    <div class="card" style="cursor:pointer;border-color:var(--border)" onclick="printReport('internal')"><div style="font-size:24px;margin-bottom:8px">🔒</div><div style="font-size:13px;font-weight:700;color:var(--gold)">내부 원가 보고서</div><div style="font-size:10px;color:var(--dim);margin-top:4px">원가·마진·계수 전체 · 대표·소장 전용</div></div>
-    <div class="card" style="cursor:pointer;border-color:var(--border)" onclick="printReport('order')"><div style="font-size:24px;margin-bottom:8px">📦</div><div style="font-size:13px;font-weight:700;color:var(--gold)">자재 발주 보고서</div><div style="font-size:10px;color:var(--dim);margin-top:4px">자재별 D-day · 발주 마감일</div></div>
-    <div class="card" style="cursor:pointer;border-color:var(--border)" onclick="printReport('schedule')"><div style="font-size:24px;margin-bottom:8px">📅</div><div style="font-size:13px;font-weight:700;color:var(--gold)">공정표 보고서</div><div style="font-size:10px;color:var(--dim);margin-top:4px">간트차트 · 크리티컬패스</div></div>
+    <div class="card" style="cursor:pointer;border-color:var(--border)" onclick="printReport('customer')"><div style="font-size:24px;margin-bottom:8px"></div><div style="font-size:13px;font-weight:700;color:var(--gold)">고객용 견적서</div><div style="font-size:10px;color:var(--dim);margin-top:4px">공급가만 표시 · 서명란 포함</div></div>
+    <div class="card" style="cursor:pointer;border-color:var(--border)" onclick="printReport('internal')"><div style="font-size:24px;margin-bottom:8px"></div><div style="font-size:13px;font-weight:700;color:var(--gold)">내부 원가 보고서</div><div style="font-size:10px;color:var(--dim);margin-top:4px">원가·마진·계수 전체 · 대표·소장 전용</div></div>
+    <div class="card" style="cursor:pointer;border-color:var(--border)" onclick="printReport('order')"><div style="font-size:24px;margin-bottom:8px"></div><div style="font-size:13px;font-weight:700;color:var(--gold)">자재 발주 보고서</div><div style="font-size:10px;color:var(--dim);margin-top:4px">자재별 D-day · 발주 마감일</div></div>
+    <div class="card" style="cursor:pointer;border-color:var(--border)" onclick="printReport('schedule')"><div style="font-size:24px;margin-bottom:8px"></div><div style="font-size:13px;font-weight:700;color:var(--gold)">공정표 보고서</div><div style="font-size:10px;color:var(--dim);margin-top:4px">간트차트 · 크리티컬패스</div></div>
   </div>
   <div class="card" id="reportViewer" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div id="reportTitle" style="font-size:14px;font-weight:800;color:var(--gold)"></div>
       <div class="btns">
-        <button class="btn" onclick="window.print()">🖨️ 인쇄</button>
-        <button class="btn ghost" onclick="dlReport()">⬇️ HTML 저장</button>
-        <button class="btn ghost" onclick="document.getElementById('reportViewer').style.display='none'">✕ 닫기</button>
+        <button class="btn" onclick="window.print()"> 인쇄</button>
+        <button class="btn ghost" onclick="dlReport()">⬇ HTML 저장</button>
+        <button class="btn ghost" onclick="document.getElementById('reportViewer').style.display='none'"> 닫기</button>
       </div>
     </div>
     <div id="reportContent"></div>
@@ -1484,15 +1825,15 @@ button { cursor: pointer }
 
 <!-- 완료 보고서 탭 -->
 <div class="view" id="view-completion">
-  <h2 style="font-size:16px;font-weight:800;color:var(--gold);margin-bottom:14px">✅ 현장 완료 보고서</h2>
+  <h2 style="font-size:16px;font-weight:800;color:var(--gold);margin-bottom:14px"> 현장 완료 보고서</h2>
   <div class="card">
-    <div class="chd">📋 프로젝트 선택</div>
+    <div class="chd"> 프로젝트 선택</div>
     <div class="field"><label>완료 보고서 작성 대상</label><select id="cmpProjSel" onchange="loadCmpProj()"><option value="">-- 선택 --</option></select></div>
     <div id="cmpProjInfo" style="margin-top:8px;font-size:11px;color:var(--dim)"></div>
   </div>
   <div class="grid g2">
     <div class="card">
-      <div class="chd">📅 공사 일정 실적</div>
+      <div class="chd"> 공사 일정 실적</div>
       <div class="grid" style="gap:8px">
         <div class="field"><label>실제 착공일</label><input id="cmp-start" type="date"></div>
         <div class="field"><label>실제 준공일</label><input id="cmp-end" type="date" oninput="calcCmpDur()"></div>
@@ -1501,7 +1842,7 @@ button { cursor: pointer }
       </div>
     </div>
     <div class="card">
-      <div class="chd">💰 실제 원가</div>
+      <div class="chd"> 실제 원가</div>
       <div class="grid" style="gap:8px">
         <div class="field"><label>실제 자재비 (원)</label><input id="cmp-mat" type="number" placeholder="0" oninput="calcCmpMargin()"></div>
         <div class="field"><label>실제 노무비 (원)</label><input id="cmp-labor" type="number" placeholder="0" oninput="calcCmpMargin()"></div>
@@ -1512,7 +1853,7 @@ button { cursor: pointer }
     </div>
   </div>
   <div class="card" id="cmpAnalysis" style="display:none;border-color:var(--border)">
-    <div class="chd">📊 예상 vs 실제 오차 분석 (자동)</div>
+    <div class="chd"> 예상 vs 실제 오차 분석 (자동)</div>
     <div class="kgrid">
       <div class="kcard"><div class="kl">예상 공급가</div><div class="kv" id="ca-est" style="font-size:16px;color:var(--text)">—</div></div>
       <div class="kcard"><div class="kl">실제 총원가</div><div class="kv" id="ca-act" style="font-size:16px;color:var(--text)">—</div></div>
@@ -1522,7 +1863,7 @@ button { cursor: pointer }
     <div id="ca-status"></div>
   </div>
   <div class="card">
-    <div class="chd">📝 교훈·메모</div>
+    <div class="chd"> 교훈·메모</div>
     <div class="grid" style="gap:8px">
       <div class="field"><label>하자 내용</label><textarea id="cmp-defects" placeholder="발생한 하자 유형과 수리 내용..."></textarea></div>
       <div class="field"><label>원가 오차 원인</label><textarea id="cmp-varreason" placeholder="자재가 상승, 추가공사 등..."></textarea></div>
@@ -1531,18 +1872,18 @@ button { cursor: pointer }
     </div>
   </div>
   <div class="btns">
-    <button class="btn" onclick="saveCmpReport()">💾 완료 보고서 저장</button>
-    <button class="btn ghost" onclick="genDbUpdateReq()">⚡ DB 업데이트 요청서 생성</button>
-    <button class="btn ghost" onclick="exportCmpReport()">⬇️ JSON 저장</button>
+    <button class="btn" onclick="saveCmpReport()"> 완료 보고서 저장</button>
+    <button class="btn ghost" onclick="genDbUpdateReq()"> DB 업데이트 요청서 생성</button>
+    <button class="btn ghost" onclick="exportCmpReport()">⬇ JSON 저장</button>
   </div>
 </div>
 
 <!-- 승인함 탭 -->
 <div class="view" id="view-approval">
-  <h2 style="font-size:16px;font-weight:800;color:var(--gold);margin-bottom:4px">🔐 대표 승인함</h2>
+  <h2 style="font-size:16px;font-weight:800;color:var(--gold);margin-bottom:4px"> 대표 승인함</h2>
   <div style="font-size:11px;color:var(--dim);margin-bottom:14px">승인된 항목만 Master DB에 반영됩니다. 모든 변경은 Approval Log에 기록됩니다.</div>
   <div id="approvalList" class="item-list" style="margin-bottom:20px"></div>
-  <div class="chd">📋 Approval Log (불변 감사 기록)</div>
+  <div class="chd"> Approval Log (불변 감사 기록)</div>
   <table class="tbl">
     <thead><tr><th>승인ID</th><th>대상</th><th class="num">변경 전</th><th class="num">변경 후</th><th>결과</th><th>일시</th><th>사유</th></tr></thead>
     <tbody id="logTbody"></tbody>
@@ -1552,15 +1893,15 @@ button { cursor: pointer }
 <!-- DB 관리 탭 -->
 <div class="view" id="view-dbmgr">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <h2 style="font-size:16px;font-weight:800;color:var(--gold)">⚙️ Master DB 단가 관리</h2>
+    <h2 style="font-size:16px;font-weight:800;color:var(--gold)"> Master DB 단가 관리</h2>
     <div class="btns">
-      <button class="btn" onclick="document.getElementById('dbImport').click()">📤 JSON 업로드</button>
+      <button class="btn" onclick="document.getElementById('dbImport').click()"> JSON 업로드</button>
       <input type="file" id="dbImport" accept=".json" style="display:none" onchange="importDB(this)">
-      <button class="btn ghost" onclick="exportDB()">⬇️ DB 내보내기</button>
-      <button class="btn ghost" onclick="showDbEditModal()">✏️ 단가 수정 요청</button>
+      <button class="btn ghost" onclick="exportDB()">⬇ DB 내보내기</button>
+      <button class="btn ghost" onclick="showDbEditModal()"> 단가 수정 요청</button>
     </div>
   </div>
-  <div class="alert info">ℹ️ 단가 직접 변경 불가. "단가 수정 요청" → 대표 승인 후 반영. 모든 변경은 Approval Log에 기록됩니다.</div>
+  <div class="alert info">ℹ 단가 직접 변경 불가. "단가 수정 요청" → 대표 승인 후 반영. 모든 변경은 Approval Log에 기록됩니다.</div>
   <table class="tbl">
     <thead><tr><th>공정명</th><th>카테고리</th><th>단위</th><th class="num">노무비</th><th class="num">자재비</th><th class="num">합산단가</th><th>기간</th><th>상태</th></tr></thead>
     <tbody id="dbTbody"></tbody>
@@ -1569,17 +1910,17 @@ button { cursor: pointer }
   <!-- 온톨로지 Rule Manager -->
   <div style="margin-top:24px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <h3 style="font-size:14px;font-weight:700;color:var(--accent)">🔗 온톨로지 Rule Manager</h3>
+      <h3 style="font-size:14px;font-weight:700;color:var(--accent)"> 온톨로지 Rule Manager</h3>
       <button class="btn ghost" style="font-size:10px" onclick="renderRuleManager()">새로고침</button>
     </div>
-    <div class="alert info" style="margin-bottom:10px">ℹ️ 규칙 변경은 대표 승인 필수. 승인된 규칙만 실제 견적 계산에 반영됩니다.</div>
+    <div class="alert info" style="margin-bottom:10px">ℹ 규칙 변경은 대표 승인 필수. 승인된 규칙만 실제 견적 계산에 반영됩니다.</div>
     <div id="ruleManagerList"></div>
   </div>
 
   <!-- 통계 엔진 결과 -->
   <div style="margin-top:24px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <h3 style="font-size:14px;font-weight:700;color:var(--accent2)">📊 단가 오차 통계 분석</h3>
+      <h3 style="font-size:14px;font-weight:700;color:var(--accent2)"> 단가 오차 통계 분석</h3>
       <button class="btn ghost" style="font-size:10px" onclick="renderStatisticsPanel()">새로고침</button>
     </div>
     <div id="statsPanel"></div>
@@ -1594,7 +1935,7 @@ button { cursor: pointer }
 <!-- 모달: 프리셋 저장 -->
 <div class="modal-bg" id="presetModal" style="display:none">
   <div class="modal">
-    <div class="modal-title">⭐ 프리셋 저장</div>
+    <div class="modal-title">프리셋 저장</div>
     <div class="modal-sub">현재 입력값을 프리셋으로 저장합니다. 다음에 비슷한 현장에서 1클릭으로 불러옵니다.</div>
     <div class="field" style="margin-bottom:10px"><label>프리셋 이름 *</label><input id="ps-name" type="text" placeholder="예: 33평 아파트 고급 전체 리모델링"></div>
     <div class="field" style="margin-bottom:10px"><label>설명</label><input id="ps-desc" type="text" placeholder="어떤 현장에 사용하는지..."></div>
@@ -1608,7 +1949,7 @@ button { cursor: pointer }
 <!-- 모달: 프로젝트 저장 -->
 <div class="modal-bg" id="projectModal" style="display:none">
   <div class="modal">
-    <div class="modal-title">💾 프로젝트 저장</div>
+    <div class="modal-title"> 프로젝트 저장</div>
     <div class="modal-sub">현재 견적을 프로젝트 파일로 저장합니다.</div>
     <div class="field" style="margin-bottom:10px"><label>프로젝트명 *</label><input id="pm-name" type="text" placeholder="현장명 자동 입력"></div>
     <div class="field" style="margin-bottom:10px"><label>메모</label><textarea id="pm-memo" rows="3" placeholder="특이사항..."></textarea></div>
@@ -1623,7 +1964,7 @@ button { cursor: pointer }
 <!-- 모달: DB 수정 요청 -->
 <div class="modal-bg" id="dbEditModal" style="display:none">
   <div class="modal">
-    <div class="modal-title">✏️ 단가 수정 요청서</div>
+    <div class="modal-title"> 단가 수정 요청서</div>
     <div class="modal-sub">변경 요청은 대표 승인 후에만 Master DB에 반영됩니다.</div>
     <div class="field" style="margin-bottom:8px"><label>대상 공정</label><select id="de-proc" onchange="onDeProc()"></select></div>
     <div class="field" style="margin-bottom:8px"><label>변경 필드</label><select id="de-field" onchange="onDeProc()"><option value="lb">노무비</option><option value="mt">자재비</option><option value="wr">손실률</option></select></div>
@@ -1642,13 +1983,13 @@ button { cursor: pointer }
 <!-- 모달: 승인 검토 -->
 <div class="modal-bg" id="approvalModal" style="display:none">
   <div class="modal">
-    <div class="modal-title">📋 업데이트 요청서 검토</div>
+    <div class="modal-title"> 업데이트 요청서 검토</div>
     <div id="apm-body" style="font-size:11px;margin-bottom:14px"></div>
     <div class="field" style="margin-bottom:10px"><label>승인/거절 사유 *</label><textarea id="apm-reason" rows="3" placeholder="사유를 기록하세요..."></textarea></div>
     <div class="modal-btns">
       <button class="btn ghost" onclick="closeModal('approvalModal')">닫기</button>
-      <button class="btn danger" onclick="doApproval(false)">❌ 거절</button>
-      <button class="btn success" onclick="doApproval(true)">✅ 승인 및 DB 반영</button>
+      <button class="btn danger" onclick="doApproval(false)"> 거절</button>
+      <button class="btn success" onclick="doApproval(true)"> 승인 및 DB 반영</button>
     </div>
   </div>
 </div>
@@ -2103,7 +2444,7 @@ function getSelectedProcesses() {
   // ── 설비 ──
   // [규칙] 갈바나이즈관 → 배관 전면 교체 강제 + 경고
   if(pipeBad) {
-    add('PLB_RG', '갈바나이즈관 교체 필수 🚨');
+    add('PLB_RG', '갈바나이즈관 교체 필수 ');
   } else if(document.getElementById('plb-pipe')?.checked) {
     add('PLB_RG');
   }
@@ -2302,7 +2643,7 @@ function generateAll() {
   const da = document.getElementById('finalDiags');
   if(da) da.innerHTML = diags.map(d=>{
     const cls = d.t==='error'?'error':d.t==='info'?'info':d.t==='warn'?'warn':'ok';
-    const ico = d.t==='error'?'🚨':d.t==='info'?'ℹ️':d.t==='warn'?'⚠️':'✅';
+    const ico = d.t==='error'?'':d.t==='info'?'ℹ':d.t==='warn'?'[!]':'';
     const code = d.code!=='OK'?'<span style="font-size:9px;opacity:.7;margin-right:4px">['+d.code+']</span>':'';
     return '<div class="alert '+cls+'">'+ico+' '+code+d.m+'</div>';
   }).join('');
@@ -2350,7 +2691,7 @@ function generateAll() {
   safeTxt('resultTotal', ff(Math.round(totalSup)));
   safeTxt('resultContract', ff(Math.round(contract)));
   safeTxt('resultFinal', ff(Math.round(final)));
-  if(typeof st==='function') st('⚡ 견적 생성 완료 — '+fmt(final)+' ('+lines.length+'개 공정)');
+  if(typeof st==='function') st(' 견적 생성 완료 — '+fmt(final)+' ('+lines.length+'개 공정)');
 }
 
 
@@ -2458,7 +2799,7 @@ function renderSpaceCards(){
     return `<div class="space-card">
       <div class="space-card-hd">
         <div><span class="nm">${sp.name}</span><span class="tp">${typeLabels[sp.type]||sp.type}</span></div>
-        <button class="space-del" onclick="delSpace(${sp.id})">✕</button>
+        <button class="space-del" onclick="delSpace(${sp.id})"></button>
       </div>
       <div class="space-card-body">
         <div class="space-meas">
@@ -2471,7 +2812,7 @@ function renderSpaceCards(){
           <div class="scc">벽(순)<span>${c.wa.toFixed(2)}㎡</span></div>
           <div class="scc">둘레<span>${c.pr.toFixed(2)}m</span></div>
           <div class="scc">창${sp.windows?.length||0}/문${sp.doors?.length||0}</div>
-          ${sp.wet?'<div class="scc" style="color:var(--blue)">💧습식</div>':''}
+          ${sp.wet?'<div class="scc" style="color:var(--blue)">습식</div>':''}
         </div>
       </div>
     </div>`;
@@ -2495,7 +2836,7 @@ function updateBathroomScopes(){
   const baths=S.spaces.filter(s=>s.type==='bathroom');
   document.getElementById('bathroomScopes').innerHTML=baths.map((sp,i)=>`
     <div class="scope-card">
-      <div class="scope-hd"><h4>🚿 ${sp.name} (${(sp.width/1000).toFixed(1)}×${(sp.length/1000).toFixed(1)}m)</h4></div>
+      <div class="scope-hd"><h4> ${sp.name} (${(sp.width/1000).toFixed(1)}×${(sp.length/1000).toFixed(1)}m)</h4></div>
       <div class="scope-body">
         <div class="scope-level">
           <div class="slevel active" onclick="this.parentElement.querySelectorAll('.slevel').forEach(s=>s.classList.remove('active'));this.classList.add('active');recalc()">전체 리모델링</div>
@@ -2577,9 +2918,9 @@ function checkElev(){
   const h=parseInt(document.getElementById('elevD').value)||0;
   const el=document.getElementById('elevHint');
   if(!el) return;
-  if(w<1100) el.innerHTML='<span style="color:var(--red)">⚠️ 폭 1100mm 미만 — 일부 자재 분할 필요</span>';
-  else if(w<1220) el.innerHTML='<span style="color:var(--orange)">⚠️ 합판 전지(1220mm) 반입 불가 — 절단 필요</span>';
-  else el.innerHTML='<span style="color:var(--green)">✓ 자재 반입 정상</span>';
+  if(w<1100) el.innerHTML='<span style="color:var(--red)">[!] 폭 1100mm 미만 — 일부 자재 분할 필요</span>';
+  else if(w<1220) el.innerHTML='<span style="color:var(--orange)">[!] 합판 전지(1220mm) 반입 불가 — 절단 필요</span>';
+  else el.innerHTML='<span style="color:var(--green)"> 자재 반입 정상</span>';
 }
 
 function updateAccessWarnings(){
@@ -2590,7 +2931,7 @@ function updateAccessWarnings(){
   if(!S.ladderTruck) warns.push('사다리차 불가 — 자재 반입 방법을 별도 검토하세요.');
   if(S.truckAccess==='none') warns.push('트럭 접근 불가 — 소형 운반차 이용으로 비용 증가합니다.');
   if(S.residentDuring) warns.push('거주중 공사 — 소음 제한 및 비용 +10% 가산됩니다.');
-  w.innerHTML=warns.map(m=>`<div class="warn-card">⚠️ ${m}</div>`).join('');
+  w.innerHTML=warns.map(m=>`<div class="warn-card">[!] ${m}</div>`).join('');
 }
 
 function updateSidebar(){
@@ -2612,7 +2953,7 @@ function updateExistWarnings(){
   if(pipeEl) pipeEl.textContent=pipe==='galvanized'?'교체 필수 — 견적에 자동 반영됩니다':pipe==='pb'?'양호':'확인 필요';
   const boilerEl=document.getElementById('boilerHint');
   if(boilerEl) boilerEl.textContent=boiler>12?'교체 권장 (12년 초과)':boiler>8?'관찰 필요':'양호';
-  el.innerHTML=warns.map(d=>`<div class="${d.t==='warn'?'warn-card':'info-card'}">${d.t==='warn'?'⚠️':'ℹ️'} ${d.m}</div>`).join('');
+  el.innerHTML=warns.map(d=>`<div class="${d.t==='warn'?'warn-card':'info-card'}">${d.t==='warn'?'[!]':'ℹ'} ${d.m}</div>`).join('');
   S.pipeMaterial=pipe;
   recalc();
 }
@@ -2656,7 +2997,7 @@ function updateSchedule(){
   </div>`;
 
   if(moveIn&&new Date(moveIn)<ed){
-    html+=`<div class="warn-card" style="margin-top:10px">⚠️ 입주 요청일(${new Date(moveIn).toLocaleDateString('ko-KR')})이 예상 준공일보다 빠릅니다. 공사 범위를 조정하거나 착공일을 앞당기세요.</div>`;
+    html+=`<div class="warn-card" style="margin-top:10px">[!] 입주 요청일(${new Date(moveIn).toLocaleDateString('ko-KR')})이 예상 준공일보다 빠릅니다. 공사 범위를 조정하거나 착공일을 앞당기세요.</div>`;
   }
   el.innerHTML=html;
 
@@ -2888,9 +3229,9 @@ function renderProjects(){
   if(!BOC.projects.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--dim)">저장된 프로젝트 없음.<br>견적 마법사 → [프로젝트 저장] 버튼</div>';return}
   el.innerHTML=BOC.projects.map(p=>{
     const fin=p.result?.final||0;const dt=new Date(p.createdAt).toLocaleDateString('ko-KR');
-    return`<div class="list-item"><div class="li-icon">📁</div>
+    return`<div class="list-item"><div class="li-icon"></div>
       <div class="li-info"><div class="li-name">${p.name}</div><div class="li-sub">${p.custName||'—'} | ${dt}${fin?' | '+ff(Math.round(fin)):''} | ${p.status||'견적완료'}</div></div>
-      <div class="li-btns"><button class="btn" onclick="loadProject('${p.id}')">불러오기</button><button class="btn ghost" onclick="exportProject('${p.id}')">⬇️</button><button class="btn danger" onclick="deleteProject('${p.id}')">✕</button></div>
+      <div class="li-btns"><button class="btn" onclick="loadProject('${p.id}')">불러오기</button><button class="btn ghost" onclick="exportProject('${p.id}')">⬇</button><button class="btn danger" onclick="deleteProject('${p.id}')"></button></div>
     </div>`;
   }).join('');
   document.getElementById('hv3').textContent=BOC.projects.length;
@@ -2934,9 +3275,9 @@ function deletePreset(id){if(!confirm('삭제?'))return;BOC.presets=BOC.presets.
 function renderPresets(){
   const el=document.getElementById('presetList');if(!el)return;
   if(!BOC.presets.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--dim)">저장된 프리셋 없음.<br>견적 마법사 → [프리셋 저장] 버튼</div>';return}
-  el.innerHTML=BOC.presets.map(p=>`<div class="list-item"><div class="li-icon">⭐</div>
+  el.innerHTML=BOC.presets.map(p=>`<div class="list-item"><div class="li-icon"></div>
     <div class="li-info"><div class="li-name">${p.name}</div><div class="li-sub">${p.desc||'—'} | 사용 ${p.usageCount||0}회 | ${p.grade||'—'}</div></div>
-    <div class="li-btns"><button class="btn" onclick="loadPreset('${p.id}')">적용</button><button class="btn danger" onclick="deletePreset('${p.id}')">✕</button></div>
+    <div class="li-btns"><button class="btn" onclick="loadPreset('${p.id}')">적용</button><button class="btn danger" onclick="deletePreset('${p.id}')"></button></div>
   </div>`).join('');
 }
 
@@ -2944,14 +3285,14 @@ function renderPresets(){
 function printReport(type){
   const r=window.lastResult;
   if(!r||!r.lines||r.lines.length===0){
-    alert('먼저 견적을 생성하세요 (STEP 6까지 진행 후 ⚡ 버튼)');return;
+    alert('먼저 견적을 생성하세요 (STEP 6까지 진행 후  버튼)');return;
   }
   const {lines,totalSup,contract,final,dur,totals}=r;
   const ff=n=>'₩'+n.toLocaleString();const today=new Date().toLocaleDateString('ko-KR');
   const projName=document.getElementById('projName')?.value||'—';const custName=document.getElementById('custName')?.value||'—';
   let title='',content='';
   if(type==='customer'){
-    title='📄 고객용 견적서';
+    title=' 고객용 견적서';
     const grps={};lines.forEach(l=>{if(!grps[l.cat])grps[l.cat]=[];grps[l.cat].push(l)});
     let rows='',no=1;
     Object.entries(grps).forEach(([cat,its])=>{
@@ -3004,7 +3345,7 @@ function printReport(type){
         </div>
       </div></div>`;
   }else if(type==='internal'){
-    title='🔒 내부 원가 보고서';
+    title=' 내부 원가 보고서';
     const grps={};lines.forEach(l=>{if(!grps[l.cat])grps[l.cat]=[];grps[l.cat].push(l)});
     let rows='';
     const autoCount=lines.filter(l=>l.auto).length;
@@ -3031,7 +3372,7 @@ function printReport(type){
       <table class="tbl"><thead><tr><th>공정명</th><th>단위</th><th class="num">수량</th><th class="num">노무비</th><th class="num">자재비</th><th class="num">공급가</th><th>비고</th></tr></thead><tbody>${rows}</tbody></table>
     </div>`;
   }else if(type==='order'){
-    title='📦 자재 발주 보고서';
+    title=' 자재 발주 보고서';
     const sd=document.getElementById('startDate')?.value;const today2=new Date();
     const leads=[
       {nm:'시스템창호',lead:21},{nm:'주방가구',lead:25},{nm:'붙박이장',lead:18},
@@ -3049,7 +3390,7 @@ function printReport(type){
       <table class="tbl"><thead><tr><th>자재명</th><th>리드타임</th><th>발주마감</th><th>착공</th><th>D-Day</th></tr></thead><tbody>${rows}</tbody></table>
     </div>`;
   }else{
-    title='📅 공정표';
+    title=' 공정표';
     content=`<div style="font-size:11px;color:var(--dim)">착공일 기준 예상 공정표 (예상 공기: <b style="color:var(--gold)">${dur}일</b>)</div>
     <div style="margin-top:10px;overflow-x:auto">${genGantt(dur)}</div>`;
   }
@@ -3121,7 +3462,7 @@ function calcCmpMargin(){
   document.getElementById('ca-margin').style.color=grossProfit>=0?'var(--green)':'var(--red)';
   document.getElementById('ca-mrate').textContent='마진율 '+marginRate+'%';
   const rate=Math.abs(varianceRate);
-  document.getElementById('ca-status').innerHTML=rate<=5?'<div class="alert ok">✅ 오차율 '+varianceRate+'% — 우수.</div>':rate<=15?'<div class="alert warn">⚠️ 오차율 '+varianceRate+'% — DB 업데이트 요청 검토.</div>':'<div class="alert danger">🚨 오차율 '+varianceRate+'% — 즉시 DB 업데이트 요청서 생성 필요.</div>';
+  document.getElementById('ca-status').innerHTML=rate<=5?'<div class="alert ok"> 오차율 '+varianceRate+'% — 우수.</div>':rate<=15?'<div class="alert warn"> 오차율 '+varianceRate+'% — DB 업데이트 요청 검토.</div>':'<div class="alert danger"> 오차율 '+varianceRate+'% — 즉시 DB 업데이트 요청서 생성 필요.</div>';
   document.getElementById('cmpAnalysis').style.display='block';
 }
 function saveCmpReport(){
@@ -3155,7 +3496,7 @@ function renderApproval(){
   if(!BOC.approvalReqs.length){el.innerHTML='<div style="text-align:center;padding:30px;color:var(--dim)">대기 중인 요청 없음</div>';return}
   el.innerHTML=BOC.approvalReqs.map(r=>{
     const col={pending:'var(--orange)',approved:'var(--green)',rejected:'var(--red)'}[r.approvalStatus]||'var(--dim)';
-    const icon={pending:'📋',approved:'✅',rejected:'❌'}[r.approvalStatus]||'📋';
+    const icon={pending:'',approved:'',rejected:''}[r.approvalStatus]||'';
     const lbl={pending:'대기',approved:'승인',rejected:'거절'}[r.approvalStatus]||r.approvalStatus;
     return`<div class="list-item"><div class="li-icon">${icon}</div>
       <div class="li-info"><div class="li-name">${r.changeReason?.substring(0,50)||r.requestId}</div>
@@ -3177,7 +3518,7 @@ function doApproval(approved){
   r.approvalStatus=approved?'approved':'rejected';r.approvedBy='대표';r.approvedAt=new Date().toISOString();r.reviewNotes=reason;
   BOC.approvalLog.unshift({approvalId:'APL-'+Date.now(),requestId:r.requestId,actionType:approved?'approved_and_applied':'rejected',targetDb:r.targetDb,beforeValue:r.currentValue,afterValue:approved?r.proposedValue:null,reason,approvedBy:'대표',approvedAt:new Date().toISOString(),rollbackAvailable:approved});
   bocSave();closeModal('approvalModal');renderApproval();renderApprovalLog();updHdrBoc();
-  st(approved?'✅ 승인됨 — DB 반영 + Approval Log 기록':'❌ 거절됨 — Approval Log 기록');
+  st(approved?' 승인됨 — DB 반영 + Approval Log 기록':' 거절됨 — Approval Log 기록');
 }
 function renderApprovalLog(){
   const el=document.getElementById('logTbody');if(!el)return;
@@ -3336,7 +3677,7 @@ function showDrawingPreview(data, filename) {
   const preview = document.getElementById('drawingPreview');
   const list = document.getElementById('drawingPreviewList');
   const status = document.getElementById('drawingStatus');
-  if(status) status.textContent = `✅ ${filename} — ${data.spaceCount||data.spaces?.length||0}개 공간 / 총 ${data.totalArea||0}㎡`;
+  if(status) status.textContent = ` ${filename} — ${data.spaceCount||data.spaces?.length||0}개 공간 / 총 ${data.totalArea||0}㎡`;
   if(!preview || !list) return;
   preview.style.display = 'block';
   const spaces = data.spaces || [];
@@ -3375,7 +3716,7 @@ function applyDrawingSpaces() {
   recalc();
   cancelDrawing();
   goStep(1);  // STEP 2로 이동
-  st(`✅ ${_parsedSpaces.length}개 공간 자동 입력 완료 — STEP 2에서 확인·수정하세요`);
+  st(` ${_parsedSpaces.length}개 공간 자동 입력 완료 — STEP 2에서 확인·수정하세요`);
 }
 
 function _mapDrawingSpaceType(name) {
@@ -3495,7 +3836,7 @@ function renderStatisticsPanel() {
       통계 데이터 없음.<br>
       <code style="font-size:9px">python src/ml/statistics-engine.py</code> 실행 후<br>결과를 아래 버튼으로 불러오세요.
       <br><br>
-      <button class="btn" style="font-size:10px" onclick="loadStatsFromFile()">📊 통계 파일 불러오기</button>
+      <button class="btn" style="font-size:10px" onclick="loadStatsFromFile()"> 통계 파일 불러오기</button>
     </div>`;
     return;
   }
@@ -3746,7 +4087,7 @@ window.showToast = function(msg, type) {
   if (!c) return;
   const t = document.createElement('div');
   t.className = 'toast ' + (type||'');
-  const icon = type==='ok'?'✓':type==='err'?'✕':type==='warn'?'⚠':'ℹ';
+  const icon = type==='ok'?'':type==='err'?'':type==='warn'?'':'ℹ';
   t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
   c.appendChild(t);
   setTimeout(() => {
@@ -3774,6 +4115,18 @@ window.showToast = function(msg, type) {
     obs.observe(el, {childList:true, characterData:true, subtree:true})
   );
 })();
+
+
+// Sidebar value update animation
+function setSbVal(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.textContent === String(val)) return;
+  el.classList.remove('updating');
+  void el.offsetWidth; // reflow
+  el.textContent = val;
+  el.classList.add('updating');
+}
 
 </script>
 </body>
