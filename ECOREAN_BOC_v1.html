@@ -613,7 +613,13 @@ input,button,select,textarea{font-family:inherit}button{cursor:pointer}
     <div class="scope-body">
       <div class="scope-opts" id="livingOpts">
         <div class="sopt"><input type="checkbox" id="lv-floor" checked onchange="recalc()"><label for="lv-floor">바닥재 교체</label>
-          <select id="lv-floor-type" onchange="recalc()"><option value="hardwood" selected>강마루</option><option value="lvt">LVT</option><option value="wood">원목마루</option><option value="vinyl">장판</option></select>
+          <select id="lv-floor-type" onchange="recalc()">
+            <option value="hardwood" selected>강마루</option>
+            <option value="lvt">LVT</option>
+            <option value="herringbone">헤링본 강마루 ✦</option>
+            <option value="wood">원목마루 ✦</option>
+            <option value="vinyl">장판</option>
+          </select>
         </div>
         <div class="sopt"><input type="checkbox" id="lv-wp" checked onchange="recalc()"><label for="lv-wp">도배</label>
           <select id="lv-wp-type" onchange="recalc()"><option value="paper">합지</option><option value="silk" selected>실크</option><option value="wide">광폭 실크</option></select>
@@ -674,6 +680,20 @@ input,button,select,textarea{font-family:inherit}button{cursor:pointer}
         <div class="sopt"><input type="checkbox" id="bal-wp" onchange="recalc()"><label for="bal-wp">방수</label></div>
         <div class="sopt"><input type="checkbox" id="bal-floor" onchange="recalc()"><label for="bal-floor">바닥 타일</label></div>
         <div class="sopt"><input type="checkbox" id="bal-insul" onchange="recalc()"><label for="bal-insul">단열재 (확장 시)</label></div>
+        <div class="sopt"><input type="checkbox" id="sp-eifs" onchange="recalc()"><label for="sp-eifs">외단열 EIFS <span style="font-size:9px;color:var(--accent)">[R21: 스타코 자동]</span></label></div>
+        <div class="sopt"><input type="checkbox" id="sp-deck" onchange="recalc()"><label for="sp-deck">WPC 목재 데크 <span style="font-size:9px;color:var(--accent)">[R22: 오일스테인 자동]</span></label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 특수 공정 (온톨로지 R4·R5·R16·R17·R18) -->
+  <div class="scope-card">
+    <div class="scope-hd"><h4>⚗️ 특수 공정</h4></div>
+    <div class="scope-body">
+      <div class="scope-opts">
+        <div class="sopt"><input type="checkbox" id="sp-epoxy" onchange="recalc()"><label for="sp-epoxy">에폭시 바닥 <span style="font-size:9px;color:var(--accent)">[R16: 셀프레벨링+프라이머 자동]</span></label></div>
+        <div class="sopt"><input type="checkbox" id="sp-marble" onchange="recalc()"><label for="sp-marble">대리석/화강석 <span style="font-size:9px;color:var(--accent)">[R17: 석재연마 자동]</span></label></div>
+        <div class="sopt"><input type="checkbox" id="sp-masonry" onchange="recalc()"><label for="sp-masonry">조적(블록쌓기) <span style="font-size:9px;color:var(--accent)">[R18: 시멘트미장 자동]</span></label></div>
       </div>
     </div>
   </div>
@@ -1161,6 +1181,26 @@ const DB = {
   WIN_PU:   {nm:"창호 우레탄폼+코킹",cat:"창호",  unit:"m",  lb:8000,  mt:5000,  wr:0,    dur:1, f:"windowCount*3"},
   // [R12] 욕실방수→보호몰탈 타설 자동 포함
   WTP_PM:   {nm:"보호몰탈 타설",     cat:"방수",  unit:"㎡", lb:15000, mt:12000, wr:0.05, dur:1, f:"wetFloorArea"},
+  // [R4] 헤링본 강마루/SPC — cost-items:FIN_MR2/FIN_SP2
+  FLR_HB:   {nm:"헤링본 강마루",     cat:"바닥재",unit:"㎡", lb:36000, mt:39000, wr:0.10, dur:2, f:"dryFloorArea"},
+  // [R7] 원목마루/오일스테인 — cost-items:FIN_OW/FIN_PA6
+  FLR_OW:   {nm:"원목마루(직선·18mm)",cat:"바닥재",unit:"㎡",lb:28000, mt:68000, wr:0.10, dur:2, f:"dryFloorArea"},
+  FLR_OS:   {nm:"목재 오일스테인",   cat:"바닥재",unit:"㎡", lb:22000, mt:9500,  wr:0.05, dur:1, f:"dryFloorArea"},
+  // [R5] 대형 포세린 — cost-items:WET_TF_PO
+  TILE_PO:  {nm:"대형 포세린 바닥",  cat:"타일",  unit:"㎡", lb:38000, mt:62000, wr:0.10, dur:2, f:"wetFloorArea"},
+  // [R16] 에폭시 바닥 — cost-items:FIN_PA4
+  FLR_EP:   {nm:"에폭시 바닥도장",   cat:"바닥재",unit:"㎡", lb:18000, mt:24000, wr:0.05, dur:2, f:"dryFloorArea"},
+  // [R17] 대리석/화강석 — cost-items:WET_TF_MA/WET_TW_MA + 신규 석재연마
+  MAR_FL:   {nm:"대리석 바닥",       cat:"타일",  unit:"㎡", lb:70000, mt:135000,wr:0.08, dur:3, f:"dryFloorArea"},
+  MAR_WL:   {nm:"대리석 벽",         cat:"타일",  unit:"㎡", lb:75000, mt:145000,wr:0.08, dur:3, f:"wallArea*0.3"},
+  MAR_POL:  {nm:"석재 연마·왁스",    cat:"타일",  unit:"㎡", lb:30000, mt:8000,  wr:0.05, dur:1, f:"dryFloorArea"},
+  // [R18] 조적 — 신규 (v2.2 DB 미포함, 시장단가 기준)
+  MAS_BLK:  {nm:"조적(블록쌓기)",    cat:"미장",  unit:"㎡", lb:35000, mt:22000, wr:0.05, dur:2, f:"newWallArea"},
+  // [R21] 외단열 EIFS — 신규, [R21] 스타코+탄성도료 — cost-items:FIN_PA3 기반
+  EXT_EIFS: {nm:"외단열 (EIFS)",     cat:"발코니",unit:"㎡", lb:40000, mt:55000, wr:0.05, dur:3, f:"balArea*2"},
+  EXT_STC:  {nm:"스타코+탄성도료",   cat:"발코니",unit:"㎡", lb:30000, mt:13000, wr:0.05, dur:2, f:"balArea*2"},
+  // [R22] WPC 목재 데크 — cost-items:FIN_DK
+  FLR_DK:   {nm:"WPC 목재 데크",     cat:"발코니",unit:"㎡", lb:28000, mt:52000, wr:0.05, dur:1, f:"balArea"},
 };
 
 // 자재 등급 계수
@@ -1268,9 +1308,16 @@ function getSelectedProcesses() {
 
   // ── 타일 ──
   if(t.wetFA > 0) {
-    add('TILE_BT'); add('TILE_BW');
-    addAuto('TILE_GRF', '타일→줄눈 자동 포함');  // [규칙] 타일 선택 → 줄눈 자동
-    addAuto('TILE_GRW', '타일→줄눈 자동 포함');
+    // [R5] 대형 포세린(슬랩) 선택 시 → TILE_PO + 셀프레벨링 자동
+    const usePorcelain = bathSpaces.some((sp,i)=>document.getElementById(`bt${i}-tilegrade`)?.selectedIndex===2);
+    if(usePorcelain) {
+      add('TILE_PO', '대형 포세린 바닥'); add('TILE_BW');
+      addAuto('MSN_SL', 'R5: 대형포세린→셀프레벨링 자동');
+    } else {
+      add('TILE_BT'); add('TILE_BW');
+    }
+    addAuto('TILE_GRF', 'R3: 타일→줄눈 자동 포함');  // [R3] 타일 선택 → 줄눈 자동
+    addAuto('TILE_GRW', 'R3: 타일→줄눈 자동 포함');
   }
   if(document.getElementById('kt-tile')?.checked) add('TILE_KT');
   if(document.getElementById('bal-floor')?.checked) add('TILE_BAL');
@@ -1313,12 +1360,51 @@ function getSelectedProcesses() {
 
   // ── 바닥재 ──
   if(document.getElementById('lv-floor')?.checked) {
-    add('FLR_HW');
-    addAuto('FLR_SK', '바닥재→걸레받이 자동');  // [규칙] 바닥재 → 걸레받이 자동
+    const flType = document.getElementById('lv-floor-type')?.value || 'hardwood';
+    if(flType === 'herringbone') {
+      add('FLR_HB', '헤링본 강마루');
+      addAuto('MSN_SL', 'R4: 헤링본→셀프레벨링 자동');  // [R4]
+    } else if(flType === 'wood') {
+      add('FLR_OW', '원목마루');
+      addAuto('FLR_OS', 'R7: 원목마루→오일스테인 자동');  // [R7]
+    } else {
+      add('FLR_HW');
+    }
+    addAuto('FLR_SK', 'R6: 바닥재→걸레받이 자동');  // [R6]
   }
   if(document.getElementById('lv-mold')?.checked) {
     if(!selected.some(s => s.id === 'FLR_SK')) addAuto('FLR_SK', '몰딩 포함');
     add('FLR_CM');
+  }
+
+  // ── 특수 공정 (R16·R17·R18·R21·R22) ──
+  // [R16] 에폭시 바닥 → 셀프레벨링 + 프라이머 자동
+  if(document.getElementById('sp-epoxy')?.checked) {
+    add('FLR_EP', '에폭시 바닥도장');
+    addAuto('MSN_SL', 'R16: 에폭시→셀프레벨링 자동');
+    addAuto('PNT_PR', 'R16: 에폭시→프라이머 자동');
+  }
+  // [R17] 대리석/화강석 → 석재연마+왁스 자동
+  if(document.getElementById('sp-marble')?.checked) {
+    add('MAR_FL', '대리석 바닥');
+    add('MAR_WL', '대리석 벽');
+    addAuto('MAR_POL', 'R17: 대리석→석재연마 자동');
+  }
+  // [R18] 조적 → 시멘트미장 자동
+  if(document.getElementById('sp-masonry')?.checked) {
+    add('MAS_BLK', '조적(블록쌓기)');
+    addAuto('MSN_FL', 'R18: 조적→시멘트미장 자동');
+  }
+  // [R21] 외단열 EIFS → 스타코+탄성도료 자동
+  if(document.getElementById('sp-eifs')?.checked) {
+    add('EXT_EIFS', '외단열 EIFS');
+    addAuto('EXT_STC', 'R21: 외단열→스타코+탄성도료 자동');
+  }
+  // [R22] WPC 목재 데크 → 오일스테인 + 줄눈 자동
+  if(document.getElementById('sp-deck')?.checked) {
+    add('FLR_DK', 'WPC 목재 데크');
+    addAuto('FLR_OS', 'R22: 데크→오일스테인 자동');
+    addAuto('TILE_GRF', 'R22: 데크→줄눈처리 자동');
   }
 
   // ── 설비 ──
@@ -2634,10 +2720,10 @@ function renderRuleManager() {
     {id:'R001', trigger:'LGS_WL',      triggered:'GYP_WL',          type:'AUTO_INCLUDE',    condition:'LGS 선택 시',    status:'active', note:'LGS 경량틀→석고보드 자동'},
     {id:'R002', trigger:'TILE_BT',     triggered:'WTP_BT+WTP_PM',   type:'WARN_CONDITIONAL',condition:'욕실/습식 CONDITIONAL',status:'active', note:'바닥타일→방수+보호몰탈 경고'},
     {id:'R003', trigger:'TILE_BT/BW',  triggered:'TILE_GRF/GRW',    type:'AUTO_INCLUDE',    condition:'타일 선택 시',   status:'active', note:'타일→줄눈 자동 포함'},
-    {id:'R004', trigger:'(헤링본)',     triggered:'MSN_SL',          type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'헤링본→셀프레벨링 (DB ID 미정)'},
-    {id:'R005', trigger:'(대형포세린)', triggered:'MSN_SL',          type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'대형포세린→셀프레벨링 (DB ID 미정)'},
+    {id:'R004', trigger:'FLR_HB',       triggered:'MSN_SL',          type:'AUTO_INCLUDE',    condition:'헤링본 선택 시', status:'active', note:'헤링본 강마루→셀프레벨링 자동 [FIN_MR2]'},
+    {id:'R005', trigger:'TILE_PO',      triggered:'MSN_SL',          type:'AUTO_INCLUDE',    condition:'대형슬랩 선택 시',status:'active', note:'대형포세린→셀프레벨링 자동 [WET_TF_PO]'},
     {id:'R006', trigger:'FLR_HW',      triggered:'FLR_SK',          type:'AUTO_INCLUDE',    condition:'바닥재 선택 시', status:'active', note:'강마루/원목→걸레받이 자동'},
-    {id:'R007', trigger:'(원목마루)',   triggered:'(오일스테인)',     type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'원목마루→오일스테인 (DB ID 미정)'},
+    {id:'R007', trigger:'FLR_OW',       triggered:'FLR_OS',          type:'AUTO_INCLUDE',    condition:'원목마루 선택 시',status:'active', note:'원목마루→오일스테인 자동 [FIN_OW/FIN_PA6]'},
     {id:'R008', trigger:'PNT_WB',      triggered:'PNT_PT+PNT_PR',   type:'AUTO_INCLUDE',    condition:'수성페인트 선택 시',status:'active', note:'수성페인트→퍼티+프라이머 자동'},
     {id:'R009', trigger:'PNT_WB',      triggered:'PNT_PR',          type:'AUTO_INCLUDE',    condition:'천장도장 시',    status:'active', note:'수성페인트(천장)→프라이머 자동'},
     {id:'R010', trigger:'WLP_PP',      triggered:'WLP_UB',          type:'AUTO_INCLUDE',    condition:'도배 선택 시',   status:'active', note:'실크/천연벽지→초배 자동'},
@@ -2646,13 +2732,13 @@ function renderRuleManager() {
     {id:'R013', trigger:'BAT_SH',      triggered:'WTP_BT',          type:'WARN_CONDITIONAL',condition:'샤워부스 설치 시',status:'active', note:'샤워부스→욕실방수 경고'},
     {id:'R014', trigger:'PLB_BLR',     triggered:'PLB_HTF',         type:'AUTO_INCLUDE',    condition:'보일러교체 시',  status:'active', note:'보일러교체→난방배관 자동'},
     {id:'R015', trigger:'DR_INT',      triggered:'(built-in)',       type:'AUTO_INCLUDE',    condition:'항상',           status:'active', note:'문틀+문짝+문선 세트 (DR_INT 포함)'},
-    {id:'R016', trigger:'(에폭시)',     triggered:'MSN_SL+PNT_PR',   type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'에폭시바닥→셀프레벨링+프라이머 (DB 미정)'},
-    {id:'R017', trigger:'(대리석)',     triggered:'(석재연마)',       type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'대리석→석재연마/왁스 (DB 미정)'},
-    {id:'R018', trigger:'(조적)',       triggered:'MSN_FL',          type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'조적→시멘트미장 (조적 DB 미정)'},
+    {id:'R016', trigger:'FLR_EP',       triggered:'MSN_SL+PNT_PR',   type:'AUTO_INCLUDE',    condition:'에폭시 선택 시', status:'active', note:'에폭시바닥→셀프레벨링+프라이머 자동 [FIN_PA4]'},
+    {id:'R017', trigger:'MAR_FL/WL',    triggered:'MAR_POL',         type:'AUTO_INCLUDE',    condition:'대리석 선택 시', status:'active', note:'대리석→석재연마+왁스 자동 [WET_TF_MA]'},
+    {id:'R018', trigger:'MAS_BLK',      triggered:'MSN_FL',          type:'AUTO_INCLUDE',    condition:'조적 선택 시',   status:'active', note:'조적(블록)→시멘트미장 자동 [신규 MAS_BLK]'},
     {id:'R019', trigger:'GYP_ID',      triggered:'LGS_WL',          type:'AUTO_INCLUDE',    condition:'간접등박스 시',  status:'active', note:'간접등박스→LGS틀 자동'},
     {id:'R020', trigger:'TILE_BT/BW',  triggered:'(진단경고)',       type:'WARN_CONDITIONAL',condition:'욕실 리모델링',  status:'active', note:'욕실타일→철거 여부 확인 제안'},
-    {id:'R021', trigger:'(외단열)',     triggered:'(스타코)',         type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'외단열→스타코+탄성도료 (DB 미정)'},
-    {id:'R022', trigger:'(목재데크)',   triggered:'(오일스테인)',     type:'AUTO_INCLUDE',    condition:'항상',           status:'n/a',    note:'목재데크→오일스테인+줄눈 (DB 미정)'},
+    {id:'R021', trigger:'EXT_EIFS',     triggered:'EXT_STC',         type:'AUTO_INCLUDE',    condition:'외단열 선택 시', status:'active', note:'외단열EIFS→스타코+탄성도료 자동 [FIN_PA3]'},
+    {id:'R022', trigger:'FLR_DK',       triggered:'FLR_OS+TILE_GRF', type:'AUTO_INCLUDE',    condition:'데크 선택 시',   status:'active', note:'목재데크→오일스테인+줄눈 자동 [FIN_DK]'},
     {id:'R023', trigger:'GYP_WL(욕실)',triggered:'WTP_BT+TILE_BW',  type:'WARN_CONDITIONAL',condition:'욕실',           status:'active', note:'방수석고보드→욕실방수+벽타일 경고'},
     // 기존 강제 규칙
     {id:'R-F1', trigger:'철거공정',    triggered:'PRE_BY+PRE_WS',   type:'FORCED',          condition:'항상',           status:'active', note:'철거→보양+폐기물 강제 포함'},
