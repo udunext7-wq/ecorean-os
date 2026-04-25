@@ -908,6 +908,217 @@ button { cursor: pointer }
 }
 .tab.act .tab-dot { opacity: 1; background: var(--gold-bright) }
 
+
+/* ══════════════════════════════════════════════════
+   ECOREAN BOC — Horizontal Layout v3
+══════════════════════════════════════════════════ */
+
+/* ── Override: estimate view = flex column full height ── */
+#view-estimate {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  height: 100% !important;
+  padding: 0 !important;
+}
+
+/* ── Hide old sidebar completely ── */
+#sidebar { display: none !important }
+
+/* ── Top HUD Bar ─────────────────────────────────── */
+#hud-bar {
+  display: flex;
+  align-items: stretch;
+  background: rgba(3,3,5,.97);
+  border-bottom: 1px solid rgba(201,168,76,.28);
+  flex-shrink: 0;
+  height: 76px;
+  font-family: var(--font-mono);
+  box-shadow: 0 2px 20px rgba(0,0,0,.5);
+}
+.hud-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 24px;
+  border-right: 1px solid rgba(201,168,76,.1);
+  min-width: 0;
+}
+.hud-section:last-of-type { border-right: none }
+.hud-sec-title {
+  font-size: 7px; font-weight: 700;
+  letter-spacing: .22em; color: rgba(201,168,76,.5);
+  margin-bottom: 8px; text-transform: uppercase;
+}
+.hud-kpis {
+  display: flex; gap: 20px; align-items: baseline;
+  flex-wrap: nowrap; overflow: hidden;
+}
+.hud-kpi { display: flex; flex-direction: column; gap: 1px; min-width: 0 }
+.hk-lbl {
+  font-size: 7px; color: rgba(201,168,76,.35);
+  letter-spacing: .06em; white-space: nowrap;
+}
+.hk-val {
+  font-size: 12px; color: rgba(255,255,255,.9);
+  font-weight: 600; white-space: nowrap;
+  transition: color .25s;
+}
+.hk-val.gold { color: var(--gold-bright) }
+.hk-val.updating { animation: val-update .3s ease }
+.hud-warn-area {
+  display: flex; align-items: center;
+  padding: 0 16px; flex-shrink: 0; gap: 6px;
+}
+.hud-warn {
+  font-size: 8px; color: var(--orange);
+  font-family: var(--font-mono);
+  display: flex; align-items: center; gap: 4px;
+}
+.hud-warn::before {
+  content: '';
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 7px solid var(--orange);
+  flex-shrink: 0;
+}
+
+/* ── Content Wrapper — full width, scrollable ── */
+#content-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px 24px;
+}
+#content-wrap::-webkit-scrollbar { width: 4px }
+#content-wrap::-webkit-scrollbar-track { background: transparent }
+#content-wrap::-webkit-scrollbar-thumb { background: rgba(201,168,76,.2); border-radius: 2px }
+
+/* max-width container inside content-wrap */
+.cw-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ── Step page: default block ── */
+.step-page { display: none; }
+.step-page.active, .step-page.act { display: block; }
+
+/* ── Page title ── */
+.page-title {
+  font-size: 17px; font-weight: 600;
+  color: var(--gold); margin-bottom: 6px;
+  font-family: var(--font-head); letter-spacing: .06em;
+}
+.page-sub { font-size: 11px; color: var(--dim); margin-bottom: 24px; line-height: 1.6 }
+
+/* ── STEP 1: 2×2 grid  ── */
+#page0 > .page-title,
+#page0 > .page-sub { /* span full width — they're block by default */ }
+#page0 > .card:first-of-type { /* drawing upload = full width */ }
+.step1-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 0;
+}
+.step1-grid > .card { margin-bottom: 0 }
+
+/* ── STEP 2: full width  ── */
+#page1 > .card { max-width: 100% }
+
+/* ── STEP 3: 2-column  ── */
+.step3-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.step3-grid > .card { margin-bottom: 0 }
+
+/* ── STEP 4: scope cards 3-col  ── */
+#page3 .scope-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+#page3 .scope-cards-grid > .scope-card { margin-bottom: 0 }
+
+/* ── STEP 5: 2-column  ── */
+.step5-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.step5-grid > .card { margin-bottom: 0 }
+
+/* ── STEP 6: result layout  ── */
+.step6-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.step6-main {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.step6-actions {
+  display: flex; gap: 12px; justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Nav bar ── */
+#nav {
+  padding: 12px 40px;
+  background: rgba(4,4,10,.95);
+  border-top: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+  backdrop-filter: blur(16px);
+}
+
+/* ── Remove inner #main layout quirks ── */
+#view-estimate > #main {
+  display: contents; /* flatten the redundant wrapper */
+}
+
+/* ── Responsive ── */
+@media (max-width: 1200px) {
+  .step1-grid { grid-template-columns: 1fr 1fr }
+  .step6-kpi-row { grid-template-columns: repeat(3, 1fr) }
+  .step6-main { grid-template-columns: 1fr }
+  #page3 .scope-cards-grid { grid-template-columns: 1fr 1fr }
+}
+@media (max-width: 768px) {
+  #hud-bar { height: auto; flex-direction: column; height: auto }
+  .hud-section { border-right: none; border-bottom: 1px solid rgba(201,168,76,.1) }
+  .step1-grid, .step3-grid, .step5-grid { grid-template-columns: 1fr }
+  .step6-kpi-row { grid-template-columns: 1fr 1fr }
+  #page3 .scope-cards-grid { grid-template-columns: 1fr }
+  #content-wrap { padding: 20px 16px }
+}
+
+
+/* hud-warn alias for sb-warn (JS compatibility) */
+.sb-warn {
+  font-size: 8px; color: var(--orange);
+  font-family: var(--font-mono);
+  display: flex; align-items: center; gap: 4px;
+}
+.sb-warn::before {
+  content: '';
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 7px solid var(--orange);
+  flex-shrink: 0;
+}
+.sb-warn.danger { color: var(--red) }
+.sb-warn.danger::before { border-bottom-color: var(--red) }
+
 </style>
 </head>
 <body>
@@ -984,36 +1195,41 @@ button { cursor: pointer }
   </div>
 </div>
 
-<div id="main">
-
-<!-- ── 사이드바 HUD ── -->
-<div id="sidebar">
-  <div class="sb-section">
-    <div class="sb-title">STRUCTURE</div>
-    <div class="sb-row"><span class="lbl">유형</span><span class="dots"></span><span class="val" id="sb-btype">APT</span></div>
-    <div class="sb-row"><span class="lbl">연식</span><span class="dots"></span><span class="val" id="sb-age">—</span></div>
-    <div class="sb-row"><span class="lbl">층수</span><span class="dots"></span><span class="val" id="sb-floor">—</span></div>
-    <div class="sb-row"><span class="lbl">접근성</span><span class="dots"></span><span class="val" id="sb-access">—</span></div>
+<!-- ── 상단 HUD 바 ── -->
+<div id="hud-bar">
+  <div class="hud-section">
+    <div class="hud-sec-title">STRUCTURE</div>
+    <div class="hud-kpis">
+      <div class="hud-kpi"><span class="hk-lbl">유형</span><span class="hk-val" id="sb-btype">APT</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">연식</span><span class="hk-val" id="sb-age">—</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">층수</span><span class="hk-val" id="sb-floor">—</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">접근성</span><span class="hk-val" id="sb-access">—</span></div>
+    </div>
   </div>
-  <div class="sb-section">
-    <div class="sb-title">AREA</div>
-    <div class="sb-row"><span class="lbl">바닥</span><span class="dots"></span><span class="val gold" id="sb-fa">0.00 ㎡</span></div>
-    <div class="sb-row"><span class="lbl">벽면</span><span class="dots"></span><span class="val" id="sb-wa">0.00 ㎡</span></div>
-    <div class="sb-row"><span class="lbl">천장</span><span class="dots"></span><span class="val" id="sb-ca">0.00 ㎡</span></div>
-    <div class="sb-row"><span class="lbl">둘레</span><span class="dots"></span><span class="val" id="sb-pr">0.0 m</span></div>
+  <div class="hud-section">
+    <div class="hud-sec-title">AREA</div>
+    <div class="hud-kpis">
+      <div class="hud-kpi"><span class="hk-lbl">바닥</span><span class="hk-val gold" id="sb-fa">0.0㎡</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">벽면</span><span class="hk-val" id="sb-wa">0.0㎡</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">천장</span><span class="hk-val" id="sb-ca">0.0㎡</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">둘레</span><span class="hk-val" id="sb-pr">0.0m</span></div>
+    </div>
   </div>
-  <div class="sb-section">
-    <div class="sb-title">ESTIMATE</div>
-    <div class="sb-row"><span class="lbl">공급가</span><span class="dots"></span><span class="val" id="sb-sup">₩0</span></div>
-    <div class="sb-row"><span class="lbl">도급</span><span class="dots"></span><span class="val" id="sb-con">₩0</span></div>
-    <div class="sb-row"><span class="lbl">최종</span><span class="dots"></span><span class="val gold" id="sb-fin">₩0</span></div>
-    <div class="sb-row"><span class="lbl">㎡단가</span><span class="dots"></span><span class="val" id="sb-sqm">—</span></div>
-    <div class="sb-row"><span class="lbl">평단가</span><span class="dots"></span><span class="val" id="sb-pyg">—</span></div>
+  <div class="hud-section">
+    <div class="hud-sec-title">ESTIMATE</div>
+    <div class="hud-kpis">
+      <div class="hud-kpi"><span class="hk-lbl">공급가</span><span class="hk-val" id="sb-sup">₩0</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">도급</span><span class="hk-val" id="sb-con">₩0</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">최종</span><span class="hk-val gold" id="sb-fin">₩0</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">㎡단가</span><span class="hk-val" id="sb-sqm">—</span></div>
+      <div class="hud-kpi"><span class="hk-lbl">평단가</span><span class="hk-val" id="sb-pyg">—</span></div>
+    </div>
   </div>
-  <div id="sb-warnings"></div>
+  <div class="hud-warn-area" id="sb-warnings"></div>
 </div>
 
 <!-- ── 컨텐츠 ── -->
+<div id="content-wrap"><div class="cw-inner">
 <div id="content">
 
 <!-- ═══ STEP 1: 건물 기본 정보 ═══ -->
@@ -1045,6 +1261,7 @@ button { cursor: pointer }
     </div>
   </div>
 
+  <div class="step1-grid">
   <div class="card">
     <div class="card-title">PROJECT — 기본 정보</div>
     <div class="grid g2">
@@ -1172,6 +1389,7 @@ button { cursor: pointer }
     </div>
     <div id="accessWarnings" style="margin-top:12px"></div>
   </div>
+  </div><!-- /step1-grid -->
 </div>
 
 <!-- ═══ STEP 2: 공간 실측 ═══ -->
@@ -1294,7 +1512,7 @@ button { cursor: pointer }
 <div class="step-page" id="page2">
   <div class="page-title">STEP 3 — 기존 현장 상태 조사</div>
   <div class="page-sub">철거 전 확인한 기존 상태를 입력합니다. 공사 범위와 리스크가 자동 반영됩니다.</div>
-
+  <div class="step3-grid">
   <div class="card">
     <div class="card-title">SURFACE — 바닥·벽·천장</div>
     <div class="grid g3">
@@ -1429,6 +1647,7 @@ button { cursor: pointer }
 
   <div id="existWarnings"></div>
 </div>
+  </div><!-- /step3-grid -->
 
 <!-- ═══ STEP 4: 공사 범위 ═══ -->
 <div class="step-page" id="page3">
@@ -1437,7 +1656,7 @@ button { cursor: pointer }
 
   <!-- 욕실 -->
   <div id="bathroomScopes"></div>
-
+  <div class="scope-cards-grid">
   <!-- 주방 -->
   <div class="scope-card">
     <div class="scope-hd"><h4>주방</h4></div>
@@ -1621,12 +1840,13 @@ button { cursor: pointer }
     </div>
   </div>
 </div>
+  </div><!-- /scope-cards-grid -->
 
 <!-- ═══ STEP 5: 자재 등급 ═══ -->
 <div class="step-page" id="page4">
   <div class="page-title">STEP 5 — 자재 등급 선택</div>
   <div class="page-sub">공간별 또는 전체 자재 등급을 선택합니다. 등급에 따라 단가 계수가 자동 적용됩니다.</div>
-
+  <div class="step5-grid">
   <div class="card">
     <div class="card-title">전체 패키지 등급</div>
     <div class="btn-group" style="margin-bottom:14px">
@@ -1665,6 +1885,7 @@ button { cursor: pointer }
     </div>
   </div>
 </div>
+  </div><!-- /step5-grid -->
 
 <!-- ═══ STEP 6: 견적 결과 & 일정 ═══ -->
 <div class="step-page" id="page5">
@@ -1770,13 +1991,13 @@ button { cursor: pointer }
 </div>
 
 </div><!-- /content -->
-  <div id="nav">
-    <div class="nvinfo">STEP <b id="ns">1</b> / 6</div>
-    <div class="btns">
-      <button class="nbtn prev" id="prevBtn" onclick="prevStep()" style="display:none">← 이전</button>
-      <button class="nbtn next" id="nextBtn" onclick="nextStep()">다음 →</button>
-      <button class="nbtn go" id="genBtn" onclick="genAll()" style="display:none"> 견적 생성</button>
-    </div>
+</div></div><!-- /content-wrap -->
+<div id="nav">
+  <div class="nvinfo">STEP <b id="ns">1</b> / 6</div>
+  <div class="btns">
+    <button class="nbtn prev" id="prevBtn" onclick="prevStep()" style="display:none">← 이전</button>
+    <button class="nbtn next" id="nextBtn" onclick="nextStep()">다음 →</button>
+    <button class="nbtn go" id="genBtn" onclick="genAll()" style="display:none"> 견적 생성</button>
   </div>
 </div>
 
