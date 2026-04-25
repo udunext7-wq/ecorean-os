@@ -2339,7 +2339,8 @@ input::placeholder { font-size: 13px !important }
     <button class="nbtn next" id="nextBtn" onclick="nextStep()">다음 →</button>
     <button class="nbtn go" id="genBtn" onclick="genAll()" style="display:none"> 견적 생성</button>
   </div>
-</div>
+</div><!-- /nav -->
+</div><!-- /view-estimate -->
 
 <!-- 프로젝트 탭 -->
 <div class="view" id="view-projects">
@@ -3275,8 +3276,9 @@ function recalc() {
   // 사이드바 + 헤더 + STEP6 KPI 업데이트
   const fmt=n=>n>=100000000?(n/100000000).toFixed(1)+'억':Math.round(n/10000)+'만원';
   const ff=n=>'₩'+n.toLocaleString();
-  safeTxt('hv1', fmt(final));
-  safeTxt('hv2', t.fa>0?(Math.round(final/t.fa)).toLocaleString()+'/㎡':'—');
+  const safeNum = n => (isFinite(n) && !isNaN(n)) ? n : 0;
+  safeTxt('hv1', fmt(safeNum(final)));
+  safeTxt('hv2', t.fa>0?(Math.round(safeNum(final/t.fa))).toLocaleString()+'/㎡':'—');
   safeTxt('sb-fa', t.fa.toFixed(1)+' ㎡');
   safeTxt('sb-wa', t.wa.toFixed(1)+' ㎡');
   safeTxt('sb-ca', t.ca.toFixed(1)+' ㎡');
@@ -3871,7 +3873,8 @@ function updHdrBoc(){
 window.addEventListener('load',()=>{
   bocLoad();
   renderDB2();renderSpaceCards();updateBathroomScopes();
-  if(S.buildAge>0) recalc();
+  if(S.buildAge>0 && S.spaces.length>0) recalc();
+  else { safeTxt('hv1','₩0'); safeTxt('hv2','—'); }
   setInterval(bocSave,30000);
 });
 
