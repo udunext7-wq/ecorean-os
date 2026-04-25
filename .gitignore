@@ -1,0 +1,13 @@
+node_modules/
+**/node_modules/
+shell/dist/
+dist/
+*.zip
+*.exe
+生成파일저장/
+생성파일저장/
+ecorean-estimate-os/
+ecorean-estimate-os-v0.1.0.zip
+ecorean-estimate-os.zip
+ecorean-estimate-os-v0.5.0/
+docscd/

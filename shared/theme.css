@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Core Palette */
+  --void:    #04040A;
+  --deep:    #080810;
+  --surface: #0D0D1A;
+  --raised:  #121220;
+  --elevated:#181828;
+  --overlay: #1E1E32;
+
+  /* Gold System */
+  --gold-bright: #F0C04A;
+  --gold:        #C9A84C;
+  --gold-dim:    #9A7A32;
+  --gold-glow:   rgba(201,168,76,.35);
+  --gold2:       rgba(201,168,76,.15);
+  --gold3:       rgba(201,168,76,.07);
+  --gold4:       rgba(201,168,76,.03);
+
+  /* Semantic Colors */
+  --text:    #EDE5D5;
+  --text2:   #B8A98A;
+  --dim:     #666680;
+  --border:  rgba(201,168,76,.22);
+  --border2: rgba(255,255,255,.07);
+  --border3: rgba(255,255,255,.04);
+  --platinum: var(--text);
+
+  /* Status */
+  --green:  #5DDDA0;
+  --blue:   #5AADFF;
+  --red:    #FF5574;
+  --orange: #FFAA44;
+  --purple: #A78BFA;
+
+  /* Aliases */
+  --bg:  var(--void);
+  --bg2: var(--surface);
+  --bg3: var(--raised);
+  --bg4: var(--elevated);
+
+  /* Radii */
+  --r:  8px;
+  --rl: 14px;
+  --rx: 20px;
+
+  /* Typography */
+  --font-head: 'Cormorant Garamond', 'Apple SD Gothic Neo', serif;
+  --font-body: 'Inter', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+
+  /* Shadows */
+  --shadow-gold: 0 0 30px rgba(201,168,76,.12), 0 0 60px rgba(201,168,76,.05);
+  --shadow-card: 0 4px 24px rgba(0,0,0,.4), 0 1px 4px rgba(0,0,0,.6);
+  --shadow-hover: 0 8px 40px rgba(0,0,0,.5), 0 0 20px rgba(201,168,76,.1);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--deep); }
+::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }

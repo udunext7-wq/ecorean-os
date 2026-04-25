@@ -1,14 +1,21 @@
 {
-  "name": "ecorean-boc",
-  "version": "1.0.0",
-  "description": "ECOREAN Build Operation Center — 전문 건설 견적 데스크탑 앱",
-  "main": "electron/main.js",
-  "type": "commonjs",
+  "name": "ecorean-os",
+  "version": "2.0.0",
+  "description": "ECOREAN Build Operation Center — 마이크로 프론트엔드",
+  "private": true,
+  "workspaces": [
+    "shell",
+    "modules/*",
+    "shared"
+  ],
   "scripts": {
     "start": "electron .",
+    "start:legacy": "electron .",
+    "dev": "concurrently -n shell,est,cad -c cyan,yellow,green \"npm run dev --workspace=shell\" \"npm run dev --workspace=modules/estimate\" \"npm run dev --workspace=modules/cad\"",
+    "dev:shell": "npm run dev --workspace=shell",
+    "build:all": "npm run build --workspaces --if-present",
+    "electron": "npm run electron:dev --workspace=shell",
     "build": "electron-builder --win --x64",
-    "build:nsis": "electron-builder --win --x64 --config.win.target=nsis",
-    "build:dir": "electron-builder --win --x64 --dir",
     "test": "echo \"No tests\" && exit 0"
   },
   "build": {
@@ -61,6 +68,7 @@
     "url": "git+https://github.com/udunext7-wq/ecorean-os.git"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "electron": "^41.3.0",
     "electron-builder": "^26.8.1"
   }

@@ -1,0 +1,20 @@
+{
+  "name": "@ecorean/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./store": "./store/index.js",
+    "./engine": "./engine/recalc.js",
+    "./engine/ontology": "./engine/ontology.js",
+    "./engine/diagnostics": "./engine/diagnostics.js",
+    "./ui/*": "./ui/*.jsx",
+    "./EventBus": "./EventBus.js",
+    "./theme.css": "./ui/theme.css"
+  },
+  "dependencies": {
+    "eventemitter3": "^5.0.1",
+    "zustand": "^4.5.2"
+  }
+}

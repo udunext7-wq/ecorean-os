@@ -1,0 +1,222 @@
+[
+  {
+    "id": "LBR_특별인부",
+    "name": "특별인부",
+    "category": "기타",
+    "dailyRate": 220000,
+    "hourlyRate": 27500,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_콘크리트",
+    "name": "콘크리트공",
+    "category": "기타",
+    "dailyRate": 230000,
+    "hourlyRate": 28750,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_형틀목공",
+    "name": "형틀목공",
+    "category": "기타",
+    "dailyRate": 270000,
+    "hourlyRate": 33750,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_철근공",
+    "name": "철근공",
+    "category": "기타",
+    "dailyRate": 260000,
+    "hourlyRate": 32500,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_용접공",
+    "name": "용접공",
+    "category": "기타",
+    "dailyRate": 290000,
+    "hourlyRate": 36250,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_유리공",
+    "name": "유리공",
+    "category": "기타",
+    "dailyRate": 230000,
+    "hourlyRate": 28750,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_조적공",
+    "name": "조적공",
+    "category": "기타",
+    "dailyRate": 240000,
+    "hourlyRate": 30000,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_견출공",
+    "name": "견출공",
+    "category": "기타",
+    "dailyRate": 220000,
+    "hourlyRate": 27500,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_석공",
+    "name": "석공",
+    "category": "기타",
+    "dailyRate": 260000,
+    "hourlyRate": 32500,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_온돌공",
+    "name": "온돌공",
+    "category": "기타",
+    "dailyRate": 230000,
+    "hourlyRate": 28750,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_건축목공",
+    "name": "건축목공",
+    "category": "기타",
+    "dailyRate": 260000,
+    "hourlyRate": 32500,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_WLP",
+    "name": "도배공",
+    "category": "도배",
+    "dailyRate": 220000,
+    "hourlyRate": 27500,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_PNT",
+    "name": "도장공",
+    "category": "도장",
+    "dailyRate": 220000,
+    "hourlyRate": 27500,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_CRP",
+    "name": "목공",
+    "category": "목공",
+    "dailyRate": 250000,
+    "hourlyRate": 31250,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_PLS",
+    "name": "미장공",
+    "category": "미장",
+    "dailyRate": 230000,
+    "hourlyRate": 28750,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_WTP",
+    "name": "방수공",
+    "category": "방수",
+    "dailyRate": 230000,
+    "hourlyRate": 28750,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_PLB",
+    "name": "배관공",
+    "category": "배관",
+    "dailyRate": 280000,
+    "hourlyRate": 35000,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_MEP",
+    "name": "설비공",
+    "category": "설비",
+    "dailyRate": 270000,
+    "hourlyRate": 33750,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_GEN",
+    "name": "보통인부",
+    "category": "일반",
+    "dailyRate": 180000,
+    "hourlyRate": 22500,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_ELE",
+    "name": "전공",
+    "category": "전기",
+    "dailyRate": 270000,
+    "hourlyRate": 33750,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_WIN",
+    "name": "창호공",
+    "category": "창호",
+    "dailyRate": 240000,
+    "hourlyRate": 30000,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  },
+  {
+    "id": "LBR_TIL",
+    "name": "타일공",
+    "category": "타일",
+    "dailyRate": 250000,
+    "hourlyRate": 31250,
+    "unit": "일",
+    "source": "KCA",
+    "updatedAt": "2026-H1"
+  }
+]
