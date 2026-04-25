@@ -913,8 +913,8 @@ button { cursor: pointer }
    ECOREAN BOC — Horizontal Layout v3
 ══════════════════════════════════════════════════ */
 
-/* ── Override: estimate view = flex column full height ── */
-#view-estimate {
+/* ── Override: estimate view = flex column full height (only when active) ── */
+#view-estimate.act {
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
@@ -1081,8 +1081,8 @@ button { cursor: pointer }
 }
 
 /* ── Remove inner #main layout quirks ── */
-#view-estimate > #main {
-  display: contents; /* flatten the redundant wrapper */
+#view-estimate.act > #main {
+  display: contents;
 }
 
 /* ── Responsive ── */
@@ -3790,11 +3790,21 @@ recalc();
 const BOC = { projects:[], presets:[], approvalReqs:[], approvalLog:[], currentProjId:null, currentApprovalId:null };
 
 // 탭 전환
+function toggleEstimateUI(isEstimate){
+  const sb=document.getElementById('stepbar');
+  const hb=document.getElementById('hud-bar');
+  const nv=document.getElementById('nav');
+  const d=isEstimate?'':'none';
+  if(sb)sb.style.display=isEstimate?'flex':d;
+  if(hb)hb.style.display=isEstimate?'flex':d;
+  if(nv)nv.style.display=isEstimate?'flex':d;
+}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('act'));b.classList.add('act');
   const v=b.dataset.v;
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('act'));
+  document.querySelectorAll('.view').forEach(vv=>vv.classList.remove('act'));
   document.getElementById('view-'+v)?.classList.add('act');
+  toggleEstimateUI(v==='estimate');
   if(v==='projects')renderProjects();
   if(v==='presets')renderPresets();
   if(v==='approval'){renderApproval();renderApprovalLog();}
@@ -3908,6 +3918,7 @@ function loadProject(id){
   document.querySelector('[data-v="estimate"]')?.classList.add('act');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('act'));
   document.getElementById('view-estimate')?.classList.add('act');
+  toggleEstimateUI(true);
   renderSpaceCards();updateBathroomScopes();recalc();
   st('"'+p.name+'" 불러옴');
 }
@@ -3928,6 +3939,7 @@ function newProject(){
   document.querySelector('[data-v="estimate"]')?.classList.add('act');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('act'));
   document.getElementById('view-estimate')?.classList.add('act');
+  toggleEstimateUI(true);
   goStep(0);st('새 프로젝트');
 }
 function doImportProject(input){
@@ -3980,6 +3992,7 @@ function loadPreset(id){
   document.querySelector('[data-v="estimate"]')?.classList.add('act');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('act'));
   document.getElementById('view-estimate')?.classList.add('act');
+  toggleEstimateUI(true);
   st('"'+p.name+'" 프리셋 적용됨');
 }
 function deletePreset(id){if(!confirm('삭제?'))return;BOC.presets=BOC.presets.filter(p=>p.id!==id);bocSave();renderPresets();}
@@ -4109,6 +4122,7 @@ function printReport(type){
   if(rv&&rt&&rc){rv.style.display='block';rt.textContent=title;rc.innerHTML=content;}
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('act'));document.querySelector('[data-v="reports"]')?.classList.add('act');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('act'));document.getElementById('view-reports')?.classList.add('act');
+  toggleEstimateUI(false);
 }
 function genGantt(totalDays){
   const procs=[
@@ -4291,6 +4305,7 @@ function st(msg){const el=document.getElementById('stmsg');if(el)el.textContent=
 function gotoTab(v){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('act'));document.querySelector('[data-v="'+v+'"]')?.classList.add('act');
   document.querySelectorAll('.view').forEach(vv=>vv.classList.remove('act'));document.getElementById('view-'+v)?.classList.add('act');
+  toggleEstimateUI(v==='estimate');
   if(v==='dbmgr'){ renderRuleManager(); renderStatisticsPanel(); }
 }
 
