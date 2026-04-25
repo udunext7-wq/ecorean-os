@@ -3449,6 +3449,10 @@ function recalc() {
   safeTxt('rc', ff(Math.round(contract)));
   safeTxt('rdur', dur+'일');
 
+  ['hv1','hv-supply','supply-kpi'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=fmt(safeNum(final));
+  });
   window.lastResult={lines, totalSup, contract, final, dur, totals:t};
   return window.lastResult;
 }
@@ -6897,10 +6901,8 @@ function fcSyncToSpaces(){
   fc.getObjects().forEach(obj=>{
     if(!obj.spaceData) return;
     const d=obj.spaceData;
-    // spaceData에 저장된 값 우선, 없으면 getScaledWidth()*PX2MM 계산
-    // (fcPropResize에서 scaleX만 바꾸면 getScaledWidth()가 이중 반영될 수 있어서)
-    const wMm = d.width  || Math.round(obj.getScaledWidth()*PX2MM);
-    const hMm = d.length || Math.round(obj.getScaledHeight()*PX2MM);
+    const wMm = Math.round(obj.width * obj.scaleX / 60 * 1000);
+    const hMm = Math.round(obj.height * obj.scaleY / 60 * 1000);
     // 비정상 값 방어
     const safeW = Math.max(100, Math.min(50000, wMm));
     const safeH = Math.max(100, Math.min(50000, hMm));
@@ -7323,5 +7325,34 @@ window.cadSyncPreview=function(){ fcSyncToSpaces(); if(typeof st==='function') s
   </div>
 </div>
 
+<script>
+window.switchToTab = function(id) {
+  document.querySelectorAll('[id^="view-"]').forEach(v => v.style.display='none');
+  const t = document.getElementById('view-'+id);
+  if(t) t.style.display = id==='estimate' ? '' : 'block';
+  document.querySelectorAll('#tabs .tab').forEach(b=>{
+    b.classList.toggle('act',(b.dataset.v||b.getAttribute('data-v'))===id);
+  });
+  const estEls = ['stepbar','hud-bar','nav'];
+  estEls.forEach(eid => {
+    const el = document.getElementById(eid);
+    if(el) el.style.display = id==='estimate' ? '' : 'none';
+  });
+  if(id==='estimate' && window.fc){
+    requestAnimationFrame(()=>{ try{ window.fc.calcOffset(); window.fc.renderAll(); }catch(e){} });
+  }
+  try {
+    ({projects:renderProjects, presets:renderPresets,
+      approval:()=>{renderApproval();renderApprovalLog();},
+      dbmgr:renderDB2, ontology:()=>{renderOntologyView();if(typeof renderDandelion==='function')renderDandelion();},
+      aiengine:renderAIEngineView, reports:renderReportList,
+      completion:updCmpSel
+    })[id]?.();
+  } catch(e){}
+  try{ if(typeof bocRefreshCounters==='function') bocRefreshCounters(); }catch(e){}
+};
+window.gotoTab = window.activateTab = window.switchToTab;
+document.addEventListener('DOMContentLoaded',()=>switchToTab('estimate'));
+</script>
 </body>
 </html>
