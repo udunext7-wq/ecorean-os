@@ -7327,19 +7327,32 @@ window.cadSyncPreview=function(){ fcSyncToSpaces(); if(typeof st==='function') s
 
 <script>
 window.switchToTab = function(id) {
-  document.querySelectorAll('[id^="view-"]').forEach(v => v.style.display='none');
+  // 모든 view: 숨기고 .act 제거
+  document.querySelectorAll('[id^="view-"]').forEach(v => {
+    v.style.display = 'none';
+    v.classList.remove('act');
+  });
+  // 선택한 view: .act 추가 → CSS 규칙 트리거, estimate는 flex(CSS), 나머지는 block
   const t = document.getElementById('view-'+id);
-  if(t) t.style.display = id==='estimate' ? '' : 'block';
+  if(t) {
+    t.classList.add('act');
+    if(id !== 'estimate') t.style.display = 'block';
+    else t.style.display = '';  // #view-estimate.act { display:flex !important } 에 위임
+  }
+  // 탭 버튼 act
   document.querySelectorAll('#tabs .tab').forEach(b=>{
     b.classList.toggle('act',(b.dataset.v||b.getAttribute('data-v'))===id);
   });
-  const estEls = ['stepbar','hud-bar','nav'];
-  estEls.forEach(eid => {
-    const el = document.getElementById(eid);
-    if(el) el.style.display = id==='estimate' ? '' : 'none';
-  });
-  if(id==='estimate' && window.fc){
-    requestAnimationFrame(()=>{ try{ window.fc.calcOffset(); window.fc.renderAll(); }catch(e){} });
+  // estimate 전용 요소(stepbar/hud-bar/nav)는 view-estimate 안에 있어 부모가 숨겨지면 자동 숨김
+  // estimate로 돌아올 때 혹시 남은 inline display:none 제거
+  if(id==='estimate'){
+    ['stepbar','hud-bar','nav'].forEach(eid=>{
+      const el=document.getElementById(eid);
+      if(el) el.style.display='';
+    });
+    if(window.fc){
+      requestAnimationFrame(()=>{ try{ window.fc.calcOffset(); window.fc.renderAll(); }catch(e){} });
+    }
   }
   try {
     ({projects:renderProjects, presets:renderPresets,
