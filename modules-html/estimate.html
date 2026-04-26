@@ -148,7 +148,7 @@ label.lbl{font-size:11px;color:var(--text2);font-weight:500}
 .pr-val.hi{color:var(--gold-bright)}
 
 /* KPI cards */
-.kpic{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.kpic{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
 .kc{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:14px;text-align:center}
 .kc.hi{border-color:rgba(201,168,76,0.4);background:rgba(201,168,76,0.06)}
 .kcv{font-family:var(--fm);font-size:19px;font-weight:600;color:var(--platinum)}
@@ -366,11 +366,28 @@ label.lbl{font-size:11px;color:var(--text2);font-weight:500}
       <td colspan="6">소계</td><td id="res-sub" style="color:var(--gold);font-family:var(--fm);">—</td>
     </tr></tfoot>
   </table>
+  <div style="display:flex;gap:18px;margin-bottom:18px;align-items:flex-start;">
+    <div style="flex:1;">
+      <div class="slabel">카테고리별 비중</div>
+      <canvas id="pie-chart" width="160" height="160"></canvas>
+      <div id="pie-legend" style="font-size:10px;margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;"></div>
+    </div>
+    <div style="flex:2;">
+      <div class="slabel">견적 유효기간</div>
+      <div id="validity-box" style="margin-bottom:14px;"></div>
+      <div class="slabel">발주 D-Day</div>
+      <div id="order-box"></div>
+    </div>
+  </div>
   <div class="slabel">공정 일정 (Gantt)</div>
-  <table class="dt">
-    <thead><tr><th>공정명</th><th>착공</th><th>완공</th><th>기간</th><th style="min-width:100px;">Gantt</th></tr></thead>
+  <table class="dt" style="margin-bottom:18px;">
+    <thead><tr><th>공정명</th><th>착공</th><th>완공</th><th>기간</th><th>발주마감</th><th style="min-width:90px;">Gantt</th></tr></thead>
     <tbody id="sch-tbody"></tbody>
   </table>
+  <div style="display:flex;gap:8px;padding-top:14px;border-top:1px solid var(--border);">
+    <button class="btn btn-p" onclick="WZ.printCustomer()">📄 고객용 견적서</button>
+    <button class="btn btn-p" onclick="WZ.printInternal()">📊 내부 보고서</button>
+  </div>
 </div>
 
 </div><!-- /content -->
@@ -457,6 +474,10 @@ function fmt(n){
 function fmtW(n){ return (!n||n<=0)?'—':Math.round(n).toLocaleString()+'원' }
 function $id(id){ return document.getElementById(id) }
 
+function addDaysStr(dateStr, days){
+  var d=new Date(dateStr); d.setDate(d.getDate()+days)
+  return d.toISOString().slice(0,10)
+}
 function guessType(nm){
   if(/욕실|화장실|bath/i.test(nm)) return 'bathroom'
   if(/주방|kitchen|부엌/i.test(nm))  return 'kitchen'
@@ -705,6 +726,7 @@ function renderResult(){
       floorLevel:S.floorLevel||5,
       hasElev:S.hasElev,
       resid:S.resid,
+      region:S.region||1.0,
     })
   }catch(e){console.warn('[Result/Calc]',e)}
 
@@ -723,14 +745,29 @@ function renderResult(){
   var fa2=(r.totals&&r.totals.fa)?r.totals.fa:(totalArea()||30)
   var m2p=fa2>0?Math.round(r.finalAmount/fa2):0
 
-  // KPI cards
+  // 견적 유효기간 (발행일 기준 30일)
+  var validUntil=addDaysStr(new Date().toISOString().slice(0,10),30)
+  var daysLeft=Math.ceil((new Date(validUntil)-new Date())/(1000*86400))
+  var vBox=$id('validity-box')
+  if(vBox){
+    var vc=daysLeft>7?'var(--green)':daysLeft>3?'var(--orange)':'var(--red)'
+    vBox.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:5px;">'+
+      '<div style="font-size:18px;">📅</div>'+
+      '<div><div style="font-size:12px;color:var(--text2);">발행일 기준 30일 고정 단가</div>'+
+      '<div style="font-family:var(--fm);font-size:13px;">유효기간: <span style="color:'+vc+'">'+validUntil+'</span> <span style="color:'+vc+'">(D-'+daysLeft+')</span></div></div></div>'
+  }
+
+  // KPI cards (평단가 추가)
+  var pyeong=fa2>0?Math.round(r.finalAmount/(fa2/3.3058)):0
   var kpic=$id('kpic')
   if(kpic){
     kpic.innerHTML=
       '<div class="kc"><div class="kcv">'+fmt(r.totalSupply)+'</div><div class="kcl">공급가 (VAT 별도)</div></div>'+
       '<div class="kc"><div class="kcv">'+fmt(r.contractAmount)+'</div><div class="kcl">도급금액 (+15%)</div></div>'+
       '<div class="kc hi"><div class="kcv">'+fmt(r.finalAmount)+'</div><div class="kcl">최종합계 (VAT 포함)</div></div>'+
-      '<div class="kc"><div class="kcv">'+(m2p?m2p.toLocaleString()+'/㎡':'—')+'</div><div class="kcl">㎡단가</div></div>'
+      '<div class="kc"><div class="kcv">'+(m2p?m2p.toLocaleString()+'원':'—')+'</div><div class="kcl">㎡단가</div></div>'+
+      '<div class="kc"><div class="kcv">'+(pyeong?pyeong.toLocaleString()+'원':'—')+'</div><div class="kcl">평단가 (3.3㎡)</div></div>'+
+      '<div class="kc"><div class="kcv">'+(r.duration||'—')+(r.duration?'일':'')+'</div><div class="kcl">예상 공기</div></div>'
   }
 
   // 내역 테이블
@@ -754,22 +791,82 @@ function renderResult(){
     if(sub) sub.textContent=tot.toLocaleString()+'원'
   }
 
-  // Schedule
+  // 파이차트
+  var pieCanvas=$id('pie-chart')
+  var catSums={}
+  ;(r.lines||[]).forEach(function(l){
+    catSums[l.cat]=(catSums[l.cat]||0)+(l.supplyPrice||0)
+  })
+  var pieColors=['#C9A84C','#00FFB2','#00AAFF','#FF8C00','#FF3355','#9966FF','#FF6699','#33CCCC','#FFCC00','#88CC88']
+  var pieCats=Object.keys(catSums)
+  if(pieCanvas&&pieCats.length){
+    var pc=pieCanvas.getContext('2d')
+    var cx=80,cy=80,ro=70,ri=38,tot2=pieCats.reduce(function(a,k){return a+catSums[k]},0)
+    var ang=-Math.PI/2
+    pc.clearRect(0,0,160,160)
+    pieCats.forEach(function(k,i){
+      var a=(catSums[k]/tot2)*Math.PI*2
+      pc.beginPath(); pc.moveTo(cx,cy); pc.arc(cx,cy,ro,ang,ang+a)
+      pc.fillStyle=pieColors[i%pieColors.length]; pc.fill()
+      ang+=a
+    })
+    pc.beginPath(); pc.arc(cx,cy,ri,0,Math.PI*2)
+    pc.fillStyle='#0D0D1A'; pc.fill()
+    pc.fillStyle='#C9A84C'; pc.font='bold 11px monospace'; pc.textAlign='center'
+    pc.fillText(fmt(r.totalSupply),cx,cy+4)
+    var lgEl=$id('pie-legend')
+    if(lgEl) lgEl.innerHTML=pieCats.map(function(k,i){
+      return '<span style="display:inline-flex;align-items:center;gap:3px;margin-right:6px;">'+
+        '<span style="width:8px;height:8px;border-radius:2px;background:'+pieColors[i%pieColors.length]+';display:inline-block;"></span>'+
+        '<span style="color:var(--text2)">'+k+'</span></span>'
+    }).join('')
+  } else if(pieCanvas){
+    var pc2=pieCanvas.getContext('2d'); pc2.clearRect(0,0,160,160)
+  }
+
+  // 발주 D-Day 박스
+  var startDate2=S.startDate||new Date(Date.now()+14*86400000).toISOString().slice(0,10)
+  var orderBox=$id('order-box')
+  if(orderBox){
+    var DB2=CalcEngine.DB; var orderItems=[]
+    ;(r.lines||[]).slice(0,6).forEach(function(l){
+      var item=DB2[l.id]; if(!item) return
+      var lead=item.dur?Math.ceil(item.dur*3):7
+      var deadline=ScheduleEngine.calcOrderDeadline(startDate2,lead)
+      var dday=Math.ceil((new Date(deadline)-new Date())/(1000*86400))
+      orderItems.push({name:l.name,deadline:deadline,dday:dday,lead:lead})
+    })
+    orderBox.innerHTML=orderItems.map(function(o){
+      var c=o.dday<0?'var(--red)':o.dday<7?'var(--orange)':'var(--green)'
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 9px;border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:11px;">'+
+        '<span style="color:var(--text2)">'+o.name+'</span>'+
+        '<span style="font-family:var(--fm);color:'+c+'">'+(o.dday>=0?'D-'+o.dday:'D+'+Math.abs(o.dday))+'</span>'+
+        '</div>'
+    }).join('')||'<div style="color:var(--dim);font-size:11px;padding:6px;">공정 선택 후 표시됩니다</div>'
+  }
+
+  // Schedule (Gantt)
   var schTbody=$id('sch-tbody')
   if(schTbody){
-    var start=S.startDate||new Date(Date.now()+14*86400000).toISOString().slice(0,10)
     var tasks=[]
-    try{tasks=ScheduleEngine.generateSchedule(start,S.selectedProcessIds)||[]}catch(e){}
+    try{tasks=ScheduleEngine.generateSchedule(startDate2,S.selectedProcessIds)||[]}catch(e){}
     schTbody.innerHTML=''
     var totalDur=tasks.reduce(function(a,t){return a+(t.dur||1)},0)||1
+    var DB3=CalcEngine.DB
     tasks.forEach(function(t){
       var ed=new Date(t.start); ed.setDate(ed.getDate()+(t.dur||1))
-      var bw=Math.max(3,Math.round(((t.dur||1)/totalDur)*160))
+      var bw=Math.max(3,Math.round(((t.dur||1)/totalDur)*80))
+      var item=DB3[t.id]
+      var lead=item?Math.ceil((item.dur||1)*3):7
+      var dl=ScheduleEngine.calcOrderDeadline(t.start,lead)
+      var dday=Math.ceil((new Date(dl)-new Date())/(1000*86400))
+      var dc=dday<0?'var(--red)':dday<7?'var(--orange)':'var(--dim)'
       var tr=document.createElement('tr')
       tr.innerHTML='<td>'+t.name+'</td>'+
         '<td style="font-family:var(--fm);font-size:11px">'+t.start+'</td>'+
         '<td style="font-family:var(--fm);font-size:11px">'+ed.toISOString().slice(0,10)+'</td>'+
         '<td>'+t.dur+'일</td>'+
+        '<td style="font-family:var(--fm);font-size:11px;color:'+dc+'">'+(dday>=0?'D-'+dday:'D+'+Math.abs(dday))+'</td>'+
         '<td><div class="gb" style="width:'+bw+'px"></div></td>'
       schTbody.appendChild(tr)
     })
@@ -863,17 +960,97 @@ var WZ={
     renderDiag()
   },
   setPartG:function(pid,val){S.partGrades[pid]=val; calcFin()},
+  printCustomer:function(){
+    if(!S.result) return alert('먼저 견적을 계산하세요.')
+    var r=S.result
+    var validUntil=addDaysStr(new Date().toISOString().slice(0,10),30)
+    var rows=(r.lines||[]).map(function(l){
+      return '<tr><td>'+l.name+'</td><td>'+l.unit+'</td><td>'+
+        (l.qty?l.qty.toFixed(1):1)+'</td><td>'+
+        (l.supplyPrice||0).toLocaleString()+'원</td></tr>'
+    }).join('')
+    var html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'+
+      '<title>견적서 — '+S.projName+'</title>'+
+      '<style>body{font-family:"Noto Sans KR",sans-serif;font-size:13px;color:#111;padding:30px}'+
+      'h1{font-size:20px;margin-bottom:4px}'+
+      '.sub{color:#555;margin-bottom:20px;font-size:12px}'+
+      'table{width:100%;border-collapse:collapse;margin-bottom:20px}'+
+      'th,td{padding:7px 10px;border:1px solid #ddd;text-align:left}'+
+      'th{background:#f5f5f5;font-weight:600}'+
+      '.total-row{font-weight:700;background:#fffbf0}'+
+      '.footer{margin-top:30px;font-size:11px;color:#888}'+
+      '@media print{body{padding:0}}</style></head><body>'+
+      '<h1>견 적 서</h1>'+
+      '<div class="sub">'+S.projName+' · 담당: '+S.manager+'</div>'+
+      '<table><thead><tr><th>공사 항목</th><th>단위</th><th>수량</th><th>금액</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+      '<tfoot><tr class="total-row"><td colspan="3">합 계 (공급가)</td><td>'+(r.totalSupply||0).toLocaleString()+'원</td></tr>'+
+      '<tr class="total-row"><td colspan="3">도급금액 (공급가×1.15)</td><td>'+(r.contractAmount||0).toLocaleString()+'원</td></tr>'+
+      '<tr class="total-row"><td colspan="3">최종합계 (VAT 포함)</td><td>'+(r.finalAmount||0).toLocaleString()+'원</td></tr>'+
+      '</tfoot></table>'+
+      '<div class="footer">견적 유효기간: '+validUntil+' · 발행: '+new Date().toISOString().slice(0,10)+'<br>'+
+      '본 견적서는 상기 기간 내에만 유효합니다.</div>'+
+      '<script>window.onload=function(){window.print()}<\/script></body></html>'
+    var w=window.open('','_blank'); if(w){w.document.write(html); w.document.close()}
+  },
+  printInternal:function(){
+    if(!S.result) return alert('먼저 견적을 계산하세요.')
+    var r=S.result
+    var validUntil=addDaysStr(new Date().toISOString().slice(0,10),30)
+    var fa=r.totals&&r.totals.fa?r.totals.fa:totalArea()||30
+    var rows=(r.lines||[]).map(function(l){
+      var lbAmt=l.lb&&l.qty?Math.round(l.lb*l.qty):0
+      var mtAmt=l.mt&&l.qty?Math.round(l.mt*l.qty*(S.gradeMul||1)):0
+      return '<tr><td>'+l.name+'</td><td>'+l.cat+'</td><td>'+l.unit+'</td>'+
+        '<td>'+(l.qty?l.qty.toFixed(1):1)+'</td>'+
+        '<td>'+lbAmt.toLocaleString()+'</td><td>'+mtAmt.toLocaleString()+'</td>'+
+        '<td><b>'+(l.supplyPrice||0).toLocaleString()+'</b></td></tr>'
+    }).join('')
+    var html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'+
+      '<title>[내부] 원가보고서 — '+S.projName+'</title>'+
+      '<style>body{font-family:"Noto Sans KR",sans-serif;font-size:12px;color:#111;padding:30px}'+
+      'h1{font-size:18px;margin-bottom:4px}h2{font-size:13px;color:#555;font-weight:400;margin-bottom:16px}'+
+      'table{width:100%;border-collapse:collapse;margin-bottom:16px}'+
+      'th,td{padding:5px 8px;border:1px solid #ddd;text-align:left}'+
+      'th{background:#f0f0f0;font-weight:600}'+
+      '.hi{background:#fffbf0;font-weight:700}'+
+      '.badge{background:#e8f5e9;color:#2e7d32;padding:2px 6px;border-radius:3px;font-size:10px}'+
+      '@media print{body{padding:0}}</style></head><body>'+
+      '<h1>[내부용] 원가 상세 보고서 <span class="badge">기밀</span></h1>'+
+      '<h2>'+S.projName+' · '+new Date().toISOString().slice(0,10)+'</h2>'+
+      '<table><thead><tr><th>항목</th><th>구분</th><th>단위</th><th>수량</th><th>노무비</th><th>자재비</th><th>공급가</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+      '<tfoot>'+
+      '<tr class="hi"><td colspan="6">공급가 합계</td><td>'+(r.totalSupply||0).toLocaleString()+'원</td></tr>'+
+      '<tr class="hi"><td colspan="6">도급금액 (×1.15)</td><td>'+(r.contractAmount||0).toLocaleString()+'원</td></tr>'+
+      '<tr class="hi"><td colspan="6">최종합계 VAT포함 (×1.10)</td><td>'+(r.finalAmount||0).toLocaleString()+'원</td></tr>'+
+      '<tr><td colspan="6">㎡단가</td><td>'+Math.round((r.finalAmount||0)/fa).toLocaleString()+'원/㎡</td></tr>'+
+      '<tr><td colspan="6">평단가</td><td>'+Math.round((r.finalAmount||0)/(fa/3.3058)).toLocaleString()+'원/평</td></tr>'+
+      '</tfoot></table>'+
+      '<div style="font-size:11px;color:#888">양중계수: ×'+
+      CalcEngine.getHoistMul(S.floorLevel||5,S.hasElev)+
+      ' · 거주중: '+(S.resid?'+10%':'해당없음')+
+      ' · 지역계수: ×'+(S.region||1.0)+
+      ' · 견적유효: '+validUntil+'</div>'+
+      '<script>window.onload=function(){window.print()}<\/script></body></html>'
+    var w=window.open('','_blank'); if(w){w.document.write(html); w.document.close()}
+  },
   save:async function(){
     WZ.readS1(); WZ.readS3()
     if(!S.projId) S.projId='p'+Date.now()
+    var now=new Date().toISOString()
+    var validUntil2=addDaysStr(now.slice(0,10),30)
     var proj={
       id:S.projId, name:S.projName||'새 프로젝트',
       buildType:S.buildType, buildAge:S.buildAge,
       floorLevel:S.floorLevel, hasElev:S.hasElev,
+      resid:S.resid?1:0, region:S.region||1.0,
+      manager:S.manager, address:'',
       result:S.result, spaces:S.spaces,
       scope:{selectedProcessIds:S.selectedProcessIds},
       grades:{pkg:S.gradePkg,mul:S.gradeMul,parts:S.partGrades,profitRate:S.profitRate},
-      status:'draft', createdAt:new Date().toISOString(),
+      validUntil:validUntil2,
+      status:'estimated', createdAt:now, updatedAt:now,
     }
     var bs=$id('btn-s')
     if(bs){bs.textContent='저장 중...'; bs.disabled=true}
