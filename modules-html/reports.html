@@ -2,45 +2,538 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>보고서 — ECOREAN BOC</title>
-<script src="../shared/engine/boc-engine.js"></script>
-<script src="../shared/store/boc-state.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --void:#030305; --deep:#07070F; --surface:#0D0D1A; --raised:#141420;
-  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2; --red:#FF3355;
-  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080; --r:6px;
-  --font-head:"Cormorant Garamond",serif; --font-body:"Noto Sans KR",sans-serif; --font-mono:"JetBrains Mono",monospace;
+:root{
+  --void:#030305;--deep:#07070F;--surface:#0D0D1A;
+  --gold:#C9A84C;--gold-bright:#FFD700;--gold2:rgba(201,168,76,0.12);
+  --platinum:#E8E0D0;--dim:#555566;--green:#00FFB2;
+  --red:#FF3355;--blue:#00AAFF;
+  --border:rgba(201,168,76,0.12);--text:#EDE5D5;--text2:#A09080;
+  --fb:'Noto Sans KR',sans-serif;--fm:'JetBrains Mono',monospace;
 }
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box }
-html,body { height:100vh; background:var(--void); color:var(--text); font-family:var(--font-body); font-size:13px }
-#app { padding:28px; height:100vh; overflow-y:auto }
-.pg-title { font-family:var(--font-head); font-size:22px; color:var(--gold); margin-bottom:6px; letter-spacing:0.04em }
-.pg-desc { font-size:12px; color:var(--dim); margin-bottom:24px; line-height:1.8 }
-.badge { display:inline-block; padding:3px 12px; background:var(--gold2); border:1px solid var(--border); border-radius:20px; font-size:12px; color:var(--gold); margin-bottom:16px }
-.coming { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:40px; text-align:center; color:var(--dim) }
-.coming strong { display:block; font-size:16px; color:var(--text2); margin-bottom:8px }
-::-webkit-scrollbar { width:4px } ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3); border-radius:2px }
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--fb);font-size:13px}
+button,input,select,textarea{font-family:var(--fb);font-size:13px}
+button{cursor:pointer}
+input[type=text],input[type=number]{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)!important}
+select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;outline:none}
+select option{background:var(--surface)}
+textarea{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:4px;outline:none;resize:vertical;width:100%}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
+
+#app{display:flex;flex-direction:column;height:100%}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border);min-height:44px}
+#main{flex:1;overflow:hidden;display:flex}
+
+/* Settings panel */
+#settings{width:290px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+.sec{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px}
+.sec-t{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.fg1{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+label.lbl{font-size:10px;color:var(--text2);font-weight:500}
+.w100{width:100%}
+
+/* Report type selector */
+.rtype{display:flex;flex-direction:column;gap:5px}
+.rtype-btn{padding:8px 12px;border-radius:5px;border:1px solid var(--border);color:var(--text2);background:transparent;text-align:left;cursor:pointer;font-size:12px;transition:all 0.2s}
+.rtype-btn:hover{border-color:rgba(201,168,76,0.3);color:var(--text)}
+.rtype-btn.act{border-color:var(--gold);color:var(--gold-bright);background:rgba(201,168,76,0.08)}
+.rtype-desc{font-size:10px;color:var(--dim);margin-top:2px}
+
+/* Preview panel */
+#preview{flex:1;overflow-y:auto;background:#1a1a2a;display:flex;flex-direction:column;align-items:center;padding:20px}
+#report-frame{width:794px;max-width:100%;background:#fff;color:#111;padding:40px;border-radius:4px;box-shadow:0 4px 24px rgba(0,0,0,0.5);min-height:400px;font-family:'Noto Sans KR','Malgun Gothic',sans-serif;font-size:13px;line-height:1.6}
+#empty-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:var(--dim)}
+
+/* Buttons */
+.btn{padding:6px 14px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid;cursor:pointer;transition:all 0.2s}
+.btn-p{border-color:var(--border);color:var(--text2);background:transparent}
+.btn-p:hover{border-color:var(--text2);color:var(--text)}
+.btn-g{border-color:var(--gold);color:var(--void);background:var(--gold)}
+.btn-g:hover{background:var(--gold-bright)}
+.btn-b{border-color:var(--blue);color:var(--blue);background:rgba(0,170,255,0.07)}
+.btn-sm{padding:3px 9px;font-size:11px}
+
+/* Print report styles (injected into preview) */
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="pg-title">보고서</div>
-  <div class="pg-desc">고객용견적서 / 내부원가보고서 / 발주서 / 공정표PDF</div>
-  <div class="badge" id="status-badge">준비 중</div>
-  <div class="coming">
-    <strong>Phase 2에서 구현 예정</strong>
-    MASTER_PLAN 개발 순서에 따라 순차 구현됩니다.
+
+<div id="topbar">
+  <div style="font-weight:700;font-size:15px;color:var(--gold)">보고서</div>
+  <div style="display:flex;gap:7px">
+    <button class="btn btn-p btn-sm" onclick="RP.preview()">👁 미리보기</button>
+    <button class="btn btn-g btn-sm" onclick="RP.print()">🖨 인쇄 / PDF</button>
   </div>
 </div>
+
+<div id="main">
+
+  <!-- LEFT: Settings -->
+  <div id="settings">
+
+    <div class="sec">
+      <div class="sec-t">프로젝트 선택</div>
+      <div class="fg1">
+        <label class="lbl">프로젝트</label>
+        <select id="s-proj" class="w100" onchange="RP.selProj(this.value)">
+          <option value="">— 선택 —</option>
+        </select>
+      </div>
+      <div id="proj-info" style="font-size:11px;color:var(--dim)"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-t">보고서 유형</div>
+      <div class="rtype" id="rtype-list">
+        <button class="rtype-btn act" data-type="customer" onclick="RP.selType('customer')">
+          📄 고객용 견적서<div class="rtype-desc">원가 숨김 · 서명란 · 흰색 인쇄</div>
+        </button>
+        <button class="rtype-btn" data-type="internal" onclick="RP.selType('internal')">
+          📊 내부 원가보고서<div class="rtype-desc">전체 공개 · [자동] 뱃지</div>
+        </button>
+        <button class="rtype-btn" data-type="order" onclick="RP.selType('order')">
+          🚚 발주서<div class="rtype-desc">자재 목록 · D-Day · 공급사</div>
+        </button>
+        <button class="rtype-btn" data-type="schedule" onclick="RP.selType('schedule')">
+          📅 공정표<div class="rtype-desc">CPM · Gantt · 착공일 기준</div>
+        </button>
+        <button class="rtype-btn" data-type="settlement" onclick="RP.selType('settlement')">
+          🧾 정산서<div class="rtype-desc">예산 vs 실제 · 최종 원가</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-t">회사 정보 <span style="color:var(--dim);font-size:9px;font-weight:400">(전체 보고서 반영)</span></div>
+      <div class="fg1"><label class="lbl">회사명</label><input type="text" id="co-name" class="w100" placeholder="주식회사 에코리안"></div>
+      <div class="fg1"><label class="lbl">대표자</label><input type="text" id="co-ceo" class="w100" placeholder="홍길동"></div>
+      <div class="fg1"><label class="lbl">사업자번호</label><input type="text" id="co-reg" class="w100" placeholder="000-00-00000"></div>
+      <div class="fg1"><label class="lbl">연락처</label><input type="text" id="co-phone" class="w100" placeholder="010-0000-0000"></div>
+      <div class="fg1"><label class="lbl">주소</label><input type="text" id="co-addr" class="w100" placeholder="서울시 강남구 ..."></div>
+      <div class="fg1"><label class="lbl">계좌번호</label><input type="text" id="co-bank" class="w100" placeholder="국민 000-0000-0000-00"></div>
+      <div class="fg1"><label class="lbl">약관 (인쇄용)</label><textarea id="co-terms" rows="3" placeholder="본 견적서는 발행일로부터 30일간 유효합니다."></textarea></div>
+      <button class="btn btn-p btn-sm w100" onclick="RP.saveCo()" style="margin-top:4px">💾 회사정보 저장</button>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Preview -->
+  <div id="preview">
+    <div id="empty-preview">
+      <div style="font-size:36px">📄</div>
+      <div style="font-size:14px;color:var(--text2)">프로젝트를 선택하고 [미리보기]를 누르세요</div>
+      <div style="font-size:11px">고객용 견적서, 내부보고서, 발주서, 공정표, 정산서 생성</div>
+    </div>
+    <div id="report-frame" style="display:none"></div>
+  </div>
+
+</div>
+</div>
+
+<script src="../shared/engine/boc-engine.js"></script>
+<script src="../shared/store/boc-state.js"></script>
 <script>
-"use strict";
-document.addEventListener("DOMContentLoaded", function() {
-  AppState.load();
-  console.log("✅ reports module loaded");
-});
+'use strict'
+;(function(){
+
+var S={projects:[],curProj:null,curType:'customer'}
+
+function $id(id){return document.getElementById(id)}
+function $v(id){var el=$id(id);return el?el.value:''}
+function jp(s,fb){try{return typeof s==='string'?JSON.parse(s):(s||fb)}catch(e){return fb}}
+function fmtW(n){return(n===null||n===undefined)?'—':Math.round(n).toLocaleString()+'원'}
+function today(){return new Date().toISOString().slice(0,10)}
+function addDays(s,d){var dt=new Date(s);dt.setDate(dt.getDate()+d);return dt.toISOString().slice(0,10)}
+function dday(ds){var diff=Math.ceil((new Date(ds)-new Date())/(1000*86400));return diff>=0?'D-'+diff:'D+'+Math.abs(diff)}
+
+// ── Company info ─────────────────────────────────────
+function loadCo(){
+  var co=jp(localStorage.getItem('ecorean_co'),{})
+  var set=function(id,v){var el=$id(id);if(el&&v)el.value=v}
+  set('co-name',co.name); set('co-ceo',co.ceo); set('co-reg',co.reg)
+  set('co-phone',co.phone); set('co-addr',co.addr); set('co-bank',co.bank); set('co-terms',co.terms)
+}
+function getCo(){
+  return{name:$v('co-name')||'에코리안 인테리어',ceo:$v('co-ceo')||'',reg:$v('co-reg')||'',
+    phone:$v('co-phone')||'',addr:$v('co-addr')||'',bank:$v('co-bank')||'',terms:$v('co-terms')||''}
+}
+function saveCo(){
+  localStorage.setItem('ecorean_co',JSON.stringify(getCo()))
+  alert('✅ 회사정보 저장됨')
+}
+
+// ── Projects ─────────────────────────────────────────
+async function loadProjects(){
+  var list=[]
+  if(window.ecoreanAPI?.db?.listProjects){
+    list=await window.ecoreanAPI.db.listProjects()||[]
+  } else if(typeof AppState!=='undefined'){
+    list=(AppState.get().projects||[]).filter(function(p){return p.status!=='disabled'})
+  }
+  S.projects=list.map(function(p){
+    var parse=function(f){try{if(typeof p[f]==='string')p[f]=JSON.parse(p[f])}catch(e){}}
+    parse('result');parse('scope');parse('spaces');parse('grades')
+    return p
+  })
+  var sel=$id('s-proj'); if(!sel)return
+  sel.innerHTML='<option value="">— 선택 —</option>'
+  S.projects.forEach(function(p){
+    var o=document.createElement('option'); o.value=p.id; o.textContent=p.name+(p.status?' ['+p.status+']':'')
+    sel.appendChild(o)
+  })
+}
+
+function selProj(id){
+  S.curProj=S.projects.find(function(p){return p.id===id})||null
+  var inf=$id('proj-info')
+  if(inf&&S.curProj){
+    var r=S.curProj.result||{}
+    inf.textContent=(S.curProj.buildType||'')+(S.curProj.address?' · '+S.curProj.address.slice(0,20):'')
+      +' · '+(r.finalAmount?(Math.round(r.finalAmount/10000)+'만원'):'—')
+  } else if(inf){inf.textContent=''}
+}
+
+function selType(t){
+  S.curType=t
+  document.querySelectorAll('.rtype-btn').forEach(function(btn){btn.classList.toggle('act',btn.dataset.type===t)})
+}
+
+// ── Preview + Print ───────────────────────────────────
+function preview(){
+  if(!S.curProj){alert('프로젝트를 선택하세요.');return}
+  var html=genReport(S.curType,S.curProj,getCo())
+  var frame=$id('report-frame'),ep=$id('empty-preview')
+  if(frame){frame.innerHTML=html;frame.style.display='block'}
+  if(ep)ep.style.display='none'
+}
+
+function print(){
+  if(!S.curProj){alert('프로젝트를 선택하세요.');return}
+  var html=genReport(S.curType,S.curProj,getCo())
+  var w=window.open('','_blank','width=900,height=700')
+  if(!w)return
+  w.document.write(printWrap(html))
+  w.document.close()
+}
+
+function printWrap(body){
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'+
+    '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">'+
+    '<style>*{margin:0;padding:0;box-sizing:border-box}'+
+    'body{font-family:\'Noto Sans KR\',sans-serif;font-size:13px;background:#fff;color:#111;padding:30px;line-height:1.6}'+
+    '@media print{body{padding:0}@page{margin:15mm}}'+
+    '</style></head><body>'+body+
+    '<script>window.onload=function(){window.print()}<\/script></body></html>'
+}
+
+// ── Report generators ─────────────────────────────────
+function genReport(type,p,co){
+  if(type==='customer')  return genCustomer(p,co)
+  if(type==='internal')  return genInternal(p,co)
+  if(type==='order')     return genOrder(p,co)
+  if(type==='schedule')  return genSchedule(p,co)
+  if(type==='settlement')return genSettlement(p,co)
+  return '<div style="color:#888">알 수 없는 보고서 유형</div>'
+}
+
+// 1. 고객용 견적서
+function genCustomer(p,co){
+  var r=p.result||{}; var lines=r.lines||[]
+  var validUntil=p.validUntil||addDays(today(),30)
+  var rows=lines.map(function(l){
+    return '<tr><td style="padding:6px 8px;border:1px solid #ddd">'+l.name+'</td>'+
+      '<td style="padding:6px 8px;border:1px solid #ddd;text-align:center">'+l.unit+'</td>'+
+      '<td style="padding:6px 8px;border:1px solid #ddd;text-align:right">'+(l.qty?l.qty.toFixed(1):1)+'</td>'+
+      '<td style="padding:6px 8px;border:1px solid #ddd;text-align:right">'+(l.supplyPrice||0).toLocaleString()+'</td></tr>'
+  }).join('')
+  return coHeader(co,'견&nbsp;&nbsp;적&nbsp;&nbsp;서')+
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:4px">'+
+      '<tr><th style="width:140px;padding:5px 8px;background:#f5f5f5;border:1px solid #ddd;text-align:left">현장명</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+p.name+'</td></tr>'+
+      (p.address?'<tr><th style="padding:5px 8px;background:#f5f5f5;border:1px solid #ddd">주소</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+p.address+'</td></tr>':'')+
+      (p.manager?'<tr><th style="padding:5px 8px;background:#f5f5f5;border:1px solid #ddd">담당자</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+p.manager+'</td></tr>':'')+
+      '<tr><th style="padding:5px 8px;background:#f5f5f5;border:1px solid #ddd">견적일</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+today()+'</td></tr>'+
+      '<tr><th style="padding:5px 8px;background:#f5f5f5;border:1px solid #ddd">유효기간</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+validUntil+' (30일)</td></tr>'+
+    '</table>'+
+    '<br><table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr style="background:#f5f5f5">'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;text-align:left">공사 항목</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:60px">단위</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:60px">수량</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:100px;text-align:right">금액</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+      '<tfoot>'+
+        totRow('공급가액 (VAT 별도)',(r.totalSupply||0).toLocaleString()+'원','#fff')+
+        totRow('도급금액 (+관리비 15%)',(r.contractAmount||0).toLocaleString()+'원','#fffbf0')+
+        totRow('합계금액 (VAT 포함)',(r.finalAmount||0).toLocaleString()+'원','#fffbf0','700')+
+      '</tfoot>'+
+    '</table>'+
+    '<div style="margin-top:30px;display:grid;grid-template-columns:1fr 1fr;gap:40px">'+
+      signBox('발&nbsp;&nbsp;주&nbsp;&nbsp;인')+ signBox('수&nbsp;&nbsp;급&nbsp;&nbsp;인')+
+    '</div>'+
+    (co.terms?'<div style="margin-top:20px;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:8px">'+co.terms+'</div>':'')+
+    bankInfo(co)
+}
+
+// 2. 내부 원가보고서
+function genInternal(p,co){
+  var r=p.result||{}; var lines=r.lines||[]; var g=p.grades||{}
+  var rows=lines.map(function(l){
+    var lb=Math.round((l.lb||0)*(l.qty||1))
+    var mt=Math.round((l.mt||0)*(l.qty||1)*(g.mul||1))
+    var gm=l.category||l.cat||''
+    return '<tr><td style="padding:5px 8px;border:1px solid #ddd">'+l.name+
+      ' <span style="font-size:9px;background:#e8f4fd;color:#2196f3;padding:1px 4px;border-radius:3px">자동</span></td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;font-size:11px;color:#888">'+gm+'</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;text-align:right">'+lb.toLocaleString()+'</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;text-align:right">'+mt.toLocaleString()+'</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;text-align:right;font-weight:600">'+(l.supplyPrice||0).toLocaleString()+'</td></tr>'
+  }).join('')
+  var totalLb=lines.reduce(function(a,l){return a+Math.round((l.lb||0)*(l.qty||1))},0)
+  var totalMt=lines.reduce(function(a,l){return a+Math.round((l.mt||0)*(l.qty||1)*(g.mul||1))},0)
+  var profitRate=0
+  try{profitRate=FinanceEngine.calcProfitRate(r.finalAmount||0,r.totalSupply||0)}catch(e){}
+  return coHeader(co,'[내부] 원가 보고서')+
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:4px">'+
+      '<tr><th style="padding:5px 8px;background:#f0f0f0;border:1px solid #ddd;width:140px;text-align:left">현장명</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+p.name+'</td>'+
+        '<th style="padding:5px 8px;background:#f0f0f0;border:1px solid #ddd;width:100px;text-align:left">출력일</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+today()+'</td></tr>'+
+      '<tr><th style="padding:5px 8px;background:#f0f0f0;border:1px solid #ddd">건물유형</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+(p.buildType||'—')+'</td>'+
+        '<th style="padding:5px 8px;background:#f0f0f0;border:1px solid #ddd">등급배율</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+(g.mul||1.0).toFixed(2)+'×</td></tr>'+
+    '</table>'+
+    '<br><table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr style="background:#f0f0f0">'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;text-align:left">항목</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:60px">구분</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:90px;text-align:right">노무비</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:90px;text-align:right">자재비</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:100px;text-align:right">공급가</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+      '<tfoot>'+
+        '<tr style="background:#f9f9f9;font-weight:700"><td colspan="2" style="padding:7px 8px;border:1px solid #ddd">합계</td>'+
+        '<td style="padding:7px 8px;border:1px solid #ddd;text-align:right">'+totalLb.toLocaleString()+'</td>'+
+        '<td style="padding:7px 8px;border:1px solid #ddd;text-align:right">'+totalMt.toLocaleString()+'</td>'+
+        '<td style="padding:7px 8px;border:1px solid #ddd;text-align:right">'+(r.totalSupply||0).toLocaleString()+'</td></tr>'+
+        totRow('도급금액 (+15%)',(r.contractAmount||0).toLocaleString()+'원','#fff','400',4)+
+        totRow('최종합계 (VAT포함)',(r.finalAmount||0).toLocaleString()+'원','#fffbf0','700',4)+
+        totRow('예상 이익률',profitRate+'%','#fffbf0','700',4)+
+      '</tfoot>'+
+    '</table>'
+}
+
+// 3. 발주서
+function genOrder(p,co){
+  var r=p.result||{}; var lines=r.lines||[]
+  var startDate=p.startDate||addDays(today(),14)
+  var rows=lines.map(function(l){
+    var item=(typeof CalcEngine!=='undefined'&&CalcEngine.DB)?CalcEngine.DB[l.id]||{}:{}
+    var lead=Math.max(1,Math.ceil((item.dur||1)*3))
+    var dl=''; try{dl=ScheduleEngine.calcOrderDeadline(startDate,lead)}catch(e){dl=addDays(startDate,-lead)}
+    var dd=dday(dl)
+    return '<tr><td style="padding:6px 8px;border:1px solid #ddd">'+l.name+'</td>'+
+      '<td style="padding:6px 8px;border:1px solid #ddd;text-align:center">'+(l.qty?l.qty.toFixed(1):1)+' '+l.unit+'</td>'+
+      '<td style="padding:6px 8px;border:1px solid #ddd;text-align:right">'+(l.mt||0).toLocaleString()+'</td>'+
+      '<td style="padding:6px 8px;border:1px solid #ddd;text-align:right">'+(Math.round((l.mt||0)*(l.qty||1))).toLocaleString()+'</td>'+
+      '<td style="padding:6px 8px;border:1px solid #ddd;text-align:center">'+dl+'</td>'+
+      '<td style="padding:6px 8px;border:1px solid #ddd;text-align:center;color:'+(dd.startsWith('D-')?'#1976d2':'#c62828')+'">'+dd+'</td>'+
+      '<td style="padding:6px 8px;border:1px solid #ddd"></td></tr>'
+  }).join('')
+  var totalMt=lines.reduce(function(a,l){return a+Math.round((l.mt||0)*(l.qty||1))},0)
+  return coHeader(co,'발&nbsp;&nbsp;주&nbsp;&nbsp;서')+
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:4px">'+
+      '<tr><th style="width:120px;padding:5px 8px;background:#f5f5f5;border:1px solid #ddd;text-align:left">현장명</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+p.name+'</td>'+
+        '<th style="width:80px;padding:5px 8px;background:#f5f5f5;border:1px solid #ddd;text-align:left">착공예정</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+startDate+'</td></tr>'+
+    '</table>'+
+    '<br><table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr style="background:#f5f5f5">'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;text-align:left">공사항목</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:80px">수량</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:90px;text-align:right">단가</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:90px;text-align:right">금액</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:90px">납기일</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:55px">D-Day</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:80px">공급사</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+      '<tfoot>'+
+        totRow('자재비 합계',totalMt.toLocaleString()+'원','#fffbf0','700',6)+
+      '</tfoot>'+
+    '</table>'+
+    bankInfo(co)
+}
+
+// 4. 공정표
+function genSchedule(p,co){
+  var r=p.result||{}; var lines=r.lines||[]
+  var startDate=p.startDate||addDays(today(),14)
+  var ids=lines.map(function(l){return l.id})
+  var tasks=[];try{tasks=ScheduleEngine.generateSchedule(startDate,ids)||[]}catch(e){}
+  var cpm={duration:0,path:[]};try{cpm=ScheduleEngine.calcCriticalPath(tasks)}catch(e){}
+  var totalDur=tasks.reduce(function(a,t){return a+(t.dur||1)},0)||1
+  var endDate=tasks.length?addDays(startDate,totalDur):''
+  var rows=tasks.map(function(t){
+    var ed=addDays(t.start,t.dur||1)
+    var bw=Math.max(4,Math.round(((t.dur||1)/totalDur)*200))
+    var isCrit=cpm.path&&cpm.path.includes(t.id)
+    return '<tr><td style="padding:5px 8px;border:1px solid #ddd;font-weight:'+(isCrit?'700':'400')+
+      ';color:'+(isCrit?'#c62828':'#111')+'">'+t.name+(isCrit?' ★':' ')+'</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;font-size:11px;text-align:center">'+t.start+'</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;font-size:11px;text-align:center">'+ed+'</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;text-align:center">'+t.dur+'일</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd">'+
+        '<div style="width:'+bw+'px;height:10px;background:'+(isCrit?'#c62828':'#1976d2')+';border-radius:2px"></div></td>'+
+    '</tr>'
+  }).join('')
+  return coHeader(co,'공&nbsp;&nbsp;정&nbsp;&nbsp;표')+
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:10px">'+
+      '<tr><th style="width:120px;padding:5px 8px;background:#f5f5f5;border:1px solid #ddd;text-align:left">현장명</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+p.name+'</td>'+
+        '<th style="width:80px;padding:5px 8px;background:#f5f5f5;border:1px solid #ddd;text-align:left">착공일</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+startDate+'</td></tr>'+
+      '<tr><th style="padding:5px 8px;background:#f5f5f5;border:1px solid #ddd">완공예정</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+endDate+'</td>'+
+        '<th style="padding:5px 8px;background:#f5f5f5;border:1px solid #ddd">총 공기</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd;font-weight:700">'+cpm.duration+'일</td></tr>'+
+    '</table>'+
+    (tasks.length?
+      '<table style="width:100%;border-collapse:collapse">'+
+        '<thead><tr style="background:#f5f5f5">'+
+          '<th style="padding:7px 8px;border:1px solid #ddd;text-align:left">공정명</th>'+
+          '<th style="padding:7px 8px;border:1px solid #ddd;width:90px">착공</th>'+
+          '<th style="padding:7px 8px;border:1px solid #ddd;width:90px">완공</th>'+
+          '<th style="padding:7px 8px;border:1px solid #ddd;width:50px">기간</th>'+
+          '<th style="padding:7px 8px;border:1px solid #ddd">Gantt (★ = 주공정)</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table>':
+      '<div style="padding:20px;text-align:center;color:#888">공정 없음 — 견적에서 공정을 선택하세요.</div>')
+}
+
+// 5. 정산서
+function genSettlement(p,co){
+  var r=p.result||{}; var lines=r.lines||[]; var g=p.grades||{}
+  var plan=r.finalAmount||0
+  var actCost=p.completionMemo?.actualCost||{}
+  var actTotal=(actCost.labor||0)+(actCost.mat||0)+(actCost.sub||0)+(actCost.indir||0)
+  var diff=plan-actTotal; var diffPct=plan>0?Math.round(diff/plan*100):0
+  var rows=lines.map(function(l){
+    return '<tr><td style="padding:5px 8px;border:1px solid #ddd">'+l.name+'</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;text-align:right">'+(l.supplyPrice||0).toLocaleString()+'</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;text-align:center">—</td>'+
+      '<td style="padding:5px 8px;border:1px solid #ddd;text-align:center;color:#888">미입력</td></tr>'
+  }).join('')
+  return coHeader(co,'정&nbsp;&nbsp;산&nbsp;&nbsp;서')+
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:10px">'+
+      '<tr><th style="width:120px;padding:5px 8px;background:#f5f5f5;border:1px solid #ddd;text-align:left">현장명</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+p.name+'</td>'+
+        '<th style="width:80px;padding:5px 8px;background:#f5f5f5;border:1px solid #ddd;text-align:left">정산일</th>'+
+        '<td style="padding:5px 8px;border:1px solid #ddd">'+today()+'</td></tr>'+
+    '</table>'+
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:12px">'+
+      '<tr style="background:#f5f5f5"><th colspan="2" style="padding:7px 8px;border:1px solid #ddd;text-align:left">예산 vs 실제 비교</th></tr>'+
+      '<tr><td style="padding:6px 8px;border:1px solid #ddd">견적 금액</td>'+
+        '<td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:700">'+plan.toLocaleString()+'원</td></tr>'+
+      '<tr><td style="padding:6px 8px;border:1px solid #ddd">실제 원가 (직접 입력)</td>'+
+        '<td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:700">'+actTotal.toLocaleString()+'원</td></tr>'+
+      (actTotal>0?'<tr style="background:#fffbf0"><td style="padding:6px 8px;border:1px solid #ddd;font-weight:700">'+
+        (diff>=0?'절감 금액':'초과 금액')+'</td>'+
+        '<td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:700;color:'+(diff>=0?'#2e7d32':'#c62828')+'">'+
+        Math.abs(diff).toLocaleString()+'원 ('+Math.abs(diffPct)+'%)</td></tr>':'<tr><td colspan="2" style="padding:6px 8px;border:1px solid #ddd;color:#888;font-size:12px">실제 원가는 프로젝트 &gt; 완료보고 탭에서 입력하세요.</td></tr>')+
+    '</table>'+
+    '<table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr style="background:#f5f5f5">'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;text-align:left">항목</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:110px;text-align:right">견적금액</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:110px;text-align:right">실제금액</th>'+
+        '<th style="padding:7px 8px;border:1px solid #ddd;width:70px;text-align:center">비고</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+      '<tfoot>'+
+        totRow('견적 합계',plan.toLocaleString()+'원','#fffbf0','700')+
+      '</tfoot>'+
+    '</table>'+
+    signBox2('확&nbsp;&nbsp;인&nbsp;&nbsp;자',co.ceo||'')
+}
+
+// ── Report HTML helpers ────────────────────────────────
+function coHeader(co,title){
+  return '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:16px">'+
+    '<div>'+
+      '<div style="font-size:22px;font-weight:700;letter-spacing:0.06em">'+title+'</div>'+
+      '<div style="font-size:11px;color:#555;margin-top:4px">발행일: '+today()+'</div>'+
+    '</div>'+
+    '<div style="text-align:right;font-size:12px">'+
+      '<div style="font-weight:700;font-size:14px">'+co.name+'</div>'+
+      (co.reg?'<div style="color:#555">사업자: '+co.reg+'</div>':'')+
+      (co.ceo?'<div style="color:#555">대표: '+co.ceo+'</div>':'')+
+      (co.phone?'<div style="color:#555">Tel: '+co.phone+'</div>':'')+
+      (co.addr?'<div style="color:#555">'+co.addr+'</div>':'')+
+    '</div>'+
+  '</div>'
+}
+function totRow(label,val,bg,fw,cs){
+  return '<tr style="background:'+(bg||'#fff')+'">'+
+    '<td colspan="'+(cs||3)+'" style="padding:6px 8px;border:1px solid #ddd;font-weight:'+(fw||'400')+'">'+label+'</td>'+
+    '<td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:'+(fw||'400')+'">'+val+'</td></tr>'
+}
+function signBox(label){
+  return '<div style="border:1px solid #ddd;border-radius:4px;padding:12px;min-height:70px">'+
+    '<div style="font-size:11px;color:#888;margin-bottom:30px">'+label+'</div>'+
+    '<div style="border-top:1px solid #ddd;padding-top:4px;font-size:11px;color:#888">서&nbsp;&nbsp;&nbsp;명</div>'+
+  '</div>'
+}
+function signBox2(label,name){
+  return '<div style="text-align:right;margin-top:30px">'+
+    '<div style="font-size:11px;color:#555;margin-bottom:4px">'+label+'</div>'+
+    '<div style="font-size:14px;font-weight:700">'+name+' (인)</div>'+
+    '<div style="font-size:11px;color:#888">'+today()+'</div>'+
+  '</div>'
+}
+function bankInfo(co){
+  if(!co.bank)return ''
+  return '<div style="margin-top:16px;padding:8px 12px;background:#f9f9f9;border-radius:4px;font-size:11px;color:#555">'+
+    '입금 계좌: '+co.bank+(co.name?' ('+co.name+')':'')+'</div>'
+}
+
+window.RP={
+  preview:preview,
+  print:print,
+  selProj:selProj,
+  selType:selType,
+  saveCo:saveCo,
+}
+
+async function init(){
+  loadCo()
+  if(typeof AppState!=='undefined') AppState.load()
+  if(window.ecoreanAPI?.onTabSwitch){
+    window.ecoreanAPI.onTabSwitch(function(tab){if(tab==='reports')loadProjects()})
+  }
+  await loadProjects()
+  console.log('✅ reports.html ready — BOC v2')
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init)
+else init()
+
+})()
 </script>
 </body>
 </html>
