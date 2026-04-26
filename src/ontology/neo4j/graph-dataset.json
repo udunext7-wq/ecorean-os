@@ -1,0 +1,998 @@
+{
+  "meta": {
+    "version": "1.0",
+    "source": "ontology-rules.json",
+    "generatedAt": "2026-04-26"
+  },
+  "nodes": [
+    {
+      "id": "CORE-001",
+      "type": "Core",
+      "properties": {
+        "name": "ECOREAN BOC",
+        "version": "2.0"
+      }
+    },
+    {
+      "id": "ONT-001",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-001",
+        "trigger": "LGS 경량틀 (천장/벽)",
+        "linked": "석고보드 (9.5T or 12.5T)",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "골조 완료 후",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "LGS__",
+      "type": "Process",
+      "properties": {
+        "name": "LGS 경량틀 (천장/벽)",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "_95T_OR_125T",
+      "type": "Process",
+      "properties": {
+        "name": "석고보드 (9.5T or 12.5T)",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-002",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-002",
+        "trigger": "바닥 타일 시공",
+        "linked": "욕실방수 + 보호몰탈",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "욕실/습식공간",
+        "note": "방수 선행 필수",
+        "confidenceLevel": 0.8,
+        "status": "active"
+      }
+    },
+    {
+      "id": "__",
+      "type": "Process",
+      "properties": {
+        "name": "바닥 타일 시공",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-003",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-003",
+        "trigger": "바닥 타일 시공",
+        "linked": "타일 줄눈 시공",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "양생 24h",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-004",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-004",
+        "trigger": "헤링본 바닥타일",
+        "linked": "셀프레벨링 (평탄화)",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "평탄도 ±2mm",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "_",
+      "type": "Process",
+      "properties": {
+        "name": "헤링본 바닥타일",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-005",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-005",
+        "trigger": "대형 포세린 (800↑)",
+        "linked": "셀프레벨링 + 클립",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "레이탄스 제거",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "__800",
+      "type": "Process",
+      "properties": {
+        "name": "대형 포세린 (800↑)",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-006",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-006",
+        "trigger": "강마루/원목/온돌마루",
+        "linked": "목재 몰딩 + 걸레받이",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "실리콘 마감",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "PROC_T5",
+      "type": "Process",
+      "properties": {
+        "name": "강마루/원목/온돌마루",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "___",
+      "type": "Process",
+      "properties": {
+        "name": "목재 몰딩 + 걸레받이",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-007",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-007",
+        "trigger": "원목마루",
+        "linked": "목재 오일스테인",
+        "triggerType": "WARN_CONDITIONAL",
+        "condition": "항상",
+        "note": "1년 주기",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "PROC_T6",
+      "type": "Process",
+      "properties": {
+        "name": "원목마루",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-008",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-008",
+        "trigger": "수성페인트 (벽)",
+        "linked": "퍼티 + 프라이머",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "2회 샌딩",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-009",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-009",
+        "trigger": "수성페인트 (천장)",
+        "linked": "프라이머 도포",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "흡수율 조절",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-010",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-010",
+        "trigger": "실크/천연벽지 도배",
+        "linked": "초배지 작업",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "이음 보강",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-011",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-011",
+        "trigger": "창호 설치 (PVC/AL)",
+        "linked": "EVA 폼 충전 + 코킹",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "기밀성",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "__PVCAL",
+      "type": "Process",
+      "properties": {
+        "name": "창호 설치 (PVC/AL)",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "EVA____",
+      "type": "Process",
+      "properties": {
+        "name": "EVA 폼 충전 + 코킹",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-012",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-012",
+        "trigger": "욕실방수",
+        "linked": "보호몰탈 타설",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "두께 30mm",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "PROC_T11",
+      "type": "Process",
+      "properties": {
+        "name": "욕실방수",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-013",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-013",
+        "trigger": "샤워부스 설치",
+        "linked": "욕실방수 + 선형드레인",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "기울기 1/100",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-014",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-014",
+        "trigger": "보일러 교체",
+        "linked": "난방배관 + 가스배관 점검",
+        "triggerType": "WARN_CONDITIONAL",
+        "condition": "항상",
+        "note": "기밀시험",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-015",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-015",
+        "trigger": "문틀 설치",
+        "linked": "문짝 + 문선",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "세트 시공",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-016",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-016",
+        "trigger": "에폭시 바닥",
+        "linked": "셀프레벨링 + 프라이머",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "산업용",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-017",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-017",
+        "trigger": "대리석/화강석",
+        "linked": "석재 연마/왁스 + 코킹",
+        "triggerType": "WARN_CONDITIONAL",
+        "condition": "항상",
+        "note": "정기관리",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "PROC_T16",
+      "type": "Process",
+      "properties": {
+        "name": "대리석/화강석",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-018",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-018",
+        "trigger": "조적 (블록쌓기)",
+        "linked": "시멘트 미장",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "수직수평",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-019",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-019",
+        "trigger": "간접등박스",
+        "linked": "LGS 경량틀 or 목재틀",
+        "triggerType": "WARN_CONDITIONAL",
+        "condition": "항상",
+        "note": "틀 방식 선택",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "PROC_T18",
+      "type": "Process",
+      "properties": {
+        "name": "간접등박스",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "LGS__OR_",
+      "type": "Process",
+      "properties": {
+        "name": "LGS 경량틀 or 목재틀",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-020",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-020",
+        "trigger": "욕실 타일 시공",
+        "linked": "욕실 철거 여부 확인",
+        "triggerType": "WARN_CONDITIONAL",
+        "condition": "욕실 리모델링",
+        "note": "덧방 or 철거",
+        "confidenceLevel": 0.8,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-021",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-021",
+        "trigger": "외단열 (EIFS)",
+        "linked": "외벽 스타코 + 탄성도료",
+        "triggerType": "AUTO_INCLUDE",
+        "condition": "항상",
+        "note": "망 매입",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "_EIFS",
+      "type": "Process",
+      "properties": {
+        "name": "외단열 (EIFS)",
+        "category": "공정"
+      }
+    },
+    {
+      "id": "ONT-022",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-022",
+        "trigger": "목재 데크",
+        "linked": "오일스테인 + 줄눈처리",
+        "triggerType": "WARN_CONDITIONAL",
+        "condition": "항상",
+        "note": "1년 주기",
+        "confidenceLevel": 1.0,
+        "status": "active"
+      }
+    },
+    {
+      "id": "ONT-023",
+      "type": "OntologyRule",
+      "properties": {
+        "ruleId": "ONT-023",
+        "trigger": "방수석고보드",
+        "linked": "욕실방수 + 벽타일",
+        "triggerType": "WARN_CONDITIONAL",
+        "condition": "욕실",
+        "note": "욕실 필수",
+        "confidenceLevel": 0.8,
+        "status": "active"
+      }
+    },
+    {
+      "id": "PROC_T22",
+      "type": "Process",
+      "properties": {
+        "name": "방수석고보드",
+        "category": "공정"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-001",
+      "to": "_95T_OR_125T",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "LGS__",
+      "to": "_95T_OR_125T",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "LGS__",
+      "to": "ONT-001",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-002",
+      "to": "__",
+      "properties": {
+        "confidenceLevel": 0.8
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "__",
+      "to": "__",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "__",
+      "to": "ONT-002",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-003",
+      "to": "__",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "__",
+      "to": "__",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "__",
+      "to": "ONT-003",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-004",
+      "to": "_",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "_",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-004",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-005",
+      "to": "__",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "__800",
+      "to": "__",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "__800",
+      "to": "ONT-005",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-006",
+      "to": "___",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "PROC_T5",
+      "to": "___",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "PROC_T5",
+      "to": "ONT-006",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-007",
+      "to": "_",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "PROC_T6",
+      "to": "_",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": false
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "PROC_T6",
+      "to": "ONT-007",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-008",
+      "to": "__",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "__",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-008",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-009",
+      "to": "_",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "_",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-009",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-010",
+      "to": "_",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "_",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-010",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-011",
+      "to": "EVA____",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "__PVCAL",
+      "to": "EVA____",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "__PVCAL",
+      "to": "ONT-011",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-012",
+      "to": "_",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "PROC_T11",
+      "to": "_",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "PROC_T11",
+      "to": "ONT-012",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-013",
+      "to": "__",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "__",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-013",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-014",
+      "to": "___",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "___",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": false
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-014",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-015",
+      "to": "__",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "__",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-015",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-016",
+      "to": "__",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "__",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-016",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-017",
+      "to": "___",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "PROC_T16",
+      "to": "___",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": false
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "PROC_T16",
+      "to": "ONT-017",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-018",
+      "to": "_",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "_",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-018",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-019",
+      "to": "LGS__OR_",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "PROC_T18",
+      "to": "LGS__OR_",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": false
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "PROC_T18",
+      "to": "ONT-019",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-020",
+      "to": "___",
+      "properties": {
+        "confidenceLevel": 0.8
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "__",
+      "to": "___",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": false
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "__",
+      "to": "ONT-020",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-021",
+      "to": "___",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_EIFS",
+      "to": "___",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": true
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_EIFS",
+      "to": "ONT-021",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-022",
+      "to": "__",
+      "properties": {
+        "confidenceLevel": 1.0
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "_",
+      "to": "__",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": false
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "_",
+      "to": "ONT-022",
+      "properties": {}
+    },
+    {
+      "type": "TRIGGERS",
+      "from": "ONT-023",
+      "to": "__",
+      "properties": {
+        "confidenceLevel": 0.8
+      }
+    },
+    {
+      "type": "PRECEDES",
+      "from": "PROC_T22",
+      "to": "__",
+      "properties": {
+        "lagDays": 0,
+        "isCriticalPath": false
+      }
+    },
+    {
+      "type": "BELONGS_TO_MODULE",
+      "from": "PROC_T22",
+      "to": "ONT-023",
+      "properties": {}
+    }
+  ]
+}

@@ -75,30 +75,112 @@ const CALC = (() => {
     return ONTO.rules.filter(r => r.trigger === processId);
   }
 
-  /* 현재 아이템 목록에 없는 필수 공정 찾기 */
+  /* ─── 수량 계산식 적용 ─────────────────────────────────────────
+   * formula types:
+   *   multiply  → round(triggerQty × factor, 2)
+   *   perimeter → ceil(sqrt(triggerQty) × 4)  — 면적→둘레 추정
+   *   fixed     → value (고정값)
+   *   manual    → null (수동 입력 필요)
+   * ────────────────────────────────────────────────────────────── */
+  function applyFormula(triggerQty, formula) {
+    if (!formula || !triggerQty || triggerQty <= 0) return null;
+    switch (formula.type) {
+      case 'multiply':
+        return Math.round(triggerQty * (formula.factor ?? 1) * 100) / 100;
+      case 'perimeter':
+        return Math.ceil(Math.sqrt(triggerQty) * 4);
+      case 'fixed':
+        return formula.value;
+      case 'manual':
+      default:
+        return null;
+    }
+  }
+
+  /* 현재 아이템 목록에 없는 필수 공정 찾기 (suggestedQty 포함) */
   function getMissingRequired(items) {
     if (!ONTO) return [];
-    const ids = items.map(i => i.processId);
+    const itemMap = new Map(items.map(i => [i.processId, i]));
     const missing = [];
-    ids.forEach(pid => {
+    itemMap.forEach((item, pid) => {
       const rules = getOntologyLinks(pid);
       rules.forEach(rule => {
-        if (rule.relation === 'REQUIRES') {
-          rule.requires.forEach((req, idx) => {
-            if (!ids.includes(req)) {
-              missing.push({
-                rule,
-                missingId: req,
-                missingName: rule.requiresNames[idx],
-                triggerId: pid,
-                triggerName: rule.triggerName
-              });
-            }
+        if (rule.relation !== 'REQUIRES') return;
+        rule.requires.forEach((req, idx) => {
+          if (itemMap.has(req)) return;
+          const formula = rule.qtyFormulas ? rule.qtyFormulas[req] : null;
+          const triggerQty = parseFloat(item.qty) || 0;
+          missing.push({
+            rule,
+            missingId: req,
+            missingName: rule.requiresNames[idx],
+            triggerId: pid,
+            triggerName: rule.triggerName,
+            suggestedQty: applyFormula(triggerQty, formula),
+            formula
           });
-        }
+        });
       });
     });
     return missing;
+  }
+
+  /* 현재 아이템 목록에 없는 권장 공정 찾기 (suggestedQty 포함) */
+  function getMissingRecommended(items) {
+    if (!ONTO) return [];
+    const itemMap = new Map(items.map(i => [i.processId, i]));
+    const recommended = [];
+    itemMap.forEach((item, pid) => {
+      const rules = getOntologyLinks(pid);
+      rules.forEach(rule => {
+        if (rule.relation !== 'RECOMMENDS') return;
+        rule.requires.forEach((req, idx) => {
+          if (itemMap.has(req)) return;
+          const formula = rule.qtyFormulas ? rule.qtyFormulas[req] : null;
+          const triggerQty = parseFloat(item.qty) || 0;
+          recommended.push({
+            rule,
+            missingId: req,
+            missingName: rule.requiresNames[idx],
+            triggerId: pid,
+            triggerName: rule.triggerName,
+            suggestedQty: applyFormula(triggerQty, formula),
+            formula
+          });
+        });
+      });
+    });
+    return recommended;
+  }
+
+  /* 누락 필수+권장 공정을 한 번에 반환 */
+  function getRequiredWithQty(items) {
+    return {
+      required: getMissingRequired(items),
+      recommended: getMissingRecommended(items)
+    };
+  }
+
+  /* 누락 필수 공정을 자동으로 아이템 배열에 추가해 반환
+   * - 이미 포함된 공정은 건너뜀
+   * - suggestedQty가 null(manual)인 경우 qty=0으로 추가해 사용자에게 입력 유도 */
+  function autoExpandItems(items) {
+    const result = [...items];
+    const addedIds = new Set(items.map(i => i.processId));
+
+    getMissingRequired(items).forEach(m => {
+      if (addedIds.has(m.missingId)) return;
+      addedIds.add(m.missingId);
+      result.push({
+        processId: m.missingId,
+        qty: m.suggestedQty ?? 0,
+        autoAdded: true,
+        triggerId: m.triggerId,
+        formula: m.formula
+      });
+    });
+
+    return result;
   }
 
   /* 카테고리별 합계 */
@@ -169,8 +251,12 @@ const CALC = (() => {
     getAllCategories,
     calcItem,
     calcEstimate,
+    applyFormula,
     getOntologyLinks,
     getMissingRequired,
+    getMissingRecommended,
+    getRequiredWithQty,
+    autoExpandItems,
     calcByCategory,
     quickCalc,
     formatKRW,

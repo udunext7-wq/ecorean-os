@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ecorean/shared": "*",
+    "better-sqlite3": "^11.9.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^4.5.2"

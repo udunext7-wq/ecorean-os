@@ -1,7 +1,13 @@
-const { app, BrowserWindow, Menu, shell } = require('electron')
+const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
 const path = require('path')
+const { handlers } = require('./db')
 
 const isDev = process.env.NODE_ENV === 'development'
+
+// Register all SQLite IPC handlers
+Object.entries(handlers).forEach(([channel, handler]) => {
+  ipcMain.handle(channel, handler)
+})
 
 let mainWindow
 
@@ -17,6 +23,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
+      preload: path.join(__dirname, 'preload.js'),
     },
     show: false,
   })

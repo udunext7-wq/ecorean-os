@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "description": "ECOREAN BOC Neo4j Relationship Schema",
+  "relationships": [
+    { "type": "HAS_SPACE",        "from": "Project",        "to": "Space",            "confidenceLevel": 1.0 },
+    { "type": "HAS_PROCESS",      "from": "Project",        "to": "Process",          "confidenceLevel": 1.0 },
+    { "type": "USES_MATERIAL",    "from": "Process",        "to": "Material",         "confidenceLevel": 1.0 },
+    { "type": "REQUIRES_LABOR",   "from": "Process",        "to": "LaborCrew",        "confidenceLevel": 1.0 },
+    { "type": "SUPPLIED_BY",      "from": "Material",       "to": "Vendor",           "confidenceLevel": 0.8 },
+    { "type": "BRAND_OF",         "from": "Material",       "to": "Brand",            "confidenceLevel": 1.0 },
+    { "type": "HAS_PAYMENT",      "from": "Project",        "to": "PaymentMilestone", "confidenceLevel": 1.0 },
+    { "type": "NEEDS_INSPECTION", "from": "Process",        "to": "Inspection",       "confidenceLevel": 1.0 },
+    { "type": "HAS_DEFECT",       "from": "Project",        "to": "Defect",           "confidenceLevel": 1.0 },
+    { "type": "HAS_RISK",         "from": "Project",        "to": "Risk",             "confidenceLevel": 0.8 },
+    { "type": "RECORDED_AS_CASE", "from": "Project",        "to": "Case",             "confidenceLevel": 1.0 },
+    { "type": "GENERATES_LEARNING","from":"Case",           "to": "LearningSuggestion","confidenceLevel": 0.9 },
+    { "type": "NEEDS_APPROVAL",   "from": "LearningSuggestion","to":"ApprovalLog",    "confidenceLevel": 1.0 },
+    { "type": "UPDATES_MASTER_DB","from": "ApprovalLog",   "to": "MasterDbItem",     "confidenceLevel": 1.0 },
+    { "type": "PRECEDES",         "from": "Process",        "to": "Process",          "confidenceLevel": 1.0,
+      "properties": ["lagDays", "isCriticalPath"] },
+    { "type": "DEPENDS_ON",       "from": "Process",        "to": "Process",          "confidenceLevel": 1.0 },
+    { "type": "AFFECTS_COST",     "from": "Risk",           "to": "Process",          "confidenceLevel": 0.7 },
+    { "type": "AFFECTS_SCHEDULE", "from": "Risk",           "to": "Process",          "confidenceLevel": 0.7 },
+    { "type": "TRIGGERS",         "from": "OntologyRule",   "to": "Process",          "confidenceLevel": 1.0,
+      "properties": ["triggerType", "condition"] },
+    { "type": "LEARNED_FROM",     "from": "MLModel",        "to": "Case",             "confidenceLevel": 0.9 },
+    { "type": "CRAWLED_FROM",     "from": "CrawlerResult",  "to": "MasterDbItem",     "confidenceLevel": 0.7 },
+    { "type": "BELONGS_TO_MODULE","from": "Process",        "to": "OntologyRule",     "confidenceLevel": 1.0 },
+    { "type": "USES_ACCESSORY",   "from": "Process",        "to": "Material",         "confidenceLevel": 0.9 }
+  ]
+}

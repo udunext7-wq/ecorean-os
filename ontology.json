@@ -1,6 +1,12 @@
 {
-  "version": "2.0",
+  "version": "2.1",
   "description": "ECOREAN 공정 온톨로지 자동연결 규칙",
+  "qtyFormulaTypes": {
+    "multiply": "qty × factor (같은 단위 면적/길이 비율 계산)",
+    "perimeter": "ceil(sqrt(qty) × 4) — 면적(㎡)에서 둘레(m) 자동 추정",
+    "fixed": "고정값 (식·개 단위 또는 샤워부스 등 표준 사이즈)",
+    "manual": "단위 불일치 — 수동 입력 필요"
+  },
   "rules": [
     {
       "id": "R001",
@@ -11,7 +17,11 @@
       "defaultTarget": "P079",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "LGS 경량틀 설치 시 석고보드 마감 필수"
+      "description": "LGS 경량틀 설치 시 석고보드 마감 필수",
+      "qtyFormulas": {
+        "P078": { "type": "multiply", "factor": 1.0 },
+        "P079": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R002",
@@ -22,7 +32,12 @@
       "defaultTarget": "P078",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "LGS 천장틀 설치 시 마감재 필수"
+      "description": "LGS 천장틀 설치 시 마감재 필수",
+      "qtyFormulas": {
+        "P078": { "type": "multiply", "factor": 1.0 },
+        "P079": { "type": "multiply", "factor": 1.0 },
+        "P084": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R003",
@@ -33,7 +48,11 @@
       "defaultTarget": "P047",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "바닥타일 시공 시 줄눈 및 하부 방수 권장"
+      "description": "바닥타일 시공 시 줄눈 및 하부 방수 권장",
+      "qtyFormulas": {
+        "P047": { "type": "multiply", "factor": 1.0 },
+        "P017": { "type": "multiply", "factor": 1.1 }
+      }
     },
     {
       "id": "R004",
@@ -44,7 +63,11 @@
       "defaultTarget": "P047",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "바닥타일 600 → 줄눈+방수"
+      "description": "바닥타일 600 → 줄눈+방수",
+      "qtyFormulas": {
+        "P047": { "type": "multiply", "factor": 1.0 },
+        "P017": { "type": "multiply", "factor": 1.1 }
+      }
     },
     {
       "id": "R005",
@@ -55,7 +78,12 @@
       "defaultTarget": "P047",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "대형 포세린 → 줄눈+방수+평탄화"
+      "description": "대형 포세린 → 줄눈+방수+평탄화",
+      "qtyFormulas": {
+        "P047": { "type": "multiply", "factor": 1.0 },
+        "P017": { "type": "multiply", "factor": 1.1 },
+        "P036": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R006",
@@ -66,7 +94,11 @@
       "defaultTarget": "P064",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "강마루 시공 시 몰딩+걸레받이 필수"
+      "description": "강마루 시공 시 몰딩+걸레받이 필수",
+      "qtyFormulas": {
+        "P064": { "type": "perimeter" },
+        "P063": { "type": "perimeter" }
+      }
     },
     {
       "id": "R007",
@@ -77,7 +109,11 @@
       "defaultTarget": "P064",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "강마루 18T → 몰딩+걸레받이"
+      "description": "강마루 18T → 몰딩+걸레받이",
+      "qtyFormulas": {
+        "P064": { "type": "perimeter" },
+        "P063": { "type": "perimeter" }
+      }
     },
     {
       "id": "R008",
@@ -88,7 +124,12 @@
       "defaultTarget": "P064",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "원목마루 → 몰딩+걸레받이+오일스테인"
+      "description": "원목마루 → 몰딩+걸레받이+오일스테인",
+      "qtyFormulas": {
+        "P064": { "type": "perimeter" },
+        "P063": { "type": "perimeter" },
+        "P110": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R009",
@@ -99,7 +140,10 @@
       "defaultTarget": "P047",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "벽 타일 → 줄눈 시공"
+      "description": "벽 타일 → 줄눈 시공",
+      "qtyFormulas": {
+        "P047": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R010",
@@ -110,7 +154,10 @@
       "defaultTarget": "P048",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "대형 벽타일 → 광폭 줄눈"
+      "description": "대형 벽타일 → 광폭 줄눈",
+      "qtyFormulas": {
+        "P048": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R011",
@@ -121,7 +168,10 @@
       "defaultTarget": "P022",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "욕실 방수 위 보호몰탈 필수"
+      "description": "욕실 방수 위 보호몰탈 필수",
+      "qtyFormulas": {
+        "P022": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R012",
@@ -132,7 +182,11 @@
       "defaultTarget": "P043",
       "relation": "RECOMMENDS",
       "priority": 2,
-      "description": "욕실 방수석고보드 → 방수+타일 권장"
+      "description": "욕실 방수석고보드 → 방수+타일 권장",
+      "qtyFormulas": {
+        "P017": { "type": "multiply", "factor": 1.0 },
+        "P043": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R013",
@@ -143,7 +197,11 @@
       "defaultTarget": "P059",
       "relation": "RECOMMENDS",
       "priority": 2,
-      "description": "대리석 → 연마/왁스+코킹"
+      "description": "대리석 → 연마/왁스+코킹",
+      "qtyFormulas": {
+        "P059": { "type": "multiply", "factor": 1.0 },
+        "P060": { "type": "perimeter" }
+      }
     },
     {
       "id": "R014",
@@ -154,7 +212,11 @@
       "defaultTarget": "P059",
       "relation": "RECOMMENDS",
       "priority": 2,
-      "description": "화강석 → 연마+코킹"
+      "description": "화강석 → 연마+코킹",
+      "qtyFormulas": {
+        "P059": { "type": "multiply", "factor": 1.0 },
+        "P060": { "type": "perimeter" }
+      }
     },
     {
       "id": "R015",
@@ -165,7 +227,11 @@
       "defaultTarget": "P106",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "벽 도장 전 퍼티+프라이머 필수"
+      "description": "벽 도장 전 퍼티+프라이머 필수",
+      "qtyFormulas": {
+        "P106": { "type": "multiply", "factor": 1.0 },
+        "P105": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R016",
@@ -176,7 +242,10 @@
       "defaultTarget": "P105",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "천장 도장 전 프라이머 필수"
+      "description": "천장 도장 전 프라이머 필수",
+      "qtyFormulas": {
+        "P105": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R017",
@@ -187,7 +256,10 @@
       "defaultTarget": "P117",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "실크도배 → 초배 필수"
+      "description": "실크도배 → 초배 필수",
+      "qtyFormulas": {
+        "P117": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R018",
@@ -198,7 +270,10 @@
       "defaultTarget": "P117",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "천연벽지 → 초배 필수"
+      "description": "천연벽지 → 초배 필수",
+      "qtyFormulas": {
+        "P117": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R019",
@@ -209,7 +284,11 @@
       "defaultTarget": "P185",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "창호 설치 → 폼 충전+코킹 필수"
+      "description": "창호 설치 → 폼 충전+코킹 필수",
+      "qtyFormulas": {
+        "P185": { "type": "perimeter" },
+        "P184": { "type": "perimeter" }
+      }
     },
     {
       "id": "R020",
@@ -220,7 +299,11 @@
       "defaultTarget": "P185",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "PVC창호 → 폼+코킹"
+      "description": "PVC창호 → 폼+코킹",
+      "qtyFormulas": {
+        "P185": { "type": "perimeter" },
+        "P184": { "type": "perimeter" }
+      }
     },
     {
       "id": "R021",
@@ -231,7 +314,11 @@
       "defaultTarget": "P155",
       "relation": "RECOMMENDS",
       "priority": 2,
-      "description": "보일러 교체 → 배관+가스배관 점검 권장"
+      "description": "보일러 교체 → 배관+가스배관 점검 권장",
+      "qtyFormulas": {
+        "P155": { "type": "manual" },
+        "P164": { "type": "manual" }
+      }
     },
     {
       "id": "R022",
@@ -242,7 +329,11 @@
       "defaultTarget": "P017",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "샤워부스 → 방수+선형드레인 필수"
+      "description": "샤워부스 → 방수+선형드레인 필수",
+      "qtyFormulas": {
+        "P017": { "type": "fixed", "value": 4.0 },
+        "P197": { "type": "fixed", "value": 1.2 }
+      }
     },
     {
       "id": "R023",
@@ -253,7 +344,11 @@
       "defaultTarget": "P110",
       "relation": "RECOMMENDS",
       "priority": 2,
-      "description": "목재 데크 → 오일스테인+줄눈 권장"
+      "description": "목재 데크 → 오일스테인+줄눈 권장",
+      "qtyFormulas": {
+        "P110": { "type": "multiply", "factor": 1.0 },
+        "P021": { "type": "perimeter" }
+      }
     },
     {
       "id": "R024",
@@ -264,7 +359,11 @@
       "defaultTarget": "P036",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "에폭시 도장 전 평탄화+프라이머 필수"
+      "description": "에폭시 도장 전 평탄화+프라이머 필수",
+      "qtyFormulas": {
+        "P036": { "type": "multiply", "factor": 1.0 },
+        "P105": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R025",
@@ -275,7 +374,11 @@
       "defaultTarget": "P039",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "외단열 → 스타코미장+탄성도료 마감"
+      "description": "외단열 → 스타코미장+탄성도료 마감",
+      "qtyFormulas": {
+        "P039": { "type": "multiply", "factor": 1.0 },
+        "P103": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R026",
@@ -286,7 +389,11 @@
       "defaultTarget": "P066",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "문틀 → 문짝+문선 세트"
+      "description": "문틀 → 문짝+문선 세트",
+      "qtyFormulas": {
+        "P066": { "type": "multiply", "factor": 1.0 },
+        "P191": { "type": "multiply", "factor": 6.0 }
+      }
     },
     {
       "id": "R027",
@@ -297,7 +404,10 @@
       "defaultTarget": "P025",
       "relation": "RECOMMENDS",
       "priority": 2,
-      "description": "평지붕 방수 후 물채움 테스트 권장"
+      "description": "평지붕 방수 후 물채움 테스트 권장",
+      "qtyFormulas": {
+        "P025": { "type": "fixed", "value": 1 }
+      }
     },
     {
       "id": "R028",
@@ -308,7 +418,10 @@
       "defaultTarget": "P034",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "블록조적 → 미장 마감 필수"
+      "description": "블록조적 → 미장 마감 필수",
+      "qtyFormulas": {
+        "P034": { "type": "multiply", "factor": 1.0 }
+      }
     },
     {
       "id": "R029",
@@ -319,7 +432,11 @@
       "defaultTarget": "P064",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "온돌마루 → 몰딩+걸레받이"
+      "description": "온돌마루 → 몰딩+걸레받이",
+      "qtyFormulas": {
+        "P064": { "type": "perimeter" },
+        "P063": { "type": "perimeter" }
+      }
     },
     {
       "id": "R030",
@@ -330,7 +447,12 @@
       "defaultTarget": "P036",
       "relation": "REQUIRES",
       "priority": 1,
-      "description": "헤링본 → 평탄화+몰딩+걸레받이"
+      "description": "헤링본 → 평탄화+몰딩+걸레받이",
+      "qtyFormulas": {
+        "P064": { "type": "perimeter" },
+        "P063": { "type": "perimeter" },
+        "P036": { "type": "multiply", "factor": 1.0 }
+      }
     }
   ],
   "groups": [
