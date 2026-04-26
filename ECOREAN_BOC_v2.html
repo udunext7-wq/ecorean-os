@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ECOREAN BOC v2 — Build Operation Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"><\/script>
+<style>
+:root{
+  --bg:#0A0A0F;--deep:#06060A;--raised:#1A1A28;--surface:#12121A;
+  --border:rgba(201,168,76,.2);--border2:rgba(201,168,76,.1);--border3:rgba(201,168,76,.06);
+  --gold:#C9A84C;--gold-bright:#F0D070;--gold4:rgba(201,168,76,.15);--gold8:rgba(201,168,76,.07);
+  --text:#F0EDE8;--dim:#7A7570;--green:#5DDDA0;--red:#FF5574;--orange:#FFAA44;--blue:#5DB8F0;
+  --fh:'Cinzel',serif;--fm:'JetBrains Mono',monospace;--fb:'Noto Sans KR',sans-serif;
+  --r:6px;--r2:10px;--sh:0 4px 24px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);font-size:14px;overflow:hidden}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input,select,textarea{font-family:inherit;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:6px 10px;outline:none}
+input:focus,select:focus{border-color:var(--gold)}
+select option{background:var(--raised)}
+#app{display:flex;flex-direction:column;height:100vh}
+#kpi-bar{display:flex;align-items:center;background:var(--deep);border-bottom:1px solid var(--border);padding:0 16px;height:52px;flex-shrink:0;overflow:hidden}
+#tab-bar{display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border2);padding:0 8px;height:38px;flex-shrink:0;overflow-x:auto;gap:2px}
+#view-wrap{flex:1;overflow:hidden;position:relative}
+.view{display:none;width:100%;height:100%;overflow-y:auto;padding:16px}
+.view.act{display:block}
+#view-estimate.act{display:flex;flex-direction:column;padding:0}
+.logo{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--gold);letter-spacing:.1em;margin-right:18px;white-space:nowrap}
+.kpis{display:flex;align-items:center;gap:0}
+.kpi{display:flex;flex-direction:column;align-items:center;padding:0 11px;border-right:1px solid var(--border3);min-width:74px}
+.kpi:first-of-type{border-left:1px solid var(--border3)}
+.kpi-v{font-family:var(--fm);font-size:12px;font-weight:700;color:var(--text)}
+.kpi-v.hl{color:var(--gold-bright)}
+.kpi-l{font-size:9px;color:var(--dim);margin-top:1px}
+.kpi-sep{flex:1}
+.kpi-right{display:flex;align-items:center;gap:10px}
+.kpi-badge{background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:8px;padding:1px 5px}
+#tb-clock{font-family:var(--fm);font-size:11px;color:var(--dim)}
+.tab{background:transparent;color:var(--dim);font-size:12px;padding:3px 12px;border-radius:var(--r);border:1px solid transparent;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--text);background:var(--gold8)}
+.tab.act{color:var(--gold);background:var(--gold8);border-color:var(--border2)}
+.tab-badge{background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:8px;padding:0 4px;margin-left:3px;vertical-align:middle}
+#stepbar{display:flex;align-items:center;justify-content:center;padding:10px 16px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border3);gap:0}
+.sdot{display:flex;flex-direction:column;align-items:center;gap:2px}
+.sdot-c{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:var(--raised);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--dim);transition:.2s}
+.sdot.done .sdot-c{border-color:var(--green);color:var(--green)}
+.sdot.act .sdot-c{border-color:var(--gold);color:var(--gold);background:var(--gold4)}
+.sdot-l{font-size:9px;color:var(--dim);white-space:nowrap}
+.sdot.act .sdot-l{color:var(--gold)}
+.sline{width:34px;height:2px;background:var(--border3);margin:0 3px 12px}
+.sline.done{background:rgba(93,221,160,.4)}
+.step-content{flex:1;overflow-y:auto;padding:14px 18px}
+.step-panel{display:none}.step-panel.act{display:block}
+#step-nav{display:flex;align-items:center;justify-content:space-between;padding:9px 18px;border-top:1px solid var(--border3);flex-shrink:0;background:var(--surface)}
+.card{background:var(--raised);border:1px solid var(--border2);border-radius:var(--r2);padding:13px;margin-bottom:10px}
+.card-title{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px}
+.field{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.field label{min-width:78px;font-size:12px;color:var(--dim);flex-shrink:0}
+.field input,.field select{flex:1;max-width:170px;width:auto}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.trow{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.tog{position:relative;width:32px;height:18px;cursor:pointer;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0;position:absolute}
+.tog-sl{position:absolute;inset:0;background:var(--raised);border:1px solid var(--border);border-radius:9px;transition:.2s}
+.tog-sl::after{content:'';position:absolute;width:12px;height:12px;background:var(--dim);border-radius:50%;top:2px;left:2px;transition:.2s}
+.tog input:checked~.tog-sl{background:var(--gold4);border-color:var(--gold)}
+.tog input:checked~.tog-sl::after{transform:translateX(14px);background:var(--gold)}
+.tog-lbl{font-size:12px;color:var(--dim)}
+.rr{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.rr label{min-width:78px;font-size:12px;color:var(--dim);flex-shrink:0}
+.rr input[type=range]{flex:1;accent-color:var(--gold)}
+.rv{font-family:var(--fm);font-size:12px;color:var(--gold);min-width:36px;text-align:right}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:7px 15px;border-radius:var(--r);font-size:12px;font-weight:600;transition:all .15s;position:relative;overflow:hidden;cursor:pointer;border:none;white-space:nowrap}
+.btn-gold{background:linear-gradient(135deg,#C9A84C,#F0D070);color:#0A0A0F}
+.btn-gold:hover{box-shadow:0 0 14px rgba(201,168,76,.5)}
+.btn-out{background:transparent;color:var(--gold);border:1px solid var(--border)}
+.btn-out:hover{background:var(--gold4)}
+.btn-ghost{background:transparent;color:var(--dim);border:1px solid var(--border3)}
+.btn-ghost:hover{color:var(--text);background:var(--raised)}
+.btn-danger{background:rgba(255,85,116,.1);color:var(--red);border:1px solid rgba(255,85,116,.3)}
+.btn-sm{padding:3px 9px;font-size:11px}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.2);transform:scale(0);animation:rpl .5s linear;pointer-events:none}
+@keyframes rpl{to{transform:scale(4);opacity:0}}
+.scope-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:4px}
+.sopt{display:flex;align-items:center;gap:7px;padding:5px 9px;background:var(--surface);border:1px solid var(--border3);border-radius:var(--r);cursor:pointer;transition:.15s}
+.sopt:hover{border-color:var(--border);background:var(--gold8)}
+.sopt.act{border-color:var(--gold);background:var(--gold4)}
+.sopt input{accent-color:var(--gold);width:13px;height:13px;flex-shrink:0;cursor:pointer}
+.sopt label{font-size:11px;cursor:pointer;flex:1}
+.space-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:7px;margin-top:7px}
+.sp-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:10px;position:relative}
+.sp-type{font-size:9px;color:var(--gold);text-transform:uppercase;margin-bottom:2px}
+.sp-name{font-size:12px;font-weight:700;margin-bottom:5px}
+.sp-dims{font-family:var(--fm);font-size:10px;color:var(--dim)}
+.sp-del{position:absolute;top:6px;right:6px;background:rgba(255,85,116,.1);color:var(--red);border:none;border-radius:3px;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{background:var(--surface);color:var(--dim);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--border2);text-align:left;white-space:nowrap}
+.tbl td{padding:5px 8px;border-bottom:1px solid var(--border3)}
+.tbl tr:hover td{background:var(--gold8)}
+.num{font-family:var(--fm);text-align:right}
+.atag{background:var(--gold4);color:var(--gold);font-size:9px;padding:1px 4px;border-radius:3px}
+.rkpi{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:13px}
+.rk{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:11px;text-align:center}
+.rk-v{font-family:var(--fm);font-size:13px;font-weight:700}
+.rk-v.hl{color:var(--gold-bright);font-size:17px}
+.rk-l{font-size:9px;color:var(--dim);margin-top:3px}
+.diag{display:flex;gap:7px;padding:6px 10px;border-radius:var(--r);margin-bottom:4px;font-size:12px;align-items:flex-start}
+.diag.ok{background:rgba(93,221,160,.06);border:1px solid rgba(93,221,160,.2)}
+.diag.warn{background:rgba(255,170,68,.06);border:1px solid rgba(255,170,68,.2)}
+.diag.error{background:rgba(255,85,116,.06);border:1px solid rgba(255,85,116,.2)}
+.diag.info{background:rgba(93,184,240,.06);border:1px solid rgba(93,184,240,.2)}
+.proj-card{background:var(--raised);border:1px solid var(--border2);border-radius:var(--r2);padding:11px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.proj-card:hover{border-color:var(--border)}
+.proj-name{font-size:12px;font-weight:700;margin-bottom:2px}
+.proj-meta{font-size:10px;color:var(--dim)}
+.proj-amt{font-family:var(--fm);font-size:12px;color:var(--gold)}
+.appr-card{background:var(--raised);border:1px solid var(--border2);border-radius:var(--r2);padding:11px;margin-bottom:6px}
+.status-p{background:rgba(255,170,68,.15);color:var(--orange);font-size:9px;padding:1px 6px;border-radius:8px;font-weight:700}
+.status-a{background:rgba(93,221,160,.15);color:var(--green);font-size:9px;padding:1px 6px;border-radius:8px;font-weight:700}
+.status-r{background:rgba(255,85,116,.15);color:var(--red);font-size:9px;padding:1px 6px;border-radius:8px;font-weight:700}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--raised);border:1px solid var(--border);border-radius:var(--r2);padding:20px;min-width:290px;max-width:460px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:var(--sh)}
+.modal-title{font-family:var(--fh);font-size:14px;color:var(--gold);margin-bottom:13px}
+.modal-foot{display:flex;justify-content:flex-end;gap:7px;margin-top:13px}
+.rept-card{background:var(--raised);border:1px solid var(--border2);border-radius:var(--r2);padding:13px;margin-bottom:7px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:.15s}
+.rept-card:hover{border-color:var(--gold);background:var(--gold8)}
+.rept-icon{font-size:20px;width:38px;text-align:center}
+.rept-title{font-size:12px;font-weight:700;margin-bottom:2px}
+.rept-desc{font-size:10px;color:var(--dim)}
+.ai-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:13px;margin-bottom:7px}
+.ai-score{font-family:var(--fm);font-size:24px;font-weight:700;color:var(--gold-bright)}
+.ai-bar{height:5px;background:var(--raised);border-radius:3px;margin:5px 0;overflow:hidden}
+.ai-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold),var(--gold-bright));transition:width .5s}
+.sh{font-size:12px;font-weight:700;color:var(--text);margin-bottom:7px;border-bottom:1px solid var(--border3);padding-bottom:4px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--deep)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn .2s ease}
+@media print{
+  :root{--bg:#fff;--deep:#fff;--raised:#f7f7f7;--surface:#efefef;--text:#111;--gold:#7a5c00;--dim:#555;--border:rgba(0,0,0,.12);--border2:rgba(0,0,0,.08);--border3:rgba(0,0,0,.05);--gold4:rgba(122,92,0,.08);--gold8:rgba(122,92,0,.04)}
+  #tab-bar,#stepbar,#step-nav,.btn,.no-print{display:none!important}
+  .view,.view.act{display:block!important;height:auto!important;overflow:visible!important}
+  #view-wrap{overflow:visible}
+}
+@media(max-width:768px){.fg2{grid-template-columns:1fr}.rkpi{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:480px){.rkpi{grid-template-columns:1fr 1fr}.scope-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── KPI Bar ─────────────────────────────────────────────────────────── -->
+<div id="kpi-bar">
+  <div class="logo">ECOREAN BOC</div>
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-v" id="kv-supply">—</div><div class="kpi-l">공급가</div></div>
+    <div class="kpi"><div class="kpi-v" id="kv-contract">—</div><div class="kpi-l">도급</div></div>
+    <div class="kpi"><div class="kpi-v hl" id="kv-final">—</div><div class="kpi-l">최종합계</div></div>
+    <div class="kpi"><div class="kpi-v" id="kv-m2">—</div><div class="kpi-l">㎡단가</div></div>
+    <div class="kpi"><div class="kpi-v" id="kv-py">—</div><div class="kpi-l">평단가</div></div>
+  </div>
+  <div class="kpi-sep"></div>
+  <div class="kpi-right">
+    <div class="kpi"><div class="kpi-v" id="kv-proj">0</div><div class="kpi-l">프로젝트</div></div>
+    <div class="kpi" style="border-right:none"><div class="kpi-v" id="kv-pend">0 <span class="kpi-badge" id="pend-badge" style="display:none">!</span></div><div class="kpi-l">승인대기</div></div>
+    <div id="tb-clock"></div>
+  </div>
+</div>
+
+<!-- ── Tab Bar ──────────────────────────────────────────────────────────── -->
+<div id="tab-bar">
+  <button class="tab act" data-tab="estimate" onclick="Router.go('estimate')">견적 마법사</button>
+  <button class="tab" data-tab="projects" onclick="Router.go('projects')">프로젝트</button>
+  <button class="tab" data-tab="presets" onclick="Router.go('presets')">프리셋</button>
+  <button class="tab" data-tab="reports" onclick="Router.go('reports')">보고서</button>
+  <button class="tab" data-tab="completion" onclick="Router.go('completion')">완료보고</button>
+  <button class="tab" data-tab="approval" onclick="Router.go('approval')">승인함 <span class="tab-badge" id="appr-badge">0</span></button>
+  <button class="tab" data-tab="dbmgr" onclick="Router.go('dbmgr')">DB관리</button>
+  <button class="tab" data-tab="ontology" onclick="Router.go('ontology')">온톨로지</button>
+  <button class="tab" data-tab="aiengine" onclick="Router.go('aiengine')">AI 엔진</button>
+</div>
+
+<!-- ── Views ────────────────────────────────────────────────────────────── -->
+<div id="view-wrap">
+
+<!-- 견적 마법사 -->
+<div id="view-estimate" class="view act">
+  <div id="stepbar">
+    <div class="sdot act" id="sd0"><div class="sdot-c">1</div><div class="sdot-l">건물정보</div></div>
+    <div class="sline" id="sl01"></div>
+    <div class="sdot" id="sd1"><div class="sdot-c">2</div><div class="sdot-l">공사범위</div></div>
+    <div class="sline" id="sl12"></div>
+    <div class="sdot" id="sd2"><div class="sdot-c">3</div><div class="sdot-l">자재등급</div></div>
+    <div class="sline" id="sl23"></div>
+    <div class="sdot" id="sd3"><div class="sdot-c">4</div><div class="sdot-l">상세설정</div></div>
+    <div class="sline" id="sl34"></div>
+    <div class="sdot" id="sd4"><div class="sdot-c">5</div><div class="sdot-l">온톨로지</div></div>
+    <div class="sline" id="sl45"></div>
+    <div class="sdot" id="sd5"><div class="sdot-c">6</div><div class="sdot-l">견적결과</div></div>
+  </div>
+  <div class="step-content" id="step-content"></div>
+  <div id="step-nav">
+    <button class="btn btn-ghost btn-sm no-print" onclick="UI.prevStep()" id="btn-prev">◀ 이전</button>
+    <div style="font-size:11px;color:var(--dim)" id="step-hint"></div>
+    <button class="btn btn-gold btn-sm no-print" onclick="UI.nextStep()" id="btn-next">다음 ▶</button>
+  </div>
+</div>
+
+<!-- 프로젝트 -->
+<div id="view-projects" class="view">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <h2 style="font-size:15px;font-weight:700">프로젝트 목록</h2>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="UI.importProject()">📂 불러오기</button>
+      <button class="btn btn-gold btn-sm" onclick="UI.saveProject()">💾 현재 저장</button>
+    </div>
+  </div>
+  <div id="proj-list"><div style="color:var(--dim);font-size:12px;padding:20px 0">저장된 프로젝트가 없습니다.</div></div>
+</div>
+
+<!-- 프리셋 -->
+<div id="view-presets" class="view">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <h2 style="font-size:15px;font-weight:700">공사범위 프리셋</h2>
+    <button class="btn btn-gold btn-sm" onclick="UI.savePreset()">✚ 현재 저장</button>
+  </div>
+  <div id="preset-list"><div style="color:var(--dim);font-size:12px;padding:20px 0">저장된 프리셋이 없습니다.</div></div>
+</div>
+
+<!-- 보고서 -->
+<div id="view-reports" class="view">
+  <h2 style="font-size:15px;font-weight:700;margin-bottom:14px">보고서 생성</h2>
+  <div class="rept-card" onclick="UI.printReport('estimate')">
+    <div class="rept-icon">📄</div>
+    <div><div class="rept-title">견적 보고서</div><div class="rept-desc">공급가·도급·최종금액 및 상세 내역</div></div>
+  </div>
+  <div class="rept-card" onclick="UI.printReport('summary')">
+    <div class="rept-icon">📊</div>
+    <div><div class="rept-title">요약 보고서</div><div class="rept-desc">KPI 요약 + 공정별 비중 분석</div></div>
+  </div>
+  <div class="rept-card" onclick="UI.printReport('schedule')">
+    <div class="rept-icon">📅</div>
+    <div><div class="rept-title">공사 일정표</div><div class="rept-desc">간트 차트 + 지급 스케줄</div></div>
+  </div>
+  <div class="rept-card" onclick="UI.printReport('compare')">
+    <div class="rept-icon">🔀</div>
+    <div><div class="rept-title">비교 견적서</div><div class="rept-desc">표준·고급·프리미엄 3등급 비교</div></div>
+  </div>
+  <div id="report-area" style="margin-top:16px"></div>
+</div>
+
+<!-- 완료보고 -->
+<div id="view-completion" class="view">
+  <h2 style="font-size:15px;font-weight:700;margin-bottom:14px">완료보고서 작성</h2>
+  <div class="card">
+    <div class="card-title">프로젝트 선택</div>
+    <div class="field"><label>프로젝트</label>
+      <select id="cmp-proj" style="max-width:250px;width:auto" onchange="UI.loadCmpProj()">
+        <option value="">— 선택 —</option>
+      </select>
+    </div>
+  </div>
+  <div id="cmp-area"></div>
+</div>
+
+<!-- 승인함 -->
+<div id="view-approval" class="view">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <h2 style="font-size:15px;font-weight:700">승인함</h2>
+    <button class="btn btn-ghost btn-sm" onclick="UI.renderApproval()">↻ 새로고침</button>
+  </div>
+  <div id="appr-list"></div>
+  <div style="margin-top:16px" class="sh">승인 로그</div>
+  <div id="appr-log"></div>
+</div>
+
+<!-- DB 관리 -->
+<div id="view-dbmgr" class="view">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <h2 style="font-size:15px;font-weight:700">공정 DB 관리</h2>
+    <div style="display:flex;gap:7px">
+      <button class="btn btn-ghost btn-sm" onclick="UI.exportDB()">📤 내보내기</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('db-import-input').click()">📥 가져오기</button>
+      <input type="file" id="db-import-input" style="display:none" accept=".json" onchange="UI.importDB(this)">
+    </div>
+  </div>
+  <div id="db-list"></div>
+</div>
+
+<!-- 온톨로지 -->
+<div id="view-ontology" class="view">
+  <h2 style="font-size:15px;font-weight:700;margin-bottom:12px">온톨로지 규칙 뷰어</h2>
+  <canvas id="onto-canvas" width="760" height="480" style="width:100%;max-width:760px;border-radius:var(--r2);border:1px solid var(--border2)"></canvas>
+  <div id="onto-rules" style="margin-top:12px"></div>
+</div>
+
+<!-- AI 엔진 -->
+<div id="view-aiengine" class="view">
+  <h2 style="font-size:15px;font-weight:700;margin-bottom:14px">AI 견적 분석 엔진</h2>
+  <div id="ai-area"><div style="color:var(--dim);font-size:12px">견적을 먼저 계산해 주세요.</div></div>
+</div>
+
+</div><!-- /view-wrap -->
+</div><!-- /app -->
+
+<!-- ── Modals ─────────────────────────────────────────────────────────── -->
+<div class="modal-bg" id="modal-space">
+  <div class="modal">
+    <div class="modal-title">공간 추가</div>
+    <div class="field"><label>공간 이름</label><input id="sp-name" placeholder="예: 거실" style="width:auto;flex:1"></div>
+    <div class="field"><label>공간 유형</label>
+      <select id="sp-type" style="width:auto;flex:1">
+        <option value="living">거실</option><option value="bedroom">침실</option>
+        <option value="bathroom">욕실</option><option value="kitchen">주방</option>
+        <option value="balcony">발코니</option><option value="hallway">복도/현관</option>
+        <option value="other">기타</option>
+      </select>
+    </div>
+    <div class="field"><label>폭 (mm)</label><input id="sp-w" type="number" value="3000" min="500" max="20000" style="width:auto;flex:1"></div>
+    <div class="field"><label>길이 (mm)</label><input id="sp-l" type="number" value="4000" min="500" max="20000" style="width:auto;flex:1"></div>
+    <div class="field"><label>높이 (mm)</label><input id="sp-h" type="number" value="2400" min="2000" max="4000" style="width:auto;flex:1"></div>
+    <div class="field"><label>창문 수</label><input id="sp-wn" type="number" value="1" min="0" max="10" style="width:auto;flex:1"></div>
+    <div class="field"><label>문 수</label><input id="sp-dn" type="number" value="1" min="0" max="5" style="width:auto;flex:1"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost btn-sm" onclick="UI.closeModal('modal-space')">취소</button>
+      <button class="btn btn-gold btn-sm" onclick="UI.addSpaceConfirm()">추가</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-project">
+  <div class="modal">
+    <div class="modal-title">프로젝트 저장</div>
+    <div class="field"><label>프로젝트명</label><input id="proj-name-inp" placeholder="예: 강남구 XX아파트" style="width:auto;flex:1"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost btn-sm" onclick="UI.closeModal('modal-project')">취소</button>
+      <button class="btn btn-gold btn-sm" onclick="UI.saveProjectConfirm()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-preset">
+  <div class="modal">
+    <div class="modal-title">프리셋 저장</div>
+    <div class="field"><label>프리셋명</label><input id="preset-name-inp" placeholder="예: 욕실+주방 풀패키지" style="width:auto;flex:1"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost btn-sm" onclick="UI.closeModal('modal-preset')">취소</button>
+      <button class="btn btn-gold btn-sm" onclick="UI.savePresetConfirm()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-approval">
+  <div class="modal">
+    <div class="modal-title">승인 검토</div>
+    <div id="appr-detail"></div>
+    <div class="field" style="margin-top:12px"><label>검토 의견</label><input id="appr-note" placeholder="의견 입력 (선택)" style="width:auto;flex:1"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost btn-sm" onclick="UI.closeModal('modal-approval')">닫기</button>
+      <button class="btn btn-danger btn-sm" onclick="UI.doApproval(false)">거부</button>
+      <button class="btn btn-gold btn-sm" onclick="UI.doApproval(true)">승인</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:20px;right:20px;background:var(--raised);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px;font-size:12px;z-index:9999;display:none;animation:fadeIn .2s;box-shadow:var(--sh)"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ECOREAN BOC v2  |  단일 script 블록  |  IIFE 모듈 패턴
+   CONFIG → CalcEngine → OntologyEngine → DiagEngine → AppState → Router → UI → INIT
+═══════════════════════════════════════════════════════════════════════════ */
+'use strict'
+
+/* ── CONFIG ──────────────────────────────────────────────────────────────── */
+const CONFIG = Object.freeze({
+  VERSION: '2.0.0',
+  STORAGE_KEY: 'ecorean-boc-v2',
+  TABS: ['estimate','projects','presets','reports','completion','approval','dbmgr','ontology','aiengine'],
+  BUILD_TYPES: [
+    {id:'apt', nm:'아파트'}, {id:'officetel', nm:'오피스텔'},
+    {id:'villa', nm:'빌라/다세대'}, {id:'commercial', nm:'상가/근생'},
+    {id:'office', nm:'사무실'}
+  ],
+  SPACE_TYPES: {
+    living:'거실', bedroom:'침실', bathroom:'욕실', kitchen:'주방',
+    balcony:'발코니', hallway:'복도/현관', other:'기타'
+  },
+  GRADE_OPTS: {
+    bt: [{v:'domestic',l:'국내산'},{v:'import',l:'수입산'},{v:'luxury',l:'포세린'}],
+    fl: [{v:'hb',l:'헤링본'},{v:'wb',l:'강마루'},{v:'wood',l:'원목'}],
+    wp: [{v:'paper',l:'합지'},{v:'silk',l:'실크'},{v:'wide',l:'광폭실크'}],
+    win:[{v:'double',l:'이중창'},{v:'triple',l:'삼중창'},{v:'loe',l:'로이유리'}],
+    kit:[{v:'standard',l:'표준'},{v:'premium',l:'고급'},{v:'luxury',l:'프리미엄'}],
+    dr: [{v:'abs',l:'ABS'},{v:'mdf',l:'MDF'},{v:'wood',l:'목재'}],
+    fix:[{v:'standard',l:'표준'},{v:'premium',l:'고급'},{v:'luxury',l:'프리미엄'}]
+  },
+  REGION_OPTS: [{v:1.0,l:'지방'},{v:1.03,l:'수도권'},{v:1.07,l:'서울'}]
+})
+
+/* ── CalcEngine ──────────────────────────────────────────────────────────── */
+const CalcEngine = (function(){
+
+  /* 공정 DB (compact: id, nm, cat, unit, lb=인건비, mt=자재비, wr=폐기율, dur=일, f=수량공식) */
+  const DB_RAW = [
+    {id:'PRE_BY',   nm:'바닥 보양',      cat:'사전공정', unit:'㎡',  lb:1200, mt:900,  wr:0.05, dur:0.5, f:'floorArea'},
+    {id:'PRE_WS',   nm:'현장 정리',      cat:'사전공정', unit:'식',  lb:150000,mt:50000,wr:0,   dur:1,   f:'1'},
+    {id:'PRE_DM_T', nm:'타일 철거',      cat:'사전공정', unit:'㎡',  lb:8000, mt:2000, wr:0.1,  dur:1,   f:'wetFA+kitFA'},
+    {id:'PRE_DM_F', nm:'바닥재 철거',    cat:'사전공정', unit:'㎡',  lb:5000, mt:1000, wr:0.1,  dur:1,   f:'dryFA'},
+    {id:'PRE_DM_W', nm:'벽지 철거',      cat:'사전공정', unit:'㎡',  lb:3000, mt:500,  wr:0.05, dur:0.5, f:'wallArea'},
+    {id:'WTP_BT',   nm:'욕실 방수',      cat:'방수',     unit:'㎡',  lb:18000,mt:12000,wr:0.1,  dur:1,   f:'wetFA'},
+    {id:'WTP_BAL',  nm:'발코니 방수',    cat:'방수',     unit:'㎡',  lb:15000,mt:10000,wr:0.1,  dur:1,   f:'balFA'},
+    {id:'MSN_FL',   nm:'바닥 미장',      cat:'미장',     unit:'㎡',  lb:12000,mt:6000, wr:0.05, dur:1,   f:'dryFA'},
+    {id:'MSN_SL',   nm:'셀프레벨링',     cat:'미장',     unit:'㎡',  lb:8000, mt:15000,wr:0.03, dur:1,   f:'dryFA'},
+    {id:'TILE_BT',  nm:'욕실 타일',      cat:'타일',     unit:'㎡',  lb:35000,mt:45000,wr:0.1,  dur:2,   f:'wetFA+wetWA'},
+    {id:'TILE_GRF', nm:'줄눈 시공',      cat:'타일',     unit:'㎡',  lb:8000, mt:5000, wr:0.05, dur:0.5, f:'wetFA+wetWA+kitFA'},
+    {id:'TILE_KT',  nm:'주방 타일',      cat:'타일',     unit:'㎡',  lb:30000,mt:35000,wr:0.1,  dur:1,   f:'kitWA'},
+    {id:'FLR_HW',   nm:'원목마루',       cat:'바닥재',   unit:'㎡',  lb:25000,mt:80000,wr:0.1,  dur:2,   f:'dryFA'},
+    {id:'FLR_WB',   nm:'강마루',         cat:'바닥재',   unit:'㎡',  lb:15000,mt:40000,wr:0.08, dur:1,   f:'dryFA'},
+    {id:'FLR_VNL',  nm:'비닐타일(LVT)',  cat:'바닥재',   unit:'㎡',  lb:10000,mt:25000,wr:0.08, dur:1,   f:'dryFA'},
+    {id:'FLR_HB',   nm:'헤링본마루',     cat:'바닥재',   unit:'㎡',  lb:40000,mt:90000,wr:0.15, dur:3,   f:'dryFA'},
+    {id:'WLP_SILK', nm:'실크 도배',      cat:'도배',     unit:'㎡',  lb:6000, mt:8000, wr:0.15, dur:1,   f:'wallArea+ceilingArea'},
+    {id:'WLP_WIDE', nm:'광폭실크 도배',  cat:'도배',     unit:'㎡',  lb:7000, mt:12000,wr:0.1,  dur:1,   f:'wallArea+ceilingArea'},
+    {id:'WLP_PAPER',nm:'합지 도배',      cat:'도배',     unit:'㎡',  lb:4000, mt:4000, wr:0.15, dur:1,   f:'wallArea+ceilingArea'},
+    {id:'PLT_WS',   nm:'수성페인트',     cat:'도장',     unit:'㎡',  lb:5000, mt:4000, wr:0.1,  dur:1,   f:'wallArea+ceilingArea'},
+    {id:'WIN_SYS',  nm:'창호 교체',      cat:'창호',     unit:'창',  lb:80000,mt:350000,wr:0,   dur:0.5, f:'windowCount'},
+    {id:'DR_FRONT', nm:'현관문 교체',    cat:'도어',     unit:'짝',  lb:100000,mt:600000,wr:0,  dur:1,   f:'1'},
+    {id:'DR_ROOM',  nm:'방문 교체',      cat:'도어',     unit:'짝',  lb:60000,mt:150000,wr:0,   dur:0.3, f:'doorCount'},
+    {id:'PLB_PIPE', nm:'배관 교체',      cat:'설비',     unit:'식',  lb:800000,mt:400000,wr:0,  dur:3,   f:'1'},
+    {id:'PLB_BOIL', nm:'보일러 교체',    cat:'설비',     unit:'식',  lb:150000,mt:1500000,wr:0, dur:1,   f:'1'},
+    {id:'PLB_HEAT', nm:'난방코일 교체',  cat:'설비',     unit:'㎡',  lb:15000,mt:20000, wr:0.05,dur:1,   f:'dryFA'},
+    {id:'ELE_WIRE', nm:'전기 배선',      cat:'전기',     unit:'식',  lb:600000,mt:300000,wr:0,  dur:3,   f:'1'},
+    {id:'ELE_PANEL',nm:'분전함 교체',    cat:'전기',     unit:'식',  lb:80000,mt:200000, wr:0,  dur:0.5, f:'1'},
+    {id:'ELE_OUT',  nm:'콘센트·스위치',  cat:'전기',     unit:'개',  lb:15000,mt:12000, wr:0,   dur:0.1, f:'floorArea*0.3'},
+    {id:'ELE_LIGHT',nm:'조명 교체',      cat:'전기',     unit:'개',  lb:20000,mt:30000, wr:0,   dur:0.2, f:'floorArea*0.15'},
+    {id:'FUR_KIT',  nm:'주방가구',       cat:'가구',     unit:'m',   lb:120000,mt:500000,wr:0,  dur:2,   f:'kitchenLen'},
+    {id:'FUR_TOP',  nm:'주방 상판',      cat:'가구',     unit:'m',   lb:50000,mt:200000, wr:0,  dur:0.5, f:'kitchenLen'},
+    {id:'FUR_WARD', nm:'붙박이장',       cat:'가구',     unit:'m',   lb:80000,mt:300000, wr:0,  dur:1,   f:'bedroomArea*0.5'},
+    {id:'BAT_FIX',  nm:'욕실 위생도기',  cat:'욕실마감', unit:'식',  lb:120000,mt:400000,wr:0,  dur:1,   f:'bathroomCount'},
+    {id:'BAT_FAU',  nm:'욕실 수전',      cat:'욕실마감', unit:'식',  lb:40000,mt:150000, wr:0,  dur:0.5, f:'bathroomCount'},
+    {id:'FIN_MOL',  nm:'몰딩·걸레받이',  cat:'마감',     unit:'m',   lb:5000, mt:8000,  wr:0.1, dur:0.5, f:'perimeter'},
+    {id:'IND_CEIL', nm:'간접등 박스',    cat:'마감',     unit:'m',   lb:25000,mt:15000, wr:0.05,dur:1,   f:'indirectLen'},
+    {id:'BAL_EXP',  nm:'발코니 확장',    cat:'발코니',   unit:'㎡',  lb:80000,mt:50000, wr:0.1, dur:2,   f:'balFA'},
+    {id:'BAL_INSUL',nm:'발코니 단열',    cat:'발코니',   unit:'㎡',  lb:20000,mt:25000, wr:0.05,dur:1,   f:'balFA'},
+    {id:'DEMO_CERT',nm:'폐기물 처리',    cat:'준공',     unit:'㎡',  lb:3000, mt:5000,  wr:0,   dur:0.5, f:'floorArea'},
+    {id:'CLEAN_FIN',nm:'준공 청소',      cat:'준공',     unit:'㎡',  lb:4000, mt:1000,  wr:0,   dur:0.5, f:'floorArea'},
+    {id:'BAL_WP',   nm:'발코니 도배',    cat:'발코니',   unit:'㎡',  lb:5000, mt:7000,  wr:0.15,dur:0.5, f:'balFA*2'},
+    {id:'BAL_FL',   nm:'발코니 바닥재',  cat:'발코니',   unit:'㎡',  lb:8000, mt:15000, wr:0.08,dur:0.5, f:'balFA'},
+    {id:'ELE_IND',  nm:'간접조명',       cat:'전기',     unit:'m',   lb:15000,mt:20000, wr:0.05,dur:0.5, f:'indirectLen'},
+    {id:'LV_SMART', nm:'스마트홈 IoT',   cat:'전기',     unit:'식',  lb:200000,mt:500000,wr:0,  dur:1,   f:'1'},
+    {id:'STR_WPU',  nm:'구조 방수(옥상)',cat:'구조',     unit:'㎡',  lb:25000,mt:30000, wr:0.05,dur:2,   f:'floorArea*0.3'},
+    {id:'ASB_RM',   nm:'석면 제거',      cat:'철거',     unit:'㎡',  lb:80000,mt:50000, wr:0,   dur:2,   f:'ceilingArea'},
+    {id:'FLR_EPX',  nm:'에폭시 코팅',    cat:'바닥재',   unit:'㎡',  lb:8000, mt:12000, wr:0.05,dur:1,   f:'dryFA'},
+  ]
+
+  /* DB를 id로 인덱싱 */
+  const DB = {}
+  for (const item of DB_RAW) DB[item.id] = item
+
+  /* ── 공간 계산 ──────────────────────────────────────────────────────────── */
+  function calcSpace(sp) {
+    const w = sp.width  / 1000
+    const l = sp.length / 1000
+    const h = (sp.height || 2400) / 1000
+    const fa = w * l
+    const ca = fa
+    const rawWall = 2 * (w + l) * h
+    const pr = 2 * (w + l)
+    const wn  = sp.windows || 0
+    const dn  = sp.doors   || 0
+    const winArea  = wn * 1.2   // 창문 1개 평균 1.2㎡
+    const doorArea = dn * 1.89  // 문 1개 평균 0.9×2.1
+    const wa = Math.max(0, rawWall - winArea - doorArea)
+    return { fa, wa, ca, pr, winArea, doorArea, wn, dn }
+  }
+
+  /* ── 공간 합계 ──────────────────────────────────────────────────────────── */
+  function getTotals(spaces) {
+    const T = {fa:0,wa:0,ca:0,pr:0,wn:0,dn:0,
+               wet:0,wetFA:0,wetWA:0,dryFA:0,balFA:0,
+               bedroomFA:0,kitFA:0,bathroomCount:0}
+    for (const sp of spaces) {
+      const c = calcSpace(sp)
+      T.fa += c.fa; T.wa += c.wa; T.ca += c.ca; T.pr += c.pr
+      T.wn += c.wn; T.dn += c.dn
+      if (sp.type === 'bathroom') { T.wet++; T.wetFA += c.fa; T.wetWA += c.wa; T.bathroomCount++ }
+      else if (sp.type === 'balcony') T.balFA += c.fa
+      else if (sp.type === 'bedroom') T.bedroomFA += c.fa
+      else if (sp.type === 'kitchen') T.kitFA += c.fa
+      else T.dryFA += c.fa
+    }
+    return T
+  }
+
+  /* ── 양중 할증 ──────────────────────────────────────────────────────────── */
+  function getHoistMul(fl, elev) {
+    if (elev) {
+      if (fl >= 20) return 1.25; if (fl >= 15) return 1.20
+      if (fl >= 10) return 1.15; if (fl >= 5)  return 1.08
+      return 1.0
+    } else {
+      if (fl >= 20) return 1.35; if (fl >= 15) return 1.30
+      if (fl >= 10) return 1.20; if (fl >= 5)  return 1.12
+      return 1.05
+    }
+  }
+
+  /* ── 수량 공식 평가 ─────────────────────────────────────────────────────── */
+  const SAFE_RE = /^[a-zA-Z0-9+\-*\/.()\s]+$/
+  function evalFormula(formula, ctx) {
+    if (!SAFE_RE.test(formula)) return 0
+    let expr = formula
+    const keys = Object.keys(ctx).sort((a,b) => b.length - a.length)
+    for (const k of keys) expr = expr.replace(new RegExp('\b' + k + '\b', 'g'), String(ctx[k]))
+    try { return Math.max(0, Function('"use strict"; return (' + expr + ')')()) } catch { return 0 }
+  }
+
+  /* ── 자재 할증 배율 ─────────────────────────────────────────────────────── */
+  const MAT_MUL = {
+    bt:  {domestic:1.0, import:1.3, luxury:1.8},
+    fl:  {hb:1.8, wb:1.0, wood:2.2},
+    wp:  {paper:0.7, silk:1.0, wide:1.4},
+    win: {double:1.0, triple:1.3, loe:1.5},
+    kit: {standard:0.8, premium:1.0, luxury:1.5},
+    dr:  {abs:0.8, mdf:1.0, wood:1.4},
+    fix: {standard:0.8, premium:1.0, luxury:1.5}
+  }
+  function getMatMul(id, grades, globalMul) {
+    if (id.startsWith('TILE_BT') || id.startsWith('BAT_FIX') || id.startsWith('BAT_FAU'))
+      return MAT_MUL.bt[grades.bt] || 1.0
+    if (id.startsWith('FLR_')) return MAT_MUL.fl[grades.fl] || 1.0
+    if (id.startsWith('WLP_')) return MAT_MUL.wp[grades.wp] || 1.0
+    if (id.startsWith('WIN_')) return MAT_MUL.win[grades.win] || 1.0
+    if (id.startsWith('FUR_KIT') || id.startsWith('FUR_TOP')) return MAT_MUL.kit[grades.kit] || 1.0
+    if (id.startsWith('DR_'))  return MAT_MUL.dr[grades.dr]  || 1.0
+    return globalMul
+  }
+
+  /* ── 선택 공정 목록 결정 ────────────────────────────────────────────────── */
+  function getSelectedProcesses(state) {
+    const sc = state.scope || {}
+    const procs = []
+    const added = new Set()
+    function add(id, auto=false, note='') {
+      if (!DB[id] || added.has(id)) return
+      added.add(id); procs.push({id, auto, note})
+    }
+
+    // 사전공정 (항상)
+    add('PRE_BY'); add('PRE_WS')
+    if (state.spaces && state.spaces.some(s => s.type === 'bathroom')) add('PRE_DM_T')
+    if (sc.lvFloor) add('PRE_DM_F')
+    if (sc.lvWp || sc.lvPaint) add('PRE_DM_W')
+
+    // 방수 (욕실 있을 때만, 절대 AUTO 아님)
+    if (sc.btWtp && state.spaces && state.spaces.some(s => s.type === 'bathroom')) add('WTP_BT')
+    if (sc.balWp) add('WTP_BAL')
+
+    // 미장
+    if (sc.plbPipe || (state.buildAge >= 20)) add('MSN_FL', true, '배관/노후 건물 필수')
+    if (state.floorLevel2 === 'poor') add('MSN_SL', true, '바닥 불량')
+
+    // 타일
+    if (sc.btTile) add('TILE_BT')
+    if (sc.ktTile) add('TILE_KT')
+    if ((sc.btTile || sc.ktTile) && !added.has('TILE_GRF')) add('TILE_GRF', true, '타일→줄눈 자동')
+
+    // 바닥재
+    const fl = state.grades && state.grades.fl
+    if (sc.lvFloor) {
+      if (fl === 'hb')   add('FLR_HB')
+      else if (fl === 'wood') add('FLR_HW')
+      else               add('FLR_WB')
+    }
+    if (sc.spEpoxy) add('FLR_EPX')
+
+    // 도배/도장
+    if (sc.lvWp) {
+      const wp = state.grades && state.grades.wp
+      if (wp === 'paper') add('WLP_PAPER')
+      else if (wp === 'wide') add('WLP_WIDE')
+      else add('WLP_SILK')
+    }
+    if (sc.lvPaint) add('PLT_WS')
+
+    // 창호/도어
+    if (sc.winReplace) add('WIN_SYS')
+    if (sc.doorFront)  add('DR_FRONT')
+    if (sc.doorReplace) add('DR_ROOM')
+    if ((sc.winReplace || sc.doorReplace) && sc.lvWp) add('FIN_MOL', true, '창호·도배 후 몰딩')
+
+    // 설비
+    if (sc.plbPipe)   add('PLB_PIPE')
+    if (sc.plbBoiler) add('PLB_BOIL')
+    if (sc.plbHeat || sc.plbPipe) add('PLB_HEAT', sc.plbPipe, '배관교체→코일교체')
+
+    // 전기
+    if (sc.eleWire)  add('ELE_WIRE')
+    if (sc.elePanel) add('ELE_PANEL')
+    if (sc.eleOutlet) add('ELE_OUT')
+    if (sc.eleLight)  add('ELE_LIGHT')
+    if (sc.eleIndirect) { add('IND_CEIL'); add('ELE_IND', true, '간접등→조명') }
+    if (sc.lvSmart) add('LV_SMART')
+
+    // 주방
+    if (sc.ktCab)  add('FUR_KIT')
+    if (sc.ktTop)  add('FUR_TOP')
+    if (sc.ktCab && !added.has('FUR_TOP')) add('FUR_TOP', true, '주방가구→상판')
+    if (sc.ktPlb)  add('BAT_FAU')  // 주방수전
+
+    // 욕실마감
+    if (sc.btFix)  add('BAT_FIX')
+    if (sc.btFau || sc.btFix) add('BAT_FAU', sc.btFix, '위생도기→수전')
+
+    // 붙박이장
+    if (sc.lvWardrobe) add('FUR_WARD')
+
+    // 발코니
+    if (sc.balExpand) { add('BAL_EXP'); add('BAL_INSUL', true, '발코니확장→단열필수'); add('MSN_FL', true, '발코니확장→미장') }
+    if (sc.balFloor) add('BAL_FL')
+    if (sc.balWp && sc.lvWp) add('BAL_WP', true, '발코니도배')
+
+    // 석면
+    if (state.hasAsbestos) add('ASB_RM')
+
+    // 구조
+    if (sc.strWpu) add('STR_WPU')
+
+    // 준공
+    add('DEMO_CERT', true, '준공필수'); add('CLEAN_FIN', true, '준공필수')
+
+    return procs
+  }
+
+  /* ── 전체 견적 계산 ─────────────────────────────────────────────────────── */
+  function calculateEstimate(state) {
+    if (!state.spaces || state.spaces.length === 0) return null
+    const totals = getTotals(state.spaces)
+    const hoist  = getHoistMul(state.floorLevel || 1, !!state.hasElev)
+    const region = state.region  || 1.0
+    const resid  = state.residentDuring ? 1.10 : 1.0
+    const adjMul = hoist * region * resid
+    const grades = state.grades  || {}
+    const globalMul = state.globalMul || 1.0
+
+    const ctx = {
+      floorArea:    totals.fa,
+      wallArea:     totals.wa,
+      ceilingArea:  totals.ca,
+      perimeter:    totals.pr,
+      windowCount:  totals.wn,
+      doorCount:    totals.dn,
+      wetFA:        totals.wetFA,
+      wetWA:        totals.wetWA,
+      kitWA:        (totals.kitFA > 0 ? Math.sqrt(totals.kitFA) * 2 * 2.4 : 0),
+      dryFA:        totals.dryFA,
+      balFA:        totals.balFA,
+      bathroomCount:totals.bathroomCount,
+      bedroomArea:  totals.bedroomFA,
+      kitFA:        totals.kitFA,
+      kitchenLen:   totals.kitFA > 0 ? Math.sqrt(totals.kitFA) * 2 : 0,
+      indirectLen:  totals.pr * 0.3,
+    }
+
+    const procs = getSelectedProcesses(state)
+    const lines = []
+    let totalSupply = 0
+    let duration = 0
+
+    for (const {id, auto, note} of procs) {
+      const p = DB[id]; if (!p) continue
+      const qty = Math.max(0, evalFormula(p.f, ctx))
+      if (qty === 0 && p.unit !== '식') continue
+      const matMul = getMatMul(id, grades, globalMul)
+      const laborTotal   = p.lb * adjMul
+      const materialTotal = p.mt * matMul
+      const supplyPrice  = Math.round(qty * (1 + p.wr) * (laborTotal + materialTotal))
+      totalSupply += supplyPrice
+      duration   += p.dur * (qty > 0 ? 1 : 0)
+      lines.push({
+        id, name: p.nm, category: p.cat, unit: p.unit,
+        qty: Math.round(qty * 10) / 10,
+        laborCost: Math.round(laborTotal),
+        materialCost: Math.round(materialTotal),
+        supplyPrice, auto, note
+      })
+    }
+
+    const contractAmount = Math.round(totalSupply * 1.15)
+    const finalAmount    = Math.round(contractAmount * 1.10)
+    return { lines, totalSupply, contractAmount, finalAmount, duration: Math.round(duration), totals }
+  }
+
+  /* ── 단위 테스트 ─────────────────────────────────────────────────────────── */
+  function runTests() {
+    let pass = 0, fail = 0
+    function assert(name, cond) {
+      if (cond) { pass++; console.log('[CalcEngine] ✓', name) }
+      else       { fail++; console.error('[CalcEngine] ✗', name) }
+    }
+
+    // calcSpace
+    const cs = calcSpace({id:'t', type:'living', width:4000, length:3000, height:2400, windows:1, doors:1})
+    assert('calcSpace: floor area 12㎡', Math.abs(cs.fa - 12) < 0.01)
+    assert('calcSpace: ceiling area 12㎡', Math.abs(cs.ca - 12) < 0.01)
+    assert('calcSpace: wall positive', cs.wa > 0)
+
+    // getTotals
+    const spaces = [
+      {id:'s1', type:'bathroom', width:1500, length:2000, height:2400, windows:0, doors:1},
+      {id:'s2', type:'living',   width:5000, length:4000, height:2400, windows:2, doors:1},
+    ]
+    const t = getTotals(spaces)
+    assert('getTotals: bathroomCount 1', t.bathroomCount === 1)
+    assert('getTotals: wetFA ~3', Math.abs(t.wetFA - 3) < 0.01)
+    assert('getTotals: fa total', Math.abs(t.fa - 23) < 0.01)
+
+    // getHoistMul
+    assert('hoistMul: fl1 noElev → 1.05', getHoistMul(1, false) === 1.05)
+    assert('hoistMul: fl5 elev   → 1.08', getHoistMul(5, true)  === 1.08)
+    assert('hoistMul: fl10 elev  → 1.15', getHoistMul(10, true) === 1.15)
+    assert('hoistMul: fl20 noElev→ 1.35', getHoistMul(20, false)=== 1.35)
+
+    // evalFormula
+    const ctx = {floorArea:20, wallArea:50, bathroomCount:2}
+    assert('evalFormula: variable', Math.abs(evalFormula('floorArea', ctx) - 20) < 0.01)
+    assert('evalFormula: expr', Math.abs(evalFormula('floorArea*2', ctx) - 40) < 0.01)
+    assert('evalFormula: injection blocked', evalFormula('alert(1)', ctx) === 0)
+    assert('evalFormula: multivar', Math.abs(evalFormula('floorArea+wallArea', ctx) - 70) < 0.01)
+
+    // calculateEstimate: null when no spaces
+    const r0 = calculateEstimate({spaces:[]})
+    assert('calcEstimate: null when no spaces', r0 === null)
+
+    // calculateEstimate: valid result
+    const state = {
+      spaces, floorLevel:3, hasElev:true, region:1.0, residentDuring:false,
+      globalMul:1.0, buildAge:5, floorLevel2:'good', hasAsbestos:false,
+      grades:{bt:'domestic',fl:'wb',wp:'silk',win:'double',kit:'standard',dr:'abs',fix:'standard'},
+      scope:{lvFloor:true, lvWp:true, btWtp:true, btTile:true, btFix:true}
+    }
+    const r1 = calculateEstimate(state)
+    assert('calcEstimate: returns result', r1 !== null)
+    assert('calcEstimate: contractAmount = totalSupply*1.15', r1 && Math.abs(r1.contractAmount - r1.totalSupply*1.15) < 1)
+    assert('calcEstimate: finalAmount = contract*1.10', r1 && Math.abs(r1.finalAmount - r1.contractAmount*1.10) < 1)
+    assert('calcEstimate: has lines', r1 && r1.lines.length > 0)
+
+    console.log('[CalcEngine] Tests:', pass, 'pass,', fail, 'fail')
+    return fail === 0
+  }
+
+  return { calcSpace, getTotals, getHoistMul, evalFormula, calculateEstimate, getSelectedProcesses, DB, runTests }
+})()
+
+
+/* ── OntologyEngine ────────────────────────────────────────────────────────── */
+const OntologyEngine = (function(){
+
+  const RULES = [
+    {id:'R01', trigger:'WTP_BT',   action:'TILE_BT',   type:'AUTO_INCLUDE',     note:'욕실방수→타일 시공 필수'},
+    {id:'R02', trigger:'TILE_BT',  action:'TILE_GRF',  type:'AUTO_INCLUDE',     note:'욕실타일→줄눈 필수'},
+    {id:'R03', trigger:'TILE_KT',  action:'TILE_GRF',  type:'AUTO_INCLUDE',     note:'주방타일→줄눈 필수'},
+    {id:'R04', trigger:'FLR_HW',   action:'PRE_BY',    type:'AUTO_INCLUDE',     note:'원목마루→보양 필수'},
+    {id:'R05', trigger:'FLR_WB',   action:'PRE_BY',    type:'AUTO_INCLUDE',     note:'강마루→보양 필수'},
+    {id:'R06', trigger:'FLR_HB',   action:'PRE_BY',    type:'AUTO_INCLUDE',     note:'헤링본→보양 필수'},
+    {id:'R07', trigger:'PLB_PIPE', action:'MSN_FL',    type:'AUTO_INCLUDE',     note:'배관교체→바닥미장 필수'},
+    {id:'R08', trigger:'PLB_BOIL', action:'PLB_HEAT',  type:'AUTO_INCLUDE',     note:'보일러교체→난방코일 점검'},
+    {id:'R09', trigger:'WIN_SYS',  action:'FIN_MOL',   type:'AUTO_INCLUDE',     note:'창호교체→몰딩 필수'},
+    {id:'R10', trigger:'FUR_KIT',  action:'FUR_TOP',   type:'AUTO_INCLUDE',     note:'주방가구→상판 필수'},
+    {id:'R11', trigger:'FUR_KIT',  action:'ELE_OUT',   type:'AUTO_INCLUDE',     note:'주방가구→콘센트 추가'},
+    {id:'R12', trigger:'BAL_EXP',  action:'BAL_INSUL', type:'AUTO_INCLUDE',     note:'발코니확장→단열 법적 필수'},
+    {id:'R13', trigger:'BAL_EXP',  action:'MSN_FL',    type:'AUTO_INCLUDE',     note:'발코니확장→바닥미장'},
+    {id:'R14', trigger:'ELE_WIRE', action:'ELE_PANEL', type:'WARN_CONDITIONAL', note:'전기배선→분전함 용량 확인'},
+    {id:'R15', trigger:'ELE_LIGHT',action:'ELE_OUT',   type:'AUTO_INCLUDE',     note:'조명→콘센트 연동'},
+    {id:'R16', trigger:'WTP_BT',   action:'BAT_FIX',   type:'AUTO_INCLUDE',     note:'욕실방수→위생도기 교체 권장'},
+    {id:'R17', trigger:'BAT_FIX',  action:'BAT_FAU',   type:'AUTO_INCLUDE',     note:'위생도기→수전 세트 교체'},
+    {id:'R18', trigger:'FLR_HW',   action:'FIN_MOL',   type:'AUTO_INCLUDE',     note:'원목마루→걸레받이 필수'},
+    {id:'R19', trigger:'WLP_SILK', action:'FIN_MOL',   type:'AUTO_INCLUDE',     note:'도배→몰딩 마감'},
+    {id:'R20', trigger:'PLT_WS',   action:'FIN_MOL',   type:'AUTO_INCLUDE',     note:'페인트→몰딩 마감'},
+    {id:'R21', trigger:'PRE_DM_T', action:'WTP_BT',    type:'WARN_CONDITIONAL', note:'타일철거→방수 재시공 확인'},
+    {id:'R22', trigger:'PRE_DM_W', action:'WLP_SILK',  type:'WARN_CONDITIONAL', note:'벽철거→도배 확인'},
+    {id:'R23', trigger:'MSN_SL',   action:'FLR_HW',    type:'AUTO_INCLUDE',     note:'셀프레벨링→원목마루 적합'},
+    {id:'R24', trigger:'IND_CEIL', action:'ELE_LIGHT', type:'AUTO_INCLUDE',     note:'간접등박스→조명기구 필수'},
+    {id:'R25', trigger:'CLEAN_FIN',action:'DEMO_CERT', type:'AUTO_INCLUDE',     note:'준공청소→폐기물처리 선행'},
+    {id:'R26', trigger:'ASB_RM',   action:'PRE_WS',    type:'AUTO_INCLUDE',     note:'석면제거→현장정리 필수'},
+  ]
+
+  function applyOntology(selectedIds, rules, ctx) {
+    const selected = new Set(selectedIds)
+    const autoAdded = []
+    const warnings  = []
+    const ruleList  = rules || RULES
+
+    for (const rule of ruleList) {
+      if (!selected.has(rule.trigger)) continue
+      if (rule.type === 'AUTO_INCLUDE' || rule.type === 'FORCED') {
+        if (!selected.has(rule.action)) {
+          autoAdded.push({id: rule.action, note: rule.note, ruleId: rule.id})
+          selected.add(rule.action)
+        }
+      } else if (rule.type === 'WARN_CONDITIONAL') {
+        if (!selected.has(rule.action)) {
+          warnings.push({ruleId: rule.id, message: rule.note, trigger: rule.trigger, action: rule.action})
+        }
+      }
+    }
+    return { autoAdded, warnings }
+  }
+
+  function runTests() {
+    let pass = 0, fail = 0
+    function assert(name, cond) {
+      if (cond) { pass++; console.log('[OntologyEngine] ✓', name) }
+      else       { fail++; console.error('[OntologyEngine] ✗', name) }
+    }
+
+    // AUTO_INCLUDE: trigger present → action auto-added
+    const r1 = applyOntology(['TILE_BT'], RULES, {})
+    assert('TILE_BT→TILE_GRF auto', r1.autoAdded.some(a => a.id === 'TILE_GRF'))
+
+    // No trigger → no auto-add
+    const r2 = applyOntology([], RULES, {})
+    assert('empty → no auto-add', r2.autoAdded.length === 0)
+    assert('empty → no warnings', r2.warnings.length  === 0)
+
+    // Already present → no duplicate
+    const r3 = applyOntology(['TILE_BT', 'TILE_GRF'], RULES, {})
+    assert('already present → no duplicate', r3.autoAdded.filter(a => a.id === 'TILE_GRF').length === 0)
+
+    // WARN_CONDITIONAL: generates warning not auto-add
+    const r4 = applyOntology(['ELE_WIRE'], RULES, {})
+    const R14 = RULES.find(r => r.id === 'R14')
+    if (R14 && R14.type === 'WARN_CONDITIONAL') {
+      assert('ELE_WIRE→ELE_PANEL is warning', r4.warnings.some(w => w.action === 'ELE_PANEL'))
+      assert('ELE_WIRE→ELE_PANEL not auto-added', !r4.autoAdded.some(a => a.id === 'ELE_PANEL'))
+    }
+
+    // Chain: WTP_BT → TILE_BT → TILE_GRF (chain resolves)
+    const r5 = applyOntology(['WTP_BT'], RULES, {})
+    assert('WTP_BT chain→TILE_BT', r5.autoAdded.some(a => a.id === 'TILE_BT'))
+    assert('WTP_BT chain→BAT_FIX', r5.autoAdded.some(a => a.id === 'BAT_FIX'))
+
+    // BAL_EXP → BAL_INSUL
+    const r6 = applyOntology(['BAL_EXP'], RULES, {})
+    assert('BAL_EXP→BAL_INSUL auto', r6.autoAdded.some(a => a.id === 'BAL_INSUL'))
+
+    // FLR_HW → PRE_BY + FIN_MOL
+    const r7 = applyOntology(['FLR_HW'], RULES, {})
+    assert('FLR_HW→PRE_BY auto', r7.autoAdded.some(a => a.id === 'PRE_BY'))
+    assert('FLR_HW→FIN_MOL auto', r7.autoAdded.some(a => a.id === 'FIN_MOL'))
+
+    // 26 rules exist
+    assert('26 ontology rules defined', RULES.length === 26)
+
+    console.log('[OntologyEngine] Tests:', pass, 'pass,', fail, 'fail')
+    return fail === 0
+  }
+
+  return { applyOntology, RULES, runTests }
+})()
+
+/* ── DiagEngine ──────────────────────────────────────────────────────────── */
+const DiagEngine = (function(){
+
+  function runDiagnostics(lines, state, totals) {
+    const diags = []
+    const lineIds = new Set(lines.map(l => l.id))
+    const cats    = new Set(lines.map(l => l.category))
+
+    // OK baseline
+    if (lines.length === 0) {
+      diags.push({type:'info', code:'I000', message:'공정이 선택되지 않았습니다.'})
+      return diags
+    }
+
+    // W001: 욕실 있는데 방수 없음
+    if (totals.bathroomCount > 0 && !lineIds.has('WTP_BT')) {
+      diags.push({type:'warn', code:'W001', message:'욕실이 있으나 방수 공정이 없습니다. 누수 위험이 있습니다.'})
+    }
+
+    // W002: 타일 있는데 줄눈 없음
+    if (cats.has('타일') && !lineIds.has('TILE_GRF')) {
+      diags.push({type:'warn', code:'W002', message:'타일 공정이 있으나 줄눈 시공이 없습니다.'})
+    }
+
+    // E001: 석면 의심인데 제거 없음
+    if (state.hasAsbestos && !lineIds.has('ASB_RM')) {
+      diags.push({type:'error', code:'E001', message:'석면 의심 건물인데 석면 제거 공정이 없습니다. 법적 의무 공정입니다.'})
+    }
+
+    // W003: 갈바나이즈 배관 경고
+    if (state.pipeMaterial === 'galvanized' && !lineIds.has('PLB_PIPE')) {
+      diags.push({type:'warn', code:'W003', message:'갈바나이즈 배관은 교체를 권장합니다. (녹물 위험)'})
+    }
+
+    // I001: 노후 건물 + 전기 공사
+    if (state.buildAge >= 30 && lineIds.has('ELE_WIRE')) {
+      diags.push({type:'info', code:'I001', message:'30년 이상 건물의 전기배선 교체 시 분전함 용량도 확인하세요.'})
+    }
+
+    // W005: 욕실 방수 후 타일 확인
+    if (lineIds.has('WTP_BT') && !lineIds.has('TILE_BT')) {
+      diags.push({type:'warn', code:'W005', message:'욕실 방수 후 타일 시공이 없습니다.'})
+    }
+
+    if (diags.length === 0) {
+      diags.push({type:'ok', code:'OK', message:'진단 이상 없음. 모든 공정이 적절히 구성되었습니다.'})
+    }
+    return diags
+  }
+
+  return { runDiagnostics }
+})()
+
+/* ── AppState ────────────────────────────────────────────────────────────── */
+const AppState = (function(){
+
+  const DEFAULT_SCOPE = {
+    btWtp:false, btTile:false, btFix:false, btFau:false,
+    ktCab:false, ktTop:false, ktHood:false, ktDw:false, ktOven:false, ktTile:false, ktPlb:false,
+    lvWp:true,   lvPaint:false, lvFloor:true, lvMold:true, lvWardrobe:false,
+    lvIndirect:false, lvSmart:false,
+    winReplace:false, winMid:false,
+    doorReplace:false, doorFront:false,
+    balWp:false, balExpand:false, balInsul:false, balFloor:false,
+    plbPipe:false, plbBoiler:false, plbHeat:false,
+    eleWire:false, elePanel:false, eleOutlet:false, eleLight:false, eleIndirect:false,
+    spEpoxy:false, strWpu:false,
+  }
+
+  const DEFAULT_GRADES = {
+    bt:'domestic', fl:'wb', wp:'silk', win:'double',
+    kit:'standard', dr:'abs', fix:'standard'
+  }
+
+  const DEFAULT_STATE = {
+    // 건물정보
+    buildType: 'apt',
+    buildAge:  0,
+    floorLevel: 1,
+    hasElev:   true,
+    residentDuring: false,
+    region:    1.0,
+    globalMul: 1.0,
+    // 공간
+    spaces: [],
+    // 상세
+    pipeMaterial: 'pb',
+    hasLeak: false,
+    hasAsbestos: false,
+    floorLevel2: 'good',
+    // 공사범위
+    scope: Object.assign({}, DEFAULT_SCOPE),
+    // 자재등급
+    grades: Object.assign({}, DEFAULT_GRADES),
+    // 결과
+    result: null,
+    // 프로젝트/프리셋/승인
+    projects:    [],
+    presets:     [],
+    approvalReqs:[],
+    approvalLog: [],
+    // 위자드 단계
+    step: 0,
+  }
+
+  let state = JSON.parse(JSON.stringify(DEFAULT_STATE))
+  let listeners = []
+  let _saving = false
+
+  function get() { return state }
+
+  function set(patch) {
+    Object.assign(state, patch)
+    listeners.forEach(fn => { try { fn(state) } catch(e) { console.warn('AppState listener error:', e) } })
+    if (!_saving) save()
+  }
+
+  function setScope(key, val) {
+    state.scope = Object.assign({}, state.scope, {[key]: val})
+    set({})
+  }
+
+  function setGrade(key, val) {
+    state.grades = Object.assign({}, state.grades, {[key]: val})
+    set({})
+  }
+
+  function subscribe(fn) {
+    listeners.push(fn)
+    return function() { listeners = listeners.filter(l => l !== fn) }
+  }
+
+  function save() {
+    _saving = true
+    try {
+      const toSave = Object.assign({}, state)
+      delete toSave.result  // 결과는 재계산
+      localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(toSave))
+    } catch(e) { console.warn('AppState.save failed:', e) }
+    _saving = false
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(CONFIG.STORAGE_KEY)
+      if (!raw) return
+      const saved = JSON.parse(raw)
+      // deep merge: arrays replace, objects merge
+      state = Object.assign({}, DEFAULT_STATE, saved)
+      state.scope  = Object.assign({}, DEFAULT_SCOPE,  saved.scope  || {})
+      state.grades = Object.assign({}, DEFAULT_GRADES, saved.grades || {})
+    } catch(e) { console.warn('AppState.load failed:', e) }
+  }
+
+  function reset() {
+    state = JSON.parse(JSON.stringify(DEFAULT_STATE))
+    save()
+    listeners.forEach(fn => { try { fn(state) } catch(e) {} })
+  }
+
+  return { get, set, setScope, setGrade, subscribe, save, load, reset, DEFAULT_SCOPE }
+})()
+
+
+/* ── Router ──────────────────────────────────────────────────────────────── */
+const Router = (function(){
+  let _current = 'estimate'
+
+  function go(tabId) {
+    if (!CONFIG.TABS.includes(tabId)) tabId = 'estimate'
+    _current = tabId
+
+    // 모든 view 숨김
+    document.querySelectorAll('.view').forEach(v => {
+      v.classList.remove('act')
+      v.style.display = 'none'
+    })
+    // 선택 view 표시
+    const view = document.getElementById('view-' + tabId)
+    if (view) {
+      view.classList.add('act')
+      view.style.display = (tabId === 'estimate') ? 'flex' : 'block'
+    }
+
+    // 탭 버튼 갱신
+    document.querySelectorAll('#tab-bar .tab').forEach(btn => {
+      btn.classList.toggle('act', btn.dataset.tab === tabId)
+    })
+
+    // 탭별 렌더 함수 호출
+    const renders = {
+      projects: UI.renderProjects,
+      presets:  UI.renderPresets,
+      approval: UI.renderApproval,
+      dbmgr:    UI.renderDB,
+      ontology: UI.renderOntology,
+      aiengine: UI.renderAI,
+      reports:  UI.renderReports,
+      completion: UI.renderCompletion,
+    }
+    if (renders[tabId]) {
+      try { renders[tabId]() } catch(e) { console.warn('Router render error:', tabId, e) }
+    }
+  }
+
+  function getCurrent() { return _current }
+
+  return { go, getCurrent }
+})()
+
+/* ── Helpers ──────────────────────────────────────────────────────────────── */
+function fmt(n) {
+  if (!n || isNaN(n)) return '—'
+  if (n >= 100000000) return (n/100000000).toFixed(1) + '억'
+  if (n >= 10000)     return Math.round(n/10000) + '만원'
+  return n.toLocaleString() + '원'
+}
+function fmtN(n) { return typeof n === 'number' ? n.toLocaleString() : '—' }
+function uid()   { return Date.now().toString(36) + Math.random().toString(36).slice(2,6) }
+function toast(msg, ms=2500) {
+  const el = document.getElementById('toast')
+  if (!el) return
+  el.textContent = msg; el.style.display = 'block'
+  clearTimeout(el._t); el._t = setTimeout(() => { el.style.display = 'none' }, ms)
+}
+function addRipple(e) {
+  const btn = e.currentTarget; const r = document.createElement('span')
+  const rect = btn.getBoundingClientRect()
+  const size = Math.max(rect.width, rect.height)
+  r.className = 'ripple'; r.style.cssText = 'width:'+size+'px;height:'+size+'px;left:'+(e.clientX-rect.left-size/2)+'px;top:'+(e.clientY-rect.top-size/2)+'px'
+  btn.appendChild(r); setTimeout(() => r.remove(), 600)
+}
+// 물방울 소리
+function playDrop() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator(); const g = ctx.createGain()
+    osc.connect(g); g.connect(ctx.destination)
+    osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime)
+    osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.15)
+    g.gain.setValueAtTime(0.12, ctx.currentTime)
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2)
+    osc.start(); osc.stop(ctx.currentTime + 0.2)
+  } catch(e) {}
+}
+// 버튼에 ripple + 소리 등록
+function wireButtons() {
+  document.querySelectorAll('.btn').forEach(btn => {
+    if (btn.dataset.wired) return; btn.dataset.wired = '1'
+    btn.addEventListener('click', e => { addRipple(e); playDrop() })
+  })
+}
+
+/* ── UI ──────────────────────────────────────────────────────────────────── */
+const UI = (function(){
+
+  /* ─ KPI 바 갱신 ─────────────────────────────────────────────────────────── */
+  function renderKPI() {
+    const st = AppState.get()
+    const r  = st.result
+    document.getElementById('kv-supply')?.   textContent ? null : void 0
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val }
+    set('kv-supply',   r ? fmt(r.totalSupply)    : '—')
+    set('kv-contract', r ? fmt(r.contractAmount) : '—')
+    set('kv-final',    r ? fmt(r.finalAmount)    : '—')
+    const fa = r && r.totals && r.totals.fa > 0
+    set('kv-m2',  fa ? Math.round(r.finalAmount / r.totals.fa).toLocaleString() + '/㎡' : '—')
+    set('kv-py',  fa ? fmt(r.finalAmount / (r.totals.fa / 3.306)) + '/평' : '—')
+    const pending = st.approvalReqs.filter(req => req.status === 'pending').length
+    set('kv-proj', st.projects.length)
+    set('kv-pend', pending)
+    set('appr-badge', pending)
+    const badge = document.getElementById('pend-badge')
+    if (badge) badge.style.display = pending > 0 ? 'inline' : 'none'
+  }
+
+  /* ─ 견적 재계산 ──────────────────────────────────────────────────────────── */
+  function recalc() {
+    const st = AppState.get()
+    const result = CalcEngine.calculateEstimate(st)
+    AppState.set({ result })
+    renderKPI()
+    // Step 5 켜져있으면 결과 렌더
+    if (st.step === 5) renderStep5()
+  }
+
+  /* ─ Step bar 갱신 ────────────────────────────────────────────────────────── */
+  function renderStepBar(step) {
+    for (let i = 0; i < 6; i++) {
+      const dot = document.getElementById('sd' + i)
+      if (!dot) continue
+      dot.classList.remove('act','done')
+      if (i < step) dot.classList.add('done')
+      if (i === step) dot.classList.add('act')
+    }
+    for (let i = 0; i < 5; i++) {
+      const line = document.getElementById('sl' + i + (i+1))
+      if (line) line.classList.toggle('done', i < step)
+    }
+    const prev = document.getElementById('btn-prev')
+    const next = document.getElementById('btn-next')
+    if (prev) prev.style.visibility = step === 0 ? 'hidden' : 'visible'
+    if (next) { next.textContent = step === 5 ? '💾 저장' : '다음 ▶'; next.className = step === 5 ? 'btn btn-gold btn-sm no-print' : 'btn btn-gold btn-sm no-print' }
+    const hints = ['건물 정보와 공간을 입력하세요','공사 범위를 선택하세요','자재 등급을 선택하세요','상세 설정을 확인하세요','온톨로지 자동 적용을 확인하세요','견적 결과를 검토하세요']
+    const hint = document.getElementById('step-hint')
+    if (hint) hint.textContent = hints[step] || ''
+  }
+
+  /* ─ Step 이동 ────────────────────────────────────────────────────────────── */
+  function goStep(n) {
+    const s = Math.max(0, Math.min(5, n))
+    AppState.set({ step: s })
+    renderStepBar(s)
+    const content = document.getElementById('step-content')
+    if (!content) return
+    const fns = [renderStep0, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5]
+    if (fns[s]) { content.innerHTML = ''; fns[s](content) }
+    wireButtons()
+  }
+
+  function nextStep() {
+    const s = AppState.get().step
+    if (s < 5) goStep(s + 1)
+    else saveProject()
+  }
+  function prevStep() {
+    const s = AppState.get().step
+    if (s > 0) goStep(s - 1)
+  }
+
+  /* ─ Step 0: 건물정보 + 공간 ──────────────────────────────────────────────── */
+  function renderStep0(wrap) {
+    const st = AppState.get()
+    wrap.innerHTML = ''
+
+    const buildTypeHtml = CONFIG.BUILD_TYPES.map(bt =>
+      '<button class="btn btn-sm ' + (st.buildType===bt.id ? 'btn-gold' : 'btn-ghost') + '" onclick="AppState.set({buildType:\''+bt.id+'\'});UI.goStep(0)">'+bt.nm+'</button>'
+    ).join('')
+
+    wrap.innerHTML = '<div class="fg2">' +
+    '<div><div class="card"><div class="card-title">건물 유형</div>' +
+    '<div style="display:flex;gap:5px;flex-wrap:wrap">' + buildTypeHtml + '</div></div>' +
+    '<div class="card"><div class="card-title">건물 정보</div>' +
+    '<div class="rr"><label>건축연도</label><input type="range" min="0" max="50" value="'+st.buildAge+'" oninput="this.nextElementSibling.textContent=this.value+\'년\';AppState.set({buildAge:+this.value})"><span class="rv">'+st.buildAge+'년</span></div>' +
+    '<div class="rr"><label>층수</label><input type="range" min="1" max="50" value="'+st.floorLevel+'" oninput="this.nextElementSibling.textContent=this.value+\'층\';AppState.set({floorLevel:+this.value})"><span class="rv">'+st.floorLevel+'층</span></div>' +
+    '<div class="rr"><label>평형 배율</label><input type="range" min="80" max="150" value="'+(st.globalMul*100)+'" oninput="this.nextElementSibling.textContent=(+this.value/100).toFixed(2);AppState.set({globalMul:+this.value/100})"><span class="rv">'+st.globalMul.toFixed(2)+'</span></div>' +
+    '<div class="trow"><label class="tog"><input type="checkbox" '+(st.hasElev?'checked':'')+' onchange="AppState.set({hasElev:this.checked})"><span class="tog-sl"></span></label><span class="tog-lbl">엘리베이터 있음</span></div>' +
+    '<div class="trow"><label class="tog"><input type="checkbox" '+(st.residentDuring?'checked':'')+' onchange="AppState.set({residentDuring:this.checked})"><span class="tog-sl"></span></label><span class="tog-lbl">거주 중 공사 (10% 가산)</span></div>' +
+    '<div class="field"><label>지역</label><select onchange="AppState.set({region:+this.value})" style="width:auto">' +
+    CONFIG.REGION_OPTS.map(o => '<option value="'+o.v+'" '+(st.region===o.v?'selected':'')+'>'+o.l+'</option>').join('') +
+    '</select></div></div></div>' +
+
+    '<div><div class="card"><div class="card-title">공간 목록 <button class="btn btn-gold btn-sm no-print" onclick="UI.openSpaceModal()" style="margin-left:8px">✚ 추가</button></div>' +
+    '<div id="space-grid-wrap"></div></div>' +
+    '<div class="card"><div class="card-title">CAD 도면 그리기 (선택)</div>' +
+    '<div id="cad-wrap" style="display:flex;gap:8px;height:300px">' +
+    '<div style="display:flex;flex-direction:column;gap:5px;width:90px;flex-shrink:0">' +
+    '<button class="btn btn-ghost btn-sm" onclick="UI.cadTool(\'select\')">선택</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="UI.cadTool(\'rect\')">사각형</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="UI.cadTool(\'text\')">텍스트</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="UI.cadClear()">초기화</button>' +
+    '<button class="btn btn-out btn-sm" onclick="UI.cadApply()">공간 적용</button>' +
+    '</div>' +
+    '<canvas id="cad-canvas" style="flex:1;border:1px solid var(--border2);border-radius:var(--r);background:#0e0e16"></canvas>' +
+    '</div></div></div></div>'
+
+    renderSpaceCards()
+    initCAD()
+  }
+
+  function renderSpaceCards() {
+    const wrap = document.getElementById('space-grid-wrap')
+    if (!wrap) return
+    const spaces = AppState.get().spaces
+    if (spaces.length === 0) { wrap.innerHTML = '<div style="color:var(--dim);font-size:11px;padding:8px 0">공간을 추가하세요.</div>'; return }
+    wrap.innerHTML = '<div class="space-grid">' + spaces.map(sp => {
+      const w = (sp.width/1000).toFixed(1), l = (sp.length/1000).toFixed(1)
+      const nm = CONFIG.SPACE_TYPES[sp.type] || sp.type
+      return '<div class="sp-card fade-in"><div class="sp-type">'+nm+'</div>' +
+        '<div class="sp-name">'+sp.name+'</div>' +
+        '<div class="sp-dims">'+w+'m × '+l+'m</div>' +
+        '<button class="sp-del" onclick="UI.delSpace(\''+sp.id+'\')">✕</button></div>'
+    }).join('') + '</div>'
+  }
+
+  /* ─ Step 1: 공사 범위 ────────────────────────────────────────────────────── */
+  function renderStep1(wrap) {
+    const sc = AppState.get().scope
+    function sopt(key, label) {
+      const active = sc[key] ? ' act' : ''
+      return '<div class="sopt'+active+'" onclick="AppState.setScope(\''+key+'\',!AppState.get().scope[\''+key+'\']);UI.goStep(1)"><input type="checkbox" '+(sc[key]?'checked':'')+' onchange="AppState.setScope(\''+key+'\',this.checked)"><label>'+label+'</label></div>'
+    }
+    const sections = [
+      {title:'욕실', items:[['btWtp','방수'], ['btTile','타일'], ['btFix','위생도기'], ['btFau','수전']]},
+      {title:'주방', items:[['ktCab','주방가구'], ['ktTop','상판'], ['ktHood','후드'], ['ktDw','식기세척기'], ['ktOven','오븐'], ['ktTile','타일'], ['ktPlb','주방수전']]},
+      {title:'거실·침실', items:[['lvWp','도배'], ['lvPaint','페인트'], ['lvFloor','바닥재'], ['lvMold','몰딩·걸레받이'], ['lvWardrobe','붙박이장'], ['lvIndirect','간접등'], ['lvSmart','스마트홈']]},
+      {title:'창호·도어', items:[['winReplace','창호 교체'], ['winMid','중문 설치'], ['doorFront','현관문'], ['doorReplace','방문']]},
+      {title:'발코니', items:[['balExpand','발코니 확장'], ['balInsul','단열'], ['balWp','도배'], ['balFloor','바닥재'], ['balWp','방수']]},
+      {title:'설비', items:[['plbPipe','배관 교체'], ['plbBoiler','보일러'], ['plbHeat','난방코일']]},
+      {title:'전기', items:[['eleWire','전기 배선'], ['elePanel','분전함'], ['eleOutlet','콘센트·스위치'], ['eleLight','조명'], ['eleIndirect','간접조명']]},
+      {title:'특수·구조', items:[['spEpoxy','에폭시 코팅'], ['strWpu','옥상 방수']]},
+    ]
+    wrap.innerHTML = sections.map(sec =>
+      '<div class="card"><div class="card-title">'+sec.title+'</div><div class="scope-grid">'+
+      sec.items.map(([k,l]) => sopt(k,l)).join('') + '</div></div>'
+    ).join('')
+  }
+
+  /* ─ Step 2: 자재 등급 ────────────────────────────────────────────────────── */
+  function renderStep2(wrap) {
+    const grades = AppState.get().grades
+    function gradeRow(key, label) {
+      const opts = CONFIG.GRADE_OPTS[key] || []
+      return '<div class="field"><label>'+label+'</label><select onchange="AppState.setGrade(\''+key+'\',this.value)" style="width:auto;flex:1">' +
+        opts.map(o => '<option value="'+o.v+'" '+(grades[key]===o.v?'selected':'')+'>'+o.l+'</option>').join('') +
+        '</select></div>'
+    }
+    wrap.innerHTML = '<div class="fg2">' +
+    '<div><div class="card"><div class="card-title">마감재 등급</div>' +
+    gradeRow('bt','욕실타일') + gradeRow('fl','바닥재') + gradeRow('wp','도배') + gradeRow('win','창호') +
+    '</div></div>' +
+    '<div><div class="card"><div class="card-title">설비·가구 등급</div>' +
+    gradeRow('kit','주방가구') + gradeRow('dr','도어') + gradeRow('fix','위생도기') +
+    '</div>' +
+    '<div class="card"><div class="card-title">빠른 설정</div>' +
+    ['표준','고급','프리미엄'].map((nm,i) => {
+      const vs = [{bt:'domestic',fl:'wb',wp:'paper',win:'double',kit:'standard',dr:'abs',fix:'standard'},
+                  {bt:'import',fl:'wb',wp:'silk',win:'triple',kit:'premium',dr:'mdf',fix:'premium'},
+                  {bt:'luxury',fl:'hb',wp:'wide',win:'loe',kit:'luxury',dr:'wood',fix:'luxury'}][i]
+      return '<button class="btn btn-ghost btn-sm" style="margin:2px" onclick="AppState.set({grades:Object.assign({},AppState.get().grades,'+JSON.stringify(vs)+')}); UI.goStep(2)">'+nm+'</button>'
+    }).join('') +
+    '</div></div></div>'
+  }
+
+  /* ─ Step 3: 상세 설정 ────────────────────────────────────────────────────── */
+  function renderStep3(wrap) {
+    const st = AppState.get()
+    wrap.innerHTML = '<div class="fg2">' +
+    '<div><div class="card"><div class="card-title">기존 설비 상태</div>' +
+    '<div class="field"><label>배관 재질</label><select onchange="AppState.set({pipeMaterial:this.value})" style="width:auto;flex:1">' +
+    ['pb','galvanized','copper','pex','pvc'].map(v => '<option value="'+v+'" '+(st.pipeMaterial===v?'selected':'')+'>'+({pb:'PB(합성수지)',galvanized:'갈바나이즈',copper:'동관',pex:'PEX',pvc:'PVC'}[v])+'</option>').join('') +
+    '</select></div>' +
+    '<div class="field"><label>바닥 상태</label><select onchange="AppState.set({floorLevel2:this.value})" style="width:auto;flex:1">' +
+    ['good','fair','poor'].map(v => '<option value="'+v+'" '+(st.floorLevel2===v?'selected':'')+'>'+({good:'양호',fair:'보통',poor:'불량'}[v])+'</option>').join('') +
+    '</select></div>' +
+    '<div class="trow"><label class="tog"><input type="checkbox" '+(st.hasLeak?'checked':'')+' onchange="AppState.set({hasLeak:this.checked})"><span class="tog-sl"></span></label><span class="tog-lbl">누수 발생 이력</span></div>' +
+    '<div class="trow"><label class="tog"><input type="checkbox" '+(st.hasAsbestos?'checked':'')+' onchange="AppState.set({hasAsbestos:this.checked})"><span class="tog-sl"></span></label><span class="tog-lbl">석면 의심 (1980년대 이전 건물)</span></div>' +
+    '</div></div>' +
+    '<div><div class="card"><div class="card-title">공사 조건</div>' +
+    '<div class="trow"><label class="tog"><input type="checkbox" '+(st.residentDuring?'checked':'')+' onchange="AppState.set({residentDuring:this.checked})"><span class="tog-sl"></span></label><span class="tog-lbl">거주 중 공사 (+10%)</span></div>' +
+    '<div class="field"><label>지역 가산</label><select onchange="AppState.set({region:+this.value})" style="width:auto;flex:1">' +
+    CONFIG.REGION_OPTS.map(o => '<option value="'+o.v+'" '+(st.region===o.v?'selected':'')+'>'+o.l+'</option>').join('') +
+    '</select></div>' +
+    '</div>' +
+    '<div class="card" style="background:rgba(255,170,68,.05);border-color:rgba(255,170,68,.2)"><div class="card-title" style="color:var(--orange)">⚠ 주의사항</div>' +
+    '<div style="font-size:11px;color:var(--dim);line-height:1.6">' +
+    (st.pipeMaterial === 'galvanized' ? '• 갈바나이즈 배관: 녹물 위험, 교체 강력 권장<br>' : '') +
+    (st.hasAsbestos ? '• 석면 의심: 전문 업체 제거 필수 (법적 의무)<br>' : '') +
+    (st.hasLeak ? '• 누수 이력: 방수 공정 반드시 포함하세요<br>' : '') +
+    (st.buildAge >= 30 ? '• 30년 이상 노후 건물: 전기·배관 전면 점검 권장<br>' : '') +
+    (st.buildAge < 30 && !st.hasLeak && !st.hasAsbestos && st.pipeMaterial === 'pb' ? '• 특이사항 없음' : '') +
+    '</div></div></div></div>'
+  }
+
+  /* ─ Step 4: 온톨로지 검토 ───────────────────────────────────────────────── */
+  function renderStep4(wrap) {
+    recalc()
+    const st = AppState.get()
+    const r  = st.result
+    if (!r) { wrap.innerHTML = '<div class="card"><div style="color:var(--dim);font-size:12px">공간 정보를 먼저 입력해 주세요.</div></div>'; return }
+
+    const selectedIds = r.lines.map(l => l.id)
+    const onto = OntologyEngine.applyOntology(selectedIds, OntologyEngine.RULES, {})
+    const diags = DiagEngine.runDiagnostics(r.lines, st, r.totals)
+
+    let html = '<div class="card"><div class="card-title">자동 추가 공정 (' + onto.autoAdded.length + '개)</div>'
+    if (onto.autoAdded.length === 0) html += '<div style="color:var(--dim);font-size:12px">자동 추가 공정 없음</div>'
+    else html += onto.autoAdded.map(a => '<div class="diag info" style="margin-bottom:4px"><span>🔗</span><div><div>'+a.id+' — '+a.note+'</div><div style="font-size:10px;color:var(--dim)">규칙: '+a.ruleId+'</div></div></div>').join('')
+    html += '</div>'
+
+    if (onto.warnings.length > 0) {
+      html += '<div class="card"><div class="card-title">경고 ('+onto.warnings.length+'개)</div>'
+      html += onto.warnings.map(w => '<div class="diag warn"><span>⚠</span><div>'+w.message+'</div></div>').join('')
+      html += '</div>'
+    }
+
+    html += '<div class="card"><div class="card-title">진단 결과</div>'
+    const icons = {ok:'✅', warn:'⚠️', error:'❌', info:'ℹ️'}
+    html += diags.map(d => '<div class="diag '+d.type+'"><span>'+icons[d.type]+'</span><div><div>'+d.message+'</div><div style="font-size:10px;color:var(--dim)">'+d.code+'</div></div></div>').join('')
+    html += '</div>'
+    wrap.innerHTML = html
+  }
+
+  /* ─ Step 5: 견적 결과 ────────────────────────────────────────────────────── */
+  function renderStep5(wrap) {
+    if (!wrap) wrap = document.getElementById('step-content')
+    if (!wrap) return
+    recalc()
+    const st = AppState.get(); const r = st.result
+    if (!r) { wrap.innerHTML = '<div class="card"><div style="color:var(--dim);font-size:12px">공간 정보를 먼저 입력해 주세요.</div></div>'; return }
+
+    const fa = r.totals.fa
+    wrap.innerHTML = '<div class="rkpi">' +
+      '<div class="rk"><div class="rk-v">'+fmt(r.totalSupply)+'</div><div class="rk-l">공급가</div></div>' +
+      '<div class="rk"><div class="rk-v">'+fmt(r.contractAmount)+'</div><div class="rk-l">도급 (×1.15)</div></div>' +
+      '<div class="rk"><div class="rk-v hl">'+fmt(r.finalAmount)+'</div><div class="rk-l">최종합계 (VAT포함)</div></div>' +
+      '<div class="rk"><div class="rk-v">'+(fa>0?Math.round(r.finalAmount/fa).toLocaleString()+'/㎡':'—')+'</div><div class="rk-l">㎡단가</div></div>' +
+      '<div class="rk"><div class="rk-v">'+(fa>0?fmt(r.finalAmount/(fa/3.306))+'/평':'—')+'</div><div class="rk-l">평단가</div></div>' +
+    '</div>' +
+    '<div class="card" style="margin-bottom:10px">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+    '<div class="card-title" style="margin:0">상세 내역 ('+r.lines.length+'개 공정)</div>' +
+    '<div style="display:flex;gap:5px">' +
+    '<button class="btn btn-ghost btn-sm no-print" onclick="window.print()">🖨 인쇄</button>' +
+    '<button class="btn btn-gold btn-sm no-print" onclick="UI.saveProject()">💾 저장</button>' +
+    '</div></div>' +
+    '<table class="tbl"><thead><tr><th>공정</th><th>분류</th><th>수량</th><th>단위</th><th class="num">인건비</th><th class="num">자재비</th><th class="num">공급가</th><th></th></tr></thead><tbody>' +
+    r.lines.map(l =>
+      '<tr><td>'+l.name+'</td><td style="color:var(--dim);font-size:11px">'+l.category+'</td>' +
+      '<td class="num">'+l.qty+'</td><td style="color:var(--dim)">'+l.unit+'</td>' +
+      '<td class="num">'+fmtN(l.laborCost)+'</td><td class="num">'+fmtN(l.materialCost)+'</td>' +
+      '<td class="num" style="color:var(--gold)">'+fmtN(l.supplyPrice)+'</td>' +
+      '<td>'+(l.auto?'<span class="atag">자동</span>':'')+'</td></tr>'
+    ).join('') +
+    '</tbody></table></div>' +
+    '<div style="font-size:11px;color:var(--dim);text-align:right">예상 공사기간: <strong style="color:var(--gold)">'+r.duration+'일</strong> | 총 면적: <strong>'+r.totals.fa.toFixed(1)+'㎡ ('+( r.totals.fa/3.306).toFixed(1)+'평)</strong></div>'
+  }
+
+  /* ─ 공간 모달 ────────────────────────────────────────────────────────────── */
+  function openSpaceModal() { openModal('modal-space') }
+  function addSpaceConfirm() {
+    const name = document.getElementById('sp-name')?.value?.trim() || '공간'
+    const type = document.getElementById('sp-type')?.value || 'living'
+    const w = parseInt(document.getElementById('sp-w')?.value || 3000)
+    const l = parseInt(document.getElementById('sp-l')?.value || 4000)
+    const h = parseInt(document.getElementById('sp-h')?.value || 2400)
+    const wn = parseInt(document.getElementById('sp-wn')?.value || 1)
+    const dn = parseInt(document.getElementById('sp-dn')?.value || 1)
+    const sp = { id: uid(), name, type, width: w, length: l, height: h, windows: wn, doors: dn }
+    const spaces = [...AppState.get().spaces, sp]
+    AppState.set({ spaces })
+    closeModal('modal-space')
+    renderSpaceCards()
+    recalc()
+    toast('공간 추가: ' + name)
+  }
+  function delSpace(id) {
+    const spaces = AppState.get().spaces.filter(s => s.id !== id)
+    AppState.set({ spaces }); renderSpaceCards(); recalc()
+  }
+
+  /* ─ 모달 열기/닫기 ───────────────────────────────────────────────────────── */
+  function openModal(id) { document.getElementById(id)?.classList.add('open') }
+  function closeModal(id) { document.getElementById(id)?.classList.remove('open') }
+
+  /* ─ 프로젝트 탭 ─────────────────────────────────────────────────────────── */
+  function renderProjects() {
+    const list = document.getElementById('proj-list'); if (!list) return
+    const projects = AppState.get().projects
+    if (projects.length === 0) { list.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:20px 0">저장된 프로젝트가 없습니다.</div>'; return }
+    list.innerHTML = projects.map(p =>
+      '<div class="proj-card fade-in"><div style="flex:1"><div class="proj-name">'+p.name+'</div>' +
+      '<div class="proj-meta">'+p.buildType+' · '+p.buildAge+'년 · '+new Date(p.savedAt).toLocaleDateString('ko')+'</div></div>' +
+      '<div class="proj-amt">'+(p.finalAmount?fmt(p.finalAmount):'—')+'</div>' +
+      '<button class="btn btn-out btn-sm" onclick="UI.loadProject(\''+p.id+'\')">불러오기</button>' +
+      '<button class="btn btn-ghost btn-sm" onclick="UI.exportProject(\''+p.id+'\')">내보내기</button>' +
+      '<button class="btn btn-danger btn-sm" onclick="UI.deleteProject(\''+p.id+'\')">삭제</button></div>'
+    ).join('')
+    wireButtons()
+  }
+
+  function saveProject() { openModal('modal-project') }
+  function saveProjectConfirm() {
+    const name = document.getElementById('proj-name-inp')?.value?.trim()
+    if (!name) { toast('프로젝트명을 입력하세요'); return }
+    const st = AppState.get()
+    const proj = {
+      id: uid(), name, buildType: st.buildType, buildAge: st.buildAge,
+      floorLevel: st.floorLevel, spaces: st.spaces, scope: st.scope,
+      grades: st.grades, result: st.result,
+      finalAmount: st.result?.finalAmount || 0, savedAt: Date.now()
+    }
+    const projects = [proj, ...AppState.get().projects]
+    AppState.set({ projects })
+    closeModal('modal-project')
+    renderProjects()
+    toast('프로젝트 저장됨: ' + name)
+    renderKPI()
+  }
+  function loadProject(id) {
+    const p = AppState.get().projects.find(p => p.id === id); if (!p) return
+    AppState.set({ buildType:p.buildType, buildAge:p.buildAge, floorLevel:p.floorLevel,
+      spaces:p.spaces, scope:p.scope, grades:p.grades })
+    Router.go('estimate'); goStep(0); toast('프로젝트 불러옴: ' + p.name)
+  }
+  function deleteProject(id) {
+    if (!confirm('삭제하시겠습니까?')) return
+    AppState.set({ projects: AppState.get().projects.filter(p => p.id !== id) })
+    renderProjects(); renderKPI()
+  }
+  function exportProject(id) {
+    const p = AppState.get().projects.find(p => p.id === id); if (!p) return
+    const blob = new Blob([JSON.stringify(p, null, 2)], {type:'application/json'})
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+    a.download = 'ecorean-' + p.name + '.json'; a.click()
+  }
+  function importProject() {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json'
+    inp.onchange = e => {
+      const file = e.target.files[0]; if (!file) return
+      const reader = new FileReader()
+      reader.onload = ev => {
+        try {
+          const p = JSON.parse(ev.target.result)
+          if (!p.id) p.id = uid()
+          const projects = [p, ...AppState.get().projects]
+          AppState.set({ projects }); renderProjects(); toast('프로젝트 가져오기 완료')
+        } catch { toast('파일 형식 오류') }
+      }
+      reader.readAsText(file)
+    }
+    inp.click()
+  }
+
+  /* ─ 프리셋 탭 ────────────────────────────────────────────────────────────── */
+  function renderPresets() {
+    const list = document.getElementById('preset-list'); if (!list) return
+    const presets = AppState.get().presets
+    if (presets.length === 0) { list.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:20px 0">저장된 프리셋이 없습니다.</div>'; return }
+    list.innerHTML = presets.map(p =>
+      '<div class="proj-card fade-in"><div style="flex:1"><div class="proj-name">'+p.name+'</div>' +
+      '<div class="proj-meta">'+new Date(p.savedAt).toLocaleDateString('ko')+'</div></div>' +
+      '<button class="btn btn-out btn-sm" onclick="UI.loadPreset(\''+p.id+'\')">적용</button>' +
+      '<button class="btn btn-danger btn-sm" onclick="UI.deletePreset(\''+p.id+'\')">삭제</button></div>'
+    ).join('')
+    wireButtons()
+  }
+  function savePreset() { openModal('modal-preset') }
+  function savePresetConfirm() {
+    const name = document.getElementById('preset-name-inp')?.value?.trim()
+    if (!name) { toast('프리셋명을 입력하세요'); return }
+    const st = AppState.get()
+    const preset = { id: uid(), name, scope: Object.assign({}, st.scope), grades: Object.assign({}, st.grades), savedAt: Date.now() }
+    AppState.set({ presets: [preset, ...AppState.get().presets] })
+    closeModal('modal-preset'); renderPresets(); toast('프리셋 저장: ' + name)
+  }
+  function loadPreset(id) {
+    const p = AppState.get().presets.find(p => p.id === id); if (!p) return
+    AppState.set({ scope: Object.assign({}, AppState.get().scope, p.scope), grades: Object.assign({}, AppState.get().grades, p.grades) })
+    toast('프리셋 적용: ' + p.name)
+  }
+  function deletePreset(id) {
+    AppState.set({ presets: AppState.get().presets.filter(p => p.id !== id) })
+    renderPresets()
+  }
+
+  /* ─ 승인함 ───────────────────────────────────────────────────────────────── */
+  let _reviewingId = null
+  function renderApproval() {
+    const list = document.getElementById('appr-list'); if (!list) return
+    const reqs = AppState.get().approvalReqs
+    list.innerHTML = reqs.length === 0 ? '<div style="color:var(--dim);font-size:12px;padding:8px 0">승인 요청이 없습니다.</div>' :
+      reqs.map(r => {
+        const scls = {pending:'status-p', approved:'status-a', rejected:'status-r'}
+        const snm  = {pending:'대기', approved:'승인', rejected:'거부'}
+        return '<div class="appr-card fade-in"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+          '<span class="'+scls[r.status]+'">'+snm[r.status]+'</span>' +
+          '<div style="font-size:12px;font-weight:700;flex:1">'+r.title+'</div>' +
+          '<div style="font-size:10px;color:var(--dim)">'+new Date(r.createdAt).toLocaleDateString('ko')+'</div>' +
+          (r.status==='pending' ? '<button class="btn btn-out btn-sm" onclick="UI.reviewApproval(\''+r.id+'\')">검토</button>' : '') +
+          '</div><div style="font-size:11px;color:var(--dim)">'+r.desc+'</div>' +
+          (r.note ? '<div style="font-size:11px;color:var(--orange);margin-top:4px">의견: '+r.note+'</div>' : '') + '</div>'
+      }).join('')
+    const log = document.getElementById('appr-log'); if (!log) return
+    const logs = AppState.get().approvalLog
+    log.innerHTML = logs.length === 0 ? '<div style="color:var(--dim);font-size:11px">로그 없음</div>' :
+      logs.map(l => '<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border3);color:var(--dim)">' +
+        new Date(l.at).toLocaleString('ko') + ' — ' + l.action + ': ' + l.title + (l.note?' ('+l.note+')':'') + '</div>').join('')
+    wireButtons()
+  }
+  function reviewApproval(id) {
+    _reviewingId = id
+    const req = AppState.get().approvalReqs.find(r => r.id === id); if (!req) return
+    const det = document.getElementById('appr-detail')
+    if (det) det.innerHTML = '<div style="font-size:12px;margin-bottom:8px"><strong>'+req.title+'</strong></div><div style="font-size:11px;color:var(--dim)">'+req.desc+'</div>'
+    if (document.getElementById('appr-note')) document.getElementById('appr-note').value = ''
+    openModal('modal-approval')
+  }
+  function doApproval(approved) {
+    if (!_reviewingId) return
+    const note = document.getElementById('appr-note')?.value?.trim() || ''
+    const reqs = AppState.get().approvalReqs.map(r =>
+      r.id === _reviewingId ? Object.assign({}, r, { status: approved?'approved':'rejected', note, resolvedAt: Date.now() }) : r
+    )
+    const log = [...AppState.get().approvalLog, { id: uid(), action: approved?'승인':'거부', title: (AppState.get().approvalReqs.find(r=>r.id===_reviewingId)||{}).title||'', note, at: Date.now() }]
+    AppState.set({ approvalReqs: reqs, approvalLog: log })
+    closeModal('modal-approval'); renderApproval(); renderKPI()
+    toast(approved ? '✅ 승인 완료' : '❌ 거부 완료')
+    _reviewingId = null
+  }
+
+  /* ─ DB 관리 ─────────────────────────────────────────────────────────────── */
+  function renderDB() {
+    const list = document.getElementById('db-list'); if (!list) return
+    const items = Object.values(CalcEngine.DB)
+    list.innerHTML = '<table class="tbl"><thead><tr><th>ID</th><th>공정명</th><th>분류</th><th>단위</th><th class="num">인건비</th><th class="num">자재비</th><th class="num">폐기율</th></tr></thead><tbody>' +
+      items.map(p => '<tr><td style="font-family:var(--fm);font-size:10px;color:var(--gold)">'+p.id+'</td><td>'+p.nm+'</td><td style="color:var(--dim);font-size:11px">'+p.cat+'</td><td>'+p.unit+'</td><td class="num">'+p.lb.toLocaleString()+'</td><td class="num">'+p.mt.toLocaleString()+'</td><td class="num">'+(p.wr*100).toFixed(0)+'%</td></tr>').join('') +
+      '</tbody></table>' +
+      '<div style="margin-top:10px;font-size:11px;color:var(--dim)">총 '+items.length+'개 공정 | ECOREAN BOC v'+CONFIG.VERSION+'</div>'
+  }
+  function exportDB() {
+    const data = { version: CONFIG.VERSION, costItems: Object.values(CalcEngine.DB), exportedAt: new Date().toISOString() }
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'})
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ecorean-db.json'; a.click()
+  }
+  function importDB(input) {
+    const file = input.files[0]; if (!file) return
+    toast('DB 가져오기는 v2에서 외부 DB 기능을 지원합니다. (현재: 내장 DB)')
+  }
+
+  /* ─ 온톨로지 뷰어 ────────────────────────────────────────────────────────── */
+  function renderOntology() {
+    const canvas = document.getElementById('onto-canvas'); if (!canvas) return
+    const ctx = canvas.getContext('2d'); if (!ctx) return
+    const rules = OntologyEngine.RULES
+    const W = canvas.width, H = canvas.height
+    ctx.clearRect(0, 0, W, H)
+    ctx.fillStyle = '#0e0e16'; ctx.fillRect(0, 0, W, H)
+
+    // 노드 배치 (트리거 → 액션)
+    const nodes = {}
+    rules.forEach(r => { nodes[r.trigger] = nodes[r.trigger] || {id:r.trigger,x:0,y:0}; nodes[r.action] = nodes[r.action] || {id:r.action,x:0,y:0} })
+    const nList = Object.values(nodes); const n = nList.length
+    nList.forEach((node, i) => {
+      const angle = (i / n) * Math.PI * 2 - Math.PI / 2
+      node.x = W/2 + Math.cos(angle) * (W*0.36); node.y = H/2 + Math.sin(angle) * (H*0.36)
+    })
+
+    // 엣지 그리기
+    rules.forEach(r => {
+      const from = nodes[r.trigger], to = nodes[r.action]; if (!from || !to) return
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y)
+      ctx.strokeStyle = r.type === 'AUTO_INCLUDE' ? 'rgba(201,168,76,.3)' : 'rgba(255,170,68,.25)'
+      ctx.lineWidth = 1; ctx.stroke()
+    })
+
+    // 노드 그리기
+    nList.forEach(node => {
+      ctx.beginPath(); ctx.arc(node.x, node.y, 16, 0, Math.PI*2)
+      ctx.fillStyle = '#1A1A28'; ctx.fill()
+      ctx.strokeStyle = '#C9A84C'; ctx.lineWidth = 1.5; ctx.stroke()
+      ctx.fillStyle = '#F0D070'; ctx.font = '9px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      ctx.fillText(node.id.length > 8 ? node.id.slice(0,7)+'…' : node.id, node.x, node.y)
+    })
+
+    // 범례
+    ctx.fillStyle = 'rgba(201,168,76,.3)'; ctx.fillRect(12, H-40, 30, 2)
+    ctx.fillStyle = '#F0EDE8'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'
+    ctx.fillText('AUTO_INCLUDE', 48, H-39)
+    ctx.fillStyle = 'rgba(255,170,68,.35)'; ctx.fillRect(12, H-24, 30, 2)
+    ctx.fillStyle = '#F0EDE8'; ctx.fillText('WARN_CONDITIONAL', 48, H-23)
+
+    // 규칙 목록
+    const rulesEl = document.getElementById('onto-rules'); if (!rulesEl) return
+    rulesEl.innerHTML = '<div class="sh">온톨로지 규칙 목록 ('+rules.length+'개)</div>' +
+      '<table class="tbl"><thead><tr><th>규칙 ID</th><th>트리거</th><th>액션</th><th>유형</th><th>설명</th></tr></thead><tbody>' +
+      rules.map(r => '<tr><td style="font-family:var(--fm);color:var(--gold);font-size:10px">'+r.id+'</td><td style="font-family:var(--fm);font-size:11px">'+r.trigger+'</td><td style="font-family:var(--fm);font-size:11px">'+r.action+'</td><td style="font-size:10px;color:'+(r.type==='AUTO_INCLUDE'?'var(--green)':'var(--orange)')+'">'+(r.type==='AUTO_INCLUDE'?'자동추가':'조건경고')+'</td><td style="font-size:11px;color:var(--dim)">'+r.note+'</td></tr>').join('') +
+      '</tbody></table>'
+  }
+
+  /* ─ AI 엔진 ─────────────────────────────────────────────────────────────── */
+  function renderAI() {
+    const area = document.getElementById('ai-area'); if (!area) return
+    const st = AppState.get(); const r = st.result
+    if (!r || !r.lines || r.lines.length === 0) {
+      area.innerHTML = '<div class="ai-card"><div style="color:var(--dim);font-size:12px">견적을 먼저 계산해 주세요. (견적 마법사 → 6단계 완료)</div></div>'; return
+    }
+
+    const totalLines = r.lines.length
+    const autoLines  = r.lines.filter(l => l.auto).length
+    const topCat = {}
+    r.lines.forEach(l => { topCat[l.category] = (topCat[l.category]||0) + l.supplyPrice })
+    const sortedCat = Object.entries(topCat).sort((a,b) => b[1]-a[1])
+    const maxCat = sortedCat[0]?.[1] || 1
+
+    // 비용효율 점수 (단순 휴리스틱)
+    const fa = r.totals.fa; const m2cost = fa > 0 ? r.finalAmount / fa : 0
+    const score = Math.max(0, Math.min(100, Math.round(100 - (m2cost - 500000) / 10000)))
+
+    area.innerHTML = '<div class="fg2">' +
+    '<div><div class="ai-card"><div style="display:flex;align-items:center;gap:12px">' +
+    '<div><div class="ai-score">'+score+'</div><div style="font-size:10px;color:var(--dim)">비용효율 점수 (100점 만점)</div></div>' +
+    '<div style="flex:1"><div class="ai-bar"><div class="ai-fill" style="width:'+score+'%"></div></div></div></div>' +
+    '<div style="margin-top:10px;font-size:11px;color:var(--dim);line-height:1.8">' +
+    '• 총 공정: '+totalLines+'개 (자동추가 '+autoLines+'개)<br>' +
+    '• ㎡단가: '+Math.round(m2cost).toLocaleString()+'원/㎡<br>' +
+    '• 평당: '+fmt(r.finalAmount/(fa/3.306))+'/평<br>' +
+    '• 예상 기간: '+r.duration+'일</div></div>' +
+    '<div class="ai-card"><div class="sh">AI 권장 사항</div>' +
+    '<div style="font-size:11px;color:var(--dim);line-height:1.8">' +
+    (m2cost > 800000 ? '• ⚠ 평당 단가가 높습니다. 자재 등급 조정을 검토하세요.<br>' : '') +
+    (r.totals.bathroomCount > 0 && !r.lines.some(l=>l.id==='WTP_BT') ? '• ❌ 욕실 방수 공정이 없습니다. 추가를 강력 권장합니다.<br>' : '') +
+    (st.buildAge >= 30 && !r.lines.some(l=>l.id==='ELE_WIRE') ? '• ⚠ 30년 이상 노후 건물: 전기 배선 교체를 권장합니다.<br>' : '') +
+    (st.pipeMaterial === 'galvanized' ? '• ⚠ 갈바나이즈 배관: 배관 교체 공정 추가를 권장합니다.<br>' : '') +
+    '• ✅ 온톨로지 26개 규칙이 자동 적용되었습니다.' +
+    '</div></div></div>' +
+    '<div class="ai-card" style="margin-top:10px"><div class="sh">분류별 비용 비중</div>' +
+    sortedCat.slice(0,8).map(([cat, amt]) =>
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+      '<div style="min-width:70px;font-size:11px;color:var(--dim)">'+cat+'</div>' +
+      '<div style="flex:1"><div class="ai-bar"><div class="ai-fill" style="width:'+(amt/maxCat*100).toFixed(0)+'%"></div></div></div>' +
+      '<div style="min-width:60px;text-align:right;font-size:11px;font-family:var(--fm);color:var(--gold)">'+fmt(amt)+'</div></div>'
+    ).join('') + '</div>'
+  }
+
+  /* ─ 보고서 ───────────────────────────────────────────────────────────────── */
+  function renderReports() {}  // 탭 HTML이 정적으로 정의됨
+  function printReport(type) {
+    const st = AppState.get(); const r = st.result
+    if (!r) { toast('견적을 먼저 계산해 주세요'); return }
+    const area = document.getElementById('report-area'); if (!area) return
+
+    let html = '<div style="background:var(--raised);border:1px solid var(--border2);border-radius:var(--r2);padding:20px;margin-top:10px">'
+    if (type === 'estimate') {
+      html += '<h2 style="font-family:var(--fh);color:var(--gold);margin-bottom:16px">견적 보고서</h2>' +
+        '<div class="rkpi">' +
+        '<div class="rk"><div class="rk-v">'+fmt(r.totalSupply)+'</div><div class="rk-l">공급가</div></div>' +
+        '<div class="rk"><div class="rk-v">'+fmt(r.contractAmount)+'</div><div class="rk-l">도급</div></div>' +
+        '<div class="rk"><div class="rk-v hl">'+fmt(r.finalAmount)+'</div><div class="rk-l">최종합계</div></div>' +
+        '</div>' +
+        '<table class="tbl"><thead><tr><th>공정</th><th>분류</th><th>수량</th><th>단위</th><th class="num">공급가</th></tr></thead><tbody>' +
+        r.lines.map(l => '<tr><td>'+l.name+'</td><td style="color:var(--dim)">'+l.category+'</td><td class="num">'+l.qty+'</td><td>'+l.unit+'</td><td class="num">'+fmtN(l.supplyPrice)+'</td></tr>').join('') +
+        '</tbody></table>'
+    } else if (type === 'summary') {
+      const cats = {}; r.lines.forEach(l => { cats[l.category] = (cats[l.category]||0) + l.supplyPrice })
+      html += '<h2 style="font-family:var(--fh);color:var(--gold);margin-bottom:16px">요약 보고서</h2>' +
+        '<table class="tbl"><thead><tr><th>분류</th><th class="num">금액</th><th class="num">비중</th></tr></thead><tbody>' +
+        Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([cat,amt]) =>
+          '<tr><td>'+cat+'</td><td class="num">'+fmt(amt)+'</td><td class="num">'+(amt/r.totalSupply*100).toFixed(1)+'%</td></tr>'
+        ).join('') + '</tbody></table>'
+    } else if (type === 'schedule') {
+      html += '<h2 style="font-family:var(--fh);color:var(--gold);margin-bottom:16px">공사 일정표</h2>' +
+        '<div style="font-size:12px;color:var(--dim);margin-bottom:12px">예상 공사기간: '+r.duration+'일</div>' +
+        '<div style="position:relative;background:var(--surface);border-radius:var(--r);padding:16px;overflow-x:auto">' +
+        r.lines.slice(0,15).map((l,i) => {
+          const w = Math.max(5, Math.round((l.qty / r.totals.fa || 0.1) * 100))
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+            '<div style="min-width:120px;font-size:11px;color:var(--dim)">'+l.name+'</div>' +
+            '<div style="height:16px;background:linear-gradient(90deg,var(--gold),var(--gold-bright));border-radius:2px;width:'+Math.min(w,80)+'%;opacity:0.7"></div>' +
+            '</div>'
+        }).join('') + '</div>'
+    } else if (type === 'compare') {
+      const grades = [{bt:'domestic',fl:'wb',wp:'paper',win:'double',kit:'standard',dr:'abs',fix:'standard'},
+                      {bt:'import',  fl:'wb',wp:'silk', win:'triple',kit:'premium', dr:'mdf',fix:'premium'},
+                      {bt:'luxury',  fl:'hb',wp:'wide', win:'loe',   kit:'luxury',  dr:'wood',fix:'luxury'}]
+      const labels = ['표준', '고급', '프리미엄']
+      const results = grades.map(g => {
+        const state2 = Object.assign({}, st, {grades: Object.assign({}, st.grades, g), globalMul: 1.0})
+        return CalcEngine.calculateEstimate(state2)
+      })
+      html += '<h2 style="font-family:var(--fh);color:var(--gold);margin-bottom:16px">비교 견적서</h2>' +
+        '<table class="tbl"><thead><tr><th>구분</th>'+labels.map(l=>'<th class="num">'+l+'</th>').join('')+'</tr></thead><tbody>' +
+        '<tr><td>공급가</td>'+results.map(r2 => '<td class="num">'+(r2?fmt(r2.totalSupply):'—')+'</td>').join('')+'</tr>' +
+        '<tr><td>도급</td>'+results.map(r2 => '<td class="num">'+(r2?fmt(r2.contractAmount):'—')+'</td>').join('')+'</tr>' +
+        '<tr style="font-weight:700"><td>최종합계</td>'+results.map(r2 => '<td class="num" style="color:var(--gold)">'+(r2?fmt(r2.finalAmount):'—')+'</td>').join('')+'</tr>' +
+        '</tbody></table>'
+    }
+    html += '<div style="margin-top:12px;text-align:right"><button class="btn btn-gold btn-sm no-print" onclick="window.print()">🖨 인쇄</button></div>'
+    html += '</div>'
+    area.innerHTML = html
+    wireButtons()
+  }
+
+  /* ─ 완료보고 ─────────────────────────────────────────────────────────────── */
+  function renderCompletion() {
+    const sel = document.getElementById('cmp-proj'); if (!sel) return
+    const projects = AppState.get().projects
+    const curr = sel.value
+    sel.innerHTML = '<option value="">— 선택 —</option>' + projects.map(p => '<option value="'+p.id+'" '+(p.id===curr?'selected':'')+'>'+p.name+'</option>').join('')
+    loadCmpProj()
+  }
+  function loadCmpProj() {
+    const id = document.getElementById('cmp-proj')?.value
+    const area = document.getElementById('cmp-area'); if (!area) return
+    if (!id) { area.innerHTML = ''; return }
+    const p = AppState.get().projects.find(p => p.id === id); if (!p) return
+    area.innerHTML = '<div class="card"><div class="card-title">완료보고서</div>' +
+      '<div class="fg2"><div class="field"><label>프로젝트명</label><input value="'+p.name+'" style="width:auto;flex:1" readonly></div>' +
+      '<div class="field"><label>최종금액</label><input value="'+(p.finalAmount?fmt(p.finalAmount):'—')+'" style="width:auto;flex:1" readonly></div></div>' +
+      '<div style="margin-top:10px"><button class="btn btn-gold btn-sm" onclick="UI.addApprovalReq()">📨 승인 요청</button></div></div>'
+    wireButtons()
+  }
+  function addApprovalReq() {
+    const id = document.getElementById('cmp-proj')?.value; if (!id) return
+    const p = AppState.get().projects.find(p => p.id === id); if (!p) return
+    const req = {
+      id: uid(), status: 'pending',
+      title: p.name + ' 완료보고 승인요청',
+      desc: '최종금액: ' + (p.finalAmount ? fmt(p.finalAmount) : '—') + ' | ' + new Date().toLocaleDateString('ko') + ' 작성',
+      note: '', createdAt: Date.now()
+    }
+    AppState.set({ approvalReqs: [req, ...AppState.get().approvalReqs] })
+    renderKPI(); toast('승인함에 요청이 등록되었습니다.')
+  }
+
+  /* ─ CAD 에디터 ───────────────────────────────────────────────────────────── */
+  let _fc = null
+  function initCAD() {
+    const el = document.getElementById('cad-canvas'); if (!el) return
+    if (_fc) { try { _fc.dispose() } catch(e) {} _fc = null }
+    if (typeof fabric === 'undefined') return
+    try {
+      _fc = new fabric.Canvas('cad-canvas', { backgroundColor: '#0e0e16', selection: true })
+      _fc.setDimensions({ width: el.parentElement?.clientWidth - 4 || 500, height: 296 })
+    } catch(e) { console.warn('CAD init error:', e) }
+  }
+  function cadTool(tool) {
+    if (!_fc) return
+    if (tool === 'select') { _fc.isDrawingMode = false }
+    else if (tool === 'rect') {
+      const rect = new fabric.Rect({ left:50, top:50, width:120, height:80, fill:'rgba(201,168,76,.15)', stroke:'#C9A84C', strokeWidth:1.5, rx:2, ry:2 })
+      _fc.add(rect); _fc.setActiveObject(rect)
+    } else if (tool === 'text') {
+      const txt = new fabric.IText('공간', { left:80, top:80, fontSize:14, fill:'#F0D070', fontFamily:'monospace' })
+      _fc.add(txt); _fc.setActiveObject(txt); txt.enterEditing()
+    }
+  }
+  function cadClear() { if (_fc) _fc.clear(); initCAD() }
+  function cadApply() { toast('CAD 도면에서 공간 자동 추출은 v3에서 지원 예정입니다.') }
+
+  /* ─ 공개 API ─────────────────────────────────────────────────────────────── */
+  return {
+    renderKPI, recalc, goStep, nextStep, prevStep, renderStepBar,
+    renderProjects, saveProject, saveProjectConfirm, loadProject, deleteProject, exportProject, importProject,
+    renderPresets, savePreset, savePresetConfirm, loadPreset, deletePreset,
+    renderApproval, reviewApproval, doApproval,
+    renderDB, exportDB, importDB,
+    renderOntology, renderAI, renderReports, renderCompletion, loadCmpProj, addApprovalReq, printReport,
+    openSpaceModal, addSpaceConfirm, delSpace, openModal, closeModal,
+    cadTool, cadClear, cadApply, initCAD,
+  }
+})()
+
+
+/* ── INIT ────────────────────────────────────────────────────────────────── */
+;(function INIT() {
+  // 1. 엔진 테스트 실행
+  let calcOk = false, ontoOk = false
+  try { calcOk = CalcEngine.runTests()  } catch(e) { console.error('CalcEngine test exception:', e) }
+  try { ontoOk = OntologyEngine.runTests() } catch(e) { console.error('OntologyEngine test exception:', e) }
+
+  if (!calcOk || !ontoOk) {
+    document.getElementById('app').innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;background:#0A0A0F">' +
+      '<div style="font-size:48px">❌</div>' +
+      '<div style="font-family:Cinzel,serif;font-size:20px;color:#FF5574">엔진 테스트 실패</div>' +
+      '<div style="font-size:13px;color:#7A7570;max-width:400px;text-align:center">CalcEngine: ' + (calcOk?'✓':'✗') + '   OntologyEngine: ' + (ontoOk?'✓':'✗') + '</div>' +
+      '<div style="font-size:11px;color:#5A5550">콘솔에서 실패 항목을 확인하세요.</div></div>'
+    return
+  }
+
+  // 2. 상태 로드
+  AppState.load()
+
+  // 3. 시계
+  ;(function initClock() {
+    const el = document.getElementById('tb-clock')
+    if (!el) return
+    function tick() {
+      const d = new Date()
+      const pad = n => String(n).padStart(2,'0')
+      el.textContent = d.getFullYear() + '.' + pad(d.getMonth()+1) + '.' + pad(d.getDate()) + ' ' +
+        pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
+    }
+    tick(); setInterval(tick, 1000)
+  })()
+
+  // 4. 모달 배경 클릭으로 닫기
+  document.querySelectorAll('.modal-bg').forEach(bg => {
+    bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open') })
+  })
+
+  // 5. 상태 변경 시 KPI 갱신
+  AppState.subscribe(state => {
+    UI.renderKPI()
+  })
+
+  // 6. 초기 렌더
+  UI.renderKPI()
+  Router.go('estimate')
+  UI.goStep(AppState.get().step || 0)
+  wireButtons()
+
+  console.log('[ECOREAN BOC v2] 초기화 완료. CalcEngine ✓ OntologyEngine ✓')
+})()
+
+</script>
+</body>
+</html>
