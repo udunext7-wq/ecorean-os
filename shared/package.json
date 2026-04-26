@@ -1,20 +1,47 @@
 {
   "name": "@ecorean/shared",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "main": "./index.js",
   "exports": {
-    ".": "./index.js",
-    "./store": "./store/index.js",
-    "./engine": "./engine/recalc.js",
-    "./engine/ontology": "./engine/ontology.js",
-    "./engine/diagnostics": "./engine/diagnostics.js",
+    ".": {
+      "import": "./index.ts",
+      "default": "./index.js"
+    },
+    "./store": {
+      "import": "./store/index.ts",
+      "default": "./store/index.js"
+    },
+    "./engine": {
+      "import": "./engine/index.ts",
+      "default": "./engine/recalc.js"
+    },
+    "./engine/ontology": {
+      "import": "./engine/ontology.ts",
+      "default": "./engine/ontology.js"
+    },
+    "./engine/diagnostics": {
+      "import": "./engine/diagnostics.ts",
+      "default": "./engine/diagnostics.js"
+    },
     "./ui/*": "./ui/*.jsx",
     "./EventBus": "./EventBus.js",
     "./theme.css": "./ui/theme.css"
   },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "eventemitter3": "^5.0.1",
     "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.28",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
   }
 }

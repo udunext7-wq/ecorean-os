@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useStore } from '@ecorean/shared/store'
-import { calculateEstimate } from '@ecorean/shared/engine/recalc'
+import { calculateEstimate } from '@ecorean/shared/engine'
 import { runDiagnostics } from '@ecorean/shared/engine/diagnostics'
 import Button from '@ecorean/shared/ui/Button'
 import Card from '@ecorean/shared/ui/Card'
@@ -16,6 +16,8 @@ const CAT_COLORS = {
   '준공': '#888',
 }
 
+const DIAG_COLOR = { error: 'var(--red)', warn: 'var(--orange)', info: 'var(--blue)', ok: 'var(--green)' }
+
 export default function Step6({ onPrev }) {
   const state = useStore()
   const costItems = useStore(s => s.costItems)
@@ -26,7 +28,11 @@ export default function Step6({ onPrev }) {
     if (Object.keys(costItems).length === 0) return
     const r = calculateEstimate(state, costItems)
     setResult(r)
-  }, [state.spaces, state.scope, state.grades, state.globalMul, state.buildAge, state.floorLevel, state.hasElev, state.residentDuring, state.region, costItems])
+  }, [
+    state.spaces, state.scope, state.grades, state.globalMul,
+    state.buildAge, state.floorLevel, state.hasElev,
+    state.residentDuring, state.region, costItems,
+  ])
 
   if (!result) {
     return (
@@ -36,14 +42,14 @@ export default function Step6({ onPrev }) {
     )
   }
 
-  const { lines, totalSup, contract, final, dur, totals } = result
+  const { lines, totalSupply, contractAmount, finalAmount, duration, totals } = result
   const diags = runDiagnostics(lines, state, totals)
 
   // 카테고리별 그룹화
   const catGroups = {}
   lines.forEach(l => {
-    if (!catGroups[l.cat]) catGroups[l.cat] = []
-    catGroups[l.cat].push(l)
+    if (!catGroups[l.category]) catGroups[l.category] = []
+    catGroups[l.category].push(l)
   })
 
   return (
@@ -59,17 +65,17 @@ export default function Step6({ onPrev }) {
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           lineHeight: 1.1,
         }}>
-          {fmt(final)}
+          {fmt(finalAmount)}
         </div>
         <div style={{ fontSize: '12px', color: 'var(--dim)', marginTop: 4 }}>VAT 포함</div>
       </div>
 
       {/* KPI 4종 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 24 }}>
-        <KPICard label="공급가" value={fmt(totalSup)} />
-        <KPICard label="도급금액" value={fmt(contract)} />
-        <KPICard label="㎡단가" value={totals.fa > 0 ? ff(Math.round(final / totals.fa)) + '/㎡' : '—'} />
-        <KPICard label="공사기간" value={dur + '일'} />
+        <KPICard label="공급가" value={fmt(totalSupply)} />
+        <KPICard label="도급금액" value={fmt(contractAmount)} />
+        <KPICard label="㎡단가" value={totals.fa > 0 ? ff(Math.round(finalAmount / totals.fa)) + '/㎡' : '—'} />
+        <KPICard label="공사기간" value={duration + '일'} />
       </div>
 
       {/* 진단 */}
@@ -77,8 +83,8 @@ export default function Step6({ onPrev }) {
         <Card style={{ marginBottom: 20, padding: '12px 16px' }}>
           <h3 style={{ fontSize: '11px', color: 'var(--gold)', textTransform: 'uppercase', marginBottom: 10 }}>진단</h3>
           {diags.map((d, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6, fontSize: '12px', color: d.t === 'error' ? 'var(--red)' : d.t === 'warn' ? 'var(--orange)' : d.t === 'ok' ? 'var(--green)' : 'var(--blue)' }}>
-              <span>[{d.code}]</span><span>{d.m}</span>
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6, fontSize: '12px', color: DIAG_COLOR[d.type] }}>
+              <span>[{d.code}]</span><span>{d.message}</span>
             </div>
           ))}
         </Card>
@@ -104,23 +110,23 @@ export default function Step6({ onPrev }) {
               ...items.map((l, i) => (
                 <tr key={l.id + i} style={{ borderBottom: '1px solid var(--border3)' }}>
                   <td style={{ padding: '8px 12px', color: 'var(--text)' }}>
-                    {l.nm}
+                    {l.name}
                     {l.auto && <span style={{ marginLeft: 6, fontSize: '10px', background: 'rgba(93,221,160,.15)', color: 'var(--green)', padding: '1px 5px', borderRadius: 3 }}>자동</span>}
                   </td>
                   <td style={{ padding: '8px 12px', color: 'var(--dim)', fontSize: '11px' }}>{cat}</td>
                   <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: 'var(--text2)' }}>{l.qty}</td>
                   <td style={{ padding: '8px 12px', color: 'var(--dim)', fontSize: '11px' }}>{l.unit}</td>
                   <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', textAlign: 'right', color: 'var(--text)' }}>
-                    {ff(l.sup)}
+                    {ff(l.supplyPrice)}
                   </td>
                 </tr>
-              ))
+              )),
             ])}
           </tbody>
           <tfoot>
             <tr style={{ background: 'var(--raised)', borderTop: '2px solid var(--border)' }}>
               <td colSpan={4} style={{ padding: '12px', fontWeight: 700, color: 'var(--gold)' }}>합계 (공급가)</td>
-              <td style={{ padding: '12px', fontFamily: 'var(--font-mono)', textAlign: 'right', fontWeight: 700, color: 'var(--gold-bright)', fontSize: '14px' }}>{ff(totalSup)}</td>
+              <td style={{ padding: '12px', fontFamily: 'var(--font-mono)', textAlign: 'right', fontWeight: 700, color: 'var(--gold-bright)', fontSize: '14px' }}>{ff(totalSupply)}</td>
             </tr>
           </tfoot>
         </table>
@@ -131,14 +137,18 @@ export default function Step6({ onPrev }) {
         <div style={{ display: 'flex', gap: 10 }}>
           <Button variant="ghost" onClick={() => window.print()}>인쇄</Button>
           <Button onClick={() => {
-            const state = useStore.getState()
-            state.saveProject({
+            const s = useStore.getState()
+            s.saveProject({
               id: 'proj_' + Date.now(),
               name: '견적_' + new Date().toLocaleDateString(),
               createdAt: new Date().toISOString(),
-              spaces: state.spaces, scope: state.scope, grades: state.grades,
-              buildType: state.buildType, buildAge: state.buildAge, floorLevel: state.floorLevel,
-              result: state.result,
+              buildType: s.buildType,
+              buildAge: s.buildAge,
+              floorLevel: s.floorLevel,
+              spaces: s.spaces,
+              scope: s.scope,
+              grades: s.grades,
+              result: s.result,
             })
             alert('프로젝트 저장 완료')
           }}>저장</Button>

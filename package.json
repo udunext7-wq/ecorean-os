@@ -16,7 +16,9 @@
     "build:all": "npm run build --workspaces --if-present",
     "electron": "npm run electron:dev --workspace=shell",
     "build": "electron-builder --win --x64",
-    "test": "echo \"No tests\" && exit 0"
+    "test": "npm run test --workspace=shared",
+    "test:watch": "npm run test:watch --workspace=shared",
+    "typecheck": "npm run typecheck --workspace=shared"
   },
   "build": {
     "appId": "com.ecorean.boc",
