@@ -2,45 +2,998 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>프로젝트 — ECOREAN BOC</title>
-<script src="../shared/engine/boc-engine.js"></script>
-<script src="../shared/store/boc-state.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --void:#030305; --deep:#07070F; --surface:#0D0D1A; --raised:#141420;
-  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2; --red:#FF3355;
-  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080; --r:6px;
-  --font-head:"Cormorant Garamond",serif; --font-body:"Noto Sans KR",sans-serif; --font-mono:"JetBrains Mono",monospace;
+:root{
+  --void:#030305;--deep:#07070F;--surface:#0D0D1A;
+  --gold:#C9A84C;--gold-bright:#FFD700;--gold2:rgba(201,168,76,0.12);
+  --platinum:#E8E0D0;--dim:#555566;--green:#00FFB2;
+  --red:#FF3355;--blue:#00AAFF;--orange:#FF8C00;
+  --border:rgba(201,168,76,0.12);--text:#EDE5D5;--text2:#A09080;
+  --fb:'Noto Sans KR',sans-serif;--fm:'JetBrains Mono',monospace;
 }
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box }
-html,body { height:100vh; background:var(--void); color:var(--text); font-family:var(--font-body); font-size:13px }
-#app { padding:28px; height:100vh; overflow-y:auto }
-.pg-title { font-family:var(--font-head); font-size:22px; color:var(--gold); margin-bottom:6px; letter-spacing:0.04em }
-.pg-desc { font-size:12px; color:var(--dim); margin-bottom:24px; line-height:1.8 }
-.badge { display:inline-block; padding:3px 12px; background:var(--gold2); border:1px solid var(--border); border-radius:20px; font-size:12px; color:var(--gold); margin-bottom:16px }
-.coming { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:40px; text-align:center; color:var(--dim) }
-.coming strong { display:block; font-size:16px; color:var(--text2); margin-bottom:8px }
-::-webkit-scrollbar { width:4px } ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3); border-radius:2px }
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--fb);font-size:13px}
+button,input,select,textarea{font-family:var(--fb);font-size:13px}
+button{cursor:pointer}
+input[type=text],input[type=number],input[type=date]{
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+  padding:6px 10px;border-radius:4px;outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)!important}
+select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;outline:none}
+select option{background:var(--surface)}
+textarea{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:4px;outline:none;resize:vertical;width:100%}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
+
+/* Layout */
+#app{display:flex;flex-direction:column;height:100%}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border);min-height:44px}
+#main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+/* Project list */
+#list-view{flex:1;overflow-y:auto;padding:16px 18px}
+.pj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.pj-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
+.pj-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.pj-card.s-draft::before{background:var(--dim)}
+.pj-card.s-estimated::before{background:var(--blue)}
+.pj-card.s-contracted::before{background:#0066cc}
+.pj-card.s-in-progress::before{background:var(--green)}
+.pj-card.s-completed::before{background:var(--gold-bright)}
+.pj-card:hover{border-color:rgba(201,168,76,0.4);transform:translateY(-1px)}
+.pj-nm{font-weight:700;font-size:14px;margin-bottom:3px;color:var(--platinum)}
+.pj-sub{font-size:11px;color:var(--dim);margin-bottom:10px}
+.pj-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.pj-lbl{font-size:10px;color:var(--text2)}
+.pj-val{font-family:var(--fm);font-size:12px;color:var(--text)}
+.prog-wrap{background:rgba(201,168,76,0.1);border-radius:2px;height:4px;margin:8px 0}
+.prog-bar{height:100%;border-radius:2px;background:var(--green);transition:width 0.3s}
+.sbadge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:0.04em}
+.sb-draft{background:rgba(85,85,102,0.3);color:var(--dim)}
+.sb-estimated{background:rgba(0,170,255,0.15);color:var(--blue)}
+.sb-contracted{background:rgba(0,102,204,0.2);color:#66aaff}
+.sb-in-progress{background:rgba(0,255,178,0.1);color:var(--green)}
+.sb-completed{background:rgba(201,168,76,0.15);color:var(--gold-bright)}
+
+/* Detail view */
+#detail-view{flex:1;overflow:hidden;display:none;flex-direction:column}
+#subtab-bar{display:flex;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border);overflow-x:auto}
+.st{padding:10px 14px;font-size:12px;font-weight:500;color:var(--dim);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap;flex-shrink:0}
+.st:hover{color:var(--text)}
+.st.act{color:var(--gold);border-bottom-color:var(--gold)}
+#subtab-content{flex:1;overflow-y:auto;padding:16px 18px}
+.tab-panel{display:none}
+.tab-panel.act{display:block}
+
+/* Section */
+.sec{margin-bottom:18px}
+.sec-t{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+
+/* Tables */
+.dt{width:100%;border-collapse:collapse;margin-bottom:8px}
+.dt th,.dt td{padding:6px 9px;border:1px solid var(--border);font-size:12px}
+.dt th{background:var(--deep);color:var(--text2);font-weight:500}
+.dt tr:hover td{background:rgba(201,168,76,0.03)}
+.dt tfoot td{background:var(--deep);font-weight:600}
+
+/* Form */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.fg1{display:flex;flex-direction:column;gap:5px}
+.full{grid-column:1/-1}
+label.lbl{font-size:10px;color:var(--text2);font-weight:500}
+.w100{width:100%}
+
+/* Buttons */
+.btn{padding:6px 14px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid;cursor:pointer;transition:all 0.2s}
+.btn-p{border-color:var(--border);color:var(--text2);background:transparent}
+.btn-p:hover{border-color:var(--text2);color:var(--text)}
+.btn-g{border-color:var(--gold);color:var(--void);background:var(--gold)}
+.btn-g:hover{background:var(--gold-bright)}
+.btn-s{border-color:var(--green);color:var(--green);background:rgba(0,255,178,0.07)}
+.btn-s:hover{background:rgba(0,255,178,0.14)}
+.btn-r{border-color:var(--red);color:var(--red);background:rgba(255,51,85,0.07)}
+.btn-r:hover{background:rgba(255,51,85,0.14)}
+.btn-b{border-color:var(--blue);color:var(--blue);background:rgba(0,170,255,0.07)}
+.btn-b:hover{background:rgba(0,170,255,0.14)}
+.btn-sm{padding:3px 9px;font-size:11px}
+
+/* Stat cards */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:11px;text-align:center}
+.stat-v{font-family:var(--fm);font-size:15px;font-weight:600;color:var(--platinum)}
+.stat-l{font-size:10px;color:var(--dim);margin-top:3px}
+.stat-card.hi{border-color:rgba(201,168,76,0.35);background:rgba(201,168,76,0.05)}
+.stat-card.hi .stat-v{color:var(--gold-bright)}
+.stat-card.gr .stat-v{color:var(--green)}
+.stat-card.rd .stat-v{color:var(--red)}
+
+/* Finance rows */
+.fr{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+.fr:last-child{border-bottom:none}
+.fr-l{font-size:12px;color:var(--text2)}
+.fr-v{font-family:var(--fm);font-size:12px;color:var(--text)}
+.fr-v.hi{color:var(--gold-bright);font-weight:600}
+.fr-v.gr{color:var(--green)}
+.fr-v.rd{color:var(--red)}
+
+/* Workers */
+.wk-row{display:grid;grid-template-columns:1.8fr 0.8fr 1.5fr auto;gap:7px;margin-bottom:5px;align-items:center}
+.wk-inp{padding:4px 7px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:3px;font-family:var(--fb);font-size:12px}
+
+/* Gantt */
+.gb{height:10px;background:var(--gold);border-radius:2px;min-width:3px}
+
+/* Order status select */
+.ost{padding:2px 6px;border-radius:3px;font-size:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
+
+/* Photo preview */
+.ph-grid{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.ph-thumb{width:56px;height:56px;object-fit:cover;border-radius:4px;border:1px solid var(--border)}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="pg-title">프로젝트</div>
-  <div class="pg-desc">프로젝트 목록, 공사일보, 현금출납부, 재무상태표</div>
-  <div class="badge" id="status-badge">준비 중</div>
-  <div class="coming">
-    <strong>Phase 2에서 구현 예정</strong>
-    MASTER_PLAN 개발 순서에 따라 순차 구현됩니다.
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button class="btn btn-p btn-sm" id="btn-back" style="display:none;" onclick="PJ.backToList()">← 목록</button>
+    <div id="tb-title" style="font-weight:700;font-size:15px;color:var(--gold)">프로젝트</div>
+    <div id="tb-status" style="display:none;font-size:11px;color:var(--dim);margin-left:4px;"></div>
+  </div>
+  <div style="display:flex;gap:7px;">
+    <button class="btn btn-g btn-sm" onclick="PJ.newProject()">+ 새 프로젝트</button>
+    <button class="btn btn-p btn-sm" onclick="PJ.loadProjects()">↻ 새로고침</button>
   </div>
 </div>
+
+<div id="main">
+
+<!-- LIST VIEW -->
+<div id="list-view">
+  <div id="proj-grid" class="pj-grid"></div>
+  <div id="empty-msg" style="display:none;text-align:center;padding:60px;color:var(--dim)">
+    <div style="font-size:36px;margin-bottom:12px;">📋</div>
+    <div style="font-size:14px;margin-bottom:6px;">저장된 프로젝트가 없습니다.</div>
+    <div style="font-size:12px;">견적 마법사에서 프로젝트를 생성하세요.</div>
+  </div>
+</div>
+
+<!-- DETAIL VIEW -->
+<div id="detail-view">
+  <div id="subtab-bar">
+    <button class="st act" data-tab="estimate" onclick="PJ.switchTab('estimate')">📄 견적서</button>
+    <button class="st" data-tab="schedule" onclick="PJ.switchTab('schedule')">📅 공정표</button>
+    <button class="st" data-tab="daily" onclick="PJ.switchTab('daily')">📝 공사일보</button>
+    <button class="st" data-tab="ledger" onclick="PJ.switchTab('ledger')">💰 현금출납부</button>
+    <button class="st" data-tab="finance" onclick="PJ.switchTab('finance')">📊 재무상태표</button>
+    <button class="st" data-tab="orders" onclick="PJ.switchTab('orders')">🚚 발주관리</button>
+    <button class="st" data-tab="completion" onclick="PJ.switchTab('completion')">✅ 완료보고</button>
+  </div>
+  <div id="subtab-content">
+    <div id="tab-estimate" class="tab-panel act"></div>
+    <div id="tab-schedule" class="tab-panel"></div>
+    <div id="tab-daily"    class="tab-panel"></div>
+    <div id="tab-ledger"   class="tab-panel"></div>
+    <div id="tab-finance"  class="tab-panel"></div>
+    <div id="tab-orders"   class="tab-panel"></div>
+    <div id="tab-completion" class="tab-panel"></div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script src="../shared/engine/boc-engine.js"></script>
+<script src="../shared/store/boc-state.js"></script>
 <script>
-"use strict";
-document.addEventListener("DOMContentLoaded", function() {
-  AppState.load();
-  console.log("✅ projects module loaded");
-});
+'use strict'
+;(function(){
+
+// ── 유틸 ────────────────────────────────────────────────────
+function $id(id){ return document.getElementById(id) }
+function $v(id){ var el=$id(id); return el?el.value:'' }
+function fmt(n){
+  if(n===undefined||n===null) return '—'
+  if(n<0) return '-'+fmt(-n)
+  if(n>=100000000) return (n/100000000).toFixed(1)+'억'
+  if(n>=10000) return Math.round(n/10000)+'만'
+  return n.toLocaleString()
+}
+function fmtW(n){ return (n===undefined||n===null)?'—':Math.round(n).toLocaleString()+'원' }
+function today(){ return new Date().toISOString().slice(0,10) }
+function addDays(s,d){ var dt=new Date(s); dt.setDate(dt.getDate()+d); return dt.toISOString().slice(0,10) }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6) }
+function now(){ return new Date().toISOString() }
+function dday(dateStr){
+  var diff=Math.ceil((new Date(dateStr)-new Date())/(1000*86400))
+  return diff>=0?'D-'+diff:'D+'+Math.abs(diff)
+}
+function ddayColor(dateStr){
+  var diff=Math.ceil((new Date(dateStr)-new Date())/(1000*86400))
+  return diff<0?'var(--red)':diff<7?'var(--orange)':'var(--dim)'
+}
+
+// ── 상수 ────────────────────────────────────────────────────
+var WEATHER=['☀️ 맑음','⛅ 구름','🌧 비','❄️ 눈','🌬 바람']
+var ROLES=['목공','도배','타일','전기','배관','도장','금속','유리','조경','기타']
+var INCOME_CATS=['계약금','중도금','잔금','추가공사','기타수입']
+var EXPENSE_CATS=['노무비','자재비','외주비','간접비','기타지출']
+var PAY_METHODS=['현금','계좌이체','카드','수표']
+var ORDER_ST={pending:'대기',ordered:'발주',delivered:'납품',cancelled:'취소'}
+var STATUS_LBL={draft:'견적전',estimated:'견적완료',contracted:'계약',in_progress:'시공중',completed:'완료'}
+
+// ── 상태 ────────────────────────────────────────────────────
+var S={
+  projects:[],
+  curProj:null,
+  curTab:'estimate',
+  ledger:[],
+  reports:[],
+  orders:[],
+  workers:[{role:'목공',count:1,wage:200000}],
+  rDate:today(),
+}
+var _ordItems=[]  // renderOrders에서 생성한 임시 목록
+
+// ── DB 헬퍼 ─────────────────────────────────────────────────
+async function dbQ(sql,p){ return window.ecoreanAPI?.db?.query?await window.ecoreanAPI.db.query(sql,p||[]):[] }
+async function dbE(sql,p){ return window.ecoreanAPI?.db?.execute?await window.ecoreanAPI.db.execute(sql,p||[]):{ok:false} }
+
+// ── 프로젝트 로드 ────────────────────────────────────────────
+async function loadProjects(){
+  var list=[]
+  if(window.ecoreanAPI?.db?.listProjects){
+    list=await window.ecoreanAPI.db.listProjects()||[]
+  } else if(typeof AppState!=='undefined'){
+    list=(AppState.get().projects||[]).filter(function(p){return p.status!=='disabled'})
+  }
+  S.projects=list.map(function(p){
+    var parse=function(f){try{if(typeof p[f]==='string')p[f]=JSON.parse(p[f])}catch(e){}}
+    parse('result');parse('scope');parse('spaces');parse('grades')
+    return p
+  })
+  renderProjList()
+}
+
+// ── 프로젝트 카드 렌더 ───────────────────────────────────────
+function renderProjList(){
+  var grid=$id('proj-grid'), empty=$id('empty-msg')
+  if(!grid) return
+  if(!S.projects.length){
+    grid.innerHTML=''; if(empty)empty.style.display='block'; return
+  }
+  if(empty)empty.style.display='none'
+  grid.innerHTML=''
+  S.projects.forEach(function(p){
+    var st=p.status||'draft'
+    var r=p.result||{}; var g=p.grades||{}
+    var pr=g.profitRate||0
+    var prog=p.progressRate||0
+    var prColor=pr>=20?'var(--green)':pr>=10?'var(--text)':'var(--red)'
+    var d=document.createElement('div')
+    d.className='pj-card s-'+st.replace('_','-')
+    d.innerHTML=
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">'+
+        '<div><div class="pj-nm">'+p.name+'</div>'+
+        '<div class="pj-sub">'+(p.address||p.buildType||'')+(p.manager?' · '+p.manager:'')+'</div></div>'+
+        '<span class="sbadge sb-'+st.replace('_','-')+'">'+(STATUS_LBL[st]||st)+'</span>'+
+      '</div>'+
+      '<div class="prog-wrap"><div class="prog-bar" style="width:'+prog+'%"></div></div>'+
+      '<div class="pj-row"><span class="pj-lbl">공정률</span><span class="pj-val">'+prog+'%</span></div>'+
+      '<div class="pj-row"><span class="pj-lbl">수익률</span><span class="pj-val" style="color:'+prColor+'">'+pr+'%</span></div>'+
+      '<div class="pj-row"><span class="pj-lbl">최종금액</span><span class="pj-val" style="color:var(--gold)">'+fmt(r.finalAmount||p.contractAmount||0)+'</span></div>'+
+      (p.endDate?'<div class="pj-row"><span class="pj-lbl">완공예정</span><span class="pj-val">'+p.endDate+'</span></div>':'')+
+      '<div style="text-align:right;margin-top:10px"><button class="btn btn-g btn-sm">열기 →</button></div>'
+    d.querySelector('.btn-g').onclick=function(e){e.stopPropagation();openProject(p)}
+    d.onclick=function(){openProject(p)}
+    grid.appendChild(d)
+  })
+}
+
+// ── 프로젝트 열기 ────────────────────────────────────────────
+async function openProject(p){
+  S.curProj=p; S.curTab='estimate'
+  $id('list-view').style.display='none'
+  $id('detail-view').style.display='flex'
+  $id('detail-view').style.flexDirection='column'
+  $id('btn-back').style.display=''
+  $id('tb-title').textContent=p.name
+  var tbs=$id('tb-status')
+  if(tbs){tbs.style.display='';tbs.textContent='['+( STATUS_LBL[p.status]||p.status)+']'}
+  await loadLedger(); await loadReports(); await loadOrders()
+  switchTab('estimate')
+}
+
+function backToList(){
+  S.curProj=null; S.curTab='estimate'
+  $id('list-view').style.display='block'
+  $id('detail-view').style.display='none'
+  $id('btn-back').style.display='none'
+  $id('tb-title').textContent='프로젝트'
+  var tbs=$id('tb-status'); if(tbs)tbs.style.display='none'
+}
+
+// ── 탭 전환 ──────────────────────────────────────────────────
+function switchTab(tab){
+  S.curTab=tab
+  document.querySelectorAll('.st').forEach(function(b){b.classList.toggle('act',b.dataset.tab===tab)})
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('act')})
+  var tp=$id('tab-'+tab); if(tp)tp.classList.add('act')
+  if(tab==='estimate')    renderEstimate()
+  else if(tab==='schedule')   renderSchedule()
+  else if(tab==='daily')      renderDaily()
+  else if(tab==='ledger')     renderLedger()
+  else if(tab==='finance')    renderFinance()
+  else if(tab==='orders')     renderOrders()
+  else if(tab==='completion') renderCompletion()
+}
+
+// ════════════════════════════════════════════════════════════
+// 탭 1: 견적서
+// ════════════════════════════════════════════════════════════
+function renderEstimate(){
+  var p=S.curProj; if(!p) return
+  var r=p.result||{}; var g=p.grades||{}; var lines=r.lines||[]
+  var fa=r.totals?.fa||0
+  var validUntil=p.validUntil||addDays(today(),30)
+  var expired=new Date(validUntil)<new Date()
+  var pyeong=fa>0?Math.round((r.finalAmount||0)/(fa/3.3058)):0
+
+  var rows=lines.map(function(l){
+    var lbAmt=Math.round((l.lb||0)*(l.qty||1))
+    var mtAmt=Math.round((l.mt||0)*(l.qty||1)*(g.mul||1))
+    return '<tr><td>'+l.name+'</td>'+
+      '<td style="font-size:10px;color:var(--dim)">'+l.cat+'</td>'+
+      '<td style="font-family:var(--fm)">'+(l.qty?l.qty.toFixed(1):1)+' '+l.unit+'</td>'+
+      '<td style="font-family:var(--fm)">'+lbAmt.toLocaleString()+'</td>'+
+      '<td style="font-family:var(--fm)">'+mtAmt.toLocaleString()+'</td>'+
+      '<td style="font-family:var(--fm);color:var(--gold)">'+(l.supplyPrice||0).toLocaleString()+'</td></tr>'
+  }).join('')
+
+  $id('tab-estimate').innerHTML=
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'+
+      '<div style="flex:1"><div style="font-size:17px;font-weight:700;color:var(--platinum)">'+p.name+'</div>'+
+        '<div style="font-size:11px;color:var(--dim)">'+(p.buildType||'')+(p.buildAge?' '+p.buildAge+'년':'')+(p.floorLevel?' '+p.floorLevel+'층':'')+(p.manager?' · '+p.manager:'')+'</div></div>'+
+      '<span style="padding:4px 10px;border-radius:4px;font-size:11px;border:1px solid;'+
+        (expired?'border-color:var(--red);color:var(--red)':'border-color:var(--green);color:var(--green)')+
+        '">📅 '+(expired?'만료':'유효')+' '+validUntil+'</span>'+
+    '</div>'+
+    '<div class="stat-row">'+
+      '<div class="stat-card"><div class="stat-v">'+fmt(r.totalSupply||0)+'</div><div class="stat-l">공급가 (VAT별도)</div></div>'+
+      '<div class="stat-card"><div class="stat-v">'+fmt(r.contractAmount||0)+'</div><div class="stat-l">도급금액 (+15%)</div></div>'+
+      '<div class="stat-card hi"><div class="stat-v">'+fmt(r.finalAmount||0)+'</div><div class="stat-l">최종합계 (VAT포함)</div></div>'+
+      '<div class="stat-card"><div class="stat-v">'+(fa?Math.round((r.finalAmount||0)/fa).toLocaleString()+'원':'—')+'</div><div class="stat-l">㎡단가</div></div>'+
+      '<div class="stat-card"><div class="stat-v">'+(pyeong?pyeong.toLocaleString()+'원':'—')+'</div><div class="stat-l">평단가</div></div>'+
+      '<div class="stat-card"><div class="stat-v">'+(r.duration||'—')+(r.duration?'일':'')+'</div><div class="stat-l">예상 공기</div></div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">공사 항목별 내역 ('+lines.length+'건)</div>'+
+    (lines.length?
+      '<table class="dt"><thead><tr><th>항목</th><th>구분</th><th>수량</th><th>노무비</th><th>자재비</th><th>공급가</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+      '<tfoot><tr><td colspan="5" style="font-weight:600">합계</td>'+
+        '<td style="color:var(--gold);font-family:var(--fm)">'+(r.totalSupply||0).toLocaleString()+'원</td></tr></tfoot>'+
+      '</table>':
+      '<div style="color:var(--dim);padding:16px;font-size:12px">견적 항목 없음 — 견적 마법사에서 공정을 선택하세요.</div>')+
+    '</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+      '<button class="btn btn-p btn-sm" onclick="PJ.printCust()">📄 고객용 견적서</button>'+
+      '<button class="btn btn-p btn-sm" onclick="PJ.printInt()">📊 내부 보고서</button>'+
+      '<button class="btn btn-b btn-sm" onclick="PJ.chgStatus(\'contracted\')">✅ 계약 처리</button>'+
+      '<button class="btn btn-s btn-sm" onclick="PJ.chgStatus(\'in_progress\')">🔨 시공 시작</button>'+
+    '</div>'
+}
+
+// ════════════════════════════════════════════════════════════
+// 탭 2: 공정표
+// ════════════════════════════════════════════════════════════
+function renderSchedule(){
+  var p=S.curProj; if(!p) return
+  var r=p.result||{}; var lines=r.lines||[]
+  var startDate=p.startDate||addDays(today(),14)
+  var ids=lines.map(function(l){return l.id})
+  var tasks=[];try{tasks=ScheduleEngine.generateSchedule(startDate,ids)||[]}catch(e){}
+  var cpm={duration:0,path:[]};try{cpm=ScheduleEngine.calcCriticalPath(tasks)}catch(e){}
+  var totalDur=tasks.reduce(function(a,t){return a+(t.dur||1)},0)||1
+  var endDate=tasks.length?addDays(startDate,totalDur):''
+
+  var rows=tasks.map(function(t){
+    var ed=addDays(t.start,t.dur||1)
+    var bw=Math.max(3,Math.round(((t.dur||1)/totalDur)*130))
+    var item=CalcEngine.DB[t.id]||{}
+    var lead=Math.max(1,Math.ceil((item.dur||1)*3))
+    var dl=ScheduleEngine.calcOrderDeadline(t.start,lead)
+    var dc=ddayColor(dl)
+    return '<tr><td>'+t.name+'</td>'+
+      '<td style="font-family:var(--fm);font-size:11px">'+t.start+'</td>'+
+      '<td style="font-family:var(--fm);font-size:11px">'+ed+'</td>'+
+      '<td style="text-align:center">'+t.dur+'일</td>'+
+      '<td style="font-family:var(--fm);font-size:11px;color:'+dc+'">'+dday(dl)+'</td>'+
+      '<td><div class="gb" style="width:'+bw+'px"></div></td></tr>'
+  }).join('')
+
+  $id('tab-schedule').innerHTML=
+    '<div class="stat-row" style="grid-template-columns:repeat(3,1fr);">'+
+      '<div class="stat-card"><div class="stat-v">'+(p.startDate||startDate)+'</div><div class="stat-l">착공일</div></div>'+
+      '<div class="stat-card"><div class="stat-v">'+(endDate||'—')+'</div><div class="stat-l">완공예정</div></div>'+
+      '<div class="stat-card hi"><div class="stat-v">'+cpm.duration+'일</div><div class="stat-l">총 공기 (CPM)</div></div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">공정 일정 ('+tasks.length+'개 공정)</div>'+
+    (tasks.length?
+      '<table class="dt"><thead><tr><th>공정명</th><th>착공</th><th>완공</th><th>기간</th><th>발주마감</th><th style="min-width:110px">Gantt</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody></table>':
+      '<div style="color:var(--dim);padding:16px;font-size:12px">공정 없음 — 견적에서 공정을 선택하세요.</div>')+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;">'+
+      '<label class="lbl" style="white-space:nowrap">착공일 변경</label>'+
+      '<input type="date" id="chg-sd" value="'+(p.startDate||'')+'" style="flex:1;">'+
+      '<button class="btn btn-s btn-sm" onclick="PJ.applyStartDate()">적용</button>'+
+    '</div>'
+}
+
+// ════════════════════════════════════════════════════════════
+// 탭 3: 공사일보
+// ════════════════════════════════════════════════════════════
+function renderDaily(){
+  var p=S.curProj; if(!p) return
+  var r=p.result||{}; var lines=r.lines||[]
+  var procChecks=lines.map(function(l){
+    return '<label style="display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer;margin-bottom:4px;">'+
+      '<input type="checkbox" class="proc-chk" data-id="'+l.id+'">'+
+      '<span style="font-size:12px">'+l.name+'</span>'+
+      '<span style="font-size:10px;color:var(--dim);margin-left:auto">'+l.cat+'</span></label>'
+  }).join('')
+
+  var repRows=S.reports.map(function(rep){
+    var ws=[];try{ws=typeof rep.workers==='string'?JSON.parse(rep.workers):rep.workers||[]}catch(e){}
+    var wSum=ws.reduce(function(a,w){return a+(w.count||0)},0)
+    return '<tr><td style="font-family:var(--fm);font-size:11px">'+rep.date+'</td>'+
+      '<td>'+rep.weather+'</td>'+
+      '<td style="font-family:var(--fm)">'+rep.progressRate+'%</td>'+
+      '<td>'+wSum+'명</td>'+
+      '<td style="font-size:11px;color:var(--dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+
+        (rep.issues||'—')+'</td></tr>'
+  }).join('')
+
+  $id('tab-daily').innerHTML=
+    '<div class="sec"><div class="sec-t">📝 일보 작성</div>'+
+      '<div class="fg">'+
+        '<div class="fg1"><label class="lbl">작성일</label>'+
+          '<input type="date" id="f-rdate" class="w100" value="'+S.rDate+'" onchange="PJ.setRdate(this.value)"></div>'+
+        '<div class="fg1"><label class="lbl">날씨</label>'+
+          '<select id="f-weather" class="w100">'+WEATHER.map(function(w){return '<option>'+w+'</option>'}).join('')+'</select></div>'+
+        '<div class="fg1 full"><label class="lbl">공기 진행률 <span id="prog-lbl" style="color:var(--gold);font-family:var(--fm)">0%</span></label>'+
+          '<input type="range" id="f-prog" min="0" max="100" value="'+(p.progressRate||0)+'" step="5" style="width:100%;accent-color:var(--gold);" '+
+          'oninput="document.getElementById(\'prog-lbl\').textContent=this.value+\'%\'"></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">완료 공정 체크</div>'+
+      '<div style="max-height:110px;overflow-y:auto;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:5px;">'+
+        (procChecks||'<span style="color:var(--dim);font-size:11px">견적 공정 없음</span>')+
+      '</div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">투입 인원</div>'+
+      '<div id="wk-list"></div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">'+
+        '<button class="btn btn-p btn-sm" onclick="PJ.addWk()">+ 직종 추가</button>'+
+        '<div id="wk-total" style="font-size:12px;color:var(--text2);font-family:var(--fm)"></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">현장 기록</div>'+
+      '<div class="fg">'+
+        '<div class="fg1 full"><label class="lbl">특이사항</label><textarea id="f-issues" rows="2" placeholder="현장 특이사항, 협의 내용 등"></textarea></div>'+
+        '<div class="fg1 full"><label class="lbl">하자 발견</label><textarea id="f-defects" rows="2" placeholder="하자 발견 내용, 위치, 원인"></textarea></div>'+
+        '<div class="fg1 full"><label class="lbl">내일 예정</label><textarea id="f-tomorrow" rows="2" placeholder="내일 공사 예정 항목"></textarea></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">사진 첨부</div>'+
+      '<input type="file" id="f-photos" accept="image/*" multiple style="font-size:11px;color:var(--text2);">'+
+      '<div id="ph-preview" class="ph-grid"></div>'+
+    '</div>'+
+    '<div style="text-align:right;margin-bottom:20px;">'+
+      '<button class="btn btn-g" onclick="PJ.saveDaily()">💾 일보 저장</button>'+
+    '</div>'+
+    (repRows?'<div class="sec"><div class="sec-t">이전 일보 ('+S.reports.length+'건)</div>'+
+      '<table class="dt"><thead><tr><th>날짜</th><th>날씨</th><th>공정률</th><th>인원</th><th>특이사항</th></tr></thead>'+
+      '<tbody>'+repRows+'</tbody></table></div>':'')
+  renderWorkers()
+  initPhotoInput()
+  var pl=$id('prog-lbl'); if(pl)pl.textContent=(p.progressRate||0)+'%'
+}
+
+function renderWorkers(){
+  var el=$id('wk-list'); if(!el) return
+  el.innerHTML=''; var total=0
+  S.workers.forEach(function(wk,i){
+    total+=(wk.count||0)*(wk.wage||0)
+    var d=document.createElement('div'); d.className='wk-row'
+    d.innerHTML=
+      '<select class="wk-inp w100" onchange="PJ.updWk('+i+',\'role\',this.value)">'+
+        ROLES.map(function(r){return '<option'+(wk.role===r?' selected':'')+'>'+r+'</option>'}).join('')+
+      '</select>'+
+      '<input type="number" class="wk-inp w100" min="0" max="99" value="'+wk.count+'" placeholder="인원" '+
+        'onchange="PJ.updWk('+i+',\'count\',+this.value)">'+
+      '<input type="number" class="wk-inp w100" min="0" value="'+wk.wage+'" placeholder="일당(원)" '+
+        'onchange="PJ.updWk('+i+',\'wage\',+this.value)">'+
+      '<button class="btn btn-r btn-sm" onclick="PJ.remWk('+i+')">✕</button>'
+    el.appendChild(d)
+  })
+  var tt=$id('wk-total'); if(tt)tt.textContent='일 인건비 합계: '+total.toLocaleString()+'원'
+}
+
+function initPhotoInput(){
+  var fi=$id('f-photos'); if(!fi) return
+  fi.onchange=function(){
+    var pv=$id('ph-preview'); if(!pv) return
+    pv.innerHTML=''
+    Array.from(this.files||[]).forEach(function(f){
+      var img=document.createElement('img'); img.className='ph-thumb'
+      img.src=URL.createObjectURL(f); pv.appendChild(img)
+    })
+  }
+}
+
+async function saveDaily(){
+  var p=S.curProj; if(!p) return
+  var checked=[].slice.call(document.querySelectorAll('.proc-chk:checked')).map(function(c){return c.dataset.id})
+  var fi=$id('f-photos'); var savedPh=[]
+  if(fi&&fi.files.length&&window.ecoreanAPI?.photo?.save){
+    for(var k=0;k<fi.files.length;k++){
+      var file=fi.files[k]; var reader=new FileReader()
+      await new Promise(function(res){
+        reader.onload=async function(e){
+          try{var r2=await window.ecoreanAPI.photo.save(p.id,S.rDate,e.target.result,file.name);if(r2?.path)savedPh.push(r2.path)}catch(ex){}
+          res()
+        };reader.readAsDataURL(file)
+      })
+    }
+  }
+  var n=now()
+  var sql='INSERT OR REPLACE INTO daily_reports(id,projectId,date,weather,completedProcesses,workers,issues,defects,tomorrowPlan,progressRate,photos,status,createdAt,updatedAt)'+
+          ' VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+  var params=[
+    'dr_'+p.id+'_'+S.rDate.replace(/-/g,''),p.id,S.rDate,
+    $v('f-weather'),JSON.stringify(checked),JSON.stringify(S.workers),
+    $v('f-issues'),$v('f-defects'),$v('f-tomorrow'),+$v('f-prog')||0,
+    JSON.stringify(savedPh),'active',n,n
+  ]
+  var ok=false
+  try{var res=await dbE(sql,params);ok=res.ok!==false}catch(e){console.error(e)}
+  if(!ok&&typeof AppState!=='undefined'){
+    var st=AppState.get(),rpts=st.reports||{}
+    if(!rpts[p.id])rpts[p.id]=[]
+    var rep={id:params[0],date:S.rDate,weather:$v('f-weather'),workers:S.workers,
+              issues:$v('f-issues'),defects:$v('f-defects'),tomorrowPlan:$v('f-tomorrow'),
+              progressRate:+$v('f-prog')||0,photos:savedPh}
+    var idx=rpts[p.id].findIndex(function(r){return r.date===S.rDate})
+    if(idx>=0)rpts[p.id][idx]=rep;else rpts[p.id].unshift(rep)
+    AppState.set({reports:rpts}); ok=true
+  }
+  // Update project progress
+  try{await dbE('UPDATE projects SET progressRate=?,updatedAt=? WHERE id=?',[+$v('f-prog')||0,n,p.id])}catch(e){}
+  alert(ok?'✅ 공사일보 저장됨':'❌ 저장 실패')
+  if(ok){await loadReports(); renderDaily()}
+}
+
+async function loadReports(){
+  var p=S.curProj; if(!p) return
+  var rows=await dbQ('SELECT * FROM daily_reports WHERE projectId=? AND status=\'active\' ORDER BY date DESC',[p.id])
+  S.reports=rows.length?rows:((typeof AppState!=='undefined'?(AppState.get().reports||{})[p.id]:null)||[])
+}
+
+// ════════════════════════════════════════════════════════════
+// 탭 4: 현금출납부
+// ════════════════════════════════════════════════════════════
+function computeFin(){
+  var inc=S.ledger.filter(function(e){return e.type==='income'}).map(function(e){return{amount:+e.amount||0,paid:e.paid===1||e.paid===true}})
+  var exp=S.ledger.filter(function(e){return e.type==='expense'}).map(function(e){return{amount:+e.amount||0,paid:e.paid===1||e.paid===true}})
+  try{return FinanceEngine.calcProjectFinance(inc,exp)}
+  catch(e){return{totalRevenue:0,totalCost:0,profit:0,profitRate:0,received:0,pending:0,paid:0,unpaid:0,cashBalance:0}}
+}
+
+function renderLedger(){
+  var p=S.curProj; if(!p) return
+  var fin=computeFin()
+  var typeOpts='<option value="income">수입</option><option value="expense">지출</option>'
+  var catOpts=INCOME_CATS.map(function(c){return '<option>'+c+'</option>'}).join('')
+  var pmOpts=PAY_METHODS.map(function(m){return '<option>'+m+'</option>'}).join('')
+
+  var rows=S.ledger.map(function(e,i){
+    var isInc=e.type==='income'
+    return '<tr>'+
+      '<td style="font-family:var(--fm);font-size:11px">'+e.date+'</td>'+
+      '<td><span style="color:'+(isInc?'var(--green)':'var(--red)')+';">'+(isInc?'수입':'지출')+'</span></td>'+
+      '<td>'+e.category+'</td>'+
+      '<td style="font-family:var(--fm);color:'+(isInc?'var(--green)':'var(--red)')+'">'+
+        (e.amount||0).toLocaleString()+'</td>'+
+      '<td style="font-size:11px;color:var(--dim)">'+e.payMethod+'</td>'+
+      '<td style="font-size:11px;color:var(--dim)">'+e.vendor+'</td>'+
+      '<td><span style="width:8px;height:8px;border-radius:50%;display:inline-block;'+
+        'background:'+(e.paid?'var(--green)':'var(--red)')+'"></span></td>'+
+      '<td><button class="btn btn-r btn-sm" onclick="PJ.delLedger('+i+')">✕</button></td>'+
+    '</tr>'
+  }).join('')
+
+  $id('tab-ledger').innerHTML=
+    '<div class="sec"><div class="sec-t">+ 내역 추가</div>'+
+      '<div class="fg">'+
+        '<div class="fg1"><label class="lbl">날짜</label><input type="date" id="l-date" class="w100" value="'+today()+'"></div>'+
+        '<div class="fg1"><label class="lbl">구분</label><select id="l-type" class="w100" onchange="PJ.chgLType()">'+typeOpts+'</select></div>'+
+        '<div class="fg1"><label class="lbl">카테고리</label><select id="l-cat" class="w100"><option>—</option>'+catOpts+'</select></div>'+
+        '<div class="fg1"><label class="lbl">금액 (원)</label><input type="number" id="l-amt" class="w100" min="0" step="10000" placeholder="0"></div>'+
+        '<div class="fg1"><label class="lbl">결제방식</label><select id="l-pm" class="w100">'+pmOpts+'</select></div>'+
+        '<div class="fg1"><label class="lbl">업체명</label><input type="text" id="l-vendor" class="w100" placeholder="거래처"></div>'+
+        '<div class="fg1 full"><label class="lbl">메모</label><input type="text" id="l-memo" class="w100" placeholder="비고"></div>'+
+      '</div>'+
+      '<div style="text-align:right;"><button class="btn btn-g" onclick="PJ.addLedger()">+ 추가</button></div>'+
+    '</div>'+
+    '<div class="stat-row">'+
+      '<div class="stat-card gr"><div class="stat-v">'+fmt(fin.totalRevenue)+'</div><div class="stat-l">수입 합계</div></div>'+
+      '<div class="stat-card rd"><div class="stat-v">'+fmt(fin.totalCost)+'</div><div class="stat-l">지출 합계</div></div>'+
+      '<div class="stat-card hi"><div class="stat-v">'+fmt(fin.cashBalance)+'</div><div class="stat-l">현금 잔액</div></div>'+
+      '<div class="stat-card"><div class="stat-v">'+fmt(fin.pending)+'</div><div class="stat-l">미수령</div></div>'+
+      '<div class="stat-card"><div class="stat-v">'+fmt(fin.unpaid)+'</div><div class="stat-l">미지급</div></div>'+
+      '<div class="stat-card '+(fin.profit>=0?'gr':'rd')+'"><div class="stat-v">'+fmt(fin.profit)+'</div><div class="stat-l">예상 이익</div></div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">거래 내역 ('+S.ledger.length+'건)</div>'+
+    (S.ledger.length?
+      '<table class="dt"><thead><tr><th>날짜</th><th>구분</th><th>항목</th><th>금액</th><th>결제</th><th>업체</th><th>수납</th><th>-</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody></table>':
+      '<div style="color:var(--dim);padding:16px;font-size:12px;text-align:center">내역 없음</div>')+
+    '</div>'
+}
+
+async function addLedger(){
+  var p=S.curProj; if(!p) return
+  var amt=parseFloat($v('l-amt'))||0; if(!amt){alert('금액을 입력하세요.'); return}
+  var n=now()
+  var e={id:'cl_'+uid(),projectId:p.id,date:$v('l-date')||today(),
+    type:$v('l-type')||'income',category:$v('l-cat')||'기타',
+    amount:amt,payMethod:$v('l-pm')||'현금',
+    vendor:$v('l-vendor')||'',memo:$v('l-memo')||'',
+    paid:1,status:'active',createdAt:n,updatedAt:n}
+  try{
+    await dbE('INSERT INTO cash_ledger(id,projectId,date,type,category,amount,payMethod,vendor,memo,paid,status,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [e.id,e.projectId,e.date,e.type,e.category,e.amount,e.payMethod,e.vendor,e.memo,e.paid,e.status,e.createdAt,e.updatedAt])
+  }catch(ex){console.error(ex)}
+  S.ledger.unshift(e)
+  renderLedger()
+}
+
+async function delLedger(i){
+  var e=S.ledger[i]; if(!e) return
+  if(!confirm('삭제할까요?')) return
+  S.ledger.splice(i,1)
+  try{await dbE('UPDATE cash_ledger SET status=\'disabled\' WHERE id=?',[e.id])}catch(ex){}
+  renderLedger()
+}
+
+async function loadLedger(){
+  var p=S.curProj; if(!p){S.ledger=[];return}
+  var rows=await dbQ('SELECT * FROM cash_ledger WHERE projectId=? AND status=\'active\' ORDER BY date DESC',[p.id])
+  S.ledger=rows.length?rows:[]
+}
+
+// ════════════════════════════════════════════════════════════
+// 탭 5: 재무상태표
+// ════════════════════════════════════════════════════════════
+function renderFinance(){
+  var p=S.curProj; if(!p) return
+  var r=p.result||{}; var ca=r.finalAmount||p.contractAmount||0
+  var fin=computeFin()
+  var inc=S.ledger.filter(function(e){return e.type==='income'})
+  var exp=S.ledger.filter(function(e){return e.type==='expense'})
+  function cs(list,cat){return list.filter(function(e){return e.category===cat}).reduce(function(a,e){return a+(+e.amount||0)},0)}
+  var labor=cs(exp,'노무비'),mat=cs(exp,'자재비'),sub=cs(exp,'외주비'),indir=cs(exp,'간접비')
+  var cont=cs(inc,'계약금'),mid=cs(inc,'중도금'),final2=cs(inc,'잔금'),extra=cs(inc,'추가공사')
+  var pr=fin.totalRevenue>0?FinanceEngine.calcProfitRate(fin.totalRevenue,fin.totalCost):0
+
+  $id('tab-finance').innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'+
+      '<div>'+
+        '<div class="sec"><div class="sec-t">매출</div>'+
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;">'+
+            '<div class="fr"><span class="fr-l">견적 금액</span><span class="fr-v">'+fmtW(ca)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">계약금 수령</span><span class="fr-v gr">'+fmtW(cont)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">중도금 수령</span><span class="fr-v gr">'+fmtW(mid)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">잔금 수령</span><span class="fr-v gr">'+fmtW(final2)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">추가공사</span><span class="fr-v gr">'+fmtW(extra)+'</span></div>'+
+            '<div class="fr" style="border-top:2px solid var(--border);padding-top:8px;margin-top:4px;">'+
+              '<span class="fr-l" style="font-weight:700">수입 합계</span><span class="fr-v hi">'+fmtW(fin.totalRevenue)+'</span></div>'+
+          '</div></div>'+
+        '<div class="sec"><div class="sec-t">수금 현황</div>'+
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;">'+
+            '<div class="fr"><span class="fr-l">수령 완료</span><span class="fr-v gr">'+fmtW(fin.received)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">미수령</span><span class="fr-v" style="color:'+(fin.pending>0?'var(--orange)':'var(--text2)')+'">'+fmtW(fin.pending)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">현금 잔액</span><span class="fr-v '+(fin.cashBalance>=0?'gr':'rd')+'">'+fmtW(fin.cashBalance)+'</span></div>'+
+          '</div></div>'+
+      '</div>'+
+      '<div>'+
+        '<div class="sec"><div class="sec-t">비용</div>'+
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;">'+
+            '<div class="fr"><span class="fr-l">노무비</span><span class="fr-v">'+fmtW(labor)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">자재비</span><span class="fr-v">'+fmtW(mat)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">외주비</span><span class="fr-v">'+fmtW(sub)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">간접비</span><span class="fr-v">'+fmtW(indir)+'</span></div>'+
+            '<div class="fr" style="border-top:2px solid var(--border);padding-top:8px;margin-top:4px;">'+
+              '<span class="fr-l" style="font-weight:700">지출 합계</span><span class="fr-v rd">'+fmtW(fin.totalCost)+'</span></div>'+
+            '<div class="fr"><span class="fr-l">미지급</span><span class="fr-v" style="color:'+(fin.unpaid>0?'var(--orange)':'var(--text2)')+'">'+fmtW(fin.unpaid)+'</span></div>'+
+          '</div></div>'+
+        '<div class="sec"><div class="sec-t">손익</div>'+
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;">'+
+            '<div class="fr"><span class="fr-l">영업이익</span><span class="fr-v '+(fin.profit>=0?'gr':'rd')+'">'+fmtW(fin.profit)+'</span></div>'+
+            '<div class="fr"><span class="fr-l" style="font-size:13px;font-weight:600">이익률</span>'+
+              '<span class="fr-v '+(pr>=20?'gr':pr>=10?'':'rd')+'" style="font-size:22px;font-weight:700">'+pr+'%</span></div>'+
+          '</div></div>'+
+      '</div>'+
+    '</div>'
+}
+
+// ════════════════════════════════════════════════════════════
+// 탭 6: 발주관리
+// ════════════════════════════════════════════════════════════
+function renderOrders(){
+  var p=S.curProj; if(!p) return
+  var r=p.result||{}; var lines=r.lines||[]
+  var startDate=p.startDate||addDays(today(),14)
+  var savedMap={}; S.orders.forEach(function(o){savedMap[o.processId]=o})
+
+  _ordItems=lines.map(function(l){
+    var item=CalcEngine.DB[l.id]||{}
+    var lead=Math.max(1,Math.ceil((item.dur||1)*3))
+    var dl=ScheduleEngine.calcOrderDeadline(startDate,lead)
+    var saved=savedMap[l.id]||{}
+    return {id:'ord_'+uid(),processId:l.id,itemName:l.name,
+      quantity:l.qty||1,unit:l.unit||'㎡',
+      unitPrice:l.mt||0,totalPrice:l.supplyPrice||0,
+      vendor:saved.vendor||'',leadDays:lead,
+      orderDate:saved.orderDate||'',deliveryDate:dl,
+      status:saved.status||'pending'}
+  })
+
+  var rows=_ordItems.map(function(o,i){
+    var dc=ddayColor(o.deliveryDate)
+    return '<tr>'+
+      '<td>'+o.itemName+'</td>'+
+      '<td style="font-family:var(--fm);font-size:11px">'+Math.round(o.totalPrice).toLocaleString()+'</td>'+
+      '<td style="font-family:var(--fm);font-size:11px;color:'+dc+'">'+dday(o.deliveryDate)+'</td>'+
+      '<td style="font-family:var(--fm);font-size:11px">'+o.deliveryDate+'</td>'+
+      '<td>'+
+        '<select class="ost" onchange="PJ.setOrdSt('+i+',this.value)">'+
+          Object.entries(ORDER_ST).map(function(kv){return '<option value="'+kv[0]+'"'+(o.status===kv[0]?' selected':'')+'>'+kv[1]+'</option>'}).join('')+
+        '</select></td>'+
+      '<td>'+(o.status==='pending'?
+        '<button class="btn btn-b btn-sm" onclick="PJ.execOrd('+i+')" style="white-space:nowrap">발주 실행</button>':
+        '<span style="font-size:11px;color:var(--dim)">'+ORDER_ST[o.status]+'</span>')+
+      '</td></tr>'
+  }).join('')
+
+  var overdue=_ordItems.filter(function(o){return Math.ceil((new Date(o.deliveryDate)-new Date())/(1000*86400))<0&&o.status!=='delivered'})
+  $id('tab-orders').innerHTML=
+    (overdue.length?'<div style="padding:8px 12px;border-radius:5px;background:rgba(255,51,85,0.08);border:1px solid rgba(255,51,85,0.25);color:var(--red);font-size:12px;margin-bottom:12px;">'+
+      '⚠ 납기 초과: '+overdue.map(function(o){return o.itemName}).join(', ')+'</div>':'')+
+    '<div class="stat-row" style="grid-template-columns:repeat(3,1fr);">'+
+      '<div class="stat-card"><div class="stat-v">'+_ordItems.filter(function(o){return o.status==='pending'}).length+'건</div><div class="stat-l">발주 대기</div></div>'+
+      '<div class="stat-card gr"><div class="stat-v">'+_ordItems.filter(function(o){return o.status==='ordered'}).length+'건</div><div class="stat-l">발주 완료</div></div>'+
+      '<div class="stat-card hi"><div class="stat-v">'+_ordItems.filter(function(o){return o.status==='delivered'}).length+'건</div><div class="stat-l">납품 완료</div></div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">발주 현황 ('+_ordItems.length+'건)</div>'+
+    (_ordItems.length?
+      '<table class="dt"><thead><tr><th>공사항목</th><th>금액</th><th>D-Day</th><th>납기</th><th>상태</th><th>실행</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody></table>':
+      '<div style="color:var(--dim);padding:16px;font-size:12px;text-align:center">발주 항목 없음</div>')+
+    '</div>'
+}
+
+async function execOrd(i){
+  var o=_ordItems[i]; if(!o) return
+  if(!confirm('['+o.itemName+'] 발주를 실행합니다.\n현금출납부 자재비 지출 항목이 추가됩니다.')) return
+  var p=S.curProj; if(!p) return
+  var n=now()
+  var e={id:'cl_'+uid(),projectId:p.id,date:today(),type:'expense',category:'자재비',
+    amount:o.totalPrice||0,payMethod:'계좌이체',vendor:o.vendor||'',
+    memo:'[발주] '+o.itemName,paid:0,status:'active',createdAt:n,updatedAt:n}
+  try{
+    await dbE('INSERT INTO cash_ledger(id,projectId,date,type,category,amount,payMethod,vendor,memo,paid,status,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [e.id,e.projectId,e.date,e.type,e.category,e.amount,e.payMethod,e.vendor,e.memo,e.paid,e.status,e.createdAt,e.updatedAt])
+  }catch(ex){console.error(ex)}
+  S.ledger.unshift(e)
+  _ordItems[i].status='ordered'
+  alert('✅ 발주 실행됨. 현금출납부 자재비 지출로 추가되었습니다.')
+  renderOrders()
+}
+
+async function loadOrders(){
+  var p=S.curProj; if(!p){S.orders=[];return}
+  var rows=await dbQ('SELECT * FROM purchase_orders WHERE projectId=? AND status!=\'disabled\' ORDER BY deliveryDate',[p.id])
+  S.orders=rows.length?rows:[]
+}
+
+// ════════════════════════════════════════════════════════════
+// 탭 7: 완료보고
+// ════════════════════════════════════════════════════════════
+function renderCompletion(){
+  var p=S.curProj; if(!p) return
+  var r=p.result||{}; var plan=r.finalAmount||0
+  var fin=computeFin(); var diff=plan-fin.totalCost
+  var pct=plan>0?Math.round(diff/plan*100):0
+
+  $id('tab-completion').innerHTML=
+    '<div class="sec"><div class="sec-t">예상 vs 실제 비교</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">'+
+        '<div class="stat-card"><div class="stat-v">'+fmt(plan)+'</div><div class="stat-l">견적 금액</div></div>'+
+        '<div class="stat-card"><div class="stat-v">'+fmt(fin.totalCost)+'</div><div class="stat-l">실제 원가 (출납부)</div></div>'+
+        '<div class="stat-card '+(diff>=0?'gr':'rd')+'"><div class="stat-v">'+fmt(Math.abs(diff))+'</div>'+
+          '<div class="stat-l">'+(diff>=0?'절감':'초과')+' ('+Math.abs(pct)+'%)</div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">실제 원가 직접 입력</div>'+
+      '<div class="fg3">'+
+        '<div class="fg1"><label class="lbl">노무비 (원)</label><input type="number" id="ac-lb" class="w100" step="100000" value="0" oninput="PJ.calcAct()"></div>'+
+        '<div class="fg1"><label class="lbl">자재비 (원)</label><input type="number" id="ac-mt" class="w100" step="100000" value="0" oninput="PJ.calcAct()"></div>'+
+        '<div class="fg1"><label class="lbl">외주비 (원)</label><input type="number" id="ac-sb" class="w100" step="100000" value="0" oninput="PJ.calcAct()"></div>'+
+        '<div class="fg1"><label class="lbl">간접비 (원)</label><input type="number" id="ac-id" class="w100" step="10000" value="0" oninput="PJ.calcAct()"></div>'+
+        '<div class="fg1"><label class="lbl">실제 총원가</label><div id="ac-tot" style="font-family:var(--fm);font-size:16px;color:var(--gold);padding:6px 0">—</div></div>'+
+        '<div class="fg1"><label class="lbl">실제 이익률</label><div id="ac-rate" style="font-family:var(--fm);font-size:18px;font-weight:700;color:var(--green);padding:6px 0">—</div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">교훈 기록 (ML 학습용)</div>'+
+      '<textarea id="f-lesson" rows="4" placeholder="이번 공사 교훈, 개선점&#10;예) 욕실 방수 2회 필요, 공기 +1일&#10;    타일 리드타임 실제 10일 (예상 7일)"></textarea>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">하자 기록</div>'+
+      '<textarea id="f-defects2" rows="3" placeholder="하자 유형, 위치, 원인, 처리 방법"></textarea>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">'+
+      '<button class="btn btn-s" onclick="PJ.saveCompl()">💾 완료보고 저장</button>'+
+      '<button class="btn btn-g btn-sm" onclick="PJ.chgStatus(\'completed\')">✅ 프로젝트 완료 처리</button>'+
+    '</div>'
+}
+
+function calcAct(){
+  var t=(parseFloat($v('ac-lb'))||0)+(parseFloat($v('ac-mt'))||0)+(parseFloat($v('ac-sb'))||0)+(parseFloat($v('ac-id'))||0)
+  var rev=S.curProj?.result?.finalAmount||0
+  var el1=$id('ac-tot'),el2=$id('ac-rate')
+  if(el1)el1.textContent=t.toLocaleString()+'원'
+  if(el2){
+    var rate=rev>0?FinanceEngine.calcProfitRate(rev,t):0
+    el2.textContent=rate+'%'
+    el2.style.color=rate>=20?'var(--green)':rate>=0?'var(--text)':'var(--red)'
+  }
+}
+
+async function saveCompl(){
+  var p=S.curProj; if(!p) return
+  var n=now()
+  var memo={lesson:$v('f-lesson'),defects:$v('f-defects2'),
+    actualCost:{labor:+$v('ac-lb')||0,mat:+$v('ac-mt')||0,sub:+$v('ac-sb')||0,indir:+$v('ac-id')||0},
+    completedAt:n}
+  try{await dbE('UPDATE projects SET updatedAt=? WHERE id=?',[n,p.id])}catch(e){}
+  if(typeof AppState!=='undefined'){
+    var st=AppState.get()
+    var idx=(st.projects||[]).findIndex(function(pj){return pj.id===p.id})
+    if(idx>=0){st.projects[idx].completionMemo=memo; AppState.set({projects:st.projects})}
+  }
+  alert('✅ 완료보고 저장됨')
+}
+
+// ════════════════════════════════════════════════════════════
+// 공통
+// ════════════════════════════════════════════════════════════
+async function chgStatus(status){
+  var p=S.curProj; if(!p) return
+  if(!confirm('상태를 "'+STATUS_LBL[status]+'"(으)로 변경할까요?')) return
+  var n=now()
+  try{await dbE('UPDATE projects SET status=?,updatedAt=? WHERE id=?',[status,n,p.id])}catch(e){}
+  p.status=status
+  if(typeof AppState!=='undefined'){
+    var st=AppState.get()
+    var idx=(st.projects||[]).findIndex(function(pj){return pj.id===p.id})
+    if(idx>=0){st.projects[idx].status=status; AppState.set({projects:st.projects})}
+  }
+  var tbs=$id('tb-status'); if(tbs)tbs.textContent='['+STATUS_LBL[status]+']'
+  alert('✅ 상태 변경: '+STATUS_LBL[status])
+}
+
+function printCust(){
+  var p=S.curProj; if(!p) return
+  var r=p.result||{}; var lines=r.lines||[]
+  var rows=lines.map(function(l){
+    return '<tr><td>'+l.name+'</td><td>'+l.unit+'</td><td>'+(l.qty?l.qty.toFixed(1):1)+'</td>'+
+      '<td>'+(l.supplyPrice||0).toLocaleString()+'원</td></tr>'
+  }).join('')
+  var html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>견적서</title>'+
+    '<style>body{font-family:sans-serif;font-size:13px;padding:30px}table{width:100%;border-collapse:collapse}'+
+    'th,td{padding:7px;border:1px solid #ddd}th{background:#f5f5f5}.tot{font-weight:700;background:#fffbf0}'+
+    '@media print{body{padding:0}}</style></head><body>'+
+    '<h2>견&nbsp;&nbsp;적&nbsp;&nbsp;서</h2><p>'+p.name+(p.manager?' · '+p.manager:'')+'</p>'+
+    '<table><thead><tr><th>항목</th><th>단위</th><th>수량</th><th>금액</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+    '<tfoot><tr class="tot"><td colspan="3">도급금액 (+15%)</td><td>'+(r.contractAmount||0).toLocaleString()+'원</td></tr>'+
+    '<tr class="tot"><td colspan="3">최종합계 (VAT포함)</td><td>'+(r.finalAmount||0).toLocaleString()+'원</td></tr></tfoot></table>'+
+    '<p style="font-size:11px;color:#888;margin-top:20px">유효기간: '+(p.validUntil||'—')+'</p>'+
+    '<script>window.onload=function(){window.print()}<\/script></body></html>'
+  var w=window.open('','_blank'); if(w){w.document.write(html);w.document.close()}
+}
+
+function printInt(){
+  var p=S.curProj; if(!p) return
+  var r=p.result||{}; var fin=computeFin()
+  var html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>[내부]보고서</title>'+
+    '<style>body{font-family:sans-serif;font-size:12px;padding:30px}table{width:100%;border-collapse:collapse}'+
+    'th,td{padding:6px;border:1px solid #ddd}th{background:#f0f0f0}.hi{font-weight:700;background:#fffbf0}'+
+    '@media print{body{padding:0}}</style></head><body>'+
+    '<h2>[내부] 원가 보고서</h2><p>'+p.name+' · '+today()+'</p>'+
+    '<table>'+
+    '<tr><th>공급가</th><td>'+(r.totalSupply||0).toLocaleString()+'원</td></tr>'+
+    '<tr><th>도급금액</th><td>'+(r.contractAmount||0).toLocaleString()+'원</td></tr>'+
+    '<tr class="hi"><th>최종합계(VAT)</th><td>'+(r.finalAmount||0).toLocaleString()+'원</td></tr>'+
+    '<tr><th>수입합계</th><td>'+fin.totalRevenue.toLocaleString()+'원</td></tr>'+
+    '<tr><th>지출합계</th><td>'+fin.totalCost.toLocaleString()+'원</td></tr>'+
+    '<tr class="hi"><th>이익 / 이익률</th><td>'+fin.profit.toLocaleString()+'원 / '+fin.profitRate+'%</td></tr>'+
+    '<tr><th>현금잔액</th><td>'+fin.cashBalance.toLocaleString()+'원</td></tr>'+
+    '</table>'+
+    '<script>window.onload=function(){window.print()}<\/script></body></html>'
+  var w=window.open('','_blank'); if(w){w.document.write(html);w.document.close()}
+}
+
+// ── 공개 API ─────────────────────────────────────────────────
+window.PJ={
+  loadProjects:loadProjects,
+  openProject:openProject,
+  backToList:backToList,
+  switchTab:switchTab,
+  newProject:function(){
+    if(window.ecoreanAPI?.switchTab) window.ecoreanAPI.switchTab('estimate')
+    else alert('견적 탭에서 새 프로젝트를 생성하세요.')
+  },
+  // Daily
+  setRdate:function(v){S.rDate=v},
+  addWk:function(){S.workers.push({role:'목공',count:1,wage:150000});renderWorkers()},
+  remWk:function(i){S.workers.splice(i,1);renderWorkers()},
+  updWk:function(i,f,v){if(S.workers[i])S.workers[i][f]=v;renderWorkers()},
+  saveDaily:saveDaily,
+  // Ledger
+  chgLType:function(){
+    var t=$v('l-type'),c=$id('l-cat'); if(!c) return
+    var list=t==='income'?INCOME_CATS:EXPENSE_CATS
+    c.innerHTML='<option value="">—</option>'+list.map(function(x){return '<option>'+x+'</option>'}).join('')
+  },
+  addLedger:addLedger,
+  delLedger:delLedger,
+  // Orders
+  setOrdSt:function(i,v){if(_ordItems[i])_ordItems[i].status=v},
+  execOrd:execOrd,
+  // Completion
+  calcAct:calcAct,
+  saveCompl:saveCompl,
+  // General
+  chgStatus:chgStatus,
+  applyStartDate:function(){
+    var v=$v('chg-sd'); if(!v||!S.curProj) return
+    S.curProj.startDate=v; renderSchedule()
+  },
+  printCust:printCust,
+  printInt:printInt,
+}
+
+// ── 초기화 ───────────────────────────────────────────────────
+async function init(){
+  if(typeof AppState!=='undefined') AppState.load()
+  if(window.ecoreanAPI?.onTabSwitch){
+    window.ecoreanAPI.onTabSwitch(function(tab){if(tab==='projects') loadProjects()})
+  }
+  await loadProjects()
+  console.log('✅ projects.html ready — BOC v2')
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init)
+else init()
+
+})()
 </script>
 </body>
 </html>
