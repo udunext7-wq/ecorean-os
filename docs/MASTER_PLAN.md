@@ -1,5 +1,20 @@
-# ECOREAN BOC — Master Plan
-최종 확정: 2026-04-25
+# ECOREAN BOC — Master Plan v4.0
+최종 확정: 2026-04-27
+이전 버전: v3.5 (2026-04-25)
+
+---
+
+## 변경 이력
+
+| 버전 | 날짜 | 주요 변경 |
+|------|------|-----------|
+| v1.0 | 2026-04 초 | 초기 설계 |
+| v2.0 | 2026-04-20 | 5개 엔진 확정, TDD 원칙 추가 |
+| v3.0 | 2026-04-23 | Neo4j Readiness Layer, 3D 온톨로지 |
+| v3.5 | 2026-04-25 | §1~§24 전체 확정, 개발순서 고정 |
+| **v4.0** | **2026-04-27** | **§50~§54 도면 자산화 전략 추가, 결정사항 반영** |
+
+---
 
 ## 1. 시스템 정의
 BOC = Build Operation Center
@@ -41,7 +56,8 @@ ecorean-os/
 ├── shared/
 │   ├── engine/boc-engine.js (5개 엔진 공유)
 │   ├── store/boc-state.js (상태 공유)
-│   └── db/schema.sql (DB 스키마)
+│   ├── db/schema.sql (DB 스키마)
+│   └── boc-design.css (공통 디자인 시스템)
 ├── electron/
 │   ├── main.js (Electron 메인+IPC+SQLite)
 │   └── preload.js (IPC 브릿지)
@@ -321,6 +337,17 @@ concepts: conceptId/name/grade/gradeMul
 
 sections: sectionId/name/processIds/description/status
 
+### 도면 자산화 (v4.0 신규)
+floorplan_library: patternId/building/area/bayType
+                   direction/yearBuilt/source
+                   confidence/verified/usageCount
+                   createdAt/updatedAt
+
+ai_crawl_log: id/sourceUrl/capturedAt
+              buildingName/address
+              parsedData/confidence
+              status/legalReview
+
 ## 9. IPC 통신 구조
 모듈→Main: state:set/db:query/db:execute
            kpi:update/tab:switch
@@ -403,6 +430,7 @@ Income/Expense/PurchaseOrder
 PaymentMilestone/FinancialStatement
 OntologyRule/LearningSuggestion
 Defect/Risk/Case/MLModel/Franchise
+FloorplanPattern/AiCrawlLog
 
 Neo4j 관계:
 HAS_SPACE/HAS_PROCESS/USES_MATERIAL
@@ -413,6 +441,7 @@ GENERATES_LEARNING/NEEDS_APPROVAL
 UPDATES_MASTER_DB/PRECEDES/DEPENDS_ON
 AFFECTS_COST/AFFECTS_SCHEDULE
 TRIGGERS/LEARNED_FROM/CRAWLED_FROM
+MATCHES_PATTERN/DERIVED_FROM
 
 ## 22. AI 성장 구조
 크롤링: 표준품셈/노임단가/자재물가/시공사례
@@ -420,6 +449,13 @@ TRIGGERS/LEARNED_FROM/CRAWLED_FROM
 공사일보→패턴감지→온톨로지규칙제안
 ML: 0~49수동/50~99통계/100~499XGBoost/500+DL
 고급AI: Causal+ActiveLearning+Federated
+
+도면 자산화 (v4.0 추가):
+Phase 0: 수동 입력 중심
+Phase 1: 외부 API 연동 (TogalAdapter/ClaudeVisionAdapter)
+Phase 2: 자체 라이브러리 시작
+Phase 3: AI 크롤러 도입
+Phase 4: 자체 자산 80%+ 활용
 
 ## 23. 개발 원칙
 설계확정→테스트작성→코딩→검증→커밋
@@ -441,6 +477,257 @@ TDD강제/발견즉시수정
 10. modules-html/ontology.html
 11. modules-html/aiengine.html
 12. modules-html/dashboard.html
-13. 디자인 적용
+13. 디자인 적용 (shared/boc-design.css)
 14. 웹버전 포팅 (Next.js)
 15. 현장 투입
+
+---
+
+## 50. 도면 시스템 단계별 진화
+
+### Phase 0 (지금 ~ 3개월): 코딩 우선
+- 도면 모듈 미구현
+- 미니 CAD 수동 입력 중심
+- 시공 현장 도면 자동 저장
+- 외부 API 어댑터 인터페이스만 준비
+
+### Phase 1 (3~6개월): 외부 API 연동
+- TogalAdapter / ClaudeVisionAdapter 구현
+- 주소 → 외부 API 호출 → 결과 저장
+- 캐싱 시작 (L1/L2/L3)
+
+### Phase 2 (6~12개월): 자체 라이브러리 시작
+- 표준 패턴 매칭 시스템
+- 시공 현장 누적 가속
+- 외부 API + 자체 DB 하이브리드
+
+### Phase 3 (1~2년): AI 크롤러 도입
+- 백그라운드 자동 크롤링
+- 부동산 사이트 모니터링
+- Claude Vision 자동 추출
+- 자체 형식 변환
+- 라이브러리 자동 확장
+
+### Phase 4 (2~3년): 자체 자산 우위
+- 자체 DB 80% 활용
+- 외부 API 의존 최소
+- 한국 1위 도면 자산
+
+### 어댑터 인터페이스 (Phase 0 준비)
+```
+FloorplanAdapter {
+  fromAddress(address: string): Promise<FloorplanData>
+  fromImage(imageBuffer: Buffer): Promise<FloorplanData>
+  fromPDF(pdfBuffer: Buffer): Promise<FloorplanData>
+}
+
+FloorplanData {
+  totalArea: number      // ㎡
+  rooms: RoomData[]
+  confidence: number     // 0~1
+  source: string
+  cachedAt: string
+}
+```
+
+---
+
+## 51. AI 크롤링 시스템 (장기 설계)
+
+### 책임
+부동산 사이트의 평면도 자동 수집·변환
+
+### 동작 방식
+1. 일일 자동 실행 (스케줄러)
+2. 부동산 사이트 검색
+   - 네이버 부동산
+   - 호갱노노
+   - 직방/다방
+3. 새 평면도 발견
+4. Claude Vision API 호출
+5. 평면도 → 자체 형식 JSON
+6. 자동 검증 (신뢰도 체크)
+7. 라이브러리 등록
+8. 출처 메타데이터 저장
+
+### 법적 준수
+- robots.txt 준수
+- API rate limit 준수
+- 자체 형식 변환 (디자인 카피 아님)
+- 사실 정보 추출 (면적/방수)
+- 원본 이미지 저장 금지
+- 출처 명시 (메타데이터만)
+
+### 기술 스택
+- Puppeteer (브라우저 자동화)
+- Claude Vision API (AI 추출)
+- 자체 검증 엔진
+- 자동 분류 시스템
+
+### 데이터 구조
+```
+ai_crawl_log:
+  id / sourceUrl / capturedAt
+  buildingName / address
+  parsedData (JSON)
+  confidence / status
+  legalReview (boolean)
+```
+
+### 안전장치
+- 출처별 호출 한도
+- 비용 한도 알림
+- 법적 검토 게이트
+- 자동 차단 시스템
+
+---
+
+## 52. 캐싱 정책 강화
+
+### 3단계 캐싱
+
+#### L1: 메모리 캐시
+- 유효: 1시간
+- 용도: 즉시 재접근
+- 크기: 100MB 한도
+
+#### L2: 디스크 캐시
+- 유효: 7일
+- 용도: 세션 간 공유
+- 크기: 1GB 한도
+
+#### L3: 자체 DB
+- 유효: 영구
+- 용도: 보정된 데이터
+- 크기: 무제한
+
+### 우선순위
+```
+요청 → L1 → L2 → L3 → 외부 API → 사용자 입력
+```
+
+### 캐시 무효화
+- DB 업데이트 시 자동
+- 24시간 강제 갱신
+- 사용자 수동 새로고침
+
+### 비용 효과
+
+| 구분 | API 호출 | 월 비용(예시) |
+|------|----------|--------------|
+| 캐싱 없음 | 같은 주소 5회 = 5회 | 100만원 |
+| 캐싱 적용 | 같은 주소 5회 = 1회 | 20만원 |
+| **절감** | | **80% 절감** |
+
+---
+
+## 53. 도면 자산화 로드맵
+
+### 자산 가치 추이
+
+| 시점 | 건수 | 구성 |
+|------|------|------|
+| 0개월 | 0건 | — |
+| 3개월 | 30건 | 시공 누적 |
+| 6개월 | 110건 | 시공 60 + 표준 50 |
+| 1년 | 900건 | 시공 200 + 표준 200 + AI크롤 500 |
+| 2년 | 5,000건+ | 전방위 수집 |
+| 3년 | 20,000건+ | **한국 1위** |
+
+### 라이브러리 구조
+```
+floorplan_library/
+├── apt/           (아파트)
+│   ├── 24p_3bay/
+│   ├── 30p_3bay/
+│   ├── 34p_4bay/
+│   └── 40p_tower/
+├── villa/         (빌라)
+├── house/         (단독)
+└── office/        (오피스텔)
+```
+
+### 메타데이터
+```
+patternId / building / area / bayType
+direction / yearBuilt / source
+confidence / verified / usageCount
+```
+
+### 활용도 추적
+- 인기 패턴 자동 식별
+- 사용 빈도별 정렬
+- 지역별 인기 패턴
+
+---
+
+## 54. 법적 준수 가이드라인
+
+### 한국 저작권법 분석
+
+| 유형 | 저작물성 | 위험도 |
+|------|----------|--------|
+| 일반 아파트 평면도 | 부정 | 안전 |
+| 독창적 건축 설계 | 인정 | 위험 |
+| 워터마크/표시 도면 | 명확한 권리 | 위험 |
+
+### 안전한 활동
+- ✅ 자체 도면 제작
+- ✅ 면적/구조 정보 활용
+- ✅ AI로 새로 그리기
+- ✅ 사용자 동의 도면 등록
+- ✅ 시공 현장 도면 사용
+
+### 위험한 활동
+- ❌ 다른 사이트 도면 직접 다운로드
+- ❌ 워터마크 도면 사용
+- ❌ 라이선스 위반 (아키스케치 등)
+- ❌ DB 권리 침해 (국토부)
+
+### AI 크롤링 안전 원칙
+1. 사실 정보만 추출 (면적/방수)
+2. 자체 형식으로 변환
+3. 원본 이미지 미저장
+4. 출처 메타데이터만 보존
+5. 디자인 카피 금지
+6. 법적 검토 정기 시행
+
+### 분쟁 대응
+- 법무 자문 정기 진행
+- 저작권 표시 명확
+- 출처 추적 가능
+- 합의 가능 구조
+
+---
+
+## v4.0 결정 사항 (2026-04-27 확정)
+
+### 우선순위 (확정)
+1. 시스템 코딩 완성 (Phase 0)
+2. 시공 누적 시작
+3. 외부 API 연동 (Phase 1, 3~6개월 후)
+4. 자체 라이브러리 구축 (Phase 2, 6~12개월 후)
+5. AI 크롤러 도입 (Phase 3, 1~2년 후)
+
+### 도면 전략 (확정)
+- **하이브리드 모델** 채택
+- 초기: 외부 API 의존 (TogalAdapter / ClaudeVisionAdapter)
+- 중기: 자체 + 외부 병행
+- 장기: 자체 DB 80%+
+
+### AI 크롤링 (확정)
+- 법적 안전 영역에서만 진행
+- 자체 형식 변환 원칙 (디자인 카피 금지)
+- 사실 정보(면적/방수/구조)만 추출
+- 저작권 분쟁 회피 구조 유지
+
+### Phase 0에서 준비할 것
+- FloorplanAdapter 인터페이스 정의 (구현 아님)
+- ai_crawl_log 테이블 스키마 추가
+- floorplan_library 테이블 스키마 추가
+- L1/L2 캐시 래퍼 인터페이스 정의
+
+---
+
+*ECOREAN BOC Master Plan v4.0 — 도면 자산화 전략 통합*
+*2026-04-27 by udunext7-wq*
