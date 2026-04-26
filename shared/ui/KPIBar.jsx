@@ -1,6 +1,4 @@
-import { useStore } from '../store/index.js'
-import { calculateEstimate } from '../engine/recalc.js'
-import { useEffect, useRef } from 'react'
+import { useStore } from '../store/index.ts'
 
 const fmt = n => n >= 100000000 ? (n / 100000000).toFixed(1) + '억' : Math.round(n / 10000) + '만원'
 
@@ -31,8 +29,10 @@ function KPIItem({ label, value, highlight, pulse }) {
 }
 
 export default function KPIBar() {
-  const state = useStore()
-  const result = state.result
+  const result = useStore(s => s.result)
+  const projects = useStore(s => s.projects)
+  const approvalReqs = useStore(s => s.approvalReqs)
+  const pendingCount = approvalReqs.filter(r => r.approvalStatus === 'pending').length
 
   return (
     <div style={{
@@ -40,7 +40,6 @@ export default function KPIBar() {
       background: 'var(--deep)', borderBottom: '1px solid var(--border3)',
       padding: '8px 16px', gap: 0, height: 52, flexShrink: 0,
     }}>
-      {/* Logo */}
       <div style={{
         fontFamily: 'var(--font-head)', fontSize: '16px', fontWeight: 700,
         color: 'var(--gold)', marginRight: 20, whiteSpace: 'nowrap',
@@ -49,16 +48,16 @@ export default function KPIBar() {
         ECOREAN BOC
       </div>
 
-      <KPIItem label="공급가" value={result ? fmt(result.totalSup) : '—'} />
-      <KPIItem label="도급" value={result ? fmt(result.contract) : '—'} />
-      <KPIItem label="최종합계" value={result ? fmt(result.final) : '—'} highlight />
-      <KPIItem label="㎡단가" value={result && result.totals?.fa > 0 ? Math.round(result.final / result.totals.fa).toLocaleString() + '/㎡' : '—'} />
-      <KPIItem label="평단가" value={result && result.totals?.fa > 0 ? fmt(result.final / (result.totals.fa / 3.306)) + '/평' : '—'} />
+      <KPIItem label="공급가"   value={result ? fmt(result.totalSupply)    : '—'} />
+      <KPIItem label="도급"     value={result ? fmt(result.contractAmount) : '—'} />
+      <KPIItem label="최종합계" value={result ? fmt(result.finalAmount)    : '—'} highlight />
+      <KPIItem label="㎡단가"   value={result && result.totals.fa > 0 ? Math.round(result.finalAmount / result.totals.fa).toLocaleString() + '/㎡' : '—'} />
+      <KPIItem label="평단가"   value={result && result.totals.fa > 0 ? fmt(result.finalAmount / (result.totals.fa / 3.306)) + '/평' : '—'} />
 
       <div style={{ flex: 1 }} />
 
-      <KPIItem label="프로젝트" value={state.projects.length} />
-      <KPIItem label="승인대기" value={state.approvalReqs.filter(r => r.approvalStatus === 'pending').length} pulse />
+      <KPIItem label="프로젝트" value={projects.length} />
+      <KPIItem label="승인대기" value={pendingCount} pulse />
 
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
     </div>

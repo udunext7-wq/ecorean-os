@@ -1,0 +1,1 @@
+--dangerously-skip-permissions  클로드 승인스킵

@@ -1,0 +1,220 @@
+{
+  "타일": [
+    {
+      "grade": "domestic",
+      "name": "국산 타일 (300×300)",
+      "unit": "㎡",
+      "price": 18000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "import",
+      "name": "수입 타일 (300×600)",
+      "unit": "㎡",
+      "price": 35000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "luxury",
+      "name": "이탈리아 타일",
+      "unit": "㎡",
+      "price": 65000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    }
+  ],
+  "강마루": [
+    {
+      "grade": "standard",
+      "name": "합판 마루",
+      "unit": "㎡",
+      "price": 22000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "premium",
+      "name": "강마루 (12mm)",
+      "unit": "㎡",
+      "price": 38000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "luxury",
+      "name": "원목 마루",
+      "unit": "㎡",
+      "price": 85000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    }
+  ],
+  "LVT": [
+    {
+      "grade": "standard",
+      "name": "PVC 장판",
+      "unit": "㎡",
+      "price": 12000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "premium",
+      "name": "LVT 바닥재",
+      "unit": "㎡",
+      "price": 28000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    }
+  ],
+  "벽지": [
+    {
+      "grade": "paper",
+      "name": "합지 벽지",
+      "unit": "롤",
+      "price": 8000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "silk",
+      "name": "실크 벽지",
+      "unit": "롤",
+      "price": 18000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "wide",
+      "name": "광폭 실크",
+      "unit": "롤",
+      "price": 35000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    }
+  ],
+  "수성페인트": [
+    {
+      "grade": "standard",
+      "name": "일반 수성페인트 (18L)",
+      "unit": "통",
+      "price": 45000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "premium",
+      "name": "친환경 수성페인트",
+      "unit": "통",
+      "price": 85000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    }
+  ],
+  "욕실위생도기": [
+    {
+      "grade": "standard",
+      "name": "국산 위생도기 세트",
+      "unit": "세트",
+      "price": 250000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "premium",
+      "name": "중상급 위생도기 세트",
+      "unit": "세트",
+      "price": 550000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "luxury",
+      "name": "수입 위생도기 세트",
+      "unit": "세트",
+      "price": 1500000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    }
+  ],
+  "수전": [
+    {
+      "grade": "standard",
+      "name": "국산 수전 세트",
+      "unit": "세트",
+      "price": 80000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "premium",
+      "name": "중상급 수전 세트",
+      "unit": "세트",
+      "price": 200000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "luxury",
+      "name": "수입 수전 세트",
+      "unit": "세트",
+      "price": 500000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    }
+  ],
+  "창호": [
+    {
+      "grade": "double",
+      "name": "이중창 시스템창호 (㎡)",
+      "unit": "㎡",
+      "price": 180000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "triple",
+      "name": "삼중창 시스템창호 (㎡)",
+      "unit": "㎡",
+      "price": 280000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "loe",
+      "name": "로이 삼중창 (㎡)",
+      "unit": "㎡",
+      "price": 380000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    }
+  ],
+  "주방가구": [
+    {
+      "grade": "standard",
+      "name": "주방가구 (일반, LF)",
+      "unit": "연장m",
+      "price": 350000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "premium",
+      "name": "주방가구 (고급, 필름)",
+      "unit": "연장m",
+      "price": 650000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    },
+    {
+      "grade": "luxury",
+      "name": "주방가구 (럭셔리, 도장)",
+      "unit": "연장m",
+      "price": 1200000,
+      "priceSource": "baseline",
+      "updatedAt": "2026-04"
+    }
+  ]
+}

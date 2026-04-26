@@ -170,7 +170,7 @@ export interface EstimateState {
   region: number
   globalMul: number
   gradeMul: number
-  pipeMaterial: 'pb' | 'galvanized' | 'copper' | 'pex'
+  pipeMaterial: 'pb' | 'galvanized' | 'copper' | 'pex' | 'pvc'
   hasLeak: boolean
   hasAsbestos: boolean
   floorLevel2: 'good' | 'fair' | 'poor'
