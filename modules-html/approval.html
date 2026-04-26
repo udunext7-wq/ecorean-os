@@ -2,45 +2,452 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>승인함 — ECOREAN BOC</title>
-<script src="../shared/engine/boc-engine.js"></script>
-<script src="../shared/store/boc-state.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --void:#030305; --deep:#07070F; --surface:#0D0D1A; --raised:#141420;
-  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2; --red:#FF3355;
-  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080; --r:6px;
-  --font-head:"Cormorant Garamond",serif; --font-body:"Noto Sans KR",sans-serif; --font-mono:"JetBrains Mono",monospace;
+:root{
+  --void:#030305;--deep:#07070F;--surface:#0D0D1A;
+  --gold:#C9A84C;--gold-bright:#FFD700;--gold2:rgba(201,168,76,0.12);
+  --platinum:#E8E0D0;--dim:#555566;--green:#00FFB2;
+  --red:#FF3355;--blue:#00AAFF;--orange:#FF8C00;
+  --border:rgba(201,168,76,0.12);--text:#EDE5D5;--text2:#A09080;
+  --fb:'Noto Sans KR',sans-serif;--fm:'JetBrains Mono',monospace;
 }
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box }
-html,body { height:100vh; background:var(--void); color:var(--text); font-family:var(--font-body); font-size:13px }
-#app { padding:28px; height:100vh; overflow-y:auto }
-.pg-title { font-family:var(--font-head); font-size:22px; color:var(--gold); margin-bottom:6px; letter-spacing:0.04em }
-.pg-desc { font-size:12px; color:var(--dim); margin-bottom:24px; line-height:1.8 }
-.badge { display:inline-block; padding:3px 12px; background:var(--gold2); border:1px solid var(--border); border-radius:20px; font-size:12px; color:var(--gold); margin-bottom:16px }
-.coming { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:40px; text-align:center; color:var(--dim) }
-.coming strong { display:block; font-size:16px; color:var(--text2); margin-bottom:8px }
-::-webkit-scrollbar { width:4px } ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3); border-radius:2px }
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--fb);font-size:13px}
+button,input,select,textarea{font-family:var(--fb);font-size:13px}
+button{cursor:pointer}
+input[type=text],input[type=number]{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)!important}
+select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;outline:none}
+select option{background:var(--surface)}
+textarea{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:4px;outline:none;resize:vertical;width:100%}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
+
+#app{display:flex;flex-direction:column;height:100%}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border);min-height:44px}
+#tab-bar{display:flex;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border)}
+.tb{padding:10px 16px;font-size:12px;font-weight:500;color:var(--dim);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap}
+.tb:hover{color:var(--text)}
+.tb.act{color:var(--gold);border-bottom-color:var(--gold)}
+.tb-badge{display:inline-block;background:var(--red);color:#fff;border-radius:10px;font-size:9px;padding:1px 5px;margin-left:4px;font-weight:700;line-height:1.4}
+#main{flex:1;overflow:hidden}
+.tab-panel{display:none;height:100%;overflow-y:auto;padding:16px 20px}
+.tab-panel.act{display:block}
+
+/* Cards */
+.req-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:14px;margin-bottom:10px;transition:border-color 0.2s}
+.req-card.pending{border-left:3px solid var(--orange)}
+.req-card.approved{border-left:3px solid var(--green)}
+.req-card.rejected{border-left:3px solid var(--red);opacity:0.7}
+.req-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.req-type{font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;letter-spacing:0.04em}
+.rt-PRICE_ADJ{background:rgba(0,170,255,0.12);color:var(--blue)}
+.rt-ONTOLOGY_ADD{background:rgba(201,168,76,0.12);color:var(--gold)}
+.rt-PROCESS_ADD{background:rgba(0,255,178,0.1);color:var(--green)}
+.rt-BRAND_PRICE{background:rgba(255,140,0,0.12);color:var(--orange)}
+.rt-CUSTOM{background:rgba(85,85,102,0.2);color:var(--dim)}
+.req-meta{font-size:10px;color:var(--dim);margin-top:2px}
+.req-target{font-family:var(--fm);font-size:12px;color:var(--platinum);margin-bottom:5px;font-weight:600}
+.req-val{display:flex;align-items:center;gap:10px;font-size:12px;margin-bottom:6px}
+.val-before{color:var(--red);font-family:var(--fm)}
+.val-after{color:var(--green);font-family:var(--fm)}
+.req-reason{font-size:11px;color:var(--text2);font-style:italic}
+.req-acts{display:flex;gap:7px;margin-top:10px}
+
+/* Form */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.fg1{display:flex;flex-direction:column;gap:4px}
+.full{grid-column:1/-1}
+label.lbl{font-size:10px;color:var(--text2);font-weight:500}
+.w100{width:100%}
+
+/* Buttons */
+.btn{padding:6px 14px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid;cursor:pointer;transition:all 0.2s}
+.btn-p{border-color:var(--border);color:var(--text2);background:transparent}
+.btn-p:hover{border-color:var(--text2);color:var(--text)}
+.btn-g{border-color:var(--gold);color:var(--void);background:var(--gold)}
+.btn-g:hover{background:var(--gold-bright)}
+.btn-s{border-color:var(--green);color:var(--green);background:rgba(0,255,178,0.07)}
+.btn-s:hover{background:rgba(0,255,178,0.14)}
+.btn-r{border-color:var(--red);color:var(--red);background:rgba(255,51,85,0.07)}
+.btn-r:hover{background:rgba(255,51,85,0.14)}
+.btn-sm{padding:3px 9px;font-size:11px}
+
+/* Stats */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:11px;text-align:center}
+.stat-v{font-family:var(--fm);font-size:18px;font-weight:700;color:var(--platinum)}
+.stat-l{font-size:10px;color:var(--dim);margin-top:3px}
+
+/* Log table */
+.dt{width:100%;border-collapse:collapse}
+.dt th,.dt td{padding:6px 9px;border:1px solid var(--border);font-size:12px}
+.dt th{background:var(--deep);color:var(--text2);font-weight:500}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--deep);border:1px solid var(--gold);border-radius:6px;padding:9px 18px;font-size:12px;color:var(--text);display:none;z-index:999;white-space:nowrap}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="pg-title">승인함</div>
-  <div class="pg-desc">DB 단가보정 요청, 온톨로지 규칙 추가, Approval Log</div>
-  <div class="badge" id="status-badge">준비 중</div>
-  <div class="coming">
-    <strong>Phase 2에서 구현 예정</strong>
-    MASTER_PLAN 개발 순서에 따라 순차 구현됩니다.
-  </div>
+
+<div id="topbar">
+  <div style="font-weight:700;font-size:15px;color:var(--gold)">승인함</div>
+  <button class="btn btn-g btn-sm" onclick="AP.newRequest()">+ 변경 요청</button>
 </div>
+
+<div id="tab-bar">
+  <button class="tb act" data-tab="pending" onclick="AP.switchTab('pending')">
+    ⏳ 대기 중<span class="tb-badge" id="badge-pending">0</span>
+  </button>
+  <button class="tb" data-tab="log" onclick="AP.switchTab('log')">📋 승인 이력</button>
+  <button class="tb" data-tab="form" onclick="AP.switchTab('form')">✏️ 요청 작성</button>
+</div>
+
+<div id="main">
+
+  <!-- PENDING -->
+  <div id="tab-pending" class="tab-panel act">
+    <div class="stat-row" id="stats-row"></div>
+    <div id="pending-list"></div>
+    <div id="empty-pending" style="display:none;padding:40px;text-align:center;color:var(--dim)">
+      <div style="font-size:28px;margin-bottom:8px">✅</div>
+      <div style="font-size:13px">대기 중인 요청이 없습니다.</div>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div id="tab-log" class="tab-panel">
+    <div id="log-wrap">
+      <div style="color:var(--dim);padding:20px;font-size:12px;text-align:center">이력 없음</div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div id="tab-form" class="tab-panel">
+    <div style="max-width:600px">
+      <div style="font-size:14px;font-weight:700;color:var(--platinum);margin-bottom:14px">Master DB 변경 요청</div>
+      <div class="fg">
+        <div class="fg1 full">
+          <label class="lbl">요청 유형</label>
+          <select id="f-type" class="w100" onchange="AP.typeChange(this.value)">
+            <option value="PRICE_ADJ">DB 단가보정 — 노무비/자재비 수정</option>
+            <option value="ONTOLOGY_ADD">온톨로지 규칙 추가</option>
+            <option value="PROCESS_ADD">새 공정 추가</option>
+            <option value="BRAND_PRICE">브랜드 단가 수정</option>
+            <option value="CUSTOM">기타 변경</option>
+          </select>
+        </div>
+        <div class="fg1 full">
+          <label class="lbl">대상 ID / 항목명</label>
+          <input type="text" id="f-target" class="w100" placeholder="예: WTP_BT, 욕실방수공정, 삼성_타일">
+        </div>
+        <div class="fg1 full" id="type-hint" style="background:rgba(201,168,76,0.05);border:1px solid var(--border);border-radius:5px;padding:10px;font-size:11px;color:var(--text2)">
+          CalcEngine.DB에 등록된 공정 ID를 입력하세요. 예: WTP_BT, TILE_BT, DR_RPL
+        </div>
+        <div class="fg1">
+          <label class="lbl">변경 전 값</label>
+          <input type="text" id="f-before" class="w100" placeholder="현재 값 (숫자 또는 JSON)">
+        </div>
+        <div class="fg1">
+          <label class="lbl">변경 후 값</label>
+          <input type="text" id="f-after" class="w100" placeholder="요청 값 (숫자 또는 JSON)">
+        </div>
+        <div class="fg1 full">
+          <label class="lbl">변경 사유 (필수)</label>
+          <textarea id="f-reason" rows="3" placeholder="변경이 필요한 이유, 근거 자료, 현장 확인 내용 등"></textarea>
+        </div>
+        <div class="fg1 full">
+          <label class="lbl">요청자</label>
+          <input type="text" id="f-requester" class="w100" placeholder="이름 또는 역할">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-p" onclick="AP.clearForm()">초기화</button>
+        <button class="btn btn-g" onclick="AP.submit()">📤 요청 제출</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+<div id="toast"></div>
+
+<script src="../shared/engine/boc-engine.js"></script>
+<script src="../shared/store/boc-state.js"></script>
 <script>
-"use strict";
-document.addEventListener("DOMContentLoaded", function() {
-  AppState.load();
-  console.log("✅ approval module loaded");
-});
+'use strict'
+;(function(){
+
+var REQ_TYPE_LABEL={
+  PRICE_ADJ:'DB 단가보정',ONTOLOGY_ADD:'온톨로지 규칙',
+  PROCESS_ADD:'새 공정',BRAND_PRICE:'브랜드 단가',CUSTOM:'기타'
+}
+var TYPE_HINTS={
+  PRICE_ADJ:'CalcEngine.DB에 등록된 공정 ID를 입력하세요. 예: WTP_BT, TILE_BT\n변경 전/후에 노무비(lb) 또는 자재비(mt) 숫자를 원단위로 입력.',
+  ONTOLOGY_ADD:'온톨로지 규칙 ID (예: galv_linked, asbestos_linked)\n변경 후 값: JSON 형태로 규칙 내용 입력. { "trigger": "...", "linked": [...] }',
+  PROCESS_ADD:'추가할 공정의 고유 ID를 입력하세요. 예: NEW_PROC_01\n변경 후 값: { "name": "...", "cat": "...", "lb": 0, "mt": 0, "unit": "㎡" }',
+  BRAND_PRICE:'브랜드명_품목 형태로 입력. 예: Samsung_Tile_600\n변경 전/후 값: 원 단위 자재 단가.',
+  CUSTOM:'변경 대상과 내용을 자세히 기술해주세요.',
+}
+
+var S={pending:[],log:[],curTab:'pending'}
+
+function $id(id){return document.getElementById(id)}
+function $v(id){var el=$id(id);return el?el.value:''}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function now(){return new Date().toISOString()}
+function jp(s,fb){try{return typeof s==='string'?JSON.parse(s):(s||fb)}catch(e){return fb}}
+function toast(msg,ms){
+  var el=$id('toast');if(!el)return
+  el.textContent=msg;el.style.display='block'
+  setTimeout(function(){el.style.display='none'},ms||2400)
+}
+function fmtDt(iso){if(!iso)return '—';return iso.slice(0,16).replace('T',' ')}
+
+// ── Storage ──────────────────────────────────────────
+async function dbLoad(){
+  if(window.ecoreanAPI?.db?.query){
+    return await window.ecoreanAPI.db.query(
+      "SELECT * FROM approval_log ORDER BY approvedAt DESC, id DESC",[])
+  }
+  return jp(localStorage.getItem('ecorean_approvals'),[])
+}
+async function dbSave(rec){
+  if(window.ecoreanAPI?.db?.execute){
+    await window.ecoreanAPI.db.execute(
+      'INSERT OR REPLACE INTO approval_log(id,requestType,targetId,action,beforeValue,afterValue,reason,requestedBy,approvedBy,approvedAt) VALUES(?,?,?,?,?,?,?,?,?,?)',
+      [rec.id,rec.requestType,rec.targetId,rec.action,rec.beforeValue,rec.afterValue,
+       rec.reason,rec.requestedBy||'',rec.approvedBy||'',rec.approvedAt||''])
+  } else {
+    var list=jp(localStorage.getItem('ecorean_approvals'),[])
+    var idx=list.findIndex(function(x){return x.id===rec.id})
+    if(idx>=0)list[idx]=rec;else list.unshift(rec)
+    localStorage.setItem('ecorean_approvals',JSON.stringify(list))
+  }
+}
+
+// ── Load ─────────────────────────────────────────────
+async function load(){
+  var all=await dbLoad()
+  S.pending=all.filter(function(r){return r.action==='pending'})
+  S.log=all.filter(function(r){return r.action!=='pending'})
+  renderStats(all)
+  renderPending()
+  renderLog()
+  updateBadge(S.pending.length)
+}
+
+function updateBadge(n){
+  var el=$id('badge-pending')
+  if(el){el.textContent=n;el.style.display=n?'':'none'}
+}
+
+// ── Stats ─────────────────────────────────────────────
+function renderStats(all){
+  var el=$id('stats-row');if(!el)return
+  var pending=all.filter(function(r){return r.action==='pending'}).length
+  var approved=all.filter(function(r){return r.action==='approved'}).length
+  var rejected=all.filter(function(r){return r.action==='rejected'}).length
+  el.innerHTML=
+    '<div class="stat-card"><div class="stat-v" style="color:var(--orange)">'+pending+'</div><div class="stat-l">대기 중</div></div>'+
+    '<div class="stat-card"><div class="stat-v" style="color:var(--green)">'+approved+'</div><div class="stat-l">승인</div></div>'+
+    '<div class="stat-card"><div class="stat-v" style="color:var(--red)">'+rejected+'</div><div class="stat-l">거부</div></div>'+
+    '<div class="stat-card"><div class="stat-v">'+all.length+'</div><div class="stat-l">전체</div></div>'
+}
+
+// ── Pending ───────────────────────────────────────────
+function renderPending(){
+  var el=$id('pending-list'),ep=$id('empty-pending');if(!el)return
+  if(!S.pending.length){el.innerHTML='';if(ep)ep.style.display='block';return}
+  if(ep)ep.style.display='none'
+  el.innerHTML=''
+  S.pending.forEach(function(r){
+    var d=document.createElement('div'); d.className='req-card pending'; d.dataset.id=r.id
+    var typeClass='rt-'+(r.requestType||'CUSTOM')
+    var typeLbl=REQ_TYPE_LABEL[r.requestType]||r.requestType||'기타'
+    d.innerHTML=
+      '<div class="req-hd">'+
+        '<div><span class="req-type '+typeClass+'">'+typeLbl+'</span>'+
+          '<div class="req-meta">'+(r.requestedBy||'미상')+' · '+(r.id?r.id.slice(0,12):'')+'</div></div>'+
+        '<div class="req-meta" style="text-align:right">접수: '+(fmtDt(r.approvedAt)||'—')+'</div>'+
+      '</div>'+
+      '<div class="req-target">🎯 '+r.targetId+'</div>'+
+      (r.beforeValue||r.afterValue?
+        '<div class="req-val">'+
+          '<span class="val-before">Before: '+(r.beforeValue||'—')+'</span>'+
+          '<span style="color:var(--dim)">→</span>'+
+          '<span class="val-after">After: '+(r.afterValue||'—')+'</span>'+
+        '</div>':'') +
+      '<div class="req-reason">"'+(r.reason||'사유 없음')+'"</div>'+
+      '<div class="req-acts">'+
+        '<button class="btn btn-s" data-act="approve">✅ 승인 — Master DB 반영</button>'+
+        '<button class="btn btn-r btn-sm" data-act="reject">✕ 거부</button>'+
+      '</div>'
+    d.querySelector('[data-act=approve]').onclick=function(){approve(r.id)}
+    d.querySelector('[data-act=reject]').onclick=function(){reject(r.id)}
+    el.appendChild(d)
+  })
+}
+
+// ── Log ───────────────────────────────────────────────
+function renderLog(){
+  var el=$id('log-wrap');if(!el)return
+  if(!S.log.length){el.innerHTML='<div style="color:var(--dim);padding:20px;font-size:12px;text-align:center">이력 없음</div>';return}
+  var rows=S.log.map(function(r){
+    var isApp=r.action==='approved'
+    var typeClass='rt-'+(r.requestType||'CUSTOM')
+    return '<tr>'+
+      '<td style="font-size:10px;font-family:var(--fm)">'+fmtDt(r.approvedAt)+'</td>'+
+      '<td><span class="req-type '+typeClass+'">'+( REQ_TYPE_LABEL[r.requestType]||r.requestType||'기타')+'</span></td>'+
+      '<td style="font-family:var(--fm);font-size:11px">'+r.targetId+'</td>'+
+      '<td style="font-size:11px"><span style="color:var(--red)">'+(r.beforeValue||'—')+'</span>'+
+        ' → <span style="color:var(--green)">'+(r.afterValue||'—')+'</span></td>'+
+      '<td style="font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(r.reason||'—')+'</td>'+
+      '<td><span style="color:'+(isApp?'var(--green)':'var(--red)');font-weight:700">'+
+        (isApp?'✅ 승인':'✕ 거부')+'</span></td>'+
+      '<td style="font-size:11px;color:var(--dim)">'+(r.approvedBy||'—')+'</td>'+
+    '</tr>'
+  }).join('')
+  el.innerHTML=
+    '<table class="dt">'+
+      '<thead><tr>'+
+        '<th>일시</th><th>유형</th><th>대상</th><th>변경값</th>'+
+        '<th>사유</th><th>결과</th><th>처리자</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table>'
+}
+
+// ── Approve / Reject ──────────────────────────────────
+async function approve(id){
+  var r=S.pending.find(function(x){return x.id===id}); if(!r) return
+  if(!confirm('['+r.targetId+'] 변경을 승인합니다.\nMaster DB에 즉시 반영됩니다.')) return
+
+  // Apply change to Master DB
+  await applyChange(r)
+
+  r.action='approved'; r.approvedBy='대표'; r.approvedAt=now()
+  await dbSave(r)
+  S.pending=S.pending.filter(function(x){return x.id!==id})
+  S.log.unshift(r)
+
+  var all=S.pending.concat(S.log)
+  renderStats(all); renderPending(); renderLog(); updateBadge(S.pending.length)
+  toast('✅ 승인 완료 — Master DB에 반영되었습니다.')
+}
+
+async function applyChange(r){
+  // Attempt to apply change to relevant DB table
+  try{
+    if(r.requestType==='PRICE_ADJ'){
+      var val=parseFloat(r.afterValue)
+      if(!isNaN(val)&&r.targetId){
+        // afterValue could be "lb:25000" or "mt:8000" or just a number
+        var raw=r.afterValue||''
+        if(raw.includes('lb:')){
+          var lbv=parseFloat(raw.replace('lb:',''))
+          await window.ecoreanAPI?.db?.execute('UPDATE processes SET laborCost=?,updatedAt=? WHERE id=?',[lbv,now(),r.targetId])
+        } else if(raw.includes('mt:')){
+          var mtv=parseFloat(raw.replace('mt:',''))
+          await window.ecoreanAPI?.db?.execute('UPDATE processes SET materialCost=?,updatedAt=? WHERE id=?',[mtv,now(),r.targetId])
+        } else {
+          await window.ecoreanAPI?.db?.execute('UPDATE processes SET laborCost=?,updatedAt=? WHERE id=?',[val,now(),r.targetId])
+        }
+      }
+    } else if(r.requestType==='BRAND_PRICE'){
+      var bv=parseFloat(r.afterValue)
+      if(!isNaN(bv)){
+        await window.ecoreanAPI?.db?.execute('UPDATE brands SET price=?,updatedAt=? WHERE id=?',[bv,now(),r.targetId])
+      }
+    }
+    // ONTOLOGY_ADD, PROCESS_ADD: requires full row insert — complex; log only for now
+  }catch(e){console.warn('applyChange error:',e.message)}
+}
+
+async function reject(id){
+  var r=S.pending.find(function(x){return x.id===id});if(!r)return
+  var reason=prompt('거부 사유를 입력하세요:','')
+  if(reason===null)return
+  r.action='rejected'; r.approvedBy='대표'; r.approvedAt=now()
+  if(reason)r.reason=(r.reason?r.reason+' | 거부: ':'거부: ')+reason
+  await dbSave(r)
+  S.pending=S.pending.filter(function(x){return x.id!==id})
+  S.log.unshift(r)
+
+  var all=S.pending.concat(S.log)
+  renderStats(all); renderPending(); renderLog(); updateBadge(S.pending.length)
+  toast('거부 처리되었습니다.')
+}
+
+// ── Submit ────────────────────────────────────────────
+async function submit(){
+  var type=$v('f-type')||'CUSTOM'
+  var target=$v('f-target').trim()
+  var before=$v('f-before').trim()
+  var after=$v('f-after').trim()
+  var reason=$v('f-reason').trim()
+  var requester=$v('f-requester').trim()
+  if(!target){alert('대상 ID / 항목명을 입력하세요.');return}
+  if(!reason){alert('변경 사유를 입력하세요.');return}
+  var n=now()
+  var rec={id:'apl_'+uid(),requestType:type,targetId:target,
+    action:'pending',beforeValue:before,afterValue:after,
+    reason:reason,requestedBy:requester||'미상',approvedBy:'',approvedAt:n}
+  await dbSave(rec)
+  S.pending.unshift(rec)
+  var all=S.pending.concat(S.log)
+  renderStats(all); renderPending(); updateBadge(S.pending.length)
+  clearForm()
+  switchTab('pending')
+  toast('📤 변경 요청이 제출되었습니다.')
+}
+
+// ── Helpers ───────────────────────────────────────────
+function clearForm(){
+  ['f-type','f-target','f-before','f-after','f-reason','f-requester'].forEach(function(id){
+    var el=$id(id);if(el)el.value=''
+  })
+  typeChange('PRICE_ADJ')
+}
+
+function typeChange(type){
+  var hint=$id('type-hint')
+  if(hint)hint.textContent=TYPE_HINTS[type]||TYPE_HINTS.CUSTOM
+}
+
+function switchTab(tab){
+  S.curTab=tab
+  document.querySelectorAll('.tb').forEach(function(b){b.classList.toggle('act',b.dataset.tab===tab)})
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('act')})
+  var tp=$id('tab-'+tab);if(tp)tp.classList.add('act')
+}
+
+function newRequest(){switchTab('form')}
+
+window.AP={
+  load:load,
+  switchTab:switchTab,
+  newRequest:newRequest,
+  typeChange:typeChange,
+  clearForm:clearForm,
+  submit:submit,
+}
+
+async function init(){
+  if(typeof AppState!=='undefined') AppState.load()
+  if(window.ecoreanAPI?.onTabSwitch){
+    window.ecoreanAPI.onTabSwitch(function(tab){if(tab==='approval')load()})
+  }
+  await load()
+  console.log('✅ approval.html ready — BOC v2')
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init)
+else init()
+
+})()
 </script>
 </body>
 </html>
