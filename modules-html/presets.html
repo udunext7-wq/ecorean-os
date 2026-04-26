@@ -2,45 +2,524 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>프리셋 — ECOREAN BOC</title>
-<script src="../shared/engine/boc-engine.js"></script>
-<script src="../shared/store/boc-state.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --void:#030305; --deep:#07070F; --surface:#0D0D1A; --raised:#141420;
-  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2; --red:#FF3355;
-  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080; --r:6px;
-  --font-head:"Cormorant Garamond",serif; --font-body:"Noto Sans KR",sans-serif; --font-mono:"JetBrains Mono",monospace;
+:root{
+  --void:#030305;--deep:#07070F;--surface:#0D0D1A;
+  --gold:#C9A84C;--gold-bright:#FFD700;--gold2:rgba(201,168,76,0.12);
+  --platinum:#E8E0D0;--dim:#555566;--green:#00FFB2;
+  --red:#FF3355;--blue:#00AAFF;
+  --border:rgba(201,168,76,0.12);--text:#EDE5D5;--text2:#A09080;
+  --fb:'Noto Sans KR',sans-serif;--fm:'JetBrains Mono',monospace;
 }
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box }
-html,body { height:100vh; background:var(--void); color:var(--text); font-family:var(--font-body); font-size:13px }
-#app { padding:28px; height:100vh; overflow-y:auto }
-.pg-title { font-family:var(--font-head); font-size:22px; color:var(--gold); margin-bottom:6px; letter-spacing:0.04em }
-.pg-desc { font-size:12px; color:var(--dim); margin-bottom:24px; line-height:1.8 }
-.badge { display:inline-block; padding:3px 12px; background:var(--gold2); border:1px solid var(--border); border-radius:20px; font-size:12px; color:var(--gold); margin-bottom:16px }
-.coming { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:40px; text-align:center; color:var(--dim) }
-.coming strong { display:block; font-size:16px; color:var(--text2); margin-bottom:8px }
-::-webkit-scrollbar { width:4px } ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3); border-radius:2px }
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--fb);font-size:13px}
+button,input,select,textarea{font-family:var(--fb);font-size:13px}
+button{cursor:pointer}
+input[type=text],input[type=number]{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;outline:none}
+input:focus,select:focus{border-color:var(--gold)!important}
+select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;outline:none}
+select option{background:var(--surface)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
+
+#app{display:flex;flex-direction:column;height:100%}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border);min-height:44px}
+#main{flex:1;overflow:hidden;display:flex}
+
+#list-side{width:330px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+#list-search{padding:10px 14px;flex-shrink:0;border-bottom:1px solid var(--border)}
+#list-search input{width:100%}
+#preset-list{flex:1;overflow-y:auto;padding:10px 14px}
+
+.pst-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:13px;margin-bottom:9px;cursor:pointer;transition:all 0.2s;position:relative}
+.pst-card:hover{border-color:rgba(201,168,76,0.35);transform:translateY(-1px)}
+.pst-card.selected{border-color:var(--gold);background:rgba(201,168,76,0.04)}
+.pst-nm{font-weight:700;font-size:14px;color:var(--platinum);margin-bottom:4px}
+.pst-tag{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:600;margin-right:4px;margin-bottom:4px}
+.tag-concept{background:rgba(0,170,255,0.12);color:var(--blue)}
+.tag-grade{background:rgba(201,168,76,0.12);color:var(--gold)}
+.pst-meta{font-size:11px;color:var(--dim);margin-top:4px}
+.pst-acts{display:flex;gap:5px;margin-top:10px}
+
+#form-side{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+#form-empty{display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;color:var(--dim)}
+#form-body{display:none;flex-direction:column;gap:14px}
+
+.fsec{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:14px}
+.fsec-t{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg1{display:flex;flex-direction:column;gap:5px}
+.full{grid-column:1/-1}
+label.lbl{font-size:10px;color:var(--text2);font-weight:500}
+.w100{width:100%}
+
+.btn{padding:6px 14px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid;cursor:pointer;transition:all 0.2s}
+.btn-p{border-color:var(--border);color:var(--text2);background:transparent}
+.btn-p:hover{border-color:var(--text2);color:var(--text)}
+.btn-g{border-color:var(--gold);color:var(--void);background:var(--gold)}
+.btn-g:hover{background:var(--gold-bright)}
+.btn-s{border-color:var(--green);color:var(--green);background:rgba(0,255,178,0.07)}
+.btn-r{border-color:var(--red);color:var(--red);background:rgba(255,51,85,0.07)}
+.btn-r:hover{background:rgba(255,51,85,0.14)}
+.btn-b{border-color:var(--blue);color:var(--blue);background:rgba(0,170,255,0.07)}
+.btn-sm{padding:3px 9px;font-size:11px}
+
+.grade-row{display:flex;gap:6px;flex-wrap:wrap}
+.grade-pill{padding:5px 12px;border-radius:4px;border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:12px;transition:all 0.2s;background:transparent}
+.grade-pill.act{border-color:var(--gold);color:var(--gold-bright);background:rgba(201,168,76,0.12)}
+
+.cat-group{margin-bottom:7px}
+.cat-hd{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:var(--deep);border-radius:4px;margin-bottom:4px;cursor:pointer;user-select:none}
+.cat-hd-nm{font-size:11px;font-weight:600;color:var(--text2)}
+.cat-items{display:flex;flex-direction:column;gap:3px;margin-left:4px}
+.proc-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer;transition:background 0.15s}
+.proc-item:hover{background:rgba(201,168,76,0.04)}
+.proc-item.chk{border-color:rgba(201,168,76,0.4);background:rgba(201,168,76,0.06)}
+.proc-nm{font-size:12px;flex:1}
+.proc-meta{font-size:10px;color:var(--dim);font-family:var(--fm)}
+
+.mo-row{display:grid;grid-template-columns:1fr 1fr auto;gap:7px;margin-bottom:5px;align-items:center}
+.mo-inp{padding:4px 8px;border:1px solid var(--border);background:var(--deep);color:var(--text);border-radius:3px;font-size:12px;outline:none}
+.mo-inp:focus{border-color:var(--gold)}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--deep);border:1px solid var(--gold);border-radius:6px;padding:9px 18px;font-size:12px;color:var(--text);display:none;z-index:999;white-space:nowrap}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="pg-title">프리셋</div>
-  <div class="pg-desc">시공섹션 × 컨셉 조합 저장/불러오기</div>
-  <div class="badge" id="status-badge">준비 중</div>
-  <div class="coming">
-    <strong>Phase 2에서 구현 예정</strong>
-    MASTER_PLAN 개발 순서에 따라 순차 구현됩니다.
+
+<div id="topbar">
+  <div style="font-weight:700;font-size:15px;color:var(--gold)">프리셋 관리</div>
+  <div style="display:flex;gap:7px;">
+    <button class="btn btn-g btn-sm" onclick="PS.newPreset()">+ 새 프리셋</button>
+    <button class="btn btn-p btn-sm" onclick="PS.load()">↻ 새로고침</button>
   </div>
 </div>
+
+<div id="main">
+  <div id="list-side">
+    <div id="list-search">
+      <input type="text" id="srch" placeholder="🔍 프리셋 검색..." oninput="PS.search(this.value)">
+    </div>
+    <div id="preset-list">
+      <div id="empty-msg" style="display:none;padding:40px 20px;text-align:center;color:var(--dim)">
+        <div style="font-size:28px;margin-bottom:8px">📋</div>
+        <div style="font-size:12px">저장된 프리셋이 없습니다.</div>
+        <div style="font-size:11px;margin-top:4px">+ 새 프리셋을 만드세요.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="form-side">
+    <div id="form-empty">
+      <div style="font-size:40px">🎨</div>
+      <div style="font-size:14px;color:var(--text2)">프리셋을 선택하거나 새로 만드세요</div>
+      <div style="font-size:11px;color:var(--dim)">시공 공정 조합을 저장해 견적 마법사에 빠르게 적용합니다</div>
+      <button class="btn btn-g" onclick="PS.newPreset()" style="margin-top:8px">+ 첫 프리셋 만들기</button>
+    </div>
+    <div id="form-body"></div>
+  </div>
+</div>
+
+</div>
+<div id="toast"></div>
+
+<script src="../shared/engine/boc-engine.js"></script>
+<script src="../shared/store/boc-state.js"></script>
 <script>
-"use strict";
-document.addEventListener("DOMContentLoaded", function() {
-  AppState.load();
-  console.log("✅ presets module loaded");
-});
+'use strict'
+;(function(){
+
+var CONCEPTS=[
+  {id:'minimal',name:'미니멀',mul:1.0,desc:'깔끔하고 단순한 스타일'},
+  {id:'nordic',name:'노르딕',mul:1.15,desc:'북유럽 감성'},
+  {id:'modern',name:'모던',mul:1.1,desc:'세련된 현대적 감각'},
+  {id:'classic',name:'클래식',mul:1.2,desc:'고전적 우아함'},
+  {id:'industrial',name:'인더스트리얼',mul:1.05,desc:'원소재 노출 스타일'},
+  {id:'luxury',name:'럭셔리',mul:1.5,desc:'최고급 자재 마감'},
+  {id:'custom',name:'커스텀',mul:1.0,desc:'직접 배율 설정'},
+]
+var GRADES=[
+  {id:'budget',name:'절약형',mul:0.85},
+  {id:'standard',name:'일반',mul:1.0},
+  {id:'premium',name:'고급',mul:1.3},
+  {id:'luxury2',name:'최고급',mul:1.6},
+]
+
+var S={presets:[],cur:null,filtered:[],editMOs:[]}
+var _editId=null
+// cat name → index map, rebuilt on each renderForm
+var _catIdxMap={}
+
+function $id(id){return document.getElementById(id)}
+function $v(id){var el=$id(id);return el?el.value:''}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function now(){return new Date().toISOString()}
+function jp(s,fb){try{return typeof s==='string'?JSON.parse(s):(s||fb)}catch(e){return fb}}
+function toast(msg,ms){
+  var el=$id('toast');if(!el)return
+  el.textContent=msg;el.style.display='block'
+  setTimeout(function(){el.style.display='none'},ms||2200)
+}
+
+function getProcs(){
+  if(typeof CalcEngine==='undefined'||!CalcEngine.DB) return []
+  return Object.entries(CalcEngine.DB).map(function(kv){
+    var id=kv[0],item=kv[1]
+    return{id:id,name:item.name||id,cat:item.cat||'기타',lb:item.lb||0,mt:item.mt||0}
+  })
+}
+function groupByCat(procs){
+  var g={}
+  procs.forEach(function(p){if(!g[p.cat])g[p.cat]=[]; g[p.cat].push(p)})
+  return g
+}
+
+// ── Storage ──────────────────────────────────────────
+async function dbLoad(){
+  if(window.ecoreanAPI?.db?.query){
+    var rows=await window.ecoreanAPI.db.query("SELECT * FROM presets WHERE status!='disabled' ORDER BY updatedAt DESC",[])
+    return rows.map(parseRow)
+  }
+  return jp(localStorage.getItem('ecorean_presets'),[])
+}
+function parseRow(r){
+  return{id:r.id,name:r.name,conceptId:r.conceptId||'minimal',grade:r.grade||'standard',
+    gradeMul:+r.gradeMul||1.0,selectedProcessIds:jp(r.selectedProcessIds,[]),
+    materialOverrides:jp(r.materialOverrides,{}),memo:r.memo||'',
+    status:r.status||'active',createdAt:r.createdAt,updatedAt:r.updatedAt}
+}
+async function dbSave(p){
+  if(window.ecoreanAPI?.db?.execute){
+    await window.ecoreanAPI.db.execute(
+      'INSERT OR REPLACE INTO presets(id,name,sections,conceptId,grade,gradeMul,selectedProcessIds,materialOverrides,customizations,status,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+      [p.id,p.name,'[]',p.conceptId,p.grade,p.gradeMul,
+       JSON.stringify(p.selectedProcessIds||[]),JSON.stringify(p.materialOverrides||{}),
+       '{}',p.status||'active',p.createdAt,p.updatedAt])
+  } else {
+    var list=jp(localStorage.getItem('ecorean_presets'),[])
+    var idx=list.findIndex(function(x){return x.id===p.id})
+    if(idx>=0)list[idx]=p;else list.unshift(p)
+    localStorage.setItem('ecorean_presets',JSON.stringify(list))
+  }
+}
+async function dbDelete(id){
+  if(window.ecoreanAPI?.db?.execute){
+    await window.ecoreanAPI.db.execute("UPDATE presets SET status='disabled',updatedAt=? WHERE id=?",[now(),id])
+  } else {
+    var list=jp(localStorage.getItem('ecorean_presets'),[]).filter(function(x){return x.id!==id})
+    localStorage.setItem('ecorean_presets',JSON.stringify(list))
+  }
+}
+
+// ── Load + Render List ────────────────────────────────
+async function load(){
+  S.presets=await dbLoad()
+  S.filtered=S.presets.slice()
+  renderList(S.filtered)
+}
+
+function search(q){
+  var ql=(q||'').toLowerCase()
+  S.filtered=ql?S.presets.filter(function(p){
+    return(p.name||'').toLowerCase().includes(ql)||(p.memo||'').toLowerCase().includes(ql)
+  }):S.presets.slice()
+  renderList(S.filtered)
+}
+
+function renderList(list){
+  var container=$id('preset-list'),empty=$id('empty-msg')
+  if(!container)return
+  container.querySelectorAll('.pst-card').forEach(function(el){el.remove()})
+  if(!list.length){if(empty)empty.style.display='block';return}
+  if(empty)empty.style.display='none'
+  list.forEach(function(p){
+    var concept=CONCEPTS.find(function(c){return c.id===p.conceptId})||CONCEPTS[0]
+    var grade=GRADES.find(function(g){return g.id===p.grade})||GRADES[1]
+    var n=(p.selectedProcessIds||[]).length
+    var d=document.createElement('div'); d.className='pst-card'+(S.cur&&S.cur.id===p.id?' selected':''); d.dataset.id=p.id
+    d.innerHTML=
+      '<div class="pst-nm">'+p.name+'</div>'+
+      '<div><span class="pst-tag tag-concept">'+concept.name+'</span>'+
+        '<span class="pst-tag tag-grade">'+grade.name+' ×'+p.gradeMul.toFixed(2)+'</span></div>'+
+      '<div class="pst-meta">공정 '+n+'개'+(p.memo?' · '+p.memo.slice(0,28)+(p.memo.length>28?'…':''):'')+'</div>'+
+      '<div class="pst-acts">'+
+        '<button class="btn btn-g btn-sm" data-act="apply">✅ 견적 적용</button>'+
+        '<button class="btn btn-b btn-sm" data-act="edit">수정</button>'+
+        '<button class="btn btn-r btn-sm" data-act="del">삭제</button>'+
+      '</div>'
+    d.querySelector('[data-act=apply]').onclick=function(e){e.stopPropagation();applyPreset(p.id)}
+    d.querySelector('[data-act=edit]').onclick=function(e){e.stopPropagation();editPreset(p)}
+    d.querySelector('[data-act=del]').onclick=function(e){e.stopPropagation();deletePreset(p.id)}
+    d.onclick=function(){editPreset(p)}
+    container.appendChild(d)
+  })
+}
+
+// ── Apply ─────────────────────────────────────────────
+async function applyPreset(id){
+  var p=S.presets.find(function(x){return x.id===id});if(!p)return
+  var patch={currentPreset:{presetId:p.id,presetName:p.name,conceptId:p.conceptId,
+    grade:p.grade,gradeMul:p.gradeMul,selectedProcessIds:p.selectedProcessIds||[],
+    materialOverrides:p.materialOverrides||{}}}
+  if(window.ecoreanAPI?.setState) await window.ecoreanAPI.setState(patch)
+  else if(typeof AppState!=='undefined') AppState.set(patch)
+  if(window.ecoreanAPI?.switchTab) window.ecoreanAPI.switchTab('estimate')
+  toast('✅ "'+p.name+'" 프리셋을 견적에 적용했습니다.')
+}
+
+// ── Delete ────────────────────────────────────────────
+async function deletePreset(id){
+  if(!confirm('이 프리셋을 삭제할까요?'))return
+  await dbDelete(id)
+  S.presets=S.presets.filter(function(p){return p.id!==id})
+  S.filtered=S.filtered.filter(function(p){return p.id!==id})
+  if(S.cur&&S.cur.id===id){S.cur=null;showEmpty()}
+  renderList(S.filtered); toast('삭제되었습니다.')
+}
+
+// ── Form visibility ───────────────────────────────────
+function showEmpty(){$id('form-empty').style.display='flex';$id('form-body').style.display='none'}
+function showForm(){$id('form-empty').style.display='none';$id('form-body').style.display='flex'}
+
+function newPreset(){
+  S.cur={id:'',name:'',conceptId:'minimal',grade:'standard',gradeMul:1.0,selectedProcessIds:[],materialOverrides:{},memo:'',status:'active'}
+  S.editMOs=[]; _editId=null
+  renderForm(S.cur); showForm()
+  document.querySelectorAll('.pst-card').forEach(function(c){c.classList.remove('selected')})
+}
+
+function editPreset(p){
+  S.cur=Object.assign({},p,{selectedProcessIds:(p.selectedProcessIds||[]).slice()})
+  S.editMOs=Object.entries(p.materialOverrides||{}).map(function(kv){return{id:kv[0],val:kv[1]}})
+  _editId=p.id; renderForm(S.cur); showForm()
+  document.querySelectorAll('.pst-card').forEach(function(c){c.classList.toggle('selected',c.dataset.id===p.id)})
+}
+
+// ── Render Form ───────────────────────────────────────
+function renderForm(p){
+  var fb=$id('form-body');if(!fb)return
+  var procs=getProcs()
+  var grouped=groupByCat(procs)
+  var selSet={}; (p.selectedProcessIds||[]).forEach(function(id){selSet[id]=true})
+
+  // Build stable index-based IDs for categories (avoids Korean → safeId collision)
+  _catIdxMap={}
+  var catKeys=Object.keys(grouped).sort()
+  catKeys.forEach(function(cat,i){_catIdxMap[cat]='c'+i})
+
+  var conceptOpts=CONCEPTS.map(function(c){
+    return '<option value="'+c.id+'"'+(p.conceptId===c.id?' selected':'')+'>'+c.name+' — '+c.desc+'</option>'
+  }).join('')
+
+  var gradePills=GRADES.map(function(g){
+    return '<button type="button" class="grade-pill'+(p.grade===g.id?' act':'')+
+      '" onclick="PS._selGrade(\''+g.id+'\')">'+g.name+'</button>'
+  }).join('')
+
+  var catHTML=catKeys.map(function(cat){
+    var cid=_catIdxMap[cat]
+    var items=grouped[cat]
+    var cc=items.filter(function(item){return selSet[item.id]}).length
+    var itemsHTML=items.map(function(item){
+      var chk=selSet[item.id]
+      return '<div class="proc-item'+(chk?' chk':'')+'" id="pi-'+item.id+'" onclick="PS._toggleProc(\''+item.id+'\')">'+
+        '<input type="checkbox" id="pchk-'+item.id+'"'+(chk?' checked':'')+' style="accent-color:var(--gold);pointer-events:none">'+
+        '<span class="proc-nm">'+item.name+'</span>'+
+        '<span class="proc-meta">노무 '+Math.round(item.lb/1000)+'K / 자재 '+Math.round(item.mt/1000)+'K</span>'+
+      '</div>'
+    }).join('')
+    return '<div class="cat-group">'+
+      '<div class="cat-hd" onclick="PS._toggleCat(\''+cid+'\')">'+
+        '<span class="cat-hd-nm">'+cat+' ('+items.length+'개)</span>'+
+        '<span id="cnt-'+cid+'" style="font-size:11px;color:var(--gold)">'+cc+'개 선택 ▾</span>'+
+      '</div>'+
+      '<div class="cat-items" id="cati-'+cid+'">'+itemsHTML+'</div>'+
+    '</div>'
+  }).join('')
+
+  var moHTML=buildMOHTML(procs.filter(function(pr){return selSet[pr.id]}))
+
+  fb.innerHTML=
+    '<div class="fsec">'+
+      '<div class="fsec-t"><span>기본 정보</span></div>'+
+      '<div class="fg">'+
+        '<div class="fg1 full"><label class="lbl">프리셋 이름</label>'+
+          '<input type="text" id="f-name" class="w100" placeholder="예: 욕실+거실 노르딕 인테리어" value="'+p.name+'"></div>'+
+        '<div class="fg1 full"><label class="lbl">컨셉</label>'+
+          '<select id="f-concept" class="w100" onchange="PS._selConcept(this.value)">'+conceptOpts+'</select></div>'+
+        '<div class="fg1 full"><label class="lbl">등급</label>'+
+          '<div class="grade-row">'+gradePills+'</div></div>'+
+        '<div class="fg1"><label class="lbl">등급 배율</label>'+
+          '<input type="number" id="f-mul" class="w100" min="0.5" max="3" step="0.05" value="'+p.gradeMul.toFixed(2)+'"></div>'+
+        '<div class="fg1"><label class="lbl">메모</label>'+
+          '<input type="text" id="f-memo" class="w100" placeholder="프리셋 설명" value="'+p.memo+'"></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="fsec">'+
+      '<div class="fsec-t">'+
+        '<span>공정 선택 <span id="sel-cnt" style="color:var(--gold)">'+(p.selectedProcessIds||[]).length+'개</span></span>'+
+        '<div style="display:flex;gap:5px;">'+
+          '<button class="btn btn-p btn-sm" onclick="PS._selAll(true)">전체 선택</button>'+
+          '<button class="btn btn-p btn-sm" onclick="PS._selAll(false)">전체 해제</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="max-height:280px;overflow-y:auto;padding:2px 0;">'+
+        (catHTML||'<div style="color:var(--dim);padding:12px;font-size:12px">공정 없음 — boc-engine.js 확인</div>')+
+      '</div>'+
+    '</div>'+
+    '<div class="fsec">'+
+      '<div class="fsec-t">'+
+        '<span>자재비 커스터마이징</span>'+
+        '<button class="btn btn-p btn-sm" onclick="PS._addMO()">+ 항목</button>'+
+      '</div>'+
+      '<div id="mo-list">'+moHTML+'</div>'+
+      '<div style="font-size:10px;color:var(--dim);margin-top:5px">기본값을 덮어쓸 공정만 추가. 비워두면 기본 자재비 사용.</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">'+
+      '<button class="btn btn-p" onclick="PS._cancel()">취소</button>'+
+      '<button class="btn btn-g" onclick="PS.save()">💾 저장</button>'+
+    '</div>'
+}
+
+function buildMOHTML(availProcs){
+  return S.editMOs.map(function(mo,i){
+    var opts=availProcs.map(function(pr){
+      return '<option value="'+pr.id+'"'+(mo.id===pr.id?' selected':'')+'>'+pr.name+'</option>'
+    }).join('')
+    return '<div class="mo-row">'+
+      '<select class="mo-inp" onchange="PS._updMO('+i+',\'id\',this.value)"><option value="">— 공정 선택 —</option>'+opts+'</select>'+
+      '<input type="number" class="mo-inp" placeholder="자재비 (원/㎡)" value="'+(mo.val||'')+'" onchange="PS._updMO('+i+',\'val\',+this.value)">'+
+      '<button class="btn btn-r btn-sm" onclick="PS._remMO('+i+')">✕</button>'+
+    '</div>'
+  }).join('')
+}
+
+// ── Form event handlers ───────────────────────────────
+function _toggleProc(id){
+  if(!S.cur)return
+  var sel=S.cur.selectedProcessIds||(S.cur.selectedProcessIds=[])
+  var idx=sel.indexOf(id)
+  var adding=idx<0
+  if(adding)sel.push(id);else sel.splice(idx,1)
+  var el=$id('pi-'+id),chk=$id('pchk-'+id)
+  if(el)el.classList.toggle('chk',adding)
+  if(chk)chk.checked=adding
+  var cnt=$id('sel-cnt');if(cnt)cnt.textContent=sel.length+'개'
+  // Update cat count span using stored index map
+  var procs=getProcs(); var grouped=groupByCat(procs)
+  var cat=procs.find(function(p){return p.id===id})||{}
+  var cid=_catIdxMap[cat.cat]
+  if(cid){
+    var span=$id('cnt-'+cid); if(span){
+      var catItems=grouped[cat.cat]||[]
+      var selSet={};sel.forEach(function(i){selSet[i]=true})
+      span.textContent=catItems.filter(function(item){return selSet[item.id]}).length+'개 선택 ▾'
+    }
+  }
+}
+
+function _toggleCat(cid){
+  var el=$id('cati-'+cid);if(!el)return
+  el.style.display=el.style.display==='none'?'':'none'
+}
+
+function _selAll(on){
+  if(!S.cur)return
+  var procs=getProcs()
+  S.cur.selectedProcessIds=on?procs.map(function(p){return p.id}):[]
+  renderForm(S.cur)
+}
+
+function _selGrade(id){
+  if(!S.cur)return
+  S.cur.grade=id
+  var g=GRADES.find(function(x){return x.id===id})
+  if(g){S.cur.gradeMul=g.mul;var el=$id('f-mul');if(el)el.value=g.mul.toFixed(2)}
+  document.querySelectorAll('.grade-pill').forEach(function(btn){
+    btn.classList.toggle('act',btn.textContent.trim()===(g?g.name:''))
+  })
+}
+
+function _selConcept(id){
+  if(!S.cur)return
+  S.cur.conceptId=id
+  var c=CONCEPTS.find(function(x){return x.id===id})
+  if(c&&c.id!=='custom'){var el=$id('f-mul');if(el){el.value=c.mul.toFixed(2);S.cur.gradeMul=c.mul}}
+}
+
+function _addMO(){
+  S.editMOs.push({id:'',val:0})
+  var procs=getProcs().filter(function(p){return(S.cur?.selectedProcessIds||[]).includes(p.id)})
+  var mo=$id('mo-list');if(!mo)return
+  mo.innerHTML=buildMOHTML(procs)
+}
+
+function _updMO(i,field,val){if(S.editMOs[i])S.editMOs[i][field]=val}
+
+function _remMO(i){
+  S.editMOs.splice(i,1)
+  var procs=getProcs().filter(function(p){return(S.cur?.selectedProcessIds||[]).includes(p.id)})
+  var mo=$id('mo-list');if(mo)mo.innerHTML=buildMOHTML(procs)
+}
+
+function _cancel(){
+  S.cur=null;showEmpty()
+  document.querySelectorAll('.pst-card').forEach(function(c){c.classList.remove('selected')})
+}
+
+// ── Save ──────────────────────────────────────────────
+async function save(){
+  if(!S.cur)return
+  var name=$v('f-name').trim()
+  if(!name){alert('프리셋 이름을 입력하세요.');return}
+  var sel=S.cur.selectedProcessIds||[]
+  if(!sel.length){alert('공정을 1개 이상 선택하세요.');return}
+  var mul=parseFloat($v('f-mul'))||S.cur.gradeMul||1.0
+  var overrides={}
+  S.editMOs.forEach(function(mo){if(mo.id&&mo.val>0)overrides[mo.id]=mo.val})
+  var n=now(),isNew=!_editId
+  var preset={
+    id:_editId||('ps_'+uid()),name:name,
+    conceptId:$v('f-concept')||S.cur.conceptId||'minimal',
+    grade:S.cur.grade||'standard',gradeMul:mul,
+    selectedProcessIds:sel,materialOverrides:overrides,
+    memo:$v('f-memo')||'',status:'active',
+    createdAt:isNew?n:(S.cur.createdAt||n),updatedAt:n,
+  }
+  await dbSave(preset)
+  if(isNew){S.presets.unshift(preset);S.filtered.unshift(preset)}
+  else{
+    var fix=function(arr){var i=arr.findIndex(function(x){return x.id===preset.id});if(i>=0)arr[i]=preset}
+    fix(S.presets);fix(S.filtered)
+  }
+  S.cur=preset;_editId=preset.id
+  renderList(S.filtered)
+  toast(isNew?'✅ 프리셋 저장됨':'✅ 프리셋 업데이트됨')
+}
+
+window.PS={
+  load:load,search:search,newPreset:newPreset,save:save,
+  _toggleProc:_toggleProc,_toggleCat:_toggleCat,_selAll:_selAll,
+  _selGrade:_selGrade,_selConcept:_selConcept,
+  _addMO:_addMO,_updMO:_updMO,_remMO:_remMO,_cancel:_cancel,
+}
+
+async function init(){
+  if(typeof AppState!=='undefined') AppState.load()
+  if(window.ecoreanAPI?.onTabSwitch){
+    window.ecoreanAPI.onTabSwitch(function(tab){if(tab==='presets')load()})
+  }
+  await load()
+  console.log('✅ presets.html ready — BOC v2')
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init)
+else init()
+
+})()
 </script>
 </body>
 </html>
