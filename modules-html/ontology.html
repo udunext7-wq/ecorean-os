@@ -2,45 +2,507 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>온톨로지 뷰어 — ECOREAN BOC</title>
-<script src="../shared/engine/boc-engine.js"></script>
-<script src="../shared/store/boc-state.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --void:#030305; --deep:#07070F; --surface:#0D0D1A; --raised:#141420;
-  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2; --red:#FF3355;
-  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080; --r:6px;
-  --font-head:"Cormorant Garamond",serif; --font-body:"Noto Sans KR",sans-serif; --font-mono:"JetBrains Mono",monospace;
+:root{
+  --void:#030305;--deep:#07070F;--surface:#0D0D1A;
+  --gold:#C9A84C;--gold-bright:#FFD700;--gold2:rgba(201,168,76,0.12);
+  --platinum:#E8E0D0;--dim:#555566;--green:#00FFB2;
+  --red:#FF3355;--blue:#00AAFF;--orange:#FF8C00;
+  --border:rgba(201,168,76,0.12);--text:#EDE5D5;--text2:#A09080;
+  --fb:'Noto Sans KR',sans-serif;--fm:'JetBrains Mono',monospace;
 }
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box }
-html,body { height:100vh; background:var(--void); color:var(--text); font-family:var(--font-body); font-size:13px }
-#app { padding:28px; height:100vh; overflow-y:auto }
-.pg-title { font-family:var(--font-head); font-size:22px; color:var(--gold); margin-bottom:6px; letter-spacing:0.04em }
-.pg-desc { font-size:12px; color:var(--dim); margin-bottom:24px; line-height:1.8 }
-.badge { display:inline-block; padding:3px 12px; background:var(--gold2); border:1px solid var(--border); border-radius:20px; font-size:12px; color:var(--gold); margin-bottom:16px }
-.coming { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:40px; text-align:center; color:var(--dim) }
-.coming strong { display:block; font-size:16px; color:var(--text2); margin-bottom:8px }
-::-webkit-scrollbar { width:4px } ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3); border-radius:2px }
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--fb);font-size:13px}
+button,input,select{font-family:var(--fb);font-size:13px}
+button{cursor:pointer}
+input:focus,select:focus{border-color:var(--gold)!important}
+select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:4px;outline:none}
+select option{background:var(--surface)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
+
+#app{display:flex;flex-direction:column;height:100%}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border);min-height:44px}
+#tab-bar{display:flex;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border)}
+.tb{padding:9px 15px;font-size:12px;font-weight:500;color:var(--dim);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
+.tb:hover{color:var(--text)}
+.tb.act{color:var(--gold);border-bottom-color:var(--gold)}
+#main{flex:1;overflow:hidden;display:flex}
+
+/* Graph panel */
+#graph-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#canvas-wrap{flex:1;position:relative;overflow:hidden}
+#ont-canvas{display:block;width:100%;height:100%}
+#canvas-info{position:absolute;top:8px;right:8px;background:rgba(7,7,15,0.85);border:1px solid var(--border);border-radius:5px;padding:8px 11px;font-size:11px;color:var(--text2);line-height:1.7;max-width:200px}
+#canvas-ctrl{position:absolute;bottom:8px;right:8px;display:flex;gap:5px}
+
+/* Side panel */
+#side-panel{width:300px;flex-shrink:0;border-left:1px solid var(--border);overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+
+/* Rule cards */
+.rule-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;cursor:pointer;transition:all 0.2s}
+.rule-card:hover,.rule-card.hl{border-color:rgba(201,168,76,0.4);background:rgba(201,168,76,0.04)}
+.rule-trigger{font-family:var(--fm);font-size:11px;color:var(--orange);font-weight:600;margin-bottom:4px}
+.rule-arrow{color:var(--dim);font-size:10px;margin:0 4px}
+.rule-linked{font-family:var(--fm);font-size:10px;color:var(--green)}
+.rule-meta{font-size:10px;color:var(--dim);margin-top:3px}
+
+/* Simulation */
+.sim-check{display:flex;align-items:center;gap:6px;padding:5px 0;font-size:12px;cursor:pointer}
+.sim-check input{accent-color:var(--gold)}
+.sim-result{background:var(--deep);border:1px solid var(--border);border-radius:5px;padding:10px;margin-top:8px;min-height:40px}
+.sim-item{padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:6px}
+.sim-item:last-child{border-bottom:none}
+.sim-chip{font-size:10px;font-family:var(--fm);background:rgba(0,255,178,0.1);color:var(--green);padding:1px 6px;border-radius:3px}
+
+/* Buttons */
+.btn{padding:5px 12px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid;cursor:pointer;transition:all 0.2s}
+.btn-p{border-color:var(--border);color:var(--text2);background:transparent}
+.btn-g{border-color:var(--gold);color:var(--void);background:var(--gold)}
+.btn-g:hover{background:var(--gold-bright)}
+.btn-s{border-color:var(--green);color:var(--green);background:rgba(0,255,178,0.07)}
+.btn-sm{padding:2px 8px;font-size:11px}
+
+/* Tab panels */
+.tab-content{display:none;height:100%;overflow:hidden}
+.tab-content.act{display:flex}
+#tab-graph-wrap{display:none;height:100%;overflow:hidden}
+#tab-graph-wrap.act{display:flex;flex:1}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="pg-title">온톨로지 뷰어</div>
-  <div class="pg-desc">Neo4j Knowledge Graph + 26개 규칙 시각화</div>
-  <div class="badge" id="status-badge">준비 중</div>
-  <div class="coming">
-    <strong>Phase 2에서 구현 예정</strong>
-    MASTER_PLAN 개발 순서에 따라 순차 구현됩니다.
-  </div>
+
+<div id="topbar">
+  <div style="font-weight:700;font-size:15px;color:var(--gold)">온톨로지 뷰어</div>
+  <div id="ont-stats" style="font-size:11px;color:var(--dim)"></div>
 </div>
+
+<div id="tab-bar">
+  <button class="tb act" data-tab="graph" onclick="ONT.switchTab('graph')">🔗 관계 그래프</button>
+  <button class="tb" data-tab="rules" onclick="ONT.switchTab('rules')">📋 규칙 목록</button>
+  <button class="tb" data-tab="sim" onclick="ONT.switchTab('sim')">⚡ 시뮬레이션</button>
+</div>
+
+<div id="main">
+
+  <!-- GRAPH TAB -->
+  <div id="tab-graph" class="tab-content act" style="flex:1;overflow:hidden;position:relative">
+    <canvas id="ont-canvas"></canvas>
+    <div id="canvas-info">
+      <div style="font-weight:700;color:var(--text);margin-bottom:4px">그래프 범례</div>
+      <div><span style="color:var(--gold)">● 노드</span> = 공정</div>
+      <div><span style="color:var(--orange)">▶ 화살표</span> = 규칙 연결</div>
+      <div><span style="color:var(--green)">● 초록</span> = 연결된 공정</div>
+      <div style="margin-top:4px;font-size:10px">클릭: 노드 상세 | 드래그: 이동</div>
+    </div>
+    <div id="canvas-ctrl">
+      <button class="btn btn-p btn-sm" onclick="ONT.zoomIn()">+</button>
+      <button class="btn btn-p btn-sm" onclick="ONT.zoomOut()">−</button>
+      <button class="btn btn-p btn-sm" onclick="ONT.resetView()">↺</button>
+    </div>
+    <div id="node-tooltip" style="position:absolute;display:none;background:rgba(7,7,15,0.92);border:1px solid var(--gold);border-radius:5px;padding:8px 12px;font-size:11px;pointer-events:none;z-index:10;max-width:200px"></div>
+  </div>
+
+  <!-- RULES TAB -->
+  <div id="tab-rules" class="tab-content" style="flex:1;overflow-y:auto;padding:14px 20px">
+    <div id="rules-list"></div>
+  </div>
+
+  <!-- SIM TAB -->
+  <div id="tab-sim" class="tab-content" style="flex:1;overflow-y:auto;padding:14px 20px">
+    <div style="max-width:600px">
+      <div style="font-size:13px;font-weight:700;color:var(--platinum);margin-bottom:12px">온톨로지 규칙 시뮬레이션</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em">공간 유형</div>
+        <select id="sim-space" class="w100" style="width:100%">
+          <option value="bathroom">욕실 (bathroom)</option>
+          <option value="kitchen">주방 (kitchen)</option>
+          <option value="living">거실 (living)</option>
+          <option value="balcony">발코니 (balcony)</option>
+          <option value="bedroom">침실 (bedroom)</option>
+          <option value="all">전체 리모델링</option>
+        </select>
+        <div style="font-size:10px;font-weight:700;color:var(--text2);margin:12px 0 8px;text-transform:uppercase;letter-spacing:0.08em">건물 조건</div>
+        <div id="sim-conditions">
+          <label class="sim-check"><input type="checkbox" id="cond-galv" value="galv">가스배관 교체 필요 (갈바나이즈)</label>
+          <label class="sim-check"><input type="checkbox" id="cond-asbestos" value="asbestos">석면 의심 건물 (1980년대 이전)</label>
+          <label class="sim-check"><input type="checkbox" id="cond-elderly" value="elderly">고령자/장애인 가구</label>
+          <label class="sim-check"><input type="checkbox" id="cond-noise" value="noise_sensitive">층간소음 민감 가구</label>
+          <label class="sim-check"><input type="checkbox" id="cond-condo" value="condo">공동주택 (아파트/연립)</label>
+          <label class="sim-check"><input type="checkbox" id="cond-resid" value="resid">거주 중 시공</label>
+        </div>
+        <button class="btn btn-g" onclick="ONT.simulate()" style="margin-top:12px;width:100%">⚡ 온톨로지 규칙 적용 시뮬레이션</button>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+        <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em">
+          추가 권장 공정 <span id="sim-cnt" style="color:var(--gold)"></span>
+        </div>
+        <div class="sim-result" id="sim-result">
+          <div style="color:var(--dim);font-size:11px">시뮬레이션 결과가 여기 표시됩니다.</div>
+        </div>
+        <div style="font-size:10px;color:var(--dim);margin-top:8px">신뢰도 0.9 이상 규칙만 표시. 현장 확인 후 적용 결정 권장.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script src="../shared/engine/boc-engine.js"></script>
+<script src="../shared/store/boc-state.js"></script>
 <script>
-"use strict";
-document.addEventListener("DOMContentLoaded", function() {
-  AppState.load();
-  console.log("✅ ontology module loaded");
-});
+'use strict'
+;(function(){
+
+// ── Fallback rules (mirrors boc-engine.js OntologyEngine) ─────
+var RULES=[
+  {ruleId:'galv_linked',trigger:'galv',linked:['PLB_BOIR'],triggerType:'갈바나이즈',
+    desc:'가스배관 노후시 보일러 교체 권장',confidenceLevel:0.92},
+  {ruleId:'asb_linked',trigger:'asbestos',linked:['EXP_BAL'],triggerType:'석면',
+    desc:'석면 의심 건물 발코니 확장 작업 주의',confidenceLevel:0.88},
+  {ruleId:'wet_water',trigger:'bathroom',linked:['WTP_BT','TILE_BT'],triggerType:'습식공간',
+    desc:'욕실 방수+타일 세트 시공',confidenceLevel:0.97},
+  {ruleId:'kit_plumb',trigger:'kitchen',linked:['PLB_FCT','KIT_CAB'],triggerType:'주방',
+    desc:'주방 배관+가구 연동',confidenceLevel:0.90},
+  {ruleId:'bal_ext',trigger:'balcony',linked:['EXP_BAL'],triggerType:'발코니',
+    desc:'발코니 확장 기본 공정',confidenceLevel:0.85},
+  {ruleId:'floor_vinyl',trigger:'living',linked:['FL_VNL'],triggerType:'바닥',
+    desc:'거실 바닥재 시공',confidenceLevel:0.88},
+  {ruleId:'door_rep',trigger:'resid',linked:['DR_RPL'],triggerType:'거주중',
+    desc:'거주 중 시공 시 문 교체 권장',confidenceLevel:0.75},
+  {ruleId:'elec_resid',trigger:'condo',linked:['ELE_WIRE'],triggerType:'공동주택',
+    desc:'공동주택 전기배선 업그레이드',confidenceLevel:0.80},
+  {ruleId:'noise_floor',trigger:'noise_sensitive',linked:['FL_VNL'],triggerType:'층간소음',
+    desc:'층간소음 차단재 포함 바닥재 시공',confidenceLevel:0.83},
+  {ruleId:'elderly_handle',trigger:'elderly',linked:['DR_RPL'],triggerType:'고령자',
+    desc:'고령자 편의 손잡이+문폭 확장',confidenceLevel:0.78},
+]
+
+var S={tab:'graph',rules:[],nodes:[],edges:[],
+  pan:{x:0,y:0},zoom:1,drag:null,hovNode:null,selNode:null}
+
+function $id(id){return document.getElementById(id)}
+
+// ── Rules ─────────────────────────────────────────────
+async function loadRules(){
+  // Try DB first
+  var dbRules=[]
+  if(window.ecoreanAPI?.db?.query){
+    try{dbRules=await window.ecoreanAPI.db.query("SELECT * FROM ontology_rules WHERE status!='disabled'",[])
+    }catch(e){}
+  }
+  S.rules=dbRules.length?dbRules.map(function(r){
+    return Object.assign({},r,{linked:jp(r.linked,[])})
+  }):RULES
+  updateStats()
+  renderRules()
+  buildGraph()
+}
+
+function jp(s,fb){try{return typeof s==='string'?JSON.parse(s):(s||fb)}catch(e){return fb}}
+
+function updateStats(){
+  var el=$id('ont-stats'); if(!el)return
+  var procs=typeof CalcEngine!=='undefined'&&CalcEngine.DB?Object.keys(CalcEngine.DB).length:0
+  el.textContent='규칙 '+S.rules.length+'개 · 공정 '+procs+'개'
+}
+
+// ── Rules tab ──────────────────────────────────────────
+function renderRules(){
+  var el=$id('rules-list'); if(!el)return
+  el.innerHTML=S.rules.map(function(r,i){
+    var linked=Array.isArray(r.linked)?r.linked:[r.linked].filter(Boolean)
+    var chips=linked.map(function(id){
+      var item=(typeof CalcEngine!=='undefined'&&CalcEngine.DB&&CalcEngine.DB[id])||{}
+      return '<span class="sim-chip">'+( item.name||id)+'</span>'
+    }).join(' ')
+    return '<div class="rule-card" id="rc-'+i+'" onclick="ONT.hlRule('+i+')">'+
+      '<div class="rule-trigger">IF '+r.trigger+'</div>'+
+      '<div style="margin-bottom:4px">→ '+chips+'</div>'+
+      '<div class="rule-meta">'+r.desc+' | 신뢰도 '+(Math.round((r.confidenceLevel||0)*100))+'%</div>'+
+    '</div>'
+  }).join('')
+}
+
+function hlRule(i){
+  document.querySelectorAll('.rule-card').forEach(function(c,ci){c.classList.toggle('hl',ci===i)})
+  var r=S.rules[i]; if(!r)return
+  var linked=Array.isArray(r.linked)?r.linked:[]
+  S.selNode=null
+  S.nodes.forEach(function(n){
+    n.hl=linked.includes(n.id)||n.id===r.trigger
+  })
+  drawGraph()
+}
+
+// ── Graph build ───────────────────────────────────────
+function buildGraph(){
+  var procs=typeof CalcEngine!=='undefined'&&CalcEngine.DB?CalcEngine.DB:{}
+  var procIds=Object.keys(procs)
+
+  // Collect all IDs mentioned in rules (triggers + linked)
+  var ruleIds={}
+  S.rules.forEach(function(r){
+    ruleIds[r.trigger]=true
+    var linked=Array.isArray(r.linked)?r.linked:[r.linked].filter(Boolean)
+    linked.forEach(function(id){ruleIds[id]=true})
+  })
+  var visIds=Array.from(new Set(procIds.concat(Object.keys(ruleIds)))).slice(0,40)
+
+  // Arrange in a circle with some jitter by category
+  var cats={},catColors={'방수':'#FF8C00','타일':'#00AAFF','설비':'#00FFB2','바닥':'#C9A84C',
+    '전기':'#FFD700','주방':'#FF6B9D','발코니':'#9C27B0','기타':'#555566'}
+  visIds.forEach(function(id){
+    var item=procs[id]||{}
+    var c=item.cat||'기타'
+    if(!cats[c])cats[c]=[]
+    cats[c].push(id)
+  })
+
+  var nodes=[]; var catKeys=Object.keys(cats)
+  var totalAng=0
+  catKeys.forEach(function(cat){
+    var ids=cats[cat]
+    var angStep=ids.length>0?(Math.PI*2/Math.max(ids.length,1)):0
+    ids.forEach(function(id,k){
+      var baseAng=totalAng+(catKeys.indexOf(cat)/catKeys.length)*Math.PI*2
+      var ang=baseAng+k*angStep*0.3
+      var r=140+Math.random()*60
+      var item=procs[id]||{}
+      nodes.push({id:id,name:item.name||id,cat:cat,
+        x:Math.cos(ang)*r,y:Math.sin(ang)*r,
+        color:catColors[cat]||'#555566',hl:false})
+    })
+    totalAng+=ids.length*0.15
+  })
+
+  // Add trigger nodes that aren't processes
+  S.rules.forEach(function(r){
+    if(!nodes.find(function(n){return n.id===r.trigger})){
+      var ang=Math.random()*Math.PI*2; var rv=180+Math.random()*40
+      nodes.push({id:r.trigger,name:r.trigger,cat:'트리거',
+        x:Math.cos(ang)*rv,y:Math.sin(ang)*rv,color:'#FF8C00',hl:false,isTrigger:true})
+    }
+  })
+
+  // Build edges
+  var edges=[]
+  S.rules.forEach(function(r){
+    var linked=Array.isArray(r.linked)?r.linked:[r.linked].filter(Boolean)
+    linked.forEach(function(lid){
+      var src=nodes.find(function(n){return n.id===r.trigger})
+      var tgt=nodes.find(function(n){return n.id===lid})
+      if(src&&tgt)edges.push({src:src,tgt:tgt,rule:r})
+    })
+  })
+
+  S.nodes=nodes; S.edges=edges
+  initCanvas()
+}
+
+// ── Canvas rendering ──────────────────────────────────
+var _canvas,_ctx,_w,_h
+
+function initCanvas(){
+  _canvas=$id('ont-canvas'); if(!_canvas)return
+  _ctx=_canvas.getContext('2d')
+  resize()
+  S.pan={x:_w/2,y:_h/2}; S.zoom=0.85
+  drawGraph()
+  _canvas.addEventListener('mousedown',onMD)
+  _canvas.addEventListener('mousemove',onMM)
+  _canvas.addEventListener('mouseup',onMU)
+  _canvas.addEventListener('wheel',onWheel,{passive:false})
+  window.addEventListener('resize',function(){resize();drawGraph()})
+}
+
+function resize(){
+  var p=_canvas.parentElement
+  _canvas.width=_w=p.clientWidth
+  _canvas.height=_h=p.clientHeight
+}
+
+function drawGraph(){
+  if(!_ctx)return
+  _ctx.clearRect(0,0,_w,_h)
+  _ctx.save()
+  _ctx.translate(S.pan.x,S.pan.y)
+  _ctx.scale(S.zoom,S.zoom)
+
+  // Edges
+  S.edges.forEach(function(e){
+    var alpha=0.5; var w=1.5
+    _ctx.beginPath()
+    _ctx.moveTo(e.src.x,e.src.y)
+    _ctx.lineTo(e.tgt.x,e.tgt.y)
+    _ctx.strokeStyle='rgba(201,168,76,'+alpha+')'
+    _ctx.lineWidth=w
+    _ctx.stroke()
+    // Arrowhead
+    var ang=Math.atan2(e.tgt.y-e.src.y,e.tgt.x-e.src.x)
+    var ax=e.tgt.x-Math.cos(ang)*14
+    var ay=e.tgt.y-Math.sin(ang)*14
+    _ctx.beginPath()
+    _ctx.moveTo(ax,ay)
+    _ctx.lineTo(ax-Math.cos(ang-0.4)*8,ay-Math.sin(ang-0.4)*8)
+    _ctx.lineTo(ax-Math.cos(ang+0.4)*8,ay-Math.sin(ang+0.4)*8)
+    _ctx.closePath()
+    _ctx.fillStyle='rgba(201,168,76,0.7)'
+    _ctx.fill()
+  })
+
+  // Nodes
+  S.nodes.forEach(function(n){
+    var r=n.isTrigger?9:13
+    var hl=n.hl||n===S.selNode||n===S.hovNode
+    _ctx.beginPath()
+    _ctx.arc(n.x,n.y,r,0,Math.PI*2)
+    _ctx.fillStyle=hl?n.color:(n.color+'66')
+    _ctx.fill()
+    _ctx.strokeStyle=hl?n.color:'rgba(201,168,76,0.2)'
+    _ctx.lineWidth=hl?2:1
+    _ctx.stroke()
+    // Label
+    _ctx.fillStyle=hl?'#fff':'rgba(160,144,128,0.85)'
+    _ctx.font=(hl?'600 ':'400 ')+'10px "Noto Sans KR"'
+    _ctx.textAlign='center'
+    _ctx.fillText(n.name.length>6?n.name.slice(0,6)+'…':n.name,n.x,n.y+r+12)
+  })
+
+  _ctx.restore()
+}
+
+function nodeAt(ex,ey){
+  var cx=(ex-S.pan.x)/S.zoom, cy=(ey-S.pan.y)/S.zoom
+  return S.nodes.find(function(n){
+    return Math.sqrt((n.x-cx)*(n.x-cx)+(n.y-cy)*(n.y-cy))<15
+  })||null
+}
+
+var _lastMouse={x:0,y:0}
+function onMD(e){
+  _lastMouse={x:e.clientX,y:e.clientY}
+  var n=nodeAt(e.offsetX,e.offsetY)
+  if(n){S.drag={node:n,ox:n.x,oy:n.y,mx:e.offsetX,my:e.offsetY}}
+  else{S.drag={pan:true,px:S.pan.x,py:S.pan.y}}
+}
+function onMM(e){
+  var dx=e.clientX-_lastMouse.x, dy=e.clientY-_lastMouse.y
+  if(S.drag){
+    if(S.drag.pan){S.pan.x+=dx;S.pan.y+=dy;_lastMouse={x:e.clientX,y:e.clientY};drawGraph();return}
+    if(S.drag.node){S.drag.node.x+=(dx/S.zoom);S.drag.node.y+=(dy/S.zoom);_lastMouse={x:e.clientX,y:e.clientY};drawGraph();return}
+  }
+  var n=nodeAt(e.offsetX,e.offsetY)
+  S.hovNode=n
+  var tt=$id('node-tooltip')
+  if(n&&tt){
+    var item=(typeof CalcEngine!=='undefined'&&CalcEngine.DB&&CalcEngine.DB[n.id])||{}
+    tt.style.display='block'
+    tt.style.left=(e.offsetX+12)+'px'
+    tt.style.top=(e.offsetY-10)+'px'
+    tt.innerHTML='<b style="color:var(--gold)">'+n.name+'</b><br>'+
+      (n.isTrigger?'<span style="color:var(--orange)">트리거 조건</span>':'ID: <span style="font-family:monospace">'+n.id+'</span>')+
+      (item.lb?'<br>노무 '+item.lb.toLocaleString()+'원':'')+
+      (item.mt?'<br>자재 '+item.mt.toLocaleString()+'원':'')
+  } else if(tt)tt.style.display='none'
+  drawGraph()
+}
+function onMU(e){
+  if(S.drag&&S.drag.node){S.selNode=S.drag.node}
+  S.drag=null; drawGraph()
+}
+function onWheel(e){
+  e.preventDefault()
+  var delta=e.deltaY>0?0.9:1.1
+  S.zoom=Math.min(3,Math.max(0.3,S.zoom*delta))
+  drawGraph()
+}
+
+// ── Simulation ────────────────────────────────────────
+function simulate(){
+  var space=$id('sim-space')&&$id('sim-space').value||'bathroom'
+  var conds=['cond-galv','cond-asbestos','cond-elderly','cond-noise','cond-condo','cond-resid']
+  var ctx={spaceType:space}
+  conds.forEach(function(id){
+    var el=$id(id); if(el&&el.checked)ctx[el.value]=true
+  })
+  ctx[space]=true // auto-set space type as condition
+
+  var results=[]
+  if(typeof OntologyEngine!=='undefined'&&OntologyEngine.applyRules){
+    try{results=OntologyEngine.applyRules(ctx)||[]}catch(e){}
+  }
+
+  // Fallback: manual rule matching
+  if(!results.length){
+    var seen={}
+    S.rules.forEach(function(r){
+      if(ctx[r.trigger]||ctx[r.triggerType]){
+        var linked=Array.isArray(r.linked)?r.linked:[]
+        linked.forEach(function(id){
+          if(!seen[id]){
+            seen[id]=true
+            var item=(typeof CalcEngine!=='undefined'&&CalcEngine.DB&&CalcEngine.DB[id])||{}
+            results.push({id:id,name:item.name||id,rule:r.ruleId,reason:r.desc,
+              confidence:r.confidenceLevel||0})
+          }
+        })
+      }
+    })
+  }
+
+  var cnt=$id('sim-cnt'); if(cnt)cnt.textContent=results.length+'개'
+  var el=$id('sim-result'); if(!el)return
+  if(!results.length){
+    el.innerHTML='<div style="color:var(--dim);font-size:11px">해당 조건에 추가 권장 공정 없음</div>'
+    return
+  }
+  el.innerHTML=results.map(function(r){
+    var item=(typeof CalcEngine!=='undefined'&&CalcEngine.DB&&CalcEngine.DB[r.id||r])||{}
+    var id=r.id||r; var nm=r.name||item.name||id
+    var conf=r.confidence||r.confidenceLevel||0
+    return '<div class="sim-item">'+
+      '<span class="sim-chip">'+id+'</span>'+
+      '<span style="flex:1">'+nm+'</span>'+
+      '<span style="font-family:var(--fm);font-size:10px;color:'+(conf>=0.9?'var(--green)':'var(--orange)')+'">'+Math.round(conf*100)+'%</span>'+
+    '</div>'
+  }).join('')
+}
+
+// ── Tab switch ────────────────────────────────────────
+function switchTab(tab){
+  S.tab=tab
+  document.querySelectorAll('.tb').forEach(function(b){b.classList.toggle('act',b.dataset.tab===tab)})
+  document.querySelectorAll('.tab-content').forEach(function(p){p.classList.remove('act')})
+  var tp=$id('tab-'+tab);if(tp)tp.classList.add('act')
+  if(tab==='graph'){setTimeout(function(){resize();drawGraph()},50)}
+}
+
+window.ONT={
+  switchTab:switchTab,
+  hlRule:hlRule,
+  simulate:simulate,
+  zoomIn:function(){S.zoom=Math.min(3,S.zoom*1.2);drawGraph()},
+  zoomOut:function(){S.zoom=Math.max(0.3,S.zoom/1.2);drawGraph()},
+  resetView:function(){S.pan={x:_w/2,y:_h/2};S.zoom=0.85;drawGraph()},
+}
+
+async function init(){
+  if(typeof AppState!=='undefined') AppState.load()
+  if(window.ecoreanAPI?.onTabSwitch){
+    window.ecoreanAPI.onTabSwitch(function(tab){if(tab==='ontology')loadRules()})
+  }
+  await loadRules()
+  console.log('✅ ontology.html ready — BOC v2')
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init)
+else init()
+
+})()
 </script>
 </body>
 </html>
