@@ -2,288 +2,1035 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>견적 — ECOREAN BOC</title>
-<script src="../shared/engine/boc-engine.js"></script>
-<script src="../shared/store/boc-state.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>견적 마법사 — ECOREAN BOC</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --void:#030305; --deep:#07070F; --surface:#0D0D1A; --raised:#141420;
-  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2; --red:#FF3355;
-  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080; --r:6px;
-  --font-head:'Cormorant Garamond',serif; --font-body:'Noto Sans KR',sans-serif; --font-mono:'JetBrains Mono',monospace;
+:root{
+  --void:#030305;--deep:#07070F;--surface:#0D0D1A;
+  --gold:#C9A84C;--gold-bright:#FFD700;--gold2:rgba(201,168,76,0.12);
+  --platinum:#E8E0D0;--dim:#555566;--green:#00FFB2;
+  --red:#FF3355;--blue:#00AAFF;--orange:#FF8C00;
+  --border:rgba(201,168,76,0.12);--text:#EDE5D5;--text2:#A09080;
+  --fb:'Noto Sans KR',sans-serif;--fm:'JetBrains Mono',monospace;
 }
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box }
-html,body { height:100vh; background:var(--void); color:var(--text); font-family:var(--font-body); font-size:13px; overflow:hidden }
-button,input,select { font-family:inherit; font-size:inherit; cursor:pointer }
-::-webkit-scrollbar { width:4px } ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3); border-radius:2px }
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--fb);font-size:13px}
+button,input,select{font-family:var(--fb);font-size:13px}
+button{cursor:pointer}
+input[type=text],input[type=number],input[type=date]{
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+  padding:7px 10px;border-radius:4px;outline:none;
+}
+input[type=text]:focus,input[type=number]:focus,input[type=date]:focus{border-color:var(--gold)}
+select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:4px;outline:none}
+select option{background:var(--surface)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
 
 /* Layout */
-#app { display:flex; flex-direction:column; height:100vh }
+#app{display:flex;flex-direction:column;height:100%}
+#stepbar{display:flex;align-items:center;justify-content:center;padding:10px 20px;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border)}
+#content{flex:1;overflow-y:auto;padding:18px 22px}
+#botnav{display:flex;align-items:center;justify-content:space-between;padding:10px 22px;flex-shrink:0;background:var(--deep);border-top:1px solid var(--border)}
 
 /* Stepbar */
-#stepbar { display:flex; align-items:center; justify-content:center; padding:10px 24px; gap:0; flex-shrink:0; background:var(--deep); border-bottom:1px solid var(--border) }
-.sd { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; background:var(--raised); color:var(--dim); border:1px solid rgba(255,255,255,0.08); transition:all 0.2s; cursor:pointer; flex-shrink:0 }
-.sd.act  { background:var(--gold); color:var(--void); border-color:var(--gold) }
-.sd.done { background:rgba(0,255,178,0.15); color:var(--green); border-color:var(--green) }
-.sl { flex:1; height:1px; background:rgba(255,255,255,0.08); max-width:60px }
+.sw{position:relative}
+.sd{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid var(--dim);color:var(--dim);background:transparent;transition:all 0.2s;flex-shrink:0}
+.sd.act{background:var(--gold-bright);color:var(--void);border-color:var(--gold-bright)}
+.sd.done{border-color:var(--green);color:var(--green)}
+.sl{flex:1;height:1px;background:var(--dim);max-width:56px;transition:background 0.2s}
+.sl.done{background:var(--green)}
+.slbl{position:absolute;top:32px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--dim);white-space:nowrap;pointer-events:none}
+.sd.act .slbl{color:var(--gold-bright)}
 
 /* Step panels */
-.step-panel { flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:16px }
-.step-nav { display:flex; justify-content:flex-end; gap:8px; padding:12px 24px; border-top:1px solid var(--border); background:var(--deep); flex-shrink:0 }
+.sp{display:none}
+.sp.act{display:block}
 
-/* Forms */
-.form-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px }
-.form-group { display:flex; flex-direction:column; gap:4px }
-.form-lbl { font-size:11px; color:var(--dim) }
-.form-input,.form-sel { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:8px 10px; color:var(--text); outline:none; transition:border-color 0.2s }
-.form-input:focus,.form-sel:focus { border-color:var(--gold) }
-.form-sel option { background:var(--surface) }
-.sec-title { font-family:var(--font-head); font-size:15px; color:var(--gold); margin-bottom:8px }
+/* Headings */
+.stitle{font-size:17px;font-weight:700;color:var(--gold);margin-bottom:3px}
+.ssub{font-size:12px;color:var(--text2);margin-bottom:18px}
+.slabel{font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em}
 
-/* Buttons */
-.btn { padding:8px 20px; border-radius:var(--r); border:none; font-size:13px; transition:all 0.2s }
-.btn-gold { background:var(--gold); color:var(--void); font-weight:600 }
-.btn-gold:hover { background:var(--gold-bright) }
-.btn-ghost { background:transparent; color:var(--dim); border:1px solid rgba(255,255,255,0.1) }
-.btn-ghost:hover { color:var(--text2); border-color:rgba(255,255,255,0.2) }
-.btn-sm { padding:5px 14px; font-size:12px }
+/* Form */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.fg1{display:flex;flex-direction:column;gap:5px}
+.full{grid-column:1/-1}
+label.lbl{font-size:11px;color:var(--text2);font-weight:500}
+.w100{width:100%}
+
+/* Toggle buttons */
+.tg{display:flex;gap:6px;flex-wrap:wrap}
+.tb{padding:5px 13px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;transition:all 0.15s}
+.tb:hover{border-color:rgba(201,168,76,0.4)}
+.tb.act{border-color:var(--gold);color:var(--gold);background:var(--gold2)}
+
+/* Section checkboxes */
+.cg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+.ci{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:6px;border:1px solid var(--border);cursor:pointer;transition:all 0.2s;background:var(--surface);user-select:none}
+.ci:hover{border-color:rgba(201,168,76,0.4)}
+.ci.on{border-color:var(--gold);background:var(--gold2)}
+.ci .ico{font-size:17px}
+.ci .nm{font-size:12px;color:var(--text2)}
+.ci.on .nm{color:var(--text)}
+
+/* Concept cards */
+.ccg{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.cc{padding:12px 8px;border-radius:8px;border:1px solid var(--border);cursor:pointer;text-align:center;background:var(--surface);transition:all 0.2s;user-select:none}
+.cc:hover{border-color:rgba(201,168,76,0.4)}
+.cc.sel{border-color:var(--gold-bright);background:var(--gold2)}
+.cc .ce{font-size:20px;display:block;margin-bottom:5px}
+.cc .cn{font-size:11px;color:var(--text2)}
+.cc.sel .cn{color:var(--gold-bright);font-weight:600}
+.cc .cg2{font-size:9px;color:var(--dim);margin-top:2px}
+
+/* Space cards */
+.scards{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:12px}
+.sch{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.scn{font-weight:600;flex:1;font-size:12px}
+.sca{font-family:var(--fm);font-size:11px;color:var(--gold)}
+.scdel{background:none;border:none;color:var(--dim);font-size:15px;padding:1px 5px;border-radius:3px}
+.scdel:hover{color:var(--red)}
+.sfields{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:7px}
+.sfields input,.sfields select{padding:5px 7px;font-size:12px;width:100%}
+
+/* CAD canvas */
+.cw{display:flex;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px;margin-bottom:14px}
+#cad{border:1px solid rgba(201,168,76,0.2);border-radius:4px;display:block}
+.ctool{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.cbt{padding:5px 9px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text2);font-size:11px;cursor:pointer;text-align:left;transition:all 0.15s;white-space:nowrap}
+.cbt:hover{border-color:var(--gold);color:var(--text)}
+.cbt.act{border-color:var(--gold);color:var(--gold);background:var(--gold2)}
+
+/* Data table */
+.dt{width:100%;border-collapse:collapse}
+.dt th,.dt td{padding:7px 9px;border:1px solid var(--border);font-size:12px}
+.dt th{background:var(--deep);color:var(--text2);font-weight:500}
+.dt tr:hover td{background:rgba(201,168,76,0.03)}
+
+/* Warning boxes */
+.wb{padding:9px 13px;border-radius:5px;margin:5px 0;border-left:3px solid;font-size:12px}
+.wb.err{border-color:var(--red);background:rgba(255,51,85,0.08);color:var(--red)}
+.wb.wrn{border-color:var(--orange);background:rgba(255,140,0,0.08);color:var(--orange)}
+.wb.inf{border-color:var(--blue);background:rgba(0,170,255,0.08);color:var(--blue)}
+
+/* Scope */
+.ss{margin-bottom:16px}
+.sst{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.si{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:4px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all 0.15s;margin-bottom:4px}
+.si:hover{border-color:rgba(201,168,76,0.3)}
+.si.on{border-color:var(--gold);background:var(--gold2)}
+.si.lk{opacity:0.7;cursor:default}
+.sn{flex:1;font-size:12px}
+.sp2{font-family:var(--fm);font-size:10px;color:var(--dim)}
+.badge{padding:1px 5px;border-radius:7px;font-size:9px;font-weight:700;letter-spacing:0.04em}
+.b-auto{background:rgba(0,255,178,0.1);color:var(--green);border:1px solid rgba(0,255,178,0.25)}
+.b-cond{background:rgba(255,140,0,0.1);color:var(--orange);border:1px solid rgba(255,140,0,0.25)}
+.b-frc{background:rgba(255,51,85,0.1);color:var(--red);border:1px solid rgba(255,51,85,0.25)}
+
+/* Grade */
+.gpkg{display:flex;gap:10px;margin-bottom:18px}
+.gpb{flex:1;padding:12px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all 0.2s}
+.gpb:hover{border-color:rgba(201,168,76,0.4)}
+.gpb.act{border-color:var(--gold-bright);background:var(--gold2)}
+.gpbn{font-size:14px;font-weight:600;color:var(--text)}
+.gpb.act .gpbn{color:var(--gold-bright)}
+.gpbd{font-size:11px;color:var(--dim);margin-top:3px}
+.gpbp{font-size:11px;color:var(--text2);margin-top:5px;font-family:var(--fm)}
+.gparts{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.gpart{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:10px}
+.gpn{font-size:11px;color:var(--text2);margin-bottom:5px}
+.pr-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.pr-row:last-child{border-bottom:none}
+.pr-lbl{font-size:12px;color:var(--text2)}
+.pr-val{font-family:var(--fm);font-size:13px;color:var(--text)}
+.pr-val.hi{color:var(--gold-bright)}
+
+/* KPI cards */
+.kpic{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.kc{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:14px;text-align:center}
+.kc.hi{border-color:rgba(201,168,76,0.4);background:rgba(201,168,76,0.06)}
+.kcv{font-family:var(--fm);font-size:19px;font-weight:600;color:var(--platinum)}
+.kc.hi .kcv{color:var(--gold-bright)}
+.kcl{font-size:11px;color:var(--dim);margin-top:3px}
 
 /* Diag */
-.diag-list { display:flex; flex-direction:column; gap:6px }
-.diag-item { padding:8px 12px; border-radius:var(--r); font-size:12px; border:1px solid }
-.diag-ok    { background:rgba(0,255,178,0.08); border-color:var(--green); color:var(--green) }
-.diag-warn  { background:rgba(255,170,0,0.08); border-color:#FFAA00; color:#FFAA00 }
-.diag-error { background:rgba(255,51,85,0.08); border-color:var(--red); color:var(--red) }
-.diag-info  { background:rgba(0,170,255,0.08); border-color:var(--blue); color:var(--blue) }
+.di{padding:7px 10px;border-radius:4px;margin-bottom:5px;font-size:12px;display:flex;gap:7px;align-items:flex-start}
+.di.err{background:rgba(255,51,85,0.1);border:1px solid rgba(255,51,85,0.25);color:var(--red)}
+.di.wrn{background:rgba(255,140,0,0.1);border:1px solid rgba(255,140,0,0.25);color:var(--orange)}
+.di.ok{background:rgba(0,255,178,0.07);border:1px solid rgba(0,255,178,0.2);color:var(--green)}
+.di.inf{background:rgba(0,170,255,0.1);border:1px solid rgba(0,170,255,0.25);color:var(--blue)}
 
-/* Result table */
-.result-table { width:100%; border-collapse:collapse; font-size:12px }
-.result-table th { background:var(--surface); color:var(--dim); padding:8px; text-align:left; border-bottom:1px solid var(--border) }
-.result-table td { padding:8px; border-bottom:1px solid rgba(255,255,255,0.04); color:var(--text2) }
-.result-table td:last-child { text-align:right; font-family:var(--font-mono); color:var(--platinum) }
-.result-summary { display:flex; gap:16px; flex-wrap:wrap; margin-top:16px }
-.result-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:12px 20px; text-align:center; flex:1; min-width:120px }
-.result-card .rv { font-family:var(--font-mono); font-size:18px; font-weight:600; color:var(--gold-bright) }
-.result-card .rl { font-size:10px; color:var(--dim); margin-top:2px }
+/* Gantt */
+.gb{height:10px;background:var(--gold);border-radius:2px;min-width:3px}
 
-.empty { text-align:center; padding:40px; color:var(--dim); font-size:13px }
+/* Nav buttons */
+.navlbl{font-size:11px;color:var(--dim)}
+.navbtns{display:flex;gap:7px}
+.btn{padding:7px 16px;border-radius:5px;font-size:13px;font-weight:600;border:1px solid;cursor:pointer;transition:all 0.2s}
+.btn-p{border-color:var(--border);color:var(--text2);background:transparent}
+.btn-p:hover{border-color:var(--text2);color:var(--text)}
+.btn-n{border-color:var(--gold);color:var(--void);background:var(--gold)}
+.btn-n:hover{background:var(--gold-bright);border-color:var(--gold-bright)}
+.btn-s{border-color:var(--green);color:var(--green);background:rgba(0,255,178,0.07)}
+.btn-s:hover{background:rgba(0,255,178,0.14)}
 </style>
 </head>
 <body>
 <div id="app">
-  <!-- 스텝 바 -->
-  <div id="stepbar">
-    <div class="sd act" id="sd0" onclick="goStep(0)">1</div><div class="sl"></div>
-    <div class="sd"     id="sd1" onclick="goStep(1)">2</div><div class="sl"></div>
-    <div class="sd"     id="sd2" onclick="goStep(2)">3</div><div class="sl"></div>
-    <div class="sd"     id="sd3" onclick="goStep(3)">4</div><div class="sl"></div>
-    <div class="sd"     id="sd4" onclick="goStep(4)">5</div><div class="sl"></div>
-    <div class="sd"     id="sd5" onclick="goStep(5)">6</div>
-  </div>
 
-  <!-- STEP 0: 건물기본 -->
-  <div id="step-0" class="step-panel">
-    <div class="sec-title">STEP 1 — 건물 기본 정보</div>
-    <div class="form-grid">
-      <div class="form-group"><label class="form-lbl">건물 유형</label>
-        <select class="form-sel" id="f-buildType" onchange="AppState.set({buildType:this.value})">
-          <option value="apt">아파트</option><option value="officetel">오피스텔</option>
-          <option value="villa">빌라/연립</option><option value="commercial">상가</option><option value="office">사무실</option>
-        </select></div>
-      <div class="form-group"><label class="form-lbl">건물 연식 (년)</label>
-        <input type="number" class="form-input" id="f-buildAge" min="0" max="50" value="10" onchange="AppState.set({buildAge:+this.value})"></div>
-      <div class="form-group"><label class="form-lbl">층수</label>
-        <input type="number" class="form-input" id="f-floorLevel" min="1" max="50" value="5" onchange="AppState.set({floorLevel:+this.value})"></div>
-      <div class="form-group"><label class="form-lbl">엘리베이터</label>
-        <select class="form-sel" onchange="AppState.set({hasElev:this.value==='yes'})">
-          <option value="yes">있음</option><option value="no">없음</option>
-        </select></div>
-      <div class="form-group"><label class="form-lbl">거주 중 여부</label>
-        <select class="form-sel" onchange="AppState.set({resid:this.value==='yes'})">
-          <option value="no">비어 있음</option><option value="yes">거주 중 (+10%)</option>
-        </select></div>
-      <div class="form-group"><label class="form-lbl">지역</label>
-        <select class="form-sel" onchange="AppState.set({region:+this.value})">
-          <option value="1.0">수도권 (1.0)</option><option value="0.95">지방 대도시</option><option value="0.90">지방 중소도시</option>
-        </select></div>
-      <div class="form-group"><label class="form-lbl">등급 패키지</label>
-        <select class="form-sel" onchange="AppState.set({gradeMul:+this.value})">
-          <option value="1.0">표준 (1.0)</option><option value="1.3" selected>고급 (1.3)</option><option value="1.7">프리미엄 (1.7)</option>
-        </select></div>
+<!-- STEPBAR -->
+<div id="stepbar">
+  <div class="sw"><div class="sd act" id="sd0">0<span class="slbl">컨셉</span></div></div>
+  <div class="sl" id="sl01"></div>
+  <div class="sw"><div class="sd" id="sd1">1<span class="slbl">건물</span></div></div>
+  <div class="sl" id="sl12"></div>
+  <div class="sw"><div class="sd" id="sd2">2<span class="slbl">공간</span></div></div>
+  <div class="sl" id="sl23"></div>
+  <div class="sw"><div class="sd" id="sd3">3<span class="slbl">상태</span></div></div>
+  <div class="sl" id="sl34"></div>
+  <div class="sw"><div class="sd" id="sd4">4<span class="slbl">범위</span></div></div>
+  <div class="sl" id="sl45"></div>
+  <div class="sw"><div class="sd" id="sd5">5<span class="slbl">등급</span></div></div>
+  <div class="sl" id="sl56"></div>
+  <div class="sw"><div class="sd" id="sd6">6<span class="slbl">결과</span></div></div>
+</div>
+
+<!-- CONTENT -->
+<div id="content">
+
+<!-- STEP 0: 컨셉 -->
+<div class="sp act" id="s0">
+  <div class="stitle">컨셉 선택</div>
+  <div class="ssub">시공 범위와 인테리어 컨셉을 선택하세요.</div>
+  <div class="slabel">시공 섹션</div>
+  <div class="cg" id="sec-grid"></div>
+  <div class="slabel">인테리어 컨셉</div>
+  <div class="ccg" id="con-grid"></div>
+</div>
+
+<!-- STEP 1: 건물 기본 -->
+<div class="sp" id="s1">
+  <div class="stitle">건물 기본 정보</div>
+  <div class="ssub">현장 정보를 입력하세요.</div>
+  <div class="fg">
+    <div class="fg1 full"><label class="lbl">현장명</label><input type="text" id="f-pnm" class="w100" placeholder="예: 마포구 아현동 ○○아파트 101호"></div>
+    <div class="fg1">
+      <label class="lbl">건물 유형</label>
+      <div class="tg" id="tg-bt">
+        <button class="tb act" data-v="apt">아파트</button>
+        <button class="tb" data-v="villa">빌라</button>
+        <button class="tb" data-v="office">사무실</button>
+        <button class="tb" data-v="commercial">상업</button>
+      </div>
     </div>
-  </div>
-
-  <!-- STEP 1: 공간실측 -->
-  <div id="step-1" class="step-panel" style="display:none">
-    <div class="sec-title">STEP 2 — 공간 실측</div>
-    <div class="empty">미니 CAD + 공간 입력 — 다음 단계에서 구현</div>
-  </div>
-
-  <!-- STEP 2: 기존상태 -->
-  <div id="step-2" class="step-panel" style="display:none">
-    <div class="sec-title">STEP 3 — 기존 상태</div>
-    <div class="form-grid">
-      <div class="form-group"><label class="form-lbl">배관 재질</label>
-        <select class="form-sel" onchange="AppState.set({pipeMat:this.value})">
-          <option value="pb">PB (폴리부틸렌)</option><option value="copper">동관</option>
-          <option value="galvanized">갈바나이즈 ⚠ 교체 강제</option>
-          <option value="pex">PEX</option><option value="pvc">PVC</option>
-        </select></div>
-      <div class="form-group"><label class="form-lbl">바닥 수평</label>
-        <select class="form-sel" onchange="AppState.set({floorLevel2:this.value})">
-          <option value="good">양호</option><option value="fair">보통</option><option value="poor">불량</option>
-        </select></div>
-      <div class="form-group"><label class="form-lbl">방수 하자</label>
-        <select class="form-sel" onchange="AppState.set({hasLeak:this.value==='yes'})">
-          <option value="no">없음</option><option value="yes">있음</option>
-        </select></div>
-      <div class="form-group"><label class="form-lbl">석면 의심</label>
-        <select class="form-sel" onchange="AppState.set({hasAsbestos:this.value==='yes'})">
-          <option value="no">없음</option><option value="yes">있음 ⚠ 제거 강제</option>
-        </select></div>
+    <div class="fg1"><label class="lbl">연식 (년)</label><input type="number" id="f-age" class="w100" min="1" max="60" value="15"></div>
+    <div class="fg1"><label class="lbl">층수</label><input type="number" id="f-fl" class="w100" min="1" max="50" value="5"></div>
+    <div class="fg1">
+      <label class="lbl">엘리베이터</label>
+      <div class="tg" id="tg-ev"><button class="tb act" data-v="1">있음</button><button class="tb" data-v="0">없음</button></div>
     </div>
-  </div>
-
-  <!-- STEP 3: 공사범위 -->
-  <div id="step-3" class="step-panel" style="display:none">
-    <div class="sec-title">STEP 4 — 공사 범위</div>
-    <div class="empty">시공섹션 + 컨셉 선택 — 다음 단계에서 구현</div>
-  </div>
-
-  <!-- STEP 4: 자재등급 -->
-  <div id="step-4" class="step-panel" style="display:none">
-    <div class="sec-title">STEP 5 — 자재 등급</div>
-    <div class="empty">부위별 자재 등급 — 다음 단계에서 구현</div>
-  </div>
-
-  <!-- STEP 5: 견적결과 -->
-  <div id="step-5" class="step-panel" style="display:none">
-    <div class="sec-title">STEP 6 — 견적 결과</div>
-    <div id="result-area"><div class="empty">공간 입력 후 공사 범위를 선택하면 견적이 계산됩니다.</div></div>
-    <div id="diag-area" class="diag-list" style="margin-top:12px"></div>
-  </div>
-
-  <!-- 하단 네비 -->
-  <div class="step-nav">
-    <button class="btn btn-ghost btn-sm" onclick="goStep(Math.max(0, AppState.get().step - 1))">← 이전</button>
-    <button class="btn btn-gold btn-sm"  onclick="nextStep()">다음 →</button>
+    <div class="fg1">
+      <label class="lbl">거주 중</label>
+      <div class="tg" id="tg-rs"><button class="tb" data-v="1">거주중</button><button class="tb act" data-v="0">비거주</button></div>
+    </div>
+    <div class="fg1">
+      <label class="lbl">지역 계수</label>
+      <select id="f-rg" class="w100">
+        <option value="1.0">서울 외 ×1.0</option>
+        <option value="1.1">수도권 ×1.1</option>
+        <option value="1.2" selected>서울 ×1.2</option>
+        <option value="1.3">강남/서초 ×1.3</option>
+      </select>
+    </div>
+    <div class="fg1"><label class="lbl">담당 소장</label><input type="text" id="f-mgr" class="w100" placeholder="홍길동"></div>
   </div>
 </div>
 
+<!-- STEP 2: 공간 실측 -->
+<div class="sp" id="s2">
+  <div class="stitle">공간 실측</div>
+  <div class="ssub">공간을 추가하고 면적을 입력하세요. CAD로 도면을 그릴 수도 있습니다.</div>
+  <div class="cw">
+    <canvas id="cad" width="440" height="320"></canvas>
+    <div class="ctool">
+      <div style="font-size:10px;color:var(--dim);margin-bottom:3px;">CAD 도구</div>
+      <button class="cbt act" id="ct-sel">⬛ 선택</button>
+      <button class="cbt" id="ct-rect">▭ 사각형</button>
+      <button class="cbt" id="ct-del" style="color:var(--red);margin-top:8px;">🗑 삭제</button>
+      <div style="font-size:9px;color:var(--dim);margin-top:10px;line-height:1.8;">눈금 400mm<br>드래그 → 그리기<br>클릭 → 선택<br>Del → 삭제</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
+    <div class="slabel" style="margin:0;">공간 목록</div>
+    <button class="btn btn-n" style="padding:5px 11px;font-size:12px;" onclick="WZ.addSpace()">+ 공간 추가</button>
+  </div>
+  <div class="scards" id="sp-cards"></div>
+  <div id="sp-sum" style="display:none;">
+    <table class="dt">
+      <thead><tr><th>공간명</th><th>유형</th><th>층</th><th>면적(㎡)</th><th>창문</th><th>문</th></tr></thead>
+      <tbody id="sp-tbody"></tbody>
+      <tfoot><tr><td colspan="3" style="font-weight:600;">합계</td>
+        <td id="sp-tot" style="color:var(--gold);font-weight:600;font-family:var(--fm);">0.0 ㎡</td>
+        <td colspan="2"></td></tr></tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- STEP 3: 기존 상태 -->
+<div class="sp" id="s3">
+  <div class="stitle">기존 상태 진단</div>
+  <div class="ssub">현재 건물 상태를 입력하세요. 온톨로지가 필수 공사를 자동 추가합니다.</div>
+  <div class="fg">
+    <div class="fg1">
+      <label class="lbl">배관 재질</label>
+      <select id="f-pm" class="w100">
+        <option value="pb">PB (피비관)</option>
+        <option value="pvc">PVC</option>
+        <option value="copper">동관</option>
+        <option value="galv">아연강관 ⚠ 노후</option>
+      </select>
+    </div>
+    <div class="fg1"><label class="lbl">보일러 연식 (년)</label><input type="number" id="f-ba" class="w100" min="1" max="30" value="10"></div>
+    <div class="fg1">
+      <label class="lbl">분전반 상태</label>
+      <select id="f-ps" class="w100">
+        <option value="good">양호</option>
+        <option value="fair" selected>보통</option>
+        <option value="poor">불량 (교체필요)</option>
+      </select>
+    </div>
+    <div class="fg1">
+      <label class="lbl">바닥 수평</label>
+      <select id="f-fs" class="w100">
+        <option value="good" selected>양호</option>
+        <option value="fair">보통 (경사 있음)</option>
+        <option value="poor">불량 (보정 필요)</option>
+      </select>
+    </div>
+    <div class="fg1">
+      <label class="lbl">방수 하자</label>
+      <div class="tg" id="tg-lk"><button class="tb" data-v="1">있음</button><button class="tb act" data-v="0">없음</button></div>
+    </div>
+    <div class="fg1">
+      <label class="lbl">석면 의심</label>
+      <div class="tg" id="tg-as"><button class="tb" data-v="1">의심</button><button class="tb act" data-v="0">해당없음</button></div>
+    </div>
+  </div>
+  <div id="s3-warns"></div>
+</div>
+
+<!-- STEP 4: 공사 범위 -->
+<div class="sp" id="s4">
+  <div class="stitle">공사 범위</div>
+  <div class="ssub">시공 항목을 선택하세요. AUTO · FORCED 항목은 온톨로지가 자동 추가합니다.</div>
+  <div id="scope-box"></div>
+  <div id="diag-box" style="margin-top:14px;"></div>
+</div>
+
+<!-- STEP 5: 자재 등급 -->
+<div class="sp" id="s5">
+  <div class="stitle">자재 등급</div>
+  <div class="ssub">전체 패키지를 선택하거나 부위별로 설정하세요.</div>
+  <div class="slabel">전체 패키지</div>
+  <div class="gpkg" id="gpkg"></div>
+  <div class="slabel">부위별 등급</div>
+  <div class="gparts" id="gparts"></div>
+  <div class="slabel" style="margin-top:18px;">이익률</div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px;">
+    <span>이익률 설정</span><span id="pr-pct" style="font-family:var(--fm);color:var(--gold);">30%</span>
+  </div>
+  <input type="range" id="pr-range" min="10" max="50" value="30" step="1" style="width:100%;accent-color:var(--gold);margin-bottom:12px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:12px;">
+    <div class="pr-row"><span class="pr-lbl">원가 합계</span><span class="pr-val" id="fin-cost">—</span></div>
+    <div class="pr-row"><span class="pr-lbl">이익</span><span class="pr-val" id="fin-profit">—</span></div>
+    <div class="pr-row"><span class="pr-lbl">공급가 (VAT 전)</span><span class="pr-val hi" id="fin-supply">—</span></div>
+  </div>
+</div>
+
+<!-- STEP 6: 견적 결과 -->
+<div class="sp" id="s6">
+  <div class="stitle">견적 결과</div>
+  <div class="ssub">최종 견적과 공정 일정을 확인하고 저장하세요.</div>
+  <div class="kpic" id="kpic"></div>
+  <div class="fg" style="margin-bottom:18px;">
+    <div class="fg1"><label class="lbl">착공일</label><input type="date" id="f-sd" class="w100"></div>
+    <div class="fg1"><label class="lbl">비고</label><input type="text" id="f-memo" class="w100" placeholder="특기사항"></div>
+  </div>
+  <div class="slabel">공사 항목별 내역</div>
+  <table class="dt" style="margin-bottom:18px;">
+    <thead><tr><th>항목명</th><th>구분</th><th>수량</th><th>단위</th><th>노무비</th><th>자재비</th><th>합계</th></tr></thead>
+    <tbody id="res-tbody"></tbody>
+    <tfoot><tr style="font-weight:600;background:var(--deep);">
+      <td colspan="6">소계</td><td id="res-sub" style="color:var(--gold);font-family:var(--fm);">—</td>
+    </tr></tfoot>
+  </table>
+  <div class="slabel">공정 일정 (Gantt)</div>
+  <table class="dt">
+    <thead><tr><th>공정명</th><th>착공</th><th>완공</th><th>기간</th><th style="min-width:100px;">Gantt</th></tr></thead>
+    <tbody id="sch-tbody"></tbody>
+  </table>
+</div>
+
+</div><!-- /content -->
+
+<!-- BOTTOM NAV -->
+<div id="botnav">
+  <div class="navlbl" id="nav-lbl">STEP 0 / 6 — 컨셉</div>
+  <div class="navbtns">
+    <button class="btn btn-p" id="btn-p" onclick="WZ.prev()" style="display:none;">← 이전</button>
+    <button class="btn btn-n" id="btn-n" onclick="WZ.next()">다음 →</button>
+    <button class="btn btn-s" id="btn-s" onclick="WZ.save()" style="display:none;">💾 저장</button>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script src="../shared/engine/boc-engine.js"></script>
+<script src="../shared/store/boc-state.js"></script>
 <script>
 'use strict'
+;(function(){
 
-// ── 스텝 이동 ─────────────────────────────────────────────
-function goStep(n) {
-  var step = Math.max(0, Math.min(5, n))
-  AppState.set({ step: step })
-  for (var i = 0; i <= 5; i++) {
-    var panel = document.getElementById('step-' + i)
-    if (panel) panel.style.display = i === step ? 'flex' : 'none'
-    var dot = document.getElementById('sd' + i)
-    if (dot) {
-      dot.classList.toggle('act', i === step)
-      dot.classList.toggle('done', i < step)
-    }
-  }
-  if (step === 5) renderResult()
+// ── 상수 ──────────────────────────────────────────────────
+var SECTIONS = [
+  {id:'bath',     icon:'🚿', label:'욕실',     ids:['WTP_BT','TILE_BT','TILE_WL','CEL_BTH','SNT_WC','VNT_FAN']},
+  {id:'kitchen',  icon:'🍳', label:'주방',     ids:['KIT_CAB','TILE_KT']},
+  {id:'living',   icon:'🛋', label:'거실/침실', ids:['WP_BASIC','FL_HB','DR_RPL']},
+  {id:'balcony',  icon:'🌿', label:'발코니',   ids:['EXP_BAL']},
+  {id:'entrance', icon:'🚪', label:'현관',     ids:['FL_VNL','DR_RPL']},
+  {id:'plumbing', icon:'🔧', label:'배관',     ids:['PLB_PIPE','PLB_BOIR']},
+  {id:'electric', icon:'⚡', label:'전기',     ids:['ELE_WIRE','ELE_OUT']},
+  {id:'window',   icon:'🪟', label:'창호',     ids:['WIN_RPL']},
+]
+var CONCEPTS = [
+  {id:'simple',    emoji:'⬜', name:'심플모던',    grade:1.2},
+  {id:'minimal',   emoji:'🤍', name:'미니멀화이트', grade:1.0},
+  {id:'natural',   emoji:'🪵', name:'내추럴우드',   grade:1.3},
+  {id:'vintage',   emoji:'🕰', name:'빈티지레트로', grade:1.1},
+  {id:'scandi',    emoji:'🌲', name:'스칸디나비안', grade:1.2},
+  {id:'classic',   emoji:'👑', name:'클래식럭셔리', grade:1.8},
+  {id:'asian',     emoji:'🏮', name:'아시안젠',     grade:1.4},
+  {id:'industrial',emoji:'🔩', name:'인더스트리얼', grade:1.1},
+  {id:'provence',  emoji:'🌸', name:'프로방스',     grade:1.5},
+  {id:'contemp',   emoji:'🏙', name:'컨템포러리',   grade:1.6},
+]
+var GRADE_PKGS = [
+  {id:'std',  name:'표준',    mul:1.0, desc:'기본 마감재',   hint:'50만~80만/㎡'},
+  {id:'prem', name:'고급',    mul:1.3, desc:'고급 마감재',   hint:'80만~120만/㎡'},
+  {id:'lux',  name:'프리미엄', mul:1.8, desc:'최고급 마감재', hint:'120만~200만/㎡'},
+]
+var PART_GRADES = [
+  {id:'tile', name:'타일'},{id:'floor',name:'바닥재'},{id:'door',name:'도어'},
+  {id:'win',  name:'창호'},{id:'kit',  name:'주방가구'},{id:'bath2',name:'욕실기기'},
+]
+var SPACE_TYPES = ['거실','침실','욕실','주방','발코니','현관','서재','드레스룸']
+var STEP_LABELS = ['컨셉','건물','공간','상태','범위','등급','결과']
+var MAX_STEP = 6
+
+// ── 상태 ──────────────────────────────────────────────────
+var S = {
+  step:0,
+  sections:{bath:true,kitchen:true,living:true,balcony:false,entrance:false,plumbing:false,electric:false,window:false},
+  concept:'simple', conceptMul:1.2,
+  projId:null,
+  projName:'', buildType:'apt', buildAge:15,
+  floorLevel:5, hasElev:true, resid:false,
+  region:1.2, manager:'',
+  spaces:[], _sid:0,
+  pipeMat:'pb', boilerAge:10, panelState:'fair',
+  floorState:'good', hasLeak:false, hasAsbestos:false,
+  selectedProcessIds:[],
+  gradePkg:'std', gradeMul:1.0, partGrades:{}, profitRate:30,
+  startDate:'', memo:'',
+  result:null,
 }
 
-function nextStep() {
-  var s = AppState.get()
-  goStep(Math.min(5, s.step + 1))
+// ── 유틸 ──────────────────────────────────────────────────
+function fmt(n){
+  if(!n||n<=0) return '—'
+  if(n>=100000000) return (n/100000000).toFixed(1)+'억'
+  if(n>=10000) return Math.round(n/10000)+'만'
+  return n.toLocaleString()
 }
+function fmtW(n){ return (!n||n<=0)?'—':Math.round(n).toLocaleString()+'원' }
+function $id(id){ return document.getElementById(id) }
 
-// ── 견적 계산 + 렌더 ──────────────────────────────────────
-function fmt(n) {
-  if (!n || n <= 0) return '—'
-  if (n >= 100000000) return (n / 100000000).toFixed(1) + '억'
-  if (n >= 10000) return Math.round(n / 10000) + '만원'
-  return n.toLocaleString() + '원'
+function guessType(nm){
+  if(/욕실|화장실|bath/i.test(nm)) return 'bathroom'
+  if(/주방|kitchen|부엌/i.test(nm))  return 'kitchen'
+  if(/발코니|balcony/i.test(nm))    return 'balcony'
+  if(/침실|bedroom|안방|방/i.test(nm)) return 'bedroom'
+  return 'living'
 }
+function spaceToCalc(sp){
+  var a=sp.area||10; var side=Math.sqrt(a)*1000
+  var type=guessType(sp.type||sp.name)
+  var wins=[],doors=[]
+  for(var i=0;i<(sp.windows||0);i++) wins.push({w:1200,h:1200})
+  for(var i=0;i<(sp.doors||1);i++) doors.push({w:900,h:2100})
+  return {type:type,width:side,length:side,height:2400,windows:wins,doors:doors}
+}
+function pipmapToCalc(v){ return v==='galv'?'galvanized':v }
+function totalArea(){ return S.spaces.reduce(function(a,sp){return a+(sp.area||0)},0) }
 
-function renderResult() {
-  var s = AppState.get()
-  // 테스트용 데모 공간 (실제는 공간입력 모듈에서 받아옴)
-  var testState = Object.assign({}, s, {
-    spaces: s.spaces.length ? s.spaces : [
-      { type:'living', width:4500, length:6000 },
-      { type:'bedroom', width:3000, length:3500 },
-      { type:'bathroom', width:1500, length:2200 },
-      { type:'kitchen', width:3000, length:2500 },
-    ],
-    selectedProcessIds: s.selectedProcessIds.length ? s.selectedProcessIds :
-      ['WP_BASIC','FL_HB','WTP_BT','TILE_BT','TILE_WL'],
+// ── STEP 0 렌더 ───────────────────────────────────────────
+function renderStep0(){
+  var sg=$id('sec-grid'); if(!sg) return
+  sg.innerHTML=''
+  SECTIONS.forEach(function(sec){
+    var d=document.createElement('div')
+    d.className='ci'+(S.sections[sec.id]?' on':'')
+    d.innerHTML='<span class="ico">'+sec.icon+'</span><span class="nm">'+sec.label+'</span>'
+    d.onclick=function(){S.sections[sec.id]=!S.sections[sec.id]; d.classList.toggle('on',S.sections[sec.id])}
+    sg.appendChild(d)
   })
+  var cg=$id('con-grid'); if(!cg) return
+  cg.innerHTML=''
+  CONCEPTS.forEach(function(c){
+    var d=document.createElement('div')
+    d.className='cc'+(S.concept===c.id?' sel':'')
+    d.innerHTML='<span class="ce">'+c.emoji+'</span><div class="cn">'+c.name+'</div><div class="cg2">×'+c.grade+'</div>'
+    d.onclick=function(){
+      S.concept=c.id; S.conceptMul=c.grade
+      document.querySelectorAll('.cc').forEach(function(el){el.classList.remove('sel')})
+      d.classList.add('sel')
+    }
+    cg.appendChild(d)
+  })
+}
 
-  var result = CalcEngine.calculateEstimate(testState)
-  var totals = result ? result.totals : null
-
-  var ra = document.getElementById('result-area')
-  if (!ra) return
-
-  if (!result) {
-    ra.innerHTML = '<div class="empty">견적 계산에 실패했습니다.</div>'
-    return
-  }
-
-  // 요약 카드
-  var summary =
-    '<div class="result-summary">' +
-    '<div class="result-card"><div class="rv">' + fmt(result.totalSupply) + '</div><div class="rl">공급가</div></div>' +
-    '<div class="result-card"><div class="rv">' + fmt(result.contractAmount) + '</div><div class="rl">도급합계</div></div>' +
-    '<div class="result-card"><div class="rv">' + fmt(result.finalAmount) + '</div><div class="rl">최종(VAT)</div></div>' +
-    (totals && totals.fa > 0 ? '<div class="result-card"><div class="rv">' + Math.round(result.finalAmount/totals.fa).toLocaleString() + '/㎡</div><div class="rl">㎡단가</div></div>' : '') +
-    '<div class="result-card"><div class="rv">' + result.duration + '일</div><div class="rl">예상공기</div></div>' +
-    '</div>'
-
-  // 공정 테이블
-  var rows = result.lines.map(function(l) {
-    return '<tr><td>' + l.name + '</td><td>' + l.cat + '</td><td>' + l.qty.toFixed(1) + ' ' + l.unit + '</td><td>' + l.supplyPrice.toLocaleString() + '원</td></tr>'
-  }).join('')
-
-  var table =
-    '<table class="result-table" style="margin-top:16px">' +
-    '<thead><tr><th>공정명</th><th>분류</th><th>수량</th><th>공급가</th></tr></thead>' +
-    '<tbody>' + rows + '</tbody>' +
-    '</table>'
-
-  ra.innerHTML = summary + table
-
-  // 온톨로지 자동적용
-  var ctx = { pipeMat: s.pipeMat, hasAsbestos: s.hasAsbestos }
-  var onto = OntologyEngine.applyOntology(testState.selectedProcessIds, ctx)
-
-  // 진단
-  var diagCtx = { bathroomCount: totals ? totals.bathroomCount : 0, pipeMat: s.pipeMat, hasAsbestos: s.hasAsbestos }
-  var diags = DiagEngine.runDiag(result.lines, diagCtx)
-  var da = document.getElementById('diag-area')
-  if (da) {
-    da.innerHTML = diags.map(function(d) {
-      var cls = d.type === 'ok' ? 'diag-ok' : d.type === 'error' ? 'diag-error' : d.type === 'info' ? 'diag-info' : 'diag-warn'
-      return '<div class="diag-item ' + cls + '">[' + d.code + '] ' + d.msg + '</div>'
+// ── STEP 2 렌더 ───────────────────────────────────────────
+function renderSpaceCards(){
+  var c=$id('sp-cards'); if(!c) return
+  c.innerHTML=''
+  S.spaces.forEach(function(sp){
+    var d=document.createElement('div'); d.className='scard'
+    var typeOpts=SPACE_TYPES.map(function(t){
+      return '<option value="'+t+'"'+(sp.type===t?' selected':'')+'>'+t+'</option>'
     }).join('')
+    d.innerHTML=
+      '<div class="sch">'+
+        '<div class="scn">'+sp.name+'</div>'+
+        '<div class="sca">'+sp.area.toFixed(1)+' ㎡</div>'+
+        '<button class="scdel" onclick="WZ.delSpace(\''+sp.id+'\')">✕</button>'+
+      '</div>'+
+      '<div class="sfields">'+
+        '<div><label style="font-size:10px;color:var(--dim)">공간명</label>'+
+          '<input type="text" value="'+sp.name+'" onchange="WZ.updSp(\''+sp.id+'\',\'name\',this.value)"></div>'+
+        '<div><label style="font-size:10px;color:var(--dim)">유형</label>'+
+          '<select onchange="WZ.updSp(\''+sp.id+'\',\'type\',this.value)">'+typeOpts+'</select></div>'+
+        '<div><label style="font-size:10px;color:var(--dim)">층</label>'+
+          '<input type="number" min="1" max="50" value="'+sp.floor+'" onchange="WZ.updSp(\''+sp.id+'\',\'floor\',+this.value)"></div>'+
+        '<div><label style="font-size:10px;color:var(--dim)">면적(㎡)</label>'+
+          '<input type="number" min="0.5" step="0.5" value="'+sp.area+'" onchange="WZ.updSp(\''+sp.id+'\',\'area\',+this.value)"></div>'+
+        '<div><label style="font-size:10px;color:var(--dim)">창문수</label>'+
+          '<input type="number" min="0" value="'+(sp.windows||0)+'" onchange="WZ.updSp(\''+sp.id+'\',\'windows\',+this.value)"></div>'+
+      '</div>'
+    c.appendChild(d)
+  })
+  renderSpaceSummary()
+}
+function renderSpaceSummary(){
+  var sum=$id('sp-sum'); if(!sum) return
+  if(!S.spaces.length){sum.style.display='none'; return}
+  sum.style.display='block'
+  var tbody=$id('sp-tbody'); if(!tbody) return
+  tbody.innerHTML=''; var tot=0
+  S.spaces.forEach(function(sp){
+    tot+=sp.area||0
+    var tr=document.createElement('tr')
+    tr.innerHTML='<td>'+sp.name+'</td><td>'+(sp.type||'거실')+'</td><td>'+sp.floor+'F</td>'+
+      '<td style="font-family:var(--fm)">'+sp.area.toFixed(1)+'</td>'+
+      '<td>'+(sp.windows||0)+'</td><td>'+(sp.doors||1)+'</td>'
+    tbody.appendChild(tr)
+  })
+  var totEl=$id('sp-tot'); if(totEl) totEl.textContent=tot.toFixed(1)+' ㎡'
+}
+
+// ── STEP 3 경고 ───────────────────────────────────────────
+function renderS3Warns(){
+  var el=$id('s3-warns'); if(!el) return
+  var h=''
+  if(S.pipeMat==='galv')
+    h+='<div class="wb err">⚠ 아연강관 — 심각한 부식 위험. 배관 전체 교체 권장 (온톨로지 FORCED 자동 적용)</div>'
+  if(S.hasAsbestos)
+    h+='<div class="wb err">⚠ 석면 의심 — 철거 전 전문 석면 제거 필수 (온톨로지 FORCED 자동 적용)</div>'
+  if(S.hasLeak)
+    h+='<div class="wb wrn">⚠ 방수 하자 있음 — 방수 공사 필수 포함 권장</div>'
+  if(S.panelState==='poor')
+    h+='<div class="wb wrn">⚠ 분전반 불량 — 분전반 교체 포함 권장</div>'
+  if(S.buildAge>=20)
+    h+='<div class="wb inf">ℹ 건물 연식 '+S.buildAge+'년 — 배관·전기 노후 설비 종합 점검 권장</div>'
+  el.innerHTML=h
+}
+
+// ── STEP 4 범위 ───────────────────────────────────────────
+function renderScope(){
+  var box=$id('scope-box'); if(!box) return
+  // 온톨로지
+  var ont=null
+  try{
+    ont=OntologyEngine.applyOntology(
+      S.selectedProcessIds,
+      {pipeMat:pipmapToCalc(S.pipeMat), hasAsbestos:S.hasAsbestos}
+    )
+  }catch(e){console.warn('[Scope/Ont]',e)}
+  var autoSet=new Set(), forcedSet=new Set(), condSet=new Set()
+  if(ont){
+    ont.autoAdded.forEach(function(a){
+      autoSet.add(a.id)
+      if(a.ruleId==='R24'||a.ruleId==='R25') forcedSet.add(a.id)
+    })
+    ont.warnings.forEach(function(w){condSet.add(w.action)})
+    S.selectedProcessIds=ont.selectedIds.slice()
+  }
+  var DB=CalcEngine.DB; var sel=new Set(S.selectedProcessIds)
+  // 카테고리별 그룹
+  var catMap={}
+  Object.keys(DB).forEach(function(id){
+    var item=DB[id]; var cat=item.cat||'기타'
+    if(!catMap[cat]) catMap[cat]=[]
+    catMap[cat].push(Object.assign({id:id},item))
+  })
+  var h=''
+  Object.keys(catMap).sort().forEach(function(cat){
+    h+='<div class="ss"><div class="sst">'+cat+'</div>'
+    catMap[cat].forEach(function(item){
+      var isF=forcedSet.has(item.id), isA=autoSet.has(item.id), isC=condSet.has(item.id)
+      var isOn=sel.has(item.id)
+      var badge=isF?'<span class="badge b-frc">FORCED</span>':isA?'<span class="badge b-auto">AUTO</span>':isC?'<span class="badge b-cond">조건</span>':''
+      var lk=isF||isA
+      var ph=item.lb?'<span class="sp2">노'+(item.lb/1000).toFixed(0)+'k/재'+(item.mt/1000).toFixed(0)+'k</span>':''
+      h+='<div class="si'+(isOn?' on':'')+(lk?' lk':'')+'" id="si-'+item.id+'" onclick="WZ.togScope(\''+item.id+'\','+(lk?'true':'false')+')">'
+        +badge+'<span class="sn">'+item.name+'</span>'+ph+'</div>'
+    })
+    h+='</div>'
+  })
+  box.innerHTML=h||'<div style="color:var(--dim);padding:20px;">항목 없음</div>'
+  renderDiag()
+}
+
+function renderDiag(){
+  var box=$id('diag-box'); if(!box) return
+  var DB=CalcEngine.DB
+  var lines=S.selectedProcessIds.map(function(id){
+    var item=DB[id]||{}; return {id:id,cat:item.cat||''}
+  })
+  var bathroomCount=S.spaces.filter(function(sp){return guessType(sp.type||sp.name)==='bathroom'}).length
+  var ws=[]
+  try{
+    ws=DiagEngine.runDiag(lines,{
+      bathroomCount:bathroomCount,
+      pipeMat:pipmapToCalc(S.pipeMat),
+      hasAsbestos:S.hasAsbestos,
+      duration:S.selectedProcessIds.length*2,
+    })||[]
+  }catch(e){console.warn('[Diag]',e)}
+  if(!ws.length){box.innerHTML=''; return}
+  var h='<div class="slabel">실시간 진단</div>'
+  ws.forEach(function(w){
+    var cls=w.type==='error'?'err':w.type==='warn'?'wrn':w.type==='ok'?'ok':'inf'
+    var icon=w.type==='error'?'🔴':w.type==='warn'?'🟡':w.type==='ok'?'✅':'ℹ'
+    h+='<div class="di '+cls+'"><span>'+icon+'</span><span>'+w.msg+'</span></div>'
+  })
+  box.innerHTML=h
+}
+
+// ── STEP 5 등급 ───────────────────────────────────────────
+function renderGrade(){
+  var gpkg=$id('gpkg'); if(gpkg){
+    gpkg.innerHTML=''
+    GRADE_PKGS.forEach(function(pkg){
+      var d=document.createElement('div')
+      d.className='gpb'+(S.gradePkg===pkg.id?' act':'')
+      d.innerHTML='<div class="gpbn">'+pkg.name+'</div><div class="gpbd">'+pkg.desc+'</div><div class="gpbp">'+pkg.hint+'</div>'
+      d.onclick=function(){
+        S.gradePkg=pkg.id; S.gradeMul=pkg.mul
+        document.querySelectorAll('.gpb').forEach(function(b){b.classList.remove('act')})
+        d.classList.add('act'); calcFin()
+      }
+      gpkg.appendChild(d)
+    })
+  }
+  var gp=$id('gparts'); if(gp){
+    gp.innerHTML=''
+    PART_GRADES.forEach(function(p){
+      var cur=S.partGrades[p.id]||'std'
+      var d=document.createElement('div'); d.className='gpart'
+      d.innerHTML='<div class="gpn">'+p.name+'</div>'+
+        '<select class="w100" onchange="WZ.setPartG(\''+p.id+'\',this.value)">'+
+        '<option value="std"'+(cur==='std'?' selected':'')+'>표준</option>'+
+        '<option value="prem"'+(cur==='prem'?' selected':'')+'>고급</option>'+
+        '<option value="lux"'+(cur==='lux'?' selected':'')+'>프리미엄</option>'+
+        '</select>'
+      gp.appendChild(d)
+    })
+  }
+  var rng=$id('pr-range'), pct=$id('pr-pct')
+  if(rng){
+    rng.value=S.profitRate
+    rng.oninput=function(){S.profitRate=+this.value; if(pct) pct.textContent=S.profitRate+'%'; calcFin()}
+  }
+  if(pct) pct.textContent=S.profitRate+'%'
+  calcFin()
+}
+
+function calcFin(){
+  var fa=totalArea()||30; var DB=CalcEngine.DB; var cost=0
+  S.selectedProcessIds.forEach(function(id){
+    var item=DB[id]; if(!item) return
+    cost+=fa*(1+(item.wr||0))*((item.lb||0)+(item.mt||0)*(S.gradeMul||1.0))
+  })
+  var profit=cost*(S.profitRate/100), supply=cost+profit
+  var ce=$id('fin-cost'), pe=$id('fin-profit'), se=$id('fin-supply')
+  if(ce) ce.textContent=fmtW(cost)
+  if(pe) pe.textContent=fmtW(profit)
+  if(se) se.textContent=fmtW(supply)
+}
+
+// ── STEP 6 결과 ───────────────────────────────────────────
+function renderResult(){
+  var spaces=S.spaces.length
+    ? S.spaces.map(spaceToCalc)
+    : [{type:'living',width:Math.sqrt(30)*1000,length:Math.sqrt(30)*1000,height:2400,windows:[{w:1200,h:1200}],doors:[{w:900,h:2100}]}]
+
+  var r=null
+  try{
+    r=CalcEngine.calculateEstimate({
+      spaces:spaces,
+      selectedProcessIds:S.selectedProcessIds,
+      gradeMul:S.gradeMul||1.0,
+      floorLevel:S.floorLevel||5,
+      hasElev:S.hasElev,
+      resid:S.resid,
+    })
+  }catch(e){console.warn('[Result/Calc]',e)}
+
+  // 폴백: CalcEngine 조건 불충족 시
+  if(!r){
+    var fa=totalArea()||30; var DB=CalcEngine.DB; var sup=0
+    var fallLines=S.selectedProcessIds.map(function(id){
+      var item=DB[id]||{}; var qty=fa; var wr=item.wr||0
+      var lb=(item.lb||0)*qty*(1+wr); var mt=(item.mt||0)*qty*(1+wr)*(S.gradeMul||1.0)
+      sup+=lb+mt
+      return {id:id,name:item.name||id,cat:item.cat||'',unit:item.unit||'㎡',qty:qty,lb:item.lb||0,mt:item.mt||0,supplyPrice:Math.round(lb+mt)}
+    })
+    r={lines:fallLines,totalSupply:Math.round(sup),contractAmount:Math.round(sup*1.15),finalAmount:Math.round(sup*1.265),duration:S.selectedProcessIds.length,totals:{fa:fa}}
+  }
+  S.result=r
+  var fa2=(r.totals&&r.totals.fa)?r.totals.fa:(totalArea()||30)
+  var m2p=fa2>0?Math.round(r.finalAmount/fa2):0
+
+  // KPI cards
+  var kpic=$id('kpic')
+  if(kpic){
+    kpic.innerHTML=
+      '<div class="kc"><div class="kcv">'+fmt(r.totalSupply)+'</div><div class="kcl">공급가 (VAT 별도)</div></div>'+
+      '<div class="kc"><div class="kcv">'+fmt(r.contractAmount)+'</div><div class="kcl">도급금액 (+15%)</div></div>'+
+      '<div class="kc hi"><div class="kcv">'+fmt(r.finalAmount)+'</div><div class="kcl">최종합계 (VAT 포함)</div></div>'+
+      '<div class="kc"><div class="kcv">'+(m2p?m2p.toLocaleString()+'/㎡':'—')+'</div><div class="kcl">㎡단가</div></div>'
   }
 
-  // KPI 셸에 전달
-  window.ecoreanAPI?.updateKPI({
-    totalSupply:    result.totalSupply,
-    contractAmount: result.contractAmount,
-    finalAmount:    result.finalAmount,
-    fa:             totals ? totals.fa : 0,
-    projectCount:   (s.projects || []).length,
-    pendingCount:   (s.approvalReqs || []).filter(function(r){ return r.status === 'pending' }).length,
+  // 내역 테이블
+  var tbody=$id('res-tbody'), sub=$id('res-sub')
+  if(tbody){
+    tbody.innerHTML=''; var tot=0
+    ;(r.lines||[]).forEach(function(l){
+      tot+=l.supplyPrice||0
+      var tr=document.createElement('tr')
+      var lbAmt=l.lb&&l.qty?Math.round(l.lb*l.qty).toLocaleString()+'원':'—'
+      var mtAmt=l.mt&&l.qty?Math.round(l.mt*l.qty*(S.gradeMul||1.0)).toLocaleString()+'원':'—'
+      tr.innerHTML='<td>'+l.name+'</td>'+
+        '<td style="font-size:10px;color:var(--dim)">'+l.cat+'</td>'+
+        '<td style="font-family:var(--fm)">'+(l.qty?l.qty.toFixed(1):'1')+'</td>'+
+        '<td>'+l.unit+'</td>'+
+        '<td style="font-family:var(--fm)">'+lbAmt+'</td>'+
+        '<td style="font-family:var(--fm)">'+mtAmt+'</td>'+
+        '<td style="color:var(--gold);font-family:var(--fm)">'+(l.supplyPrice||0).toLocaleString()+'원</td>'
+      tbody.appendChild(tr)
+    })
+    if(sub) sub.textContent=tot.toLocaleString()+'원'
+  }
+
+  // Schedule
+  var schTbody=$id('sch-tbody')
+  if(schTbody){
+    var start=S.startDate||new Date(Date.now()+14*86400000).toISOString().slice(0,10)
+    var tasks=[]
+    try{tasks=ScheduleEngine.generateSchedule(start,S.selectedProcessIds)||[]}catch(e){}
+    schTbody.innerHTML=''
+    var totalDur=tasks.reduce(function(a,t){return a+(t.dur||1)},0)||1
+    tasks.forEach(function(t){
+      var ed=new Date(t.start); ed.setDate(ed.getDate()+(t.dur||1))
+      var bw=Math.max(3,Math.round(((t.dur||1)/totalDur)*160))
+      var tr=document.createElement('tr')
+      tr.innerHTML='<td>'+t.name+'</td>'+
+        '<td style="font-family:var(--fm);font-size:11px">'+t.start+'</td>'+
+        '<td style="font-family:var(--fm);font-size:11px">'+ed.toISOString().slice(0,10)+'</td>'+
+        '<td>'+t.dur+'일</td>'+
+        '<td><div class="gb" style="width:'+bw+'px"></div></td>'
+      schTbody.appendChild(tr)
+    })
+  }
+
+  // KPI bar → shell
+  try{
+    window.ecoreanAPI?.updateKPI({
+      totalSupply:r.totalSupply,
+      contractAmount:r.contractAmount,
+      finalAmount:r.finalAmount,
+      fa:fa2,
+      projectCount:1,
+      pendingCount:0,
+    })
+  }catch(e){}
+}
+
+// ── 위저드 컨트롤 ─────────────────────────────────────────
+var WZ={
+  goStep:function(n){
+    if(n<0) n=0; if(n>MAX_STEP) n=MAX_STEP
+    S.step=n
+    for(var i=0;i<=MAX_STEP;i++){
+      var p=$id('s'+i); if(p) p.classList.toggle('act',i===n)
+      var d=$id('sd'+i)
+      if(d){d.classList.toggle('act',i===n); d.classList.toggle('done',i<n)}
+      if(i<MAX_STEP){var l=$id('sl'+i+(i+1)); if(l) l.classList.toggle('done',i<n)}
+    }
+    var bp=$id('btn-p'), bn=$id('btn-n'), bs=$id('btn-s')
+    if(bp) bp.style.display=n>0?'':'none'
+    if(bn) bn.style.display=n<MAX_STEP?'':'none'
+    if(bs) bs.style.display=n===MAX_STEP?'':'none'
+    if(bn) bn.textContent=n===MAX_STEP-1?'계산하기 →':'다음 →'
+    var nl=$id('nav-lbl'); if(nl) nl.textContent='STEP '+n+' / '+MAX_STEP+' — '+STEP_LABELS[n]
+    if(n===0) renderStep0()
+    if(n===2) renderSpaceCards()
+    if(n===3){WZ.readS3(); renderS3Warns()}
+    if(n===4) renderScope()
+    if(n===5) renderGrade()
+    if(n===6) renderResult()
+  },
+  next:function(){WZ.readCurrent(); WZ.goStep(S.step+1)},
+  prev:function(){WZ.readCurrent(); WZ.goStep(S.step-1)},
+  readCurrent:function(){
+    if(S.step===1) WZ.readS1()
+    if(S.step===3) WZ.readS3()
+  },
+  readS1:function(){
+    S.projName  =($id('f-pnm')?.value)||''
+    S.buildAge  =+($id('f-age')?.value||15)
+    S.floorLevel=+($id('f-fl')?.value||5)
+    S.region    =+($id('f-rg')?.value||1.2)
+    S.manager   =($id('f-mgr')?.value)||''
+  },
+  readS3:function(){
+    S.pipeMat   =($id('f-pm')?.value)||'pb'
+    S.boilerAge =+($id('f-ba')?.value||10)
+    S.panelState=($id('f-ps')?.value)||'fair'
+    S.floorState=($id('f-fs')?.value)||'good'
+  },
+  addSpace:function(){
+    S._sid++
+    S.spaces.push({id:'sp'+S._sid,name:'공간'+S._sid,type:'거실',floor:1,area:10,windows:1,doors:1})
+    renderSpaceCards()
+  },
+  delSpace:function(id){
+    S.spaces=S.spaces.filter(function(sp){return sp.id!==id}); renderSpaceCards()
+  },
+  updSp:function(id,field,val){
+    var sp=S.spaces.find(function(s){return s.id===id})
+    if(sp) sp[field]=val
+    renderSpaceSummary()
+    // 면적 변경 시 카드 헤더 업데이트
+    if(field==='area'||field==='name'){
+      var card=document.querySelector('[id="si-'+id+'"]')
+      if(!card){
+        // find parent scard and update header
+        var allCards=document.querySelectorAll('.scard')
+        // rebuild is simplest
+        renderSpaceCards()
+      }
+    }
+  },
+  togScope:function(id,locked){
+    if(locked) return
+    var idx=S.selectedProcessIds.indexOf(id)
+    var el=$id('si-'+id)
+    if(idx>=0){S.selectedProcessIds.splice(idx,1); if(el) el.classList.remove('on')}
+    else{S.selectedProcessIds.push(id); if(el) el.classList.add('on')}
+    renderDiag()
+  },
+  setPartG:function(pid,val){S.partGrades[pid]=val; calcFin()},
+  save:async function(){
+    WZ.readS1(); WZ.readS3()
+    if(!S.projId) S.projId='p'+Date.now()
+    var proj={
+      id:S.projId, name:S.projName||'새 프로젝트',
+      buildType:S.buildType, buildAge:S.buildAge,
+      floorLevel:S.floorLevel, hasElev:S.hasElev,
+      result:S.result, spaces:S.spaces,
+      scope:{selectedProcessIds:S.selectedProcessIds},
+      grades:{pkg:S.gradePkg,mul:S.gradeMul,parts:S.partGrades,profitRate:S.profitRate},
+      status:'draft', createdAt:new Date().toISOString(),
+    }
+    var bs=$id('btn-s')
+    if(bs){bs.textContent='저장 중...'; bs.disabled=true}
+    try{
+      var ok=false
+      if(window.ecoreanAPI?.db?.saveProject){
+        var res=await window.ecoreanAPI.db.saveProject(proj); ok=res&&res.ok
+      } else if(typeof AppState!=='undefined'){
+        var st=AppState.get()
+        var pjs=(st.projects||[]).filter(function(p){return p.id!==proj.id})
+        pjs.unshift(proj); AppState.set({projects:pjs}); ok=true
+      }
+      if(bs){
+        bs.textContent=ok?'✅ 저장됨':'❌ 실패'
+        setTimeout(function(){if(bs){bs.textContent='💾 저장';bs.disabled=false}},2000)
+      }
+    }catch(e){
+      console.error('[Save]',e)
+      if(bs){bs.textContent='❌ 오류'; setTimeout(function(){if(bs){bs.textContent='💾 저장';bs.disabled=false}},2000)}
+    }
+  },
+}
+window.WZ=WZ
+
+// ── 토글 그룹 초기화 ─────────────────────────────────────
+function initTG(gid,cb){
+  var g=$id(gid); if(!g) return
+  g.querySelectorAll('.tb').forEach(function(btn){
+    btn.onclick=function(){
+      g.querySelectorAll('.tb').forEach(function(b){b.classList.remove('act')})
+      btn.classList.add('act'); if(cb) cb(btn.dataset.v)
+    }
+  })
+}
+
+// ── CAD 캔버스 ────────────────────────────────────────────
+function initCanvas(){
+  var canvas=$id('cad'); if(!canvas) return
+  var ctx=canvas.getContext('2d')
+  var GRID=20; var tool='select'; var drawing=false
+  var sx=0,sy=0; var shapes=[]; var selIdx=-1
+
+  function redraw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height)
+    ctx.strokeStyle='rgba(201,168,76,0.1)'; ctx.lineWidth=0.5
+    for(var x=0;x<=canvas.width;x+=GRID){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke()
+    }
+    for(var y=0;y<=canvas.height;y+=GRID){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke()
+    }
+    shapes.forEach(function(sh,i){
+      ctx.fillStyle='rgba(201,168,76,0.07)'
+      ctx.strokeStyle=i===selIdx?'#FFD700':'#C9A84C'; ctx.lineWidth=i===selIdx?2:1
+      ctx.beginPath(); ctx.rect(sh.x,sh.y,sh.w,sh.h); ctx.fill(); ctx.stroke()
+      ctx.fillStyle='#C9A84C'; ctx.font='9px monospace'
+      var wm=(sh.w/GRID*0.4).toFixed(1), hm=(sh.h/GRID*0.4).toFixed(1)
+      ctx.fillText(wm+'×'+hm+'m',sh.x+3,sh.y+11)
+    })
+  }
+  function snap(v){return Math.round(v/GRID)*GRID}
+  redraw()
+
+  canvas.addEventListener('mousedown',function(e){
+    var r=canvas.getBoundingClientRect()
+    var mx=e.clientX-r.left, my=e.clientY-r.top
+    if(tool==='rect'){drawing=true; sx=snap(mx); sy=snap(my)}
+    else{
+      selIdx=-1
+      shapes.forEach(function(sh,i){
+        if(mx>=sh.x&&mx<=sh.x+sh.w&&my>=sh.y&&my<=sh.y+sh.h) selIdx=i
+      })
+      redraw()
+    }
+  })
+  canvas.addEventListener('mousemove',function(e){
+    if(!drawing) return
+    var r=canvas.getBoundingClientRect()
+    var mx=snap(e.clientX-r.left), my=snap(e.clientY-r.top)
+    redraw()
+    ctx.strokeStyle='rgba(201,168,76,0.7)'; ctx.lineWidth=1.5
+    ctx.strokeRect(sx,sy,mx-sx,my-sy)
+  })
+  canvas.addEventListener('mouseup',function(e){
+    if(!drawing) return; drawing=false
+    var r=canvas.getBoundingClientRect()
+    var mx=snap(e.clientX-r.left), my=snap(e.clientY-r.top)
+    var w=mx-sx, h=my-sy
+    if(Math.abs(w)>GRID&&Math.abs(h)>GRID)
+      shapes.push({x:Math.min(sx,mx),y:Math.min(sy,my),w:Math.abs(w),h:Math.abs(h)})
+    redraw()
+  })
+  canvas.addEventListener('mouseleave',function(){if(drawing){drawing=false; redraw()}})
+
+  $id('ct-sel')?.addEventListener('click',function(){
+    tool='select'
+    document.querySelectorAll('.cbt').forEach(function(b){b.classList.remove('act')})
+    this.classList.add('act')
+  })
+  $id('ct-rect')?.addEventListener('click',function(){
+    tool='rect'
+    document.querySelectorAll('.cbt').forEach(function(b){b.classList.remove('act')})
+    this.classList.add('act')
+  })
+  $id('ct-del')?.addEventListener('click',function(){
+    if(selIdx>=0){shapes.splice(selIdx,1);selIdx=-1;redraw()}
   })
 }
 
 // ── 초기화 ────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-  AppState.load()
-  goStep(AppState.get().step || 0)
-  console.log('✅ estimate module loaded')
-})
+function init(){
+  // 선택 섹션 → 초기 공정 pre-select
+  var initial=new Set()
+  SECTIONS.forEach(function(sec){
+    if(S.sections[sec.id]) sec.ids.forEach(function(id){initial.add(id)})
+  })
+  S.selectedProcessIds=Array.from(initial)
+
+  initTG('tg-bt',function(v){S.buildType=v})
+  initTG('tg-ev',function(v){S.hasElev=v==='1'})
+  initTG('tg-rs',function(v){S.resid=v==='1'})
+  initTG('tg-lk',function(v){S.hasLeak=v==='1'; renderS3Warns()})
+  initTG('tg-as',function(v){S.hasAsbestos=v==='1'; renderS3Warns()})
+
+  var pmEl=$id('f-pm')
+  if(pmEl) pmEl.onchange=function(){S.pipeMat=this.value; renderS3Warns()}
+
+  // 착공일 기본 (오늘+14일)
+  var sdEl=$id('f-sd')
+  if(sdEl){
+    var d=new Date(); d.setDate(d.getDate()+14)
+    sdEl.value=d.toISOString().slice(0,10); S.startDate=sdEl.value
+    sdEl.onchange=function(){S.startDate=this.value}
+  }
+
+  var memoEl=$id('f-memo')
+  if(memoEl) memoEl.onchange=function(){S.memo=this.value}
+
+  // 기본 공간 1개
+  WZ.addSpace()
+
+  initCanvas()
+
+  if(typeof AppState!=='undefined'){
+    AppState.load()
+    AppState.subscribe(function(){})
+  }
+
+  WZ.goStep(0)
+  console.log('✅ estimate.html Phase 2 ready — BOC v2')
+}
+
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',init)
+} else { init() }
+
+})()
 </script>
 </body>
 </html>
