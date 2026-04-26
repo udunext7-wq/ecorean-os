@@ -95,7 +95,9 @@
       if (!spaces.length) return null
       const totals  = getTotals(spaces)
       const pm      = state.gradeMul || 1.0
-      const adjMul  = getHoistMul(state.floorLevel||1, state.hasElev!==false) * (state.resid ? 1.10 : 1.0)
+      const adjMul  = getHoistMul(state.floorLevel||1, state.hasElev!==false)
+                     * (state.resid ? 1.10 : 1.0)
+                     * (state.region || 1.0)
       const ctx     = { fa:totals.fa, wa:totals.wa, wetFA:totals.wetFA, wetWA:totals.wetWA,
                         dryFA:totals.dryFA, balFA:totals.balFA, kitFA:totals.kitFA,
                         bathroomCount:totals.bathroomCount, wn:totals.wn, dn:totals.dn }
@@ -153,11 +155,49 @@
       assert(getHoistMul(3,false)===1.10, 'T12b')
       assert(getHoistMul(15,true)===1.20, 'T13a')
       assert(getHoistMul(15,false)===1.30, 'T13b')
-      assert(calculateEstimate({spaces:[],selectedProcessIds:[]})=== null, 'T14')
+      assert(calculateEstimate({spaces:[],selectedProcessIds:[],region:1.0})=== null, 'T14')
       const r15 = calculateEstimate({spaces:[{type:'bathroom',width:1500,length:2000}],selectedProcessIds:['WTP_BT'],floorLevel:1,hasElev:true,gradeMul:1.0,resid:false})
       assert(r15!==null&&r15.totalSupply>0, 'T15a')
       assert(Math.abs(r15.contractAmount-r15.totalSupply*1.15)<1, 'T15b')
       assert(Math.abs(r15.finalAmount-r15.contractAmount*1.10)<1, 'T15c')
+      // T16: resid=true increases supply
+      const base16 = {spaces:[{type:'bathroom',width:1500,length:2000}],selectedProcessIds:['WTP_BT'],floorLevel:1,hasElev:true,gradeMul:1.0,region:1.0}
+      const r16a = calculateEstimate({...base16,resid:false})
+      const r16b = calculateEstimate({...base16,resid:true})
+      assert(r16b.totalSupply > r16a.totalSupply, 'T16 resid')
+      // T17: gradeMul=1.3 increases supply
+      const r17a = calculateEstimate({...base16,resid:false,gradeMul:1.0})
+      const r17b = calculateEstimate({...base16,resid:false,gradeMul:1.3})
+      assert(r17b.totalSupply > r17a.totalSupply, 'T17 gradeMul1.3')
+      // T18: gradeMul=1.7 > gradeMul=1.3
+      const r18 = calculateEstimate({...base16,resid:false,gradeMul:1.7})
+      assert(r18.totalSupply > r17b.totalSupply, 'T18 gradeMul1.7')
+      // T19: region=1.2 increases supply
+      const r19a = calculateEstimate({...base16,resid:false,gradeMul:1.0,region:1.0})
+      const r19b = calculateEstimate({...base16,resid:false,gradeMul:1.0,region:1.2})
+      assert(r19b.totalSupply > r19a.totalSupply, 'T19 region1.2')
+      // T20: getHoistMul floor 5
+      assert(getHoistMul(5,true)===1.08,'T20a fl5elev')
+      assert(getHoistMul(9,false)===1.18,'T20b fl9noelev')
+      // T21: getHoistMul floor 10-14
+      assert(getHoistMul(10,true)===1.15,'T21a fl10elev')
+      assert(getHoistMul(14,false)===1.25,'T21b fl14noelev')
+      // T22: 3-space estimate
+      const r22 = calculateEstimate({
+        spaces:[{type:'bathroom',width:1500,length:2000},{type:'living',width:5000,length:4000},{type:'bedroom',width:3000,length:3000}],
+        selectedProcessIds:['WTP_BT','WP_BASIC','FL_HB'],
+        floorLevel:1,hasElev:true,gradeMul:1.0,resid:false,region:1.0
+      })
+      assert(r22!==null,'T22 3space')
+      assert(r22.lines.length===3,'T22 3lines')
+      // T23: 0-area space → qty=0 → line skipped
+      const r23 = calculateEstimate({spaces:[{type:'bathroom',width:0,length:0}],selectedProcessIds:['WTP_BT'],floorLevel:1,hasElev:true,gradeMul:1.0,resid:false,region:1.0})
+      assert(r23!==null&&r23.lines.length===0,'T23 zeroArea')
+      // T24: contractAmount = totalSupply * 1.15
+      const r24 = calculateEstimate({...base16,resid:false})
+      assert(Math.abs(r24.contractAmount-r24.totalSupply*1.15)<1,'T24 contract1.15')
+      // T25: finalAmount = contractAmount * 1.10
+      assert(Math.abs(r24.finalAmount-r24.contractAmount*1.10)<1,'T25 vat1.10')
       return true
     }
 
@@ -244,6 +284,32 @@
       assert(applyOntology(['TILE_BT','GROUT'],{}).autoAdded.filter(a=>a.id==='GROUT').length===0,'T09 no dup')
       assert(applyOntology(['TILE_BT'],{}).warnings.some(w=>w.action==='WTP_BT'),'T10 warn')
       assert(RULES.length===26,'T11 26rules')
+      // T12: FL_VNL → MLD_BASE (장판 → 걸레받이)
+      assert(applyOntology(['FL_VNL'],{}).selectedIds.includes('MLD_BASE'),'T12 vnl→base')
+      // T13: DR_RPL → MLD_BASE (도어교체 → 문선)
+      assert(applyOntology(['DR_RPL'],{}).selectedIds.includes('MLD_BASE'),'T13 dr→base')
+      // T14: ELE_WIRE → ELE_OUT (전선교체 → 콘센트)
+      assert(applyOntology(['ELE_WIRE'],{}).selectedIds.includes('ELE_OUT'),'T14 wire→out')
+      // T15: PLB_BOIR → PLB_PIPE (보일러 → 배관점검)
+      assert(applyOntology(['PLB_BOIR'],{}).selectedIds.includes('PLB_PIPE'),'T15 boir→pipe')
+      // T16: KIT_CAB → TILE_KT + GROUT chain
+      const r16o = applyOntology(['KIT_CAB'],{})
+      assert(r16o.selectedIds.includes('TILE_KT'),'T16 kit→tile')
+      assert(r16o.selectedIds.includes('GROUT'),'T16 kit→grout')
+      // T17: EXP_BAL → INS_BAL + SCREED chain
+      const r17o = applyOntology(['EXP_BAL'],{})
+      assert(r17o.selectedIds.includes('INS_BAL'),'T17 exp→ins')
+      assert(r17o.selectedIds.includes('SCREED'),'T17 exp→screed')
+      // T18: EXP_BAL conditional warning WIN_RPL (R21)
+      assert(r17o.warnings.some(w=>w.action==='WIN_RPL'),'T18 exp→winrpl warn')
+      // T19: idempotency — pre-selected items not duplicated in autoAdded
+      const r19o = applyOntology(['TILE_BT','GROUT','CEL_BTH','SNT_WC','VNT_FAN'],{})
+      assert(r19o.autoAdded.filter(a=>a.id==='GROUT').length===0,'T19 idem grout')
+      assert(r19o.autoAdded.filter(a=>a.id==='CEL_BTH').length===0,'T19 idem ceil')
+      // T20: both galvanized AND hasAsbestos
+      const r20o = applyOntology([],{pipeMat:'galvanized',hasAsbestos:true})
+      assert(r20o.selectedIds.includes('PLB_PIPE'),'T20 galv')
+      assert(r20o.selectedIds.includes('ASB_RMV'),'T20 asb')
       return true
     }
 
@@ -281,6 +347,19 @@
       assert(runDiag([],{...base,hasAsbestos:true}).some(w=>w.code==='E001'&&w.type==='error'),'T04 E001')
       assert(runDiag([],{...base,pipeMat:'galvanized'}).some(w=>w.code==='W003'),'T05 W003')
       assert(runDiag([{id:'EXP_BAL',cat:'발코니'}],base).some(w=>w.code==='W004'),'T06 W004')
+      // T07: W002 — tile without grout
+      assert(runDiag([{id:'TILE_BT',cat:'타일'}],base).some(w=>w.code==='W002'),'T07 W002 tile')
+      // T08: W003 fixed — galvanized + PLB_PIPE present
+      assert(!runDiag([{id:'PLB_PIPE',cat:'배관'}],{...base,pipeMat:'galvanized'}).some(w=>w.code==='W003'),'T08 W003 fixed')
+      // T09: W004 fixed — EXP_BAL + INS_BAL present
+      assert(!runDiag([{id:'EXP_BAL',cat:'발코니'},{id:'INS_BAL',cat:'발코니'}],base).some(w=>w.code==='W004'),'T09 W004 fixed')
+      // T10: I001 — duration > 30
+      assert(runDiag([],{...base,duration:45}).some(w=>w.code==='I001'),'T10 I001')
+      // T11: E001 fixed — asbestos with ASB_RMV present
+      assert(!runDiag([{id:'ASB_RMV',cat:'특수'}],{...base,hasAsbestos:true}).some(w=>w.code==='E001'),'T11 E001 fixed')
+      // T12: complex OK — bathroom + WTP_BT, no issues
+      const r12d = runDiag([{id:'WTP_BT',cat:'방수'}],{bathroomCount:1,pipeMat:'pb',hasAsbestos:false,duration:20})
+      assert(r12d[0]?.code==='OK','T12 ok complex')
       return true
     }
 
@@ -331,6 +410,33 @@
       assert(s5[1]?.start==='2026-05-02','T05 s1')
       assert(calcCriticalPath(s5).duration===3,'T06 CPM')
       assert(calcOrderDeadline('2026-05-01',0)==='2026-05-01','T07 lead0')
+      // T08: 3-task chain dates
+      const mock3 = {'WTP_BT':{name:'방수',dur:1},'TILE_BT':{name:'타일',dur:2},'GROUT':{name:'줄눈',dur:0.5}}
+      const s8 = generateSchedule('2026-05-01',['WTP_BT','TILE_BT','GROUT'],mock3)
+      assert(s8.length===3,'T08 len3')
+      assert(s8[0].start==='2026-05-01','T08 s0')
+      assert(s8[1].start==='2026-05-02','T08 s1')
+      assert(s8[2].start==='2026-05-04','T08 s2')
+      // T09: leadDays=30
+      assert(calcOrderDeadline('2026-05-31',30)==='2026-05-01','T09 lead30')
+      // T10: leadDays=7
+      assert(calcOrderDeadline('2026-05-08',7)==='2026-05-01','T10 lead7')
+      // T11: calcCriticalPath empty
+      const cp11 = calcCriticalPath([])
+      assert(cp11.duration===0,'T11 cpm empty dur')
+      assert(cp11.path.length===0,'T11 cpm empty path')
+      // T12: calcCriticalPath single task
+      const cp12 = calcCriticalPath([{id:'A',dur:5}])
+      assert(cp12.duration===5,'T12 cpm single dur')
+      assert(cp12.path[0]==='A','T12 cpm single path')
+      // T13: total duration of 3-task schedule (1+2+ceil(0.5)=4)
+      assert(calcCriticalPath(s8).duration===4,'T13 cpm 3task')
+      // T14: fractional dur → ceil in generateSchedule
+      const mock14 = {'GROUT':{name:'줄눈',dur:0.5}}
+      const s14 = generateSchedule('2026-05-01',['GROUT'],mock14)
+      assert(s14[0].dur===1,'T14 ceil dur')
+      // T15: addDays across year boundary
+      assert(addDays('2025-12-25',10)==='2026-01-04','T15 year boundary')
       return true
     }
 
@@ -344,6 +450,11 @@
       return Math.round((revenue-cost)/revenue*10000)/100
     }
 
+    function isEstimateExpired(validUntil) {
+      if (!validUntil) return false
+      return new Date(validUntil) < new Date()
+    }
+
     function calcProjectFinance(incomes, expenses) {
       const inc=incomes||[], exp=expenses||[]
       const totalRevenue = inc.reduce((s,i)=>s+(i.amount||0),0)
@@ -354,7 +465,7 @@
       const pending      = totalRevenue - received
       const paid         = exp.filter(e=>e.paid).reduce((s,e)=>s+e.amount,0)
       const unpaid       = totalCost - paid
-      return {totalRevenue,totalCost,profit,profitRate,received,pending,paid,unpaid}
+      return {totalRevenue,totalCost,profit,profitRate,received,pending,paid,unpaid,cashBalance:received-paid}
     }
 
     function runTests() {
@@ -369,10 +480,41 @@
       const f4 = calcProjectFinance([{amount:3000000,paid:true}],[{amount:2000000,paid:true}])
       assert(Math.abs(f4.profitRate-33.33)<0.01,'T04')
       assert(calcProjectFinance([{amount:5000000,paid:true}],[]).profitRate===100,'T05')
+      // T06: cashBalance = received - paid
+      const f6 = calcProjectFinance(
+        [{amount:10000000,paid:true},{amount:5000000,paid:false}],
+        [{amount:8000000,paid:true},{amount:2000000,paid:false}]
+      )
+      assert(f6.cashBalance===2000000,'T06 cashBalance')
+      // T07: isEstimateExpired past date
+      assert(isEstimateExpired('2020-01-01')===true,'T07 expired')
+      // T08: isEstimateExpired future date
+      assert(isEstimateExpired('2099-12-31')===false,'T08 not expired')
+      // T09: isEstimateExpired empty string
+      assert(isEstimateExpired('')===false,'T09 empty')
+      // T10: unpaid = totalCost - paid
+      assert(f6.unpaid===2000000,'T10 unpaid')
+      // T11: profitRate precision
+      assert(calcProfitRate(3000000,2000000)===33.33,'T11 profitRate33.33')
+      // T12: loss scenario
+      const f12 = calcProjectFinance([{amount:5000000,paid:true}],[{amount:8000000,paid:true}])
+      assert(f12.profit===-3000000,'T12 loss profit')
+      assert(f12.profitRate<0,'T12 loss rate')
+      // T13: all expenses paid → unpaid=0
+      const f13 = calcProjectFinance([{amount:10000000,paid:false}],[{amount:5000000,paid:true}])
+      assert(f13.unpaid===0,'T13 all paid')
+      // T14: multiple incomes
+      const f14 = calcProjectFinance([{amount:1000000,paid:true},{amount:2000000,paid:true},{amount:3000000,paid:false}],[])
+      assert(f14.totalRevenue===6000000,'T14 multi revenue')
+      assert(f14.received===3000000,'T14 received')
+      assert(f14.pending===3000000,'T14 pending')
+      // T15: zero everything
+      const f15 = calcProjectFinance([],[])
+      assert(f15.totalRevenue===0&&f15.profit===0&&f15.cashBalance===0,'T15 zeros')
       return true
     }
 
-    return { calcProjectFinance, calcProfitRate, runTests }
+    return { calcProjectFinance, calcProfitRate, isEstimateExpired, runTests }
   })()
 
   /* ── Export ───────────────────────────────────────────── */
