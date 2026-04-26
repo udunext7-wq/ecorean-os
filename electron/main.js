@@ -1,47 +1,111 @@
 /**
  * ECOREAN BOC v2 — Electron Main Process
- * BrowserView로 각 모듈 탭을 격리 로드
- * IPC로 상태·KPI·탭전환 공유
+ * BrowserView 탭 격리 + SQLite + IPC + 사진 + 자동백업
  */
+'use strict'
+
 const { app, BrowserWindow, BrowserView, ipcMain, Menu, shell } = require('electron')
 const path = require('path')
+const fs   = require('fs')
 
-// ── SQLite (선택적) ────────────────────────────────────────
+// ── 경로 상수 ─────────────────────────────────────────────
+const ROOT_DIR   = path.join(__dirname, '..')
+const MODULE_DIR = path.join(ROOT_DIR, 'modules-html')
+const SHELL_FILE = path.join(ROOT_DIR, 'shell', 'boc-shell.html')
+const PRELOAD    = path.join(__dirname, 'preload.js')
+const SCHEMA_FILE= path.join(ROOT_DIR, 'shared', 'db', 'schema.sql')
+
+// ── SQLite ────────────────────────────────────────────────
 let db = null
+
 function getDB() {
   if (db) return db
   try {
     const Database = require('better-sqlite3')
-    const dbPath = path.join(app.getPath('userData'), 'ecorean-boc.db')
+    const dbPath   = path.join(app.getPath('userData'), 'ecorean.db')
     db = new Database(dbPath)
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')
-    _migrate(db)
+    _initSchema(db)
     console.log('[SQLite] Connected:', dbPath)
-  } catch(e) {
+  } catch (e) {
     console.warn('[SQLite] Not available:', e.message)
     db = null
   }
   return db
 }
 
-function _migrate(db) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS projects (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL,
-      buildType TEXT, buildAge INTEGER, floorLevel INTEGER,
-      hasElev INTEGER DEFAULT 0,
-      result_json TEXT, spaces_json TEXT, scope_json TEXT, grades_json TEXT,
-      createdAt TEXT, updatedAt TEXT, status TEXT DEFAULT 'draft'
-    );
-    CREATE TABLE IF NOT EXISTS approval_log (
-      id TEXT PRIMARY KEY, requestId TEXT,
-      actionType TEXT, reason TEXT, approvedBy TEXT, approvedAt TEXT
-    );
-  `)
+function _initSchema(d) {
+  try {
+    const sql = fs.readFileSync(SCHEMA_FILE, 'utf8')
+    d.exec(sql)
+    console.log('[SQLite] Schema applied from', SCHEMA_FILE)
+  } catch (e) {
+    console.warn('[SQLite] Schema load failed:', e.message, '— fallback')
+    d.exec(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL,
+        status TEXT DEFAULT 'draft',
+        createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS approval_log (
+        id TEXT PRIMARY KEY, requestType TEXT, targetId TEXT,
+        action TEXT, beforeValue TEXT, afterValue TEXT,
+        reason TEXT, approvedBy TEXT, approvedAt TEXT NOT NULL,
+        status TEXT DEFAULT 'approved'
+      );
+    `)
+  }
 }
 
-// ── 공유 상태 (Main Process가 master) ─────────────────────
+// ── 사진 관리 ─────────────────────────────────────────────
+function getPhotoDir(projectId, date) {
+  const d   = date || new Date().toISOString().slice(0, 10)
+  const dir = path.join(app.getPath('userData'), 'photos', String(projectId), d)
+  fs.mkdirSync(dir, { recursive: true })
+  return dir
+}
+
+// ── 백업 ──────────────────────────────────────────────────
+const MAX_BACKUPS = 30
+let   lastBackupDate = null
+
+async function createBackup() {
+  const d = getDB()
+  if (!d) return { ok: false, reason: 'SQLite unavailable' }
+  try {
+    const backupDir  = path.join(app.getPath('userData'), 'backups')
+    fs.mkdirSync(backupDir, { recursive: true })
+    const ts         = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    const backupPath = path.join(backupDir, `ecorean-${ts}.db`)
+    await d.backup(backupPath)
+    // 오래된 파일 정리 (최대 30개)
+    const files = fs.readdirSync(backupDir)
+      .filter(f => f.startsWith('ecorean-') && f.endsWith('.db'))
+      .sort()
+    if (files.length > MAX_BACKUPS) {
+      files.slice(0, files.length - MAX_BACKUPS).forEach(f => {
+        try { fs.unlinkSync(path.join(backupDir, f)) } catch (_) {}
+      })
+    }
+    lastBackupDate = new Date().toISOString().slice(0, 10)
+    console.log('[Backup] Created:', backupPath)
+    return { ok: true, path: backupPath, timestamp: ts }
+  } catch (e) {
+    console.error('[Backup] Error:', e.message)
+    return { ok: false, reason: e.message }
+  }
+}
+
+function scheduleAutoBackup() {
+  // 1시간마다 체크 — 오늘 백업 없으면 실행
+  setInterval(async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    if (lastBackupDate !== today) await createBackup()
+  }, 3_600_000)
+}
+
+// ── 공유 상태 ─────────────────────────────────────────────
 const DEFAULT_STATE = {
   buildType:'apt', buildAge:10, floorLevel:5,
   hasElev:true, resid:false, region:1.0, gradeMul:1.3,
@@ -55,42 +119,33 @@ const DEFAULT_STATE = {
 }
 let sharedState = Object.assign({}, DEFAULT_STATE)
 
-// ── 창 / 뷰 ───────────────────────────────────────────────
+// ── BrowserView 관리 ──────────────────────────────────────
 let mainWindow = null
-const views = {}           // tabId → BrowserView
-let currentTabId = 'estimate'
+const views    = {}
+let   currentTabId = 'estimate'
 
-const SHELL_H = 90         // KPI(52) + Tabs(38)
-const TABS = ['estimate','projects','presets','reports',
-              'approval','dbmgr','ontology','aiengine','dashboard']
+const SHELL_H = 90
+const TABS    = ['estimate','projects','presets','reports',
+                 'approval','dbmgr','ontology','aiengine','dashboard']
 
-const MODULE_DIR = path.join(__dirname, '..', 'modules-html')
-const SHELL_FILE  = path.join(__dirname, '..', 'shell', 'boc-shell.html')
-const PRELOAD     = path.join(__dirname, 'preload.js')
-
-// ── 뷰 영역 계산 ──────────────────────────────────────────
 function getViewBounds() {
   const [w, h] = mainWindow.getContentSize()
   return { x:0, y:SHELL_H, width:w, height:Math.max(0, h - SHELL_H) }
 }
 
-// ── 탭 전환 ───────────────────────────────────────────────
 function showTab(tabId) {
-  // 현재 뷰 제거
   if (views[currentTabId]) {
-    try { mainWindow.removeBrowserView(views[currentTabId]) } catch(e) {}
+    try { mainWindow.removeBrowserView(views[currentTabId]) } catch (_) {}
   }
   currentTabId = tabId
-  const view = views[tabId]
+  const view   = views[tabId]
   if (view) {
     mainWindow.addBrowserView(view)
     view.setBounds(getViewBounds())
   }
-  // 셸에 탭 전환 알림
   mainWindow.webContents.send('tab:switch', tabId)
 }
 
-// ── 뷰 생성 ───────────────────────────────────────────────
 function createModuleView(tabId) {
   const view = new BrowserView({
     webPreferences: {
@@ -108,12 +163,11 @@ function createModuleView(tabId) {
   return view
 }
 
-// ── 메인 윈도우 생성 ──────────────────────────────────────
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400, height: 900,
     minWidth: 1024, minHeight: 700,
-    title: 'ECOREAN BOC v2 — Build Operation Center',
+    title:           'ECOREAN BOC v2 — Build Operation Center',
     backgroundColor: '#030305',
     webPreferences: {
       preload:          PRELOAD,
@@ -126,17 +180,17 @@ function createWindow() {
 
   mainWindow.loadFile(SHELL_FILE)
 
-  // 모든 모듈 뷰 사전 생성
-  for (const tabId of TABS) {
-    createModuleView(tabId)
-  }
+  // 모든 탭 BrowserView 사전 생성
+  for (const tabId of TABS) createModuleView(tabId)
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
     showTab('estimate')
+    // 시작시 백업 체크
+    const today = new Date().toISOString().slice(0, 10)
+    if (lastBackupDate !== today) createBackup().catch(() => {})
   })
 
-  // 창 크기 변경 시 현재 뷰 리사이즈
   mainWindow.on('resize', () => {
     const view = views[currentTabId]
     if (view) view.setBounds(getViewBounds())
@@ -150,122 +204,335 @@ function createWindow() {
   Menu.setApplicationMenu(null)
 }
 
-// ── IPC 핸들러 ────────────────────────────────────────────
+// ── 전체 브로드캐스트 ─────────────────────────────────────
+function broadcast(channel, data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, data)
+  }
+  for (const view of Object.values(views)) {
+    if (!view.webContents.isDestroyed()) {
+      view.webContents.send(channel, data)
+    }
+  }
+}
+
+// ── 유틸 ──────────────────────────────────────────────────
+function parseJSON(str, fallback) {
+  try { return str ? JSON.parse(str) : fallback } catch (_) { return fallback }
+}
+function now() { return new Date().toISOString() }
+
+// ── IPC 핸들러 등록 ───────────────────────────────────────
 function registerIPC() {
-  // 상태 조회
+
+  // ────────── 상태 공유 ─────────────────────────────────
   ipcMain.handle('state:get', () => sharedState)
 
-  // 상태 변경 → 전체 브로드캐스트
-  ipcMain.handle('state:set', (event, patch) => {
+  ipcMain.handle('state:set', (_, patch) => {
     Object.assign(sharedState, patch)
-    // 셸에 전달
-    if (!mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('state:changed', sharedState)
-    }
-    // 모든 모듈 뷰에 전달
-    for (const [tid, view] of Object.entries(views)) {
-      if (!view.webContents.isDestroyed()) {
-        view.webContents.send('state:changed', sharedState)
-      }
-    }
+    broadcast('state:changed', sharedState)
     return sharedState
   })
 
-  // 탭 전환 (모듈이 요청)
-  ipcMain.on('tab:switch', (event, tabId) => {
+  // ────────── 탭 전환 ──────────────────────────────────
+  ipcMain.on('tab:switch', (_, tabId) => {
     if (TABS.includes(tabId)) showTab(tabId)
   })
 
-  // KPI 갱신 (estimate 모듈이 계산 후 전송)
-  ipcMain.on('kpi:update', (event, data) => {
-    if (!mainWindow.isDestroyed()) {
+  // ────────── KPI 갱신 ─────────────────────────────────
+  ipcMain.on('kpi:update', (_, data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('kpi:update', data)
     }
   })
 
-  // 앱 버전
+  // ────────── 앱 정보 ──────────────────────────────────
   ipcMain.handle('app:version', () => app.getVersion() || '2.0.0')
 
-  // SQLite: 프로젝트 저장
-  ipcMain.handle('db:save-project', (event, proj) => {
-    const db = getDB(); if (!db) return { ok:false, reason:'SQLite unavailable' }
+  // ────────── 범용 SELECT ───────────────────────────────
+  ipcMain.handle('db:query', (_, { sql, params }) => {
+    const d = getDB(); if (!d) return []
     try {
-      db.prepare(`INSERT OR REPLACE INTO projects
-        (id,name,buildType,buildAge,floorLevel,hasElev,result_json,spaces_json,scope_json,grades_json,createdAt,updatedAt,status)
-        VALUES (@id,@name,@buildType,@buildAge,@floorLevel,@hasElev,@result_json,@spaces_json,@scope_json,@grades_json,@createdAt,@updatedAt,@status)
+      return d.prepare(sql).all(params || [])
+    } catch (e) {
+      console.error('[db:query]', e.message, '\n', sql)
+      return { error: e.message }
+    }
+  })
+
+  // ────────── 범용 INSERT / UPDATE / DELETE ─────────────
+  ipcMain.handle('db:execute', (_, { sql, params }) => {
+    const d = getDB()
+    if (!d) return { ok: false, reason: 'SQLite unavailable' }
+    try {
+      const r = d.prepare(sql).run(params || [])
+      return { ok: true, changes: r.changes, lastInsertRowid: r.lastInsertRowid }
+    } catch (e) {
+      console.error('[db:execute]', e.message, '\n', sql)
+      return { ok: false, reason: e.message }
+    }
+  })
+
+  // ────────── 트랜잭션 (다중 실행) ─────────────────────
+  ipcMain.handle('db:transaction', (_, statements) => {
+    const d = getDB()
+    if (!d) return { ok: false, reason: 'SQLite unavailable' }
+    try {
+      const tx = d.transaction((stmts) => {
+        return stmts.map(({ sql, params }) => {
+          const r = d.prepare(sql).run(params || [])
+          return { changes: r.changes, lastInsertRowid: r.lastInsertRowid }
+        })
+      })
+      return { ok: true, results: tx(statements) }
+    } catch (e) {
+      console.error('[db:transaction]', e.message)
+      return { ok: false, reason: e.message }
+    }
+  })
+
+  // ────────── 프로젝트 저장 ────────────────────────────
+  ipcMain.handle('db:save-project', (_, proj) => {
+    const d = getDB()
+    if (!d) return { ok: false, reason: 'SQLite unavailable' }
+    const ts  = now()
+    const pid = proj.id || ('p' + Date.now())
+    try {
+      // projects 행 upsert
+      d.prepare(`
+        INSERT OR REPLACE INTO projects
+          (id,name,address,buildType,buildAge,floorLevel,hasElev,resid,region,
+           manager,status,contractAmount,startDate,endDate,conceptId,sections,createdAt,updatedAt)
+        VALUES
+          (@id,@name,@address,@buildType,@buildAge,@floorLevel,@hasElev,@resid,@region,
+           @manager,@status,@contractAmount,@startDate,@endDate,@conceptId,@sections,@createdAt,@updatedAt)
       `).run({
-        id:         proj.id,
-        name:       proj.name,
-        buildType:  proj.buildType || 'apt',
-        buildAge:   proj.buildAge  || 0,
-        floorLevel: proj.floorLevel|| 1,
-        hasElev:    proj.hasElev ? 1 : 0,
-        result_json: JSON.stringify(proj.result || null),
-        spaces_json: JSON.stringify(proj.spaces || []),
-        scope_json:  JSON.stringify(proj.scope  || {}),
-        grades_json: JSON.stringify(proj.grades || {}),
-        createdAt:  proj.createdAt || new Date().toISOString(),
-        updatedAt:  new Date().toISOString(),
-        status:     proj.status || 'draft',
+        id:             pid,
+        name:           proj.name           || '새 프로젝트',
+        address:        proj.address        || '',
+        buildType:      proj.buildType      || 'apt',
+        buildAge:       proj.buildAge       || 0,
+        floorLevel:     proj.floorLevel     || 1,
+        hasElev:        proj.hasElev        ? 1 : 0,
+        resid:          proj.resid          ? 1 : 0,
+        region:         proj.region         || 1.0,
+        manager:        proj.manager        || '',
+        status:         proj.status         || 'draft',
+        contractAmount: proj.contractAmount || proj.result?.contractAmount || 0,
+        startDate:      proj.startDate      || '',
+        endDate:        proj.endDate        || '',
+        conceptId:      proj.conceptId      || '',
+        sections:       JSON.stringify(proj.sections || []),
+        createdAt:      proj.createdAt      || ts,
+        updatedAt:      ts,
       })
-      return { ok:true }
-    } catch(e) { return { ok:false, reason:e.message } }
+
+      // spaces 저장 (기존 삭제 후 재삽입)
+      if (Array.isArray(proj.spaces) && proj.spaces.length) {
+        const delSp  = d.prepare('DELETE FROM spaces WHERE projectId=?')
+        const insSp  = d.prepare(`
+          INSERT OR REPLACE INTO spaces
+            (id,projectId,name,type,width,length,height,floor,wet,windows,doors,
+             floorMat,wallMat,ceilMat,cadX,cadY,status,createdAt,updatedAt)
+          VALUES
+            (@id,@projectId,@name,@type,@width,@length,@height,@floor,@wet,@windows,@doors,
+             @floorMat,@wallMat,@ceilMat,@cadX,@cadY,@status,@createdAt,@updatedAt)
+        `)
+        const saveSp = d.transaction(() => {
+          delSp.run(pid)
+          for (const sp of proj.spaces) {
+            const side = sp.area ? Math.sqrt(sp.area) * 1000 : 0
+            insSp.run({
+              id:        sp.id       || ('sp' + Date.now() + Math.random().toString(36).slice(2, 6)),
+              projectId: pid,
+              name:      sp.name    || '공간',
+              type:      sp.type    || 'living',
+              width:     sp.width   || side,
+              length:    sp.length  || side,
+              height:    sp.height  || 2400,
+              floor:     sp.floor   || 1,
+              wet:       sp.wet     ? 1 : 0,
+              windows:   JSON.stringify(Array.isArray(sp.windows)
+                ? sp.windows
+                : Array(sp.windows || 0).fill({ w:1200, h:1200 })),
+              doors:     JSON.stringify(Array.isArray(sp.doors)
+                ? sp.doors
+                : Array(sp.doors || 1).fill({ w:900, h:2100 })),
+              floorMat:  sp.floorMat || '',
+              wallMat:   sp.wallMat  || '',
+              ceilMat:   sp.ceilMat  || '',
+              cadX:      sp.cadX     || 0,
+              cadY:      sp.cadY     || 0,
+              status:    'active',
+              createdAt: ts,
+              updatedAt: ts,
+            })
+          }
+        })
+        saveSp()
+      }
+
+      // estimates 저장
+      if (proj.result) {
+        const r = proj.result
+        d.prepare(`
+          INSERT OR REPLACE INTO estimates
+            (id,projectId,grade,gradeMul,selectedProcessIds,autoProcessIds,
+             totalSupply,contractAmount,finalAmount,duration,lines,validUntil,status,createdAt,updatedAt)
+          VALUES
+            (@id,@projectId,@grade,@gradeMul,@selectedProcessIds,@autoProcessIds,
+             @totalSupply,@contractAmount,@finalAmount,@duration,@lines,@validUntil,@status,@createdAt,@updatedAt)
+        `).run({
+          id:                 'est-' + pid,
+          projectId:          pid,
+          grade:              proj.grades?.pkg  || 'std',
+          gradeMul:           proj.grades?.mul  || 1.0,
+          selectedProcessIds: JSON.stringify(proj.scope?.selectedProcessIds || []),
+          autoProcessIds:     '[]',
+          totalSupply:        r.totalSupply    || 0,
+          contractAmount:     r.contractAmount || 0,
+          finalAmount:        r.finalAmount    || 0,
+          duration:           r.duration       || 0,
+          lines:              JSON.stringify(r.lines || []),
+          validUntil:         new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
+          status:             'active',
+          createdAt:          ts,
+          updatedAt:          ts,
+        })
+      }
+
+      return { ok: true, id: pid }
+    } catch (e) {
+      console.error('[db:save-project]', e.message)
+      return { ok: false, reason: e.message }
+    }
   })
 
-  // SQLite: 프로젝트 목록
+  // ────────── 프로젝트 목록 ────────────────────────────
   ipcMain.handle('db:list-projects', () => {
-    const db = getDB(); if (!db) return []
+    const d = getDB(); if (!d) return []
     try {
-      return db.prepare('SELECT * FROM projects ORDER BY updatedAt DESC').all()
-        .map(row => ({
-          ...row,
-          hasElev: !!row.hasElev,
-          result:  JSON.parse(row.result_json  || 'null'),
-          spaces:  JSON.parse(row.spaces_json  || '[]'),
-          scope:   JSON.parse(row.scope_json   || '{}'),
-          grades:  JSON.parse(row.grades_json  || '{}'),
-        }))
-    } catch(e) { return [] }
+      return d.prepare(
+        "SELECT * FROM projects WHERE status != 'disabled' ORDER BY updatedAt DESC"
+      ).all().map(row => ({
+        ...row,
+        hasElev:  !!row.hasElev,
+        resid:    !!row.resid,
+        sections: parseJSON(row.sections, []),
+      }))
+    } catch (e) { return [] }
   })
 
-  // SQLite: 프로젝트 삭제
-  ipcMain.handle('db:delete-project', (event, id) => {
-    const db = getDB(); if (!db) return { ok:false }
-    try { db.prepare('DELETE FROM projects WHERE id=?').run(id); return { ok:true } }
-    catch(e) { return { ok:false, reason:e.message } }
+  // ────────── 프로젝트 삭제 (disabled) ─────────────────
+  ipcMain.handle('db:delete-project', (_, id) => {
+    const d = getDB(); if (!d) return { ok: false }
+    try {
+      d.prepare("UPDATE projects SET status='disabled', updatedAt=? WHERE id=?")
+        .run(now(), id)
+      return { ok: true }
+    } catch (e) { return { ok: false, reason: e.message } }
   })
 
-  // SQLite: 승인 저장
-  ipcMain.handle('db:save-approval', (event, req) => {
-    const db = getDB(); if (!db) return { ok:false }
+  // ────────── 승인 로그 저장 ───────────────────────────
+  ipcMain.handle('db:save-approval', (_, req) => {
+    const d = getDB(); if (!d) return { ok: false }
     try {
-      db.prepare(`INSERT OR REPLACE INTO approval_log
-        (id,requestId,actionType,reason,approvedBy,approvedAt)
-        VALUES (@id,@requestId,@actionType,@reason,@approvedBy,@approvedAt)`).run({
-        id:         req.id || Date.now().toString(),
-        requestId:  req.requestId,
-        actionType: req.actionType,
-        reason:     req.reason || '',
-        approvedBy: req.approvedBy || 'system',
-        approvedAt: new Date().toISOString(),
+      d.prepare(`
+        INSERT OR REPLACE INTO approval_log
+          (id,requestType,targetId,action,beforeValue,afterValue,reason,approvedBy,approvedAt,status)
+        VALUES
+          (@id,@requestType,@targetId,@action,@beforeValue,@afterValue,@reason,@approvedBy,@approvedAt,@status)
+      `).run({
+        id:          req.id          || ('al' + Date.now()),
+        requestType: req.requestType || req.actionType || 'general',
+        targetId:    req.targetId    || req.requestId  || '',
+        action:      req.action      || req.actionType || '',
+        beforeValue: JSON.stringify(req.beforeValue ?? null),
+        afterValue:  JSON.stringify(req.afterValue  ?? null),
+        reason:      req.reason      || '',
+        approvedBy:  req.approvedBy  || 'system',
+        approvedAt:  req.approvedAt  || now(),
+        status:      'approved',
       })
-      return { ok:true }
-    } catch(e) { return { ok:false, reason:e.message } }
+      return { ok: true }
+    } catch (e) { return { ok: false, reason: e.message } }
   })
 
-  // SQLite: 승인 목록
+  // ────────── 승인 로그 목록 ───────────────────────────
   ipcMain.handle('db:list-approvals', () => {
-    const db = getDB(); if (!db) return []
-    try { return db.prepare('SELECT * FROM approval_log ORDER BY approvedAt DESC').all() }
-    catch(e) { return [] }
+    const d = getDB(); if (!d) return []
+    try {
+      return d.prepare('SELECT * FROM approval_log ORDER BY approvedAt DESC').all()
+    } catch (e) { return [] }
   })
+
+  // ────────── 사진 저장 ────────────────────────────────
+  ipcMain.handle('photo:save', async (_, { projectId, date, dataUrl, filename }) => {
+    try {
+      const dir  = getPhotoDir(projectId, date)
+      const name = filename || ('photo-' + Date.now() + '.jpg')
+      const dest = path.join(dir, name)
+      const b64  = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl
+      fs.writeFileSync(dest, Buffer.from(b64, 'base64'))
+      return { ok: true, path: dest, filename: name }
+    } catch (e) {
+      return { ok: false, reason: e.message }
+    }
+  })
+
+  // ────────── 사진 목록 ────────────────────────────────
+  ipcMain.handle('photo:list', (_, { projectId, date }) => {
+    try {
+      const dir   = getPhotoDir(projectId, date)
+      const files = fs.readdirSync(dir)
+        .filter(f => /\.(jpe?g|png|gif|webp)$/i.test(f))
+        .map(f => ({ name: f, path: path.join(dir, f) }))
+      return { ok: true, files }
+    } catch (_) {
+      return { ok: true, files: [] }
+    }
+  })
+
+  // ────────── 백업 생성 ────────────────────────────────
+  ipcMain.handle('backup:create', async () => createBackup())
+
+  // ────────── 백업 목록 ────────────────────────────────
+  ipcMain.handle('backup:list', () => {
+    try {
+      const dir = path.join(app.getPath('userData'), 'backups')
+      if (!fs.existsSync(dir)) return { ok: true, files: [] }
+      const files = fs.readdirSync(dir)
+        .filter(f => f.endsWith('.db'))
+        .sort().reverse()
+        .map(f => ({
+          name: f,
+          path: path.join(dir, f),
+          size: fs.statSync(path.join(dir, f)).size,
+        }))
+      return { ok: true, files }
+    } catch (e) {
+      return { ok: false, reason: e.message }
+    }
+  })
+
+  // ────────── 핸들러 목록 출력 (개발용) ────────────────
+  console.log('[IPC] Registered handlers:')
+  ;[
+    'state:get','state:set','tab:switch (on)','kpi:update (on)','app:version',
+    'db:query','db:execute','db:transaction',
+    'db:save-project','db:list-projects','db:delete-project',
+    'db:save-approval','db:list-approvals',
+    'photo:save','photo:list',
+    'backup:create','backup:list',
+  ].forEach(h => console.log('  ·', h))
 }
 
 // ── App 생명주기 ──────────────────────────────────────────
 app.whenReady().then(() => {
   registerIPC()
   createWindow()
-  getDB()  // SQLite 초기화 (실패해도 무방)
+  getDB()
+  scheduleAutoBackup()
 })
 
 app.on('window-all-closed', () => {
