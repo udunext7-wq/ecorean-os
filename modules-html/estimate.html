@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>견적 — ECOREAN BOC</title>
+<script src="../shared/engine/boc-engine.js"></script>
+<script src="../shared/store/boc-state.js"></script>
+<style>
+:root {
+  --void:#030305; --deep:#07070F; --surface:#0D0D1A; --raised:#141420;
+  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
+  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2; --red:#FF3355;
+  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080; --r:6px;
+  --font-head:'Cormorant Garamond',serif; --font-body:'Noto Sans KR',sans-serif; --font-mono:'JetBrains Mono',monospace;
+}
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box }
+html,body { height:100vh; background:var(--void); color:var(--text); font-family:var(--font-body); font-size:13px; overflow:hidden }
+button,input,select { font-family:inherit; font-size:inherit; cursor:pointer }
+::-webkit-scrollbar { width:4px } ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3); border-radius:2px }
+
+/* Layout */
+#app { display:flex; flex-direction:column; height:100vh }
+
+/* Stepbar */
+#stepbar { display:flex; align-items:center; justify-content:center; padding:10px 24px; gap:0; flex-shrink:0; background:var(--deep); border-bottom:1px solid var(--border) }
+.sd { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; background:var(--raised); color:var(--dim); border:1px solid rgba(255,255,255,0.08); transition:all 0.2s; cursor:pointer; flex-shrink:0 }
+.sd.act  { background:var(--gold); color:var(--void); border-color:var(--gold) }
+.sd.done { background:rgba(0,255,178,0.15); color:var(--green); border-color:var(--green) }
+.sl { flex:1; height:1px; background:rgba(255,255,255,0.08); max-width:60px }
+
+/* Step panels */
+.step-panel { flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:16px }
+.step-nav { display:flex; justify-content:flex-end; gap:8px; padding:12px 24px; border-top:1px solid var(--border); background:var(--deep); flex-shrink:0 }
+
+/* Forms */
+.form-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px }
+.form-group { display:flex; flex-direction:column; gap:4px }
+.form-lbl { font-size:11px; color:var(--dim) }
+.form-input,.form-sel { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:8px 10px; color:var(--text); outline:none; transition:border-color 0.2s }
+.form-input:focus,.form-sel:focus { border-color:var(--gold) }
+.form-sel option { background:var(--surface) }
+.sec-title { font-family:var(--font-head); font-size:15px; color:var(--gold); margin-bottom:8px }
+
+/* Buttons */
+.btn { padding:8px 20px; border-radius:var(--r); border:none; font-size:13px; transition:all 0.2s }
+.btn-gold { background:var(--gold); color:var(--void); font-weight:600 }
+.btn-gold:hover { background:var(--gold-bright) }
+.btn-ghost { background:transparent; color:var(--dim); border:1px solid rgba(255,255,255,0.1) }
+.btn-ghost:hover { color:var(--text2); border-color:rgba(255,255,255,0.2) }
+.btn-sm { padding:5px 14px; font-size:12px }
+
+/* Diag */
+.diag-list { display:flex; flex-direction:column; gap:6px }
+.diag-item { padding:8px 12px; border-radius:var(--r); font-size:12px; border:1px solid }
+.diag-ok    { background:rgba(0,255,178,0.08); border-color:var(--green); color:var(--green) }
+.diag-warn  { background:rgba(255,170,0,0.08); border-color:#FFAA00; color:#FFAA00 }
+.diag-error { background:rgba(255,51,85,0.08); border-color:var(--red); color:var(--red) }
+.diag-info  { background:rgba(0,170,255,0.08); border-color:var(--blue); color:var(--blue) }
+
+/* Result table */
+.result-table { width:100%; border-collapse:collapse; font-size:12px }
+.result-table th { background:var(--surface); color:var(--dim); padding:8px; text-align:left; border-bottom:1px solid var(--border) }
+.result-table td { padding:8px; border-bottom:1px solid rgba(255,255,255,0.04); color:var(--text2) }
+.result-table td:last-child { text-align:right; font-family:var(--font-mono); color:var(--platinum) }
+.result-summary { display:flex; gap:16px; flex-wrap:wrap; margin-top:16px }
+.result-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:12px 20px; text-align:center; flex:1; min-width:120px }
+.result-card .rv { font-family:var(--font-mono); font-size:18px; font-weight:600; color:var(--gold-bright) }
+.result-card .rl { font-size:10px; color:var(--dim); margin-top:2px }
+
+.empty { text-align:center; padding:40px; color:var(--dim); font-size:13px }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 스텝 바 -->
+  <div id="stepbar">
+    <div class="sd act" id="sd0" onclick="goStep(0)">1</div><div class="sl"></div>
+    <div class="sd"     id="sd1" onclick="goStep(1)">2</div><div class="sl"></div>
+    <div class="sd"     id="sd2" onclick="goStep(2)">3</div><div class="sl"></div>
+    <div class="sd"     id="sd3" onclick="goStep(3)">4</div><div class="sl"></div>
+    <div class="sd"     id="sd4" onclick="goStep(4)">5</div><div class="sl"></div>
+    <div class="sd"     id="sd5" onclick="goStep(5)">6</div>
+  </div>
+
+  <!-- STEP 0: 건물기본 -->
+  <div id="step-0" class="step-panel">
+    <div class="sec-title">STEP 1 — 건물 기본 정보</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-lbl">건물 유형</label>
+        <select class="form-sel" id="f-buildType" onchange="AppState.set({buildType:this.value})">
+          <option value="apt">아파트</option><option value="officetel">오피스텔</option>
+          <option value="villa">빌라/연립</option><option value="commercial">상가</option><option value="office">사무실</option>
+        </select></div>
+      <div class="form-group"><label class="form-lbl">건물 연식 (년)</label>
+        <input type="number" class="form-input" id="f-buildAge" min="0" max="50" value="10" onchange="AppState.set({buildAge:+this.value})"></div>
+      <div class="form-group"><label class="form-lbl">층수</label>
+        <input type="number" class="form-input" id="f-floorLevel" min="1" max="50" value="5" onchange="AppState.set({floorLevel:+this.value})"></div>
+      <div class="form-group"><label class="form-lbl">엘리베이터</label>
+        <select class="form-sel" onchange="AppState.set({hasElev:this.value==='yes'})">
+          <option value="yes">있음</option><option value="no">없음</option>
+        </select></div>
+      <div class="form-group"><label class="form-lbl">거주 중 여부</label>
+        <select class="form-sel" onchange="AppState.set({resid:this.value==='yes'})">
+          <option value="no">비어 있음</option><option value="yes">거주 중 (+10%)</option>
+        </select></div>
+      <div class="form-group"><label class="form-lbl">지역</label>
+        <select class="form-sel" onchange="AppState.set({region:+this.value})">
+          <option value="1.0">수도권 (1.0)</option><option value="0.95">지방 대도시</option><option value="0.90">지방 중소도시</option>
+        </select></div>
+      <div class="form-group"><label class="form-lbl">등급 패키지</label>
+        <select class="form-sel" onchange="AppState.set({gradeMul:+this.value})">
+          <option value="1.0">표준 (1.0)</option><option value="1.3" selected>고급 (1.3)</option><option value="1.7">프리미엄 (1.7)</option>
+        </select></div>
+    </div>
+  </div>
+
+  <!-- STEP 1: 공간실측 -->
+  <div id="step-1" class="step-panel" style="display:none">
+    <div class="sec-title">STEP 2 — 공간 실측</div>
+    <div class="empty">미니 CAD + 공간 입력 — 다음 단계에서 구현</div>
+  </div>
+
+  <!-- STEP 2: 기존상태 -->
+  <div id="step-2" class="step-panel" style="display:none">
+    <div class="sec-title">STEP 3 — 기존 상태</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-lbl">배관 재질</label>
+        <select class="form-sel" onchange="AppState.set({pipeMat:this.value})">
+          <option value="pb">PB (폴리부틸렌)</option><option value="copper">동관</option>
+          <option value="galvanized">갈바나이즈 ⚠ 교체 강제</option>
+          <option value="pex">PEX</option><option value="pvc">PVC</option>
+        </select></div>
+      <div class="form-group"><label class="form-lbl">바닥 수평</label>
+        <select class="form-sel" onchange="AppState.set({floorLevel2:this.value})">
+          <option value="good">양호</option><option value="fair">보통</option><option value="poor">불량</option>
+        </select></div>
+      <div class="form-group"><label class="form-lbl">방수 하자</label>
+        <select class="form-sel" onchange="AppState.set({hasLeak:this.value==='yes'})">
+          <option value="no">없음</option><option value="yes">있음</option>
+        </select></div>
+      <div class="form-group"><label class="form-lbl">석면 의심</label>
+        <select class="form-sel" onchange="AppState.set({hasAsbestos:this.value==='yes'})">
+          <option value="no">없음</option><option value="yes">있음 ⚠ 제거 강제</option>
+        </select></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: 공사범위 -->
+  <div id="step-3" class="step-panel" style="display:none">
+    <div class="sec-title">STEP 4 — 공사 범위</div>
+    <div class="empty">시공섹션 + 컨셉 선택 — 다음 단계에서 구현</div>
+  </div>
+
+  <!-- STEP 4: 자재등급 -->
+  <div id="step-4" class="step-panel" style="display:none">
+    <div class="sec-title">STEP 5 — 자재 등급</div>
+    <div class="empty">부위별 자재 등급 — 다음 단계에서 구현</div>
+  </div>
+
+  <!-- STEP 5: 견적결과 -->
+  <div id="step-5" class="step-panel" style="display:none">
+    <div class="sec-title">STEP 6 — 견적 결과</div>
+    <div id="result-area"><div class="empty">공간 입력 후 공사 범위를 선택하면 견적이 계산됩니다.</div></div>
+    <div id="diag-area" class="diag-list" style="margin-top:12px"></div>
+  </div>
+
+  <!-- 하단 네비 -->
+  <div class="step-nav">
+    <button class="btn btn-ghost btn-sm" onclick="goStep(Math.max(0, AppState.get().step - 1))">← 이전</button>
+    <button class="btn btn-gold btn-sm"  onclick="nextStep()">다음 →</button>
+  </div>
+</div>
+
+<script>
+'use strict'
+
+// ── 스텝 이동 ─────────────────────────────────────────────
+function goStep(n) {
+  var step = Math.max(0, Math.min(5, n))
+  AppState.set({ step: step })
+  for (var i = 0; i <= 5; i++) {
+    var panel = document.getElementById('step-' + i)
+    if (panel) panel.style.display = i === step ? 'flex' : 'none'
+    var dot = document.getElementById('sd' + i)
+    if (dot) {
+      dot.classList.toggle('act', i === step)
+      dot.classList.toggle('done', i < step)
+    }
+  }
+  if (step === 5) renderResult()
+}
+
+function nextStep() {
+  var s = AppState.get()
+  goStep(Math.min(5, s.step + 1))
+}
+
+// ── 견적 계산 + 렌더 ──────────────────────────────────────
+function fmt(n) {
+  if (!n || n <= 0) return '—'
+  if (n >= 100000000) return (n / 100000000).toFixed(1) + '억'
+  if (n >= 10000) return Math.round(n / 10000) + '만원'
+  return n.toLocaleString() + '원'
+}
+
+function renderResult() {
+  var s = AppState.get()
+  // 테스트용 데모 공간 (실제는 공간입력 모듈에서 받아옴)
+  var testState = Object.assign({}, s, {
+    spaces: s.spaces.length ? s.spaces : [
+      { type:'living', width:4500, length:6000 },
+      { type:'bedroom', width:3000, length:3500 },
+      { type:'bathroom', width:1500, length:2200 },
+      { type:'kitchen', width:3000, length:2500 },
+    ],
+    selectedProcessIds: s.selectedProcessIds.length ? s.selectedProcessIds :
+      ['WP_BASIC','FL_HB','WTP_BT','TILE_BT','TILE_WL'],
+  })
+
+  var result = CalcEngine.calculateEstimate(testState)
+  var totals = result ? result.totals : null
+
+  var ra = document.getElementById('result-area')
+  if (!ra) return
+
+  if (!result) {
+    ra.innerHTML = '<div class="empty">견적 계산에 실패했습니다.</div>'
+    return
+  }
+
+  // 요약 카드
+  var summary =
+    '<div class="result-summary">' +
+    '<div class="result-card"><div class="rv">' + fmt(result.totalSupply) + '</div><div class="rl">공급가</div></div>' +
+    '<div class="result-card"><div class="rv">' + fmt(result.contractAmount) + '</div><div class="rl">도급합계</div></div>' +
+    '<div class="result-card"><div class="rv">' + fmt(result.finalAmount) + '</div><div class="rl">최종(VAT)</div></div>' +
+    (totals && totals.fa > 0 ? '<div class="result-card"><div class="rv">' + Math.round(result.finalAmount/totals.fa).toLocaleString() + '/㎡</div><div class="rl">㎡단가</div></div>' : '') +
+    '<div class="result-card"><div class="rv">' + result.duration + '일</div><div class="rl">예상공기</div></div>' +
+    '</div>'
+
+  // 공정 테이블
+  var rows = result.lines.map(function(l) {
+    return '<tr><td>' + l.name + '</td><td>' + l.cat + '</td><td>' + l.qty.toFixed(1) + ' ' + l.unit + '</td><td>' + l.supplyPrice.toLocaleString() + '원</td></tr>'
+  }).join('')
+
+  var table =
+    '<table class="result-table" style="margin-top:16px">' +
+    '<thead><tr><th>공정명</th><th>분류</th><th>수량</th><th>공급가</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody>' +
+    '</table>'
+
+  ra.innerHTML = summary + table
+
+  // 온톨로지 자동적용
+  var ctx = { pipeMat: s.pipeMat, hasAsbestos: s.hasAsbestos }
+  var onto = OntologyEngine.applyOntology(testState.selectedProcessIds, ctx)
+
+  // 진단
+  var diagCtx = { bathroomCount: totals ? totals.bathroomCount : 0, pipeMat: s.pipeMat, hasAsbestos: s.hasAsbestos }
+  var diags = DiagEngine.runDiag(result.lines, diagCtx)
+  var da = document.getElementById('diag-area')
+  if (da) {
+    da.innerHTML = diags.map(function(d) {
+      var cls = d.type === 'ok' ? 'diag-ok' : d.type === 'error' ? 'diag-error' : d.type === 'info' ? 'diag-info' : 'diag-warn'
+      return '<div class="diag-item ' + cls + '">[' + d.code + '] ' + d.msg + '</div>'
+    }).join('')
+  }
+
+  // KPI 셸에 전달
+  window.ecoreanAPI?.updateKPI({
+    totalSupply:    result.totalSupply,
+    contractAmount: result.contractAmount,
+    finalAmount:    result.finalAmount,
+    fa:             totals ? totals.fa : 0,
+    projectCount:   (s.projects || []).length,
+    pendingCount:   (s.approvalReqs || []).filter(function(r){ return r.status === 'pending' }).length,
+  })
+}
+
+// ── 초기화 ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  AppState.load()
+  goStep(AppState.get().step || 0)
+  console.log('✅ estimate module loaded')
+})
+</script>
+</body>
+</html>

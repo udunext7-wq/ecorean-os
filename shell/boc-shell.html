@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ECOREAN BOC v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void:#030305; --deep:#07070F; --surface:#0D0D1A;
+  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
+  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2;
+  --red:#FF3355; --blue:#00AAFF;
+  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080;
+  --font-head:'Cormorant Garamond',serif;
+  --font-body:'Noto Sans KR',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box }
+html,body { height:90px; overflow:hidden; background:var(--void); color:var(--text); font-family:var(--font-body); font-size:13px }
+button { cursor:pointer; font-family:inherit; font-size:inherit }
+::-webkit-scrollbar { width:4px }
+::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3); border-radius:2px }
+
+/* ── KPI BAR (52px) ─────────────────────────────────────── */
+#kpi-bar {
+  height:52px; display:flex; align-items:center;
+  background:var(--deep); border-bottom:1px solid var(--border);
+  padding:0 16px; gap:0; flex-shrink:0;
+}
+.logo {
+  font-family:var(--font-head); font-size:17px; font-weight:600;
+  color:var(--gold); letter-spacing:0.08em; margin-right:24px; white-space:nowrap;
+}
+.kpi-item { display:flex; flex-direction:column; align-items:center; padding:0 14px; border-right:1px solid rgba(255,255,255,0.05); min-width:80px }
+.kpi-val  { font-family:var(--font-mono); font-size:13px; font-weight:600; color:var(--platinum) }
+.kpi-val.hi { color:var(--gold-bright) }
+.kpi-lbl  { font-size:9px; color:var(--dim); margin-top:1px }
+.kpi-spacer { flex:1 }
+#tb-clock { font-family:var(--font-mono); font-size:12px; color:var(--dim); margin-left:16px; white-space:nowrap }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.dot-pulse { display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--red); animation:pulse 1.5s infinite; margin-left:3px; vertical-align:middle }
+
+/* ── TAB BAR (38px) ─────────────────────────────────────── */
+#tab-bar {
+  height:38px; display:flex; align-items:stretch;
+  background:var(--void); border-bottom:1px solid var(--border);
+}
+.tab {
+  padding:0 16px; display:flex; align-items:center;
+  font-size:12px; color:var(--dim); background:none; border:none;
+  border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap;
+}
+.tab:hover { color:var(--text2); background:rgba(255,255,255,0.03) }
+.tab.act   { color:var(--gold); border-bottom-color:var(--gold) }
+</style>
+</head>
+<body>
+
+<!-- KPI BAR -->
+<div id="kpi-bar">
+  <div class="logo">ECOREAN BOC</div>
+  <div class="kpi-item"><div class="kpi-val" id="kv-supply">—</div><div class="kpi-lbl">공급가</div></div>
+  <div class="kpi-item"><div class="kpi-val" id="kv-contract">—</div><div class="kpi-lbl">도급</div></div>
+  <div class="kpi-item"><div class="kpi-val hi" id="kv-final">—</div><div class="kpi-lbl">최종합계</div></div>
+  <div class="kpi-item"><div class="kpi-val" id="kv-m2">—</div><div class="kpi-lbl">㎡단가</div></div>
+  <div class="kpi-item"><div class="kpi-val" id="kv-py">—</div><div class="kpi-lbl">평단가</div></div>
+  <div class="kpi-spacer"></div>
+  <div class="kpi-item"><div class="kpi-val" id="kv-proj">0</div><div class="kpi-lbl">프로젝트</div></div>
+  <div class="kpi-item"><div class="kpi-val" id="kv-pend">0<span class="dot-pulse"></span></div><div class="kpi-lbl">승인대기</div></div>
+  <div id="tb-clock">--:--:--</div>
+</div>
+
+<!-- TAB BAR -->
+<div id="tab-bar">
+  <button class="tab act" data-tab="estimate"  onclick="switchTab('estimate')">견적</button>
+  <button class="tab"     data-tab="projects"  onclick="switchTab('projects')">프로젝트</button>
+  <button class="tab"     data-tab="presets"   onclick="switchTab('presets')">프리셋</button>
+  <button class="tab"     data-tab="reports"   onclick="switchTab('reports')">보고서</button>
+  <button class="tab"     data-tab="approval"  onclick="switchTab('approval')">승인함</button>
+  <button class="tab"     data-tab="dbmgr"     onclick="switchTab('dbmgr')">DB관리</button>
+  <button class="tab"     data-tab="ontology"  onclick="switchTab('ontology')">온톨로지</button>
+  <button class="tab"     data-tab="aiengine"  onclick="switchTab('aiengine')">AI엔진</button>
+  <button class="tab"     data-tab="dashboard" onclick="switchTab('dashboard')">대시보드</button>
+</div>
+
+<script>
+'use strict'
+
+// ── 탭 전환 ───────────────────────────────────────────────
+function switchTab(tabId) {
+  document.querySelectorAll('#tab-bar .tab').forEach(function(btn) {
+    btn.classList.toggle('act', btn.dataset.tab === tabId)
+  })
+  // IPC로 main에 알림 → main이 BrowserView 전환
+  window.ecoreanAPI?.switchTab(tabId)
+}
+
+// ── KPI 갱신 수신 ─────────────────────────────────────────
+function setKPI(id, val) {
+  var el = document.getElementById(id)
+  if (el) el.textContent = val
+}
+
+function fmt(n) {
+  if (!n || n <= 0) return '—'
+  if (n >= 100000000) return (n / 100000000).toFixed(1) + '억'
+  if (n >= 10000) return Math.round(n / 10000) + '만'
+  return n.toLocaleString()
+}
+
+window.ecoreanAPI?.onKPIUpdate(function(data) {
+  if (!data) return
+  setKPI('kv-supply',   fmt(data.totalSupply))
+  setKPI('kv-contract', fmt(data.contractAmount))
+  setKPI('kv-final',    fmt(data.finalAmount))
+  if (data.fa > 0) {
+    setKPI('kv-m2', Math.round(data.finalAmount / data.fa).toLocaleString() + '/㎡')
+    setKPI('kv-py', fmt(data.finalAmount / (data.fa / 3.306)) + '/평')
+  } else {
+    setKPI('kv-m2', '—'); setKPI('kv-py', '—')
+  }
+  setKPI('kv-proj', data.projectCount || '0')
+  setKPI('kv-pend', data.pendingCount || '0')
+})
+
+// ── 탭 전환 수신 (main → shell) ───────────────────────────
+window.ecoreanAPI?.onTabSwitch(function(tabId) {
+  document.querySelectorAll('#tab-bar .tab').forEach(function(btn) {
+    btn.classList.toggle('act', btn.dataset.tab === tabId)
+  })
+})
+
+// ── 시계 ──────────────────────────────────────────────────
+function updateClock() {
+  var el = document.getElementById('tb-clock')
+  if (el) el.textContent = new Date().toLocaleTimeString('ko-KR')
+}
+updateClock()
+setInterval(updateClock, 1000)
+</script>
+</body>
+</html>

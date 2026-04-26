@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>대시보드 (CEO) — ECOREAN BOC</title>
+<script src="../shared/engine/boc-engine.js"></script>
+<script src="../shared/store/boc-state.js"></script>
+<style>
+:root {
+  --void:#030305; --deep:#07070F; --surface:#0D0D1A; --raised:#141420;
+  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
+  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2; --red:#FF3355;
+  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080; --r:6px;
+  --font-head:"Cormorant Garamond",serif; --font-body:"Noto Sans KR",sans-serif; --font-mono:"JetBrains Mono",monospace;
+}
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box }
+html,body { height:100vh; background:var(--void); color:var(--text); font-family:var(--font-body); font-size:13px }
+#app { padding:28px; height:100vh; overflow-y:auto }
+.pg-title { font-family:var(--font-head); font-size:22px; color:var(--gold); margin-bottom:6px; letter-spacing:0.04em }
+.pg-desc { font-size:12px; color:var(--dim); margin-bottom:24px; line-height:1.8 }
+.badge { display:inline-block; padding:3px 12px; background:var(--gold2); border:1px solid var(--border); border-radius:20px; font-size:12px; color:var(--gold); margin-bottom:16px }
+.coming { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:40px; text-align:center; color:var(--dim) }
+.coming strong { display:block; font-size:16px; color:var(--text2); margin-bottom:8px }
+::-webkit-scrollbar { width:4px } ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3); border-radius:2px }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="pg-title">대시보드 (CEO)</div>
+  <div class="pg-desc">오늘 입금/지급, 진행현장, 이번달 실적, RED ALERT</div>
+  <div class="badge" id="status-badge">준비 중</div>
+  <div class="coming">
+    <strong>Phase 2에서 구현 예정</strong>
+    MASTER_PLAN 개발 순서에 따라 순차 구현됩니다.
+  </div>
+</div>
+<script>
+"use strict";
+document.addEventListener("DOMContentLoaded", function() {
+  AppState.load();
+  console.log("✅ dashboard module loaded");
+});
+</script>
+</body>
+</html>
