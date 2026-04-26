@@ -1125,7 +1125,6 @@ const UI = (function(){
   function renderKPI() {
     const st = AppState.get()
     const r  = st.result
-    document.getElementById('kv-supply')?.   textContent ? null : void 0
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val }
     set('kv-supply',   r ? fmt(r.totalSupply)    : '—')
     set('kv-contract', r ? fmt(r.contractAmount) : '—')
@@ -1255,7 +1254,8 @@ const UI = (function(){
     const sc = AppState.get().scope
     function sopt(key, label) {
       const active = sc[key] ? ' act' : ''
-      return '<div class="sopt'+active+'" onclick="AppState.setScope(\''+key+'\',!AppState.get().scope[\''+key+'\']);UI.goStep(1)"><input type="checkbox" '+(sc[key]?'checked':'')+' onchange="AppState.setScope(\''+key+'\',this.checked)"><label>'+label+'</label></div>'
+      const cid = 'sc-'+key
+      return '<div class="sopt'+active+'"><input type="checkbox" id="'+cid+'" '+(sc[key]?'checked':'')+' onchange="AppState.setScope(\''+key+'\',this.checked);UI.goStep(1)"><label for="'+cid+'">'+label+'</label></div>'
     }
     const sections = [
       {title:'욕실', items:[['btWtp','방수'], ['btTile','타일'], ['btFix','위생도기'], ['btFau','수전']]},
@@ -1294,7 +1294,8 @@ const UI = (function(){
       const vs = [{bt:'domestic',fl:'wb',wp:'paper',win:'double',kit:'standard',dr:'abs',fix:'standard'},
                   {bt:'import',fl:'wb',wp:'silk',win:'triple',kit:'premium',dr:'mdf',fix:'premium'},
                   {bt:'luxury',fl:'hb',wp:'wide',win:'loe',kit:'luxury',dr:'wood',fix:'luxury'}][i]
-      return '<button class="btn btn-ghost btn-sm" style="margin:2px" onclick="AppState.set({grades:Object.assign({},AppState.get().grades,'+JSON.stringify(vs)+')}); UI.goStep(2)">'+nm+'</button>'
+      const vsStr = '{bt:\''+vs.bt+'\',fl:\''+vs.fl+'\',wp:\''+vs.wp+'\',win:\''+vs.win+'\',kit:\''+vs.kit+'\',dr:\''+vs.dr+'\',fix:\''+vs.fix+'\'}'
+      return '<button class="btn btn-ghost btn-sm" style="margin:2px" onclick="AppState.set({grades:Object.assign({},AppState.get().grades,'+vsStr+')}); UI.goStep(2)">'+nm+'</button>'
     }).join('') +
     '</div></div></div>'
   }
@@ -1778,7 +1779,8 @@ const UI = (function(){
     if (typeof fabric === 'undefined') return
     try {
       _fc = new fabric.Canvas('cad-canvas', { backgroundColor: '#0e0e16', selection: true })
-      _fc.setDimensions({ width: el.parentElement?.clientWidth - 4 || 500, height: 296 })
+      const pw = el.parentElement?.clientWidth || 504
+      _fc.setDimensions({ width: Math.max(300, pw - 4), height: 296 })
     } catch(e) { console.warn('CAD init error:', e) }
   }
   function cadTool(tool) {
