@@ -244,7 +244,7 @@ label.lbl{font-size:11px;color:var(--text2);font-weight:500}
   <div class="scards" id="sp-cards"></div>
   <div id="sp-sum" style="display:none;">
     <table class="dt">
-      <thead><tr><th>공간명</th><th>유형</th><th>층</th><th>면적(㎡)</th><th>창문</th><th>문</th></tr></thead>
+      <thead><tr><th>공간명</th><th>유형</th><th>층</th><th>가로×세로</th><th>면적(㎡)</th><th>창</th><th>문</th></tr></thead>
       <tbody id="sp-tbody"></tbody>
       <tfoot><tr><td colspan="3" style="font-weight:600;">합계</td>
         <td id="sp-tot" style="color:var(--gold);font-weight:600;font-family:var(--fm);">0.0 ㎡</td>
@@ -461,12 +461,15 @@ function guessType(nm){
   return 'living'
 }
 function spaceToCalc(sp){
-  var a=sp.area||10; var side=Math.sqrt(a)*1000
+  var side=Math.round(Math.sqrt(sp.area||10)*1000)
+  var w=sp.width||side, l=sp.length||side, h=sp.height||2400
   var type=guessType(sp.type||sp.name)
   var wins=[],doors=[]
-  for(var i=0;i<(sp.windows||0);i++) wins.push({w:1200,h:1200})
-  for(var i=0;i<(sp.doors||1);i++) doors.push({w:900,h:2100})
-  return {type:type,width:side,length:side,height:2400,windows:wins,doors:doors}
+  var wc=Array.isArray(sp.windows)?sp.windows.length:(sp.windows||0)
+  var dc=Array.isArray(sp.doors)?sp.doors.length:(sp.doors||1)
+  for(var i=0;i<wc;i++) wins.push({w:1200,h:1200})
+  for(var i=0;i<dc;i++) doors.push({w:900,h:2100})
+  return {type:type,width:w,length:l,height:h,windows:wins,doors:doors}
 }
 function pipmapToCalc(v){ return v==='galv'?'galvanized':v }
 function totalArea(){ return S.spaces.reduce(function(a,sp){return a+(sp.area||0)},0) }
@@ -503,26 +506,37 @@ function renderSpaceCards(){
   c.innerHTML=''
   S.spaces.forEach(function(sp){
     var d=document.createElement('div'); d.className='scard'
+    var sid=sp.id
     var typeOpts=SPACE_TYPES.map(function(t){
       return '<option value="'+t+'"'+(sp.type===t?' selected':'')+'>'+t+'</option>'
     }).join('')
+    var wc=Array.isArray(sp.windows)?sp.windows.length:(sp.windows||0)
+    var dc=Array.isArray(sp.doors)?sp.doors.length:(sp.doors||1)
     d.innerHTML=
       '<div class="sch">'+
-        '<div class="scn">'+sp.name+'</div>'+
-        '<div class="sca">'+sp.area.toFixed(1)+' ㎡</div>'+
-        '<button class="scdel" onclick="WZ.delSpace(\''+sp.id+'\')">✕</button>'+
+        '<div class="scn" id="spn-'+sid+'">'+sp.name+'</div>'+
+        '<div class="sca" id="spa-'+sid+'">'+sp.area.toFixed(1)+' ㎡</div>'+
+        '<button class="scdel" onclick="WZ.delSpace(\''+sid+'\')">✕</button>'+
       '</div>'+
       '<div class="sfields">'+
         '<div><label style="font-size:10px;color:var(--dim)">공간명</label>'+
-          '<input type="text" value="'+sp.name+'" onchange="WZ.updSp(\''+sp.id+'\',\'name\',this.value)"></div>'+
+          '<input type="text" value="'+sp.name+'" onchange="WZ.updSp(\''+sid+'\',\'name\',this.value)"></div>'+
         '<div><label style="font-size:10px;color:var(--dim)">유형</label>'+
-          '<select onchange="WZ.updSp(\''+sp.id+'\',\'type\',this.value)">'+typeOpts+'</select></div>'+
+          '<select onchange="WZ.updSp(\''+sid+'\',\'type\',this.value)">'+typeOpts+'</select></div>'+
         '<div><label style="font-size:10px;color:var(--dim)">층</label>'+
-          '<input type="number" min="1" max="50" value="'+sp.floor+'" onchange="WZ.updSp(\''+sp.id+'\',\'floor\',+this.value)"></div>'+
-        '<div><label style="font-size:10px;color:var(--dim)">면적(㎡)</label>'+
-          '<input type="number" min="0.5" step="0.5" value="'+sp.area+'" onchange="WZ.updSp(\''+sp.id+'\',\'area\',+this.value)"></div>'+
+          '<input type="number" min="1" max="50" value="'+sp.floor+'" onchange="WZ.updSp(\''+sid+'\',\'floor\',+this.value)"></div>'+
         '<div><label style="font-size:10px;color:var(--dim)">창문수</label>'+
-          '<input type="number" min="0" value="'+(sp.windows||0)+'" onchange="WZ.updSp(\''+sp.id+'\',\'windows\',+this.value)"></div>'+
+          '<input type="number" min="0" max="20" value="'+wc+'" onchange="WZ.updSp(\''+sid+'\',\'windows\',+this.value)"></div>'+
+        '<div><label style="font-size:10px;color:var(--dim)">도어수</label>'+
+          '<input type="number" min="0" max="10" value="'+dc+'" onchange="WZ.updSp(\''+sid+'\',\'doors\',+this.value)"></div>'+
+        '<div><label style="font-size:10px;color:var(--dim)">가로(mm)</label>'+
+          '<input type="number" id="sp-w-'+sid+'" min="100" max="20000" step="100" value="'+(sp.width||0)+'" onchange="WZ.updSp(\''+sid+'\',\'width\',+this.value)"></div>'+
+        '<div><label style="font-size:10px;color:var(--dim)">세로(mm)</label>'+
+          '<input type="number" id="sp-l-'+sid+'" min="100" max="20000" step="100" value="'+(sp.length||0)+'" onchange="WZ.updSp(\''+sid+'\',\'length\',+this.value)"></div>'+
+        '<div><label style="font-size:10px;color:var(--dim)">천장고(mm)</label>'+
+          '<input type="number" id="sp-h-'+sid+'" min="2000" max="5000" step="100" value="'+(sp.height||2400)+'" onchange="WZ.updSp(\''+sid+'\',\'height\',+this.value)"></div>'+
+        '<div><label style="font-size:10px;color:var(--gold)">면적(㎡) ✦</label>'+
+          '<input type="number" id="sp-area-'+sid+'" min="0.5" step="0.01" value="'+sp.area+'" onchange="WZ.updSp(\''+sid+'\',\'area\',+this.value)" style="border-color:var(--gold);"></div>'+
       '</div>'
     c.appendChild(d)
   })
@@ -536,10 +550,15 @@ function renderSpaceSummary(){
   tbody.innerHTML=''; var tot=0
   S.spaces.forEach(function(sp){
     tot+=sp.area||0
+    var wc=Array.isArray(sp.windows)?sp.windows.length:(sp.windows||0)
+    var dc=Array.isArray(sp.doors)?sp.doors.length:(sp.doors||1)
+    var wStr=sp.width?sp.width+'mm':'—'
+    var lStr=sp.length?sp.length+'mm':'—'
     var tr=document.createElement('tr')
     tr.innerHTML='<td>'+sp.name+'</td><td>'+(sp.type||'거실')+'</td><td>'+sp.floor+'F</td>'+
+      '<td style="font-size:10px;color:var(--dim)">'+wStr+' × '+lStr+'</td>'+
       '<td style="font-family:var(--fm)">'+sp.area.toFixed(1)+'</td>'+
-      '<td>'+(sp.windows||0)+'</td><td>'+(sp.doors||1)+'</td>'
+      '<td>'+wc+'</td><td>'+dc+'</td>'
     tbody.appendChild(tr)
   })
   var totEl=$id('sp-tot'); if(totEl) totEl.textContent=tot.toFixed(1)+' ㎡'
@@ -905,7 +924,11 @@ var WZ={
   },
   addSpace:function(){
     S._sid++
-    S.spaces.push({id:'sp'+S._sid,name:'공간'+S._sid,type:'거실',floor:1,area:10,windows:1,doors:1})
+    S.spaces.push({
+      id:'sp'+S._sid, name:'공간'+S._sid, type:'거실', floor:1,
+      width:3000, length:4000, height:2400,
+      area:12, windows:1, doors:1,
+    })
     renderSpaceCards()
   },
   delSpace:function(id){
@@ -913,18 +936,20 @@ var WZ={
   },
   updSp:function(id,field,val){
     var sp=S.spaces.find(function(s){return s.id===id})
-    if(sp) sp[field]=val
-    renderSpaceSummary()
-    // 면적 변경 시 카드 헤더 업데이트
-    if(field==='area'||field==='name'){
-      var card=document.querySelector('[id="si-'+id+'"]')
-      if(!card){
-        // find parent scard and update header
-        var allCards=document.querySelectorAll('.scard')
-        // rebuild is simplest
-        renderSpaceCards()
+    if(!sp) return
+    sp[field]=val
+    // 가로/세로 변경 시 면적 자동 계산
+    if(field==='width'||field==='length'){
+      var w=+(sp.width||0), l=+(sp.length||0)
+      if(w>=100&&l>=100){
+        sp.area=Math.round(w*l/10000)/100  // mm² → ㎡ (소수2자리)
+        var aEl=$id('sp-area-'+id); if(aEl) aEl.value=sp.area
       }
     }
+    // 헤더 인플레이스 업데이트 (카드 전체 재렌더 없이)
+    var hn=$id('spn-'+id); if(hn) hn.textContent=sp.name
+    var ha=$id('spa-'+id); if(ha) ha.textContent=sp.area.toFixed(1)+' ㎡'
+    renderSpaceSummary()
   },
   togScope:function(id,locked){
     if(locked) return
@@ -1114,8 +1139,24 @@ function initCanvas(){
     var r=canvas.getBoundingClientRect()
     var mx=snap(e.clientX-r.left), my=snap(e.clientY-r.top)
     var w=mx-sx, h=my-sy
-    if(Math.abs(w)>GRID&&Math.abs(h)>GRID)
-      shapes.push({x:Math.min(sx,mx),y:Math.min(sy,my),w:Math.abs(w),h:Math.abs(h)})
+    var aw=Math.abs(w), ah=Math.abs(h)
+    if(aw>GRID&&ah>GRID){
+      shapes.push({x:Math.min(sx,mx),y:Math.min(sy,my),w:aw,h:ah})
+      // CAD 사각형 → 현재 마지막 공간의 가로/세로 자동 입력
+      // 1 GRID = 400mm
+      var wmm=Math.round(aw/GRID)*400
+      var hmm=Math.round(ah/GRID)*400
+      if(S.spaces.length>0){
+        var sp=S.spaces[S.spaces.length-1]
+        sp.width=wmm; sp.length=hmm
+        sp.area=Math.round(wmm*hmm/10000)/100
+        var wEl=$id('sp-w-'+sp.id); if(wEl) wEl.value=wmm
+        var lEl=$id('sp-l-'+sp.id); if(lEl) lEl.value=hmm
+        var aEl=$id('sp-area-'+sp.id); if(aEl) aEl.value=sp.area
+        var ha=$id('spa-'+sp.id); if(ha) ha.textContent=sp.area.toFixed(1)+' ㎡'
+        renderSpaceSummary()
+      }
+    }
     redraw()
   })
   canvas.addEventListener('mouseleave',function(){if(drawing){drawing=false; redraw()}})
