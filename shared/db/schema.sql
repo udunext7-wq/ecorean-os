@@ -189,6 +189,7 @@ CREATE TABLE IF NOT EXISTS approval_log (
   beforeValue TEXT DEFAULT 'null',                 -- JSON 변경 전
   afterValue  TEXT DEFAULT 'null',                 -- JSON 변경 후
   reason      TEXT DEFAULT '',
+  requestedBy TEXT DEFAULT '',
   approvedBy  TEXT DEFAULT 'system',
   approvedAt  TEXT NOT NULL,
   status      TEXT NOT NULL DEFAULT 'approved'     -- approved|rejected|pending
@@ -238,3 +239,86 @@ CREATE TABLE IF NOT EXISTS sections (
   createdAt   TEXT NOT NULL,
   updatedAt   TEXT NOT NULL
 );
+
+-- ── 공정 (Master DB — processes) ────────────────────────────
+CREATE TABLE IF NOT EXISTS processes (
+  id           TEXT    PRIMARY KEY,
+  itemName     TEXT    NOT NULL,
+  level1       TEXT    DEFAULT '',
+  level2       TEXT    DEFAULT '',
+  level3       TEXT    DEFAULT '',
+  level4       TEXT    DEFAULT '',
+  unit         TEXT    DEFAULT '㎡',
+  laborCost    REAL    NOT NULL DEFAULT 0,
+  materialCost REAL    NOT NULL DEFAULT 0,
+  wasteRate    REAL    NOT NULL DEFAULT 0,
+  duration     REAL    NOT NULL DEFAULT 0,
+  formula      TEXT    DEFAULT '',
+  spaceTypes   TEXT    DEFAULT '[]',
+  isRequired   INTEGER NOT NULL DEFAULT 0,
+  dataStatus   TEXT    NOT NULL DEFAULT 'CONFIRMED',
+  status       TEXT    NOT NULL DEFAULT 'active',
+  createdAt    TEXT    NOT NULL DEFAULT (datetime('now')),
+  updatedAt    TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_processes_status ON processes(status);
+CREATE INDEX IF NOT EXISTS idx_processes_level1 ON processes(level1);
+
+-- ── 브랜드 단가 (Master DB — brands) ────────────────────────
+CREATE TABLE IF NOT EXISTS brands (
+  id        TEXT    PRIMARY KEY,
+  name      TEXT    NOT NULL,
+  category  TEXT    DEFAULT '',
+  product   TEXT    DEFAULT '',
+  grade     TEXT    DEFAULT '',
+  price     REAL    NOT NULL DEFAULT 0,
+  unit      TEXT    DEFAULT '',
+  status    TEXT    NOT NULL DEFAULT 'active',
+  createdAt TEXT    NOT NULL DEFAULT (datetime('now')),
+  updatedAt TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_brands_status   ON brands(status);
+CREATE INDEX IF NOT EXISTS idx_brands_category ON brands(category);
+
+-- ── 노무비 직종 (Master DB — labor_roles) ───────────────────
+CREATE TABLE IF NOT EXISTS labor_roles (
+  id        TEXT    PRIMARY KEY,
+  roleName  TEXT    NOT NULL,
+  dailyWage REAL    NOT NULL DEFAULT 0,
+  unit      TEXT    DEFAULT '인',
+  region    TEXT    DEFAULT '',
+  status    TEXT    NOT NULL DEFAULT 'active',
+  createdAt TEXT    NOT NULL DEFAULT (datetime('now')),
+  updatedAt TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_labor_status ON labor_roles(status);
+
+-- ── 지역계수 (Master DB — region_coefficients) ──────────────
+CREATE TABLE IF NOT EXISTS region_coefficients (
+  id          TEXT    PRIMARY KEY,
+  regionName  TEXT    NOT NULL,
+  laborMul    REAL    NOT NULL DEFAULT 1.0,
+  materialMul REAL    NOT NULL DEFAULT 1.0,
+  description TEXT    DEFAULT '',
+  status      TEXT    NOT NULL DEFAULT 'active',
+  createdAt   TEXT    NOT NULL DEFAULT (datetime('now')),
+  updatedAt   TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_region_status ON region_coefficients(status);
+
+-- ── 협력업체 (Master DB — vendors) ──────────────────────────
+CREATE TABLE IF NOT EXISTS vendors (
+  id        TEXT    PRIMARY KEY,
+  name      TEXT    NOT NULL,
+  category  TEXT    DEFAULT '',
+  region    TEXT    DEFAULT '',
+  contact   TEXT    DEFAULT '',
+  email     TEXT    DEFAULT '',
+  rating    REAL    DEFAULT 0,
+  notes     TEXT    DEFAULT '',
+  status    TEXT    NOT NULL DEFAULT 'active',
+  createdAt TEXT    NOT NULL DEFAULT (datetime('now')),
+  updatedAt TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_vendors_status   ON vendors(status);
+CREATE INDEX IF NOT EXISTS idx_vendors_category ON vendors(category);

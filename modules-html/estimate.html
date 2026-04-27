@@ -1175,6 +1175,13 @@ function init(){
   }
 
   WZ.goStep(0)
+
+  if(window.ecoreanAPI?.onTabSwitch){
+    window.ecoreanAPI.onTabSwitch(function(tab){
+      if(tab==='estimate') renderStep(S.step)
+    })
+  }
+
   console.log('✅ estimate.html Phase 2 ready — BOC v2')
 }
 
