@@ -27,6 +27,7 @@ function getDB() {
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')
     _initSchema(db)
+    _seedData(db)
     console.log('[SQLite] Connected:', dbPath)
   } catch (e) {
     console.warn('[SQLite] Not available:', e.message)
@@ -55,6 +56,34 @@ function _initSchema(d) {
         status TEXT DEFAULT 'approved'
       );
     `)
+  }
+}
+
+// ── 시드 데이터 (최초 1회) ────────────────────────────────
+function _seedData(d) {
+  try {
+    const already = d.prepare('SELECT COUNT(*) AS cnt FROM cost_items').get()
+    if (already.cnt > 0) {
+      console.log('[Seed] 이미 시딩됨 (cost_items:', already.cnt, ') — 스킵')
+      return
+    }
+    const seedScript = path.join(ROOT_DIR, 'scripts', 'seed-db.js')
+    if (!fs.existsSync(seedScript)) {
+      console.warn('[Seed] seed-db.js 없음 — 스킵')
+      return
+    }
+    // seed-db.js를 child_process로 실행 (userData DB에 직접 시딩)
+    const { execFileSync } = require('child_process')
+    execFileSync(process.execPath, [seedScript], {
+      cwd: ROOT_DIR,
+      env: { ...process.env, SEED_DB_PATH: d.name },
+      timeout: 30000,
+      stdio: 'pipe',
+    })
+    const after = d.prepare('SELECT COUNT(*) AS cnt FROM cost_items').get()
+    console.log('[Seed] 완료 — cost_items:', after.cnt)
+  } catch (e) {
+    console.warn('[Seed] 실패:', e.message)
   }
 }
 
