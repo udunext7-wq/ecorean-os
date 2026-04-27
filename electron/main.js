@@ -201,7 +201,52 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  Menu.setApplicationMenu(null)
+  // ── DevTools 단축키 (Ctrl+Shift+I) ────────────────────────
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.control && input.shift && input.key === 'I') {
+      const view = views[currentTabId]
+      if (view && !view.webContents.isDestroyed()) {
+        view.webContents.toggleDevTools()
+      } else {
+        mainWindow.webContents.toggleDevTools()
+      }
+      event.preventDefault()
+    }
+  })
+
+  // ── 개발 메뉴 ─────────────────────────────────────────────
+  const devMenu = Menu.buildFromTemplate([
+    {
+      label: '도구',
+      submenu: [
+        {
+          label: 'DevTools (현재 탭)',
+          accelerator: 'CmdOrCtrl+Shift+I',
+          click: () => {
+            const view = views[currentTabId]
+            if (view && !view.webContents.isDestroyed()) {
+              view.webContents.toggleDevTools()
+            }
+          },
+        },
+        {
+          label: 'DevTools (Shell)',
+          click: () => mainWindow.webContents.toggleDevTools(),
+        },
+        { type: 'separator' },
+        { role: 'reload', label: '새로고침' },
+        { role: 'forceReload', label: '강제 새로고침' },
+      ],
+    },
+  ])
+  Menu.setApplicationMenu(devMenu)
+
+  // 개발 모드 시 자동으로 DevTools 열기
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.once('ready-to-show', () => {
+      mainWindow.webContents.openDevTools({ mode: 'detach' })
+    })
+  }
 }
 
 // ── 전체 브로드캐스트 ─────────────────────────────────────
