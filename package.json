@@ -2,6 +2,7 @@
   "name": "ecorean-os",
   "version": "2.0.0",
   "description": "ECOREAN Build Operation Center — 마이크로 프론트엔드",
+  "main": "electron/main.js",
   "private": true,
   "workspaces": [
     "shell",
