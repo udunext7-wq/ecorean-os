@@ -4,22 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>AI 엔진 — ECOREAN BOC</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/boc-design.css">
 <style>
-:root{
-  --void:#030305;--deep:#07070F;--surface:#0D0D1A;
-  --gold:#C9A84C;--gold-bright:#FFD700;--gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0;--dim:#555566;--green:#00FFB2;
-  --red:#FF3355;--blue:#00AAFF;--orange:#FF8C00;
-  --border:rgba(201,168,76,0.12);--text:#EDE5D5;--text2:#A09080;
-  --fb:'Noto Sans KR',sans-serif;--fm:'JetBrains Mono',monospace;
-}
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--fb);font-size:13px}
-button,input,select{font-family:var(--fb);font-size:13px}
-button{cursor:pointer}
-input:focus,select:focus{border-color:var(--gold)!important}
-::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
 
 #app{display:flex;flex-direction:column;height:100%}
 #topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border);min-height:44px}
@@ -53,16 +39,6 @@ input:focus,select:focus{border-color:var(--gold)!important}
 .stat-v{font-family:var(--fm);font-size:16px;font-weight:700;color:var(--platinum)}
 .stat-l{font-size:10px;color:var(--dim);margin-top:2px}
 
-/* Buttons */
-.btn{padding:6px 14px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid;cursor:pointer;transition:all 0.2s}
-.btn-p{border-color:var(--border);color:var(--text2);background:transparent}
-.btn-p:hover{border-color:var(--text2);color:var(--text)}
-.btn-g{border-color:var(--gold);color:var(--void);background:var(--gold)}
-.btn-g:hover{background:var(--gold-bright)}
-.btn-s{border-color:var(--green);color:var(--green);background:rgba(0,255,178,0.07)}
-.btn-s:hover{background:rgba(0,255,178,0.14)}
-.btn-r{border-color:var(--red);color:var(--red);background:rgba(255,51,85,0.07)}
-.btn-sm{padding:3px 9px;font-size:11px}
 
 /* Proposal cards */
 .prop-card{background:var(--deep);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start}
@@ -93,7 +69,6 @@ input:focus,select:focus{border-color:var(--gold)!important}
 .upload-box:hover{border-color:rgba(201,168,76,0.4)}
 .upload-box input{display:none}
 
-#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--deep);border:1px solid var(--gold);border-radius:6px;padding:9px 18px;font-size:12px;color:var(--text);display:none;z-index:999}
 </style>
 </head>
 <body>

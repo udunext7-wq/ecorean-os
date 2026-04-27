@@ -4,26 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>보고서 — ECOREAN BOC</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/boc-design.css">
 <style>
-:root{
-  --void:#030305;--deep:#07070F;--surface:#0D0D1A;
-  --gold:#C9A84C;--gold-bright:#FFD700;--gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0;--dim:#555566;--green:#00FFB2;
-  --red:#FF3355;--blue:#00AAFF;
-  --border:rgba(201,168,76,0.12);--text:#EDE5D5;--text2:#A09080;
-  --fb:'Noto Sans KR',sans-serif;--fm:'JetBrains Mono',monospace;
-}
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--fb);font-size:13px}
-button,input,select,textarea{font-family:var(--fb);font-size:13px}
-button{cursor:pointer}
-input[type=text],input[type=number]{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;outline:none}
-input:focus,select:focus,textarea:focus{border-color:var(--gold)!important}
-select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;outline:none}
-select option{background:var(--surface)}
-textarea{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:4px;outline:none;resize:vertical;width:100%}
-::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
 
 #app{display:flex;flex-direction:column;height:100%}
 #topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border);min-height:44px}
@@ -49,14 +31,6 @@ label.lbl{font-size:10px;color:var(--text2);font-weight:500}
 #report-frame{width:794px;max-width:100%;background:#fff;color:#111;padding:40px;border-radius:4px;box-shadow:0 4px 24px rgba(0,0,0,0.5);min-height:400px;font-family:'Noto Sans KR','Malgun Gothic',sans-serif;font-size:13px;line-height:1.6}
 #empty-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:var(--dim)}
 
-/* Buttons */
-.btn{padding:6px 14px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid;cursor:pointer;transition:all 0.2s}
-.btn-p{border-color:var(--border);color:var(--text2);background:transparent}
-.btn-p:hover{border-color:var(--text2);color:var(--text)}
-.btn-g{border-color:var(--gold);color:var(--void);background:var(--gold)}
-.btn-g:hover{background:var(--gold-bright)}
-.btn-b{border-color:var(--blue);color:var(--blue);background:rgba(0,170,255,0.07)}
-.btn-sm{padding:3px 9px;font-size:11px}
 
 /* Print report styles (injected into preview) */
 </style>
@@ -65,7 +39,7 @@ label.lbl{font-size:10px;color:var(--text2);font-weight:500}
 <div id="app">
 
 <div id="topbar">
-  <div style="font-weight:700;font-size:15px;color:var(--gold)">보고서</div>
+  <div style="font-family:var(--font-head);font-size:18px;font-weight:600;color:var(--gold);letter-spacing:0.04em">보고서</div>
   <div style="display:flex;gap:7px">
     <button class="btn btn-p btn-sm" onclick="RP.preview()">👁 미리보기</button>
     <button class="btn btn-g btn-sm" onclick="RP.print()">🖨 인쇄 / PDF</button>

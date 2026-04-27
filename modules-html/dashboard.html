@@ -4,19 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>대시보드 (CEO) — ECOREAN BOC</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/boc-design.css">
 <style>
-:root{
-  --void:#030305;--deep:#07070F;--surface:#0D0D1A;
-  --gold:#C9A84C;--gold-bright:#FFD700;--gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0;--dim:#555566;--green:#00FFB2;
-  --red:#FF3355;--blue:#00AAFF;--orange:#FF8C00;
-  --border:rgba(201,168,76,0.12);--text:#EDE5D5;--text2:#A09080;
-  --fb:'Noto Sans KR',sans-serif;--fm:'JetBrains Mono',monospace;
-}
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--fb);font-size:13px}
-::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
 
 #app{display:flex;flex-direction:column;height:100%}
 #topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;flex-shrink:0;background:var(--deep);border-bottom:1px solid var(--border);min-height:44px}
@@ -70,11 +59,6 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 /* Trend chart */
 #trend-chart{width:100%;height:120px;display:block}
 
-/* Buttons */
-.btn{padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;border:1px solid;cursor:pointer}
-.btn-p{border-color:var(--border);color:var(--text2);background:transparent}
-.btn-r{border-color:var(--red);color:var(--red);background:rgba(255,51,85,0.07);font-size:10px;padding:2px 7px}
-.btn-g{border-color:var(--gold);color:var(--void);background:var(--gold)}
 </style>
 </head>
 <body>
@@ -82,7 +66,7 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 
 <div id="topbar">
   <div>
-    <div style="font-weight:700;font-size:15px;color:var(--gold)">대시보드</div>
+    <div style="font-family:var(--font-head);font-size:18px;font-weight:600;color:var(--gold);letter-spacing:0.04em">대시보드</div>
     <div id="last-update" style="font-size:10px;color:var(--dim)"></div>
   </div>
   <button class="btn btn-g" onclick="DSH.refresh()" style="padding:5px 12px;font-size:12px">↻ 갱신</button>
