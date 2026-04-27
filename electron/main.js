@@ -15,6 +15,20 @@ const SHELL_FILE = path.join(ROOT_DIR, 'shell', 'boc-shell.html')
 const PRELOAD    = path.join(__dirname, 'preload.js')
 const SCHEMA_FILE= path.join(ROOT_DIR, 'shared', 'db', 'schema.sql')
 
+// ── 엔진 ──────────────────────────────────────────────────
+// shared/package.json "type":"module" 환경에서 UMD를 CJS로 수동 로딩
+let BOCEngine = null
+try {
+  const engineSrc  = fs.readFileSync(path.join(ROOT_DIR, 'shared', 'engine', 'boc-engine.js'), 'utf8')
+  const engineMod  = { exports: {} }
+  const engineLoad = new Function('module', 'exports', 'require', '__dirname', '__filename', engineSrc)
+  engineLoad(engineMod, engineMod.exports, require, ROOT_DIR, 'boc-engine.js')
+  BOCEngine = engineMod.exports
+  console.log('[Engine] boc-engine.js 로드 완료 →', Object.keys(BOCEngine).join(','))
+} catch (e) {
+  console.warn('[Engine] boc-engine.js 로드 실패:', e.message)
+}
+
 // ── SQLite ────────────────────────────────────────────────
 let db = null
 
@@ -59,6 +73,20 @@ function _initSchema(d) {
   }
 }
 
+// ── 엔진 런타임 로드 ──────────────────────────────────────
+function _loadEngines(d) {
+  if (!BOCEngine) return
+  try {
+    const costItems = d.prepare("SELECT * FROM cost_items WHERE status='active'").all()
+    BOCEngine.CalcEngine.loadFromDB(costItems)
+    const ontRules = d.prepare("SELECT * FROM ontology_rules WHERE status='active'").all()
+    BOCEngine.OntologyEngine.loadRulesFromDB(ontRules)
+    console.log(`[Engine] CalcEngine: ${costItems.length}건, OntologyEngine: ${ontRules.length}건 로드 완료`)
+  } catch (e) {
+    console.warn('[Engine] 로드 실패:', e.message)
+  }
+}
+
 // ── 시드 데이터 (최초 1회) ────────────────────────────────
 function _seedData(d) {
   try {
@@ -85,6 +113,7 @@ function _seedData(d) {
   } catch (e) {
     console.warn('[Seed] 실패:', e.message)
   }
+  _loadEngines(d)
 }
 
 // ── 사진 관리 ─────────────────────────────────────────────
@@ -567,6 +596,17 @@ function registerIPC() {
     }
   })
 
+  // ────────── 엔진 재로드 ──────────────────────────────
+  ipcMain.handle('db:reload-engine', () => {
+    const d = getDB(); if (!d) return { ok: false, reason: 'SQLite unavailable' }
+    try {
+      _loadEngines(d)
+      const ci = d.prepare("SELECT COUNT(*) AS cnt FROM cost_items WHERE status='active'").get()
+      const or = d.prepare("SELECT COUNT(*) AS cnt FROM ontology_rules WHERE status='active'").get()
+      return { ok: true, costItems: ci.cnt, ontologyRules: or.cnt }
+    } catch (e) { return { ok: false, reason: e.message } }
+  })
+
   // ────────── 백업 생성 ────────────────────────────────
   ipcMain.handle('backup:create', async () => createBackup())
 
@@ -596,6 +636,7 @@ function registerIPC() {
     'db:query','db:execute','db:transaction',
     'db:save-project','db:list-projects','db:delete-project',
     'db:save-approval','db:list-approvals',
+    'db:reload-engine',
     'photo:save','photo:list',
     'backup:create','backup:list',
   ].forEach(h => console.log('  ·', h))

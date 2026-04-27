@@ -50,6 +50,26 @@
       'CCTV':    { name:'CCTV',           cat:'상업',   unit:'식', lb:150000,mt:250000,wr:0.02, dur:0.5 },
     }
 
+    let _runtimeDB = null
+
+    function loadFromDB(rows) {
+      if (!rows || !rows.length) return
+      _runtimeDB = {}
+      for (const r of rows) {
+        _runtimeDB[r.itemId] = {
+          name: r.itemName,
+          cat:  r.level2 || r.level1 || '',
+          unit: r.unit || '㎡',
+          lb:   r.laborCost    || 0,
+          mt:   r.materialCost || 0,
+          wr:   r.wasteRate    || 0,
+          dur:  r.duration     || 1,
+        }
+      }
+    }
+
+    function getDB() { return _runtimeDB || DB }
+
     function calcSupply(qty, lb, mt, wr, pm, matMul) {
       return qty * (1 + wr) * (lb * pm + mt * matMul)
     }
@@ -90,7 +110,7 @@
     }
 
     function calculateEstimate(state, db) {
-      const d = db || DB
+      const d = db || _runtimeDB || DB
       const spaces = state.spaces || []
       if (!spaces.length) return null
       const totals  = getTotals(spaces)
@@ -201,11 +221,13 @@
       return true
     }
 
-    return { calcSupply, calcSpace, getTotals, getHoistMul, calculateEstimate, runTests, DB }
+    return { calcSupply, calcSpace, getTotals, getHoistMul, calculateEstimate, runTests, DB, loadFromDB, getDB }
   })()
 
   /* ── OntologyEngine ───────────────────────────────────── */
   const OntologyEngine = (function () {
+    let _runtimeRules = null
+
     const RULES = [
       { id:'R01', trigger:'TILE_BT', action:'GROUT',    type:'AUTO',        note:'욕실 바닥타일 → 줄눈 자동' },
       { id:'R02', trigger:'TILE_WL', action:'GROUT',    type:'AUTO',        note:'욕실 벽타일 → 줄눈 자동' },
@@ -235,7 +257,19 @@
       { id:'R26', trigger:'CNTR',    action:'ELE_OUT',  type:'AUTO',        note:'카운터 → 콘센트 자동' },
     ]
 
+    function loadRulesFromDB(rows) {
+      if (!rows || !rows.length) return
+      _runtimeRules = rows.map(r => ({
+        id:      r.ruleId,
+        trigger: r.trigger,
+        action:  r.linked,
+        type:    r.triggerType || 'AUTO',
+        note:    r.condition   || '',
+      }))
+    }
+
     function applyOntology(selectedIds, ctx) {
+      const rules = _runtimeRules || RULES
       const sel = new Set(selectedIds)
       const autoAdded = [], warnings = []
       const c = ctx || {}
@@ -248,14 +282,14 @@
       let changed=true, iter=0
       while (changed && iter<10) {
         changed=false; iter++
-        for (const rule of RULES) {
+        for (const rule of rules) {
           if (rule.type!=='AUTO') continue
           if (sel.has(rule.trigger) && !sel.has(rule.action)) {
             sel.add(rule.action); autoAdded.push({id:rule.action,note:rule.note,ruleId:rule.id}); changed=true
           }
         }
       }
-      for (const rule of RULES) {
+      for (const rule of rules) {
         if (rule.type!=='CONDITIONAL') continue
         if (sel.has(rule.trigger) && !sel.has(rule.action))
           warnings.push({ruleId:rule.id,message:rule.note,trigger:rule.trigger,action:rule.action})
@@ -313,7 +347,7 @@
       return true
     }
 
-    return { applyOntology, runTests, RULES }
+    return { applyOntology, loadRulesFromDB, runTests, RULES }
   })()
 
   /* ── DiagEngine ───────────────────────────────────────── */
@@ -381,7 +415,7 @@
 
     function generateSchedule(startDate, processIds, db) {
       if (!startDate||!processIds||!processIds.length) return []
-      const d = db || CalcEngine.DB
+      const d = db || CalcEngine.getDB()
       let cursor = startDate
       return processIds.map(id => {
         const item = d[id]
