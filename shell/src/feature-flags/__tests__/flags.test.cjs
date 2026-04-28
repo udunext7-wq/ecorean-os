@@ -12,6 +12,7 @@ function assert(cond, msg) {
   assert(isEnabled('PHASE_3B_COMPLETE') === true, 'PHASE_3B_COMPLETE Week2 완료 true');
   assert(isEnabled('PHASE_3C_COMPLETE') === true, 'PHASE_3C_COMPLETE Week3 완료 true');
   assert(isEnabled('PHASE_3D_COMPLETE') === true, 'PHASE_3D_COMPLETE Week4 완료 true');
+  assert(isEnabled('PHASE_3E_COMPLETE') === true, 'PHASE_3E_COMPLETE Week5 완료 true');
 })();
 
 // Test 2: AUDIT_LOG_ENABLED 기본 true
