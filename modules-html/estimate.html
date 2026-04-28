@@ -77,7 +77,8 @@ label.lbl{font-size:11px;color:var(--text2);font-weight:500}
 
 /* CAD canvas */
 .cw{display:flex;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px;margin-bottom:14px}
-#cad{border:1px solid rgba(201,168,76,0.2);border-radius:4px;display:block}
+#cad{border:1px solid rgba(201,168,76,0.2);border-radius:4px;display:block;cursor:crosshair}
+#cad.sel-mode{cursor:default}
 .ctool{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
 .cbt{padding:5px 9px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text2);font-size:11px;cursor:pointer;text-align:left;transition:all 0.15s;white-space:nowrap}
 .cbt:hover{border-color:var(--gold);color:var(--text)}
@@ -417,9 +418,49 @@ var PART_GRADES = [
   {id:'tile', name:'타일'},{id:'floor',name:'바닥재'},{id:'door',name:'도어'},
   {id:'win',  name:'창호'},{id:'kit',  name:'주방가구'},{id:'bath2',name:'욕실기기'},
 ]
-var SPACE_TYPES = ['거실','침실','욕실','주방','발코니','현관','서재','드레스룸']
+var SPACE_TYPE_MAP = [
+  {key:'LIVING',   label:'거실',    color:'rgba(245,222,179,0.35)', eng:'living'},
+  {key:'BEDROOM',  label:'침실',    color:'rgba(135,206,235,0.35)', eng:'bedroom'},
+  {key:'KITCHEN',  label:'주방',    color:'rgba(255,228,181,0.35)', eng:'kitchen'},
+  {key:'BATHROOM', label:'욕실',    color:'rgba(175,238,238,0.40)', eng:'bathroom'},
+  {key:'BALCONY',  label:'발코니',  color:'rgba(152,251,152,0.35)', eng:'balcony'},
+  {key:'ENTRANCE', label:'현관',    color:'rgba(211,211,211,0.35)', eng:'living'},
+  {key:'DRESSING', label:'드레스룸',color:'rgba(255,182,193,0.35)', eng:'bedroom'},
+  {key:'UTILITY',  label:'다용도실',color:'rgba(230,230,250,0.35)', eng:'kitchen'},
+  {key:'HALLWAY',  label:'복도',    color:'rgba(255,255,255,0.20)', eng:'living'},
+]
+var SPACE_TYPES = SPACE_TYPE_MAP.map(function(t){return t.label})
+var SPACE_FINISH_MATRIX = {
+  LIVING:   ['FL_HB','WP_BASIC','WP_PRMR','MLD_BASE'],
+  BEDROOM:  ['FL_HB','WP_BASIC','WP_PRMR','MLD_BASE'],
+  KITCHEN:  ['TILE_KT','KIT_CAB','VNT_FAN'],
+  BATHROOM: ['WTP_BT','TILE_BT','TILE_WL','GROUT','SNT_WC','VNT_FAN'],
+  BALCONY:  ['EXP_BAL','INS_BAL'],
+  ENTRANCE: ['FL_VNL','DR_RPL'],
+  DRESSING: ['FL_HB','WP_BASIC'],
+  UTILITY:  ['FL_VNL','VNT_FAN'],
+  HALLWAY:  ['FL_HB','WP_BASIC','MLD_BASE'],
+}
+
+function autoApplyFinish(spaceType){
+  return SPACE_FINISH_MATRIX[spaceType] || []
+}
+
 var STEP_LABELS = ['컨셉','건물','공간','상태','범위','등급','결과']
 var MAX_STEP = 6
+
+// ── CAD 글로벌 훅 ──────────────────────────────────────────
+var cadRedraw = null
+var cadAddShape = null
+
+function applySpaceFinishes(){
+  var ids=new Set(S.selectedProcessIds)
+  S.spaces.forEach(function(sp){
+    var key=sp.typeKey||'LIVING'
+    autoApplyFinish(key).forEach(function(id){ids.add(id)})
+  })
+  S.selectedProcessIds=Array.from(ids)
+}
 
 // ── 상태 ──────────────────────────────────────────────────
 var S = {
@@ -454,6 +495,8 @@ function addDaysStr(dateStr, days){
   return d.toISOString().slice(0,10)
 }
 function guessType(nm){
+  var found=SPACE_TYPE_MAP.find(function(t){return t.label===nm||t.key===nm})
+  if(found) return found.eng
   if(/욕실|화장실|bath/i.test(nm)) return 'bathroom'
   if(/주방|kitchen|부엌/i.test(nm))  return 'kitchen'
   if(/발코니|balcony/i.test(nm))    return 'balcony'
@@ -463,7 +506,13 @@ function guessType(nm){
 function spaceToCalc(sp){
   var side=Math.round(Math.sqrt(sp.area||10)*1000)
   var w=sp.width||side, l=sp.length||side, h=sp.height||2400
-  var type=guessType(sp.type||sp.name)
+  var type
+  if(sp.typeKey){
+    var found=SPACE_TYPE_MAP.find(function(t){return t.key===sp.typeKey})
+    type=found?found.eng:guessType(sp.type||sp.name)
+  } else {
+    type=guessType(sp.type||sp.name)
+  }
   var wins=[],doors=[]
   var wc=Array.isArray(sp.windows)?sp.windows.length:(sp.windows||0)
   var dc=Array.isArray(sp.doors)?sp.doors.length:(sp.doors||1)
@@ -507,8 +556,9 @@ function renderSpaceCards(){
   S.spaces.forEach(function(sp){
     var d=document.createElement('div'); d.className='scard'
     var sid=sp.id
-    var typeOpts=SPACE_TYPES.map(function(t){
-      return '<option value="'+t+'"'+(sp.type===t?' selected':'')+'>'+t+'</option>'
+    var typeOpts=SPACE_TYPE_MAP.map(function(t){
+      var isSel=sp.typeKey===t.key||(sp.typeKey===undefined&&sp.type===t.label)
+      return '<option value="'+t.key+'"'+(isSel?' selected':'')+'>'+t.label+'</option>'
     }).join('')
     var wc=Array.isArray(sp.windows)?sp.windows.length:(sp.windows||0)
     var dc=Array.isArray(sp.doors)?sp.doors.length:(sp.doors||1)
@@ -522,7 +572,7 @@ function renderSpaceCards(){
         '<div><label style="font-size:10px;color:var(--dim)">공간명</label>'+
           '<input type="text" value="'+sp.name+'" onchange="WZ.updSp(\''+sid+'\',\'name\',this.value)"></div>'+
         '<div><label style="font-size:10px;color:var(--dim)">유형</label>'+
-          '<select onchange="WZ.updSp(\''+sid+'\',\'type\',this.value)">'+typeOpts+'</select></div>'+
+          '<select onchange="WZ.updSp(\''+sid+'\',\'typeKey\',this.value)">'+typeOpts+'</select></div>'+
         '<div><label style="font-size:10px;color:var(--dim)">층</label>'+
           '<input type="number" min="1" max="50" value="'+sp.floor+'" onchange="WZ.updSp(\''+sid+'\',\'floor\',+this.value)"></div>'+
         '<div><label style="font-size:10px;color:var(--dim)">창문수</label>'+
@@ -601,7 +651,8 @@ function renderScope(){
     ont.warnings.forEach(function(w){condSet.add(w.action)})
     S.selectedProcessIds=ont.selectedIds.slice()
   }
-  var DB=CalcEngine.DB; var sel=new Set(S.selectedProcessIds)
+  var DB=typeof CalcEngine.getDB==='function'?CalcEngine.getDB():CalcEngine.DB
+  var sel=new Set(S.selectedProcessIds)
   // 카테고리별 그룹
   var catMap={}
   Object.keys(DB).forEach(function(id){
@@ -629,7 +680,7 @@ function renderScope(){
 
 function renderDiag(){
   var box=$id('diag-box'); if(!box) return
-  var DB=CalcEngine.DB
+  var DB=typeof CalcEngine.getDB==='function'?CalcEngine.getDB():CalcEngine.DB
   var lines=S.selectedProcessIds.map(function(id){
     var item=DB[id]||{}; return {id:id,cat:item.cat||''}
   })
@@ -693,7 +744,9 @@ function renderGrade(){
 }
 
 function calcFin(){
-  var fa=totalArea()||30; var DB=CalcEngine.DB; var cost=0
+  var fa=totalArea()||30
+  var DB=typeof CalcEngine.getDB==='function'?CalcEngine.getDB():CalcEngine.DB
+  var cost=0
   S.selectedProcessIds.forEach(function(id){
     var item=DB[id]; if(!item) return
     cost+=fa*(1+(item.wr||0))*((item.lb||0)+(item.mt||0)*(S.gradeMul||1.0))
@@ -726,7 +779,9 @@ function renderResult(){
 
   // 폴백: CalcEngine 조건 불충족 시
   if(!r){
-    var fa=totalArea()||30; var DB=CalcEngine.DB; var sup=0
+    var fa=totalArea()||30
+    var DB=typeof CalcEngine.getDB==='function'?CalcEngine.getDB():CalcEngine.DB
+    var sup=0
     var fallLines=S.selectedProcessIds.map(function(id){
       var item=DB[id]||{}; var qty=fa; var wr=item.wr||0
       var lb=(item.lb||0)*qty*(1+wr); var mt=(item.mt||0)*qty*(1+wr)*(S.gradeMul||1.0)
@@ -822,7 +877,7 @@ function renderResult(){
   var startDate2=S.startDate||new Date(Date.now()+14*86400000).toISOString().slice(0,10)
   var orderBox=$id('order-box')
   if(orderBox){
-    var DB2=CalcEngine.DB; var orderItems=[]
+    var DB2=typeof CalcEngine.getDB==='function'?CalcEngine.getDB():CalcEngine.DB; var orderItems=[]
     ;(r.lines||[]).slice(0,6).forEach(function(l){
       var item=DB2[l.id]; if(!item) return
       var lead=item.dur?Math.ceil(item.dur*3):7
@@ -846,7 +901,7 @@ function renderResult(){
     try{tasks=ScheduleEngine.generateSchedule(startDate2,S.selectedProcessIds)||[]}catch(e){}
     schTbody.innerHTML=''
     var totalDur=tasks.reduce(function(a,t){return a+(t.dur||1)},0)||1
-    var DB3=CalcEngine.DB
+    var DB3=typeof CalcEngine.getDB==='function'?CalcEngine.getDB():CalcEngine.DB
     tasks.forEach(function(t){
       var ed=new Date(t.start); ed.setDate(ed.getDate()+(t.dur||1))
       var bw=Math.max(3,Math.round(((t.dur||1)/totalDur)*80))
@@ -924,12 +979,14 @@ var WZ={
   },
   addSpace:function(){
     S._sid++
-    S.spaces.push({
-      id:'sp'+S._sid, name:'공간'+S._sid, type:'거실', floor:1,
-      width:3000, length:4000, height:2400,
-      area:12, windows:1, doors:1,
-    })
+    var sp={
+      id:'sp'+S._sid, name:'공간'+S._sid, type:'거실', typeKey:'LIVING', floor:1,
+      width:3000, length:4000, height:2400, area:12, windows:1, doors:1,
+    }
+    S.spaces.push(sp)
     renderSpaceCards()
+    if(cadAddShape) cadAddShape(sp)
+    if(cadRedraw) cadRedraw()
   },
   delSpace:function(id){
     S.spaces=S.spaces.filter(function(sp){return sp.id!==id}); renderSpaceCards()
@@ -942,11 +999,18 @@ var WZ={
     if(field==='width'||field==='length'){
       var w=+(sp.width||0), l=+(sp.length||0)
       if(w>=100&&l>=100){
-        sp.area=Math.round(w*l/10000)/100  // mm² → ㎡ (소수2자리)
+        sp.area=Math.round(w*l/10000)/100
         var aEl=$id('sp-area-'+id); if(aEl) aEl.value=sp.area
       }
     }
-    // 헤더 인플레이스 업데이트 (카드 전체 재렌더 없이)
+    // 유형 변경 시 label 동기화 + 자동 마감 적용 + CAD 색 갱신
+    if(field==='typeKey'){
+      var tf=SPACE_TYPE_MAP.find(function(t){return t.key===val})
+      if(tf) sp.type=tf.label
+      applySpaceFinishes()
+      if(cadRedraw) cadRedraw()
+    }
+    // 헤더 인플레이스 업데이트
     var hn=$id('spn-'+id); if(hn) hn.textContent=sp.name
     var ha=$id('spa-'+id); if(ha) ha.textContent=sp.area.toFixed(1)+' ㎡'
     renderSpaceSummary()
@@ -1090,90 +1154,194 @@ function initTG(gid,cb){
 function initCanvas(){
   var canvas=$id('cad'); if(!canvas) return
   var ctx=canvas.getContext('2d')
-  var GRID=20; var tool='select'; var drawing=false
-  var sx=0,sy=0; var shapes=[]; var selIdx=-1
+  var GRID=20, HS=6  // GRID px, Handle size px
+  var tool='select'
+  var drawing=false, dragging=false, resizing=false
+  var sx=0, sy=0, dragOff={x:0,y:0}, resizeCorner=-1
+  // shapes: [{x,y,w,h,spaceId}] — linked to S.spaces
+  var shapes=[], selIdx=-1
+
+  function spaceColor(spaceId){
+    var sp=S.spaces.find(function(s){return s.id===spaceId})
+    if(!sp) return 'rgba(201,168,76,0.12)'
+    var found=SPACE_TYPE_MAP.find(function(t){return t.key===(sp.typeKey||'LIVING')})
+    return found?found.color:'rgba(201,168,76,0.12)'
+  }
+
+  function handles(sh){
+    return [
+      {x:sh.x,     y:sh.y},      // 0 TL
+      {x:sh.x+sh.w,y:sh.y},      // 1 TR
+      {x:sh.x+sh.w,y:sh.y+sh.h}, // 2 BR
+      {x:sh.x,     y:sh.y+sh.h}, // 3 BL
+    ]
+  }
+
+  function hitHandle(sh,mx,my){
+    var hs=handles(sh)
+    for(var i=0;i<hs.length;i++){
+      if(Math.abs(mx-hs[i].x)<=HS&&Math.abs(my-hs[i].y)<=HS) return i
+    }
+    return -1
+  }
+
+  function syncToSpace(sh){
+    var sp=S.spaces.find(function(s){return s.id===sh.spaceId}); if(!sp) return
+    var wmm=Math.max(GRID,Math.round(sh.w/GRID))*400
+    var hmm=Math.max(GRID,Math.round(sh.h/GRID))*400
+    sp.width=wmm; sp.length=hmm; sp.area=Math.round(wmm*hmm/10000)/100
+    sp.cadX=sh.x; sp.cadY=sh.y
+    var wEl=$id('sp-w-'+sp.id); if(wEl) wEl.value=wmm
+    var lEl=$id('sp-l-'+sp.id); if(lEl) lEl.value=hmm
+    var aEl=$id('sp-area-'+sp.id); if(aEl) aEl.value=sp.area
+    var ha=$id('spa-'+sp.id); if(ha) ha.textContent=sp.area.toFixed(1)+' ㎡'
+    renderSpaceSummary()
+  }
 
   function redraw(){
     ctx.clearRect(0,0,canvas.width,canvas.height)
+    // Grid
     ctx.strokeStyle='rgba(201,168,76,0.1)'; ctx.lineWidth=0.5
-    for(var x=0;x<=canvas.width;x+=GRID){
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke()
-    }
-    for(var y=0;y<=canvas.height;y+=GRID){
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke()
-    }
+    for(var x=0;x<=canvas.width;x+=GRID){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke() }
+    for(var y=0;y<=canvas.height;y+=GRID){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke() }
+    // Shapes
     shapes.forEach(function(sh,i){
-      ctx.fillStyle='rgba(201,168,76,0.07)'
-      ctx.strokeStyle=i===selIdx?'#FFD700':'#C9A84C'; ctx.lineWidth=i===selIdx?2:1
+      var color=spaceColor(sh.spaceId)
+      ctx.fillStyle=color
+      ctx.strokeStyle=i===selIdx?'#FFD700':'#C9A84C'
+      ctx.lineWidth=i===selIdx?2:1
       ctx.beginPath(); ctx.rect(sh.x,sh.y,sh.w,sh.h); ctx.fill(); ctx.stroke()
-      ctx.fillStyle='#C9A84C'; ctx.font='9px monospace'
+      // Name + dimensions
+      var sp=S.spaces.find(function(s){return s.id===sh.spaceId})
+      var nm=sp?sp.name:'?'
       var wm=(sh.w/GRID*0.4).toFixed(1), hm=(sh.h/GRID*0.4).toFixed(1)
-      ctx.fillText(wm+'×'+hm+'m',sh.x+3,sh.y+11)
+      ctx.fillStyle='rgba(30,30,50,0.75)'; ctx.fillRect(sh.x+2,sh.y+1,ctx.measureText(nm).width+4,13)
+      ctx.fillStyle='#FFD700'; ctx.font='bold 9px monospace'; ctx.textAlign='left'
+      ctx.fillText(nm,sh.x+4,sh.y+11)
+      ctx.fillStyle='rgba(201,168,76,0.8)'; ctx.font='8px monospace'
+      ctx.fillText(wm+'×'+hm+'m',sh.x+3,sh.y+sh.h-3)
+      // Handles
+      if(i===selIdx){
+        handles(sh).forEach(function(h){
+          ctx.fillStyle='#FFD700'
+          ctx.fillRect(h.x-HS/2,h.y-HS/2,HS,HS)
+          ctx.strokeStyle='#000'; ctx.lineWidth=0.5
+          ctx.strokeRect(h.x-HS/2,h.y-HS/2,HS,HS)
+        })
+      }
     })
   }
+
+  // Export hooks
+  cadRedraw=redraw
+  cadAddShape=function(sp){
+    if(shapes.find(function(sh){return sh.spaceId===sp.id})) return
+    var side=Math.round(Math.sqrt(sp.area||12)*1000/400)*GRID
+    side=Math.max(GRID*2,side)
+    var xOff=(shapes.length*(side+GRID*2))%(canvas.width-side-GRID)+GRID
+    shapes.push({x:xOff,y:GRID,w:side,h:Math.round(side*4/3),spaceId:sp.id})
+    redraw()
+  }
+
   function snap(v){return Math.round(v/GRID)*GRID}
-  redraw()
 
   canvas.addEventListener('mousedown',function(e){
     var r=canvas.getBoundingClientRect()
     var mx=e.clientX-r.left, my=e.clientY-r.top
-    if(tool==='rect'){drawing=true; sx=snap(mx); sy=snap(my)}
-    else{
-      selIdx=-1
-      shapes.forEach(function(sh,i){
-        if(mx>=sh.x&&mx<=sh.x+sh.w&&my>=sh.y&&my<=sh.y+sh.h) selIdx=i
-      })
+    if(tool==='rect'){
+      drawing=true; sx=snap(mx); sy=snap(my)
+    } else {
+      // Check handles of selected shape first
+      if(selIdx>=0){
+        resizeCorner=hitHandle(shapes[selIdx],mx,my)
+        if(resizeCorner>=0){resizing=true; return}
+      }
+      // Hit test shapes
+      selIdx=-1; dragging=false
+      for(var i=shapes.length-1;i>=0;i--){
+        var sh=shapes[i]
+        if(mx>=sh.x&&mx<=sh.x+sh.w&&my>=sh.y&&my<=sh.y+sh.h){
+          selIdx=i; dragOff.x=mx-sh.x; dragOff.y=my-sh.y; dragging=true; break
+        }
+      }
+      canvas.className=dragging?'sel-mode':''
       redraw()
     }
   })
+
   canvas.addEventListener('mousemove',function(e){
-    if(!drawing) return
     var r=canvas.getBoundingClientRect()
-    var mx=snap(e.clientX-r.left), my=snap(e.clientY-r.top)
-    redraw()
-    ctx.strokeStyle='rgba(201,168,76,0.7)'; ctx.lineWidth=1.5
-    ctx.strokeRect(sx,sy,mx-sx,my-sy)
+    var mx=e.clientX-r.left, my=e.clientY-r.top
+    if(drawing){
+      redraw()
+      ctx.strokeStyle='rgba(201,168,76,0.7)'; ctx.lineWidth=1.5
+      ctx.strokeRect(sx,sy,snap(mx)-sx,snap(my)-sy)
+    } else if(resizing&&selIdx>=0){
+      var sh=shapes[selIdx]
+      var smx=snap(mx), smy=snap(my)
+      if(resizeCorner===0){sh.w=Math.max(GRID,(sh.x+sh.w)-smx); sh.h=Math.max(GRID,(sh.y+sh.h)-smy); sh.x=smx; sh.y=smy}
+      else if(resizeCorner===1){sh.w=Math.max(GRID,smx-sh.x); sh.h=Math.max(GRID,(sh.y+sh.h)-smy); sh.y=smy}
+      else if(resizeCorner===2){sh.w=Math.max(GRID,smx-sh.x); sh.h=Math.max(GRID,smy-sh.y)}
+      else if(resizeCorner===3){sh.w=Math.max(GRID,(sh.x+sh.w)-smx); sh.h=Math.max(GRID,smy-sh.y); sh.x=smx}
+      redraw()
+    } else if(dragging&&selIdx>=0){
+      shapes[selIdx].x=snap(mx-dragOff.x); shapes[selIdx].y=snap(my-dragOff.y)
+      redraw()
+    }
   })
+
   canvas.addEventListener('mouseup',function(e){
-    if(!drawing) return; drawing=false
     var r=canvas.getBoundingClientRect()
     var mx=snap(e.clientX-r.left), my=snap(e.clientY-r.top)
-    var w=mx-sx, h=my-sy
-    var aw=Math.abs(w), ah=Math.abs(h)
-    if(aw>GRID&&ah>GRID){
-      shapes.push({x:Math.min(sx,mx),y:Math.min(sy,my),w:aw,h:ah})
-      // CAD 사각형 → 현재 마지막 공간의 가로/세로 자동 입력
-      // 1 GRID = 400mm
-      var wmm=Math.round(aw/GRID)*400
-      var hmm=Math.round(ah/GRID)*400
-      if(S.spaces.length>0){
-        var sp=S.spaces[S.spaces.length-1]
-        sp.width=wmm; sp.length=hmm
-        sp.area=Math.round(wmm*hmm/10000)/100
-        var wEl=$id('sp-w-'+sp.id); if(wEl) wEl.value=wmm
-        var lEl=$id('sp-l-'+sp.id); if(lEl) lEl.value=hmm
-        var aEl=$id('sp-area-'+sp.id); if(aEl) aEl.value=sp.area
-        var ha=$id('spa-'+sp.id); if(ha) ha.textContent=sp.area.toFixed(1)+' ㎡'
-        renderSpaceSummary()
+    if(drawing){
+      drawing=false
+      var aw=Math.abs(mx-sx), ah=Math.abs(my-sy)
+      if(aw>GRID&&ah>GRID){
+        // Link to first unlinked space
+        var unlinked=S.spaces.find(function(sp){
+          return !shapes.find(function(sh){return sh.spaceId===sp.id})
+        })
+        if(unlinked){
+          var ns={x:Math.min(sx,mx),y:Math.min(sy,my),w:aw,h:ah,spaceId:unlinked.id}
+          shapes.push(ns); syncToSpace(ns)
+        }
       }
+    } else if(resizing&&selIdx>=0){
+      resizing=false; syncToSpace(shapes[selIdx])
+    } else if(dragging){
+      dragging=false
+      if(selIdx>=0) syncToSpace(shapes[selIdx])
+      canvas.className=''
     }
     redraw()
   })
-  canvas.addEventListener('mouseleave',function(){if(drawing){drawing=false; redraw()}})
+
+  canvas.addEventListener('mouseleave',function(){
+    if(drawing){drawing=false; redraw()}
+    if(resizing&&selIdx>=0){resizing=false; syncToSpace(shapes[selIdx]); redraw()}
+    if(dragging){dragging=false; if(selIdx>=0) syncToSpace(shapes[selIdx]); canvas.className=''; redraw()}
+  })
+
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Delete'&&selIdx>=0&&$id('cad')===document.activeElement){
+      shapes.splice(selIdx,1); selIdx=-1; redraw()
+    }
+  })
+  canvas.setAttribute('tabindex','0')
 
   $id('ct-sel')?.addEventListener('click',function(){
-    tool='select'
-    document.querySelectorAll('.cbt').forEach(function(b){b.classList.remove('act')})
-    this.classList.add('act')
+    tool='select'; canvas.className='sel-mode'
+    document.querySelectorAll('.cbt').forEach(function(b){b.classList.remove('act')}); this.classList.add('act')
   })
   $id('ct-rect')?.addEventListener('click',function(){
-    tool='rect'
-    document.querySelectorAll('.cbt').forEach(function(b){b.classList.remove('act')})
-    this.classList.add('act')
+    tool='rect'; canvas.className=''
+    document.querySelectorAll('.cbt').forEach(function(b){b.classList.remove('act')}); this.classList.add('act')
   })
   $id('ct-del')?.addEventListener('click',function(){
     if(selIdx>=0){shapes.splice(selIdx,1);selIdx=-1;redraw()}
   })
+
+  redraw()
 }
 
 // ── 초기화 ────────────────────────────────────────────────
@@ -1219,7 +1387,7 @@ function init(){
 
   if(window.ecoreanAPI?.onTabSwitch){
     window.ecoreanAPI.onTabSwitch(function(tab){
-      if(tab==='estimate') renderStep(S.step)
+      if(tab==='estimate') WZ.goStep(S.step)
     })
   }
 
