@@ -9,6 +9,7 @@ function assert(cond, msg) {
   assert(isEnabled('USE_CORE_BUS') === false, 'USE_CORE_BUS 기본 false');
   assert(isEnabled('USE_CASCADE_GATES') === false, 'USE_CASCADE_GATES 기본 false');
   assert(isEnabled('PHASE_3A_COMPLETE') === true, 'PHASE_3A_COMPLETE Week1 완료 true');
+  assert(isEnabled('PHASE_3B_COMPLETE') === true, 'PHASE_3B_COMPLETE Week2 완료 true');
 })();
 
 // Test 2: AUDIT_LOG_ENABLED 기본 true
