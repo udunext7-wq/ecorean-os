@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>ECOREAN BOC — KPI 디지털 계기판 v5.6</title>
+<style>
+:root {
+  --bg: #0a0e1a;
+  --bg2: #14182a;
+  --gold: #c9a84c;
+  --gold-bright: #ffd700;
+  --text: #ede5d5;
+  --dim: rgba(201,168,76,0.5);
+  --border: rgba(201,168,76,0.15);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans KR', sans-serif;
+  min-height: 100vh;
+  padding: 24px;
+}
+header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+h1 {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: 18px;
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 12px rgba(201,168,76,0.4);
+}
+.subtitle {
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.kpi-card {
+  background: linear-gradient(180deg, var(--bg2) 0%, rgba(20,24,42,0.6) 100%);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.kpi-card:hover {
+  border-color: var(--gold);
+  box-shadow: 0 0 24px rgba(201,168,76,0.2);
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--gold) 50%, transparent 100%);
+  opacity: 0.6;
+}
+.kpi-label {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.kpi-value {
+  font-family: 'Cinzel', 'Noto Sans KR', serif;
+  font-size: 28px;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.kpi-unit {
+  font-size: 12px;
+  color: var(--dim);
+  margin-left: 4px;
+  font-weight: 400;
+}
+.kpi-card.highlight .kpi-value {
+  color: var(--gold-bright);
+  text-shadow: 0 0 16px rgba(255,215,0,0.4);
+}
+.controls {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--dim);
+  font-family: monospace;
+}
+.controls code { color: var(--gold); }
+</style>
+</head>
+<body>
+<header>
+  <h1>ECOREAN BOC — KPI DIGITAL DASHBOARD</h1>
+  <div class="subtitle">Real-time / 11 metrics / v5.6</div>
+</header>
+<div class="kpi-grid" id="kpiGrid"></div>
+<div class="controls">
+  소스: estimate-v6 → KPIBus → coreBus.emit('KPI_UPDATE') → 본 화면 자동 갱신<br>
+  데모: 콘솔에서 <code>window.demoKPI()</code> 입력 시 샘플 데이터 표시
+</div>
+<script>
+const KPI_FIELDS = [
+  { key: 'final',        label: '최종(VAT)',  unit: '원',    format: 'currency', highlight: true },
+  { key: 'contract',     label: '도급합계',   unit: '원',    format: 'currency' },
+  { key: 'supply',       label: '공급가',     unit: '원',    format: 'currency' },
+  { key: 'areaSqm',      label: '총 면적',    unit: '㎡',    format: 'decimal',  highlight: true },
+  { key: 'sqmPrice',     label: '㎡당 단가',  unit: '원/㎡', format: 'currency' },
+  { key: 'pyPrice',      label: '평당 단가',  unit: '원/평', format: 'currency' },
+  { key: 'margin',       label: '마진율',     unit: '%',     format: 'percent' },
+  { key: 'sectionCount', label: '시공섹션',   unit: '건',    format: 'integer' },
+  { key: 'spaceCount',   label: '공간',       unit: '개',    format: 'integer' },
+  { key: 'duration',     label: '예상 공기',  unit: '일',    format: 'integer' },
+  { key: 'automation',   label: '자동화율',   unit: '%',     format: 'percent', highlight: true }
+];
+
+let currentData = {};
+KPI_FIELDS.forEach(f => currentData[f.key] = 0);
+
+function formatValue(value, formatType) {
+  if (value == null) return '-';
+  switch (formatType) {
+    case 'currency': return Math.round(value).toLocaleString('ko-KR');
+    case 'decimal':  return parseFloat(value).toFixed(1);
+    case 'percent':  return parseFloat(value).toFixed(1);
+    case 'integer':  return Math.round(value).toString();
+    default: return String(value);
+  }
+}
+
+function render() {
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = KPI_FIELDS.map(f => `
+    <div class="kpi-card ${f.highlight ? 'highlight' : ''}">
+      <div class="kpi-label">${f.label}</div>
+      <div class="kpi-value">${formatValue(currentData[f.key], f.format)}<span class="kpi-unit">${f.unit}</span></div>
+    </div>
+  `).join('');
+}
+
+if (window.coreBus) {
+  window.coreBus.on('KPI_UPDATE', function(data, meta) {
+    if (meta && meta.partial) {
+      Object.assign(currentData, data);
+    } else {
+      currentData = Object.assign({}, currentData, data);
+    }
+    render();
+  });
+}
+
+window.demoKPI = function() {
+  currentData = {
+    supply: 7350000, contract: 15214500, final: 16735950,
+    areaSqm: 35, sqmPrice: 478170, pyPrice: 1580640, margin: 13.0,
+    sectionCount: 3, spaceCount: 3, duration: 14, automation: 95
+  };
+  render();
+};
+
+render();
+</script>
+</body>
+</html>
