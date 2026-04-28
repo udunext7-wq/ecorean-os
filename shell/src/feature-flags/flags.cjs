@@ -14,7 +14,7 @@ const FLAGS = {
   // Phase 3 진행 상태
   PHASE_3A_COMPLETE:      true,
   PHASE_3B_COMPLETE:      true,
-  PHASE_3C_COMPLETE:      false,
+  PHASE_3C_COMPLETE:      true,
   PHASE_3D_COMPLETE:      false,
   PHASE_3E_COMPLETE:      false,
   PHASE_3F_COMPLETE:      false,
