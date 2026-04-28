@@ -649,15 +649,30 @@ function pushKpiUpdate(r){
     area:fa,
     auto:S._autoCount||0,
   }
+  // r=null이고 공간+공정이 있으면 자체 계산
+  if(!r && S.spaces.length>0 && S.selectedProcessIds.length>0){
+    try{
+      var _spaces=S.spaces.map(spaceToCalc)
+      r=CalcEngine.calculateEstimate({
+        spaces:_spaces,
+        selectedProcessIds:S.selectedProcessIds,
+        gradeMul:S.gradeMul||1.0,
+        floorLevel:S.floorLevel||5,
+        hasElev:S.hasElev,
+        resid:S.resid,
+        region:S.region||1.0,
+      })
+    }catch(e){}
+  }
   if(r){
     var fa2=(r.totals&&r.totals.fa)?r.totals.fa:fa
     var margin=r.contractAmount>0?((r.contractAmount-(r.totalSupply||0))/r.contractAmount*100):0
-    data.area=fa2
-    data.supply=r.totalSupply
-    data.contract=r.contractAmount
-    data.final=r.finalAmount
-    data.sqm=fa2>0?Math.round(r.finalAmount/fa2):0
-    data['py-price']=fa2>0?Math.round(r.finalAmount/(fa2/3.3058)):0
+    data.area=fa2||fa
+    data.supply=r.totalSupply||0
+    data.contract=r.contractAmount||0
+    data.final=r.finalAmount||0
+    data.sqm=fa2>0?Math.round((r.finalAmount||0)/fa2):0
+    data['py-price']=fa2>0?Math.round((r.finalAmount||0)/(fa2/3.3058)):0
     data.days=r.duration||0
     data.margin=margin
   }
@@ -1310,8 +1325,9 @@ function initCanvas(){
   function spaceColor(spaceId){
     var sp=S.spaces.find(function(s){return s.id===spaceId})
     if(!sp) return 'rgba(201,168,76,0.12)'
-    var found=SPACE_TYPE_MAP.find(function(t){return t.key===(sp.typeKey||'LIVING')})
-    return found?found.color:'rgba(201,168,76,0.12)'
+    var key=sp.typeKey||'LIVING'
+    var found=SPACE_TYPE_MAP.find(function(t){return t.key===key})
+    return found ? found.color : 'rgba(245,222,179,0.35)'
   }
 
   function handles(sh){
@@ -1480,6 +1496,13 @@ function initCanvas(){
   })
   canvas.setAttribute('tabindex','0')
 
+  // initCanvas 이전에 추가된 공간들을 shapes에 동기화
+  S.spaces.forEach(function(sp){
+    if(!shapes.find(function(sh){return sh.spaceId===sp.id})){
+      cadAddShape(sp)
+    }
+  })
+
   $id('ct-sel')?.addEventListener('click',function(){
     tool='select'; canvas.className='sel-mode'
     document.querySelectorAll('.cbt').forEach(function(b){b.classList.remove('act')}); this.classList.add('act')
@@ -1524,10 +1547,11 @@ function init(){
   var memoEl=$id('f-memo')
   if(memoEl) memoEl.onchange=function(){S.memo=this.value}
 
+  // 캔버스 먼저 초기화 (cadAddShape 훅 설정 후 공간 추가해야 shapes 동기화됨)
+  initCanvas()
+
   // 기본 공간 1개
   WZ.addSpace()
-
-  initCanvas()
 
   if(typeof AppState!=='undefined'){
     AppState.load()
