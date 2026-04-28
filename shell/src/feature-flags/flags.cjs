@@ -23,13 +23,13 @@ const FLAGS = {
   PHASE_3C_COMPLETE:      true,
   PHASE_3D_COMPLETE:      true,
   PHASE_3E_COMPLETE:      true,
-  PHASE_3F_COMPLETE:      false,
+  PHASE_3F_COMPLETE:      true,
   PHASE_3G_COMPLETE:      false,
 
   // 메타 호환 (Week 6)
-  META_COMPAT_JSONLD:     false,
-  META_COMPAT_RDF:        false,
-  META_COMPAT_UNIVERSE:   false,
+  META_COMPAT_JSONLD:     true,
+  META_COMPAT_RDF:        true,
+  META_COMPAT_UNIVERSE:   true,
 
   // 디버그
   VERBOSE_LOG:            false,
