@@ -523,6 +523,31 @@ function spaceToCalc(sp){
 function pipmapToCalc(v){ return v==='galv'?'galvanized':v }
 function totalArea(){ return S.spaces.reduce(function(a,sp){return a+(sp.area||0)},0) }
 
+function pushKpiUpdate(r){
+  var fa=totalArea()||0
+  var cObj=CONCEPTS.find(function(c){return c.id===S.concept})||CONCEPTS[0]
+  var secLabels=SECTIONS.filter(function(s){return S.sections[s.id]}).map(function(s){return s.label})
+  var data={
+    concept:{name:cObj.name,gradeMul:cObj.grade,grade:cObj.name},
+    sections:{labels:secLabels},
+    area:fa,
+    auto:S._autoCount||0,
+  }
+  if(r){
+    var fa2=(r.totals&&r.totals.fa)?r.totals.fa:fa
+    var margin=r.contractAmount>0?((r.contractAmount-(r.totalSupply||0))/r.contractAmount*100):0
+    data.area=fa2
+    data.supply=r.totalSupply
+    data.contract=r.contractAmount
+    data.final=r.finalAmount
+    data.sqm=fa2>0?Math.round(r.finalAmount/fa2):0
+    data['py-price']=fa2>0?Math.round(r.finalAmount/(fa2/3.3058)):0
+    data.days=r.duration||0
+    data.margin=margin
+  }
+  try{window.ecoreanAPI?.updateKPI(data)}catch(e){}
+}
+
 // ── STEP 0 렌더 ───────────────────────────────────────────
 function renderStep0(){
   var sg=$id('sec-grid'); if(!sg) return
@@ -531,7 +556,7 @@ function renderStep0(){
     var d=document.createElement('div')
     d.className='ci'+(S.sections[sec.id]?' on':'')
     d.innerHTML='<span class="ico">'+sec.icon+'</span><span class="nm">'+sec.label+'</span>'
-    d.onclick=function(){S.sections[sec.id]=!S.sections[sec.id]; d.classList.toggle('on',S.sections[sec.id])}
+    d.onclick=function(){S.sections[sec.id]=!S.sections[sec.id]; d.classList.toggle('on',S.sections[sec.id]); pushKpiUpdate(null)}
     sg.appendChild(d)
   })
   var cg=$id('con-grid'); if(!cg) return
@@ -544,6 +569,7 @@ function renderStep0(){
       S.concept=c.id; S.conceptMul=c.grade
       document.querySelectorAll('.cc').forEach(function(el){el.classList.remove('sel')})
       d.classList.add('sel')
+      pushKpiUpdate(null)
     }
     cg.appendChild(d)
   })
@@ -650,6 +676,7 @@ function renderScope(){
     })
     ont.warnings.forEach(function(w){condSet.add(w.action)})
     S.selectedProcessIds=ont.selectedIds.slice()
+    S._autoCount=autoSet.size
   }
   var DB=typeof CalcEngine.getDB==='function'?CalcEngine.getDB():CalcEngine.DB
   var sel=new Set(S.selectedProcessIds)
@@ -922,16 +949,7 @@ function renderResult(){
   }
 
   // KPI bar → shell
-  try{
-    window.ecoreanAPI?.updateKPI({
-      totalSupply:r.totalSupply,
-      contractAmount:r.contractAmount,
-      finalAmount:r.finalAmount,
-      fa:fa2,
-      projectCount:1,
-      pendingCount:0,
-    })
-  }catch(e){}
+  pushKpiUpdate(r)
 }
 
 // ── 위저드 컨트롤 ─────────────────────────────────────────
@@ -1014,6 +1032,7 @@ var WZ={
     var hn=$id('spn-'+id); if(hn) hn.textContent=sp.name
     var ha=$id('spa-'+id); if(ha) ha.textContent=sp.area.toFixed(1)+' ㎡'
     renderSpaceSummary()
+    pushKpiUpdate(null)
   },
   togScope:function(id,locked){
     if(locked) return

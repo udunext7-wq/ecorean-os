@@ -20,6 +20,11 @@ contextBridge.exposeInMainWorld('ecoreanAPI', {
   updateKPI:  (data) => ipcRenderer.send('kpi:update', data),
   onKPIUpdate:(cb)   => ipcRenderer.on('kpi:update', (_, d) => cb(d)),
 
+  kpi: {
+    update:   (data) => ipcRenderer.send('kpi:update', data),
+    onUpdate: (cb)   => ipcRenderer.on('kpi:update', (_, d) => cb(d)),
+  },
+
   // ── DB: 범용 쿼리/실행/트랜잭션 ─────────────────────
   db: {
     query:       (sql, params)   => ipcRenderer.invoke('db:query',       { sql, params }),

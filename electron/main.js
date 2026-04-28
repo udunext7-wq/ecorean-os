@@ -182,7 +182,7 @@ let mainWindow = null
 const views    = {}
 let   currentTabId = 'estimate'
 
-const SHELL_H = 90
+const SHELL_H = 128
 const TABS    = ['estimate','projects','presets','reports',
                  'approval','dbmgr','ontology','aiengine','dashboard']
 
