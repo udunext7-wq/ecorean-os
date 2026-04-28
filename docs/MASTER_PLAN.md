@@ -1,6 +1,6 @@
-# ECOREAN BOC — Master Plan v5.5
+# ECOREAN BOC — Master Plan v5.6
 최종 확정: 2026-04-28
-이전 버전: v5.0 (2026-04-27)
+이전 버전: v5.5 (2026-04-28)
 
 ---
 
@@ -16,6 +16,20 @@
 | v5.0 | 2026-04-27 | §55~§90 완전 통합본, 4부록 추가 |
 | v5.4 | 2026-04-27 | §91~§103 자동 연동 시스템, 부록 E·F·G 추가 |
 | **v5.5** | **2026-04-28** | **시공 섹션 8→22개, 공간 타입 18→23개, 컨셉 10→12개, 주거 형태·2단계 견적·KPI·사업 범위 §104~§108, 부록 H~L 추가** |
+| **v5.6** | **2026-04-28** | **§109~§113 노드/엣지 그래프 + 메타 온톨로지 호환 + AI 가상 임원 + L3 외부 우주, 부록 M~O 추가** |
+
+### v5.6 주요 변경 사항 (2026-04-28)
+
+| 항목 | 이전(v5.5) | 이후(v5.6) | 변경 유형 |
+|------|-----------|-----------|----------|
+| 시스템 구조 | 평면 9탭 | **노드/엣지 그래프 (11 노드 + 24 엣지)** | 신규 §109 |
+| 메타 호환 | 없음 | **6+α 인터페이스 (URI/JSON-LD/RDF/Universe)** | 신규 §110 |
+| AI 가상 임원 | 없음 | **14번째 엔진, 자동/승격 분리** | 신규 §111 |
+| 외부 우주 진입 | 미정 | **2026 하반기 포도농장 OS** | 신규 §112 |
+| 메타엣지 결정권 | 미정 | **자동 룰 + 대표님 단독** | 신규 §113 |
+| 시각화 | 없음 | **Mermaid + Cytoscape.js 토폴로지 화면** | 부록 M·N·O |
+
+> **v5.5 → v5.6 호환성**: 모든 v5.5 결정사항 100% 유지. 추가/확장만 적용.
 
 ### v5.5 주요 변경 사항 (2026-04-28)
 
@@ -3101,5 +3115,453 @@ var RESIDENTIAL_SECTION_MAP = {
 
 ---
 
-*ECOREAN BOC Master Plan v5.5 — 완전 통합본*
-*총 108섹션 + 12부록 | 2026-04-28 by udunext7-wq*
+---
+
+## 109. 노드/엣지 그래프 아키텍처 (v5.6 신규)
+
+### 109.1 전환 배경
+
+v5.5까지 BOC는 9개 평면 탭이었으나, 100호점·7사업·메타 우주 연방까지 확장하려면
+**노드/엣지 그래프**로 재구조화가 필수. 5번 마스터플랜 다시 쓴 진짜 원인은
+평면 코드가 그래프적 사고와 어긋났기 때문.
+
+### 109.2 11 노드
+
+| 분류 | 노드 ID | 책임 |
+|------|--------|------|
+| 게이트 | g1_type | G1 — 주거형태 + 평형 결정 |
+| 게이트 | g2_concept | G2 — 컨셉 12 + 기능옵션 |
+| 게이트 | g3_section | G3 — 시공 섹션 22 다중선택 |
+| 게이트 | g4_cad | G4 — CAD 자동 작성 + 미세조정 |
+| 게이트 | g5_material | G5 — 자재 직접 선택 (2단계) |
+| 모듈 | estimate | 견적 마법자 (1단계/2단계 분리) |
+| 모듈 | cad | CAD 단독 모듈 (L1~L7) |
+| 모듈 | kpi | KPI 디지털 계기판 11항목 |
+| 엔진 | calc_engine | CalcEngine + 보정계수 |
+| 엔진 | ontology_engine | 온톨로지 26 룰 + 비즈니스 그래프 |
+| 엔진 | approval_engine | ApprovalLog + Master DB 보호 |
+| AI | ai_executive | 14번째 엔진 (§111) |
+
+### 109.3 24 엣지
+
+모든 모듈 간 통신은 단일 이벤트 버스(@ecorean/core-bus) 통과.
+각 엣지는 Zod 스키마 + Contract Test로 보호.
+
+상세: docs/graph.json 참조 (부록 N).
+
+### 109.4 5단 자동화 게이트 (Cascade Automation)
+
+| 게이트 | 시간 | 자동화율 |
+|-------|------|---------|
+| G1. 유형 | 5초 | 0 → 30% |
+| G2. 컨셉 | 5초 | 30 → 70% |
+| G3. 섹션 | 10초 | 70 → 85% |
+| G4. CAD | 1~2분 | 85 → 95% (1단계 견적 완성) |
+| G5. 자재 | 5~10분, 옵션 | 95 → 99% (2단계 견적 완성) |
+
+각 게이트는 독립 패키지(@ecorean/gate-XX), 독립 테스트, 독립 배포.
+미래 G6(모듈러하우스 2034), G7(디벨로퍼 2036)는 그래프에 노드 추가만.
+
+### 109.5 6 분리 원칙
+
+| # | 원칙 | 적용 사례 |
+|---|------|---------|
+| P1 | 데이터/코드 분리 | DB 시드 622건, 26 룰 DB 적재 |
+| P2 | 분류/계산 분리 | 22 섹션 vs 13 엔진 |
+| P3 | 자동/수동 분리 | AUTO/CONDITIONAL/MANUAL 3단 |
+| P4 | 고객/내부 분리 | 견적서 2종 |
+| P5 | 확실/추정 분리 | [확실/가정/추정] 플래그 |
+| P6 | 버전/실행 분리 | graph.json vNN ↔ 코드 vNN |
+
+### 109.6 8 버그 방지 패턴
+
+| # | 패턴 | 도입 시점 |
+|---|------|---------|
+| B1 | TypeScript Strict | Phase 3-A 점진 |
+| B2 | Zod 스키마 (런타임 검증) | Phase 3-A |
+| B3 | Contract Test (엣지마다) | Phase 3-A |
+| B4 | Single Source of Truth (graph.json) | Phase 3-A |
+| B5 | Auto-generated Constants | Phase 3-A |
+| B6 | Snapshot Test (UI 회귀) | Phase 3-B |
+| B7 | Migration Up/Down 강제 | 즉시 |
+| B8 | Feature Flag (점진 출시) | Phase 3-A |
+
+---
+
+## 110. 메타 온톨로지 호환 인터페이스 (v5.6 신규)
+
+### 110.1 7단계 우주 진화
+
+| 단계 | 시점 | 의미 |
+|------|------|------|
+| L1 | 현재 | 단일 우주 (BOC v5.6) |
+| L2 | 2026~2030 | 단일 우주 다중 사업 통합 (7사업 노드군) |
+| L3 | **2026 하반기** | **다중 우주 시작 (포도농장 OS)** |
+| L4 | 2031 | 다중 우주 가맹점화 (100호점) |
+| L5 | 2033 | 산업 우주 연결 (모듈러하우스 BIM) |
+| L6 | 2037 | 메타 우주 (디벨로퍼/에너지) |
+| L7 | 장기 | 우주 간 연방 (다른 운영자들) |
+
+### 110.2 v5.6에 박는 6+α 인터페이스
+
+| # | 인터페이스 | v5.6 적용 |
+|---|----------|----------|
+| 1 | URI 식별 | urn:ecorean:universe:N:node:X |
+| 2 | JSON-LD 1.1 출력 | graph.json 표준 |
+| 3 | RDF Triple 매핑 | DB triples 테이블 |
+| 4 | Universe ID + trust links | graph.json universe.trust |
+| 5 | Schema Registry 분리 | docs/schemas/*.schema.json |
+| 6 | Intra/Inter Edge scope | Edge.scope 필드 |
+| +α | DID + VC | 자리만 (L4 이후) |
+| +α | SPARQL/Cypher | 자리만 (L4) |
+| +α | SHACL 검증 | 자리만 (L5) |
+
+### 110.3 두 그래프 동시 저장 (Neo4j 활성화는 L4)
+
+- 비즈니스 그래프: 대표님 26 룰 (마스터플랜 §50~§90)
+- 시스템 토폴로지 그래프: graph.json (§109)
+
+교차 쿼리 가능:
+"욕실 시공 변경이 KPI에 영향 주는 경로?"
+→ 욕실 → 방수 룰 → CalcEngine → KPI
+
+v5.6에서는 SQLite triples 테이블로 자체 저장.
+L4(2031) 시점 Neo4j 활성화.
+
+---
+
+## 111. AI 가상 임원 — 14번째 엔진 (v5.6 신규, D1 하이브리드)
+
+### 111.1 정의
+
+AI 가상 임원 = BOC 14번째 엔진.
+기본 자동 처리, 중대 결정만 대표님 승격.
+
+### 111.2 자동 결정 영역 (대표님 승인 불필요)
+
+- 기존 자재 단가 변경
+- 공정 자동 매핑
+- 온톨로지 룰 적용
+- ML Phase 분기
+
+### 111.3 대표님 승격 영역 (escalation 필수)
+
+- 새 자재 등록
+- 새 컨셉 추가
+- 새 사업 노드 추가
+- 메타엣지 신설
+- 다른 우주 연결
+- 예산 1000만원 초과 결정
+
+### 111.4 작동 메커니즘
+
+1. AI 임원이 모든 게이트 + 모듈에서 CONTEXT_OBSERVED 이벤트 수신
+2. 내부 ML로 추천 생성
+3. 자동 처리 영역: estimate에 직접 RECOMMENDATION emit
+4. 승격 영역: approval_engine에 ESCALATION emit → 대표님 승인 요청
+
+---
+
+## 112. L3 외부 우주 진입 — 포도농장 OS (v5.6 신규, D3)
+
+### 112.1 진입 시점 확정
+
+**2026년 하반기** — 인테리어 1호점 안정 후 즉시 진입.
+대표님이 이미 구상 중인 아버지 포도농장 온라인 유통이 두 번째 우주.
+
+### 112.2 6 메타엣지
+
+| 메타엣지 | ECOREAN 우주 | 포도농장 우주 |
+|---------|-------------|--------------|
+| FAMILY_TRUST | 대표님 | 아버지 |
+| VEHICLE_SHARE | 1톤 더블캡 (인테리어 자재 운송) | 1톤 더블캡 (포도 운송) |
+| CAPITAL_FLOW | 운영비 | 농작물 수입 |
+| LABOR_POOL | 시공 인력 (비수기) | 농번기 인력 |
+| DATA_CROSS | 고객 DB | 농작물 구매자 DB |
+| LOGISTICS_HUB | 사무실 | 농장 |
+
+### 112.3 검증 가치
+
+L3 = 메타 온톨로지가 사업적으로 작동하는지 검증.
+검증 통과 시 L4(가맹점 100호) → L5(산업 연결) → L7(연방)이 같은 메커니즘 반복.
+
+### 112.4 사전 조건
+
+- 아버지 협력 동의 필수 (2026-Q3 확인)
+- ECOREAN 인테리어 첫 시공 1건 완료 (Phase 3 Week 8)
+
+---
+
+## 113. 메타엣지 결정권 (v5.6 신규, D2 자동 룰 + 대표님)
+
+### 113.1 자동 룰 영역 (대표님 승인 불필요)
+
+- 가맹점 인스턴스화 (조건: 본사 v5.6+ 출시)
+- 가맹점 데이터 동기화
+- 비수기 인력 ↔ 농번기 인력 자동 이동 (조건: ECOREAN 인력 30% 미가동)
+- 차량 일정 통합 (조건: 1톤 더블캡 사용 중)
+
+### 113.2 대표님 단독 영역
+
+- 새 우주 연결
+- 새 메타엣지 타입 신설
+- 가맹점 신규 출시
+- 외부 협력사(건축사·자재사) 그래프 통합
+
+### 113.3 결정 기록 (Audit Log)
+
+모든 메타엣지 결정은 approval_engine을 통과.
+graph.json edges[]에 type='META' 명시.
+
+---
+
+## 부록 M — Mermaid 다이어그램 (v5.6 신규 시각화)
+
+### M-1. 시스템 토폴로지
+
+```mermaid
+graph TD
+    G1[G1 유형] --> G2[G2 컨셉]
+    G2 --> G3[G3 섹션]
+    G3 --> G4[G4 CAD]
+    G4 --> G5[G5 자재]
+
+    G3 --> EST[견적 모듈]
+    G4 --> EST
+    G5 --> EST
+
+    G4 --> CAD[CAD 모듈]
+    CAD --> EST
+
+    EST --> KPI[KPI 디지털 계기판]
+    EST --> CALC[CalcEngine]
+    CALC --> EST
+
+    ONTO[OntologyEngine] --> CALC
+    CALC --> APP[ApprovalEngine]
+    ONTO --> APP
+
+    G1 --> AI[AI 가상 임원]
+    G2 --> AI
+    G3 --> AI
+    G4 --> AI
+    G5 --> AI
+    EST --> AI
+    KPI --> AI
+
+    AI --> EST
+    AI --> APP
+
+    style AI fill:#ffd700,stroke:#333,stroke-width:2px
+    style EST fill:#90ee90,stroke:#333,stroke-width:2px
+    style CAD fill:#87ceeb,stroke:#333,stroke-width:2px
+```
+
+### M-2. 5단 자동화 게이트 흐름
+
+```mermaid
+sequenceDiagram
+    participant U as 사용자
+    participant G1 as G1 유형
+    participant G2 as G2 컨셉
+    participant G3 as G3 섹션
+    participant G4 as G4 CAD
+    participant G5 as G5 자재
+    participant EST as 견적
+
+    U->>G1: 주거형태 + 평형 (5초)
+    G1->>G2: GATE1_LOCKED
+    Note over G1,G2: 자동화율 30%
+
+    U->>G2: 컨셉 12 (5초)
+    G2->>G3: GATE2_LOCKED
+    Note over G2,G3: 자동화율 70%
+
+    U->>G3: 섹션 22 다중 (10초)
+    G3->>G4: GATE3_LOCKED
+    G3->>EST: SECTIONS_LOCKED
+    Note over G3,G4: 자동화율 85%
+
+    U->>G4: CAD 미세조정 (1~2분)
+    G4->>EST: GATE4_LOCKED
+    Note over G4,EST: 자동화율 95% (1단계 견적 완성)
+
+    U->>G5: 자재 직접 선택 (옵션, 5~10분)
+    G5->>EST: GATE5_LOCKED
+    Note over G5,EST: 자동화율 99% (2단계 견적 완성)
+```
+
+### M-3. 7단계 우주 진화
+
+```mermaid
+graph LR
+    L1[L1 단일 우주<br/>BOC v5.6<br/>현재]
+    L2[L2 7사업 통합<br/>2026~2030]
+    L3[L3 포도농장 OS<br/>2026 Q4]
+    L4[L4 가맹점 100호<br/>2031]
+    L5[L5 산업 연결<br/>2033 BIM]
+    L6[L6 메타 우주<br/>2037 디벨로퍼]
+    L7[L7 우주 연방<br/>장기]
+
+    L1 --> L2
+    L1 --> L3
+    L2 --> L4
+    L4 --> L5
+    L5 --> L6
+    L6 --> L7
+
+    style L1 fill:#ffd700
+    style L3 fill:#90ee90
+```
+
+### M-4. Closed Loop OS (대표님 사고 그대로)
+
+```mermaid
+graph LR
+    EST[견적] --> CON[계약]
+    CON --> PUR[발주]
+    PUR --> SCH[공정]
+    SCH --> SITE[현장]
+    SITE --> INS[검수]
+    INS --> WAR[하자]
+    WAR --> SET[정산]
+    SET --> FB[피드백]
+    FB --> MDB[(Master DB)]
+    MDB -->|ML 학습| EST
+
+    style MDB fill:#ffd700
+    style EST fill:#90ee90
+```
+
+### M-5. 메타 우주 연결 (L3 포도농장)
+
+```mermaid
+graph TB
+    subgraph U1[Universe-1: ECOREAN]
+        IN[인테리어]
+        CL[청소]
+        FU[퍼니쳐]
+    end
+
+    subgraph U2[Universe-2: 포도농장 OS]
+        VINE[농산물 유통]
+        FARM[농장 운영]
+    end
+
+    U1 -.FAMILY_TRUST.-> U2
+    U1 -.VEHICLE_SHARE.-> U2
+    U1 -.LABOR_POOL.-> U2
+    U2 -.CAPITAL_FLOW.-> U1
+    U2 -.DATA_CROSS.-> U1
+    U2 -.LOGISTICS_HUB.-> U1
+
+    style U1 fill:#87ceeb
+    style U2 fill:#90ee90
+```
+
+---
+
+## 부록 N — graph.json 명세 (v5.6 신규)
+
+위치: docs/graph.json
+역할: 기계 판독 SoT (시스템 토폴로지 헌법)
+
+### N-1. 11 노드 명세
+
+| ID | URI | 타입 | 패키지 | SLA |
+|----|-----|------|--------|-----|
+| g1_type | urn:ecorean:universe:1:node:g1_type | gate | @ecorean/gate-type | 100ms |
+| g2_concept | urn:ecorean:universe:1:node:g2_concept | gate | @ecorean/gate-concept | 200ms |
+| g3_section | urn:ecorean:universe:1:node:g3_section | gate | @ecorean/gate-section | 200ms |
+| g4_cad | urn:ecorean:universe:1:node:g4_cad | gate | @ecorean/gate-cad | 500ms |
+| g5_material | urn:ecorean:universe:1:node:g5_material | gate | @ecorean/gate-material | 300ms |
+| estimate | urn:ecorean:universe:1:node:estimate | module | @ecorean/estimate | 500ms |
+| cad | urn:ecorean:universe:1:node:cad | module | @ecorean/cad | 300ms |
+| kpi | urn:ecorean:universe:1:node:kpi | module | @ecorean/kpi | 100ms |
+| calc_engine | urn:ecorean:universe:1:node:calc_engine | engine | @ecorean/calc-engine | 200ms |
+| ontology_engine | urn:ecorean:universe:1:node:ontology_engine | engine | @ecorean/ontology | 200ms |
+| approval_engine | urn:ecorean:universe:1:node:approval_engine | engine | @ecorean/approval | 100ms |
+| ai_executive | urn:ecorean:universe:1:node:ai_executive | ml | @ecorean/ai-executive | 2000ms |
+
+### N-2. 24 엣지 (요약)
+
+게이트 흐름 (5): g1→g2, g2→g3, g3→g4, g4→g5, g3→estimate
+
+CAD 통신 (3): g4→cad, cad→estimate, g4→estimate
+
+견적 흐름 (4): g5→estimate, estimate→calc, calc→estimate, estimate→kpi
+
+엔진 통신 (4): ontology→calc, calc→approval, ontology→approval, approval→ontology
+
+AI 임원 (8): g1~g5→ai (5), estimate→ai, kpi→ai, ai→estimate, ai→approval
+
+### N-3. 미래 노드 (futureNodes)
+
+7사업 확장 시 추가될 노드 미리 명세:
+- contract, purchase, schedule, inspection (2026)
+- settlement, warranty, feedback (2027)
+- cleaning (2026), unmanned_store (2027), furniture (2027)
+- hr_management (2029), franchise (2031)
+- modular_house (2033), vc (2035), developer (2036)
+
+---
+
+## 부록 O — ASCII 시스템 토폴로지 (v5.6 신규)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  ECOREAN BOC — System Topology v5.6                              │
+│  Universe: ecorean (HQ)  /  Tenant: HQ                           │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   GATES (Cascade Automation)                                     │
+│   ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐                  │
+│   │ G1  │─▶│ G2  │─▶│ G3  │─▶│ G4  │─▶│ G5  │                  │
+│   │유형 │  │컨셉 │  │섹션 │  │ CAD │  │자재 │                  │
+│   └──┬──┘  └──┬──┘  └──┬──┘  └──┬──┘  └──┬──┘                  │
+│      │        │        │        │        │                      │
+│      │        │        ▼        │        │                      │
+│      │        │   ┌─────────┐   │        │                      │
+│      │        │   │ Estimate│◀──┘        │                      │
+│      │        │   └────┬────┘◀───────────┘                      │
+│      │        │        │ ▲                                       │
+│      │        │        ▼ │                                       │
+│      │        │   ┌─────────┐   ┌─────┐                         │
+│      │        │   │   CAD   │◀──┤ G4  │                         │
+│      │        │   └─────────┘   └─────┘                         │
+│      │        │        │                                         │
+│      │        │        ▼                                         │
+│      │        │   ┌─────────┐                                    │
+│      │        │   │   KPI   │                                    │
+│      │        │   └─────────┘                                    │
+│      │        │                                                  │
+│      ▼        ▼                                                  │
+│   ┌──────────────────────────────────────────────────┐           │
+│   │         AI Executive (14번째 엔진)                │           │
+│   │  자동: 단가/공정/룰/ML        승격: 대표님        │           │
+│   └──────────────────────┬───────────────────────────┘           │
+│                          │                                       │
+│                          ▼                                       │
+│   ┌─────────┐    ┌─────────────┐    ┌────────────┐               │
+│   │CalcEng  │◀──▶│OntologyEng  │───▶│ApprovalEng │               │
+│   └─────────┘    └─────────────┘    └────────────┘               │
+│                                                                  │
+│   Status: 11 healthy / 0 broken                                  │
+│   Edges:  24 / 24 active                                         │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+INTER-UNIVERSE METAEDGES (Future)
+─────────────────────────────────
+[ecorean] ─── FAMILY_TRUST ────▶ [vine-farm]    (2026 Q4, D3)
+          ─── VEHICLE_SHARE ────▶
+          ─── LABOR_POOL ───────▶
+[vine-farm] ── CAPITAL_FLOW ────▶ [ecorean]
+            ── DATA_CROSS ──────▶
+            ── LOGISTICS_HUB ───▶
+```
+
+---
+
+*ECOREAN BOC Master Plan v5.6 — 노드/엣지 그래프 + 메타 온톨로지*
+*총 113섹션 + 15부록 | 2026-04-28 by udunext7-wq*

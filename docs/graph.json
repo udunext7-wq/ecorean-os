@@ -1,0 +1,103 @@
+{
+  "@context": {
+    "@vocab": "https://ecorean.io/ontology/v1#",
+    "ecorean": "https://ecorean.io/ontology/v1#",
+    "schema": "https://schema.org/"
+  },
+  "@type": "BusinessGraph",
+  "@id": "urn:ecorean:universe:1",
+  "version": "5.6",
+  "generatedAt": "2026-04-28",
+  "tenantId": "HQ",
+  "universe": {
+    "id": "ecorean",
+    "uri": "urn:business:ecorean",
+    "name": "ECOREAN BOC",
+    "operator": "udunext7-wq",
+    "trust": {
+      "outgoing": [
+        {
+          "@id": "urn:business:vine-farm",
+          "name": "포도농장 OS",
+          "expectedConnectionDate": "2026-Q4",
+          "metaedges": ["FAMILY_TRUST","VEHICLE_SHARE","CAPITAL_FLOW","LABOR_POOL","DATA_CROSS","LOGISTICS_HUB"]
+        }
+      ]
+    }
+  },
+  "nodes": [
+    { "id":"g1_type","uri":"urn:ecorean:universe:1:node:g1_type","type":"gate","package":"@ecorean/gate-type","sla":{"maxLatencyMs":100} },
+    { "id":"g2_concept","uri":"urn:ecorean:universe:1:node:g2_concept","type":"gate","package":"@ecorean/gate-concept","sla":{"maxLatencyMs":200},"dependsOn":["g1_type"] },
+    { "id":"g3_section","uri":"urn:ecorean:universe:1:node:g3_section","type":"gate","package":"@ecorean/gate-section","sla":{"maxLatencyMs":200},"dependsOn":["g2_concept"] },
+    { "id":"g4_cad","uri":"urn:ecorean:universe:1:node:g4_cad","type":"gate","package":"@ecorean/gate-cad","sla":{"maxLatencyMs":500},"dependsOn":["g3_section"] },
+    { "id":"g5_material","uri":"urn:ecorean:universe:1:node:g5_material","type":"gate","package":"@ecorean/gate-material","sla":{"maxLatencyMs":300},"dependsOn":["g4_cad"] },
+    { "id":"estimate","uri":"urn:ecorean:universe:1:node:estimate","type":"module","package":"@ecorean/estimate","sla":{"maxLatencyMs":500} },
+    { "id":"cad","uri":"urn:ecorean:universe:1:node:cad","type":"module","package":"@ecorean/cad","sla":{"maxLatencyMs":300},"layers":{"L1":"ACTIVE","L2":"PLANNED","L3":"PLANNED","L4":"FUTURE","L5":"FUTURE","L6":"FUTURE","L7":"FUTURE"} },
+    { "id":"kpi","uri":"urn:ecorean:universe:1:node:kpi","type":"module","package":"@ecorean/kpi","sla":{"maxLatencyMs":100} },
+    { "id":"calc_engine","uri":"urn:ecorean:universe:1:node:calc_engine","type":"engine","package":"@ecorean/calc-engine","sla":{"maxLatencyMs":200} },
+    { "id":"ontology_engine","uri":"urn:ecorean:universe:1:node:ontology_engine","type":"engine","package":"@ecorean/ontology","sla":{"maxLatencyMs":200} },
+    { "id":"approval_engine","uri":"urn:ecorean:universe:1:node:approval_engine","type":"engine","package":"@ecorean/approval","sla":{"maxLatencyMs":100},"humanApprover":"operator:udunext7-wq" },
+    { "id":"ai_executive","uri":"urn:ecorean:universe:1:node:ai_executive","type":"ml","package":"@ecorean/ai-executive","sla":{"maxLatencyMs":2000},"autonomyScope":["기존자재단가변경","공정자동매핑","온톨로지룰적용","ML분기"],"escalationScope":["새자재등록","새컨셉추가","새사업노드추가","메타엣지신설","다른우주연결","예산1000만원초과"] }
+  ],
+  "edges": [
+    {"id":"e_g1_g2","source":"g1_type","target":"g2_concept","event":"GATE1_LOCKED","scope":"INTRA"},
+    {"id":"e_g2_g3","source":"g2_concept","target":"g3_section","event":"GATE2_LOCKED","scope":"INTRA"},
+    {"id":"e_g3_g4","source":"g3_section","target":"g4_cad","event":"GATE3_LOCKED","scope":"INTRA"},
+    {"id":"e_g3_estimate","source":"g3_section","target":"estimate","event":"SECTIONS_LOCKED","scope":"INTRA"},
+    {"id":"e_g4_cad","source":"g4_cad","target":"cad","event":"CAD_INIT","scope":"INTRA"},
+    {"id":"e_g4_estimate","source":"g4_cad","target":"estimate","event":"GATE4_LOCKED","scope":"INTRA"},
+    {"id":"e_cad_estimate","source":"cad","target":"estimate","event":"SPACE_UPDATED","scope":"INTRA"},
+    {"id":"e_g5_estimate","source":"g5_material","target":"estimate","event":"GATE5_LOCKED","scope":"INTRA"},
+    {"id":"e_estimate_calc","source":"estimate","target":"calc_engine","event":"CALC_REQUEST","scope":"INTRA"},
+    {"id":"e_calc_estimate","source":"calc_engine","target":"estimate","event":"CALC_RESULT","scope":"INTRA"},
+    {"id":"e_ontology_calc","source":"ontology_engine","target":"calc_engine","event":"RULES_LOADED","scope":"INTRA"},
+    {"id":"e_estimate_kpi","source":"estimate","target":"kpi","event":"KPI_UPDATE","scope":"INTRA"},
+    {"id":"e_calc_approval","source":"calc_engine","target":"approval_engine","event":"MASTERDB_UPDATE_REQ","scope":"INTRA"},
+    {"id":"e_ontology_approval","source":"ontology_engine","target":"approval_engine","event":"NEW_RULE_PROPOSED","scope":"INTRA"},
+    {"id":"e_approval_ontology","source":"approval_engine","target":"ontology_engine","event":"RULE_APPROVED","scope":"INTRA"},
+    {"id":"e_ai_estimate","source":"ai_executive","target":"estimate","event":"AI_RECOMMEND","scope":"INTRA"},
+    {"id":"e_ai_approval","source":"ai_executive","target":"approval_engine","event":"AI_ESCALATION","scope":"INTRA"},
+    {"id":"e_g1_ai","source":"g1_type","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+    {"id":"e_g2_ai","source":"g2_concept","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+    {"id":"e_g3_ai","source":"g3_section","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+    {"id":"e_g4_ai","source":"g4_cad","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+    {"id":"e_g5_ai","source":"g5_material","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+    {"id":"e_estimate_ai","source":"estimate","target":"ai_executive","event":"RESULT_OBSERVED","scope":"INTRA"},
+    {"id":"e_kpi_ai","source":"kpi","target":"ai_executive","event":"KPI_OBSERVED","scope":"INTRA"}
+  ],
+  "futureNodes": [
+    {"id":"contract","expectedDate":"2026","universe":"ecorean"},
+    {"id":"purchase","expectedDate":"2026","universe":"ecorean"},
+    {"id":"schedule","expectedDate":"2026","universe":"ecorean"},
+    {"id":"inspection","expectedDate":"2026","universe":"ecorean"},
+    {"id":"settlement","expectedDate":"2027","universe":"ecorean"},
+    {"id":"warranty","expectedDate":"2027","universe":"ecorean"},
+    {"id":"feedback","expectedDate":"2027","universe":"ecorean"},
+    {"id":"cleaning","expectedDate":"2026","universe":"ecorean"},
+    {"id":"unmanned_store","expectedDate":"2027","universe":"ecorean"},
+    {"id":"furniture","expectedDate":"2027","universe":"ecorean"},
+    {"id":"hr_management","expectedDate":"2029","universe":"ecorean"},
+    {"id":"franchise","expectedDate":"2031","universe":"ecorean"},
+    {"id":"modular_house","expectedDate":"2033","universe":"ecorean"},
+    {"id":"vc","expectedDate":"2035","universe":"ecorean"},
+    {"id":"developer","expectedDate":"2036","universe":"ecorean"}
+  ],
+  "absoluteRules": [
+    "방수=AUTO 금지·CONDITIONAL만 허용",
+    "NEEDS_CONFIRMATION 누락 금지",
+    "Master DB 무승인 업데이트 금지",
+    "버그 있는 코드 커밋 금지·TDD 강제",
+    "단가 추정 금지·UNKNOWN/NEEDS_RESEARCH 우선",
+    "고객용/내부용 분리",
+    "검수 실패 후 후속 공정 진행 금지",
+    "rollback SQL 없는 DB 변경 금지"
+  ],
+  "metaCompatibilityInterfaces": [
+    "URI 식별",
+    "JSON-LD 1.1 출력",
+    "RDF Triple 매핑",
+    "Universe ID + trust links",
+    "Schema Registry 분리",
+    "Intra/Inter Edge scope 명시"
+  ]
+}

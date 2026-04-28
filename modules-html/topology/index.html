@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>ECOREAN BOC — System Topology v5.6</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+<style>
+:root {
+  --bg: #0a0e1a;
+  --bg2: #14182a;
+  --gold: #c9a84c;
+  --gold-bright: #ffd700;
+  --text: #ede5d5;
+  --dim: rgba(201,168,76,0.5);
+  --gate: #4a90e2;
+  --module: #50c878;
+  --engine: #e8a534;
+  --ml: #c9a84c;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans KR', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
+header {
+  height: 60px;
+  background: linear-gradient(180deg, #0a0e1a 0%, #14182a 100%);
+  border-bottom: 1px solid rgba(201,168,76,0.3);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+}
+h1 {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: 18px;
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 12px rgba(201,168,76,0.4);
+}
+.spacer { flex: 1; }
+.status {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--dim);
+}
+.status .ok { color: #4caf50; }
+main {
+  display: flex;
+  height: calc(100vh - 60px);
+}
+#cy {
+  flex: 1;
+  background: var(--bg);
+  position: relative;
+}
+aside {
+  width: 320px;
+  background: var(--bg2);
+  border-left: 1px solid rgba(201,168,76,0.15);
+  padding: 16px;
+  overflow-y: auto;
+}
+aside h2 {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(201,168,76,0.15);
+}
+.detail-row {
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+.detail-row .label {
+  color: var(--dim);
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  margin-bottom: 2px;
+}
+.detail-row .value {
+  color: var(--text);
+  word-break: break-all;
+}
+.tag-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.tag {
+  background: rgba(201,168,76,0.1);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 2px;
+  padding: 1px 6px;
+  font-size: 9px;
+  color: var(--gold);
+}
+.legend {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: rgba(20,24,42,0.92);
+  border: 1px solid rgba(201,168,76,0.2);
+  padding: 12px 14px;
+  border-radius: 4px;
+  font-size: 11px;
+  z-index: 10;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  color: var(--text);
+}
+.legend-item:last-child { margin-bottom: 0; }
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.universe-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(20,24,42,0.92);
+  border: 1px solid rgba(201,168,76,0.3);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--gold);
+  z-index: 10;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ECOREAN BOC — SYSTEM TOPOLOGY v5.6</h1>
+  <div class="spacer"></div>
+  <div class="status">
+    Nodes: <span class="ok" id="nodeCount">—</span> /
+    Edges: <span class="ok" id="edgeCount">—</span> /
+    Universe: <span class="ok">ecorean (HQ)</span>
+  </div>
+</header>
+<main>
+  <div id="cy" style="position:relative;">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Gate (5)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#50c878"></div>Module (3)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e8a534"></div>Engine (3)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div>AI (1)</div>
+    </div>
+    <div class="universe-badge">urn:ecorean:universe:1</div>
+  </div>
+  <aside id="detail">
+    <h2>노드 / 엣지 상세</h2>
+    <div id="detailContent">
+      <p style="color: var(--dim); font-size: 12px; line-height: 1.6;">
+        노드 또는 엣지를 클릭하면<br>상세 정보가 표시됩니다.
+      </p>
+    </div>
+  </aside>
+</main>
+<script>
+var NODE_LABELS = {
+  g1_type:          'G1\n유형',
+  g2_concept:       'G2\n컨셉',
+  g3_section:       'G3\n섹션',
+  g4_cad:           'G4\nCAD',
+  g5_material:      'G5\n자재',
+  estimate:         '견적\n모듈',
+  cad:              'CAD\n모듈',
+  kpi:              'KPI\n계기판',
+  calc_engine:      'Calc\nEngine',
+  ontology_engine:  'Ontology\nEngine',
+  approval_engine:  'Approval\nEngine',
+  ai_executive:     'AI\n임원'
+};
+
+async function loadGraph() {
+  var data;
+  try {
+    var res = await fetch('../../docs/graph.json');
+    data = await res.json();
+  } catch(e) {
+    // fallback inline data for file:// protocol issues
+    data = buildFallbackData();
+  }
+
+  var typeColors = { gate:'#4a90e2', module:'#50c878', engine:'#e8a534', ml:'#c9a84c' };
+  var elements = [];
+
+  data.nodes.forEach(function(n) {
+    elements.push({
+      data: {
+        id: n.id,
+        label: NODE_LABELS[n.id] || n.id,
+        type: n.type,
+        uri: n.uri || '',
+        pkg: n.package || '',
+        sla: (n.sla && n.sla.maxLatencyMs) || 0,
+        color: typeColors[n.type] || '#888',
+        auto: (n.autonomyScope || []).join(', '),
+        esc: (n.escalationScope || []).join(', ')
+      }
+    });
+  });
+
+  data.edges.forEach(function(e) {
+    elements.push({
+      data: {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: e.event || '',
+        scope: e.scope || 'INTRA'
+      }
+    });
+  });
+
+  document.getElementById('nodeCount').textContent = data.nodes.length;
+  document.getElementById('edgeCount').textContent = data.edges.length;
+
+  var cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: elements,
+    style: [
+      {
+        selector: 'node',
+        style: {
+          'background-color': 'data(color)',
+          'label': 'data(label)',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'color': '#ede5d5',
+          'font-size': '10px',
+          'font-weight': 'bold',
+          'text-wrap': 'wrap',
+          'width': 76,
+          'height': 76,
+          'border-width': 2,
+          'border-color': 'rgba(201,168,76,0.35)',
+          'text-outline-width': 2,
+          'text-outline-color': '#0a0e1a'
+        }
+      },
+      {
+        selector: 'node[type="gate"]',
+        style: { 'shape': 'roundrectangle' }
+      },
+      {
+        selector: 'node[type="engine"]',
+        style: { 'shape': 'diamond', 'width': 90, 'height': 90 }
+      },
+      {
+        selector: 'node[type="ml"]',
+        style: {
+          'shape': 'star',
+          'width': 100,
+          'height': 100,
+          'border-color': '#ffd700',
+          'border-width': 3
+        }
+      },
+      {
+        selector: 'edge',
+        style: {
+          'width': 1.5,
+          'line-color': 'rgba(201,168,76,0.35)',
+          'target-arrow-color': 'rgba(201,168,76,0.55)',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'label': 'data(label)',
+          'font-size': '7px',
+          'color': 'rgba(201,168,76,0.55)',
+          'text-rotation': 'autorotate',
+          'text-margin-y': -7,
+          'text-outline-width': 1.5,
+          'text-outline-color': '#0a0e1a'
+        }
+      },
+      {
+        selector: 'node:selected',
+        style: {
+          'border-color': '#ffd700',
+          'border-width': 4,
+          'box-shadow': '0 0 12px rgba(255,215,0,0.5)'
+        }
+      },
+      {
+        selector: 'edge:selected',
+        style: {
+          'line-color': '#ffd700',
+          'target-arrow-color': '#ffd700',
+          'width': 2.5
+        }
+      }
+    ],
+    layout: {
+      name: 'concentric',
+      concentric: function(node) {
+        if (node.data('type') === 'ml') return 0;
+        if (node.data('type') === 'engine') return 1;
+        if (node.data('type') === 'module') return 2;
+        if (node.data('type') === 'gate') return 3;
+        return 0;
+      },
+      levelWidth: function() { return 1; },
+      spacingFactor: 1.6,
+      animate: true,
+      animationDuration: 600
+    }
+  });
+
+  cy.on('tap', 'node', function(evt) {
+    var n = evt.target.data();
+    var autoHtml = n.auto ? '<div class="detail-row"><div class="label">자동 처리</div><div class="tag-list">' + n.auto.split(', ').map(function(t){ return '<span class="tag">'+t+'</span>'; }).join('') + '</div></div>' : '';
+    var escHtml  = n.esc  ? '<div class="detail-row"><div class="label">승격 항목</div><div class="tag-list">' + n.esc.split(', ').map(function(t){ return '<span class="tag">'+t+'</span>'; }).join('') + '</div></div>' : '';
+    document.getElementById('detailContent').innerHTML =
+      '<div class="detail-row"><div class="label">ID</div><div class="value">' + n.id + '</div></div>' +
+      '<div class="detail-row"><div class="label">Type</div><div class="value">' + n.type + '</div></div>' +
+      '<div class="detail-row"><div class="label">URI</div><div class="value">' + n.uri + '</div></div>' +
+      '<div class="detail-row"><div class="label">Package</div><div class="value">' + n.pkg + '</div></div>' +
+      '<div class="detail-row"><div class="label">SLA</div><div class="value">' + n.sla + 'ms</div></div>' +
+      autoHtml + escHtml;
+  });
+
+  cy.on('tap', 'edge', function(evt) {
+    var e = evt.target.data();
+    document.getElementById('detailContent').innerHTML =
+      '<div class="detail-row"><div class="label">Edge ID</div><div class="value">' + e.id + '</div></div>' +
+      '<div class="detail-row"><div class="label">Source</div><div class="value">' + e.source + '</div></div>' +
+      '<div class="detail-row"><div class="label">Target</div><div class="value">' + e.target + '</div></div>' +
+      '<div class="detail-row"><div class="label">Event</div><div class="value">' + e.label + '</div></div>' +
+      '<div class="detail-row"><div class="label">Scope</div><div class="value">' + e.scope + '</div></div>';
+  });
+
+  cy.on('tap', function(evt) {
+    if (evt.target === cy) {
+      document.getElementById('detailContent').innerHTML = '<p style="color: var(--dim); font-size: 12px; line-height: 1.6;">노드 또는 엣지를 클릭하면<br>상세 정보가 표시됩니다.</p>';
+    }
+  });
+}
+
+function buildFallbackData() {
+  return {
+    nodes: [
+      {"id":"g1_type","type":"gate","uri":"urn:ecorean:universe:1:node:g1_type","package":"@ecorean/gate-type","sla":{"maxLatencyMs":100}},
+      {"id":"g2_concept","type":"gate","uri":"urn:ecorean:universe:1:node:g2_concept","package":"@ecorean/gate-concept","sla":{"maxLatencyMs":200}},
+      {"id":"g3_section","type":"gate","uri":"urn:ecorean:universe:1:node:g3_section","package":"@ecorean/gate-section","sla":{"maxLatencyMs":200}},
+      {"id":"g4_cad","type":"gate","uri":"urn:ecorean:universe:1:node:g4_cad","package":"@ecorean/gate-cad","sla":{"maxLatencyMs":500}},
+      {"id":"g5_material","type":"gate","uri":"urn:ecorean:universe:1:node:g5_material","package":"@ecorean/gate-material","sla":{"maxLatencyMs":300}},
+      {"id":"estimate","type":"module","uri":"urn:ecorean:universe:1:node:estimate","package":"@ecorean/estimate","sla":{"maxLatencyMs":500}},
+      {"id":"cad","type":"module","uri":"urn:ecorean:universe:1:node:cad","package":"@ecorean/cad","sla":{"maxLatencyMs":300}},
+      {"id":"kpi","type":"module","uri":"urn:ecorean:universe:1:node:kpi","package":"@ecorean/kpi","sla":{"maxLatencyMs":100}},
+      {"id":"calc_engine","type":"engine","uri":"urn:ecorean:universe:1:node:calc_engine","package":"@ecorean/calc-engine","sla":{"maxLatencyMs":200}},
+      {"id":"ontology_engine","type":"engine","uri":"urn:ecorean:universe:1:node:ontology_engine","package":"@ecorean/ontology","sla":{"maxLatencyMs":200}},
+      {"id":"approval_engine","type":"engine","uri":"urn:ecorean:universe:1:node:approval_engine","package":"@ecorean/approval","sla":{"maxLatencyMs":100}},
+      {"id":"ai_executive","type":"ml","uri":"urn:ecorean:universe:1:node:ai_executive","package":"@ecorean/ai-executive","sla":{"maxLatencyMs":2000},"autonomyScope":["기존자재단가변경","공정자동매핑","온톨로지룰적용","ML분기"],"escalationScope":["새자재등록","새컨셉추가","새사업노드추가","메타엣지신설","다른우주연결","예산1000만원초과"]}
+    ],
+    edges: [
+      {"id":"e_g1_g2","source":"g1_type","target":"g2_concept","event":"GATE1_LOCKED","scope":"INTRA"},
+      {"id":"e_g2_g3","source":"g2_concept","target":"g3_section","event":"GATE2_LOCKED","scope":"INTRA"},
+      {"id":"e_g3_g4","source":"g3_section","target":"g4_cad","event":"GATE3_LOCKED","scope":"INTRA"},
+      {"id":"e_g3_estimate","source":"g3_section","target":"estimate","event":"SECTIONS_LOCKED","scope":"INTRA"},
+      {"id":"e_g4_cad","source":"g4_cad","target":"cad","event":"CAD_INIT","scope":"INTRA"},
+      {"id":"e_g4_estimate","source":"g4_cad","target":"estimate","event":"GATE4_LOCKED","scope":"INTRA"},
+      {"id":"e_cad_estimate","source":"cad","target":"estimate","event":"SPACE_UPDATED","scope":"INTRA"},
+      {"id":"e_g5_estimate","source":"g5_material","target":"estimate","event":"GATE5_LOCKED","scope":"INTRA"},
+      {"id":"e_estimate_calc","source":"estimate","target":"calc_engine","event":"CALC_REQUEST","scope":"INTRA"},
+      {"id":"e_calc_estimate","source":"calc_engine","target":"estimate","event":"CALC_RESULT","scope":"INTRA"},
+      {"id":"e_ontology_calc","source":"ontology_engine","target":"calc_engine","event":"RULES_LOADED","scope":"INTRA"},
+      {"id":"e_estimate_kpi","source":"estimate","target":"kpi","event":"KPI_UPDATE","scope":"INTRA"},
+      {"id":"e_calc_approval","source":"calc_engine","target":"approval_engine","event":"MASTERDB_UPDATE_REQ","scope":"INTRA"},
+      {"id":"e_ontology_approval","source":"ontology_engine","target":"approval_engine","event":"NEW_RULE_PROPOSED","scope":"INTRA"},
+      {"id":"e_approval_ontology","source":"approval_engine","target":"ontology_engine","event":"RULE_APPROVED","scope":"INTRA"},
+      {"id":"e_ai_estimate","source":"ai_executive","target":"estimate","event":"AI_RECOMMEND","scope":"INTRA"},
+      {"id":"e_ai_approval","source":"ai_executive","target":"approval_engine","event":"AI_ESCALATION","scope":"INTRA"},
+      {"id":"e_g1_ai","source":"g1_type","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+      {"id":"e_g2_ai","source":"g2_concept","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+      {"id":"e_g3_ai","source":"g3_section","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+      {"id":"e_g4_ai","source":"g4_cad","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+      {"id":"e_g5_ai","source":"g5_material","target":"ai_executive","event":"CONTEXT_OBSERVED","scope":"INTRA"},
+      {"id":"e_estimate_ai","source":"estimate","target":"ai_executive","event":"RESULT_OBSERVED","scope":"INTRA"},
+      {"id":"e_kpi_ai","source":"kpi","target":"ai_executive","event":"KPI_OBSERVED","scope":"INTRA"}
+    ]
+  };
+}
+
+loadGraph().catch(function(err) {
+  console.error('Graph load failed:', err);
+  document.getElementById('detailContent').innerHTML =
+    '<p style="color:#f44336; font-size:12px">graph.json 로드 실패: ' + err.message + '</p>';
+});
+</script>
+</body>
+</html>
