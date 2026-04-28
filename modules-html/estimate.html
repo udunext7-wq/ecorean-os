@@ -641,42 +641,51 @@ function totalArea(){ return S.spaces.reduce(function(a,sp){return a+(sp.area||0
 
 function pushKpiUpdate(r){
   var fa=totalArea()||0
-  var cObj=CONCEPTS.find(function(c){return c.id===S.concept})||CONCEPTS[0]
+  var cObj=CONCEPTS.find(function(c){return c.id===S.concept})||CONCEPTS[0]||{}
   var secLabels=SECTIONS.filter(function(s){return S.sections[s.id]}).map(function(s){return s.label})
   var data={
-    concept:{name:cObj.name,gradeMul:cObj.grade,grade:cObj.name},
+    concept:{name:cObj.name||'— —',gradeMul:cObj.grade||1.0,grade:cObj.name||'표준'},
     sections:{labels:secLabels},
     area:fa,
     auto:S._autoCount||0,
+    supply:0, contract:0, final:0, sqm:0, 'py-price':0, days:0, margin:0,
   }
-  // r=null이고 공간+공정이 있으면 자체 계산
-  if(!r && S.spaces.length>0 && S.selectedProcessIds.length>0){
-    try{
-      var _spaces=S.spaces.map(spaceToCalc)
-      r=CalcEngine.calculateEstimate({
-        spaces:_spaces,
-        selectedProcessIds:S.selectedProcessIds,
-        gradeMul:S.gradeMul||1.0,
-        floorLevel:S.floorLevel||5,
-        hasElev:S.hasElev,
-        resid:S.resid,
-        region:S.region||1.0,
-      })
-    }catch(e){}
+  // r=null이면 자체 계산 시도
+  if(!r){
+    if(S.spaces.length>0 && (S.selectedProcessIds||[]).length>0){
+      try{
+        var _sp=S.spaces.map(spaceToCalc)
+        r=CalcEngine.calculateEstimate({
+          spaces:_sp,
+          selectedProcessIds:S.selectedProcessIds,
+          gradeMul:S.gradeMul||1.0,
+          floorLevel:S.floorLevel||5,
+          hasElev:S.hasElev,
+          resid:S.resid,
+          region:S.region||1.0,
+        })||{totalSupply:0,contractAmount:0,finalAmount:0,duration:0}
+      }catch(e){
+        console.warn('[KPI] calc:',e.message)
+        r={totalSupply:0,contractAmount:0,finalAmount:0,duration:0}
+      }
+    } else {
+      r={totalSupply:0,contractAmount:0,finalAmount:0,duration:0}
+    }
   }
-  if(r){
-    var fa2=(r.totals&&r.totals.fa)?r.totals.fa:fa
-    var margin=r.contractAmount>0?((r.contractAmount-(r.totalSupply||0))/r.contractAmount*100):0
-    data.area=fa2||fa
-    data.supply=r.totalSupply||0
-    data.contract=r.contractAmount||0
-    data.final=r.finalAmount||0
-    data.sqm=fa2>0?Math.round((r.finalAmount||0)/fa2):0
-    data['py-price']=fa2>0?Math.round((r.finalAmount||0)/(fa2/3.3058)):0
-    data.days=r.duration||0
-    data.margin=margin
-  }
-  try{window.ecoreanAPI?.updateKPI(data)}catch(e){}
+  var fa2=(r.totals&&r.totals.fa)?r.totals.fa:fa
+  var mg=r.contractAmount>0?((r.contractAmount-(r.totalSupply||0))/r.contractAmount*100):0
+  data.area=fa2||fa
+  data.supply=r.totalSupply||0
+  data.contract=r.contractAmount||0
+  data.final=r.finalAmount||0
+  data.sqm=fa2>0?Math.round((r.finalAmount||0)/fa2):0
+  data['py-price']=fa2>0?Math.round((r.finalAmount||0)/(fa2/3.3058)):0
+  data.days=r.duration||0
+  data.margin=mg
+  try{
+    if(window.ecoreanAPI?.kpi?.update) window.ecoreanAPI.kpi.update(data)
+    else if(window.ecoreanAPI?.updateKPI) window.ecoreanAPI.updateKPI(data)
+  }catch(e){}
 }
 
 // ── STEP 0 렌더 ───────────────────────────────────────────
@@ -1106,6 +1115,7 @@ var WZ={
     if(n===4) renderScope()
     if(n===5) renderGrade()
     if(n===6) renderResult()
+    if(n!==6) pushKpiUpdate(S.result||null)
   },
   next:function(){WZ.readCurrent(); WZ.goStep(S.step+1)},
   prev:function(){WZ.readCurrent(); WZ.goStep(S.step-1)},

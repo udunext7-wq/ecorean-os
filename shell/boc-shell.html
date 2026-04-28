@@ -5,249 +5,231 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ECOREAN BOC v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,400&family=Cinzel:wght@700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@400;600&display=swap">
 <style>
 :root {
-  --void:#030305; --deep:#07070F; --surface:#0D0D1A;
-  --gold:#C9A84C; --gold-bright:#FFD700; --gold2:rgba(201,168,76,0.12);
-  --platinum:#E8E0D0; --dim:#555566; --green:#00FFB2;
-  --red:#FF3355; --blue:#00AAFF; --orange:#FF8C00;
-  --border:rgba(201,168,76,0.12); --text:#EDE5D5; --text2:#A09080;
-  --font-head:'Cormorant Garamond',serif;
-  --font-body:'Noto Sans KR',sans-serif;
-  --font-mono:'JetBrains Mono',monospace;
+  --void:#030305; --deep:#07070F;
+  --gold:#C9A84C; --gold-bright:#FFD700;
+  --dim:#555566; --border:rgba(201,168,76,0.12);
+  --text:#EDE5D5; --text2:#A09080;
+  --kpi-bg:linear-gradient(180deg,#0A0E1A 0%,#14182A 100%);
+  --kpi-border:rgba(201,168,76,0.3);
+  --kpi-divider:rgba(201,168,76,0.15);
+  --kpi-gold:#C9A84C; --kpi-gold-bright:#FFD700;
+  --kpi-dim:rgba(201,168,76,0.5);
+  --kpi-glow:rgba(201,168,76,0.4);
+  --kpi-glow-bright:rgba(255,215,0,0.5);
+  --kpi-up:#4CAF50; --kpi-down:#F44336;
   --font-cin:'Cinzel',serif;
-  /* KPI 계기판 */
-  --kpi-bg:linear-gradient(180deg,#060A16 0%,#0B0F1E 100%);
-  --kpi-border:rgba(201,168,76,0.28);
-  --kpi-div:rgba(201,168,76,0.10);
-  --kpi-glow:rgba(201,168,76,0.32);
-  --kpi-glow-b:rgba(255,215,0,0.42);
-  --kpi-up:#4CAF50; --kpi-dn:#F44336;
-  --kpi-mg-good:#4CAF50; --kpi-mg-warn:#FF9800; --kpi-mg-danger:#F44336;
+  --font-gar:'Cormorant Garamond',serif;
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html,body{height:128px;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--font-body);font-size:13px}
+html,body{height:128px;overflow:hidden;background:var(--void);color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px}
 button{cursor:pointer;font-family:inherit;font-size:inherit}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
 
-/* ─────────────── KPI BAR (90px) ─────────────────────────── */
-#kpi-bar{
+/* ── KPI BAR (90px) ──────────────────────────────────────── */
+.kpi-bar{
   height:90px;display:flex;flex-direction:column;
   background:var(--kpi-bg);
   border-bottom:1px solid var(--kpi-border);
-  box-shadow:0 3px 28px rgba(0,0,0,0.7),inset 0 -1px 0 rgba(201,168,76,0.06);
+  box-shadow:0 2px 20px rgba(0,0,0,0.5),inset 0 -1px 0 rgba(201,168,76,0.06);
 }
 
-/* 1줄: 로고 + 고정 정보 */
-.kr-info{
+/* Row 1: Logo · Concept · Sections · Clock (32px) */
+.kpi-row.info{
   height:32px;display:flex;align-items:center;
-  padding:0 14px;
-  border-bottom:1px solid var(--kpi-div);
-  gap:0;
+  padding:0 12px;
+  border-bottom:1px solid var(--kpi-divider);
+  gap:0;flex-shrink:0;
 }
-.logo{
-  font-family:var(--font-cin);font-size:13px;font-weight:700;
-  color:var(--gold);letter-spacing:0.16em;
-  margin-right:18px;white-space:nowrap;flex-shrink:0;
+.kpi-logo{
+  font-family:var(--font-cin);font-size:12px;font-weight:700;
+  color:var(--kpi-gold);letter-spacing:0.16em;
+  margin-right:16px;white-space:nowrap;flex-shrink:0;
   text-shadow:0 0 12px var(--kpi-glow);
 }
-.ki-cell{
-  display:flex;align-items:center;gap:7px;
-  padding:0 12px;border-right:1px solid var(--kpi-div);
+.kpi-info-item{
+  display:flex;align-items:center;gap:8px;
+  padding:0 12px;border-right:1px solid var(--kpi-divider);
   height:100%;flex-shrink:0;
 }
-.ki-cell:last-of-type{border-right:none;min-width:0}
-.ki-lbl{
-  font-size:8px;color:var(--dim);letter-spacing:0.12em;
-  text-transform:uppercase;font-family:var(--font-head);white-space:nowrap;flex-shrink:0;
+.kpi-info-item:last-of-type{border-right:none;min-width:0}
+.kpi-info-label{
+  font-size:8px;color:var(--kpi-dim);letter-spacing:0.12em;
+  text-transform:uppercase;font-family:var(--font-gar);
+  white-space:nowrap;flex-shrink:0;
 }
-.ki-val{
+.kpi-info-value{
   font-family:var(--font-cin);font-size:11px;font-weight:700;
-  color:var(--gold);letter-spacing:0.04em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
+  color:var(--kpi-gold);letter-spacing:0.04em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;
 }
-.ki-sub{font-size:9px;color:var(--dim);margin-left:3px;white-space:nowrap;flex-shrink:0}
-.ki-badge{
-  display:inline-block;padding:1px 5px;border:1px solid var(--gold);
-  border-radius:2px;font-size:8px;color:var(--gold);letter-spacing:0.08em;margin-left:4px;
+.kpi-info-sub{font-size:9px;color:var(--kpi-dim);margin-left:4px;white-space:nowrap;flex-shrink:0}
+.kpi-grade-badge{
+  display:inline-block;padding:1px 5px;border:1px solid var(--kpi-gold);
+  border-radius:2px;font-size:8px;color:var(--kpi-gold);letter-spacing:0.06em;margin-left:3px;
 }
-.kr-spacer{flex:1}
-#tb-clock{
-  font-family:var(--font-mono);font-size:10px;color:var(--dim);
+.kpi-spacer{flex:1}
+#kpi-clock{
+  font-family:monospace;font-size:10px;color:var(--kpi-dim);
   white-space:nowrap;padding:0 6px;flex-shrink:0;
 }
 
-/* 2줄: 9개 숫자 계기판 */
-.kr-nums{
+/* Row 2: 9 numeric gauges (flex:1 ≈ 58px) */
+.kpi-row{
   flex:1;display:flex;align-items:stretch;
   padding:0 4px;overflow:hidden;
 }
-.kn-cell{
+.kpi-num-item{
   display:flex;flex-direction:column;justify-content:center;
-  padding:0 9px;border-right:1px solid var(--kpi-div);
-  flex:1;min-width:72px;
+  padding:0 8px;border-right:1px solid var(--kpi-divider);
+  flex:1;min-width:70px;
 }
-.kn-cell.w-lg{flex:1.5;min-width:96px}
-.kn-cell:last-child{border-right:none}
-.kn-lbl{
-  font-size:7px;color:var(--dim);letter-spacing:0.14em;
-  text-transform:uppercase;font-family:var(--font-head);
+.kpi-num-item.wide{flex:1.5;min-width:94px}
+.kpi-num-item:last-child{border-right:none}
+.kpi-num-label{
+  font-size:7px;color:var(--kpi-dim);letter-spacing:0.14em;
+  text-transform:uppercase;font-family:var(--font-gar);
   margin-bottom:1px;white-space:nowrap;
 }
-.kn-val{
+.kpi-num-value{
   font-family:var(--font-cin);font-size:14px;font-weight:700;
-  color:var(--gold);line-height:1;
+  color:var(--kpi-gold);line-height:1;
   text-shadow:0 0 7px var(--kpi-glow);letter-spacing:0.02em;
 }
-.kn-val.primary{
-  font-size:17px;color:var(--gold-bright);
-  text-shadow:0 0 12px var(--kpi-glow-b);
+.kpi-num-value.primary{
+  font-size:17px;color:var(--kpi-gold-bright);
+  text-shadow:0 0 12px var(--kpi-glow-bright);
 }
-.kn-val.changed{animation:kpiP 0.65s ease-out}
-@keyframes kpiP{
-  0%{color:var(--gold-bright);text-shadow:0 0 20px var(--kpi-glow-b);transform:scale(1.05)}
-  100%{color:var(--gold);text-shadow:0 0 7px var(--kpi-glow);transform:scale(1)}
+.kpi-num-value.changed{animation:kpiPulse 0.65s ease-out}
+@keyframes kpiPulse{
+  0%{color:var(--kpi-gold-bright);text-shadow:0 0 20px var(--kpi-glow-bright);transform:scale(1.05)}
+  100%{color:var(--kpi-gold);text-shadow:0 0 7px var(--kpi-glow);transform:scale(1)}
 }
-.kn-val.primary.changed{animation:kpiPb 0.65s ease-out}
-@keyframes kpiPb{
-  0%{text-shadow:0 0 25px var(--kpi-glow-b);transform:scale(1.05)}
-  100%{text-shadow:0 0 12px var(--kpi-glow-b);transform:scale(1)}
+.kpi-num-value.primary.changed{animation:kpiPulsePrimary 0.65s ease-out}
+@keyframes kpiPulsePrimary{
+  0%{text-shadow:0 0 25px var(--kpi-glow-bright);transform:scale(1.05)}
+  100%{text-shadow:0 0 12px var(--kpi-glow-bright);transform:scale(1)}
 }
-.kn-val.mg-good{color:var(--kpi-mg-good);text-shadow:0 0 7px rgba(76,175,80,0.4)}
-.kn-val.mg-warn{color:var(--kpi-mg-warn);text-shadow:0 0 7px rgba(255,152,0,0.4)}
-.kn-val.mg-danger{color:var(--kpi-mg-danger);text-shadow:0 0 7px rgba(244,67,54,0.4)}
-.kn-foot{display:flex;align-items:center;gap:4px;margin-top:1px;height:11px}
-.kn-unit{font-size:7px;color:var(--dim);font-family:var(--font-head);white-space:nowrap;flex-shrink:0}
-.kn-delta{
-  font-size:8px;font-family:var(--font-mono);opacity:0;
+.kpi-num-value.margin-good{color:var(--kpi-up);text-shadow:0 0 7px rgba(76,175,80,0.4)}
+.kpi-num-value.margin-warn{color:#FF9800;text-shadow:0 0 7px rgba(255,152,0,0.4)}
+.kpi-num-value.margin-danger{color:var(--kpi-down);text-shadow:0 0 7px rgba(244,67,54,0.4)}
+.kpi-num-foot{display:flex;align-items:center;gap:4px;margin-top:1px;height:11px}
+.kpi-num-unit{font-size:7px;color:var(--kpi-dim);font-family:var(--font-gar);white-space:nowrap;flex-shrink:0}
+.kpi-delta{
+  font-size:8px;font-family:monospace;opacity:0;
   transition:opacity 0.3s;white-space:nowrap;
 }
-.kn-delta.show{opacity:1}
-.kn-delta.up{color:var(--kpi-up)} .kn-delta.dn{color:var(--kpi-dn)}
+.kpi-delta.show{opacity:1}
+.kpi-delta.up{color:var(--kpi-up)} .kpi-delta.down{color:var(--kpi-down)}
 
-/* ─────────────── TAB BAR (38px) ─────────────────────────── */
+/* ── TAB BAR (38px) ──────────────────────────────────────── */
 #tab-bar{
   height:38px;display:flex;align-items:stretch;
   background:var(--void);border-bottom:1px solid var(--border);
 }
 .tab{
-  padding:0 15px;display:flex;align-items:center;
+  padding:0 14px;display:flex;align-items:center;
   font-size:12px;color:var(--dim);background:none;border:none;
   border-bottom:2px solid transparent;transition:all 0.18s;white-space:nowrap;
 }
 .tab:hover{color:var(--text2);background:rgba(255,255,255,0.03)}
-.tab.act{color:var(--gold);border-bottom-color:var(--gold)}
+.tab.act{color:var(--kpi-gold);border-bottom-color:var(--kpi-gold)}
 
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.dot-pulse{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--red);animation:pulse 1.5s infinite;margin-left:3px;vertical-align:middle}
+.dot-pulse{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--kpi-down);animation:pulse 1.5s infinite;margin-left:3px;vertical-align:middle}
 </style>
 </head>
 <body>
 
-<!-- KPI BAR: 1줄 고정 + 1줄 계기판 -->
-<div id="kpi-bar">
+<!-- KPI BAR -->
+<div class="kpi-bar">
 
-  <!-- 1줄: 로고 · 컨셉 · 섹션 · 시계 -->
-  <div class="kr-info">
-    <div class="logo">ECOREAN BOC</div>
-    <div class="ki-cell">
-      <span class="ki-lbl">컨셉</span>
-      <span class="ki-val" id="kpi-concept">— —</span>
-      <span class="ki-sub" id="kpi-concept-sub"></span>
+  <!-- Row 1: Logo · Concept · Sections · Clock -->
+  <div class="kpi-row info">
+    <div class="kpi-logo">ECOREAN BOC</div>
+    <div class="kpi-info-item">
+      <span class="kpi-info-label">컨셉</span>
+      <span class="kpi-info-value" id="kpi-concept">— —</span>
+      <span class="kpi-info-sub" id="kpi-concept-sub"></span>
     </div>
-    <div class="ki-cell" style="min-width:180px;">
-      <span class="ki-lbl">섹션</span>
-      <span class="ki-val" id="kpi-sections" style="max-width:260px;">— —</span>
-      <span class="ki-sub" id="kpi-sections-sub"></span>
+    <div class="kpi-info-item" style="min-width:160px;">
+      <span class="kpi-info-label">섹션</span>
+      <span class="kpi-info-value" id="kpi-sections" style="max-width:220px;">— —</span>
+      <span class="kpi-info-sub" id="kpi-sections-sub"></span>
     </div>
-    <div class="kr-spacer"></div>
-    <div id="tb-clock"></div>
+    <div class="kpi-spacer"></div>
+    <div id="kpi-clock"></div>
   </div>
 
-  <!-- 2줄: 9개 숫자 계기판 -->
-  <div class="kr-nums">
+  <!-- Row 2: 9 numeric gauges -->
+  <div class="kpi-row">
 
-    <div class="kn-cell w-lg">
-      <span class="kn-lbl">면적 / Area</span>
-      <span class="kn-val" id="kpi-area" data-v="0">0.0 <small style="font-size:9px;opacity:.7">㎡</small></span>
-      <div class="kn-foot">
-        <span class="kn-unit" id="kpi-py-sub">(0.0평)</span>
-        <span class="kn-delta" id="kd-area"></span>
+    <div class="kpi-num-item wide">
+      <span class="kpi-num-label">면적 / Area</span>
+      <span class="kpi-num-value" id="kpi-area" data-value="0">0.0 <small style="font-size:9px;opacity:.7">㎡</small></span>
+      <div class="kpi-num-foot">
+        <span class="kpi-num-unit" id="kpi-py">(0.0평)</span>
+        <span class="kpi-delta" id="kpi-delta-area"></span>
       </div>
     </div>
 
-    <div class="kn-cell w-lg">
-      <span class="kn-lbl">공급가 / Supply</span>
-      <span class="kn-val" id="kpi-supply" data-v="0">—</span>
-      <div class="kn-foot">
-        <span class="kn-unit">원</span>
-        <span class="kn-delta" id="kd-supply"></span>
+    <div class="kpi-num-item wide">
+      <span class="kpi-num-label">공급가 / Supply</span>
+      <span class="kpi-num-value" id="kpi-supply" data-value="0">—</span>
+      <div class="kpi-num-foot">
+        <span class="kpi-num-unit">원</span>
+        <span class="kpi-delta" id="kpi-delta-supply"></span>
       </div>
     </div>
 
-    <div class="kn-cell w-lg">
-      <span class="kn-lbl">도급 ×1.15</span>
-      <span class="kn-val" id="kpi-contract" data-v="0">—</span>
-      <div class="kn-foot">
-        <span class="kn-unit">원</span>
-        <span class="kn-delta" id="kd-contract"></span>
+    <div class="kpi-num-item wide">
+      <span class="kpi-num-label">도급 ×1.15</span>
+      <span class="kpi-num-value" id="kpi-contract" data-value="0">—</span>
+      <div class="kpi-num-foot">
+        <span class="kpi-num-unit">원</span>
+        <span class="kpi-delta" id="kpi-delta-contract"></span>
       </div>
     </div>
 
-    <div class="kn-cell w-lg">
-      <span class="kn-lbl">최종 ⭐ VAT</span>
-      <span class="kn-val primary" id="kpi-final" data-v="0">—</span>
-      <div class="kn-foot">
-        <span class="kn-unit">원</span>
-        <span class="kn-delta" id="kd-final"></span>
+    <div class="kpi-num-item wide">
+      <span class="kpi-num-label">최종 ⭐ VAT</span>
+      <span class="kpi-num-value primary" id="kpi-final" data-value="0">—</span>
+      <div class="kpi-num-foot">
+        <span class="kpi-num-unit">원</span>
+        <span class="kpi-delta" id="kpi-delta-final"></span>
       </div>
     </div>
 
-    <div class="kn-cell">
-      <span class="kn-lbl">㎡당 단가</span>
-      <span class="kn-val" id="kpi-sqm" data-v="0">—</span>
-      <div class="kn-foot">
-        <span class="kn-unit">원/㎡</span>
-        <span class="kn-delta" id="kd-sqm"></span>
-      </div>
+    <div class="kpi-num-item">
+      <span class="kpi-num-label">㎡당 단가</span>
+      <span class="kpi-num-value" id="kpi-sqm" data-value="0">—</span>
+      <div class="kpi-num-foot"><span class="kpi-num-unit">원/㎡</span></div>
     </div>
 
-    <div class="kn-cell">
-      <span class="kn-lbl">평당 단가</span>
-      <span class="kn-val" id="kpi-pype" data-v="0">—</span>
-      <div class="kn-foot">
-        <span class="kn-unit">원/평</span>
-        <span class="kn-delta" id="kd-pype"></span>
-      </div>
+    <div class="kpi-num-item">
+      <span class="kpi-num-label">평당 단가</span>
+      <span class="kpi-num-value" id="kpi-py-price" data-value="0">—</span>
+      <div class="kpi-num-foot"><span class="kpi-num-unit">원/평</span></div>
     </div>
 
-    <div class="kn-cell">
-      <span class="kn-lbl">예상 공기</span>
-      <span class="kn-val" id="kpi-days" data-v="0">—</span>
-      <div class="kn-foot">
-        <span class="kn-unit">일</span>
-        <span class="kn-delta" id="kd-days"></span>
-      </div>
+    <div class="kpi-num-item">
+      <span class="kpi-num-label">예상 공기</span>
+      <span class="kpi-num-value" id="kpi-days" data-value="0">—</span>
+      <div class="kpi-num-foot"><span class="kpi-num-unit">일</span></div>
     </div>
 
-    <div class="kn-cell">
-      <span class="kn-lbl">자동 공정</span>
-      <span class="kn-val" id="kpi-auto" data-v="0">0</span>
-      <div class="kn-foot">
-        <span class="kn-unit">개</span>
-        <span class="kn-delta" id="kd-auto"></span>
-      </div>
+    <div class="kpi-num-item">
+      <span class="kpi-num-label">자동 공정</span>
+      <span class="kpi-num-value" id="kpi-auto" data-value="0">0</span>
+      <div class="kpi-num-foot"><span class="kpi-num-unit">개</span></div>
     </div>
 
-    <div class="kn-cell">
-      <span class="kn-lbl">마진율</span>
-      <span class="kn-val" id="kpi-margin" data-v="0">—</span>
-      <div class="kn-foot">
-        <span class="kn-unit">%</span>
-        <span class="kn-delta" id="kd-margin"></span>
-      </div>
+    <div class="kpi-num-item">
+      <span class="kpi-num-label">마진율</span>
+      <span class="kpi-num-value" id="kpi-margin" data-value="0">—</span>
+      <div class="kpi-num-foot"><span class="kpi-num-unit">%</span></div>
     </div>
 
   </div>
@@ -279,29 +261,32 @@ function switchTab(tabId) {
 
 // ── 숫자 포맷 ─────────────────────────────────────────────
 function fmtN(n) {
-  if (!n || n <= 0) return '—'
+  if (!n && n !== 0) return '—'
+  if (n <= 0) return n === 0 ? '0' : '—'
   if (n >= 100000000) return (n / 100000000).toFixed(1) + '억'
-  if (n >= 10000) return Math.round(n / 10000) + '만'
+  if (n >= 10000)     return Math.round(n / 10000) + '만'
   return Math.round(n).toLocaleString('ko-KR')
 }
 
 // ── 셀 업데이트 헬퍼 ──────────────────────────────────────
 function setCell(valId, deltaId, newVal, fmtFn) {
   var el = document.getElementById(valId); if (!el) return
-  var de = document.getElementById(deltaId)
-  var oldVal = parseFloat(el.dataset.v || 0)
+  var oldVal = parseFloat(el.dataset.value || 0)
   var diff = newVal - oldVal
   if (Math.abs(diff) > 0.009) {
     el.classList.add('changed')
     setTimeout(function(){ el.classList.remove('changed') }, 700)
-    if (de) {
-      var txt = (diff > 0 ? '▲ +' : '▼ ') + (fmtFn ? fmtFn(Math.abs(diff)) : Math.round(Math.abs(diff)).toLocaleString('ko-KR'))
-      de.textContent = txt
-      de.className = 'kn-delta show ' + (diff > 0 ? 'up' : 'dn')
-      setTimeout(function(){ de.classList.remove('show') }, 2500)
+    if (deltaId) {
+      var de = document.getElementById(deltaId)
+      if (de) {
+        de.textContent = (diff > 0 ? '▲ +' : '▼ ') +
+          (fmtFn ? fmtFn(Math.abs(diff)) : Math.round(Math.abs(diff)).toLocaleString('ko-KR'))
+        de.className = 'kpi-delta show ' + (diff > 0 ? 'up' : 'down')
+        setTimeout(function(){ de.classList.remove('show') }, 2500)
+      }
     }
   }
-  el.dataset.v = newVal
+  el.dataset.value = newVal
 }
 
 // ── KPI 갱신 (전역 진입점) ────────────────────────────────
@@ -310,13 +295,12 @@ window.kpiUpdate = function(data) {
 
   // 1. 컨셉
   if (data.concept) {
-    var cEl = document.getElementById('kpi-concept')
+    var cEl  = document.getElementById('kpi-concept')
     var cSub = document.getElementById('kpi-concept-sub')
     if (cEl) cEl.textContent = data.concept.name || '— —'
     if (cSub) {
       var gm = data.concept.gradeMul
-      var gr = data.concept.grade || '표준'
-      cSub.innerHTML = gm ? ('×' + gm + '<span class="ki-badge">' + gr + '</span>') : ''
+      cSub.innerHTML = gm ? '×' + gm : ''
     }
   }
 
@@ -333,66 +317,63 @@ window.kpiUpdate = function(data) {
   if (data.area !== undefined) {
     var area = parseFloat(data.area) || 0
     var aEl  = document.getElementById('kpi-area')
-    var pyEl = document.getElementById('kpi-py-sub')
-    if (aEl) {
-      setCell('kpi-area', 'kd-area', area, function(v){ return v.toFixed(1) + '㎡' })
-      aEl.innerHTML = area.toFixed(1) + ' <small style="font-size:9px;opacity:.7">㎡</small>'
-    }
+    var pyEl = document.getElementById('kpi-py')
+    setCell('kpi-area', 'kpi-delta-area', area, function(v){ return v.toFixed(1) + '㎡' })
+    if (aEl) aEl.innerHTML = area.toFixed(1) + ' <small style="font-size:9px;opacity:.7">㎡</small>'
     if (pyEl) pyEl.textContent = '(' + (area / 3.3058).toFixed(1) + '평)'
   }
 
-  // 4. 공급/도급/최종 (legacy field 호환)
+  // 4. 공급/도급/최종 (legacy 호환)
   var supply   = data.supply   !== undefined ? data.supply   : data.totalSupply
   var contract = data.contract !== undefined ? data.contract : data.contractAmount
   var final2   = data.final    !== undefined ? data.final    : data.finalAmount
-  var fa       = data.area     !== undefined ? parseFloat(data.area) : (data.fa || 0)
-  var sqm      = data.sqm      !== undefined ? data.sqm      : (fa > 0 ? (final2||0) / fa : 0)
-  var pype     = data['py-price'] !== undefined ? data['py-price'] : (fa > 0 ? ((final2||0) / fa) * 3.3058 : 0)
+  var area2    = parseFloat(data.area || 0)
+  var sqm      = data.sqm      !== undefined ? data.sqm      : (area2 > 0 ? (final2||0)/area2 : 0)
+  var pyPrice  = data['py-price'] !== undefined ? data['py-price'] : sqm * 3.3058
   var days     = data.days     !== undefined ? data.days     : undefined
   var auto     = data.auto     !== undefined ? data.auto     : undefined
   var margin   = data.margin   !== undefined ? data.margin   :
-    (contract > 0 ? ((contract - (supply || 0)) / contract * 100) : undefined)
+    (contract > 0 ? ((contract - (supply||0)) / contract * 100) : undefined)
 
-  function applyN(id, did, v, disp) {
-    if (v === undefined) return
+  function applyN(id, did, v, dispFn) {
+    if (v === undefined || v === null) return
     setCell(id, did, v)
     var el = document.getElementById(id); if (!el) return
-    el.textContent = (disp || fmtN)(v)
+    el.textContent = (dispFn || fmtN)(v)
   }
 
-  applyN('kpi-supply',   'kd-supply',   supply)
-  applyN('kpi-contract', 'kd-contract', contract)
-  applyN('kpi-final',    'kd-final',    final2)
-  applyN('kpi-sqm',  'kd-sqm',  sqm,  function(v){ return v > 0 ? Math.round(v).toLocaleString('ko-KR') : '—' })
-  applyN('kpi-pype', 'kd-pype', pype, function(v){ return v > 0 ? Math.round(v).toLocaleString('ko-KR') : '—' })
+  applyN('kpi-supply',   'kpi-delta-supply',   supply)
+  applyN('kpi-contract', 'kpi-delta-contract', contract)
+  applyN('kpi-final',    'kpi-delta-final',    final2)
+  applyN('kpi-sqm',      null, sqm,     function(v){ return v > 0 ? Math.round(v).toLocaleString('ko-KR') : '—' })
+  applyN('kpi-py-price', null, pyPrice, function(v){ return v > 0 ? Math.round(v).toLocaleString('ko-KR') : '—' })
 
   if (days !== undefined) {
-    setCell('kpi-days', 'kd-days', days)
+    setCell('kpi-days', null, days)
     var dEl = document.getElementById('kpi-days')
     if (dEl) dEl.textContent = days > 0 ? Math.round(days).toString() : '—'
   }
   if (auto !== undefined) {
-    setCell('kpi-auto', 'kd-auto', auto)
+    setCell('kpi-auto', null, auto)
     var auEl = document.getElementById('kpi-auto')
     if (auEl) auEl.textContent = Math.round(auto).toString()
   }
 
-  // 마진율 (색상)
   if (margin !== undefined) {
-    setCell('kpi-margin', 'kd-margin', margin, function(v){ return v.toFixed(1) + '%' })
+    setCell('kpi-margin', null, margin)
     var mEl = document.getElementById('kpi-margin')
     if (mEl) {
-      mEl.textContent = (margin !== 0) ? margin.toFixed(1) : '—'
-      mEl.classList.remove('mg-good','mg-warn','mg-danger')
-      if      (margin >= 30) mEl.classList.add('mg-good')
-      else if (margin >= 0)  mEl.classList.add('mg-warn')
-      else                   mEl.classList.add('mg-danger')
+      mEl.textContent = margin !== 0 ? margin.toFixed(1) : '—'
+      mEl.classList.remove('margin-good','margin-warn','margin-danger')
+      if      (margin >= 30) mEl.classList.add('margin-good')
+      else if (margin >= 0)  mEl.classList.add('margin-warn')
+      else                   mEl.classList.add('margin-danger')
     }
   }
 }
 
 // ── IPC 수신 ──────────────────────────────────────────────
-window.ecoreanAPI?.onKPIUpdate(function(data) { window.kpiUpdate(data) })
+window.ecoreanAPI?.onKPIUpdate(function(data){ window.kpiUpdate(data) })
 
 // ── 탭 전환 수신 ─────────────────────────────────────────
 window.ecoreanAPI?.onTabSwitch(function(tabId) {
@@ -403,7 +384,7 @@ window.ecoreanAPI?.onTabSwitch(function(tabId) {
 
 // ── 시계 ─────────────────────────────────────────────────
 function updateClock() {
-  var el = document.getElementById('tb-clock')
+  var el = document.getElementById('kpi-clock')
   if (el) el.textContent = new Date().toLocaleTimeString('ko-KR')
 }
 updateClock()
