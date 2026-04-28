@@ -11,11 +11,14 @@ const FLAGS = {
   // CAD 모듈 분리 (Week 2)
   USE_CAD_MODULE:         false,
 
+  // 견적 모듈 v6 (Week 4 — Week 8 첫 시공 검증 후 활성화)
+  USE_ESTIMATE_V6:        false,
+
   // Phase 3 진행 상태
   PHASE_3A_COMPLETE:      true,
   PHASE_3B_COMPLETE:      true,
   PHASE_3C_COMPLETE:      true,
-  PHASE_3D_COMPLETE:      false,
+  PHASE_3D_COMPLETE:      true,
   PHASE_3E_COMPLETE:      false,
   PHASE_3F_COMPLETE:      false,
   PHASE_3G_COMPLETE:      false,
