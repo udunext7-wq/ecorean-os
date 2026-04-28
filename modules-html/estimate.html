@@ -386,6 +386,16 @@ label.lbl{font-size:11px;color:var(--text2);font-weight:500}
 'use strict'
 ;(function(){
 
+// ── 단위/좌표 표준 (절대 변경 금지) ─────────────────────────
+var UNITS = {
+  LENGTH: 'mm',
+  AREA: '㎡',
+  PERIMETER: 'm',
+  PY_RATIO: 0.3025,
+  GRID_PX: 20,
+  GRID_MM: 400,
+}
+
 // ── 상수 ──────────────────────────────────────────────────
 var SECTIONS = [
   {id:'bath',     icon:'🚿', label:'욕실',     ids:['WTP_BT','TILE_BT','TILE_WL','CEL_BTH','SNT_WC','VNT_FAN']},
@@ -419,27 +429,65 @@ var PART_GRADES = [
   {id:'win',  name:'창호'},{id:'kit',  name:'주방가구'},{id:'bath2',name:'욕실기기'},
 ]
 var SPACE_TYPE_MAP = [
-  {key:'LIVING',   label:'거실',    color:'rgba(245,222,179,0.35)', eng:'living'},
-  {key:'BEDROOM',  label:'침실',    color:'rgba(135,206,235,0.35)', eng:'bedroom'},
-  {key:'KITCHEN',  label:'주방',    color:'rgba(255,228,181,0.35)', eng:'kitchen'},
-  {key:'BATHROOM', label:'욕실',    color:'rgba(175,238,238,0.40)', eng:'bathroom'},
-  {key:'BALCONY',  label:'발코니',  color:'rgba(152,251,152,0.35)', eng:'balcony'},
-  {key:'ENTRANCE', label:'현관',    color:'rgba(211,211,211,0.35)', eng:'living'},
-  {key:'DRESSING', label:'드레스룸',color:'rgba(255,182,193,0.35)', eng:'bedroom'},
-  {key:'UTILITY',  label:'다용도실',color:'rgba(230,230,250,0.35)', eng:'kitchen'},
-  {key:'HALLWAY',  label:'복도',    color:'rgba(255,255,255,0.20)', eng:'living'},
+  {key:'LIVING',         label:'거실',     color:'rgba(245,222,179,0.35)', eng:'living'},
+  {key:'MASTER_BEDROOM', label:'안방',     color:'rgba(173,216,230,0.40)', eng:'bedroom'},
+  {key:'BEDROOM',        label:'침실',     color:'rgba(135,206,235,0.35)', eng:'bedroom'},
+  {key:'SMALL_BEDROOM',  label:'작은방',   color:'rgba(176,224,230,0.35)', eng:'bedroom'},
+  {key:'KITCHEN',        label:'주방',     color:'rgba(255,228,181,0.35)', eng:'kitchen'},
+  {key:'DINING',         label:'식당',     color:'rgba(255,218,185,0.35)', eng:'living'},
+  {key:'BATHROOM',       label:'욕실',     color:'rgba(175,238,238,0.40)', eng:'bathroom'},
+  {key:'POWDER_ROOM',    label:'파우더룸', color:'rgba(224,255,255,0.40)', eng:'bathroom'},
+  {key:'BALCONY',        label:'발코니',   color:'rgba(152,251,152,0.35)', eng:'balcony'},
+  {key:'TERRACE',        label:'테라스',   color:'rgba(144,238,144,0.35)', eng:'balcony'},
+  {key:'ENTRANCE',       label:'현관',     color:'rgba(211,211,211,0.35)', eng:'living'},
+  {key:'DRESSING',       label:'드레스룸', color:'rgba(255,182,193,0.35)', eng:'bedroom'},
+  {key:'STUDY',          label:'서재',     color:'rgba(221,160,221,0.35)', eng:'bedroom'},
+  {key:'PANTRY',         label:'팬트리',   color:'rgba(240,230,140,0.35)', eng:'kitchen'},
+  {key:'UTILITY',        label:'다용도실', color:'rgba(230,230,250,0.35)', eng:'kitchen'},
+  {key:'BOILER',         label:'보일러실', color:'rgba(205,133,63,0.30)',  eng:'kitchen'},
+  {key:'HALLWAY',        label:'복도',     color:'rgba(255,255,255,0.20)', eng:'living'},
+  {key:'STAIRS',         label:'계단',     color:'rgba(200,200,200,0.25)', eng:'living'},
 ]
 var SPACE_TYPES = SPACE_TYPE_MAP.map(function(t){return t.label})
 var SPACE_FINISH_MATRIX = {
-  LIVING:   ['FL_HB','WP_BASIC','WP_PRMR','MLD_BASE'],
-  BEDROOM:  ['FL_HB','WP_BASIC','WP_PRMR','MLD_BASE'],
-  KITCHEN:  ['TILE_KT','KIT_CAB','VNT_FAN'],
-  BATHROOM: ['WTP_BT','TILE_BT','TILE_WL','GROUT','SNT_WC','VNT_FAN'],
-  BALCONY:  ['EXP_BAL','INS_BAL'],
-  ENTRANCE: ['FL_VNL','DR_RPL'],
-  DRESSING: ['FL_HB','WP_BASIC'],
-  UTILITY:  ['FL_VNL','VNT_FAN'],
-  HALLWAY:  ['FL_HB','WP_BASIC','MLD_BASE'],
+  LIVING:         ['FL_HB','WP_BASIC','WP_PRMR','MLD_BASE'],
+  MASTER_BEDROOM: ['FL_HB','WP_BASIC','WP_PRMR','MLD_BASE'],
+  BEDROOM:        ['FL_HB','WP_BASIC','WP_PRMR','MLD_BASE'],
+  SMALL_BEDROOM:  ['FL_HB','WP_BASIC','WP_PRMR'],
+  KITCHEN:        ['TILE_KT','KIT_CAB','VNT_FAN'],
+  DINING:         ['FL_HB','WP_BASIC'],
+  BATHROOM:       ['WTP_BT','TILE_BT','TILE_WL','GROUT','SNT_WC','VNT_FAN'],
+  POWDER_ROOM:    ['WTP_BT','TILE_BT','TILE_WL','GROUT','SNT_WC','VNT_FAN'],
+  BALCONY:        ['EXP_BAL','INS_BAL'],
+  TERRACE:        ['EXP_BAL','INS_BAL'],
+  ENTRANCE:       ['FL_VNL','DR_RPL'],
+  DRESSING:       ['FL_HB','WP_BASIC'],
+  STUDY:          ['FL_HB','WP_BASIC','WP_PRMR'],
+  PANTRY:         ['FL_VNL'],
+  UTILITY:        ['FL_VNL','VNT_FAN'],
+  BOILER:         ['PLB_PIPE','PLB_BOIR'],
+  HALLWAY:        ['FL_HB','WP_BASIC','MLD_BASE'],
+  STAIRS:         ['FL_HB'],
+}
+var SPACE_META_MAP = {
+  LIVING:        {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  MASTER_BEDROOM:{hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  BEDROOM:       {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  SMALL_BEDROOM: {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  KITCHEN:       {hasPlumbing:true, hasGas:true, hasVentilation:true, needsWaterproof:true, isWet:true },
+  DINING:        {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  BATHROOM:      {hasPlumbing:true, hasGas:false,hasVentilation:true, needsWaterproof:true, isWet:true },
+  POWDER_ROOM:   {hasPlumbing:true, hasGas:false,hasVentilation:true, needsWaterproof:true, isWet:true },
+  BALCONY:       {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:true, isWet:false},
+  TERRACE:       {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:true, isWet:false},
+  ENTRANCE:      {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  DRESSING:      {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  STUDY:         {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  PANTRY:        {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  UTILITY:       {hasPlumbing:true, hasGas:false,hasVentilation:false,needsWaterproof:true, isWet:true },
+  BOILER:        {hasPlumbing:true, hasGas:true, hasVentilation:true, needsWaterproof:false,isWet:false},
+  HALLWAY:       {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
+  STAIRS:        {hasPlumbing:false,hasGas:false,hasVentilation:false,needsWaterproof:false,isWet:false},
 }
 
 function autoApplyFinish(spaceType){
@@ -449,9 +497,77 @@ function autoApplyFinish(spaceType){
 var STEP_LABELS = ['컨셉','건물','공간','상태','범위','등급','결과']
 var MAX_STEP = 6
 
+// ── 이벤트 시스템 ─────────────────────────────────────────
+var SpaceEvents = {
+  listeners: {},
+  on: function(event, cb) {
+    if (!this.listeners[event]) this.listeners[event] = []
+    this.listeners[event].push(cb)
+  },
+  emit: function(event, data) {
+    (this.listeners[event] || []).forEach(function(cb){ cb(data) })
+  },
+}
+window.SpaceEvents = SpaceEvents
+
 // ── CAD 글로벌 훅 ──────────────────────────────────────────
 var cadRedraw = null
 var cadAddShape = null
+
+// ── 공간 자동 계산 ─────────────────────────────────────────
+function computeSpaceMetrics(sp) {
+  var w = sp.width || 0, l = sp.length || 0, h = sp.height || 2400
+  sp.area      = Math.round(w * l / 10000) / 100
+  sp.perimeter = Math.round((w + l) * 2 / 100) / 10
+  var grossWall = sp.perimeter * (h / 1000)
+  var wins = Array.isArray(sp.windows) ? sp.windows.length : (sp.windows || 0)
+  var drs  = Array.isArray(sp.doors)   ? sp.doors.length   : (sp.doors   || 0)
+  var openings = wins * 1.8 + drs * 1.89
+  sp.wallArea    = Math.max(0, Math.round((grossWall - openings) * 100) / 100)
+  sp.ceilingArea = sp.area
+  return sp
+}
+
+function applySpaceMeta(sp) {
+  sp.meta = Object.assign({}, SPACE_META_MAP[sp.typeKey] || SPACE_META_MAP.LIVING)
+  return sp
+}
+
+function generateSpaceSpec(sp) {
+  var matrix = SPACE_FINISH_MATRIX[sp.typeKey] || []
+  sp.spec = {
+    floor:   matrix.find(function(id){ return id.startsWith('FL_') || id.startsWith('TILE_') }) || '',
+    wall:    matrix.find(function(id){ return id.startsWith('WP_') || id.startsWith('WALL_') }) || '',
+    ceiling: matrix.find(function(id){ return id.startsWith('CEIL_') }) || '',
+  }
+  return sp
+}
+
+function isAdjacent(s1, s2) {
+  var gm = UNITS.GRID_MM, gp = UNITS.GRID_PX
+  var x1=s1.cadX||0, y1=s1.cadY||0, w1=(s1.width||0)/gm*gp, h1=(s1.length||0)/gm*gp
+  var x2=s2.cadX||0, y2=s2.cadY||0, w2=(s2.width||0)/gm*gp, h2=(s2.length||0)/gm*gp
+  var tol = gp
+  if (Math.abs((y1+h1)-y2)<tol || Math.abs((y2+h2)-y1)<tol) {
+    if (x1 < x2+w2 && x1+w1 > x2) return true
+  }
+  if (Math.abs((x1+w1)-x2)<tol || Math.abs((x2+w2)-x1)<tol) {
+    if (y1 < y2+h2 && y1+h1 > y2) return true
+  }
+  return false
+}
+
+function detectAdjacent(spaces) {
+  spaces.forEach(function(s){ s.adjacentTo = [] })
+  for (var i=0; i<spaces.length; i++) {
+    for (var j=i+1; j<spaces.length; j++) {
+      if (isAdjacent(spaces[i], spaces[j])) {
+        spaces[i].adjacentTo.push(spaces[j].id)
+        spaces[j].adjacentTo.push(spaces[i].id)
+      }
+    }
+  }
+}
 
 function applySpaceFinishes(){
   var ids=new Set(S.selectedProcessIds)
@@ -999,39 +1115,50 @@ var WZ={
     S._sid++
     var sp={
       id:'sp'+S._sid, name:'공간'+S._sid, type:'거실', typeKey:'LIVING', floor:1,
-      width:3000, length:4000, height:2400, area:12, windows:1, doors:1,
+      width:3000, length:4000, height:2400, area:12,
+      windows:1, doors:1,
+      cadX:0, cadY:0, occupied:false,
+      adjacentTo:[], meta:{}, spec:{floor:'',wall:'',ceiling:''},
     }
+    computeSpaceMetrics(sp)
+    applySpaceMeta(sp)
+    generateSpaceSpec(sp)
     S.spaces.push(sp)
+    SpaceEvents.emit('space:added', sp)
     renderSpaceCards()
     if(cadAddShape) cadAddShape(sp)
     if(cadRedraw) cadRedraw()
   },
   delSpace:function(id){
-    S.spaces=S.spaces.filter(function(sp){return sp.id!==id}); renderSpaceCards()
+    S.spaces=S.spaces.filter(function(sp){return sp.id!==id})
+    SpaceEvents.emit('space:deleted', {id:id})
+    renderSpaceCards()
   },
   updSp:function(id,field,val){
     var sp=S.spaces.find(function(s){return s.id===id})
     if(!sp) return
     sp[field]=val
-    // 가로/세로 변경 시 면적 자동 계산
-    if(field==='width'||field==='length'){
-      var w=+(sp.width||0), l=+(sp.length||0)
-      if(w>=100&&l>=100){
-        sp.area=Math.round(w*l/10000)/100
-        var aEl=$id('sp-area-'+id); if(aEl) aEl.value=sp.area
-      }
+    // 치수 변경 → 자동 계산
+    if(field==='width'||field==='length'||field==='height'||field==='windows'||field==='doors'){
+      if((sp.width||0)>=100&&(sp.length||0)>=100) computeSpaceMetrics(sp)
+      var aEl=$id('sp-area-'+id); if(aEl) aEl.value=sp.area
+      if(field==='width'||field==='length') SpaceEvents.emit('space:resized', sp)
     }
-    // 유형 변경 시 label 동기화 + 자동 마감 적용 + CAD 색 갱신
+    // 유형 변경 → 메타/시방서/마감 동기화
     if(field==='typeKey'){
       var tf=SPACE_TYPE_MAP.find(function(t){return t.key===val})
       if(tf) sp.type=tf.label
+      applySpaceMeta(sp)
+      generateSpaceSpec(sp)
       applySpaceFinishes()
+      SpaceEvents.emit('space:type-changed', sp)
       if(cadRedraw) cadRedraw()
     }
     // 헤더 인플레이스 업데이트
     var hn=$id('spn-'+id); if(hn) hn.textContent=sp.name
     var ha=$id('spa-'+id); if(ha) ha.textContent=sp.area.toFixed(1)+' ㎡'
     renderSpaceSummary()
+    SpaceEvents.emit('space:updated', sp)
     pushKpiUpdate(null)
   },
   togScope:function(id,locked){
@@ -1204,17 +1331,20 @@ function initCanvas(){
     return -1
   }
 
-  function syncToSpace(sh){
+  function syncToSpace(sh, evType){
     var sp=S.spaces.find(function(s){return s.id===sh.spaceId}); if(!sp) return
-    var wmm=Math.max(GRID,Math.round(sh.w/GRID))*400
-    var hmm=Math.max(GRID,Math.round(sh.h/GRID))*400
-    sp.width=wmm; sp.length=hmm; sp.area=Math.round(wmm*hmm/10000)/100
-    sp.cadX=sh.x; sp.cadY=sh.y
+    var wmm=Math.max(GRID,Math.round(sh.w/GRID))*UNITS.GRID_MM
+    var hmm=Math.max(GRID,Math.round(sh.h/GRID))*UNITS.GRID_MM
+    sp.width=wmm; sp.length=hmm; sp.cadX=sh.x; sp.cadY=sh.y
+    computeSpaceMetrics(sp)
     var wEl=$id('sp-w-'+sp.id); if(wEl) wEl.value=wmm
     var lEl=$id('sp-l-'+sp.id); if(lEl) lEl.value=hmm
     var aEl=$id('sp-area-'+sp.id); if(aEl) aEl.value=sp.area
     var ha=$id('spa-'+sp.id); if(ha) ha.textContent=sp.area.toFixed(1)+' ㎡'
     renderSpaceSummary()
+    detectAdjacent(S.spaces)
+    SpaceEvents.emit(evType||'space:updated', sp)
+    pushKpiUpdate(null)
   }
 
   function redraw(){
@@ -1255,10 +1385,12 @@ function initCanvas(){
   cadRedraw=redraw
   cadAddShape=function(sp){
     if(shapes.find(function(sh){return sh.spaceId===sp.id})) return
-    var side=Math.round(Math.sqrt(sp.area||12)*1000/400)*GRID
+    var side=Math.round(Math.sqrt(sp.area||12)*1000/UNITS.GRID_MM)*GRID
     side=Math.max(GRID*2,side)
     var xOff=(shapes.length*(side+GRID*2))%(canvas.width-side-GRID)+GRID
-    shapes.push({x:xOff,y:GRID,w:side,h:Math.round(side*4/3),spaceId:sp.id})
+    var yOff=GRID
+    sp.cadX=xOff; sp.cadY=yOff
+    shapes.push({x:xOff,y:yOff,w:side,h:Math.round(side*4/3),spaceId:sp.id})
     redraw()
   }
 
@@ -1326,10 +1458,10 @@ function initCanvas(){
         }
       }
     } else if(resizing&&selIdx>=0){
-      resizing=false; syncToSpace(shapes[selIdx])
+      resizing=false; syncToSpace(shapes[selIdx], 'space:resized')
     } else if(dragging){
       dragging=false
-      if(selIdx>=0) syncToSpace(shapes[selIdx])
+      if(selIdx>=0) syncToSpace(shapes[selIdx], 'space:moved')
       canvas.className=''
     }
     redraw()
@@ -1337,8 +1469,8 @@ function initCanvas(){
 
   canvas.addEventListener('mouseleave',function(){
     if(drawing){drawing=false; redraw()}
-    if(resizing&&selIdx>=0){resizing=false; syncToSpace(shapes[selIdx]); redraw()}
-    if(dragging){dragging=false; if(selIdx>=0) syncToSpace(shapes[selIdx]); canvas.className=''; redraw()}
+    if(resizing&&selIdx>=0){resizing=false; syncToSpace(shapes[selIdx], 'space:resized'); redraw()}
+    if(dragging){dragging=false; if(selIdx>=0) syncToSpace(shapes[selIdx], 'space:moved'); canvas.className=''; redraw()}
   })
 
   document.addEventListener('keydown',function(e){
