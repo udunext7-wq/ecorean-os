@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ecorean.io/schemas/v1/Metaedge.schema.json",
+  "title": "ECOREAN Metaedge",
+  "type": "object",
+  "required": ["uri", "sourceUniverse", "targetUniverse", "metaedgeType"],
+  "properties": {
+    "uri": { "type": "string", "pattern": "^urn:metaedge:" },
+    "sourceUniverse": { "type": "string" },
+    "targetUniverse": { "type": "string" },
+    "metaedgeType": {
+      "type": "string",
+      "enum": [
+        "FAMILY_TRUST","VEHICLE_SHARE","CAPITAL_FLOW","LABOR_POOL",
+        "DATA_CROSS","LOGISTICS_HUB","INSTANCE","DATA_SYNC","VERSION_PROP",
+        "INTER_ORG","SUPPLY","CONTRACT"
+      ]
+    },
+    "decisionAuthority": {
+      "type": "string",
+      "enum": ["auto_rule","operator_only","auto_with_oversight"]
+    },
+    "activated": { "type": "boolean" },
+    "approvedBy": { "type": "string" }
+  }
+}

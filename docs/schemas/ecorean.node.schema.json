@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ecorean.io/schemas/v1/Node.schema.json",
+  "title": "ECOREAN Node",
+  "type": "object",
+  "required": ["id", "uri", "type"],
+  "properties": {
+    "id": { "type": "string" },
+    "uri": { "type": "string", "pattern": "^urn:" },
+    "type": { "type": "string", "enum": ["gate","module","engine","ml"] },
+    "package": { "type": "string" },
+    "version": { "type": "string" },
+    "sla": {
+      "type": "object",
+      "properties": { "maxLatencyMs": { "type": "number" } }
+    },
+    "dependsOn": { "type": ["array","string","null"] }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "../schemas/ecorean.universe.schema.json",
+  "@context": {
+    "@vocab": "https://ecorean.io/ontology/v1#",
+    "ecorean": "https://ecorean.io/ontology/v1#"
+  },
+  "@type": "Universe",
+  "@id": "urn:vine-farm:universe:1",
+  "id": "vine-farm",
+  "namespace": "vine-farm",
+  "universeId": "1",
+  "name": "포도농장 OS",
+  "operator": "udunext7-wq",
+  "purpose": "농산물 유통 플랫폼 (아버지 농장 기반)",
+  "expectedConnectionDate": "2026-Q4",
+  "status": "PLANNED",
+  "trust": {
+    "incoming": ["ecorean"],
+    "outgoing": ["ecorean"]
+  },
+  "metaedges": [
+    {
+      "uri": "urn:metaedge:ecorean:vine-farm:FAMILY_TRUST",
+      "sourceUniverse": "ecorean",
+      "targetUniverse": "vine-farm",
+      "metaedgeType": "FAMILY_TRUST",
+      "description": "가족 신뢰 노드 — 대표님 + 아버지",
+      "decisionAuthority": "operator_only",
+      "activated": false
+    },
+    {
+      "uri": "urn:metaedge:ecorean:vine-farm:VEHICLE_SHARE",
+      "sourceUniverse": "ecorean",
+      "targetUniverse": "vine-farm",
+      "metaedgeType": "VEHICLE_SHARE",
+      "description": "1톤 더블캡 차량 공유 (인테리어 자재 ↔ 포도 운송)",
+      "decisionAuthority": "auto_rule",
+      "autoRule": "1톤 더블캡 사용 일정 통합",
+      "activated": false
+    },
+    {
+      "uri": "urn:metaedge:ecorean:vine-farm:CAPITAL_FLOW",
+      "sourceUniverse": "ecorean",
+      "targetUniverse": "vine-farm",
+      "metaedgeType": "CAPITAL_FLOW",
+      "description": "자본 흐름 통합 (계절적)",
+      "decisionAuthority": "auto_with_oversight",
+      "activated": false
+    },
+    {
+      "uri": "urn:metaedge:ecorean:vine-farm:LABOR_POOL",
+      "sourceUniverse": "ecorean",
+      "targetUniverse": "vine-farm",
+      "metaedgeType": "LABOR_POOL",
+      "description": "비수기 시공 인력 ↔ 농번기 인력",
+      "decisionAuthority": "auto_rule",
+      "autoRule": "ECOREAN 인력 30% 미가동 시 농번기 자동 이동",
+      "activated": false
+    },
+    {
+      "uri": "urn:metaedge:ecorean:vine-farm:DATA_CROSS",
+      "sourceUniverse": "ecorean",
+      "targetUniverse": "vine-farm",
+      "metaedgeType": "DATA_CROSS",
+      "description": "고객 DB 교차 마케팅",
+      "decisionAuthority": "operator_only",
+      "activated": false
+    },
+    {
+      "uri": "urn:metaedge:ecorean:vine-farm:LOGISTICS_HUB",
+      "sourceUniverse": "ecorean",
+      "targetUniverse": "vine-farm",
+      "metaedgeType": "LOGISTICS_HUB",
+      "description": "물류 거점 통합 (사무실 + 농장)",
+      "decisionAuthority": "auto_with_oversight",
+      "activated": false
+    }
+  ],
+  "preconditions": [
+    "아버지 협력 동의 (2026-Q3 확인)",
+    "ECOREAN 인테리어 첫 시공 1건 완료 (Phase 3 Week 8)"
+  ],
+  "verificationGoals": [
+    "포도농장 데이터를 ECOREAN 그래프가 쿼리 가능한가",
+    "인테리어 비수기 + 농번기 인력 자동 배치 작동하는가",
+    "두 우주 정산이 단일 회계로 통합 가능한가"
+  ]
+}

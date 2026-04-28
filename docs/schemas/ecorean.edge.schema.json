@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ecorean.io/schemas/v1/Edge.schema.json",
+  "title": "ECOREAN Edge",
+  "type": "object",
+  "required": ["id", "source", "target", "event"],
+  "properties": {
+    "id": { "type": "string" },
+    "source": { "type": "string" },
+    "target": { "type": "string" },
+    "event": { "type": "string" },
+    "scope": { "type": "string", "enum": ["INTRA","INTER","META"] },
+    "schemaRef": { "type": "string" }
+  }
+}

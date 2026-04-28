@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ecorean.io/schemas/v1/Universe.schema.json",
+  "title": "ECOREAN Universe",
+  "type": "object",
+  "required": ["id", "uri", "operator"],
+  "properties": {
+    "id": { "type": "string" },
+    "uri": { "type": "string", "pattern": "^urn:" },
+    "name": { "type": "string" },
+    "operator": { "type": "string" },
+    "purpose": { "type": "string" },
+    "trust": {
+      "type": "object",
+      "properties": {
+        "incoming": { "type": "array", "items": { "type": "string" } },
+        "outgoing": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "metaedges": {
+      "type": "array",
+      "items": { "$ref": "ecorean.metaedge.schema.json" }
+    }
+  }
+}
