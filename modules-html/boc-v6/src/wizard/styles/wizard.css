@@ -243,3 +243,94 @@
   margin-top: 8px;
   padding-top: 16px;
 }
+
+/* G1 압축 + 컨텍스트 통합 */
+.g1-section {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--gold-faint);
+}
+.g1-section:last-of-type { border-bottom: none; }
+
+.section-sublabel {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 12px 0 8px 0;
+}
+
+.card-grid.compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.option-card.compact {
+  padding: 12px 8px;
+}
+.option-card.compact .icon {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+.option-card.compact .name {
+  font-size: 11px;
+}
+.option-card.compact .meta {
+  font-size: 9px;
+  color: var(--text-dim);
+}
+
+.g1-context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.g1-context-grid .context-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.g1-context-grid .context-row label {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.g1-context-grid .context-row.full-width {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.g1-context-grid .context-row.full-width label {
+  white-space: nowrap;
+}
+
+.toggle-group {
+  display: flex;
+  gap: 4px;
+}
+.toggle-btn {
+  background: var(--bg);
+  border: 1px solid var(--gold-faint);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+.toggle-btn.active {
+  background: var(--gold-faint);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.region-display {
+  font-size: 11px;
+  color: var(--gold);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}

@@ -1,18 +1,26 @@
-// ECOREAN BOC v6.0 — esbuild 번들링 설정
+// ECOREAN BOC v6.0 — esbuild 번들링 설정 (Week 4-A: ESM + splitting + 5 entry)
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
 const config = {
-  entryPoints: [path.join(__dirname, 'src/shell/main.js')],
-  bundle: true,
-  platform: 'browser',
-  format: 'iife',
-  globalName: 'BOC',
-  outfile: path.join(__dirname, 'build', 'boc-v6.bundle.js'),
+  entryPoints: {
+    'shell':  path.join(__dirname, 'src/shell/main.js'),
+    'wizard': path.join(__dirname, 'src/wizard/entry.js'),
+    'cad':    path.join(__dirname, 'src/cad/entry.js'),
+    'kpi':    path.join(__dirname, 'src/kpi-dashboard/entry.js'),
+    'admin':  path.join(__dirname, 'src/admin/entry.js')
+  },
+  bundle:    true,
+  platform:  'browser',
+  format:    'esm',
+  splitting: true,
+  outdir:    path.join(__dirname, 'build'),
+  chunkNames: 'chunks/[name]-[hash]',
   sourcemap: 'inline',
-  target: ['es2020'],
+  target:    ['es2020'],
   resolveExtensions: ['.js', '.cjs', '.mjs'],
+
   alias: {
     '@core-bus':      path.join(ROOT, 'shell/src/core-bus'),
     '@gates':         path.join(ROOT, 'shell/src/gates'),
@@ -22,20 +30,19 @@ const config = {
     '@closed-loop':   path.join(ROOT, 'shell/src/closed-loop'),
     '@ml':            path.join(ROOT, 'shell/src/ml'),
     '@feature-flags': path.join(ROOT, 'shell/src/feature-flags'),
+    '@cost-items':    path.join(ROOT, 'shell/src/cost-items'),
     '@estimate-v6':   path.join(ROOT, 'modules-html/estimate-v6/src'),
     '@kpi-v6':        path.join(ROOT, 'modules-html/kpi-v6/src'),
     '@cad':           path.join(ROOT, 'modules-html/cad/src')
   },
-  external: [
-    'better-sqlite3',
-    'crypto',
-    'fs',
-    'path'
-  ],
+
+  external: ['better-sqlite3', 'crypto', 'fs', 'path', 'electron'],
+
   define: {
     'process.env.NODE_ENV': '"development"',
-    '__BOC_VERSION__': '"6.0.0-alpha.1"'
+    '__BOC_VERSION__': '"6.0.0-alpha.2"'
   },
+
   logLevel: 'info'
 };
 
