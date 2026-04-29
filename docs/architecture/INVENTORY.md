@@ -165,3 +165,33 @@
 ---
 
 **문서 끝.**
+
+---
+
+## Phase 4 Week 4-A 사전 조사 결과 (v5.9)
+
+### 마스터 시드 분포 (실제 적재 확인)
+- cost-items-v2.json: 62건 (주거 공정 단가 — majorCategory 17종)
+- labor-roles.json: 22건 (노무직종 공식 단가 — 대한건설협회 2025 H1)
+- AI 보충 seed: 10건 (ai_market_avg — 대표님 검토 대기)
+- 합계: 94건 (마스터 승인 84건 / AI 대기 10건)
+
+### graph.json 노드 현황
+- 총 12 노드 / 24 엣지 (변동 0 — 규칙 준수)
+- cost_management 관련 노드: 비존재 (§117 비전만)
+
+### 마이그레이션 결정
+- 출처 분류: principal_seed(84) / ai_market_avg(10)
+- 자동 승인 정책: source='principal_seed' → is_approved_by_principal=1 (대표님 박은 데이터)
+- ML 학습 데이터: is_approved_by_principal=1만 사용 (현재 84건)
+- Excel 워크플로우: cost_items_review_*.xlsx → import --apply
+
+### cost_items 테이블 스키마 (v6.0)
+- 5종 출처: principal_seed / principal_input / invoice / simulation / ai_market_avg
+- 인덱스 5개 (tenant/category/ks_code/source/approved)
+- rollback SQL: 004_cost_items_down.sql
+
+### IPC Bridge (Phase 4-A)
+- preload/preload.js: window.boc.cost.* / window.boc.kpi.* / window.boc.meta.*
+- Phase 4-A: 읽기 전용 (쓰기 Phase 5에서 활성)
+- CostLoader.cjs 6/6 PASS
