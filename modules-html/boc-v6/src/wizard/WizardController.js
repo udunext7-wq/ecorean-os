@@ -112,7 +112,7 @@ class WizardController {
     return r;
   }
 
-  lockG4(opts) {
+  async lockG4(opts) {
     if (!opts.spaces || opts.spaces.length === 0) {
       return { ok: false, error: 'spaces 면적 필수' };
     }
@@ -122,7 +122,7 @@ class WizardController {
       this.input.spaces = opts.spaces;
       this.lockedGates.push('G4');
       this.currentStage = 'G5';
-      this._calculateEstimate();
+      await this._calculateEstimate();
       this._emit('GATE_LOCKED', {
         gate: 'G4',
         input: opts,
@@ -133,14 +133,14 @@ class WizardController {
     return r;
   }
 
-  lockG5(opts) {
+  async lockG5(opts) {
     if (!this.lockedGates.includes('G4')) return { ok: false, error: 'G4 먼저' };
     const r = this.g5.lock({ materials: opts.materials || [] }, this.registry);
     if (r.ok) {
       this.input.materials = opts.materials || [];
       this.lockedGates.push('G5');
       this.currentStage = 'COMPLETE';
-      this._calculateEstimate();
+      await this._calculateEstimate();
       this._emit('GATE_LOCKED', {
         gate: 'G5',
         input: opts,
@@ -151,43 +151,64 @@ class WizardController {
     return r;
   }
 
-  _calculateEstimate() {
+  async _calculateEstimate() {
     if (!this.lockedGates.includes('G4')) return null;
 
-    // 시뮬 단가 (Week 4에서 cost_items DB 연결 예정)
-    const SIM_RATES = {
-      BATHROOM: { labor: 100000, material: 200000 },
-      KITCHEN:  { labor: 80000,  material: 150000 },
-      LIVING:   { labor: 60000,  material: 100000 },
-      BEDROOM:  { labor: 50000,  material: 80000 },
-      DEFAULT:  { labor: 70000,  material: 100000 }
-    };
+    let lineItems;
 
-    const lineItems = this.input.spaces.map(space => {
-      const rate = SIM_RATES[space.typeKey] || SIM_RATES.DEFAULT;
-      return {
-        qty: space.area_sqm,
-        wasteRate: 0.05,
-        laborCost: rate.labor,
-        pm: 1,
-        materialCost: rate.material
+    // IPC를 통해 cost_items DB → lineItems 생성 (Electron 환경)
+    if (typeof window !== 'undefined' && window.boc && window.boc.cost) {
+      try {
+        lineItems = await window.boc.cost.buildLineItems(
+          this.input.spaces, this.input.concept, { tenantId: 'HQ' }
+        );
+      } catch (e) {
+        console.error('[WizardController] IPC 실패:', e);
+        lineItems = null;
+      }
+    }
+
+    // 비-Electron 환경 fallback (테스트 / 브라우저 직접 열기)
+    if (!lineItems) {
+      const SIM_RATES = {
+        BATHROOM: { labor: 100000, material: 200000 },
+        KITCHEN:  { labor: 80000,  material: 150000 },
+        LIVING:   { labor: 60000,  material: 100000 },
+        BEDROOM:  { labor: 50000,  material: 80000 },
+        DEFAULT:  { labor: 70000,  material: 100000 }
       };
-    });
+      lineItems = this.input.spaces.map(space => {
+        const rate = SIM_RATES[space.typeKey] || SIM_RATES.DEFAULT;
+        return {
+          qty: space.area_sqm,
+          wasteRate: 0.05,
+          laborCost: rate.labor,
+          pm: 1,
+          materialCost: rate.material,
+          equipment: 0,
+          accessory: 0,
+          difficultyAdjust: 0
+        };
+      });
+    }
 
     const totalAreaSqm = this.input.spaces.reduce((sum, s) => sum + s.area_sqm, 0);
+    const ctx = this.input.context || {};
 
     const result = calculateEstimate({
       lineItems: lineItems,
       residence: this.input.residence,
       concept: this.input.concept,
-      occupied: false,
-      floorLevel: 5,
-      hasElev: true,
+      occupied: ctx.occupied === true,
+      floorLevel: ctx.floorLevel || 1,
+      hasElev: ctx.hasElev !== false,
       areaSqm: totalAreaSqm
     });
 
     if (result.ok) {
       this.estimate = result.payload;
+      const unknownCount = lineItems.filter(li => li._meta && li._meta.hasUnknown).length;
+      this.estimate._unknownCount = unknownCount;
       this._emit('ESTIMATE_CALCULATED', this.estimate);
     }
     return this.estimate;

@@ -629,6 +629,50 @@ function registerIPC() {
     }
   })
 
+  // ────────── BOC v6.0 cost/kpi/meta IPC ──────────────
+  let CostLoader = null;
+  try {
+    CostLoader = require('../shell/src/cost-items/CostLoader.cjs');
+  } catch(e) {
+    console.warn('[IPC] CostLoader 로드 실패:', e.message);
+  }
+
+  ipcMain.handle('boc:cost:loadByCategory', async (e, { category, opts }) => {
+    if (!CostLoader) return [];
+    return CostLoader.loadByCategory(category, opts);
+  });
+  ipcMain.handle('boc:cost:buildLineItems', async (e, { spaces, concept, opts }) => {
+    if (!CostLoader) return [];
+    return CostLoader.buildLineItems(spaces, concept, opts);
+  });
+  ipcMain.handle('boc:cost:getApprovalStatus', async (e, { opts }) => {
+    if (!CostLoader) return { total: 0, approved: 0, pending: 0, rate: 0, bySource: {} };
+    return CostLoader.getApprovalStatus(opts);
+  });
+  ipcMain.handle('boc:cost:approve', async (e, { id }) => {
+    return { ok: false, error: 'Phase 5에서 활성 (현재는 Excel 임포트만)' };
+  });
+  ipcMain.handle('boc:cost:update', async (e, { id, opts }) => {
+    return { ok: false, error: 'Phase 5에서 활성 (현재는 Excel 임포트만)' };
+  });
+
+  ipcMain.handle('boc:kpi:getCurrent',     async () => null);
+  ipcMain.handle('boc:kpi:getActiveCount', async () => 1);
+  ipcMain.handle('boc:kpi:getMLPhaseStatus', async () => {
+    if (!CostLoader) return { real: 0, simulated: 0, total: 0, phase: 'PHASE_1_MANUAL' };
+    const status = CostLoader.getApprovalStatus();
+    const real = status.bySource['invoice'] || 0;
+    const simulated = status.bySource['simulation'] || 0;
+    let phase = 'PHASE_1_MANUAL';
+    if (real >= 500) phase = 'PHASE_4_DEEP';
+    else if (real >= 100) phase = 'PHASE_3_XGBOOST';
+    else if (real >= 50) phase = 'PHASE_2_STATS';
+    return { real, simulated, total: real, phase };
+  });
+
+  ipcMain.handle('boc:meta:getVersion', async () => '6.0.0-alpha.2');
+  ipcMain.handle('boc:meta:getPhase',   async () => 'PHASE_4');
+
   // ────────── 핸들러 목록 출력 (개발용) ────────────────
   console.log('[IPC] Registered handlers:')
   ;[
