@@ -36,6 +36,20 @@ const FLAGS = {
   META_COMPAT_RDF:        true,
   META_COMPAT_UNIVERSE:   true,
 
+  // Phase 4 진행 상태
+  PHASE_4A_COMPLETE:      true,
+  PHASE_4B_COMPLETE:      false,
+  PHASE_4C_COMPLETE:      false,
+  PHASE_4D_COMPLETE:      false,
+  PHASE_4E_COMPLETE:      false,
+  PHASE_4F_COMPLETE:      false,
+  PHASE_4G_COMPLETE:      false,
+  PHASE_4H_COMPLETE:      false,
+  PHASE_4I_COMPLETE:      false,
+
+  // boc-v6 셸 (Week 1)
+  USE_BOC_V6_SHELL:       true,
+
   // 디버그
   VERBOSE_LOG:            false,
   AUDIT_LOG_ENABLED:      true
