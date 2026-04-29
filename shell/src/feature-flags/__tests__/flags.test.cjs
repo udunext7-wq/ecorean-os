@@ -15,6 +15,9 @@ function assert(cond, msg) {
   assert(isEnabled('PHASE_3E_COMPLETE') === true, 'PHASE_3E_COMPLETE Week5 완료 true');
   assert(isEnabled('PHASE_3F_COMPLETE') === true, 'PHASE_3F_COMPLETE Week6 완료 true');
   assert(isEnabled('PHASE_3G_COMPLETE') === true, 'PHASE_3G_COMPLETE Week7 완료 true');
+  assert(isEnabled('PHASE_3H_COMPLETE') === true, 'PHASE_3H_COMPLETE Week8 완료');
+  assert(isEnabled('USE_CLOSED_LOOP') === true, 'Closed Loop 활성');
+  assert(isEnabled('ML_PHASE_1_ENTRY') === true, 'ML Phase 1 진입');
   assert(isEnabled('META_COMPAT_JSONLD') === true, 'JSON-LD 활성');
   assert(isEnabled('META_COMPAT_RDF') === true, 'RDF 활성');
   assert(isEnabled('META_COMPAT_UNIVERSE') === true, 'Universe 활성');

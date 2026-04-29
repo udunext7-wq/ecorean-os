@@ -25,6 +25,9 @@ const FLAGS = {
   PHASE_3E_COMPLETE:      true,
   PHASE_3F_COMPLETE:      true,
   PHASE_3G_COMPLETE:      true,
+  PHASE_3H_COMPLETE:      true,
+  USE_CLOSED_LOOP:        true,
+  ML_PHASE_1_ENTRY:       true,
 
   // 메타 호환 (Week 6)
   META_COMPAT_JSONLD:     true,
