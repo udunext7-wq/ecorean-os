@@ -54,7 +54,7 @@ function assert(cond, msg) {
   assert('PHASE_3A_COMPLETE' in all, 'PHASE_3A_COMPLETE 포함');
 })();
 
-// Test 6: 플래그 수 + Phase 4B + Phase 4C
+// Test 6: 플래그 수 + Phase 4B + Phase 4C + Phase 4D
 (function() {
   const count = Object.keys(FLAGS).length;
   assert(count >= 14, '플래그 14개 이상: ' + count);
@@ -62,6 +62,11 @@ function assert(cond, msg) {
   assert(isEnabled('USE_WIZARD_UI') === true, 'Wizard UI 활성');
   assert(isEnabled('PHASE_4C_COMPLETE') === true, 'PHASE_4C_COMPLETE Week3 완료');
   assert(isEnabled('USE_CAD_CANVAS') === true, 'CAD Canvas 활성');
+  assert(isEnabled('PHASE_4D_COMPLETE') === true, 'PHASE_4D_COMPLETE Week4-A 완료');
+  assert(isEnabled('USE_COST_LOADER') === true, 'CostLoader 활성');
+  assert(isEnabled('USE_GLOBAL_KPI_BAR') === true, '글로벌 KPI 바 활성');
+  assert(isEnabled('USE_IPC_BRIDGE') === true, 'IPC Bridge 활성');
+  assert(isEnabled('USE_NODE_SPLITTING') === true, '노드 분리 활성');
 })();
 
 console.log('[PASS] feature-flags (6/6)');

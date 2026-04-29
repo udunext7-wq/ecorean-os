@@ -1,6 +1,6 @@
-# ECOREAN BOC — Master Plan v5.8
+# ECOREAN BOC — Master Plan v5.9
 최종 확정: 2026-04-29
-이전 버전: v5.7 (2026-04-29)
+이전 버전: v5.8 (2026-04-29)
 
 ---
 
@@ -19,6 +19,7 @@
 | **v5.6** | **2026-04-28** | **§109~§113 노드/엣지 그래프 + 메타 온톨로지 호환 + AI 가상 임원 + L3 외부 우주, 부록 M~O 추가** |
 | **v5.7** | **2026-04-29** | **§114~§116 9주 Phase 3 완주 + 부록 P~Q (Closed Loop 4모듈 + ML Phase 1)** |
 | **v5.8** | **2026-04-29** | **§117 Phase 4~7 장기 로드맵 + 부록 R AI 자율 시공 OS 명세 (추가만, §1~§116 변동 0)** |
+| **v5.9** | **2026-04-29** | **§117.2 Phase 4 Week 4-A 결정 12 원칙 명시 (변동 0)** |
 
 ### v5.6 주요 변경 사항 (2026-04-28)
 
@@ -3719,9 +3720,11 @@ countLearningData({ tenantId: 'HQ', includeSimulated: true });
 
 **주요 작업:**
 - Week 1: boc-v6 셸 + 라우팅 + 다크 테마 + esbuild ✅
-- Week 2: 5단 게이트 마법자 UI (G1~G5)
-- Week 3: CAD L1 평면도 인터랙티브 (Konva)
-- Week 4: 견적 결과 화면 + KPI 디지털 계기판 통합
+- Week 2: 5단 게이트 마법자 UI (G1~G5) ✅
+- Week 3: CAD L1 평면도 인터랙티브 (Konva) ✅
+- Week 4-A: cost_items DB + Excel 왕복 + IPC 도입 + 노드 분리 + G1 컨텍스트 통합 + KPI 3 레이어 ✅
+  - 12 안전 원칙 적용 (사전조사/IPC/Excel안전성/graph보존/마이그레이션안전/출처분리/시드출처/G1압축/프리페치/SoT정책/v5.9기록/ADR Phase5)
+  - 원칙: graph.json 변동 0, 25 모듈 시그니처 변동 0, 헌법 100% 보존
 - Week 5: 계약 화면 + PDF 견적서 출력
 - Week 6: 발주/공정/검수 화면 (Closed Loop UI 완성)
 - Week 7: 시스템 토폴로지 운영 화면 + AI 임원 대시보드
@@ -3907,5 +3910,6 @@ countLearningData({ tenantId: 'HQ', includeSimulated: true });
 
 ---
 
-*ECOREAN BOC Master Plan v5.8 — Phase 4 진입 + AI 자율 시공 OS 비전*
+*ECOREAN BOC Master Plan v5.9 — Phase 4 Week 4-A 완료*
+*총 117섹션 + 18부록 | 2026-04-29 by udunext7-wq*
 *총 117섹션 + 18부록 | 2026-04-29 by udunext7-wq*
