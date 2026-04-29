@@ -6,6 +6,7 @@ class App {
     this.rootEl = opts.rootEl || document.getElementById('app');
     this.router = new Router();
     this.currentPage = null;
+    this.globalKPI = null;
 
     this._setupRoutes();
     this._render();
@@ -16,6 +17,7 @@ class App {
     this.router.register('/wizard', this._renderWizard.bind(this), { meta: { title: '견적 마법자' } });
     this.router.register('/cad', this._renderCAD.bind(this), { meta: { title: 'CAD 평면도' } });
     this.router.register('/kpi', this._renderKPI.bind(this), { meta: { title: 'KPI 대시보드' } });
+    this.router.register('/admin/costs', this._renderAdminCosts.bind(this), { meta: { title: '단가 관리' } });
     this.router.register('/contracts', this._renderContracts.bind(this), { meta: { title: '계약' } });
     this.router.register('/orders', this._renderOrders.bind(this), { meta: { title: '발주' } });
     this.router.register('/schedules', this._renderSchedules.bind(this), { meta: { title: '공정' } });
@@ -33,13 +35,23 @@ class App {
           <div class="spacer"></div>
           <div class="status">
             <span class="live">● LIVE</span>
-            Phase 4 / Week 1
+            Phase 4 / Week 4-A
           </div>
         </header>
+        <div class="app-kpibar" id="global-kpi-bar"></div>
         <aside class="app-sidebar">${this._renderSidebar()}</aside>
         <main class="app-main" id="main-content"></main>
       </div>
     `;
+
+    try {
+      const { GlobalKPIBar } = require('../components/GlobalKPIBar.js');
+      this.globalKPI = new GlobalKPIBar({
+        containerEl: document.getElementById('global-kpi-bar')
+      });
+    } catch(e) {
+      console.warn('[App] GlobalKPIBar 로드 실패:', e.message);
+    }
 
     this.rootEl.querySelectorAll('.nav-item').forEach(el => {
       el.addEventListener('click', () => {
@@ -61,7 +73,7 @@ class App {
       <div class="nav-section">
         <div class="label">제작</div>
         <div class="nav-item" data-path="/cad">CAD 평면도</div>
-        <div class="nav-item" data-path="/kpi">KPI 계기판</div>
+        <div class="nav-item" data-path="/kpi">KPI 대시보드</div>
       </div>
       <div class="nav-section">
         <div class="label">Closed Loop</div>
@@ -69,6 +81,10 @@ class App {
         <div class="nav-item" data-path="/orders">발주</div>
         <div class="nav-item" data-path="/schedules">공정</div>
         <div class="nav-item" data-path="/inspections">검수</div>
+      </div>
+      <div class="nav-section">
+        <div class="label">관리</div>
+        <div class="nav-item" data-path="/admin/costs">단가 관리</div>
       </div>
       <div class="nav-section">
         <div class="label">시스템</div>
@@ -96,20 +112,22 @@ class App {
   _renderHome(path) {
     this._setActiveNav(path);
     document.getElementById('main-content').innerHTML = `
-      ${this._renderPageHeader('대시보드', 'ECOREAN BOC v6.0 — Phase 4 Week 1')}
+      ${this._renderPageHeader('대시보드', 'ECOREAN BOC v6.0 — Phase 4 Week 4-A')}
       <div class="card">
-        <h3>9주 Phase 3 완주 ✅</h3>
+        <h3>Phase 4 Week 4-A 완료 ✅</h3>
         <p style="color: var(--text-dim); line-height: 1.6;">
-          52개 파일 / 33 테스트 / 147+ assertions / 회귀 0건<br/>
-          마스터플랜 재작성 0회 / TDD 강제 작동 3회<br/>
-          시뮬레이션 1건 (30평 아파트 + 클래식럭셔리, 16,735,950원)
+          cost_items DB (84건 principal_seed + 10건 AI보충)<br/>
+          Excel 왕복 (export/import) + IPC Bridge + 노드 분리<br/>
+          G1 컨텍스트 통합 (거주중/층수/엘리베이터/주소) + GlobalKPIBar
         </p>
       </div>
       <div class="card">
-        <h3>Phase 4 진입</h3>
+        <h3>Phase 4 진행 현황</h3>
         <p style="color: var(--text-dim); line-height: 1.6;">
-          Week 1 완료: boc-v6 셸 + 라우팅 + 다크 테마 + esbuild<br/>
-          Week 2 진입: 5단 게이트 마법자 UI (G1~G5)
+          ✅ Week 1: boc-v6 셸 + 라우팅 + 다크 테마 + esbuild<br/>
+          ✅ Week 2: 5단 게이트 마법자 UI (G1~G5)<br/>
+          ✅ Week 3: CAD L1 평면도 인터랙티브 (Konva.js)<br/>
+          ✅ Week 4-A: cost_items DB + IPC + 노드분리 + KPI 3레이어
         </p>
       </div>
     `;
@@ -129,12 +147,43 @@ class App {
   _renderWizard(path) {
     this._setActiveNav(path);
     const main = document.getElementById('main-content');
-    main.innerHTML = '';
-    const { WizardPage } = require('../wizard/WizardPage.js');
-    new WizardPage({ containerEl: main });
+    main.innerHTML = '<div style="padding: 40px; color: var(--gold);">로딩 중...</div>';
+    try {
+      const { WizardPage } = require('../wizard/WizardPage.js');
+      main.innerHTML = '';
+      new WizardPage({ containerEl: main });
+    } catch(e) {
+      main.innerHTML = `<div class="card"><p style="color: var(--negative);">마법자 로드 실패: ${e.message}</p></div>`;
+    }
   }
-  _renderCAD(path)         { this._renderPlaceholder(path, 'CAD 평면도', 'Phase 4 Week 3'); }
-  _renderKPI(path)         { this._renderPlaceholder(path, 'KPI 계기판', 'Phase 4 Week 4'); }
+
+  _renderKPI(path) {
+    this._setActiveNav(path);
+    const main = document.getElementById('main-content');
+    main.innerHTML = '<div style="padding: 40px; color: var(--gold);">KPI 로딩 중...</div>';
+    try {
+      const { KPIDashboardPage } = require('../kpi-dashboard/KPIDashboardPage.js');
+      main.innerHTML = '';
+      new KPIDashboardPage({ containerEl: main });
+    } catch(e) {
+      main.innerHTML = `<div class="card"><p style="color: var(--negative);">KPI 로드 실패: ${e.message}</p></div>`;
+    }
+  }
+
+  _renderAdminCosts(path) {
+    this._setActiveNav('/admin/costs');
+    const main = document.getElementById('main-content');
+    main.innerHTML = '<div style="padding: 40px; color: var(--gold);">로딩 중...</div>';
+    try {
+      const { CostsAdminPage } = require('../admin/CostsAdminPage.js');
+      main.innerHTML = '';
+      new CostsAdminPage({ containerEl: main });
+    } catch(e) {
+      main.innerHTML = `<div class="card"><p style="color: var(--negative);">단가관리 로드 실패: ${e.message}</p></div>`;
+    }
+  }
+
+  _renderCAD(path)         { this._renderPlaceholder(path, 'CAD 평면도', 'Phase 4 Week 5'); }
   _renderContracts(path)   { this._renderPlaceholder(path, '계약', 'Phase 4 Week 5'); }
   _renderOrders(path)      { this._renderPlaceholder(path, '발주', 'Phase 4 Week 6'); }
   _renderSchedules(path)   { this._renderPlaceholder(path, '공정', 'Phase 4 Week 6'); }
