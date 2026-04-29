@@ -1,0 +1,77 @@
+/* ECOREAN BOC v6.0 — 다크 + 골드 에디토리얼 테마 */
+
+:root {
+  --bg:         #0a0e1a;
+  --bg-2:       #14182a;
+  --bg-3:       #1c2138;
+  --bg-card:    rgba(20, 24, 42, 0.6);
+
+  --gold:        #c9a84c;
+  --gold-bright: #ffd700;
+  --gold-dim:    rgba(201, 168, 76, 0.5);
+  --gold-faint:  rgba(201, 168, 76, 0.15);
+
+  --text:        #ede5d5;
+  --text-dim:    rgba(237, 229, 213, 0.6);
+  --text-faint:  rgba(237, 229, 213, 0.35);
+
+  --positive:    #4caf50;
+  --negative:    #f44336;
+  --warning:     #ff9800;
+  --info:        #2196f3;
+
+  --gate:        #4a90e2;
+  --module:      #50c878;
+  --engine:      #e8a534;
+  --ml:          #c9a84c;
+
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --border-radius: 4px;
+
+  --font-display: 'Cinzel', 'Noto Sans KR', serif;
+  --font-body:    'Noto Sans KR', sans-serif;
+  --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  height: 100vh;
+  overflow: hidden;
+}
+
+a { color: var(--gold); text-decoration: none; transition: color 0.2s; }
+a:hover { color: var(--gold-bright); }
+
+button {
+  background: transparent;
+  border: 1px solid var(--gold-faint);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+button:hover { border-color: var(--gold); background: var(--gold-faint); }
+button.primary { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+button.primary:hover { background: var(--gold-bright); color: var(--bg); }
+
+input, select, textarea {
+  background: var(--bg-2);
+  border: 1px solid var(--gold-faint);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: var(--border-radius);
+  font-family: var(--font-body);
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--gold-faint); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
