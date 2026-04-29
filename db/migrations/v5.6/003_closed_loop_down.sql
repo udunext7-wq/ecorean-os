@@ -1,0 +1,14 @@
+BEGIN TRANSACTION;
+DROP INDEX IF EXISTS idx_inspections_simulated;
+DROP INDEX IF EXISTS idx_inspections_schedule;
+DROP INDEX IF EXISTS idx_schedules_simulated;
+DROP INDEX IF EXISTS idx_schedules_contract;
+DROP INDEX IF EXISTS idx_purchase_simulated;
+DROP INDEX IF EXISTS idx_purchase_contract;
+DROP INDEX IF EXISTS idx_contracts_simulated;
+DROP INDEX IF EXISTS idx_contracts_tenant;
+DROP TABLE IF EXISTS inspections;
+DROP TABLE IF EXISTS schedules;
+DROP TABLE IF EXISTS purchase_orders;
+DROP TABLE IF EXISTS contracts;
+COMMIT;
