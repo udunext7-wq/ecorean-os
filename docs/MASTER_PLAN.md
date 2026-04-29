@@ -1,6 +1,6 @@
-# ECOREAN BOC — Master Plan v5.6
-최종 확정: 2026-04-28
-이전 버전: v5.5 (2026-04-28)
+# ECOREAN BOC — Master Plan v5.7
+최종 확정: 2026-04-29
+이전 버전: v5.6 (2026-04-28)
 
 ---
 
@@ -17,6 +17,7 @@
 | v5.4 | 2026-04-27 | §91~§103 자동 연동 시스템, 부록 E·F·G 추가 |
 | **v5.5** | **2026-04-28** | **시공 섹션 8→22개, 공간 타입 18→23개, 컨셉 10→12개, 주거 형태·2단계 견적·KPI·사업 범위 §104~§108, 부록 H~L 추가** |
 | **v5.6** | **2026-04-28** | **§109~§113 노드/엣지 그래프 + 메타 온톨로지 호환 + AI 가상 임원 + L3 외부 우주, 부록 M~O 추가** |
+| **v5.7** | **2026-04-29** | **§114~§116 9주 Phase 3 완주 + 부록 P~Q (Closed Loop 4모듈 + ML Phase 1)** |
 
 ### v5.6 주요 변경 사항 (2026-04-28)
 
@@ -3563,5 +3564,135 @@ INTER-UNIVERSE METAEDGES (Future)
 
 ---
 
-*ECOREAN BOC Master Plan v5.6 — 노드/엣지 그래프 + 메타 온톨로지*
-*총 113섹션 + 15부록 | 2026-04-28 by udunext7-wq*
+---
+
+## 114. Phase 3 9주 완주 결과 (v5.7 신규)
+
+### 114.1 9주 로드맵 완료
+
+| 주 | Phase | 작업 | 상태 |
+|----|-------|------|------|
+| 1 | 3-A | 핵심 인프라 (CoreBus + Schemas + FeatureFlags) | ✅ |
+| 2 | 3-B | CAD 단독 모듈 (DrawingModel + Engine + L1) | ✅ |
+| 3 | 3-C | 5단 게이트 (Gate + G1~G5 + E2E) | ✅ |
+| 4 | 3-D | 견적 모듈 + 본 매트릭스 (22/23/12/6/5) | ✅ |
+| 5 | 3-E | KPI 분리 + 토폴로지 활성화 | ✅ |
+| 6 | 3-F | 메타 호환 6+α (URI/JSON-LD/RDF/Universe) | ✅ |
+| 7 | 3-G | 한국 특수성 + NFR (KS/지역/암호화) | ✅ |
+| 8 | 3-H | Closed Loop 4 모듈 + 시뮬레이션 + ML Phase 1 | ✅ |
+| 9 | 3-I | 마무리 (v5.7 + 회고 + 태그) | ✅ |
+
+### 114.2 누적 산출물
+
+- **모듈:** 52개 (코드 파일 기준), **테스트:** 33 파일 / 147+ assertions, **회귀:** 0건
+- **DB 테이블:** 6종 (drawings + triples + contracts + purchase_orders + schedules + inspections)
+- **그래프:** 12 노드 + 24 엣지 (활성) / 15 미래 노드 자리
+- **시뮬레이션:** 1건 (30평 아파트 + 클래식럭셔리, 16,735,950원)
+
+### 114.3 9주 동안 0회 마스터플랜 재작성
+
+이전 5번의 다시쓰기 → 9주 진행 중 0번. 6번째 다시쓰기 영영 차단.
+
+---
+
+## 115. Closed Loop 4 모듈 (v5.7 신규)
+
+### 115.1 1 사이클
+
+```
+견적(estimate-v6) → 계약(Contract) → 발주(PurchaseOrder)
+   → 공정(Schedule) → 검수(Inspection) → 완료(Master DB)
+   → ML Phase 1 학습 → (Phase 2/3/4 자동 분기 50/100/500)
+```
+
+### 115.2 절대 룰
+
+- 검수 실패 후 후속 공정 진행 금지 (canProceedAfter)
+- 시뮬 데이터 is_simulated=1 강제 (실거래 위장 금지)
+- 개인정보 암호화 (AES-256-GCM)
+- VAT 10% 자동 (계약 생성 시)
+
+### 115.3 ML Phase 4단계 자동 분기
+
+| Phase | 데이터 | 알고리즘 |
+|-------|--------|---------|
+| 1 (수동) | 0~49 | 평균 |
+| 2 (통계) | 50~99 | 통계 회귀 |
+| 3 (XGBoost) | 100~499 | XGBoost |
+| 4 (Deep) | 500+ | Deep Learning |
+
+---
+
+## 116. v5.6 → v5.7 진화 (v5.7 신규)
+
+| 항목 | v5.6 | v5.7 |
+|------|------|------|
+| 9주 로드맵 | 계획 | 완주 |
+| Closed Loop | 자리 | 4 모듈 신설 |
+| ML Phase 1 | 미진입 | 진입 (시뮬 1건) |
+| 시뮬레이션 | 없음 | scenario_001.cjs |
+| 회고 | 없음 | RETROSPECTIVE_PHASE3.md |
+| 태그 | 없음 | v5.7.0 |
+
+---
+
+## 부록 P — Closed Loop 4 모듈 명세 (v5.7 신규)
+
+### P-1. Contract (계약)
+- 4 상태: DRAFT → SIGNED → COMPLETED (또는 CANCELED)
+- 개인정보 암호화 (AES-256-GCM): 이름/주소
+- 검색용 해시 (SHA-256): 전화번호
+- VAT 10% 자동
+- is_simulated 컬럼 분리
+
+### P-2. PurchaseOrder (발주)
+- 5 상태: PENDING → ORDERED → DELIVERED (또는 RETURNED/CANCELED)
+- KS 코드 매핑 (Week 7 KSCodeMapping 활용)
+- 단가 × 수량 자동
+
+### P-3. Schedule (공정)
+- 5 상태: PLANNED → IN_PROGRESS → COMPLETED (또는 DELAYED/BLOCKED)
+- 22 섹션 표준 공정일 (욕실 5일 / 주방 4일 / 거실 3일 등)
+- 의존성 자동 (이전 공정 종료 = 다음 공정 시작)
+
+### P-4. Inspection (검수)
+- 4 결과: PASS / FAIL / CONDITIONAL_PASS / PENDING
+- 절대 룰: FAIL 후 후속 공정 진행 차단
+- NEEDS_RESEARCH 미해결 시 차단
+
+---
+
+## 부록 Q — ML Phase 1 진입 명세 (v5.7 신규)
+
+### Q-1. 시뮬 + 실거래 분리
+
+| 학습 데이터 | is_simulated | 카운트 |
+|-------------|--------------|--------|
+| 시뮬 (현재) | 1 | 1건 |
+| 실거래 | 0 | 0건 (대기) |
+
+### Q-2. countLearningData API
+
+```javascript
+const { countLearningData } = require('shell/src/ml/MLPhase1.cjs');
+
+// 실거래만
+countLearningData({ tenantId: 'HQ' });
+// → { real: 0, simulated: 0, total: 0, phase: 'PHASE_1_MANUAL' }
+
+// 시뮬 포함
+countLearningData({ tenantId: 'HQ', includeSimulated: true });
+// → { real: 0, simulated: 1, total: 1, phase: 'PHASE_1_MANUAL' }
+```
+
+### Q-3. 실거래 교체 절차
+
+1. 영업 1건 확보 → 견적 생성 (estimate-v6)
+2. createContract({ ..., isSimulated: false })
+3. DB 적재 → countLearningData() 자동 갱신
+4. 50건 도달 시 Phase 2 자동 전환
+
+---
+
+*ECOREAN BOC Master Plan v5.7 — 9주 Phase 3 완주*
+*총 116섹션 + 17부록 | 2026-04-29 by udunext7-wq*
