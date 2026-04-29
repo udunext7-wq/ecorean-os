@@ -126,7 +126,13 @@ class App {
     `;
   }
 
-  _renderWizard(path)      { this._renderPlaceholder(path, '견적 마법자', 'Phase 4 Week 2'); }
+  _renderWizard(path) {
+    this._setActiveNav(path);
+    const main = document.getElementById('main-content');
+    main.innerHTML = '';
+    const { WizardPage } = require('../wizard/WizardPage.js');
+    new WizardPage({ containerEl: main });
+  }
   _renderCAD(path)         { this._renderPlaceholder(path, 'CAD 평면도', 'Phase 4 Week 3'); }
   _renderKPI(path)         { this._renderPlaceholder(path, 'KPI 계기판', 'Phase 4 Week 4'); }
   _renderContracts(path)   { this._renderPlaceholder(path, '계약', 'Phase 4 Week 5'); }
