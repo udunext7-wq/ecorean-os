@@ -54,10 +54,12 @@ function assert(cond, msg) {
   assert('PHASE_3A_COMPLETE' in all, 'PHASE_3A_COMPLETE 포함');
 })();
 
-// Test 6: 플래그 수 (17개 정의)
+// Test 6: 플래그 수 + Phase 4B
 (function() {
   const count = Object.keys(FLAGS).length;
   assert(count >= 14, '플래그 14개 이상: ' + count);
+  assert(isEnabled('PHASE_4B_COMPLETE') === true, 'PHASE_4B_COMPLETE Week2 완료');
+  assert(isEnabled('USE_WIZARD_UI') === true, 'Wizard UI 활성');
 })();
 
 console.log('[PASS] feature-flags (6/6)');

@@ -38,7 +38,8 @@ const FLAGS = {
 
   // Phase 4 진행 상태
   PHASE_4A_COMPLETE:      true,
-  PHASE_4B_COMPLETE:      false,
+  PHASE_4B_COMPLETE:      true,
+  USE_WIZARD_UI:          true,
   PHASE_4C_COMPLETE:      false,
   PHASE_4D_COMPLETE:      false,
   PHASE_4E_COMPLETE:      false,
