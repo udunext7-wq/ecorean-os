@@ -43,7 +43,12 @@
     ],
     "win": {
       "target": [
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "forceCodeSigning": false,
       "signAndEditExecutable": false
@@ -59,7 +64,12 @@
       "artifactName": "ECOREAN-BOC-${version}-portable.exe"
     }
   },
-  "keywords": ["ecorean", "boc", "estimate", "construction"],
+  "keywords": [
+    "ecorean",
+    "boc",
+    "estimate",
+    "construction"
+  ],
   "author": "ECOREAN",
   "license": "UNLICENSED",
   "repository": {
@@ -67,7 +77,8 @@
     "url": "git+https://github.com/udunext7-wq/ecorean-os.git"
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0"
+    "better-sqlite3": "^11.10.0",
+    "konva": "^10.2.5"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
