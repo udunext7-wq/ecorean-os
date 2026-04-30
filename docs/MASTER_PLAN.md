@@ -22,6 +22,7 @@
 | **v5.9** | **2026-04-29** | **§117.2 Phase 4 Week 4-A 결정 12 원칙 명시 (변동 0)** |
 | **v6.0** | **2026-04-30** | **§117.2 Phase 4 Week 5 완료 — 계약 화면 + PDF 견적서 + CAD 라우트 활성화** |
 | **v6.1** | **2026-04-30** | **§117.3 Phase 4 Week 6 완료 — 발주+공정+검수 Closed Loop UI + preload 연결 수정 (B4 절대룰, 원칙15)** |
+| **v6.2** | **2026-04-30** | **§117.4 Phase 4 Week 7 완료 — 토폴로지 + AI 임원 (멀티 프로바이더)** |
 
 ### v5.6 주요 변경 사항 (2026-04-28)
 
@@ -3746,7 +3747,14 @@ countLearningData({ tenantId: 'HQ', includeSimulated: true });
   - boc-v6 TABS 통합 + shell "BOC v6" 탭 버튼 추가
   - Feature flags: PHASE_4F_COMPLETE/USE_ORDERS_UI/USE_SCHEDULES_UI/USE_INSPECTIONS_UI
   - esbuild: 9 entry points (orders/schedules/inspections 추가)
-- Week 7: 시스템 토폴로지 운영 화면 + AI 임원 대시보드
+- Week 7: 토폴로지 + AI 임원 ✅
+  - TopologyPage (Cytoscape.js, graph.json 12노드+24엣지 시각화)
+  - AIExecutivePage (KPI 요약/견적 이상 탐지/공정 지연 분석/리스크 평가)
+  - AIProvider.cjs (Claude/OpenAI/Gemini/Ollama 멀티 프로바이더)
+  - .env BOC_AI_PROVIDER + BOC_AI_KEY 설정 방식
+  - IPC: boc:ai:query + boc:ai:getConfig
+  - Feature flags: PHASE_4G_COMPLETE/USE_TOPOLOGY_UI/USE_AI_EXECUTIVE/USE_MULTI_AI
+  - esbuild: 11 entry points (topology/ai-executive 추가)
 - Week 8: 실거래 1건 검증 (Critical C2 최종 해결)
 - Week 9: 마무리 + v6.0 태그
 

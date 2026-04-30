@@ -6,7 +6,6 @@ const FLAGS = {
   USE_CORE_BUS:           false,
   STRICT_SCHEMA:          false,
   USE_CASCADE_GATES:      false,
-  USE_AI_EXECUTIVE:       false,
 
   // CAD 모듈 분리 (Week 2)
   USE_CAD_MODULE:         false,
@@ -55,7 +54,10 @@ const FLAGS = {
   USE_ORDERS_UI:          true,
   USE_SCHEDULES_UI:       true,
   USE_INSPECTIONS_UI:     true,
-  PHASE_4G_COMPLETE:      false,
+  PHASE_4G_COMPLETE:      true,    // Week 7: 토폴로지 + AI 임원
+  USE_TOPOLOGY_UI:        true,
+  USE_AI_EXECUTIVE:       true,
+  USE_MULTI_AI:           true,    // 멀티 프로바이더 활성
   PHASE_4H_COMPLETE:      false,
   PHASE_4I_COMPLETE:      false,
 

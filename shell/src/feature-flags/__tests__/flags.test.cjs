@@ -84,4 +84,12 @@ function assert(cond, msg) {
   assert(isEnabled('USE_INSPECTIONS_UI') === true, '검수 UI 활성');
 })();
 
-console.log('[PASS] feature-flags (8/8)');
+// Test 9: Phase 4G + AI 플래그
+(function() {
+  assert(isEnabled('PHASE_4G_COMPLETE') === true, 'PHASE_4G_COMPLETE Week7 완료');
+  assert(isEnabled('USE_TOPOLOGY_UI')   === true, '토폴로지 UI 활성');
+  assert(isEnabled('USE_AI_EXECUTIVE')  === true, 'AI 임원 활성');
+  assert(isEnabled('USE_MULTI_AI')      === true, '멀티 AI 활성');
+})();
+
+console.log('[PASS] feature-flags (9/9)');
