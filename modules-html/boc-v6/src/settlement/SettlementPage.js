@@ -220,6 +220,13 @@ ${slaHtml}
     const el = this.containerEl.querySelector('#settlement-body');
     if (el) el.innerHTML = `<div style="padding:20px;color:#C96D6D;">오류: ${msg}</div>`;
   }
+
+  unmount() {
+    if (this._actualInputHandler) {
+      this.containerEl.removeEventListener('click', this._actualInputHandler);
+    }
+    this.containerEl.innerHTML = '';
+  }
 }
 
 module.exports = { SettlementPage };

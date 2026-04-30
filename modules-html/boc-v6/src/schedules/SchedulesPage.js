@@ -2,6 +2,8 @@
 // [D][E][F] Schedule 확정값 사용
 // [L] input.sections → generateSchedulesForContract 입력
 
+const { escapeHtml: esc } = require('../contract/utils/escape.cjs');
+
 const STATUS_COLOR = {
   PLANNED: '#666', IN_PROGRESS: '#C9A84C',
   COMPLETED: '#6DB96D', DELAYED: '#E8A87C', BLOCKED: '#C96D6D'
@@ -49,10 +51,18 @@ class SchedulesPage {
   <div id="schedule-list"></div>
 </div>`;
 
-    this.containerEl.addEventListener('click', e => {
-      if (e.target.id === 'btn-gen-schedule')                                  this._generate();
-      if (e.target.dataset.schedId && e.target.dataset.status)                 this._transition(e.target.dataset.schedId, e.target.dataset.status);
-    });
+    this._clickHandler = (e) => {
+      if (e.target.id === 'btn-gen-schedule')                      this._generate();
+      if (e.target.dataset.schedId && e.target.dataset.status)     this._transition(e.target.dataset.schedId, e.target.dataset.status);
+    };
+    this.containerEl.addEventListener('click', this._clickHandler);
+  }
+
+  unmount() {
+    if (this._clickHandler) {
+      this.containerEl.removeEventListener('click', this._clickHandler);
+    }
+    this.containerEl.innerHTML = '';
   }
 
   _renderList() {
@@ -80,7 +90,7 @@ class SchedulesPage {
       const endDate = s.end_date || (s.start_date + s.duration_days * 86400000);
       return `<tr>
         <td style="${TD};text-align:center">${i + 1}</td>
-        <td style="${TD}">${s.section_id || '-'}</td>
+        <td style="${TD}">${esc(s.section_id) || '-'}</td>
         <td style="${TD};text-align:center">${fmtDate(s.start_date)}</td>
         <td style="${TD};text-align:center">${s.duration_days}일</td>
         <td style="${TD};text-align:center">${fmtDate(endDate)}</td>

@@ -224,6 +224,8 @@ class App {
 
   _renderContracts(path) {
     this._setActiveNav(path);
+    if (this.currentPage?.unmount) this.currentPage.unmount();
+    this.currentPage = null;
     const main = document.getElementById('main-content');
     main.innerHTML = `
       ${this._renderPageHeader('계약 목록', '마법자에서 견적 완성 후 계약서 작성')}
@@ -241,81 +243,93 @@ class App {
   }
   _renderOrders(path) {
     this._setActiveNav(path);
+    if (this.currentPage?.unmount) this.currentPage.unmount();
     const main = document.getElementById('main-content');
     main.innerHTML = '';
     try {
       const { OrdersPage } = require('../orders/OrdersPage.js');
-      new OrdersPage({
+      this.currentPage = new OrdersPage({
         containerEl: main,
         contractId:  this.currentContract?.id || null
       });
     } catch(e) {
+      this.currentPage = null;
       main.innerHTML = `<div class="card"><p style="color:var(--negative)">발주 로드 실패: ${e.message}</p></div>`;
     }
   }
 
   _renderSchedules(path) {
     this._setActiveNav(path);
+    if (this.currentPage?.unmount) this.currentPage.unmount();
     const main = document.getElementById('main-content');
     main.innerHTML = '';
     try {
       const { SchedulesPage } = require('../schedules/SchedulesPage.js');
-      new SchedulesPage({
+      this.currentPage = new SchedulesPage({
         containerEl: main,
         contractId:  this.currentContract?.id || null,
         sections:    this.currentInput?.sections || []
       });
     } catch(e) {
+      this.currentPage = null;
       main.innerHTML = `<div class="card"><p style="color:var(--negative)">공정 로드 실패: ${e.message}</p></div>`;
     }
   }
 
   _renderInspections(path) {
     this._setActiveNav(path);
+    if (this.currentPage?.unmount) this.currentPage.unmount();
     const main = document.getElementById('main-content');
     main.innerHTML = '';
     try {
       const { InspectionsPage } = require('../inspections/InspectionsPage.js');
-      new InspectionsPage({
+      this.currentPage = new InspectionsPage({
         containerEl: main,
         contractId:  this.currentContract?.id || null
       });
     } catch(e) {
+      this.currentPage = null;
       main.innerHTML = `<div class="card"><p style="color:var(--negative)">검수 로드 실패: ${e.message}</p></div>`;
     }
   }
   _renderTopology(path) {
     this._setActiveNav(path);
+    if (this.currentPage?.unmount) this.currentPage.unmount();
     const main = document.getElementById('main-content');
     main.innerHTML = '';
     try {
       const { TopologyPage } = require('../topology/TopologyPage.js');
-      new TopologyPage({ containerEl: main });
+      this.currentPage = new TopologyPage({ containerEl: main });
     } catch(e) {
+      this.currentPage = null;
       main.innerHTML = `<div class="card"><p style="color:var(--negative)">토폴로지 로드 실패: ${e.message}</p></div>`;
     }
   }
 
   _renderAIExecutive(path) {
     this._setActiveNav(path);
+    if (this.currentPage?.unmount) this.currentPage.unmount();
     const main = document.getElementById('main-content');
     main.innerHTML = '';
     try {
       const { AIExecutivePage } = require('../ai-executive/AIExecutivePage.js');
-      new AIExecutivePage({ containerEl: main });
+      this.currentPage = new AIExecutivePage({ containerEl: main });
     } catch(e) {
+      this.currentPage = null;
       main.innerHTML = `<div class="card"><p style="color:var(--negative)">AI 임원 로드 실패: ${e.message}</p></div>`;
     }
   }
 
   _renderSettlement(path) {
     this._setActiveNav(path);
+    if (this.currentPage?.unmount) this.currentPage.unmount();
     const main = document.getElementById('main-content');
     main.innerHTML = '';
     try {
       const { SettlementPage } = require('../settlement/SettlementPage.js');
-      new SettlementPage({ containerEl: main });
+      this.currentPage = new SettlementPage({ containerEl: main });
     } catch(e) {
+      this.currentPage = null;
       main.innerHTML = `<div class="card"><p style="color:var(--negative)">정산 로드 실패: ${e.message}</p></div>`;
     }
   }

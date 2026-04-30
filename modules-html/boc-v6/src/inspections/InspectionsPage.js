@@ -2,6 +2,8 @@
 // [G][H][I][J] Inspection 확정값 사용
 // B4 절대 룰: FAIL → 후속 공정 진행 금지 (canProceedAfter)
 
+const { escapeHtml: esc } = require('../contract/utils/escape.cjs');
+
 const RESULT_COLOR = {
   PENDING: '#666', PASS: '#6DB96D',
   FAIL: '#C96D6D', CONDITIONAL_PASS: '#C9A84C'
@@ -46,11 +48,19 @@ class InspectionsPage {
   <div id="ins-form" style="display:none;"></div>
 </div>`;
 
-    this.containerEl.addEventListener('click', e => {
+    this._clickHandler = (e) => {
       if (e.target.dataset.insId && e.target.dataset.action === 'record') this._showRecordForm(e.target.dataset.insId);
       if (e.target.id === 'btn-ins-submit')       this._submitRecord();
       if (e.target.id === 'btn-ins-cancel-form')  this._hideForm();
-    });
+    };
+    this.containerEl.addEventListener('click', this._clickHandler);
+  }
+
+  unmount() {
+    if (this._clickHandler) {
+      this.containerEl.removeEventListener('click', this._clickHandler);
+    }
+    this.containerEl.innerHTML = '';
   }
 
   _renderList() {
@@ -75,12 +85,12 @@ ${failCount ? `<div style="padding:8px 12px;background:#1A0F0F;border:1px solid 
     ${this.inspections.map((ins, i) => `<tr>
       <td style="${TD};text-align:center">${i + 1}</td>
       <td style="${TD}">${ins.section_id || '-'}</td>
-      <td style="${TD}">${ins.inspector || '-'}</td>
+      <td style="${TD}">${esc(ins.inspector) || '-'}</td>
       <td style="${TD};text-align:center">
         <span style="color:${RESULT_COLOR[ins.result] || '#666'};font-size:10px;font-weight:700">${ins.result}</span>
         ${ins.result === 'FAIL' ? '<span style="font-size:9px;color:#C96D6D;margin-left:4px">⛔</span>' : ''}
       </td>
-      <td style="${TD};font-size:10px;color:#666">${ins.notes || ''}</td>
+      <td style="${TD};font-size:10px;color:#666">${esc(ins.notes) || ''}</td>
       <td style="${TD};text-align:center">
         ${ins.result === 'PENDING' ? `<button data-ins-id="${ins.id}" data-action="record" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid #C9A84C;color:#C9A84C;cursor:pointer;">검수 기록</button>` : ''}
         ${ins.result === 'FAIL'    ? `<button data-ins-id="${ins.id}" data-action="record" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid #E8A87C;color:#E8A87C;cursor:pointer;">재검수</button>` : ''}

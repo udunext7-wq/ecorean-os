@@ -1,11 +1,14 @@
 // ECOREAN BOC v6.0 — 시스템 토폴로지 화면
 // [A][B][C] graph.json 12노드+24엣지 시각화
-// Cytoscape.js (CDN) — 번들 포함 금지 (1.3MB 방지)
+// Cytoscape.js (npm) — 오프라인 동작
 // 원칙 15: try/catch
+
+const cytoscape = require('cytoscape');
 
 class TopologyPage {
   constructor(opts) {
     this.containerEl = opts.containerEl;
+    this._cy = null;
     this._render();
     this._loadGraph();
   }
@@ -34,25 +37,12 @@ class TopologyPage {
       } catch(_) {
         graphData = require('../../../../../docs/graph.json');
       }
-
-      await this._loadCytoscape();
       this._renderGraph(graphData);
     } catch(e) {
       console.error('[Topology]', e);
       const el = this.containerEl.querySelector('#topo-cy');
       if (el) el.innerHTML = `<div style="padding:40px;text-align:center;color:#C96D6D;">토폴로지 로드 실패: ${e.message}</div>`;
     }
-  }
-
-  _loadCytoscape() {
-    return new Promise((resolve, reject) => {
-      if (window.cytoscape) { resolve(); return; }
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js';
-      script.onload  = resolve;
-      script.onerror = () => reject(new Error('Cytoscape.js CDN 로드 실패'));
-      document.head.appendChild(script);
-    });
   }
 
   _renderGraph(graphData) {
@@ -97,7 +87,7 @@ class TopologyPage {
       }
     }));
 
-    const cy = window.cytoscape({
+    this._cy = cytoscape({
       container: this.containerEl.querySelector('#topo-cy'),
       elements:  { nodes: cyNodes, edges: cyEdges },
       style: [
@@ -150,7 +140,7 @@ class TopologyPage {
       layout: { name: 'cose', animate: true, padding: 30 }
     });
 
-    cy.on('tap', 'node', (evt) => {
+    this._cy.on('tap', 'node', (evt) => {
       const n      = evt.target.data();
       const detail = this.containerEl.querySelector('#topo-detail');
       if (detail) {
@@ -178,6 +168,10 @@ ${n.sla ? `<span style="margin-left:8px;font-size:9px;color:#6D9DB9">SLA: ${n.sl
         </div>`
       ).join('');
     }
+  }
+  unmount() {
+    if (this._cy) { this._cy.destroy(); this._cy = null; }
+    this.containerEl.innerHTML = '';
   }
 }
 

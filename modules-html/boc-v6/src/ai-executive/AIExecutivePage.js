@@ -83,7 +83,7 @@ class AIExecutivePage {
   </div>
 </div>`;
 
-    this.containerEl.addEventListener('click', e => {
+    this._clickHandler = (e) => {
       const action = e.target.dataset.action;
       if (action === 'kpi')      this._quickAnalysis('kpi');
       if (action === 'anomaly')  this._quickAnalysis('anomaly');
@@ -91,7 +91,8 @@ class AIExecutivePage {
       if (action === 'risk')     this._quickAnalysis('risk');
       if (action === 'clear')    this._clearMessages();
       if (e.target.id === 'ai-send') this._sendMessage();
-    });
+    };
+    this.containerEl.addEventListener('click', this._clickHandler);
 
     const input = this.containerEl.querySelector('#ai-input');
     input?.addEventListener('keydown', e => {
@@ -234,6 +235,13 @@ class AIExecutivePage {
 
   _btnStyle(bg = '#141414') {
     return `padding:6px 12px;background:${bg};border:1px solid #2A2A2A;color:#C9A84C;font-size:10px;cursor:pointer;`;
+  }
+  unmount() {
+    if (this._clickHandler) {
+      this.containerEl.removeEventListener('click', this._clickHandler);
+    }
+    this.messages = [];
+    this.containerEl.innerHTML = '';
   }
 }
 

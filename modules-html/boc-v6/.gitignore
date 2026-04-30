@@ -1,0 +1,4 @@
+# 빌드 결과물 (자동 생성)
+build/
+build/*
+node_modules/

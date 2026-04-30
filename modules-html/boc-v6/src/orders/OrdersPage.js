@@ -2,6 +2,8 @@
 // [A][B][C] PurchaseOrder 확정값 사용
 // 원칙 15: 모든 IPC 호출 try/catch
 
+const { escapeHtml: esc } = require('../contract/utils/escape.cjs');
+
 const STATUS_COLOR = {
   PENDING: '#666', ORDERED: '#C9A84C',
   DELIVERED: '#6DB96D', RETURNED: '#E8A87C', CANCELED: '#C96D6D'
@@ -52,12 +54,20 @@ class OrdersPage {
   <div id="order-form" style="display:none;"></div>
 </div>`;
 
-    this.containerEl.addEventListener('click', e => {
+    this._clickHandler = (e) => {
       if (e.target.id === 'btn-add-order')         this._showForm();
       if (e.target.dataset.orderId)                this._transition(e.target.dataset.orderId, e.target.dataset.status);
       if (e.target.id === 'btn-order-submit')       this._submitForm();
       if (e.target.id === 'btn-order-cancel-form')  this._hideForm();
-    });
+    };
+    this.containerEl.addEventListener('click', this._clickHandler);
+  }
+
+  unmount() {
+    if (this._clickHandler) {
+      this.containerEl.removeEventListener('click', this._clickHandler);
+    }
+    this.containerEl.innerHTML = '';
   }
 
   _renderList() {
@@ -80,8 +90,8 @@ class OrdersPage {
   <tbody>
     ${this.orders.map((o, i) => `<tr>
       <td style="${TD};text-align:center">${i + 1}</td>
-      <td style="${TD}">${o.vendor_name || '-'}</td>
-      <td style="${TD}">${o.category || '-'}</td>
+      <td style="${TD}">${esc(o.vendor_name) || '-'}</td>
+      <td style="${TD}">${esc(o.category) || '-'}</td>
       <td style="${TD};text-align:right">${fmt(o.qty)}</td>
       <td style="${TD};text-align:right">${fmt(o.unit_price)}</td>
       <td style="${TD};text-align:right;font-weight:500">${fmt(o.total_price)}</td>
