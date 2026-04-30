@@ -3736,7 +3736,16 @@ countLearningData({ tenantId: 'HQ', includeSimulated: true });
   - preload/preload.js: window.boc.contract 추가
   - Feature flags: PHASE_4E_COMPLETE, USE_CONTRACT_UI, USE_ESTIMATE_PDF = true
   - esbuild: contract entry 추가 (6 entry points)
-- Week 6: 발주/공정/검수 화면 (Closed Loop UI 완성)
+- Week 6: 발주/공정/검수 화면 (Closed Loop UI 완성) ✅
+  - OrdersPage (발주 목록/추가/상태전환 PENDING→ORDERED→DELIVERED)
+  - SchedulesPage (공정 목록 + generateSchedulesForContract 자동생성)
+  - InspectionsPage (검수 기록 + B4 canProceedAfter FAIL→후속공정 차단)
+  - IPC: boc:order/schedule/inspection (create/list/transition/record)
+  - DB: purchase_orders/schedules/inspections (ecorean-boc.db, B1 rollback 006)
+  - electron/preload.js: window.boc 전체 병합 (boc-v6 Electron 연결 완성)
+  - boc-v6 TABS 통합 + shell "BOC v6" 탭 버튼 추가
+  - Feature flags: PHASE_4F_COMPLETE/USE_ORDERS_UI/USE_SCHEDULES_UI/USE_INSPECTIONS_UI
+  - esbuild: 9 entry points (orders/schedules/inspections 추가)
 - Week 7: 시스템 토폴로지 운영 화면 + AI 임원 대시보드
 - Week 8: 실거래 1건 검증 (Critical C2 최종 해결)
 - Week 9: 마무리 + v6.0 태그
