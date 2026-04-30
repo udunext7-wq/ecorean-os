@@ -82,6 +82,18 @@ class ContractPage {
                 </span>
               </label>
             </div>
+            <div class="form-group" style="margin-bottom:12px;">
+              <label style="font-size:9px;color:#C9A84C;letter-spacing:2px;display:block;margin-bottom:6px;">계약 유형</label>
+              <div style="display:flex;gap:16px;">
+                <label style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:11px;">
+                  <input type="radio" name="contract-mode" value="simulated" checked style="accent-color:#666"> 시뮬레이션 (학습용)
+                </label>
+                <label style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:11px;">
+                  <input type="radio" name="contract-mode" value="real" style="accent-color:#6DB96D">
+                  <span style="color:#6DB96D;font-weight:700">● 실거래</span>
+                </label>
+              </div>
+            </div>
             <div class="form-error" id="contract-error" style="display:none;"></div>
             <div class="form-actions">
               <button class="primary" id="btn-create-draft">계약서 초안 작성</button>
@@ -119,7 +131,10 @@ class ContractPage {
     btn.disabled = true;
     btn.textContent = '작성 중...';
 
-    const r = await this.controller.createDraft({ customerName: name, customerPhone: phone, customerAddress: address });
+    const modeEl = this.containerEl.querySelector('input[name="contract-mode"]:checked');
+    const isSimulated = !modeEl || modeEl.value !== 'real';
+
+    const r = await this.controller.createDraft({ customerName: name, customerPhone: phone, customerAddress: address, isSimulated });
 
     btn.disabled = false;
     btn.textContent = '계약서 초안 작성';

@@ -76,7 +76,8 @@ class ContractController {
           tenantId: 'HQ',
           customerName: customerOpts.customerName || '',
           customerPhone: customerOpts.customerPhone || '',
-          customerAddress: customerOpts.customerAddress || ''
+          customerAddress: customerOpts.customerAddress || '',
+          isSimulated: customerOpts.isSimulated !== false
         });
         if (res && res.ok) {
           this.contract = res.contract;
@@ -96,7 +97,7 @@ class ContractController {
       customerName: customerOpts.customerName || '',
       customerPhone: customerOpts.customerPhone || '',
       customerAddress: customerOpts.customerAddress || '',
-      isSimulated: !this.estimate.id
+      isSimulated: customerOpts.isSimulated !== false
     });
     this._emit('CONTRACT_CREATED', this.contract);
     return { ok: true, contract: this.contract, local: true };
