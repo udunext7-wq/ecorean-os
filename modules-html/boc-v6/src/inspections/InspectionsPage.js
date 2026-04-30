@@ -84,7 +84,7 @@ ${failCount ? `<div style="padding:8px 12px;background:#1A0F0F;border:1px solid 
   <tbody>
     ${this.inspections.map((ins, i) => `<tr>
       <td style="${TD};text-align:center">${i + 1}</td>
-      <td style="${TD}">${ins.section_id || '-'}</td>
+      <td style="${TD}">${esc(ins.section_id) || '-'}</td>
       <td style="${TD}">${esc(ins.inspector) || '-'}</td>
       <td style="${TD};text-align:center">
         <span style="color:${RESULT_COLOR[ins.result] || '#666'};font-size:10px;font-weight:700">${ins.result}</span>

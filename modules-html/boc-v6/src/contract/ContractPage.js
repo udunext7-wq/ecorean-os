@@ -18,7 +18,7 @@ class ContractPage {
     this.input = opts.input || {};
     this.controller = new ContractController({ estimate: this.estimate });
     this._render();
-    this.controller.subscribe((evt, payload) => {
+    this._unsubscribe = this.controller.subscribe((evt, payload) => {
       if (evt === 'CONTRACT_CREATED' || evt === 'CONTRACT_SIGNED' || evt === 'CONTRACT_CANCELED') {
         this._renderContractResult(payload);
         if (evt === 'CONTRACT_CREATED' && this.opts?.onContractCreated) {
@@ -215,6 +215,11 @@ class ContractPage {
   }
 
   destroy() {}
+
+  unmount() {
+    if (this._unsubscribe) this._unsubscribe();
+    this.containerEl.innerHTML = '';
+  }
 }
 
 module.exports = { ContractPage };

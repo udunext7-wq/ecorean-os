@@ -2,6 +2,8 @@
 // Week 8: Critical C2 완료 화면
 // 원칙 15: try/catch
 
+const { escapeHtml: esc } = require('../contract/utils/escape.cjs');
+
 function fmt(n) { return (Number(n) || 0).toLocaleString('ko-KR'); }
 
 function calcVariance(estimated, actual) {
@@ -89,7 +91,7 @@ class SettlementPage {
       const BTNST = 'font-size:9px;padding:2px 7px;background:#141414;border:1px solid #2A2A2A;color:#C9A84C;cursor:pointer;';
       return `<tr>
         <td style="${TD};text-align:center">${i + 1}</td>
-        <td style="${TD}">${c.customer_name || '(암호화됨)'}</td>
+        <td style="${TD}">${esc(c.customer_name) || '(암호화됨)'}</td>
         <td style="${TD};text-align:right">${fmt(v.estimated)} 원</td>
         <td style="${TD};text-align:right">
           ${hasActual

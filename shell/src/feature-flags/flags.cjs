@@ -63,7 +63,8 @@ const FLAGS = {
   USE_ML_COUNTER:         true,
   USE_SLA_MONITOR:        true,
   CRITICAL_C2_RESOLVED:   true,
-  PHASE_4I_COMPLETE:      false,
+  PHASE_4I_COMPLETE:      true,    // Week 9: 마무리 + v6.0 태그
+  USE_README:             true,
 
   // boc-v6 셸 (Week 1)
   USE_BOC_V6_SHELL:       true,

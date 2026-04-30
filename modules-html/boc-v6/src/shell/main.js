@@ -5,8 +5,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const app = new App({ rootEl: document.getElementById('app') });
   window.BOC = window.BOC || {};
   window.BOC.app = app;
-  console.log('%c ECOREAN BOC v6.0 ', 'background: #c9a84c; color: #0a0e1a; font-weight: bold; padding: 4px 8px;');
-  console.log('Phase 4 Week 5 — 계약 화면 + PDF 견적서 + CAD 라우트 활성화');
 });
 
 // 백그라운드 프리페치 (ESM 모드에서 동작)

@@ -101,4 +101,10 @@ function assert(cond, msg) {
   assert(isEnabled('USE_SLA_MONITOR')      === true, 'SLA 모니터 활성');
 })();
 
-console.log('[PASS] feature-flags (10/10)');
+// Test 11: Phase 4I + Week 9 완료
+(function() {
+  assert(isEnabled('PHASE_4I_COMPLETE') === true, 'PHASE_4I Week9 완료');
+  assert(isEnabled('USE_README')        === true, 'README 활성');
+})();
+
+console.log('[PASS] feature-flags (11/11)');
