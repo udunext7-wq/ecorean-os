@@ -1,5 +1,6 @@
 // ECOREAN BOC v6.0 — Contract Controller (UI 레이어)
 // IPC 우선 (Electron), 로컬 fallback (시뮬, DB 미저장)
+// TODO P6: 고객 개인정보 AES-256-GCM 암호화 → Phase 5에서 구현 예정
 
 function _localCreateContract(opts) {
   const total = opts.totalAmount;
@@ -23,7 +24,8 @@ function _localCreateContract(opts) {
 
 class ContractController {
   constructor(opts) {
-    this.estimate = opts.estimate;
+    // P5: 계약 생성 시점 견적 스냅샷 (딥카피) — 이후 견적 변경이 계약에 영향 주지 않도록
+    this.estimate = JSON.parse(JSON.stringify(opts.estimate));
     this.contract = null;
     this.listeners = new Set();
   }

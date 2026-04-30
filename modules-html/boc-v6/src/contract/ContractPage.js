@@ -6,6 +6,11 @@ function fmt(n) {
   return (n || 0).toLocaleString('ko-KR') + '원';
 }
 
+function _maskPhone(phone) {
+  if (!phone) return '-';
+  return phone.replace(/(\d{3})-?(\d{3,4})-?(\d{4})/, '$1-****-$3');
+}
+
 class ContractPage {
   constructor(opts) {
     this.containerEl = opts.containerEl;
@@ -64,6 +69,15 @@ class ContractPage {
               <label>공사 주소</label>
               <input type="text" id="contract-address" placeholder="서울시 강남구 ...">
             </div>
+            <div class="form-group privacy-consent">
+              <label style="flex-direction:row; align-items:flex-start; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="contract-consent" style="width:auto; margin-top:3px;">
+                <span style="font-size:0.82rem; color:var(--text-dim); line-height:1.5;">
+                  [필수] 인테리어 공사 견적·계약을 위한 개인정보(성명·연락처·주소) 수집·이용에 동의합니다.
+                  수집된 정보는 계약 목적으로만 사용되며, 계약 종료 후 5년간 보관 후 파기됩니다.
+                </span>
+              </label>
+            </div>
             <div class="form-error" id="contract-error" style="display:none;"></div>
             <div class="form-actions">
               <button class="primary" id="btn-create-draft">계약서 초안 작성</button>
@@ -88,8 +102,15 @@ class ContractPage {
     const name    = this.containerEl.querySelector('#contract-name').value.trim();
     const phone   = this.containerEl.querySelector('#contract-phone').value.trim();
     const address = this.containerEl.querySelector('#contract-address').value.trim();
+    const consent = this.containerEl.querySelector('#contract-consent').checked;
     const errEl   = this.containerEl.querySelector('#contract-error');
     const btn     = this.containerEl.querySelector('#btn-create-draft');
+
+    if (!consent) {
+      errEl.textContent = '개인정보 수집·이용 동의가 필요합니다.';
+      errEl.style.display = 'block';
+      return;
+    }
 
     btn.disabled = true;
     btn.textContent = '작성 중...';
@@ -126,7 +147,7 @@ class ContractPage {
         <div class="result-grid">
           <div class="result-item"><span>계약 ID</span><span style="font-size:0.75rem;">${contract.id}</span></div>
           <div class="result-item"><span>고객명</span><span>${contract.customerName}</span></div>
-          <div class="result-item"><span>연락처</span><span>${contract.customerPhone}</span></div>
+          <div class="result-item"><span>연락처</span><span>${_maskPhone(contract.customerPhone)}</span></div>
           <div class="result-item"><span>공사 주소</span><span>${contract.customerAddress || '-'}</span></div>
           <div class="result-item"><span>도급합계</span><span>${fmt(contract.totalAmount)}</span></div>
           <div class="result-item"><span>VAT</span><span>${fmt(contract.vatAmount)}</span></div>

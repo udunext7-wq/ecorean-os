@@ -4,10 +4,15 @@ function formatKRW(n) {
   return (n || 0).toLocaleString('ko-KR') + '원';
 }
 
+function maskPhone(phone) {
+  if (!phone) return '-';
+  return phone.replace(/(\d{3})-?(\d{3,4})-?(\d{4})/, '$1-****-$3');
+}
+
 function buildPrintHTML(estimate, contract, input) {
   const today = new Date().toLocaleDateString('ko-KR');
   const customerName    = contract ? (contract.customerName || '(미작성)') : '(미작성)';
-  const customerPhone   = contract ? (contract.customerPhone || '-') : '-';
+  const customerPhone   = maskPhone(contract ? contract.customerPhone : '');
   const customerAddress = contract ? (contract.customerAddress || '-') : '-';
   const contractAmount  = estimate.contractAmount || estimate.contract || 0;
   const vatAmount       = estimate.vatAmount || Math.round(contractAmount * 0.1);
@@ -77,11 +82,7 @@ function buildPrintHTML(estimate, contract, input) {
       </thead>
       <tbody>
         <tr>
-          <td>공급가 (자재 + 인건비 합계)</td>
-          <td class="right">${formatKRW(estimate.supply)}</td>
-        </tr>
-        <tr>
-          <td>도급합계 (보정계수 적용 + 간접비)</td>
+          <td>도급합계 (자재 + 인건비 + 간접비)</td>
           <td class="right">${formatKRW(contractAmount)}</td>
         </tr>
         <tr>
@@ -96,8 +97,7 @@ function buildPrintHTML(estimate, contract, input) {
     </table>
     <div class="meta-row">
       ㎡당 ${formatKRW(estimate.sqmPrice)} &nbsp;|&nbsp;
-      평당 ${formatKRW(estimate.pyPrice)} &nbsp;|&nbsp;
-      마진 ${estimate.margin || 0}%
+      평당 ${formatKRW(estimate.pyPrice)}
     </div>
   </div>
 

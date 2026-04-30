@@ -674,6 +674,8 @@ function registerIPC() {
   ipcMain.handle('boc:meta:getPhase',   async () => 'PHASE_4');
 
   // ────────── BOC v6.0 contract IPC (Week 5) ───────────
+  // TODO P6: customer_name/phone/address 현재 평문 저장 — Phase 5에서 AES-256-GCM 적용 예정
+  // 마이그레이션 파일: db/migrations/v6.0/005_contracts_boc_up.sql
   let _bocContractDB = null;
   function getBocContractDB() {
     if (_bocContractDB) return _bocContractDB;
