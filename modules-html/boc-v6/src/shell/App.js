@@ -282,7 +282,18 @@ class App {
       main.innerHTML = `<div class="card"><p style="color:var(--negative)">검수 로드 실패: ${e.message}</p></div>`;
     }
   }
-  _renderTopology(path)    { this._renderPlaceholder(path, '시스템 토폴로지', 'Phase 4 Week 7'); }
+  _renderTopology(path) {
+    this._setActiveNav(path);
+    const main = document.getElementById('main-content');
+    main.innerHTML = '';
+    try {
+      const { TopologyPage } = require('../topology/TopologyPage.js');
+      new TopologyPage({ containerEl: main });
+    } catch(e) {
+      main.innerHTML = `<div class="card"><p style="color:var(--negative)">토폴로지 로드 실패: ${e.message}</p></div>`;
+    }
+  }
+
   _renderAIExecutive(path) { this._renderPlaceholder(path, 'AI 임원 대시보드', 'Phase 4 Week 7'); }
 
   _render404(path) {
