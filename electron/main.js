@@ -702,6 +702,61 @@ function registerIPC() {
       CREATE INDEX IF NOT EXISTS idx_contracts_tenant    ON contracts(tenant_id);
       CREATE INDEX IF NOT EXISTS idx_contracts_status    ON contracts(status);
       CREATE INDEX IF NOT EXISTS idx_contracts_simulated ON contracts(is_simulated);
+
+      CREATE TABLE IF NOT EXISTS purchase_orders (
+        id                TEXT    PRIMARY KEY,
+        contract_id       TEXT    NOT NULL,
+        tenant_id         TEXT    NOT NULL DEFAULT 'HQ',
+        vendor_name       TEXT,
+        category          TEXT,
+        ks_code           TEXT,
+        unit              TEXT,
+        qty               REAL    NOT NULL,
+        unit_price        INTEGER NOT NULL,
+        total_price       INTEGER NOT NULL,
+        ordered_at        INTEGER,
+        expected_delivery INTEGER,
+        status            TEXT    NOT NULL DEFAULT 'PENDING',
+        is_simulated      INTEGER NOT NULL DEFAULT 0,
+        created_at        INTEGER NOT NULL,
+        CHECK (status IN ('PENDING','ORDERED','DELIVERED','RETURNED','CANCELED'))
+      );
+      CREATE TABLE IF NOT EXISTS schedules (
+        id             TEXT    PRIMARY KEY,
+        contract_id    TEXT    NOT NULL,
+        tenant_id      TEXT    NOT NULL DEFAULT 'HQ',
+        section_id     TEXT    NOT NULL,
+        start_date     INTEGER NOT NULL,
+        duration_days  INTEGER NOT NULL DEFAULT 1,
+        end_date       INTEGER NOT NULL,
+        dependencies   TEXT,
+        status         TEXT    NOT NULL DEFAULT 'PLANNED',
+        is_simulated   INTEGER NOT NULL DEFAULT 0,
+        created_at     INTEGER NOT NULL,
+        CHECK (status IN ('PLANNED','IN_PROGRESS','COMPLETED','DELAYED','BLOCKED'))
+      );
+      CREATE TABLE IF NOT EXISTS inspections (
+        id              TEXT    PRIMARY KEY,
+        schedule_id     TEXT    NOT NULL,
+        section_id      TEXT    NOT NULL,
+        tenant_id       TEXT    NOT NULL DEFAULT 'HQ',
+        inspector       TEXT,
+        result          TEXT    NOT NULL DEFAULT 'PENDING',
+        notes           TEXT,
+        defects         TEXT,
+        needs_research  INTEGER NOT NULL DEFAULT 0,
+        inspected_at    INTEGER,
+        is_simulated    INTEGER NOT NULL DEFAULT 0,
+        created_at      INTEGER NOT NULL,
+        CHECK (result IN ('PENDING','PASS','FAIL','CONDITIONAL_PASS'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_po_contract    ON purchase_orders(contract_id);
+      CREATE INDEX IF NOT EXISTS idx_po_status      ON purchase_orders(status);
+      CREATE INDEX IF NOT EXISTS idx_po_simulated   ON purchase_orders(is_simulated);
+      CREATE INDEX IF NOT EXISTS idx_sch_contract   ON schedules(contract_id);
+      CREATE INDEX IF NOT EXISTS idx_sch_status     ON schedules(status);
+      CREATE INDEX IF NOT EXISTS idx_ins_schedule   ON inspections(schedule_id);
+      CREATE INDEX IF NOT EXISTS idx_ins_result     ON inspections(result);
     `);
     return _bocContractDB;
   }
@@ -755,6 +810,193 @@ function registerIPC() {
       return { ok: false, error: e.message };
     }
   });
+
+  // ────────── BOC v6.0 Closed Loop IPC (Week 6) ───────────
+  // 원칙 15: 모든 핸들러 try/catch + bocError 표준
+  const _ce = (code, msg, ctx) => ({
+    ok: false, error: { code, message: msg, context: ctx || {}, ts: new Date().toISOString() }
+  });
+
+  // [A] PurchaseOrder 엔진
+  const POMod  = require('../shell/src/closed-loop/purchase/PurchaseOrder.cjs');
+  // [D] Schedule 엔진
+  const SchMod = require('../shell/src/closed-loop/schedule/Schedule.cjs');
+  // [G] Inspection 엔진
+  const InsMod = require('../shell/src/closed-loop/inspection/Inspection.cjs');
+
+  // ── Purchase Orders ──
+  ipcMain.handle('boc:order:create', async (_, opts) => {
+    try {
+      if (!opts.contractId) return _ce('ORDER_NO_CONTRACT', 'contractId 필수');
+      if (!(opts.qty > 0))  return _ce('ORDER_NO_QTY',      'qty 필수');
+      if (!(opts.unitPrice > 0)) return _ce('ORDER_NO_PRICE', 'unitPrice 필수');
+      const po  = POMod.createPO(opts);
+      const db  = getBocContractDB();
+      const row = POMod.toDBRow(po);
+      db.prepare(`
+        INSERT INTO purchase_orders
+          (id,contract_id,tenant_id,vendor_name,category,ks_code,unit,
+           qty,unit_price,total_price,ordered_at,expected_delivery,
+           status,is_simulated,created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `).run(
+        row.id, row.contract_id, row.tenant_id || 'HQ',
+        row.vendor_name, row.category, row.ks_code, row.unit,
+        row.qty, row.unit_price, row.total_price,
+        row.ordered_at, row.expected_delivery,
+        row.status, row.is_simulated ? 1 : 0, row.created_at
+      );
+      return { ok: true, data: { po } };
+    } catch(e) {
+      console.error('[boc:order:create]', e);
+      return _ce('ORDER_CREATE_FAIL', e.message);
+    }
+  });
+
+  ipcMain.handle('boc:order:list', async (_, { contractId } = {}) => {
+    try {
+      const db = getBocContractDB();
+      const rows = contractId
+        ? db.prepare('SELECT * FROM purchase_orders WHERE contract_id=? ORDER BY created_at DESC').all(contractId)
+        : db.prepare('SELECT * FROM purchase_orders ORDER BY created_at DESC').all();
+      return { ok: true, data: { list: rows } };
+    } catch(e) { return _ce('ORDER_LIST_FAIL', e.message); }
+  });
+
+  ipcMain.handle('boc:order:transition', async (_, { id, newStatus }) => {
+    try {
+      const ALLOWED = new Set(['PENDING','ORDERED','DELIVERED','RETURNED','CANCELED']);
+      if (!ALLOWED.has(newStatus)) return _ce('ORDER_INVALID_STATUS', `허용 안 됨: ${newStatus}`);
+      const db = getBocContractDB();
+      db.prepare('UPDATE purchase_orders SET status=? WHERE id=?').run(newStatus, id);
+      return { ok: true, data: { id, newStatus } };
+    } catch(e) { return _ce('ORDER_TRANSITION_FAIL', e.message); }
+  });
+
+  // ── Schedules ──
+  ipcMain.handle('boc:schedule:generate', async (_, { contractId, sections, startDate, isSimulated }) => {
+    try {
+      if (!contractId)      return _ce('SCH_NO_CONTRACT', 'contractId 필수');
+      if (!sections?.length) return _ce('SCH_NO_SECTIONS', 'sections 필수');
+      const schedules = SchMod.generateSchedulesForContract(
+        contractId, sections, startDate || Date.now(), { isSimulated: !!isSimulated }
+      );
+      const db = getBocContractDB();
+      const insert = db.prepare(`
+        INSERT OR IGNORE INTO schedules
+          (id,contract_id,tenant_id,section_id,start_date,duration_days,end_date,
+           dependencies,status,is_simulated,created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)
+      `);
+      const tx = db.transaction((items) => {
+        for (const s of items) {
+          const row = SchMod.toDBRow(s);
+          insert.run(
+            row.id, row.contract_id, row.tenant_id || 'HQ', row.section_id,
+            row.start_date, row.duration_days, row.end_date,
+            JSON.stringify(row.dependencies || []),
+            row.status, row.is_simulated ? 1 : 0, row.created_at
+          );
+        }
+      });
+      tx(schedules);
+      return { ok: true, data: { schedules, count: schedules.length } };
+    } catch(e) {
+      console.error('[boc:schedule:generate]', e);
+      return _ce('SCH_GENERATE_FAIL', e.message);
+    }
+  });
+
+  ipcMain.handle('boc:schedule:list', async (_, { contractId } = {}) => {
+    try {
+      const db = getBocContractDB();
+      const rows = contractId
+        ? db.prepare('SELECT * FROM schedules WHERE contract_id=? ORDER BY start_date ASC').all(contractId)
+        : db.prepare('SELECT * FROM schedules ORDER BY start_date ASC').all();
+      return { ok: true, data: { list: rows } };
+    } catch(e) { return _ce('SCH_LIST_FAIL', e.message); }
+  });
+
+  ipcMain.handle('boc:schedule:transition', async (_, { id, newStatus }) => {
+    try {
+      const ALLOWED = new Set(['PLANNED','IN_PROGRESS','COMPLETED','DELAYED','BLOCKED']);
+      if (!ALLOWED.has(newStatus)) return _ce('SCH_INVALID_STATUS', `허용 안 됨: ${newStatus}`);
+      const db = getBocContractDB();
+      db.prepare('UPDATE schedules SET status=? WHERE id=?').run(newStatus, id);
+      return { ok: true, data: { id, newStatus } };
+    } catch(e) { return _ce('SCH_TRANSITION_FAIL', e.message); }
+  });
+
+  // ── Inspections ──
+  ipcMain.handle('boc:inspection:create', async (_, opts) => {
+    try {
+      if (!opts.scheduleId) return _ce('INS_NO_SCHEDULE', 'scheduleId 필수');
+      if (!opts.sectionId)  return _ce('INS_NO_SECTION',  'sectionId 필수');
+      const ins = InsMod.createInspection(opts);
+      const db  = getBocContractDB();
+      const row = InsMod.toDBRow(ins);
+      db.prepare(`
+        INSERT INTO inspections
+          (id,schedule_id,section_id,tenant_id,inspector,result,
+           notes,defects,needs_research,inspected_at,is_simulated,created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+      `).run(
+        row.id, row.schedule_id, row.section_id, row.tenant_id || 'HQ',
+        row.inspector, row.result,
+        row.notes, JSON.stringify(row.defects || []),
+        row.needs_research ? 1 : 0, row.inspected_at,
+        row.is_simulated ? 1 : 0, row.created_at
+      );
+      return { ok: true, data: { inspection: ins } };
+    } catch(e) { return _ce('INS_CREATE_FAIL', e.message); }
+  });
+
+  ipcMain.handle('boc:inspection:record', async (_, { id, result, inspector, notes, defects, needsResearch }) => {
+    try {
+      const db  = getBocContractDB();
+      const row = db.prepare('SELECT * FROM inspections WHERE id=?').get(id);
+      if (!row) return _ce('INS_NOT_FOUND', `검수 없음: ${id}`);
+
+      const ins     = { ...row, defects: JSON.parse(row.defects || '[]') };
+      const updated = InsMod.recordResult(ins, { result, inspector, notes, defects, needsResearch });
+
+      db.prepare(`
+        UPDATE inspections
+        SET result=?, inspector=?, notes=?, defects=?, needs_research=?, inspected_at=?
+        WHERE id=?
+      `).run(
+        updated.result, updated.inspector, updated.notes,
+        JSON.stringify(updated.defects || []),
+        updated.needsResearch ? 1 : 0,
+        updated.inspectedAt || Date.now(),
+        id
+      );
+
+      // [I] B4: FAIL 이면 canProceedAfter 체크 결과 반환
+      const proceed = InsMod.canProceedAfter(updated);
+      return { ok: true, data: { inspection: updated, canProceed: proceed.ok, reason: proceed.reason } };
+    } catch(e) { return _ce('INS_RECORD_FAIL', e.message); }
+  });
+
+  ipcMain.handle('boc:inspection:list', async (_, { scheduleId, contractId } = {}) => {
+    try {
+      const db = getBocContractDB();
+      let rows;
+      if (scheduleId) {
+        rows = db.prepare('SELECT * FROM inspections WHERE schedule_id=? ORDER BY created_at DESC').all(scheduleId);
+      } else if (contractId) {
+        rows = db.prepare(`
+          SELECT i.* FROM inspections i
+          JOIN schedules s ON s.id = i.schedule_id
+          WHERE s.contract_id=? ORDER BY i.created_at DESC
+        `).all(contractId);
+      } else {
+        rows = db.prepare('SELECT * FROM inspections ORDER BY created_at DESC').all();
+      }
+      return { ok: true, data: { list: rows } };
+    } catch(e) { return _ce('INS_LIST_FAIL', e.message); }
+  });
+  // ────────── Week 6 Closed Loop IPC 끝 ──────────
 
   // ────────── 핸들러 목록 출력 (개발용) ────────────────
   console.log('[IPC] Registered handlers:')

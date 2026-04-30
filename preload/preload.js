@@ -27,7 +27,25 @@ contextBridge.exposeInMainWorld('boc', {
   },
 
   contract: {
-    create: (opts)          => ipcRenderer.invoke('boc:contract:create', opts),
-    list:   (opts)          => ipcRenderer.invoke('boc:contract:list',   opts || {})
+    create: (opts) => ipcRenderer.invoke('boc:contract:create', opts),
+    list:   (opts) => ipcRenderer.invoke('boc:contract:list',   opts || {})
+  },
+
+  order: {
+    create:     (opts)          => ipcRenderer.invoke('boc:order:create',      opts),
+    list:       (opts)          => ipcRenderer.invoke('boc:order:list',        opts || {}),
+    transition: (id, newStatus) => ipcRenderer.invoke('boc:order:transition',  { id, newStatus })
+  },
+
+  schedule: {
+    generate:   (opts)          => ipcRenderer.invoke('boc:schedule:generate',   opts),
+    list:       (opts)          => ipcRenderer.invoke('boc:schedule:list',        opts || {}),
+    transition: (id, newStatus) => ipcRenderer.invoke('boc:schedule:transition', { id, newStatus })
+  },
+
+  inspection: {
+    create: (opts)       => ipcRenderer.invoke('boc:inspection:create', opts),
+    record: (id, opts)   => ipcRenderer.invoke('boc:inspection:record', { id, ...opts }),
+    list:   (opts)       => ipcRenderer.invoke('boc:inspection:list',   opts || {})
   }
 });
