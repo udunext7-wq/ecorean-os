@@ -1,4 +1,4 @@
-// ECOREAN BOC v6.0 — esbuild 번들링 설정 (Week 7: ESM + splitting + 11 entry)
+// ECOREAN BOC v6.0 — esbuild 번들링 설정 (Week 8: ESM + splitting + 12 entry)
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -15,7 +15,8 @@ const config = {
     'schedules':    path.join(__dirname, 'src/schedules/SchedulesPage.js'),
     'inspections':  path.join(__dirname, 'src/inspections/InspectionsPage.js'),
     'topology':     path.join(__dirname, 'src/topology/TopologyPage.js'),
-    'ai-executive': path.join(__dirname, 'src/ai-executive/AIExecutivePage.js')
+    'ai-executive': path.join(__dirname, 'src/ai-executive/AIExecutivePage.js'),
+    'settlement':   path.join(__dirname, 'src/settlement/SettlementPage.js')
   },
   bundle:    true,
   platform:  'browser',

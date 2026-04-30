@@ -58,7 +58,11 @@ const FLAGS = {
   USE_TOPOLOGY_UI:        true,
   USE_AI_EXECUTIVE:       true,
   USE_MULTI_AI:           true,    // 멀티 프로바이더 활성
-  PHASE_4H_COMPLETE:      false,
+  PHASE_4H_COMPLETE:      true,    // Week 8: 실거래 검증
+  USE_SETTLEMENT_UI:      true,
+  USE_ML_COUNTER:         true,
+  USE_SLA_MONITOR:        true,
+  CRITICAL_C2_RESOLVED:   true,
   PHASE_4I_COMPLETE:      false,
 
   // boc-v6 셸 (Week 1)

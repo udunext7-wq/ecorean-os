@@ -23,6 +23,7 @@
 | **v6.0** | **2026-04-30** | **§117.2 Phase 4 Week 5 완료 — 계약 화면 + PDF 견적서 + CAD 라우트 활성화** |
 | **v6.1** | **2026-04-30** | **§117.3 Phase 4 Week 6 완료 — 발주+공정+검수 Closed Loop UI + preload 연결 수정 (B4 절대룰, 원칙15)** |
 | **v6.2** | **2026-04-30** | **§117.4 Phase 4 Week 7 완료 — 토폴로지 + AI 임원 (멀티 프로바이더)** |
+| **v6.3** | **2026-04-30** | **§117.5 Phase 4 Week 8 완료 — 실거래 검증 + 정산 + ML + SLA + Critical C2** |
 
 ### v5.6 주요 변경 사항 (2026-04-28)
 
@@ -3755,7 +3756,14 @@ countLearningData({ tenantId: 'HQ', includeSimulated: true });
   - IPC: boc:ai:query + boc:ai:getConfig
   - Feature flags: PHASE_4G_COMPLETE/USE_TOPOLOGY_UI/USE_AI_EXECUTIVE/USE_MULTI_AI
   - esbuild: 11 entry points (topology/ai-executive 추가)
-- Week 8: 실거래 1건 검증 (Critical C2 최종 해결)
+- Week 8: 실거래 1건 검증 ✅
+  - ContractPage 실거래/시뮬 선택 UI
+  - SettlementPage (견적 vs 실투입 비교)
+  - ML 학습 데이터 카운트 (boc:ml:countLearning IPC)
+  - SLA 측정 (boc:sla:measure IPC, graph.json 기준)
+  - Critical C2 해결 선언
+  - Feature flags: PHASE_4H_COMPLETE/CRITICAL_C2_RESOLVED/USE_SETTLEMENT_UI
+  - esbuild: 12 entry (settlement 추가)
 - Week 9: 마무리 + v6.0 태그
 
 **Phase 4 종료 조건:**

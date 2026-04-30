@@ -92,4 +92,13 @@ function assert(cond, msg) {
   assert(isEnabled('USE_MULTI_AI')      === true, '멀티 AI 활성');
 })();
 
-console.log('[PASS] feature-flags (9/9)');
+// Test 10: Phase 4H + Critical C2
+(function() {
+  assert(isEnabled('PHASE_4H_COMPLETE')    === true, 'PHASE_4H_COMPLETE Week8 완료');
+  assert(isEnabled('CRITICAL_C2_RESOLVED') === true, 'Critical C2 해결');
+  assert(isEnabled('USE_SETTLEMENT_UI')    === true, '정산 UI 활성');
+  assert(isEnabled('USE_ML_COUNTER')       === true, 'ML 카운터 활성');
+  assert(isEnabled('USE_SLA_MONITOR')      === true, 'SLA 모니터 활성');
+})();
+
+console.log('[PASS] feature-flags (10/10)');
