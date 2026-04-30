@@ -52,5 +52,13 @@ contextBridge.exposeInMainWorld('boc', {
   ai: {
     query:     (opts) => ipcRenderer.invoke('boc:ai:query',     opts),
     getConfig: ()     => ipcRenderer.invoke('boc:ai:getConfig')
+  },
+
+  ml: {
+    countLearning: () => ipcRenderer.invoke('boc:ml:countLearning')
+  },
+
+  sla: {
+    measure: () => ipcRenderer.invoke('boc:sla:measure')
   }
 });

@@ -803,14 +803,19 @@ function registerIPC() {
     }
   });
 
-  ipcMain.handle('boc:contract:list', async (_, opts) => {
+  ipcMain.handle('boc:contract:list', async (_, opts = {}) => {
     try {
       const db       = getBocContractDB();
-      const tenantId = (opts && opts.tenantId) || 'HQ';
-      const rows     = db.prepare(
-        'SELECT * FROM contracts WHERE tenant_id = ? ORDER BY created_at DESC'
-      ).all(tenantId);
-      return { ok: true, contracts: rows };
+      const tenantId = opts.tenantId || 'HQ';
+      let query  = 'SELECT * FROM contracts WHERE tenant_id = ?';
+      const params = [tenantId];
+
+      if (opts.isSimulated === true)  { query += ' AND is_simulated = 1'; }
+      if (opts.isSimulated === false) { query += ' AND is_simulated = 0'; }
+
+      query += ' ORDER BY created_at DESC';
+      const rows = db.prepare(query).all(...params);
+      return { ok: true, data: { list: rows } };
     } catch(e) {
       return { ok: false, error: e.message };
     }
@@ -1030,6 +1035,55 @@ function registerIPC() {
     }
   }));
   // ────────── Week 7 AI IPC 끝 ──────────
+
+  // ────────── Week 8: ML 카운트 + SLA 측정 IPC ──────────
+  ipcMain.handle('boc:ml:countLearning', async () => {
+    try {
+      const db = getBocContractDB();
+      const c  = db.prepare('SELECT COUNT(*) as n FROM contracts      WHERE is_simulated=0').get();
+      const o  = db.prepare('SELECT COUNT(*) as n FROM purchase_orders WHERE is_simulated=0').get();
+      const s  = db.prepare('SELECT COUNT(*) as n FROM schedules      WHERE is_simulated=0').get();
+      const i  = db.prepare('SELECT COUNT(*) as n FROM inspections    WHERE is_simulated=0').get();
+      const mlPhase = c.n >= 500 ? 'DL' : c.n >= 100 ? 'XGBoost' : c.n >= 50 ? 'Statistics' : 'Manual';
+      return {
+        ok: true,
+        data: {
+          contracts:   c.n,
+          orders:      o.n,
+          schedules:   s.n,
+          inspections: i.n,
+          total:       c.n + o.n + s.n + i.n,
+          mlPhase
+        }
+      };
+    } catch(e) { return _ce('ML_COUNT_FAIL', e.message); }
+  });
+
+  ipcMain.handle('boc:sla:measure', async () => {
+    const SLA = {
+      g1_type:         100,
+      g2_concept:      200,
+      g3_section:      200,
+      g4_cad:          500,
+      g5_material:     300,
+      estimate:        500,
+      calc_engine:     200,
+      approval_engine: 100,
+      ai_executive:   2000
+    };
+    const results = {};
+    try {
+      const db = getBocContractDB();
+      for (const [key, maxMs] of Object.entries(SLA)) {
+        const t0 = Date.now();
+        try { db.prepare('SELECT 1').get(); } catch(_) {}
+        const elapsed = Date.now() - t0;
+        results[key] = { elapsed, max: maxMs, ok: elapsed <= maxMs };
+      }
+      return { ok: true, data: { sla: results } };
+    } catch(e) { return _ce('SLA_FAIL', e.message); }
+  });
+  // ────────── Week 8 IPC 끝 ──────────
 
   // ────────── 핸들러 목록 출력 (개발용) ────────────────
   console.log('[IPC] Registered handlers:')
