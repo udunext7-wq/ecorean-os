@@ -184,7 +184,7 @@ let   currentTabId = 'estimate'
 
 const SHELL_H = 128
 const TABS    = ['estimate','projects','presets','reports',
-                 'approval','dbmgr','ontology','aiengine','dashboard']
+                 'approval','dbmgr','ontology','aiengine','dashboard','boc-v6']
 
 function getViewBounds() {
   const [w, h] = mainWindow.getContentSize()
@@ -213,7 +213,12 @@ function createModuleView(tabId) {
       sandbox:          false,
     },
   })
-  const htmlPath = path.join(MODULE_DIR, tabId + '.html')
+  // directory-based modules (e.g. boc-v6/index.html) 지원
+  const fs = require('fs')
+  let htmlPath = path.join(MODULE_DIR, tabId + '.html')
+  if (!fs.existsSync(htmlPath)) {
+    htmlPath = path.join(MODULE_DIR, tabId, 'index.html')
+  }
   view.webContents.loadFile(htmlPath).catch(e => {
     console.warn('[BrowserView] load failed:', tabId, e.message)
   })
