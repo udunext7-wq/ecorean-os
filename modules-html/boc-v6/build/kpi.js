@@ -1,12 +1,12 @@
 import {
   require_KPIDashboardPage
-} from "./chunks/chunk-5EL6EHWC.js";
-import "./chunks/chunk-HLNEQ7F5.js";
+} from "./chunks/chunk-SPK4FEFH.js";
+import "./chunks/chunk-HEM7EM3V.js";
 import {
   __toESM
 } from "./chunks/chunk-GLFX53DW.js";
 
-// modules-html/boc-v6/src/kpi-dashboard/entry.js
+// src/kpi-dashboard/entry.js
 var import_KPIDashboardPage = __toESM(require_KPIDashboardPage());
 var export_KPIDashboardPage = import_KPIDashboardPage.KPIDashboardPage;
 export {

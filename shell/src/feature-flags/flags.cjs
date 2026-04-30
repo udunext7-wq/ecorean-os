@@ -48,7 +48,9 @@ const FLAGS = {
   USE_KPI_DASHBOARD:      true,
   USE_IPC_BRIDGE:         true,
   USE_NODE_SPLITTING:     true,
-  PHASE_4E_COMPLETE:      false,
+  PHASE_4E_COMPLETE:      true,   // Week 5: 계약 화면 + PDF
+  USE_CONTRACT_UI:        true,
+  USE_ESTIMATE_PDF:       true,
   PHASE_4F_COMPLETE:      false,
   PHASE_4G_COMPLETE:      false,
   PHASE_4H_COMPLETE:      false,

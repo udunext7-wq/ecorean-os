@@ -24,5 +24,10 @@ contextBridge.exposeInMainWorld('boc', {
   meta: {
     getVersion: () => ipcRenderer.invoke('boc:meta:getVersion'),
     getPhase:   () => ipcRenderer.invoke('boc:meta:getPhase')
+  },
+
+  contract: {
+    create: (opts)          => ipcRenderer.invoke('boc:contract:create', opts),
+    list:   (opts)          => ipcRenderer.invoke('boc:contract:list',   opts || {})
   }
 });

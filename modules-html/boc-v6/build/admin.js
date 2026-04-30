@@ -1,11 +1,11 @@
 import {
   require_CostsAdminPage
-} from "./chunks/chunk-6HTPEMRC.js";
+} from "./chunks/chunk-SSN2WWPB.js";
 import {
   __toESM
 } from "./chunks/chunk-GLFX53DW.js";
 
-// modules-html/boc-v6/src/admin/entry.js
+// src/admin/entry.js
 var import_CostsAdminPage = __toESM(require_CostsAdminPage());
 var export_CostsAdminPage = import_CostsAdminPage.CostsAdminPage;
 export {

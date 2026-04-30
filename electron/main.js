@@ -673,6 +673,87 @@ function registerIPC() {
   ipcMain.handle('boc:meta:getVersion', async () => '6.0.0-alpha.2');
   ipcMain.handle('boc:meta:getPhase',   async () => 'PHASE_4');
 
+  // ────────── BOC v6.0 contract IPC (Week 5) ───────────
+  let _bocContractDB = null;
+  function getBocContractDB() {
+    if (_bocContractDB) return _bocContractDB;
+    const BetterSQLite = require('better-sqlite3');
+    const dbPath = require('path').join(app.getPath('userData'), 'ecorean-boc.db');
+    _bocContractDB = new BetterSQLite(dbPath);
+    _bocContractDB.exec(`
+      CREATE TABLE IF NOT EXISTS contracts (
+        id TEXT PRIMARY KEY,
+        estimate_id TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'HQ',
+        customer_name TEXT,
+        customer_phone TEXT,
+        customer_address TEXT,
+        total_amount INTEGER NOT NULL,
+        vat_amount INTEGER NOT NULL,
+        final_amount INTEGER NOT NULL,
+        signed_at INTEGER,
+        status TEXT NOT NULL DEFAULT 'DRAFT',
+        is_simulated INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        CHECK (status IN ('DRAFT','SIGNED','CANCELED','COMPLETED'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_contracts_tenant    ON contracts(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_contracts_status    ON contracts(status);
+      CREATE INDEX IF NOT EXISTS idx_contracts_simulated ON contracts(is_simulated);
+    `);
+    return _bocContractDB;
+  }
+
+  ipcMain.handle('boc:contract:create', async (_, opts) => {
+    try {
+      const total = opts.totalAmount;
+      const vat   = Math.round(total * 0.10);
+      const contract = {
+        id:              'contract_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        estimateId:      opts.estimateId || '',
+        tenantId:        opts.tenantId || 'HQ',
+        customerName:    opts.customerName || '',
+        customerPhone:   opts.customerPhone || '',
+        customerAddress: opts.customerAddress || '',
+        totalAmount:     total,
+        vatAmount:       vat,
+        finalAmount:     total + vat,
+        signedAt:        null,
+        status:          'DRAFT',
+        isSimulated:     opts.isSimulated ? 1 : 0,
+        createdAt:       Date.now()
+      };
+      const db = getBocContractDB();
+      db.prepare(`
+        INSERT INTO contracts
+          (id, estimate_id, tenant_id, customer_name, customer_phone, customer_address,
+           total_amount, vat_amount, final_amount, signed_at, status, is_simulated, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        contract.id, contract.estimateId, contract.tenantId,
+        contract.customerName, contract.customerPhone, contract.customerAddress,
+        contract.totalAmount, contract.vatAmount, contract.finalAmount,
+        contract.signedAt, contract.status, contract.isSimulated, contract.createdAt
+      );
+      return { ok: true, contract };
+    } catch(e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('boc:contract:list', async (_, opts) => {
+    try {
+      const db       = getBocContractDB();
+      const tenantId = (opts && opts.tenantId) || 'HQ';
+      const rows     = db.prepare(
+        'SELECT * FROM contracts WHERE tenant_id = ? ORDER BY created_at DESC'
+      ).all(tenantId);
+      return { ok: true, contracts: rows };
+    } catch(e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
   // ────────── 핸들러 목록 출력 (개발용) ────────────────
   console.log('[IPC] Registered handlers:')
   ;[

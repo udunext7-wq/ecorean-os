@@ -69,4 +69,11 @@ function assert(cond, msg) {
   assert(isEnabled('USE_NODE_SPLITTING') === true, '노드 분리 활성');
 })();
 
-console.log('[PASS] feature-flags (6/6)');
+// Test 7: Phase 4E + 계약/PDF 플래그
+(function() {
+  assert(isEnabled('PHASE_4E_COMPLETE') === true, 'PHASE_4E_COMPLETE Week5 완료');
+  assert(isEnabled('USE_CONTRACT_UI')   === true, '계약 UI 활성');
+  assert(isEnabled('USE_ESTIMATE_PDF')  === true, 'PDF 견적서 활성');
+})();
+
+console.log('[PASS] feature-flags (7/7)');

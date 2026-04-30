@@ -1,4 +1,4 @@
-// ECOREAN BOC v6.0 — Wizard Page (5단 통합)
+// ECOREAN BOC v6.0 — Wizard Page (5단 통합 + 계약 연결)
 
 const { WizardController } = require('./WizardController.js');
 const { ProgressBar } = require('./components/ProgressBar.js');
@@ -12,12 +12,16 @@ class WizardPage {
     this.containerEl = opts.containerEl;
     this.controller = new WizardController();
     this.currentPage = null;
+    this._lastEstimate = null;
 
     this.render();
 
-    this.controller.subscribe((evt) => {
+    this.controller.subscribe((evt, payload) => {
       if (evt === 'GATE_LOCKED' || evt === 'GATE_UNLOCKED' || evt === 'RESET') {
         this._renderCurrentStage();
+      }
+      if (evt === 'ESTIMATE_CALCULATED') {
+        this._lastEstimate = payload;
       }
     });
   }
@@ -57,13 +61,32 @@ class WizardPage {
       case 'G4': this.currentPage = new G4Page({ containerEl: stageEl, controller: this.controller }); break;
       case 'G5':
       case 'COMPLETE':
-        stageEl.innerHTML = `
-          <div class="gate-page">
-            <h2>견적 완성 (자동화 95%)</h2>
-            <div class="gate-subtitle">G5 자재 선택은 옵션 / Phase 4 Week 4에서 활성화 예정</div>
-            <button class="primary" onclick="location.reload()">새 견적 만들기</button>
-          </div>
-        `;
+        try {
+          const { ContractPage } = require('../contract/ContractPage.js');
+          const est = this._lastEstimate || this.controller.estimate;
+          if (est) {
+            this.currentPage = new ContractPage({
+              containerEl: stageEl,
+              estimate: est,
+              input: this.controller.getState().input
+            });
+          } else {
+            stageEl.innerHTML = `
+              <div class="gate-page">
+                <h2>견적 완성 ✅</h2>
+                <div class="gate-subtitle">견적 계산 중... 잠시 기다려주세요</div>
+              </div>
+            `;
+          }
+        } catch(e) {
+          stageEl.innerHTML = `
+            <div class="gate-page">
+              <h2>견적 완성 ✅</h2>
+              <div class="gate-subtitle">계약 화면 로드 실패: ${e.message}</div>
+              <button class="primary" onclick="location.reload()">새 견적 만들기</button>
+            </div>
+          `;
+        }
         break;
     }
   }

@@ -2,12 +2,12 @@ import {
   require_CADCanvas,
   require_CADSpacesList,
   require_CADToolbar
-} from "./chunks/chunk-I2C2DGLE.js";
+} from "./chunks/chunk-UQHNSZZM.js";
 import {
   __toESM
 } from "./chunks/chunk-GLFX53DW.js";
 
-// modules-html/boc-v6/src/cad/entry.js
+// src/cad/entry.js
 var import_CADCanvas = __toESM(require_CADCanvas());
 var import_CADToolbar = __toESM(require_CADToolbar());
 var import_CADSpacesList = __toESM(require_CADSpacesList());

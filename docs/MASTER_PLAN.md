@@ -1,6 +1,6 @@
-# ECOREAN BOC — Master Plan v5.9
-최종 확정: 2026-04-29
-이전 버전: v5.8 (2026-04-29)
+# ECOREAN BOC — Master Plan v6.0
+최종 확정: 2026-04-30
+이전 버전: v5.9 (2026-04-29)
 
 ---
 
@@ -20,6 +20,7 @@
 | **v5.7** | **2026-04-29** | **§114~§116 9주 Phase 3 완주 + 부록 P~Q (Closed Loop 4모듈 + ML Phase 1)** |
 | **v5.8** | **2026-04-29** | **§117 Phase 4~7 장기 로드맵 + 부록 R AI 자율 시공 OS 명세 (추가만, §1~§116 변동 0)** |
 | **v5.9** | **2026-04-29** | **§117.2 Phase 4 Week 4-A 결정 12 원칙 명시 (변동 0)** |
+| **v6.0** | **2026-04-30** | **§117.2 Phase 4 Week 5 완료 — 계약 화면 + PDF 견적서 + CAD 라우트 활성화** |
 
 ### v5.6 주요 변경 사항 (2026-04-28)
 
@@ -3725,7 +3726,15 @@ countLearningData({ tenantId: 'HQ', includeSimulated: true });
 - Week 4-A: cost_items DB + Excel 왕복 + IPC 도입 + 노드 분리 + G1 컨텍스트 통합 + KPI 3 레이어 ✅
   - 12 안전 원칙 적용 (사전조사/IPC/Excel안전성/graph보존/마이그레이션안전/출처분리/시드출처/G1압축/프리페치/SoT정책/v5.9기록/ADR Phase5)
   - 원칙: graph.json 변동 0, 25 모듈 시그니처 변동 0, 헌법 100% 보존
-- Week 5: 계약 화면 + PDF 견적서 출력
+- Week 5: 계약 화면 + PDF 견적서 출력 ✅
+  - ContractController (IPC 우선 + 로컬 fallback) + EstimatePDF (window.print HTML 템플릿)
+  - ContractPage (DRAFT→SIGNED→CANCELED 상태 전이 + 고객 정보 폼)
+  - WizardPage COMPLETE 단계 → ContractPage 연결 (ESTIMATE_CALCULATED 이벤트 처리)
+  - CAD 라우트 활성화 (CADCanvas + CADToolbar + CADSpacesList 연결)
+  - IPC: boc:contract:create + boc:contract:list (ecorean-boc.db)
+  - preload/preload.js: window.boc.contract 추가
+  - Feature flags: PHASE_4E_COMPLETE, USE_CONTRACT_UI, USE_ESTIMATE_PDF = true
+  - esbuild: contract entry 추가 (6 entry points)
 - Week 6: 발주/공정/검수 화면 (Closed Loop UI 완성)
 - Week 7: 시스템 토폴로지 운영 화면 + AI 임원 대시보드
 - Week 8: 실거래 1건 검증 (Critical C2 최종 해결)
