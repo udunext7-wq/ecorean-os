@@ -89,7 +89,7 @@ class SettlementPage {
       const BTNST = 'font-size:9px;padding:2px 7px;background:#141414;border:1px solid #2A2A2A;color:#C9A84C;cursor:pointer;';
       return `<tr>
         <td style="${TD};text-align:center">${i + 1}</td>
-        <td style="${TD}">${c.customer_name || c.customer_name_enc || 'UNKNOWN'}</td>
+        <td style="${TD}">${c.customer_name || '(암호화됨)'}</td>
         <td style="${TD};text-align:right">${fmt(v.estimated)} 원</td>
         <td style="${TD};text-align:right">
           ${hasActual
@@ -195,7 +195,10 @@ ${slaHtml}
   }
 
   _bindActualInput(contracts) {
-    this.containerEl.addEventListener('click', async (e) => {
+    if (this._actualInputHandler) {
+      this.containerEl.removeEventListener('click', this._actualInputHandler);
+    }
+    this._actualInputHandler = async (e) => {
       if (e.target.dataset.action !== 'input-actual') return;
       const contractId = e.target.dataset.contractId;
       const input = prompt('실투입 금액 입력 (원):');
@@ -209,7 +212,8 @@ ${slaHtml}
         }
         this._loadData();
       } catch(err) { console.error('[Settlement:actualInput]', err); }
-    }, { once: true });
+    };
+    this.containerEl.addEventListener('click', this._actualInputHandler);
   }
 
   _renderError(msg) {

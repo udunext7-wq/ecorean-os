@@ -1076,23 +1076,29 @@ function registerIPC() {
   });
 
   ipcMain.handle('boc:sla:measure', async () => {
-    const SLA = {
-      g1_type:         100,
-      g2_concept:      200,
-      g3_section:      200,
-      g4_cad:          500,
-      g5_material:     300,
-      estimate:        500,
-      calc_engine:     200,
-      approval_engine: 100,
-      ai_executive:   2000
+    const SLA_MAX = {
+      db_read:         100,
+      contract_list:   200,
+      schedule_list:   200,
+      inspection_list: 200,
+      order_list:      200,
+      cost_items:      500
     };
     const results = {};
     try {
       const db = getBocContractDB();
-      for (const [key, maxMs] of Object.entries(SLA)) {
+      for (const [key, maxMs] of Object.entries(SLA_MAX)) {
         const t0 = Date.now();
-        try { db.prepare('SELECT 1').get(); } catch(_) {}
+        try {
+          switch(key) {
+            case 'db_read':         db.prepare('SELECT 1').get(); break;
+            case 'contract_list':   db.prepare('SELECT * FROM contracts LIMIT 100').all(); break;
+            case 'schedule_list':   db.prepare('SELECT * FROM schedules LIMIT 100').all(); break;
+            case 'inspection_list': db.prepare('SELECT * FROM inspections LIMIT 100').all(); break;
+            case 'order_list':      db.prepare('SELECT * FROM purchase_orders LIMIT 100').all(); break;
+            case 'cost_items':      db.prepare('SELECT * FROM cost_items LIMIT 500').all(); break;
+          }
+        } catch(_) {}
         const elapsed = Date.now() - t0;
         results[key] = { elapsed, max: maxMs, ok: elapsed <= maxMs };
       }
