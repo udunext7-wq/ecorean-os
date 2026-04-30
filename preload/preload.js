@@ -47,5 +47,10 @@ contextBridge.exposeInMainWorld('boc', {
     create: (opts)       => ipcRenderer.invoke('boc:inspection:create', opts),
     record: (id, opts)   => ipcRenderer.invoke('boc:inspection:record', { id, ...opts }),
     list:   (opts)       => ipcRenderer.invoke('boc:inspection:list',   opts || {})
+  },
+
+  ai: {
+    query:     (opts) => ipcRenderer.invoke('boc:ai:query',     opts),
+    getConfig: ()     => ipcRenderer.invoke('boc:ai:getConfig')
   }
 });

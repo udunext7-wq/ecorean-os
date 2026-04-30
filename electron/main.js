@@ -1003,6 +1003,34 @@ function registerIPC() {
   });
   // ────────── Week 6 Closed Loop IPC 끝 ──────────
 
+  // ────────── Week 7: AI 임원 IPC ──────────
+  require('dotenv').config();
+  const { callAI } = require('../shell/src/ai/AIProvider.cjs');
+
+  ipcMain.handle('boc:ai:query', async (_, { messages, provider, model } = {}) => {
+    try {
+      const result = await callAI(messages || [], { provider, model });
+      return result;
+    } catch(e) {
+      console.error('[boc:ai:query]', e);
+      return {
+        ok: false,
+        error: { code: 'AI_IPC_FAIL', message: e.message, ts: new Date().toISOString() }
+      };
+    }
+  });
+
+  ipcMain.handle('boc:ai:getConfig', async () => ({
+    ok: true,
+    data: {
+      provider:  process.env.BOC_AI_PROVIDER || 'claude',
+      model:     process.env.BOC_AI_MODEL    || '',
+      hasKey:    !!(process.env.BOC_AI_KEY),
+      ollamaUrl: process.env.BOC_OLLAMA_URL  || 'http://localhost:11434'
+    }
+  }));
+  // ────────── Week 7 AI IPC 끝 ──────────
+
   // ────────── 핸들러 목록 출력 (개발용) ────────────────
   console.log('[IPC] Registered handlers:')
   ;[
