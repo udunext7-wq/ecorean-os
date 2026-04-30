@@ -707,6 +707,11 @@ function registerIPC() {
       CREATE INDEX IF NOT EXISTS idx_contracts_tenant    ON contracts(tenant_id);
       CREATE INDEX IF NOT EXISTS idx_contracts_status    ON contracts(status);
       CREATE INDEX IF NOT EXISTS idx_contracts_simulated ON contracts(is_simulated);
+      `);
+      // actual_amount: 기존 DB 마이그레이션 (멱등)
+      try { _bocContractDB.exec('ALTER TABLE contracts ADD COLUMN actual_amount INTEGER DEFAULT 0'); } catch(_) {}
+      try { _bocContractDB.exec('ALTER TABLE contracts ADD COLUMN actual_note TEXT'); } catch(_) {}
+      _bocContractDB.exec(`
 
       CREATE TABLE IF NOT EXISTS purchase_orders (
         id                TEXT    PRIMARY KEY,
@@ -1035,6 +1040,17 @@ function registerIPC() {
     }
   }));
   // ────────── Week 7 AI IPC 끝 ──────────
+
+  // ────────── Week 8: 실투입 금액 업데이트 IPC ──────────
+  ipcMain.handle('boc:contract:updateActual', async (_, { id, actualAmount, actualNote } = {}) => {
+    try {
+      if (!id) return _ce('ACTUAL_NO_ID', 'contractId 필수');
+      const db = getBocContractDB();
+      db.prepare('UPDATE contracts SET actual_amount=?, actual_note=? WHERE id=?')
+        .run(actualAmount || 0, actualNote || null, id);
+      return { ok: true };
+    } catch(e) { return _ce('ACTUAL_UPDATE_FAIL', e.message); }
+  });
 
   // ────────── Week 8: ML 카운트 + SLA 측정 IPC ──────────
   ipcMain.handle('boc:ml:countLearning', async () => {

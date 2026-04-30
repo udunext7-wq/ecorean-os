@@ -81,23 +81,31 @@ class SettlementPage {
     const TD = 'padding:7px 8px;font-size:11px;border:1px solid #1A1A1A;';
 
     const contractRows = contracts.map((c, i) => {
-      const estimated = c.total_amount  || 0;
-      const actual    = c.actual_amount || estimated;
+      const estimated  = c.total_amount   || 0;
+      const hasActual  = (c.actual_amount || 0) > 0;
+      const actual     = hasActual ? c.actual_amount : estimated;
       const v = calcVariance(estimated, actual);
       const statusColor = v.status === 'OVER' ? '#C96D6D' : v.status === 'UNDER' ? '#6DB96D' : '#666';
+      const BTNST = 'font-size:9px;padding:2px 7px;background:#141414;border:1px solid #2A2A2A;color:#C9A84C;cursor:pointer;';
       return `<tr>
         <td style="${TD};text-align:center">${i + 1}</td>
-        <td style="${TD}">${c.customer_name || 'UNKNOWN'}</td>
+        <td style="${TD}">${c.customer_name || c.customer_name_enc || 'UNKNOWN'}</td>
         <td style="${TD};text-align:right">${fmt(v.estimated)} 원</td>
-        <td style="${TD};text-align:right">${fmt(v.actual)} 원</td>
         <td style="${TD};text-align:right">
-          <span style="color:${statusColor}">${v.diff >= 0 ? '+' : ''}${fmt(v.diff)} 원</span>
+          ${hasActual
+            ? `${fmt(actual)} 원`
+            : `<span style="color:#444">미입력</span>
+               <button data-contract-id="${c.id}" data-action="input-actual" style="${BTNST}">입력</button>`
+          }
+        </td>
+        <td style="${TD};text-align:right">
+          ${hasActual ? `<span style="color:${statusColor}">${v.diff >= 0 ? '+' : ''}${fmt(v.diff)} 원</span>` : '<span style="color:#333">-</span>'}
         </td>
         <td style="${TD};text-align:center">
-          <span style="color:${statusColor}">${v.ratio}%</span>
+          ${hasActual ? `<span style="color:${statusColor}">${v.ratio}%</span>` : '<span style="color:#333">-</span>'}
         </td>
         <td style="${TD};text-align:center">
-          <span style="color:${statusColor};font-size:10px">${v.status}</span>
+          <span style="color:${hasActual ? statusColor : '#444'};font-size:10px">${hasActual ? v.status : 'PENDING'}</span>
         </td>
       </tr>`;
     }).join('');
@@ -183,6 +191,25 @@ ${slaHtml}
   <div style="font-size:14px;color:#6DB96D;font-weight:700;letter-spacing:2px;">✅ CRITICAL C2 RESOLVED</div>
   <div style="font-size:10px;color:#555;margin-top:6px;">Phase 4 Week 8 — 실거래 검증 완료</div>
 </div>`;
+    if (contracts.length > 0) this._bindActualInput(contracts);
+  }
+
+  _bindActualInput(contracts) {
+    this.containerEl.addEventListener('click', async (e) => {
+      if (e.target.dataset.action !== 'input-actual') return;
+      const contractId = e.target.dataset.contractId;
+      const input = prompt('실투입 금액 입력 (원):');
+      if (!input) return;
+      const amount = parseInt(input.replace(/,/g, ''), 10);
+      if (isNaN(amount) || amount <= 0) { alert('올바른 금액을 입력해주세요.'); return; }
+      try {
+        const api = window.boc?.contract;
+        if (api?.updateActual) {
+          await api.updateActual({ id: contractId, actualAmount: amount });
+        }
+        this._loadData();
+      } catch(err) { console.error('[Settlement:actualInput]', err); }
+    }, { once: true });
   }
 
   _renderError(msg) {

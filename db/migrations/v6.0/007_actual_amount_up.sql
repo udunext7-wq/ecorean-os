@@ -1,0 +1,4 @@
+BEGIN TRANSACTION;
+ALTER TABLE contracts ADD COLUMN actual_amount INTEGER DEFAULT 0;
+ALTER TABLE contracts ADD COLUMN actual_note   TEXT;
+COMMIT;

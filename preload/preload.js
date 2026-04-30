@@ -27,8 +27,9 @@ contextBridge.exposeInMainWorld('boc', {
   },
 
   contract: {
-    create: (opts) => ipcRenderer.invoke('boc:contract:create', opts),
-    list:   (opts) => ipcRenderer.invoke('boc:contract:list',   opts || {})
+    create:       (opts) => ipcRenderer.invoke('boc:contract:create',       opts),
+    list:         (opts) => ipcRenderer.invoke('boc:contract:list',         opts || {}),
+    updateActual: (opts) => ipcRenderer.invoke('boc:contract:updateActual', opts)
   },
 
   order: {
