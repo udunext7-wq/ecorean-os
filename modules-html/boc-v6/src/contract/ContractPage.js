@@ -21,6 +21,10 @@ class ContractPage {
     this.controller.subscribe((evt, payload) => {
       if (evt === 'CONTRACT_CREATED' || evt === 'CONTRACT_SIGNED' || evt === 'CONTRACT_CANCELED') {
         this._renderContractResult(payload);
+        if (evt === 'CONTRACT_CREATED' && this.opts?.onContractCreated) {
+          this.opts.onContractCreated(payload);
+        }
+        document.dispatchEvent(new CustomEvent('boc:contract:created', { detail: { contract: payload, input: this.input } }));
       }
     });
   }

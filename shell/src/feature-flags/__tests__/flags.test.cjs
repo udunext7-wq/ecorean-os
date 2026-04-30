@@ -76,4 +76,12 @@ function assert(cond, msg) {
   assert(isEnabled('USE_ESTIMATE_PDF')  === true, 'PDF 견적서 활성');
 })();
 
-console.log('[PASS] feature-flags (7/7)');
+// Test 8: Phase 4F + Closed Loop UI 플래그
+(function() {
+  assert(isEnabled('PHASE_4F_COMPLETE')  === true, 'PHASE_4F_COMPLETE Week6 완료');
+  assert(isEnabled('USE_ORDERS_UI')      === true, '발주 UI 활성');
+  assert(isEnabled('USE_SCHEDULES_UI')   === true, '공정 UI 활성');
+  assert(isEnabled('USE_INSPECTIONS_UI') === true, '검수 UI 활성');
+})();
+
+console.log('[PASS] feature-flags (8/8)');

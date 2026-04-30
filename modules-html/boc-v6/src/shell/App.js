@@ -4,9 +4,16 @@ const { Router } = require('../router/Router.js');
 class App {
   constructor(opts) {
     this.rootEl = opts.rootEl || document.getElementById('app');
-    this.router = new Router();
-    this.currentPage = null;
-    this.globalKPI = null;
+    this.router        = new Router();
+    this.currentPage   = null;
+    this.globalKPI     = null;
+    this.currentContract = null;
+    this.currentInput    = null;
+
+    document.addEventListener('boc:contract:created', (e) => {
+      this.currentContract = e.detail.contract;
+      this.currentInput    = e.detail.input || {};
+    });
 
     this._setupRoutes();
     this._render();
@@ -35,7 +42,7 @@ class App {
           <div class="spacer"></div>
           <div class="status">
             <span class="live">● LIVE</span>
-            Phase 4 / Week 5
+            Phase 4 / Week 6
           </div>
         </header>
         <div class="app-kpibar" id="global-kpi-bar"></div>
@@ -230,9 +237,51 @@ class App {
       </div>
     `;
   }
-  _renderOrders(path)      { this._renderPlaceholder(path, '발주', 'Phase 4 Week 6'); }
-  _renderSchedules(path)   { this._renderPlaceholder(path, '공정', 'Phase 4 Week 6'); }
-  _renderInspections(path) { this._renderPlaceholder(path, '검수', 'Phase 4 Week 6'); }
+  _renderOrders(path) {
+    this._setActiveNav(path);
+    const main = document.getElementById('main-content');
+    main.innerHTML = '';
+    try {
+      const { OrdersPage } = require('../orders/OrdersPage.js');
+      new OrdersPage({
+        containerEl: main,
+        contractId:  this.currentContract?.id || null
+      });
+    } catch(e) {
+      main.innerHTML = `<div class="card"><p style="color:var(--negative)">발주 로드 실패: ${e.message}</p></div>`;
+    }
+  }
+
+  _renderSchedules(path) {
+    this._setActiveNav(path);
+    const main = document.getElementById('main-content');
+    main.innerHTML = '';
+    try {
+      const { SchedulesPage } = require('../schedules/SchedulesPage.js');
+      new SchedulesPage({
+        containerEl: main,
+        contractId:  this.currentContract?.id || null,
+        sections:    this.currentInput?.sections || []
+      });
+    } catch(e) {
+      main.innerHTML = `<div class="card"><p style="color:var(--negative)">공정 로드 실패: ${e.message}</p></div>`;
+    }
+  }
+
+  _renderInspections(path) {
+    this._setActiveNav(path);
+    const main = document.getElementById('main-content');
+    main.innerHTML = '';
+    try {
+      const { InspectionsPage } = require('../inspections/InspectionsPage.js');
+      new InspectionsPage({
+        containerEl: main,
+        contractId:  this.currentContract?.id || null
+      });
+    } catch(e) {
+      main.innerHTML = `<div class="card"><p style="color:var(--negative)">검수 로드 실패: ${e.message}</p></div>`;
+    }
+  }
   _renderTopology(path)    { this._renderPlaceholder(path, '시스템 토폴로지', 'Phase 4 Week 7'); }
   _renderAIExecutive(path) { this._renderPlaceholder(path, 'AI 임원 대시보드', 'Phase 4 Week 7'); }
 

@@ -51,7 +51,10 @@ const FLAGS = {
   PHASE_4E_COMPLETE:      true,   // Week 5: 계약 화면 + PDF
   USE_CONTRACT_UI:        true,
   USE_ESTIMATE_PDF:       true,
-  PHASE_4F_COMPLETE:      false,
+  PHASE_4F_COMPLETE:      true,    // Week 6: Closed Loop UI (발주+공정+검수)
+  USE_ORDERS_UI:          true,
+  USE_SCHEDULES_UI:       true,
+  USE_INSPECTIONS_UI:     true,
   PHASE_4G_COMPLETE:      false,
   PHASE_4H_COMPLETE:      false,
   PHASE_4I_COMPLETE:      false,
