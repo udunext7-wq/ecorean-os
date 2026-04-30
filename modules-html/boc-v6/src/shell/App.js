@@ -294,7 +294,17 @@ class App {
     }
   }
 
-  _renderAIExecutive(path) { this._renderPlaceholder(path, 'AI 임원 대시보드', 'Phase 4 Week 7'); }
+  _renderAIExecutive(path) {
+    this._setActiveNav(path);
+    const main = document.getElementById('main-content');
+    main.innerHTML = '';
+    try {
+      const { AIExecutivePage } = require('../ai-executive/AIExecutivePage.js');
+      new AIExecutivePage({ containerEl: main });
+    } catch(e) {
+      main.innerHTML = `<div class="card"><p style="color:var(--negative)">AI 임원 로드 실패: ${e.message}</p></div>`;
+    }
+  }
 
   _render404(path) {
     document.getElementById('main-content').innerHTML = `
