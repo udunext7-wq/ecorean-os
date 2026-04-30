@@ -31,6 +31,7 @@ class App {
     this.router.register('/inspections', this._renderInspections.bind(this), { meta: { title: '검수' } });
     this.router.register('/topology', this._renderTopology.bind(this), { meta: { title: '시스템 토폴로지' } });
     this.router.register('/ai-executive', this._renderAIExecutive.bind(this), { meta: { title: 'AI 임원' } });
+    this.router.register('/settlement', this._renderSettlement.bind(this), { meta: { title: '정산' } });
     this.router.setNotFound(this._render404.bind(this));
   }
 
@@ -97,6 +98,7 @@ class App {
         <div class="label">시스템</div>
         <div class="nav-item" data-path="/topology">토폴로지</div>
         <div class="nav-item" data-path="/ai-executive">AI 임원</div>
+        <div class="nav-item" data-path="/settlement">정산</div>
       </div>
     `;
   }
@@ -303,6 +305,18 @@ class App {
       new AIExecutivePage({ containerEl: main });
     } catch(e) {
       main.innerHTML = `<div class="card"><p style="color:var(--negative)">AI 임원 로드 실패: ${e.message}</p></div>`;
+    }
+  }
+
+  _renderSettlement(path) {
+    this._setActiveNav(path);
+    const main = document.getElementById('main-content');
+    main.innerHTML = '';
+    try {
+      const { SettlementPage } = require('../settlement/SettlementPage.js');
+      new SettlementPage({ containerEl: main });
+    } catch(e) {
+      main.innerHTML = `<div class="card"><p style="color:var(--negative)">정산 로드 실패: ${e.message}</p></div>`;
     }
   }
 
