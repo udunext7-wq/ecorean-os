@@ -3511,10 +3511,6 @@ const SEMANTIC_MAP={
   hydrant:{tag:'fire_hydrant',kw:'indoor fire hydrant cabinet'},
   emerg_bell:{tag:'fire_alarm',kw:'fire alarm bell'},
   auto_ext:{tag:'fire_suppression',kw:'automatic fire suppression unit'},
-  // ===== 레거시 alias (하위호환 — 실제 라이브러리 키와 불일치, 조회 안 됨) =====
-  // NEEDS_CONFIRMATION: bed_q(퀸 침대) 및 island(아일랜드 주방) 라이브러리 추가 여부 대표님 결정 필요
-  bed_q:{tag:'sleeping',kw:'queen bed with headboard'},
-  island:{tag:'kitchen',kw:'kitchen island'},
 };
 function semanticOf(type){return SEMANTIC_MAP[type]||{tag:'generic',kw:type};}
 
@@ -5265,6 +5261,26 @@ if(new URLSearchParams(location.search).get('test')==='1'){(function runTests(){
     if(cond){pass++;results.push('✅ '+name);}
     else{fail++;results.push('❌ '+name+(detail?' — '+detail:''));}
   }
+  // === Critical Test 1: SEMANTIC_MAP keys ⊆ 전체 라이브러리 키 합집합 ===
+  const allLibKeys=new Set([
+    ...Object.keys(FURNITURE_LIB),...Object.keys(FIXTURE_LIB),
+    ...Object.keys(LIGHT_LIB),...Object.keys(ELECTRIC_LIB),...Object.keys(HVAC_FIRE_LIB)
+  ]);
+  const smKeys=Object.keys(SEMANTIC_MAP);
+  const deadKeys=smKeys.filter(k=>!allLibKeys.has(k));
+  if(deadKeys.length>0){
+    deadKeys.forEach(k=>console.error('%c[SEMANTIC_MAP 사망키] '+k+' — 라이브러리에 없음','color:#E2725B;font-weight:bold'));
+  }
+  assert('CT1: SEMANTIC_MAP ⊆ 라이브러리 (dead alias 없음)',deadKeys.length===0,
+    deadKeys.length?'사망키: '+deadKeys.join(', '):'');
+  // === Critical Test 2: 전체 라이브러리 키 ⊆ SEMANTIC_MAP (역방향) ===
+  const smSet=new Set(smKeys);
+  const unmappedKeys=[...allLibKeys].filter(k=>!smSet.has(k));
+  if(unmappedKeys.length>0){
+    unmappedKeys.forEach(k=>console.warn('%c[SEMANTIC_MAP 누락키] '+k+' — fallback generic 사용 중','color:#D4A017;font-weight:bold'));
+  }
+  assert('CT2: 라이브러리 ⊆ SEMANTIC_MAP (미매핑 없음)',unmappedKeys.length===0,
+    unmappedKeys.length?'미매핑: '+unmappedKeys.join(', '):'');
   // 1. darkenHex
   assert('darkenHex 빨강50%',darkenHex('#FF0000',0.5)==='#7f0000');
   assert('darkenHex 흰색50%',darkenHex('#FFFFFF',0.5)==='#7f7f7f');
