@@ -189,6 +189,9 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
     <button class="btn sm" id="btn-load">불러오기</button>
     <button class="btn sm" id="btn-save">저장</button>
     <button class="btn sm" id="btn-ai-bundle" title="AI 생성 번들 다운로드 (PNG평면+JSON+이미지프롬프트+영상프롬프트)">🤖 AI 번들</button>
+    <button class="btn sm" id="btn-dxf-export" title="DXF 내보내기 — AutoCAD R12 호환 (외주 업체 인계용)">↳ DXF</button>
+    <button class="btn sm" id="btn-dxf-import" title="DXF 가져오기 (LINE→벽, 닫힌 POLYLINE→공간)">↑ DXF</button>
+    <input type="file" id="dxf-file-input" accept=".dxf" style="display:none">
     <button class="btn sm danger" id="btn-clear-all">전체삭제</button>
     <button class="btn gold" id="btn-export">→ 견적</button>
   </div>
@@ -394,6 +397,12 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
         </div>
         <button class="btn sm gold" id="btn-ai-bundle-side" style="width:100%;margin-top:10px">🤖 AI 번들 다운로드 (PNG+JSON+이미지프롬프트+영상프롬프트)</button>
       </div>
+      <div class="card" id="video-seq-card">
+        <h4>영상 동선 순서 편집 (v5.8)</h4>
+        <p class="hint" style="margin-bottom:8px">드래그로 촬영 순서 변경 → JSON videoSequence에 즉시 반영. <span id="video-seq-hint" style="color:var(--gold)"></span></p>
+        <div id="video-seq-list" style="display:flex;flex-direction:column;gap:4px"></div>
+        <button class="btn sm" id="btn-video-seq-reset" style="width:100%;margin-top:6px">↺ 자동 순서 (면적순)</button>
+      </div>
       <div class="card"><h4>FloorPlan JSON v5.8 (SSoT)</h4>
         <p class="hint" style="margin-bottom:6px">EstimateEngine 입력 + AI 생성 파이프라인 단일 진실 소스 + 자재 선정</p>
         <div class="json-out" id="json-out"></div>
@@ -462,6 +471,8 @@ const STATE={
   isMobile:false,  // v5.2: 모바일 디바이스 감지 (런타임)
   // ===== v5.7: 2.5D 토글 (기본 OFF, 시공 정확도 우선) =====
   plus2D:false,
+  // ===== v5.8: 영상 동선 커스텀 순서 (null=면적순 자동, array=사용자 지정 spaceId 배열) =====
+  videoSequenceOrder:null,
   // ===== v5.7: AI 생성 파이프라인 SSoT 메타 (이미지·영상 모델 프롬프트 힌트) =====
   aiPromptHints:{
     style:'modern_luxury',         // modern_luxury | scandinavian | industrial | wabi_sabi | korean_modern | minimal | classic | bohemian | mid_century | art_deco | contemporary | rustic | hotel_lux | natural_organic
@@ -1891,6 +1902,7 @@ function addSpace(polygon){
     ceilingHeight_mm:SPACE_TYPES[tk].ceil||null,materialGrade:'STANDARD',difficulty:'NORMAL',materialColor:null,
     floorMaterial:dm.floor, wallMaterial:dm.wall, // v5.8
   });
+  STATE.videoSequenceOrder=null; // 공간 추가 시 자동 순서로 초기화
   saveHistory();selectObj('space',id);
 }
 function addWall(x1,y1,x2,y2){
@@ -3669,13 +3681,23 @@ function buildJSON(){
     });
   });
 
-  // v5.7: 영상 시퀀스 자동 생성 (면적 큰 공간부터 walkthrough)
-  const sortedSpaces=[...STATE.spaces].sort((a,b)=>spArea(b)-spArea(a));
-  const walkthrough=sortedSpaces.map((s,i)=>({
+  // v5.8: 영상 시퀀스 — 사용자 지정 순서(videoSequenceOrder) 우선, 없으면 면적순 자동
+  let seqSpaces;
+  if(STATE.videoSequenceOrder&&STATE.videoSequenceOrder.length>0){
+    seqSpaces=STATE.videoSequenceOrder
+      .map(id=>STATE.spaces.find(s=>s.id===id))
+      .filter(Boolean);
+    // 순서에 없는 공간 뒤에 추가
+    STATE.spaces.forEach(s=>{if(!seqSpaces.find(x=>x.id===s.id))seqSpaces.push(s);});
+  }else{
+    seqSpaces=[...STATE.spaces].sort((a,b)=>spArea(b)-spArea(a));
+  }
+  const CAMERA_MOVES=['establishing_wide','dolly_in','orbit_right','push_in','pan_across'];
+  const walkthrough=seqSpaces.map((s,i)=>({
     spaceId:s.id,
     spaceName:s.name||SPACE_TYPES[s.type].name,
     dwell_sec:i===0?3:5,
-    cameraMove:i===0?'establishing_wide':(i%2===0?'dolly_in':'orbit_right'),
+    cameraMove:i===0?'establishing_wide':CAMERA_MOVES[1+(i-1)%4],
   }));
 
   return{
@@ -3788,6 +3810,71 @@ function refreshJSON(){
     .replace(/: (-?\d+\.?\d*)/g,': <span class="n">$1</span>')
     .replace(/: (true|false|null)/g,': <span class="b">$1</span>');
   document.getElementById('json-out').innerHTML=h;
+  refreshVideoSeqUI();
+}
+
+// v5.8 Task 4: 영상 동선 순서 편집 UI (드래그 핸들)
+function refreshVideoSeqUI(){
+  const card=document.getElementById('video-seq-card');
+  const listEl=document.getElementById('video-seq-list');
+  const hint=document.getElementById('video-seq-hint');
+  if(!card||!listEl) return;
+  if(STATE.spaces.length===0){card.style.display='none';return;}
+  card.style.display='';
+
+  // 현재 표시 순서 결정
+  let ordered;
+  if(STATE.videoSequenceOrder&&STATE.videoSequenceOrder.length>0){
+    ordered=STATE.videoSequenceOrder.map(id=>STATE.spaces.find(s=>s.id===id)).filter(Boolean);
+    STATE.spaces.forEach(s=>{if(!ordered.find(x=>x.id===s.id))ordered.push(s);});
+    if(hint) hint.textContent='사용자 지정 순서';
+  }else{
+    ordered=[...STATE.spaces].sort((a,b)=>spArea(b)-spArea(a));
+    if(hint) hint.textContent='자동 (면적순)';
+  }
+
+  // DOM 재구성
+  listEl.innerHTML='';
+  let dragSrc=null;
+  ordered.forEach((s,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='background:var(--bg-card);border:1px solid var(--border);border-radius:3px;'
+      +'padding:6px 8px;display:flex;align-items:center;gap:6px;cursor:grab;user-select:none;font-size:10px';
+    row.draggable=true;
+    row.dataset.id=s.id;
+    const sp=SPACE_TYPES[s.type];
+    const dot=`<span style="width:8px;height:8px;border-radius:2px;background:${sp?sp.color:'#888'};flex-shrink:0;display:inline-block"></span>`;
+    const cam=['establishing_wide','dolly_in','orbit_right','push_in','pan_across'];
+    const camLabel=i===0?'establishing_wide':cam[1+(i-1)%4];
+    row.innerHTML=`<span style="color:var(--text-tertiary);font-family:var(--mono);min-width:14px">${i+1}</span>`
+      +dot
+      +`<span style="flex:1;color:var(--text-primary)">${sp?sp.name:'?'} ${s.name||''}</span>`
+      +`<span style="color:var(--text-tertiary);font-family:var(--mono);font-size:9px">${camLabel}</span>`
+      +`<span style="color:var(--text-tertiary);cursor:grab;padding:0 2px">⋮⋮</span>`;
+    // 드래그 이벤트
+    row.addEventListener('dragstart',e=>{
+      dragSrc=row;
+      e.dataTransfer.effectAllowed='move';
+      row.style.opacity='0.4';
+    });
+    row.addEventListener('dragend',()=>{row.style.opacity='';dragSrc=null;});
+    row.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';});
+    row.addEventListener('dragenter',()=>{if(dragSrc&&dragSrc!==row) row.style.borderColor='var(--gold)';});
+    row.addEventListener('dragleave',()=>{row.style.borderColor='var(--border)';});
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      row.style.borderColor='var(--border)';
+      if(!dragSrc||dragSrc===row) return;
+      // 순서 재배열
+      const ids=[...listEl.querySelectorAll('[data-id]')].map(el=>el.dataset.id);
+      const fi=ids.indexOf(dragSrc.dataset.id),ti=ids.indexOf(row.dataset.id);
+      ids.splice(fi,1);ids.splice(ti,0,dragSrc.dataset.id);
+      STATE.videoSequenceOrder=ids;
+      refreshVideoSeqUI();
+      refreshJSON();
+    });
+    listEl.appendChild(row);
+  });
 }
 
 // ===== 회전·복제·삭제 =====
@@ -3847,6 +3934,12 @@ function deleteSelected(){
     }
   });
   STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];
+  // 공간 삭제 시 커스텀 동선 순서에서도 제거
+  if(STATE.videoSequenceOrder){
+    const delIds=new Set(targets.filter(t=>t.kind==='space').map(t=>t.id));
+    STATE.videoSequenceOrder=STATE.videoSequenceOrder.filter(id=>!delIds.has(id));
+    if(STATE.videoSequenceOrder.length===0) STATE.videoSequenceOrder=null;
+  }
   saveHistory();renderAll();refreshUI();showStatus('삭제 ('+targets.length+'개)');
 }
 
@@ -3933,14 +4026,15 @@ function loadJSON(){
   input.click();
 }
 
-// v5.7: 구버전 데이터 → v5.7 스키마 마이그레이션
+// v5.8: 구버전 데이터 → v5.8 스키마 마이그레이션 (v5.7 확장)
 // - layerName 누락 객체 자동 생성
 // - typeIndex 누락 자동 채움
 // - flipped 기본값 false
+// - floorMaterial/wallMaterial 누락 시 defaultMaterials() 기반 자동 보충 (v5.8 Task 5)
 // - parentId(가구→공간, 도어→벽) 자동 추론 NEEDS_CONFIRMATION 처리
 function migrateLoadedState(schema){
   let warns=0;
-  // 공간 typeIndex/code/layerName 보충
+  // 공간 typeIndex/code/layerName/자재 보충
   const typeCounters={};
   STATE.spaces.forEach(s=>{
     if(!SPACE_TYPES[s.type]) s.type='ROOM';
@@ -3949,6 +4043,12 @@ function migrateLoadedState(schema){
     if(!s.code) s.code=SPACE_TYPES[s.type].code;
     if(!s.layerName) s.layerName='A-AREA-'+s.code+'-'+String(s.typeIndex).padStart(2,'0');
     if(s.waterproofRecommended===undefined) s.waterproofRecommended=SPACE_TYPES[s.type].waterproof?'CONDITIONAL':false;
+    // v5.8 Task 5: floorMaterial/wallMaterial 자동 보충 (v5.0~v5.7 저장 파일 호환)
+    if(!s.floorMaterial||!s.wallMaterial){
+      const dm=defaultMaterials(s.type);
+      if(!s.floorMaterial){s.floorMaterial=dm.floor;warns++;}
+      if(!s.wallMaterial){s.wallMaterial=dm.wall;warns++;}
+    }
   });
   // 벽 layerName 보충
   STATE.walls.forEach(w=>{
@@ -4084,6 +4184,175 @@ function exportAIBundle(){
   showStatus('AI 번들 4종 다운로드 완료 — PNG·JSON·이미지프롬프트·영상프롬프트');
 }
 
+// ===== v5.8 Task 3: DXF 내보내기/가져오기 =====
+// AutoCAD R12 ASCII DXF 호환. 외주 인테리어 업체 도면 인계용.
+// 좌표계: STATE는 Y-down(화면), DXF는 Y-up → 내보낼 때 Y값 부호 반전
+function exportDXF(){
+  const dlines=[];let hc=1;
+  const h=()=>(hc++).toString(16).toUpperCase().padStart(4,'0');
+  const g=(code,val)=>dlines.push(String(code).padStart(3),String(val));
+
+  // Layer 집합 수집
+  const lyrs=new Set(['0']);
+  const addL=arr=>arr.forEach(o=>o.layerName&&lyrs.add(o.layerName));
+  [STATE.spaces,STATE.walls,STATE.openings,STATE.furniture,STATE.fixtures,
+   STATE.lights,STATE.electric,STATE.hvac,STATE.texts,STATE.circles,STATE.arcs].forEach(addL);
+
+  // HEADER
+  g(0,'SECTION');g(2,'HEADER');
+  g(9,'$ACADVER');g(1,'AC1009');
+  g(9,'$INSUNITS');g(70,4); // mm
+  g(9,'$MEASUREMENT');g(70,1); // metric
+  g(0,'ENDSEC');
+
+  // TABLES
+  g(0,'SECTION');g(2,'TABLES');
+  // LAYER table
+  g(0,'TABLE');g(2,'LAYER');g(70,lyrs.size);
+  const spColorMap={LIVING:3,ROOM:4,KITCHEN:2,BATHROOM:5,ENTRANCE:7,BALCONY:3,CORRIDOR:8,
+    DRESSING:6,STAIRS:8,PANTRY:2,UTILITY:4,POWDER:6,STUDY:4,BOILER:1,STORAGE:8,DINING:2,FOYER:8,GARAGE:8,TERRACE:3};
+  lyrs.forEach(name=>{g(0,'LAYER');g(2,name);g(70,0);g(62,7);g(6,'CONTINUOUS');});
+  g(0,'ENDTAB');
+  // TEXT STYLE
+  g(0,'TABLE');g(2,'STYLE');g(70,1);
+  g(0,'STYLE');g(2,'STANDARD');g(70,0);g(40,0);g(41,1);g(50,0);g(71,0);g(42,250);g(3,'txt');g(4,'');
+  g(0,'ENDTAB');
+  g(0,'ENDSEC');
+
+  // ENTITIES
+  g(0,'SECTION');g(2,'ENTITIES');
+
+  // 공간 → 닫힌 POLYLINE + 중심 라벨 TEXT
+  STATE.spaces.forEach(s=>{
+    if(!s.polygon||s.polygon.length<3)return;
+    const lyr=s.layerName||'A-AREA';
+    const col=spColorMap[s.type]||7;
+    g(0,'POLYLINE');g(5,h());g(8,lyr);g(62,col);g(66,1);g(70,1);
+    s.polygon.forEach(pt=>{
+      g(0,'VERTEX');g(5,h());g(8,lyr);g(10,pt.x);g(20,-pt.y);g(30,0);g(70,32);
+    });
+    g(0,'SEQEND');g(5,h());g(8,lyr);
+    // 공간명 텍스트
+    const cx=Math.round(s.polygon.reduce((a,p)=>a+p.x,0)/s.polygon.length);
+    const cy=Math.round(s.polygon.reduce((a,p)=>a+p.y,0)/s.polygon.length);
+    const spT=SPACE_TYPES[s.type];
+    const label=((spT?spT.name:'?')+' '+(s.name||'')).trim();
+    g(0,'TEXT');g(5,h());g(8,lyr);g(62,col);
+    g(10,cx);g(20,-cy);g(30,0);g(40,200);g(1,label);g(72,1);g(11,cx);g(21,-cy);g(31,0);
+  });
+
+  // 벽 → LINE
+  STATE.walls.forEach(w=>{
+    g(0,'LINE');g(5,h());g(8,w.layerName||'A-WALL');
+    g(10,w.x1);g(20,-w.y1);g(30,0);g(11,w.x2);g(21,-w.y2);g(31,0);
+  });
+
+  // 개구부(도어/창) → 중심선 LINE
+  STATE.openings.forEach(o=>{
+    const lyr=o.layerName||(o.type==='DOOR'?'A-DOOR':'A-WIND');
+    const col=o.type==='DOOR'?2:4;
+    const ang=(o.angle||0)*Math.PI/180;
+    const hw=Math.round((o.w||900)/2);
+    const x1=Math.round(o.x+hw*Math.cos(ang)),y1=Math.round(o.y+hw*Math.sin(ang));
+    const x2=Math.round(o.x-hw*Math.cos(ang)),y2=Math.round(o.y-hw*Math.sin(ang));
+    g(0,'LINE');g(5,h());g(8,lyr);g(62,col);
+    g(10,x1);g(20,-y1);g(30,0);g(11,x2);g(21,-y2);g(31,0);
+    // 도어 호 (단순화: 1/4 원)
+    if(o.type==='DOOR'){
+      g(0,'ARC');g(5,h());g(8,lyr);g(62,col);
+      g(10,x2);g(20,-y2);g(30,0);g(40,o.w||900);g(50,0);g(51,90);
+    }
+  });
+
+  // 텍스트 → TEXT
+  STATE.texts.forEach(t=>{
+    g(0,'TEXT');g(5,h());g(8,t.layerName||'A-TEXT');
+    g(10,t.x);g(20,-t.y);g(30,0);g(40,Math.max(100,t.h||300));g(1,t.text||'');g(50,-(t.angle||0));
+  });
+
+  // 원 → CIRCLE, 아크 → ARC
+  STATE.circles.forEach(c=>{
+    g(0,'CIRCLE');g(5,h());g(8,c.layerName||'A-CIRC');g(10,c.x);g(20,-c.y);g(30,0);g(40,c.r);
+  });
+  STATE.arcs.forEach(a=>{
+    g(0,'ARC');g(5,h());g(8,a.layerName||'A-ARC');
+    g(10,a.cx);g(20,-a.cy);g(30,0);g(40,a.r);g(50,a.startAngle||0);g(51,a.endAngle||90);
+  });
+
+  g(0,'ENDSEC');g(0,'EOF');
+
+  const dxfText=dlines.join('\n');
+  const safe=(STATE.projectName||'MiniCAD').replace(/[^a-zA-Z0-9가-힣_-]/g,'_');
+  downloadText(dxfText,safe+'_v5.8.dxf','application/dxf');
+  showStatus('DXF 내보내기 완료 — AutoCAD R12 호환 ('+lyrs.size+'개 레이어)');
+}
+
+function importDXF(text){
+  // ASCII DXF R12/R14 파서 — LINE → 벽, 닫힌 POLYLINE → 공간
+  const rows=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  const pairs=[];
+  for(let i=0;i+1<rows.length;i+=2) pairs.push({c:parseInt(rows[i].trim(),10),v:rows[i+1].trim()});
+
+  let newWalls=0,newSpaces=0,i=0;
+  while(i<pairs.length){
+    const {c,v}=pairs[i];
+    if(c===0&&v==='LINE'){
+      let lyr='A-WALL',x1=0,y1=0,x2=0,y2=0;
+      i++;
+      while(i<pairs.length&&pairs[i].c!==0){
+        const p=pairs[i];
+        if(p.c===8) lyr=p.v;
+        if(p.c===10) x1=Math.round(parseFloat(p.v));
+        if(p.c===20) y1=Math.round(-parseFloat(p.v));
+        if(p.c===11) x2=Math.round(parseFloat(p.v));
+        if(p.c===21) y2=Math.round(-parseFloat(p.v));
+        i++;
+      }
+      if(Math.hypot(x2-x1,y2-y1)>=50){
+        STATE.walls.push({id:makeId('w'),x1,y1,x2,y2,thickness:100,layerName:lyr});
+        newWalls++;
+      }
+    } else if(c===0&&v==='POLYLINE'){
+      let lyr='A-AREA',flags=0;
+      i++;
+      while(i<pairs.length&&pairs[i].c!==0){
+        if(pairs[i].c===8) lyr=pairs[i].v;
+        if(pairs[i].c===70) flags=parseInt(pairs[i].v,10);
+        i++;
+      }
+      const verts=[];
+      while(i<pairs.length&&pairs[i].c===0&&pairs[i].v==='VERTEX'){
+        let vx=0,vy=0;i++;
+        while(i<pairs.length&&pairs[i].c!==0){
+          if(pairs[i].c===10) vx=Math.round(parseFloat(pairs[i].v));
+          if(pairs[i].c===20) vy=Math.round(-parseFloat(pairs[i].v));
+          i++;
+        }
+        verts.push({x:vx,y:vy});
+      }
+      if(verts.length>=3&&(flags&1)){
+        // 레이어명에서 공간 타입 추론 (A-AREA-BATH-01 → BATHROOM)
+        const typeEntry=Object.entries(SPACE_TYPES).find(([,sp])=>lyr.includes(sp.code));
+        const spType=typeEntry?typeEntry[0]:'LIVING';
+        const cnt=(STATE.spaces.filter(s=>s.type===spType).length)+1;
+        const sp=SPACE_TYPES[spType];
+        const dm=defaultMaterials(spType);
+        STATE.spaces.push({
+          id:makeId('s'),type:spType,polygon:verts,typeIndex:cnt,
+          code:sp.code,layerName:'A-AREA-'+sp.code+'-'+String(cnt).padStart(2,'0'),
+          name:'',ceilingHeight:sp.ceil||STATE.ceilingHeight,
+          waterproofRecommended:sp.waterproof?'CONDITIONAL':false,
+          floorMaterial:dm.floor,wallMaterial:dm.wall,color:sp.color,
+        });
+        newSpaces++;
+      }
+    } else { i++; }
+  }
+  STATE.videoSequenceOrder=null; // 공간 변경 시 자동 순서 초기화
+  saveHistory();renderAll();refreshUI();
+  showStatus('DXF 가져오기 완료 — 벽 '+newWalls+'개 · 공간 '+newSpaces+'개');
+}
+
 function downloadDataURL(dataURL,filename){
   const a=document.createElement('a');a.href=dataURL;a.download=filename;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
@@ -4136,6 +4405,23 @@ document.getElementById('btn-dim').addEventListener('click',toggleDim);
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
 document.getElementById('btn-print').addEventListener('click',printPlan);
+// v5.8 Task 3: DXF
+document.getElementById('btn-dxf-export').addEventListener('click',exportDXF);
+document.getElementById('btn-dxf-import').addEventListener('click',()=>document.getElementById('dxf-file-input').click());
+document.getElementById('dxf-file-input').addEventListener('change',e=>{
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{importDXF(ev.target.result);};
+  reader.readAsText(file,'utf-8');
+  e.target.value=''; // 같은 파일 재선택 허용
+});
+// v5.8 Task 4: 영상 동선 순서 초기화
+const videoSeqResetBtn=document.getElementById('btn-video-seq-reset');
+if(videoSeqResetBtn) videoSeqResetBtn.addEventListener('click',()=>{
+  STATE.videoSequenceOrder=null;
+  refreshVideoSeqUI();refreshJSON();
+  showStatus('영상 동선 순서 — 자동(면적순)으로 초기화');
+});
 
 // v5.7: AI 프롬프트 힌트 편집 UI 바인딩
 ['ai-style','ai-mood','ai-light','ai-camera'].forEach(id=>{
