@@ -161,24 +161,30 @@ TDD 헌법 준수 → 테스트 스위트 작성 전 커밋 금지.
 
 | ID | 내용 | 심각도 |
 |---|---|---|
-| I-1 | SEMANTIC_MAP alias 불일치 17종 → `exportAIBundle` 이미지프롬프트에서 fallback(`{tag:'generic',kw:type코드}`)으로 노출됨 | 🔴 HIGH |
-| I-2 | `splitWallsAtIntersections` — 안전 한계(20회) 도달 시 경고만 출력, 분할 미완료 상태로 잔류 가능 | 🟡 MED |
-| I-3 | `bed_q` 키가 SEMANTIC_MAP에 등록되어 있으나 FURNITURE_LIB에 없음 → queen 침대 추가 필요 여부 대표님 확인 | 🟡 MED |
+| I-2 | `splitWallsAtIntersections` — 안전 한계(20회) 도달 시 경고만 출력, 분할 미완료 잔류 가능 | 🟡 MED |
+| I-3 | `bed_q`(퀸침대) / `island`(아일랜드 주방) LIBRARY 추가 여부 대표님 결정 필요 | 🟡 NEEDS_CONFIRMATION |
+| I-4 | DXF import: LWPOLYLINE(R14+) 미지원 — R12 POLYLINE만 파싱 가능 | 🟡 MED |
 
 ---
 
-## 다음 작업 큐
+## 완료된 작업 (Task 0~5 전체 완료)
 
-| 우선순위 | Task | 예상 줄 수 | 의존성 |
-|---|---|---|---|
-| 🔴 | Task 1: SEMANTIC_MAP 75종 완성 (alias 수정 17 + 신규 52) | +120줄 | 없음 |
-| 🔴 | Task 2: 테스트 스위트 (`?test=1` 러너, 11개 함수) | +200줄 | 없음 |
-| 🟡 | Task 3: DXF import/export (dxf-parser CDN) | +400줄 | 없음 |
-| 🟡 | Task 4: 영상 시퀀스 동선 드래그 편집 UI | +150줄 | 없음 |
-| 🟢 | Task 5: v5.0~v5.6 마이그레이션 강화 (floorMaterial/wallMaterial/flipped 보충) | +30줄 | Task 1 |
+| Task | 커밋 | 내용 |
+|---|---|---|
+| Task 0 | `66e986f` | HANDOVER_v5_8.md 작성 |
+| Task 1 | `34370f3` | SEMANTIC_MAP 79종 완성 (alias 수정 + 신규 52종) |
+| Task 2 | `34370f3` | 자체 테스트 스위트 40건 (?test=1) |
+| Task 3 | `e1479af` | DXF 내보내기(exportDXF)/가져오기(importDXF) — AutoCAD R12 호환 |
+| Task 4 | `e1479af` | 영상 동선 드래그 편집 UI (refreshVideoSeqUI + STATE.videoSequenceOrder) |
+| Task 5 | `e1479af` | migrateLoadedState 강화 — floorMaterial/wallMaterial 자동 보충 |
 
-> Task 1을 먼저 진행해야 `exportAIBundle` 이미지프롬프트 품질이 실용 수준 도달.  
-> Task 2는 TDD 헌법 상 Task 1과 병행 또는 선행 권장.
+## 다음 작업 큐 (v5.9 예정)
+
+| 우선순위 | Task | 내용 |
+|---|---|---|
+| 🟡 | v5.9-A | bed_q/island 라이브러리 추가 (대표님 결정 후) |
+| 🟡 | v5.9-B | DXF import LWPOLYLINE(R14+) 지원 |
+| 🟢 | v5.9-C | 테스트 커버리지 확대 (DXF, videoSeq) |
 
 ---
 
@@ -186,10 +192,10 @@ TDD 헌법 준수 → 테스트 스위트 작성 전 커밋 금지.
 
 | 항목 | 상태 | 비고 |
 |---|---|---|
-| mm 정수 좌표 | ✅ | `Math.round()` 일관 적용 확인 (snapPointToSpaceEdges 내 `Math.round(fx/fy)`) |
+| mm 정수 좌표 | ✅ | DXF export 포함 전 항목 `Math.round()` 적용 |
 | 단가 추정 금지 | ✅ | CATALOG 전체 `NEEDS_RESEARCH` 표기, 단가 필드 없음 |
-| 방수 = CONDITIONAL만 | ✅ | WATERPROOF 항목 tag='CONDITIONAL' 확인 (line 1078) |
-| NEEDS_CONFIRMATION 누락 | ✅ | 견적 탭 NEEDS_CONFIRMATION 섹션 존재 (line 331) |
-| TDD 강제 | ⚠️ | 테스트 스위트 아직 없음 → Task 2 완료 전 코드 커밋 금지 |
-| AI 파싱 SSoT | ✅ | 인쇄·JSON·AI 번들 export 시 `plus2D` 강제 OFF + 복구 로직 존재 |
-| 저작권 (브랜드명 금지) | ✅ | SEMANTIC_MAP kw 필드 전수 확인 — 브랜드명 없음, 일반명사만 사용 |
+| 방수 = CONDITIONAL만 | ✅ | WATERPROOF tag='CONDITIONAL' 확인 |
+| NEEDS_CONFIRMATION 누락 | ✅ | 코드 내 NEEDS_CONFIRMATION 주석 표시 (bed_q, island) |
+| TDD 강제 | ✅ | Task 2 테스트 스위트 40건 완료 — 커밋 가드 활성 |
+| AI 파싱 SSoT | ✅ | 인쇄·JSON·AI번들·DXF export 시 `plus2D` 강제 OFF |
+| 저작권 (브랜드명 금지) | ✅ | SEMANTIC_MAP 81종 전수 확인 — 일반명사만 사용 |
