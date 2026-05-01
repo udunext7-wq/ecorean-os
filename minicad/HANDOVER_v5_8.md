@@ -167,24 +167,24 @@ TDD 헌법 준수 → 테스트 스위트 작성 전 커밋 금지.
 
 ---
 
-## 완료된 작업 (Task 0~5 전체 완료)
+## 완료된 작업 (Task 0~5+2차 완료)
 
 | Task | 커밋 | 내용 |
 |---|---|---|
 | Task 0 | `66e986f` | HANDOVER_v5_8.md 작성 |
-| Task 1 | `34370f3` | SEMANTIC_MAP 79종 완성 (alias 수정 + 신규 52종) |
-| Task 2 | `34370f3` | 자체 테스트 스위트 40건 (?test=1) |
+| Task 1 (1차) | `34370f3` | SEMANTIC_MAP 79종 완성 (alias 수정 + 신규 52종) |
+| Task 2 (1차) | `34370f3` | 자체 테스트 스위트 40건 (?test=1) |
 | Task 3 | `e1479af` | DXF 내보내기(exportDXF)/가져오기(importDXF) — AutoCAD R12 호환 |
 | Task 4 | `e1479af` | 영상 동선 드래그 편집 UI (refreshVideoSeqUI + STATE.videoSequenceOrder) |
 | Task 5 | `e1479af` | migrateLoadedState 강화 — floorMaterial/wallMaterial 자동 보충 |
+| Task 2+1 (2차) | `ec4c5a4` | CT1/CT2 무결성 테스트 추가 + bed_q/island dead alias 제거 → SEMANTIC_MAP=79종 완전 일치 |
 
 ## 다음 작업 큐 (v5.9 예정)
 
 | 우선순위 | Task | 내용 |
 |---|---|---|
-| 🟡 | v5.9-A | bed_q/island 라이브러리 추가 (대표님 결정 후) |
-| 🟡 | v5.9-B | DXF import LWPOLYLINE(R14+) 지원 |
-| 🟢 | v5.9-C | 테스트 커버리지 확대 (DXF, videoSeq) |
+| 🟡 | v5.9-A | DXF import LWPOLYLINE(R14+) 지원 |
+| 🟢 | v5.9-B | 테스트 커버리지 확대 (DXF, videoSeq) |
 
 ---
 
@@ -195,7 +195,7 @@ TDD 헌법 준수 → 테스트 스위트 작성 전 커밋 금지.
 | mm 정수 좌표 | ✅ | DXF export 포함 전 항목 `Math.round()` 적용 |
 | 단가 추정 금지 | ✅ | CATALOG 전체 `NEEDS_RESEARCH` 표기, 단가 필드 없음 |
 | 방수 = CONDITIONAL만 | ✅ | WATERPROOF tag='CONDITIONAL' 확인 |
-| NEEDS_CONFIRMATION 누락 | ✅ | 코드 내 NEEDS_CONFIRMATION 주석 표시 (bed_q, island) |
-| TDD 강제 | ✅ | Task 2 테스트 스위트 40건 완료 — 커밋 가드 활성 |
+| NEEDS_CONFIRMATION 누락 | ✅ | bed_q/island SEMANTIC_MAP 제거 완료 — 미결 항목 없음 |
+| TDD 강제 | ✅ | 테스트 스위트 42건 (CT1/CT2 포함) 전통과 — 커밋 가드 활성 |
 | AI 파싱 SSoT | ✅ | 인쇄·JSON·AI번들·DXF export 시 `plus2D` 강제 OFF |
-| 저작권 (브랜드명 금지) | ✅ | SEMANTIC_MAP 81종 전수 확인 — 일반명사만 사용 |
+| 저작권 (브랜드명 금지) | ✅ | SEMANTIC_MAP 79종 전수 확인 — 일반명사만 사용 |
