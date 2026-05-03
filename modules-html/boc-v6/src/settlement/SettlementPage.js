@@ -220,7 +220,7 @@ ${slaHtml}
 
   _renderError(msg) {
     const el = this.containerEl.querySelector('#settlement-body');
-    if (el) el.innerHTML = `<div style="padding:20px;color:#C96D6D;">오류: ${msg}</div>`;
+    if (el) el.innerHTML = `<div style="padding:20px;color:#C96D6D;">오류: ${esc(msg)}</div>`;
   }
 
   unmount() {
