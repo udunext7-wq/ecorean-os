@@ -2495,43 +2495,49 @@ function endRect(){
   }
   drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
 }
-let polygonClickTimer=null;
+let polyState=null; // {n:int, center?:{x,y}, phase:'center'|'radius'}
 function clickPolygon(pos){
-  if(polygonClickTimer){clearTimeout(polygonClickTimer);polygonClickTimer=null;return;}
-  polygonClickTimer=setTimeout(()=>{
-    polygonClickTimer=null;
+  if(!polyState) return;
+  if(polyState.phase==='center'){
+    polyState.center=getMm(pos);
+    polyState.phase='radius';
+    enterCmdMode('polygon-r',{},'반지름(mm):','반지름 Enter 또는 캔버스 클릭으로 지정');
+  } else if(polyState.phase==='radius'&&polyState.center){
     const mm=getMm(pos);
-    if(!drawState||drawState.type!=='polygon'){
-      drawState={type:'polygon',points:[mm],current:mm};
-      showStatus('점 추가됨 — 거리 또는 @dx,dy 입력 / 더블클릭으로 닫기');
-    }else{
-      let p=mm;
-      if(drawState.points.length>0) p=applyOrtho(drawState.points[drawState.points.length-1],p);
-      drawState.points.push(p);
-      showStatus('점 '+drawState.points.length+'개 — 더블클릭/c로 닫기');
-    }
-    updatePreview();
-    // v5.1: 매 클릭마다 명령창 포커스 회복
-    enterCmdMode('polygon-rel',{},'다음점:','거리(mm) 또는 @dx,dy / c=닫기 / esc=취소 / 캔버스 클릭도 가능');
-  },250);
+    const r=Math.hypot(mm.x-polyState.center.x,mm.y-polyState.center.y);
+    if(r>=50) createRegularPolygon(polyState.center,r,polyState.n);
+    else cmdToast('50mm 이상 반지름 클릭');
+  }
 }
 function updatePolygonPreview(pos){
-  if(!drawState||drawState.type!=='polygon') return;
-  let mm=getMm(pos);
-  if(drawState.points.length>0) mm=applyOrtho(drawState.points[drawState.points.length-1],mm);
-  drawState.current=mm;updatePreview();
-}
-function endPolygon(){
-  if(polygonClickTimer){clearTimeout(polygonClickTimer);polygonClickTimer=null;}
-  if(!drawState||drawState.type!=='polygon'||drawState.points.length<3){
-    drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
-    if(STATE.cmdMode==='polygon-rel') exitCmdMode();
-    return;
+  if(!polyState||polyState.phase!=='radius'||!polyState.center) return;
+  drawGroup.destroyChildren();
+  const mm=getMm(pos);
+  const r=Math.hypot(mm.x-polyState.center.x,mm.y-polyState.center.y);
+  if(r<10){previewLayer.batchDraw();return;}
+  const n=polyState.n;
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const angle=2*Math.PI*i/n-Math.PI/2;
+    pts.push(STATE.offsetX+mmToPx(polyState.center.x+r*Math.cos(angle)));
+    pts.push(STATE.offsetY+mmToPx(polyState.center.y+r*Math.sin(angle)));
   }
-  addSpace([...drawState.points]);
-  drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
-  showStatus('다각형 닫힘');
-  if(STATE.cmdMode==='polygon-rel') exitCmdMode();
+  drawGroup.add(new Konva.Line({points:pts,closed:true,stroke:'#C9A961',strokeWidth:1.5,dash:[6,4]}));
+  drawGroup.add(new Konva.Circle({x:STATE.offsetX+mmToPx(polyState.center.x),y:STATE.offsetY+mmToPx(polyState.center.y),radius:4,fill:'#C9A961',opacity:0.8}));
+  drawGroup.add(new Konva.Text({x:STATE.offsetX+mmToPx(polyState.center.x)+6,y:STATE.offsetY+mmToPx(polyState.center.y)-14,text:'R'+Math.round(r),fontSize:11,fontFamily:'JetBrains Mono',fill:'#C9A961'}));
+  previewLayer.batchDraw();
+}
+function createRegularPolygon(center,radius,n){
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const angle=2*Math.PI*i/n-Math.PI/2;
+    pts.push({x:Math.round(center.x+radius*Math.cos(angle)),y:Math.round(center.y+radius*Math.sin(angle))});
+  }
+  addSpace(pts);
+  polyState=null;
+  if(STATE.cmdMode==='polygon-r') exitCmdMode();
+  drawGroup.destroyChildren();previewLayer.batchDraw();
+  cmdToast(n+'각형 R'+Math.round(radius)+'mm 생성');
 }
 function startWall(pos){const mm=getMm(pos);drawState={type:'wall',start:mm,current:mm};updatePreview();}
 function updateWall(pos){if(!drawState||drawState.type!=='wall') return;let mm=getMm(pos);mm=applyOrtho(drawState.start,mm);drawState.current=mm;updatePreview();}
@@ -2872,19 +2878,15 @@ function circleCircleIntersection(x1,y1,r1,x2,y2,r2){
 }
 // v5.3: 브레이크 — 선분을 클릭점에서 분할
 // v5.4: 벽 클릭 → 자동 치수선 생성 (벽 양 끝점 기준)
-// v5.6: Offset — 거리 입력 후 객체 클릭 → 방향 클릭 → 평행 객체 생성
-let offsetState=null; // {distance, target?, kind?}
-function startOffset(){
-  // 거리부터 입력
-  enterCmdMode('offset-d',{},'옵셋 거리(mm):','거리 입력 후 Enter (esc=취소)');
-}
+// v5.9: Offset — 같은 타입 복사(선→선, 벽→벽), 연속 사용
+let offsetState=null; // {distance, target?}
 function handleOffsetClick(pos){
   const mm=getMm(pos);
-  if(!offsetState||!offsetState.distance){
-    cmdToast('먼저 옵셋 거리를 입력하세요 (O 키)');
+  if(!offsetState?.distance){
+    enterCmdMode('offset-d',{},'옵셋 거리(mm):','거리 Enter → 객체 클릭 → 방향 클릭');
     return;
   }
-  // 1단계: 객체 선택 (가장 가까운 벽/원/공간 선분)
+  // 1단계: 객체 선택 (벽/선/원 중 가장 가까운 것)
   if(!offsetState.target){
     let best=null,minD=500;
     STATE.walls.forEach(w=>{
@@ -2896,40 +2898,69 @@ function handleOffsetClick(pos){
       const dr=Math.abs(Math.sqrt(dx*dx+dy*dy)-c.radius_mm);
       if(dr<minD){minD=dr;best={kind:'circle',obj:c};}
     });
-    if(!best){cmdToast('옵셋할 객체 가까이 클릭 (벽/원)');return;}
-    offsetState.target=best;offsetState.clickPos=mm;
-    cmdToast('방향을 클릭하세요 (옵셋 방향)');
+    if(!best){cmdToast('옵셋할 객체 가까이 클릭 (벽/선/원)');return;}
+    offsetState.target=best;
+    drawGroup.destroyChildren();
+    cmdToast((best.obj.isLine?'선':'벽/원')+' 선택 — 방향을 클릭하세요 (거리: '+offsetState.distance+'mm)');
     return;
   }
-  // 2단계: 방향 결정 + 객체 생성
+  // 2단계: 방향 클릭 → 같은 타입으로 복사
   const t=offsetState.target;
   const dist=offsetState.distance;
   if(t.kind==='wall'){
     const w=t.obj;
     const dx=w.x2-w.x1, dy=w.y2-w.y1;
     const len=Math.sqrt(dx*dx+dy*dy);
-    if(len<1) return;
-    // 정상 벡터 (좌측)
+    if(len<1){offsetState.target=null;return;}
     const nx=-dy/len, ny=dx/len;
-    // 방향: 클릭 위치가 정상의 어느쪽인지
     const cx=(w.x1+w.x2)/2, cy=(w.y1+w.y2)/2;
-    const sgn=Math.sign((mm.x-cx)*nx+(mm.y-cy)*ny);
+    const sgn=Math.sign((mm.x-cx)*nx+(mm.y-cy)*ny)||1;
     const ox=nx*sgn*dist, oy=ny*sgn*dist;
-    addWall(w.x1+ox,w.y1+oy,w.x2+ox,w.y2+oy);
-    cmdToast('벽 옵셋 — '+dist+'mm');
+    const x1=w.x1+ox, y1=w.y1+oy, x2=w.x2+ox, y2=w.y2+oy;
+    if(w.isLine){
+      // 선 → 선 복사 (공간 분할 없이 직접 생성)
+      if(Math.hypot(x2-x1,y2-y1)>=50){
+        const v1=ensureVertex(x1,y1),v2=ensureVertex(x2,y2);
+        const nw=makeWallVEF(v1.id,v2.id,{layerName:w.layerName,spaceId:w.spaceId});
+        nw.isLine=true;
+        STATE.walls.push(nw);
+        saveHistory();renderAll();refreshUI();
+        cmdToast('선 옵셋 '+dist+'mm — 다음 객체 클릭 (Esc=종료)');
+      }
+    }else{
+      // 벽 → 벽 복사 (두께·마감재 유지)
+      if(Math.hypot(x2-x1,y2-y1)>=100){
+        const mid={x:(x1+x2)/2,y:(y1+y2)/2};
+        const sp=findNearestSpace(mid);
+        const v1=ensureVertex(x1,y1),v2=ensureVertex(x2,y2);
+        STATE.walls.push(makeWallVEF(v1.id,v2.id,{
+          layerName:makeLayerName('WALL',sp),
+          spaceId:sp?sp.id:null,
+          thickness:w.thickness,
+          finishMaterial:w.finishMaterial,
+          height_mm:w.height_mm,
+        }));
+        splitWallsAtIntersections();
+        saveHistory();renderAll();refreshUI();
+        cmdToast('벽 옵셋 '+dist+'mm — 다음 객체 클릭 (Esc=종료)');
+      }
+    }
   }else if(t.kind==='circle'){
     const c=t.obj;
     const dx=mm.x-c.x,dy=mm.y-c.y;
     const d=Math.sqrt(dx*dx+dy*dy);
-    // 클릭이 외부면 +dist, 내부면 -dist
     const sgn=d>c.radius_mm?1:-1;
     const newR=c.radius_mm+sgn*dist;
-    if(newR>10) addCircle(c.x,c.y,newR);
-    cmdToast('원 옵셋 — R '+(c.radius_mm)+' → '+newR+'mm');
+    if(newR>10){
+      addCircle(c.x,c.y,newR);
+      cmdToast('원 옵셋 R'+newR+'mm — 다음 객체 클릭 (Esc=종료)');
+    }else{
+      cmdToast('반지름이 너무 작습니다');
+    }
   }
-  offsetState=null;
-  exitCmdMode();
-  setTool('select');
+  // 연속 사용: target만 초기화, distance·tool 유지
+  offsetState.target=null;
+  drawGroup.destroyChildren();previewLayer.batchDraw();
 }
 
 // v5.6: Mirror — 박스선택 또는 단일선택 객체를 기준선 대칭 복제
@@ -3891,10 +3922,29 @@ stage.on('mousemove touchmove',e=>{
   else if(STATE.cmdMode==='measure-rel'&&STATE.measureFirst){
     STATE.cmdData.curX=mm.x;STATE.cmdData.curY=mm.y;
   }
-  else if(STATE.cmdMode==='polygon-rel'&&drawState&&drawState.type==='polygon'){
-    let p=mm;
-    if(drawState.points.length>0) p=applyOrtho(drawState.points[drawState.points.length-1],p);
-    drawState.current=p;updatePreview();
+  else if(STATE.cmdMode==='polygon-r'&&polyState?.phase==='radius'){
+    updatePolygonPreview(pos);
+  }
+  // v5.9: offset 방향 프리뷰 (target 선택 후 마우스 이동 시 점선 미리보기)
+  if(STATE.selectedTool==='offset'&&offsetState?.target?.kind==='wall'){
+    const w=offsetState.target.obj;
+    const dist=offsetState.distance;
+    const dx=w.x2-w.x1,dy=w.y2-w.y1,len=Math.sqrt(dx*dx+dy*dy);
+    drawGroup.destroyChildren();
+    if(len>1){
+      const nx=-dy/len,ny=dx/len;
+      const cx=(w.x1+w.x2)/2,cy=(w.y1+w.y2)/2;
+      const sgn=Math.sign((mm.x-cx)*nx+(mm.y-cy)*ny)||1;
+      const ox=nx*sgn*dist,oy=ny*sgn*dist;
+      drawGroup.add(new Konva.Line({
+        points:[
+          STATE.offsetX+mmToPx(w.x1+ox),STATE.offsetY+mmToPx(w.y1+oy),
+          STATE.offsetX+mmToPx(w.x2+ox),STATE.offsetY+mmToPx(w.y2+oy),
+        ],
+        stroke:'#FFD700',strokeWidth:w.isLine?2:Math.max(4,mmToPx(w.thickness||100)),
+        dash:[6,4],opacity:0.75,lineCap:'square',
+      }));
+    }
   }
   // v5.2: 스냅 마커 갱신 (모든 도구에서 endpoint 스냅 시 글로우 표시)
   updateSnapMarker(pos);
@@ -3999,7 +4049,7 @@ stage.on('mouseup touchend',e=>{
   }
   mouseDownPos=null;
 });
-stage.on('dblclick dbltap',e=>{if(STATE.selectedTool==='polygon'){endPolygon();}});
+stage.on('dblclick dbltap',e=>{});
 stage.on('wheel',e=>{
   e.evt.preventDefault();
   const oldZoom=STATE.zoom;
@@ -4085,8 +4135,7 @@ document.addEventListener('keydown',e=>{
       e.preventDefault();
       doEnterAction();
       break;
-    case 'escape':drawState=null;STATE.measureFirst=null;
-      if(polygonClickTimer){clearTimeout(polygonClickTimer);polygonClickTimer=null;}
+    case 'escape':drawState=null;STATE.measureFirst=null;offsetState=null;polyState=null;
       drawGroup.destroyChildren();previewLayer.batchDraw();deselect();
       if(STATE.cmdMode) exitCmdMode();
       STATE.boxSelection=[];renderAll();
@@ -4155,8 +4204,7 @@ function updateOrthoFAB(){
 function setTool(tool){
   STATE.selectedTool=tool;
   document.querySelectorAll('.tool-btn').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));
-  drawState=null;STATE.measureFirst=null;
-  if(polygonClickTimer){clearTimeout(polygonClickTimer);polygonClickTimer=null;}
+  drawState=null;STATE.measureFirst=null;polyState=null;
   drawGroup.destroyChildren();previewLayer.batchDraw();
   container.className='tool-'+tool;
   const libTools={furniture:FURNITURE_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB};
@@ -5821,6 +5869,8 @@ function enterCmdMode(mode,data,promptLabel,hintText){
   inp.value='';
   inp.focus();
   inp.placeholder=hintText||'';
+  // 단축키 문자(o, x 등)가 포커스 직후 입력창에 삽입되는 것 방지
+  setTimeout(()=>{inp.value='';},0);
 }
 function exitCmdMode(){
   STATE.cmdMode=null;
@@ -5922,7 +5972,7 @@ function handleCmdModeInput(c){
   const mode=STATE.cmdMode;
   // 공통: 'esc'/'cancel' 입력으로 취소
   if(/^(esc|cancel|q)$/i.test(c)){
-    drawState=null;STATE.measureFirst=null;
+    drawState=null;STATE.measureFirst=null;polyState=null;
     drawGroup.destroyChildren();previewLayer.batchDraw();
     exitCmdMode();
     cmdToast('취소');
@@ -6051,45 +6101,22 @@ function handleCmdModeInput(c){
     return true;
   }
 
-  // ===== polygon-rel: 다각형 다음 점 =====
-  if(mode==='polygon-rel'){
-    // c 또는 close = 다각형 닫기
-    if(/^(c|close)$/i.test(c)){
-      endPolygon();
-      exitCmdMode();
-      return true;
-    }
-    if(!drawState||drawState.type!=='polygon'){exitCmdMode();return true;}
-    const last=drawState.points[drawState.points.length-1];
-    // @dx,dy 절대 상대좌표
-    const relM=c.match(/^@\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
-    if(relM){
-      const dx=parseFloat(relM[1]),dy=parseFloat(relM[2]);
-      drawState.points.push({x:last.x+dx,y:last.y+dy});
-      drawState.current={x:last.x+dx,y:last.y+dy};
-      updatePreview();
-      enterCmdMode('polygon-rel',{},'다음점:','거리(mm) 또는 @dx,dy / c=닫기 / esc=취소');
-      cmdToast('점 '+drawState.points.length+'개');
-      return true;
-    }
-    // 단일 숫자 = 마우스 방향으로 거리만큼
-    const num=parseFloat(c);
-    if(!isFinite(num)||num<=0){cmdToast('거리(mm) 또는 @dx,dy / c=닫기');return true;}
-    let dx=drawState.current.x-last.x, dy=drawState.current.y-last.y;
-    const d=Math.sqrt(dx*dx+dy*dy);
-    if(d<1){dx=1;dy=0;} else {dx/=d;dy/=d;}
-    let nx,ny;
-    const orthoActiveP=(STATE.snap.ortho&&!STATE.shiftPressed)||(!STATE.snap.ortho&&STATE.shiftPressed);
-    if(orthoActiveP){
-      if(Math.abs(dx)>=Math.abs(dy)){nx=last.x+Math.sign(dx||1)*num;ny=last.y;}
-      else{nx=last.x;ny=last.y+Math.sign(dy)*num;}
-    }else{nx=last.x+dx*num;ny=last.y+dy*num;}
-    nx=snapMm(nx);ny=snapMm(ny);
-    drawState.points.push({x:nx,y:ny});
-    drawState.current={x:nx,y:ny};
-    updatePreview();
-    enterCmdMode('polygon-rel',{},'다음점:','거리(mm) 또는 @dx,dy / c=닫기 / esc=취소');
-    cmdToast('점 '+drawState.points.length+'개');
+  // ===== polygon-n: 꼭짓점 수 입력 =====
+  if(mode==='polygon-n'){
+    const n=parseInt(c);
+    if(!isFinite(n)||n<3||n>20){cmdToast('3~20 사이 정수 입력');return true;}
+    polyState={n,phase:'center'};
+    exitCmdMode();
+    cmdToast(n+'각형 — 중심점을 클릭하세요');
+    return true;
+  }
+
+  // ===== polygon-r: 반지름 입력 =====
+  if(mode==='polygon-r'){
+    if(!polyState||!polyState.center){exitCmdMode();return true;}
+    const r=parseFloat(c);
+    if(!isFinite(r)||r<50){cmdToast('50mm 이상 반지름 입력');return true;}
+    createRegularPolygon(polyState.center,r,polyState.n);
     return true;
   }
 
@@ -6161,19 +6188,9 @@ function handleRelativeCoord(dx,dy){
       zoomFit();
     }
   }
-  // 다각공간
+  // 정다각형 — @dx,dy 입력 미지원 (꼭짓점 수·반지름으로 생성)
   else if(STATE.selectedTool==='polygon'){
-    if(drawState&&drawState.type==='polygon'){
-      const last=drawState.points[drawState.points.length-1];
-      drawState.points.push({x:last.x+dx,y:last.y+dy});
-      drawState.current={x:last.x+dx,y:last.y+dy};
-      updatePreview();
-      cmdToast('점 '+drawState.points.length+'개 — 더블클릭/Enter로 닫기');
-    }else{
-      drawState={type:'polygon',points:[{x:0,y:0},{x:dx,y:dy}],current:{x:dx,y:dy}};
-      updatePreview();
-      cmdToast('다각형 시작 (원점)');
-    }
+    cmdToast('정다각형: 꼭짓점 수 입력 후 중심 클릭 → 반지름 입력');
   }
   // 벽
   else if(STATE.selectedTool==='wall'){
@@ -6448,7 +6465,7 @@ cmdInput.addEventListener('keydown',e=>{
     STATE.cmdHistoryIdx=-1;
     // v5.1: cmdMode 활성 시 모드 종료 + drawState 클리어
     if(STATE.cmdMode){
-      drawState=null;STATE.measureFirst=null;
+      drawState=null;STATE.measureFirst=null;polyState=null;
       drawGroup.destroyChildren();previewLayer.batchDraw();
       exitCmdMode();
       cmdToast('취소');
@@ -6463,7 +6480,7 @@ document.getElementById('btn-cmd-help').addEventListener('click',showCmdHelp);
 const _origSetTool=setTool;
 setTool=function(tool){
   if(STATE.cmdMode){
-    drawState=null;STATE.measureFirst=null;
+    drawState=null;STATE.measureFirst=null;polyState=null;
     drawGroup.destroyChildren();previewLayer.batchDraw();
     exitCmdMode();
   }
@@ -6474,9 +6491,21 @@ setTool=function(tool){
   if(['furniture','fixture','light','electric','hvac'].includes(tool)){
     rebuildLibPanel(tool);
   }
-  // v5.6: offset 도구 활성 시 거리 입력 자동 진입
-  if(tool==='offset'&&!offsetState){
-    enterCmdMode('offset-d',{},'옵셋 거리(mm):','거리 Enter → 객체 클릭 → 방향 클릭');
+  // 정다각형 도구 활성 시 — 꼭짓점 수 입력
+  if(tool==='polygon'){
+    polyState=null;
+    enterCmdMode('polygon-n',{},'꼭짓점 수:','3~20 정수 입력 (예: 6 = 정육각형)');
+  }
+  // v5.9: offset 도구 활성 시 — distance 없을 때만 거리 입력, 있으면 바로 재사용
+  if(tool==='offset'){
+    if(!offsetState?.distance){
+      offsetState=null;
+      enterCmdMode('offset-d',{},'옵셋 거리(mm):','거리 Enter → 객체 클릭 → 방향 클릭');
+    }else{
+      offsetState.target=null;
+      drawGroup.destroyChildren();previewLayer.batchDraw();
+      cmdToast('옵셋 거리: '+offsetState.distance+'mm — 객체 클릭 (거리 변경: Esc 후 O)');
+    }
   }
   // v5.6: mirror 도구 클릭 — 선택 객체 있어야 진행
   if(tool==='mirror'){
@@ -6506,10 +6535,8 @@ STATE.isMobile=/Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent)||(windo
 document.getElementById('ortho-fab').addEventListener('click',toggleOrtho);
 updateOrthoFAB();
 
-// v5.2: 다각형 닫기 FAB
-document.getElementById('polyclose-fab').addEventListener('click',()=>{
-  if(STATE.selectedTool==='polygon'&&drawState&&drawState.type==='polygon') endPolygon();
-});
+// 정다각형 도구에서는 닫기 FAB 사용 안 함
+document.getElementById('polyclose-fab').addEventListener('click',()=>{});
 
 // v5.2: 빠른 치수칩 (자주 쓰는 인테리어 치수)
 const QUICK_DIMS=[600,900,1200,1500,1800,2400,3000,3600,4500];
@@ -6518,16 +6545,14 @@ function showQuickChips(mode){
   el.classList.remove('hidden');
   el.innerHTML=QUICK_DIMS.map(d=>'<button class="quick-chip" data-d="'+d+'">'+d+'</button>').join('')+
     '<button class="quick-chip" data-cmd="esc" style="border-color:#E2725B;color:#E2725B">esc 취소</button>'+
-    (mode==='polygon-rel'?'<button class="quick-chip" data-cmd="c" style="border-color:var(--gold);color:var(--gold)">c 닫기</button>':'');
+    '';
   el.querySelectorAll('.quick-chip').forEach(b=>{
     b.addEventListener('click',e=>{
       e.preventDefault();
       const d=b.dataset.d, cmd=b.dataset.cmd;
       const inp=document.getElementById('cmd-input');
       if(cmd==='esc'){
-        if(STATE.cmdMode){drawState=null;STATE.measureFirst=null;drawGroup.destroyChildren();previewLayer.batchDraw();exitCmdMode();cmdToast('취소');}
-      }else if(cmd==='c'){
-        if(STATE.selectedTool==='polygon') endPolygon();
+        if(STATE.cmdMode){drawState=null;STATE.measureFirst=null;polyState=null;drawGroup.destroyChildren();previewLayer.batchDraw();exitCmdMode();cmdToast('취소');}
       }else if(d){
         processCommand(String(d));
         inp.value='';inp.focus();
@@ -6545,12 +6570,12 @@ function hideQuickChips(){
 const _origEnter=enterCmdMode;
 enterCmdMode=function(mode,data,promptLabel,hintText){
   _origEnter(mode,data,promptLabel,hintText);
-  if(['rect-w','rect-h','wall-len','polygon-rel','measure-rel'].includes(mode)){
+  if(['rect-w','rect-h','wall-len','measure-rel'].includes(mode)){
     showQuickChips(mode);
   }else{
     hideQuickChips();
   }
-  document.getElementById('polyclose-fab').classList.toggle('hidden',mode!=='polygon-rel');
+  document.getElementById('polyclose-fab').classList.add('hidden');
 };
 const _origExit=exitCmdMode;
 exitCmdMode=function(){
