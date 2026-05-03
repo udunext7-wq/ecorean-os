@@ -768,6 +768,27 @@ function registerIPC() {
       CREATE INDEX IF NOT EXISTS idx_ins_schedule   ON inspections(schedule_id);
       CREATE INDEX IF NOT EXISTS idx_ins_result     ON inspections(result);
     `);
+
+    // 마이그레이션 자동 실행 (재발 방지)
+    try {
+      const { runMigrations } = require('../shell/src/db/migration-runner.cjs');
+      const migrationsDir = require('path').join(__dirname, '..', 'db', 'migrations');
+      const migResult = runMigrations(_bocContractDB, migrationsDir);
+      console.log(`[DB] 마이그레이션: ${migResult.applied}개 적용 / ${migResult.skipped}개 스킵`);
+    } catch (e) {
+      console.warn('[DB] 마이그레이션 오류 (무시):', e.message);
+    }
+
+    // 시드 자동 적재 (재발 방지)
+    try {
+      const { runSeeds } = require('../shell/src/db/seed-runner.cjs');
+      const seedsDir = require('path').join(__dirname, '..', 'db', 'seeds');
+      const seedResult = runSeeds(_bocContractDB, seedsDir);
+      console.log(`[DB] 시드: ${seedResult.loaded}개 파일 처리 / 합계 ${seedResult.grandTotal}건`);
+    } catch (e) {
+      console.warn('[DB] 시드 오류 (무시):', e.message);
+    }
+
     return _bocContractDB;
   }
 

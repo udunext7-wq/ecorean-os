@@ -16,7 +16,7 @@ function buildPrintHTML(estimate, contract, input) {
   const customerAddress = contract ? (contract.customerAddress || '-') : '-';
   const contractAmount  = estimate.contractAmount || estimate.contract || 0;
   const vatAmount       = estimate.vatAmount || Math.round(contractAmount * 0.1);
-  const finalAmount     = estimate.finalAmount || estimate.final || 0;
+  const finalAmount     = estimate.finalAmount || (contractAmount + vatAmount);
 
   return `<!DOCTYPE html>
 <html lang="ko">

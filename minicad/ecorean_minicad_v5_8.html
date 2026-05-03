@@ -169,6 +169,23 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
 #quick-chips.hidden{display:none}
 .quick-chip{background:rgba(20,20,20,0.92);border:1px solid var(--border);color:var(--text-secondary);padding:7px 12px;border-radius:14px;font-family:var(--mono);font-size:11px;cursor:pointer;pointer-events:auto;transition:all 0.12s;font-weight:600}
 .quick-chip:hover,.quick-chip:active{border-color:var(--gold);color:var(--gold);background:rgba(201,169,97,0.08)}
+/* KPI 고정바 */
+.kpi-bar{height:42px;background:var(--bg-secondary);border-bottom:1px solid var(--border-strong);display:flex;align-items:stretch;flex-shrink:0;overflow:hidden}
+.kpi-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;border-right:1px solid var(--border);gap:1px}
+.kpi-item:last-child{border-right:none}
+.kpi-item-label{font-family:var(--mono);font-size:8px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.08em;line-height:1}
+.kpi-item-val{font-family:var(--serif);font-size:16px;color:var(--gold);font-weight:500;line-height:1}
+.kpi-item-unit{font-family:var(--mono);font-size:8px;color:var(--text-tertiary);margin-left:1px}
+/* 왼쪽 패널 접기 */
+.psec-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:5px;border-bottom:1px solid var(--border);margin-bottom:8px;user-select:none}
+.psec-head:hover .psec-label{color:var(--gold-bright)}
+.psec-head .psec-label{border-bottom:none;padding-bottom:0;margin-bottom:0}
+.psec-chevron{font-size:9px;color:var(--text-tertiary);transition:transform 0.2s}
+.panel-left > div.collapsed > :not(.psec-head){display:none}
+.panel-left > div.collapsed .psec-chevron{transform:rotate(-90deg)}
+/* 단축키 패널 — 기본 숨김 */
+.canvas-help{display:none}
+.canvas-help.visible{display:block}
 </style>
 </head>
 <body>
@@ -197,17 +214,28 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
   </div>
 </div>
 
+<div class="kpi-bar">
+  <div class="kpi-item"><div class="kpi-item-label">총 바닥</div><div><span class="kpi-item-val" id="t-floor">0</span><span class="kpi-item-unit">㎡</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">총 벽</div><div><span class="kpi-item-val" id="t-wall">0</span><span class="kpi-item-unit">㎡</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">총 천장</div><div><span class="kpi-item-val" id="t-ceiling">0</span><span class="kpi-item-unit">㎡</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">총 둘레</div><div><span class="kpi-item-val" id="t-peri">0</span><span class="kpi-item-unit">m</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">방수(욕·발)</div><div><span class="kpi-item-val" id="t-water">0</span><span class="kpi-item-unit">㎡</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">개구부</div><div><span class="kpi-item-val" id="t-open">0</span><span class="kpi-item-unit">개</span></div></div>
+</div>
+
 <div class="main">
   <div class="panel-left">
     <div>
-      <div class="psec-label">도구</div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">도구</div><span class="psec-chevron">▾</span></div>
       <div class="tool-grid">
         <button class="tool-btn active" data-tool="select"><span class="ti">↖</span><span>선택</span><span class="tk">V</span></button>
         <button class="tool-btn" data-tool="rect"><span class="ti">▭</span><span>사각공간</span><span class="tk">R</span></button>
+        <button class="tool-btn" data-tool="circlespace"><span class="ti">⬤</span><span>원형공간</span><span class="tk">G</span></button>
         <button class="tool-btn" data-tool="polygon"><span class="ti">⬡</span><span>다각공간</span><span class="tk">P</span></button>
-        <button class="tool-btn" data-tool="wall"><span class="ti">▬</span><span>선/벽</span><span class="tk">L</span></button>
+        <button class="tool-btn" data-tool="wall"><span class="ti">▬</span><span>벽</span><span class="tk">B</span></button>
+        <button class="tool-btn" data-tool="line"><span class="ti">╱</span><span>선</span><span class="tk">L</span></button>
         <button class="tool-btn" data-tool="door"><span class="ti">⌐</span><span>문</span><span class="tk">D</span></button>
-        <button class="tool-btn" data-tool="window"><span class="ti">▦</span><span>창</span><span class="tk">N</span></button>
+        <button class="tool-btn" data-tool="window"><span class="ti">▦</span><span>창</span><span class="tk">W</span></button>
         <button class="tool-btn" data-tool="furniture"><span class="ti">🛋</span><span>가구</span><span class="tk">1</span></button>
         <button class="tool-btn" data-tool="fixture"><span class="ti">🚽</span><span>위생</span><span class="tk">2</span></button>
         <button class="tool-btn" data-tool="light"><span class="ti">●</span><span>조명</span><span class="tk">3</span></button>
@@ -220,27 +248,28 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
         <button class="tool-btn" data-tool="arc"><span class="ti">⌒</span><span>아크</span><span class="tk">A</span></button>
         <button class="tool-btn" data-tool="offset"><span class="ti">⫽</span><span>옵셋</span><span class="tk">O</span></button>
         <button class="tool-btn" data-tool="mirror" id="btn-mirror"><span class="ti">⇋</span><span>미러</span><span class="tk">mi</span></button>
-        <button class="tool-btn" data-tool="trim"><span class="ti">✂</span><span>트림</span><span class="tk">tr</span></button>
-        <button class="tool-btn" data-tool="break"><span class="ti">⊥</span><span>분할</span><span class="tk">br</span></button>
+        <button class="tool-btn" data-tool="trim"><span class="ti">✂</span><span>트림</span><span class="tk">X</span></button>
+        <button class="tool-btn" data-tool="break"><span class="ti">⊥</span><span>분할</span><span class="tk">Z</span></button>
+        <button class="tool-btn" data-tool="eraser"><span class="ti">⌫</span><span>지우개</span><span class="tk">E</span></button>
         <button class="tool-btn" data-tool="pan"><span class="ti">✋</span><span>화면</span><span class="tk">H</span></button>
       </div>
     </div>
     <div>
-      <div class="psec-label">공간 타입</div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">공간 타입</div><span class="psec-chevron">▾</span></div>
       <div class="stype-grid" id="stype-grid"></div>
     </div>
     <div>
-      <div class="psec-label">스냅 설정</div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">스냅 설정</div><span class="psec-chevron">▾</span></div>
       <div class="snap-list" id="snap-list"></div>
       <div class="field" style="margin-top:8px"><label class="field-label">스냅 거리</label>
         <select id="snap-unit"><option value="50">50mm</option><option value="100" selected>100mm</option><option value="200">200mm</option><option value="500">500mm</option></select></div>
     </div>
     <div>
-      <div class="psec-label">레이어</div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">레이어</div><span class="psec-chevron">▾</span></div>
       <div class="layer-list" id="layer-list"></div>
     </div>
     <div>
-      <div class="psec-label">프로젝트</div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">프로젝트</div><span class="psec-chevron">▾</span></div>
       <div class="field"><label class="field-label">프로젝트명</label><input type="text" id="project-name" value="신규 인테리어"></div>
       <div class="field"><label class="field-label">기본 천장고 (mm)</label>
         <input type="number" id="ceiling-height" value="2400" min="2000" max="4000" step="50"></div>
@@ -259,16 +288,17 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
       <button class="zoom-btn" id="zoom-out" title="축소">−</button>
     </div>
     <div class="canvas-status hidden" id="canvas-status"></div>
-    <div class="canvas-help">
+    <div class="canvas-help" id="canvas-help">
       <h5>단축키</h5>
       <kbd>V</kbd>선택 <kbd>R</kbd>사각 <kbd>P</kbd>다각<br>
-      <kbd>A</kbd>벽 <kbd>D</kbd>문 <kbd>N</kbd>창<br>
-      <kbd>F</kbd>가구 <kbd>X</kbd>위생 <kbd>L</kbd>조명<br>
-      <kbd>O</kbd>전기 <kbd>T</kbd>글자 <kbd>M</kbd>자<br>
-      <kbd>H</kbd>이동 <kbd>Shift</kbd>직각<br>
-      <kbd>Ctrl+Z</kbd>실행취소<br>
-      <kbd>Del</kbd>삭제 <kbd>Esc</kbd>취소<br>
-      <kbd>휠</kbd>줌 <kbd>우클릭</kbd>이동
+      <kbd>G</kbd>원형공간 <kbd>C</kbd>원 <kbd>A</kbd>아크<br>
+      <kbd>B</kbd>벽 <kbd>L</kbd>선 <kbd>D</kbd>문 <kbd>W</kbd>창<br>
+      <kbd>T</kbd>글자 <kbd>M</kbd>줄자 <kbd>H</kbd>이동<br>
+      <kbd>X</kbd>트림 <kbd>Z</kbd>분할 <kbd>E</kbd>지우개<br>
+      <kbd>O</kbd>옵셋 <kbd>I</kbd>치수 <kbd>F</kbd>그리드<br>
+      <kbd>1~5</kbd>라이브러리 <kbd>F8</kbd>직교<br>
+      <kbd>Ctrl+Z</kbd>실행취소 <kbd>Del</kbd>삭제<br>
+      <kbd>휠</kbd>줌 <kbd>Shift</kbd>직교 <kbd>Esc</kbd>취소
     </div>
     <div class="canvas-info">
       <span><span class="gold">XY:</span> <span id="cursor-pos">0,0</span></span>
@@ -311,16 +341,6 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
     </div>
 
     <div class="tab-content" data-tab-content="estimate">
-      <div class="card"><h4>전체 합계</h4>
-        <div class="stats-grid">
-          <div class="stat-cell"><div class="stat-cell-label">총 바닥</div><div class="stat-cell-value"><span id="t-floor">0</span><span class="stat-cell-unit">㎡</span></div></div>
-          <div class="stat-cell"><div class="stat-cell-label">총 벽</div><div class="stat-cell-value"><span id="t-wall">0</span><span class="stat-cell-unit">㎡</span></div></div>
-          <div class="stat-cell"><div class="stat-cell-label">총 천장</div><div class="stat-cell-value"><span id="t-ceiling">0</span><span class="stat-cell-unit">㎡</span></div></div>
-          <div class="stat-cell"><div class="stat-cell-label">총 둘레</div><div class="stat-cell-value"><span id="t-peri">0</span><span class="stat-cell-unit">m</span></div></div>
-          <div class="stat-cell"><div class="stat-cell-label">방수(욕·발)</div><div class="stat-cell-value"><span id="t-water">0</span><span class="stat-cell-unit">㎡</span></div></div>
-          <div class="stat-cell"><div class="stat-cell-label">개구부</div><div class="stat-cell-value"><span id="t-open">0</span><span class="stat-cell-unit">개</span></div></div>
-        </div>
-      </div>
       <div class="card"><h4>공정별 합산 (공정별 분류)</h4>
         <table class="tbl"><thead><tr><th>공정</th><th>카테고리</th><th style="text-align:right">수량</th><th style="text-align:right">적용공간</th></tr></thead><tbody id="t-table"></tbody></table>
         <div class="hint" style="margin-top:6px">※ 공간별 분류 대신 공정별 합산. 단가는 NEEDS_RESEARCH로 BOC 전송.</div>
@@ -422,6 +442,16 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
 
 <div class="cmd-toast hidden" id="cmd-toast"></div>
 
+<!-- Boolean 연산 팝업 메뉴 -->
+<div id="bool-menu" style="display:none;position:fixed;z-index:9999;background:#1A1B2E;border:1px solid #3D4466;border-radius:10px;padding:8px 10px;box-shadow:0 6px 28px rgba(0,0,0,0.6);flex-direction:column;gap:6px;min-width:160px;">
+  <div style="font-size:10px;color:#7B82B5;margin-bottom:2px;font-weight:600;letter-spacing:.5px">공간 Boolean 연산</div>
+  <button class="bool-btn" data-op="union"     style="background:#2B6CB0;color:#fff;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12px;text-align:left;display:flex;align-items:center;gap:8px"><span>🔗</span><span>병합 (Union)</span></button>
+  <button class="bool-btn" data-op="subtract"  style="background:#276749;color:#fff;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12px;text-align:left;display:flex;align-items:center;gap:8px"><span>✂</span><span>차감 (Subtract)</span></button>
+  <button class="bool-btn" data-op="intersect" style="background:#744210;color:#fff;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12px;text-align:left;display:flex;align-items:center;gap:8px"><span>◈</span><span>교집합 (Intersect)</span></button>
+  <button class="bool-btn" data-op="absorb"    style="background:#553C9A;color:#fff;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12px;text-align:left;display:flex;align-items:center;gap:8px" id="bool-absorb-btn"><span>⬆</span><span>흡수 (Absorb)</span></button>
+  <button class="bool-btn" data-op="cancel"    style="background:#2D3748;color:#9CA3AF;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:11px;text-align:center">취소 (Esc)</button>
+</div>
+
 <!-- v5.2: 플로팅 액션 버튼 (모바일+데스크톱 공용) -->
 <div id="fab-stack" style="position:fixed;right:14px;bottom:60px;display:flex;flex-direction:column;gap:8px;z-index:40;pointer-events:none;">
   <button id="ortho-fab" class="fab-btn" style="pointer-events:auto" title="직교 (F8 / Ctrl+L)">직교 OFF</button>
@@ -431,6 +461,12 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
 <!-- v5.2: 빠른 치수칩 (cmdMode 활성 시 등장) -->
 <div id="quick-chips" class="hidden" style="position:fixed;left:50%;transform:translateX(-50%);bottom:60px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:90vw;z-index:35;pointer-events:none;">
   <!-- 동적 생성 -->
+</div>
+
+<!-- 마감재 우클릭 컨텍스트 메뉴 -->
+<div id="finish-ctx-menu" style="display:none;position:fixed;z-index:9999;background:#1e2130;border:1px solid #3a3f55;border-radius:7px;padding:4px 0;min-width:190px;box-shadow:0 8px 28px rgba(0,0,0,.7);font-family:Inter,sans-serif;font-size:12px;">
+  <div id="finish-ctx-title" style="padding:7px 13px 6px;color:#C9A961;font-size:11px;font-weight:600;border-bottom:1px solid #2e3347;letter-spacing:0.04em;"></div>
+  <div id="finish-ctx-items" style="max-height:340px;overflow-y:auto;padding:3px 0;"></div>
 </div>
 
 <script>
@@ -452,6 +488,7 @@ function runApp(){
 // ===== STATE =====
 const STATE={
   scale:80,gridSize:100,ceilingHeight:2400,projectName:'신규 인테리어',
+  vertices:[],  // VEF: 모든 점의 단일 진실 원천 [{id,x,y}]
   spaces:[],walls:[],openings:[],furniture:[],fixtures:[],lights:[],electric:[],texts:[],measures:[],
   circles:[],arcs:[], // v5.3: 원·아크
   hvac:[], // v5.6: 공조/소방
@@ -1029,6 +1066,17 @@ const WALL_MATERIALS={
   FABRIC:{name:'패브릭패널',code:'FABRIC'},
   METAL:{name:'메탈패널',code:'METAL'},
 };
+const CEILING_MATERIALS={
+  UNDECIDED:{name:'미정',code:'UNDECIDED'},
+  GYPSUM:{name:'석고보드',code:'GYPSUM'},
+  TBAR:{name:'T-BAR(텍스)',code:'TBAR'},
+  COFFER:{name:'우물천정',code:'COFFER'},
+  PAINT_WATER:{name:'페인트(수성)',code:'PAINT_WATER'},
+  PAINT_ECO:{name:'페인트(친환경)',code:'PAINT_ECO'},
+  EXPOSED_CON:{name:'노출콘크리트',code:'EXPOSED_CON'},
+  WOOD_CEIL:{name:'목재패널',code:'WOOD_CEIL'},
+  STRETCH:{name:'스트레치실링',code:'STRETCH'},
+};
 // 공간 타입별 기본 자재 (사용자는 드롭다운에서 변경 가능)
 function defaultMaterials(spaceType){
   switch(spaceType){
@@ -1230,7 +1278,7 @@ function snapToEndpoint(mm){
 // 공간 드래그 시 사용. excludeId = 자기 자신 공간은 제외
 function snapPointToSpaceEdges(mm,excludeId){
   if(!STATE.snap.endpoint) return {pt:mm,snapped:false};
-  const threshold=200; // mm
+  const threshold=STATE.snap.grid?STATE.gridSize*2:200; // mm (그리드 스냅 활성 시 2배)
   let best=null,minD=threshold;
   STATE.spaces.forEach(s=>{
     if(s.id===excludeId) return;
@@ -1322,10 +1370,15 @@ function spArea(s){return polyArea(s.polygon)/1e6;}
 function spPeri(s){return polyPeri(s.polygon)/1000;}
 function spCH(s){return s.ceilingHeight_mm||STATE.ceilingHeight;}
 function spWall(s){
-  const peri=spPeri(s),ch=spCH(s)/1000;
+  const spaceWalls=STATE.walls.filter(w=>w.spaceId===s.id&&!w.isLine);
+  let wallArea=0;
+  spaceWalls.forEach(w=>{
+    const len=Math.hypot(w.x2-w.x1,w.y2-w.y1)/1000;
+    wallArea+=len*(w.height_mm||spCH(s))/1000;
+  });
   let oa=0;
   STATE.openings.filter(o=>o.spaceId===s.id).forEach(o=>{oa+=(o.width_mm*o.height_mm)/1e6;});
-  return Math.max(0,peri*ch-oa);
+  return Math.max(0,wallArea-oa);
 }
 function spCenter(s){let cx=0,cy=0;s.polygon.forEach(p=>{cx+=p.x;cy+=p.y;});return{x:cx/s.polygon.length,y:cy/s.polygon.length};}
 
@@ -1341,10 +1394,122 @@ function isClockwise(pts){
 
 let idCounter=0;
 function makeId(p){idCounter++;return p+'_'+Date.now()+'_'+idCounter;}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ===== VEF TOPOLOGY =====
+function getVertex(id){return STATE.vertices.find(v=>v.id===id);}
+function ensureVertex(x,y,tol=60){
+  x=Math.round(x);y=Math.round(y);
+  const found=STATE.vertices.find(v=>Math.hypot(v.x-x,v.y-y)<tol);
+  if(found) return found;
+  const v={id:makeId('v'),x,y};
+  STATE.vertices.push(v);
+  return v;
+}
+function moveVertex(id,x,y){const v=getVertex(id);if(v){v.x=Math.round(x);v.y=Math.round(y);}}
+function verticesOfObj(obj){
+  if(obj.vertexIds) return obj.vertexIds.map(getVertex).filter(Boolean);
+  if(obj.v1Id) return [getVertex(obj.v1Id),getVertex(obj.v2Id)].filter(Boolean);
+  return [];
+}
+// VEF: wall/space 팩토리 — getter로 x1/y1/x2/y2, polygon 자동 제공
+function makeWallVEF(v1Id,v2Id,props={}){
+  const w=Object.defineProperties({
+    id:makeId('w'),v1Id,v2Id,
+    thickness:props.thickness??100,
+    layerName:props.layerName??'',
+    spaceId:props.spaceId??null,
+    finishMaterial:props.finishMaterial??null,
+    height_mm:props.height_mm??null,
+  },{
+    x1:{get(){return getVertex(this.v1Id)?.x??0},enumerable:true,configurable:true},
+    y1:{get(){return getVertex(this.v1Id)?.y??0},enumerable:true,configurable:true},
+    x2:{get(){return getVertex(this.v2Id)?.x??0},enumerable:true,configurable:true},
+    y2:{get(){return getVertex(this.v2Id)?.y??0},enumerable:true,configurable:true},
+  });
+  return w;
+}
+function makeSpaceVEF(vertexIds,props={}){
+  const s=Object.defineProperties({
+    id:props.id??makeId('sp'),
+    vertexIds:[...vertexIds],
+    name:props.name??'',
+    type:props.type??'LIVING',
+    typeIndex:props.typeIndex??1,
+    layerName:props.layerName??'',
+    ceilingHeight_mm:props.ceilingHeight_mm??null,
+    materialGrade:props.materialGrade??'STANDARD',
+    difficulty:props.difficulty??'NORMAL',
+    materialColor:props.materialColor??null,
+    floorMaterial:props.floorMaterial??'STRONG',
+    ceilingMaterial:props.ceilingMaterial??'GYPSUM',
+    videoSequenceOrder:props.videoSequenceOrder??null,
+  },{
+    polygon:{
+      get(){return this.vertexIds.map(getVertex).filter(Boolean);},
+      set(pts){this.vertexIds=polygonToVertexIds(pts);},
+      enumerable:true,configurable:true,
+    },
+  });
+  return s;
+}
+// 기존 plain polygon 배열을 vertexIds로 변환 (마이그레이션용)
+function polygonToVertexIds(polygon){
+  // tol=1: 공간 꼭짓점은 별개 점이므로 60mm 허용 오차로 병합하지 않음
+  // 단, 이미 존재하는 버텍스와 1mm 이내면 재사용 (중복 방지)
+  const used=new Set();
+  return polygon.map(p=>{
+    let best=null,bestD=Infinity;
+    for(const v of STATE.vertices){
+      if(used.has(v.id)) continue;
+      const d=Math.hypot(v.x-p.x,v.y-p.y);
+      if(d<1&&d<bestD){bestD=d;best=v;}
+    }
+    if(best){used.add(best.id);return best.id;}
+    const nv={id:makeId('v'),x:Math.round(p.x),y:Math.round(p.y)};
+    STATE.vertices.push(nv);
+    used.add(nv.id);
+    return nv.id;
+  });
+}
+// JSON.parse 후 VEF getter 재설치 (history 복원·load·duplicate·mirror 공통)
+function reinstallVEF(obj){
+  if('v1Id' in obj){
+    Object.defineProperties(obj,{
+      x1:{get(){return getVertex(this.v1Id)?.x??0},enumerable:true,configurable:true},
+      y1:{get(){return getVertex(this.v1Id)?.y??0},enumerable:true,configurable:true},
+      x2:{get(){return getVertex(this.v2Id)?.x??0},enumerable:true,configurable:true},
+      y2:{get(){return getVertex(this.v2Id)?.y??0},enumerable:true,configurable:true},
+    });
+  }
+  if('vertexIds' in obj){
+    Object.defineProperty(obj,'polygon',{
+      get(){return this.vertexIds.map(getVertex).filter(Boolean);},
+      set(pts){this.vertexIds=polygonToVertexIds(pts);},
+      enumerable:true,configurable:true,
+    });
+  }
+  return obj;
+}
+// 모든 wall/space에 VEF getter 재설치
+function reinstallVEFAll(){
+  STATE.walls.forEach(reinstallVEF);
+  STATE.spaces.forEach(reinstallVEF);
+}
+// 참조되지 않는 버텍스 정리
+function cleanupOrphanVertices(){
+  // 레거시 벽(v1Id 없음)이 남아있으면 마이그레이션 전이므로 정리 건너뜀
+  if(STATE.walls.some(w=>!w.v1Id&&'x1' in w)) return;
+  const used=new Set();
+  STATE.walls.forEach(w=>{if(w.v1Id)used.add(w.v1Id);if(w.v2Id)used.add(w.v2Id);});
+  STATE.spaces.forEach(s=>{if(s.vertexIds)s.vertexIds.forEach(id=>used.add(id));});
+  STATE.vertices=STATE.vertices.filter(v=>used.has(v.id));
+}
 
 // ===== HISTORY =====
 function saveHistory(){
   const snap=JSON.stringify({
+    vertices:STATE.vertices,
     spaces:STATE.spaces,walls:STATE.walls,openings:STATE.openings,
     furniture:STATE.furniture,fixtures:STATE.fixtures,lights:STATE.lights,
     electric:STATE.electric,texts:STATE.texts,measures:STATE.measures,
@@ -1360,12 +1525,14 @@ function undo(){
   if(STATE.historyIdx<=0){showStatus('실행취소 불가');return;}
   STATE.historyIdx--;
   Object.assign(STATE,JSON.parse(STATE.history[STATE.historyIdx]));
+  reinstallVEFAll();
   renderAll();refreshUI();showStatus('실행취소');
 }
 function redo(){
   if(STATE.historyIdx>=STATE.history.length-1){showStatus('재실행 불가');return;}
   STATE.historyIdx++;
   Object.assign(STATE,JSON.parse(STATE.history[STATE.historyIdx]));
+  reinstallVEFAll();
   renderAll();refreshUI();showStatus('재실행');
 }
 
@@ -1386,7 +1553,40 @@ function renderSpaces(){
     });
     poly.on('click tap',e=>{e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('space',s.id);});
     groups.spaces.add(poly);
-    
+
+    // 원형공간 리사이즈 핸들 (선택 시만 표시)
+    if(sel&&s._circleMeta){
+      const{cx,cy,r}=s._circleMeta;
+      // 동쪽(0°), 북쪽(270°), 서쪽(180°), 남쪽(90°) 4방향 핸들
+      [[r,0],[0,-r],[-r,0],[0,r]].forEach(([dx,dy])=>{
+        const hx=STATE.offsetX+mmToPx(cx+dx), hy=STATE.offsetY+mmToPx(cy+dy);
+        const handle=new Konva.Circle({x:hx,y:hy,radius:7,fill:'#E2725B',stroke:'#fff',strokeWidth:1.5,draggable:true,listening:true});
+        let _rafId=null;
+        handle.on('dragmove',()=>{
+          if(_rafId) return; // 이전 프레임 처리 중이면 스킵
+          _rafId=requestAnimationFrame(()=>{
+            _rafId=null;
+            const hxMm=pxToMm(handle.x()-STATE.offsetX);
+            const hyMm=pxToMm(handle.y()-STATE.offsetY);
+            const newR=Math.hypot(hxMm-cx,hyMm-cy);
+            if(newR<100) return;
+            s._circleMeta.r=newR;
+            s.vertexIds=polygonToVertexIds(circleToPolygon(cx,cy,newR));
+            renderAll();
+          });
+        });
+        handle.on('dragend',()=>{if(_rafId){cancelAnimationFrame(_rafId);_rafId=null;}saveHistory();renderAll();});
+        groups.spaces.add(handle);
+      });
+      // 중심점 표시
+      const hcx=STATE.offsetX+mmToPx(cx), hcy=STATE.offsetY+mmToPx(cy);
+      groups.spaces.add(new Konva.Circle({x:hcx,y:hcy,radius:4,fill:td.color,stroke:'#fff',strokeWidth:1,listening:false}));
+      // 반지름 수치 표시
+      const rLabel=new Konva.Text({x:STATE.offsetX+mmToPx(cx)+8,y:STATE.offsetY+mmToPx(cy)-20,
+        text:'R '+Math.round(r)+'mm',fontSize:10,fontFamily:'JetBrains Mono',fill:'#E2725B',listening:false});
+      groups.spaces.add(rLabel);
+    }
+
     // 공간명 라벨
     const c=spCenter(s);
     const lg=new Konva.Group({x:STATE.offsetX+mmToPx(c.x),y:STATE.offsetY+mmToPx(c.y),listening:false});
@@ -1398,43 +1598,49 @@ function renderSpaces(){
     lg.add(t2);
     labelGroup.add(lg);
 
-    // *** 치수 자동 표시 (요구사항 #1) ***
+    // *** 치수 자동 표시 — KS F 1501 건축 평면도 치수표기법 ***
     if(STATE.showDimensions){
       const cw=isClockwise(s.polygon);
       for(let i=0;i<s.polygon.length;i++){
         const p1=s.polygon[i];
         const p2=s.polygon[(i+1)%s.polygon.length];
         const dx=p2.x-p1.x,dy=p2.y-p1.y;
-        const len=Math.sqrt(dx*dx+dy*dy);
-        if(len<200) continue; // 200mm 미만 변은 생략
-        const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
-        // 외부 방향 노말 벡터
-        const nx=cw?-dy/len:dy/len;
-        const ny=cw?dx/len:-dx/len;
-        const offset=180; // mm
-        const labelMm={x:mx+nx*offset,y:my+ny*offset};
-        const angle=Math.atan2(dy,dx)*180/Math.PI;
-        // 텍스트 회전 - 거꾸로 안 되게
-        let rot=angle;
+        const lenmm=Math.sqrt(dx*dx+dy*dy);
+        if(lenmm<200) continue;
+        const ux=dx/lenmm, uy=dy/lenmm;
+        // 외부 방향 노말 (공간 바깥쪽)
+        const nx=cw?-uy:uy;
+        const ny=cw?ux:-ux;
+        const offMm=350; // 자동 치수선 오프셋
+        const gapMm=40, extMm=80, tickPx=mmToPx(70);
+        const cos45=Math.cos(Math.PI/4),sin45=Math.sin(Math.PI/4);
+        const TX=xm=>STATE.offsetX+mmToPx(xm);
+        const TY=ym=>STATE.offsetY+mmToPx(ym);
+
+        // 치수선 끝점
+        const d1x=p1.x+nx*offMm, d1y=p1.y+ny*offMm;
+        const d2x=p2.x+nx*offMm, d2y=p2.y+ny*offMm;
+
+        // 보조선
+        labelGroup.add(new Konva.Line({points:[TX(p1.x+nx*gapMm),TY(p1.y+ny*gapMm),TX(p1.x+nx*(offMm+extMm)),TY(p1.y+ny*(offMm+extMm))],stroke:'#6B7A8A',strokeWidth:0.5}));
+        labelGroup.add(new Konva.Line({points:[TX(p2.x+nx*gapMm),TY(p2.y+ny*gapMm),TX(p2.x+nx*(offMm+extMm)),TY(p2.y+ny*(offMm+extMm))],stroke:'#6B7A8A',strokeWidth:0.5}));
+
+        // 치수선
+        labelGroup.add(new Konva.Line({points:[TX(d1x),TY(d1y),TX(d2x),TY(d2y)],stroke:'#6B7A8A',strokeWidth:0.7}));
+
+        // 사선 마크
+        const tkx=(ux*cos45-uy*sin45)*tickPx;
+        const tky=(ux*sin45+uy*cos45)*tickPx;
+        labelGroup.add(new Konva.Line({points:[TX(d1x)-tkx,TY(d1y)-tky,TX(d1x)+tkx,TY(d1y)+tky],stroke:'#6B7A8A',strokeWidth:1.1}));
+        labelGroup.add(new Konva.Line({points:[TX(d2x)-tkx,TY(d2y)-tky,TX(d2x)+tkx,TY(d2y)+tky],stroke:'#6B7A8A',strokeWidth:1.1}));
+
+        // 치수 수치
+        const tmx=(d1x+d2x)/2-nx*90, tmy=(d1y+d2y)/2-ny*90;
+        let rot=Math.atan2(dy,dx)*180/Math.PI;
         if(rot>90||rot<-90) rot+=180;
-        const txt=new Konva.Text({
-          x:STATE.offsetX+mmToPx(labelMm.x),
-          y:STATE.offsetY+mmToPx(labelMm.y),
-          text:(len/1000).toFixed(2)+' m',
-          fontSize:10,fontFamily:'JetBrains Mono',
-          fill:'#D4B872',rotation:rot,
-        });
-        txt.offsetX(txt.width()/2);txt.offsetY(txt.height()/2);
-        labelGroup.add(txt);
-        // 보조선 (변에서 라벨로)
-        const lineFromX=STATE.offsetX+mmToPx(mx+nx*30);
-        const lineFromY=STATE.offsetY+mmToPx(my+ny*30);
-        const lineToX=STATE.offsetX+mmToPx(mx+nx*150);
-        const lineToY=STATE.offsetY+mmToPx(my+ny*150);
-        labelGroup.add(new Konva.Line({
-          points:[lineFromX,lineFromY,lineToX,lineToY],
-          stroke:'#8B7239',strokeWidth:0.5,dash:[2,2],
-        }));
+        const t=new Konva.Text({x:TX(tmx),y:TY(tmy),text:Math.round(lenmm).toString(),fontSize:10,fontFamily:'JetBrains Mono',fill:'#8899AA',fontStyle:'500',rotation:rot});
+        t.offsetX(t.width()/2);t.offsetY(t.height()/2);
+        labelGroup.add(t);
       }
     }
   });
@@ -1449,23 +1655,29 @@ function renderWalls(){
     const x1=STATE.offsetX+mmToPx(w.x1),y1=STATE.offsetY+mmToPx(w.y1);
     const x2=STATE.offsetX+mmToPx(w.x2),y2=STATE.offsetY+mmToPx(w.y2);
     const sel=STATE.selectedKind==='wall'&&STATE.selectedId===w.id||STATE.boxSelection.some(b=>b.kind==='wall'&&b.id===w.id);
-    const isOW=overlapsWall.has(w.id);   // 벽-벽 중첩
-    const isOS=overlapsSpace.has(w.id);  // 벽-공간 중첩
-    const overlapColor=isOS?'#3D9DE2':(isOW?'#FF6F4A':null); // v5.5: 공간-벽=파랑 우선
+    const isOW=overlapsWall.has(w.id);   // 벽-벽 중첩 (동일 선 중복)
+    const isOS=overlapsSpace.has(w.id);  // 벽-공간 중첩 (다른 선 겹침)
+    const overlapColor=isOS?'#3D9DE2':(isOW?'#E03030':null); // 동일선=적색, 공간겹침=파랑
+    const isLine=!!w.isLine;
+    const lineSp=isLine&&w.spaceId?STATE.spaces.find(s=>s.id===w.spaceId):null;
+    const lineBaseColor=lineSp?SPACE_TYPES[lineSp.type].color:'#7B82B5';
     const line=new Konva.Line({
-      points:[x1,y1,x2,y2],stroke:sel?'#E2725B':(overlapColor||'#3E3E3E'),
-      strokeWidth:Math.max(4,mmToPx(w.thickness||100)),
-      lineCap:'square',id:w.id,hitStrokeWidth:20,
+      points:[x1,y1,x2,y2],
+      stroke:sel?'#E2725B':(overlapColor||(isLine?lineBaseColor:'#3E3E3E')),
+      strokeWidth:isLine?(sel?3.5:2.2):Math.max(4,mmToPx(w.thickness||100)),
+      lineCap:isLine?'square':'square',
+      id:w.id,hitStrokeWidth:isLine?16:20,
       dash:overlapColor?[4,4]:[],
-      shadowColor:overlapColor||'transparent',
-      shadowBlur:overlapColor?10:0,shadowOpacity:overlapColor?0.7:0,
+      shadowColor:sel&&isLine?'#E2725B':(overlapColor||'transparent'),
+      shadowBlur:(sel&&isLine)?8:(overlapColor?12:0),
+      shadowOpacity:(sel&&isLine)?0.5:(overlapColor?0.8:0),
     });
     line.on('click tap',e=>{e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('wall',w.id);});
     groups.walls.add(line);
-    // 경고 마크
-    if(overlapColor&&!sel){
+    // 경고 마크: 동일 선 중복(적색)만 표시, 파란 겹침은 글로우만
+    if(isOW&&!sel){
       const mx=(x1+x2)/2, my=(y1+y2)/2;
-      groups.walls.add(new Konva.Text({x:mx-5,y:my-7,text:'⚠',fontSize:14,fontFamily:'Inter',fill:overlapColor,shadowColor:'#000',shadowBlur:3}));
+      groups.walls.add(new Konva.Text({x:mx-10,y:my-14,text:'⚠',fontSize:28,fontFamily:'Inter',fill:'#E03030',shadowColor:'#000',shadowBlur:3}));
     }
   });
 }
@@ -1476,8 +1688,7 @@ function detectWallSpaceOverlap(){
     STATE.spaces.forEach(s=>{
       for(let i=0;i<s.polygon.length;i++){
         const a=s.polygon[i], b=s.polygon[(i+1)%s.polygon.length];
-        const fakeWall={x1:a.x,y1:a.y,x2:b.x,y2:b.y};
-        if(wallsOverlap(w,fakeWall)){overlaps.add(w.id);return;}
+        if(wallsOverlap(w,{x1:a.x,y1:a.y,x2:b.x,y2:b.y})){overlaps.add(w.id);return;}
       }
     });
   });
@@ -1497,21 +1708,29 @@ function detectOverlappingWalls(){
   return overlaps;
 }
 function wallsOverlap(a,b){
-  // 같은 직선상에 있는지: 외적 = 0 (1mm 톨러런스)
+  // 바운딩박스 사전 검사 — 멀리 떨어진 벽쌍 즉시 제거 (O(n²) 성능 핵심)
+  const TOL=20;
+  const aMinX=Math.min(a.x1,a.x2)-TOL, aMaxX=Math.max(a.x1,a.x2)+TOL;
+  const aMinY=Math.min(a.y1,a.y2)-TOL, aMaxY=Math.max(a.y1,a.y2)+TOL;
+  const bMinX=Math.min(b.x1,b.x2)-TOL, bMaxX=Math.max(b.x1,b.x2)+TOL;
+  const bMinY=Math.min(b.y1,b.y2)-TOL, bMaxY=Math.max(b.y1,b.y2)+TOL;
+  if(aMaxX<bMinX||bMaxX<aMinX||aMaxY<bMinY||bMaxY<aMinY) return false;
+  // 같은 직선상에 있는지: 외적 = 0
   const dxa=a.x2-a.x1, dya=a.y2-a.y1;
   const dxb=b.x2-b.x1, dyb=b.y2-b.y1;
   const cross=dxa*dyb-dya*dxb;
-  if(Math.abs(cross)>10) return false; // 평행 아님
+  const lenA=Math.sqrt(dxa*dxa+dya*dya), lenB=Math.sqrt(dxb*dxb+dyb*dyb);
+  if(lenA<1||lenB<1) return false;
+  if(Math.abs(cross)>lenA*lenB*0.02) return false; // 약 1.1° 이내만 평행 인정
   // a선상에 b의 시작/끝 점이 있는지
   const cross2=(b.x1-a.x1)*dya-(b.y1-a.y1)*dxa;
-  if(Math.abs(cross2)>10) return false; // b가 a선상에 없음
+  if(Math.abs(cross2)>lenA*10) return false; // 10mm 이내 동일 직선 인정
   // 매개변수 t로 겹침 구간 계산
   const len2=dxa*dxa+dya*dya;
   if(len2<1) return false;
   const tb1=((b.x1-a.x1)*dxa+(b.y1-a.y1)*dya)/len2;
   const tb2=((b.x2-a.x1)*dxa+(b.y2-a.y1)*dya)/len2;
   const lo=Math.min(tb1,tb2), hi=Math.max(tb1,tb2);
-  // a는 [0,1] — 교집합 있어야 겹침
   return hi>0.01&&lo<0.99;
 }
 
@@ -1668,13 +1887,13 @@ function renderLights(){
     if(def.shape){
       drawShape(def.shape).forEach(n=>g.add(n));
       if(sel){
-        const r=mmToPx(def.size)/2+5;
+        const r=mmToPx(def.size||200)/2+5;
         g.add(new Konva.Circle({radius:r,stroke:'#E2725B',strokeWidth:2.5,dash:[6,4],
           shadowColor:'#E2725B',shadowBlur:8,shadowOpacity:0.6}));
       }
     }else{
       // 폴백
-      const r=Math.max(8,mmToPx(def.size)/2);
+      const r=Math.max(8,mmToPx(def.size||200)/2);
       g.add(new Konva.Circle({radius:r,stroke:def.c,strokeWidth:2,fill:def.c+'22'}));
       if(sel) g.add(new Konva.Circle({radius:r+4,stroke:'#E2725B',strokeWidth:2,dash:[3,3]}));
     }
@@ -1693,13 +1912,13 @@ function renderElectric(){
     if(def.shape){
       drawShape(def.shape).forEach(n=>g.add(n));
       if(sel){
-        const r=mmToPx(def.size)/2+5;
+        const r=mmToPx(def.size||200)/2+5;
         g.add(new Konva.Circle({radius:r,stroke:'#E2725B',strokeWidth:2.5,dash:[6,4],
           shadowColor:'#E2725B',shadowBlur:8,shadowOpacity:0.6}));
       }
     }else{
       // 폴백
-      const r=Math.max(8,mmToPx(def.size)/2);
+      const r=Math.max(8,mmToPx(def.size||200)/2);
       g.add(new Konva.Circle({radius:r,fill:def.c+'88',stroke:sel?'#E2725B':'#0A0A0A',strokeWidth:sel?2:1}));
       g.add(new Konva.Text({x:-r,y:-7,width:r*2,text:def.sym,fontSize:13,fill:'#FFFFFF',align:'center',listening:false}));
     }
@@ -1720,19 +1939,67 @@ function renderTexts(){
 function renderMeasures(){
   groups.dimensions.destroyChildren();
   STATE.measures.forEach(m=>{
-    const x1=STATE.offsetX+mmToPx(m.x1),y1=STATE.offsetY+mmToPx(m.y1);
-    const x2=STATE.offsetX+mmToPx(m.x2),y2=STATE.offsetY+mmToPx(m.y2);
-    const dx=m.x2-m.x1,dy=m.y2-m.y1;
-    const dist=Math.sqrt(dx*dx+dy*dy);
+    const style=m.style||'simple';
     const sel=STATE.selectedKind==='measures'&&STATE.selectedId===m.id||STATE.boxSelection.some(b=>b.kind==='measures'&&b.id===m.id);
+    const color=sel?'#E2725B':'#7A9BB5';
     const g=new Konva.Group({id:m.id});
-    g.add(new Konva.Line({points:[x1,y1,x2,y2],stroke:sel?'#E2725B':'#B8B0A0',strokeWidth:1,dash:[5,3],hitStrokeWidth:12}));
-    g.add(new Konva.Circle({x:x1,y:y1,radius:3,fill:sel?'#E2725B':'#B8B0A0'}));
-    g.add(new Konva.Circle({x:x2,y:y2,radius:3,fill:sel?'#E2725B':'#B8B0A0'}));
-    const mx=(x1+x2)/2,my=(y1+y2)/2;
-    g.add(new Konva.Text({x:mx-50,y:my-18,width:100,align:'center',
-      text:Math.round(dist)+' mm',fontSize:11,fontFamily:'JetBrains Mono',
-      fill:sel?'#E2725B':'#D4B872',stroke:'#0A0A0A',strokeWidth:0.5}));
+
+    if(style==='arch'){
+      // ── KS F 1501 건축 평면도 치수표기법 ──
+      const dx=m.x2-m.x1, dy=m.y2-m.y1;
+      const lenmm=Math.sqrt(dx*dx+dy*dy);
+      if(lenmm<1){groups.dimensions.add(g);return;}
+      const ux=dx/lenmm, uy=dy/lenmm;   // 치수선 방향 단위벡터
+      const perpx=-uy, perpy=ux;         // 수직 단위벡터 (좌회전 90°)
+      const side=m.side!=null?m.side:1;
+      const offMm=(m.offsetMm||700)*side;// 벽~치수선 거리
+      const gapMm=50*side;               // 벽면~보조선 시작 갭
+      const extMm=100*side;              // 치수선 너머 보조선 연장
+      const tickPx=mmToPx(90);           // 사선 마크 반길이 (px)
+      const textOffMm=120;               // 치수수치~치수선 간격
+
+      const TX=xmm=>STATE.offsetX+mmToPx(xmm);
+      const TY=ymm=>STATE.offsetY+mmToPx(ymm);
+
+      // 치수선 끝점
+      const d1x=m.x1+perpx*offMm, d1y=m.y1+perpy*offMm;
+      const d2x=m.x2+perpx*offMm, d2y=m.y2+perpy*offMm;
+
+      // 치수 보조선 (extension lines)
+      g.add(new Konva.Line({points:[TX(m.x1+perpx*gapMm),TY(m.y1+perpy*gapMm),TX(m.x1+perpx*(offMm+extMm)),TY(m.y1+perpy*(offMm+extMm))],stroke:color,strokeWidth:0.6}));
+      g.add(new Konva.Line({points:[TX(m.x2+perpx*gapMm),TY(m.y2+perpy*gapMm),TX(m.x2+perpx*(offMm+extMm)),TY(m.y2+perpy*(offMm+extMm))],stroke:color,strokeWidth:0.6}));
+
+      // 치수선 (메인)
+      g.add(new Konva.Line({points:[TX(d1x),TY(d1y),TX(d2x),TY(d2y)],stroke:color,strokeWidth:0.8,hitStrokeWidth:14}));
+
+      // 사선 마크 (45° tick — KS 건축 표준)
+      const cos45=Math.cos(Math.PI/4), sin45=Math.sin(Math.PI/4);
+      const tkx=(ux*cos45-uy*sin45)*tickPx;
+      const tky=(ux*sin45+uy*cos45)*tickPx;
+      g.add(new Konva.Line({points:[TX(d1x)-tkx,TY(d1y)-tky,TX(d1x)+tkx,TY(d1y)+tky],stroke:color,strokeWidth:1.4}));
+      g.add(new Konva.Line({points:[TX(d2x)-tkx,TY(d2y)-tky,TX(d2x)+tkx,TY(d2y)+tky],stroke:color,strokeWidth:1.4}));
+
+      // 치수 수치 — 치수선 위 중앙 (벽 방향 텍스트 회전)
+      const tmx=(d1x+d2x)/2-perpx*textOffMm*side;
+      const tmy=(d1y+d2y)/2-perpy*textOffMm*side;
+      let rot=Math.atan2(dy,dx)*180/Math.PI;
+      if(rot>90||rot<-90) rot+=180;
+      const t=new Konva.Text({x:TX(tmx),y:TY(tmy),text:Math.round(lenmm).toString(),fontSize:11,fontFamily:'JetBrains Mono',fill:color,fontStyle:'600',rotation:rot});
+      t.offsetX(t.width()/2);t.offsetY(t.height()/2);
+      g.add(t);
+
+    } else {
+      // 기존 simple 스타일 (줄자 도구 — 하위호환)
+      const x1=STATE.offsetX+mmToPx(m.x1),y1=STATE.offsetY+mmToPx(m.y1);
+      const x2=STATE.offsetX+mmToPx(m.x2),y2=STATE.offsetY+mmToPx(m.y2);
+      const dist=Math.sqrt((m.x2-m.x1)**2+(m.y2-m.y1)**2);
+      g.add(new Konva.Line({points:[x1,y1,x2,y2],stroke:sel?'#E2725B':'#B8B0A0',strokeWidth:1,dash:[5,3],hitStrokeWidth:12}));
+      g.add(new Konva.Circle({x:x1,y:y1,radius:3,fill:sel?'#E2725B':'#B8B0A0'}));
+      g.add(new Konva.Circle({x:x2,y:y2,radius:3,fill:sel?'#E2725B':'#B8B0A0'}));
+      const mx=(x1+x2)/2,my=(y1+y2)/2;
+      g.add(new Konva.Text({x:mx-50,y:my-18,width:100,align:'center',text:Math.round(dist)+' mm',fontSize:11,fontFamily:'JetBrains Mono',fill:sel?'#E2725B':'#D4B872',stroke:'#0A0A0A',strokeWidth:0.5}));
+    }
+
     g.on('click tap',e=>{e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('measures',m.id);});
     groups.dimensions.add(g);
   });
@@ -1890,30 +2157,160 @@ function findNearestSpace(mm){
 
 function addSpace(polygon){
   if(polygon.length<3) return;
-  const id=makeId('sp');
   const tk=STATE.selectedSpaceType;
-  // v5.3: typeIndex = 같은 type 내 순번
   const typeIndex=STATE.spaces.filter(s=>s.type===tk).length+1;
   const layerName='A-AREA-'+SPACE_TYPES[tk].code+'-'+String(typeIndex).padStart(2,'0');
-  // v5.8: 공간 타입별 기본 자재 자동 적용 (사용자 변경 가능)
   const dm=defaultMaterials(tk);
-  STATE.spaces.push({
-    id,name:SPACE_TYPES[tk].name+typeIndex,type:tk,typeIndex,layerName,polygon,
-    ceilingHeight_mm:SPACE_TYPES[tk].ceil||null,materialGrade:'STANDARD',difficulty:'NORMAL',materialColor:null,
-    floorMaterial:dm.floor, wallMaterial:dm.wall, // v5.8
+  // VEF: polygon → vertexIds (좌표를 공유 버텍스로 변환)
+  const vertexIds=polygonToVertexIds(polygon);
+  const s=makeSpaceVEF(vertexIds,{
+    name:SPACE_TYPES[tk].name+typeIndex,type:tk,typeIndex,layerName,
+    ceilingHeight_mm:SPACE_TYPES[tk].ceil||null,
+    floorMaterial:dm.floor,ceilingMaterial:'GYPSUM',
   });
-  STATE.videoSequenceOrder=null; // 공간 추가 시 자동 순서로 초기화
-  saveHistory();selectObj('space',id);
+  STATE.spaces.push(s);
+  // VEF: 공간 각 변을 벽 객체로 자동 생성 (이미 같은 버텍스 쌍의 벽이 있으면 건너뜀)
+  const N=vertexIds.length;
+  for(let i=0;i<N;i++){
+    const aId=vertexIds[i], bId=vertexIds[(i+1)%N];
+    const exists=STATE.walls.some(w=>(w.v1Id===aId&&w.v2Id===bId)||(w.v1Id===bId&&w.v2Id===aId));
+    if(!exists){
+      const wallLayer=layerName.replace('AREA','WALL');
+      STATE.walls.push(makeWallVEF(aId,bId,{layerName:wallLayer,spaceId:s.id,finishMaterial:dm.wall}));
+    }
+  }
+  STATE.videoSequenceOrder=null;
+  saveHistory();selectObj('space',s.id);
 }
 function addWall(x1,y1,x2,y2){
   const dx=x2-x1,dy=y2-y1;
   if(Math.sqrt(dx*dx+dy*dy)<100) return;
-  // v5.3: 가까운 공간 찾아 layerName 상속
   const mid={x:(x1+x2)/2,y:(y1+y2)/2};
   const sp=findNearestSpace(mid);
   const layerName=makeLayerName('WALL',sp);
-  STATE.walls.push({id:makeId('w'),x1,y1,x2,y2,thickness:100,layerName,spaceId:sp?sp.id:null});
-  splitWallsAtIntersections(); // v5.8: 교차점 자동 vertex 생성
+  const v1=ensureVertex(x1,y1), v2=ensureVertex(x2,y2);
+  STATE.walls.push(makeWallVEF(v1.id,v2.id,{layerName,spaceId:sp?sp.id:null}));
+  splitWallsAtIntersections();
+  saveHistory();renderAll();refreshUI();
+}
+// 폴리곤을 선분 a-b로 분할 → [poly1, poly2] 또는 null
+// 핵심: a-b를 폴리곤 바깥까지 무한 연장 후 교차 검사
+// (선의 양 끝이 공간 내부에 있어도 분할 가능)
+function splitPolygonByLine(polygon, a, b){
+  const n=polygon.length;
+  if(n<3) return null;
+  // 선을 폴리곤 범위의 3배로 연장 (선 끝점이 공간 내부여도 분할 가능)
+  const xs=polygon.map(p=>p.x),ys=polygon.map(p=>p.y);
+  const margin=(Math.max(...xs)-Math.min(...xs)+Math.max(...ys)-Math.min(...ys))*3+50000;
+  const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+  if(len<1) return null;
+  const ux=dx/len,uy=dy/len;
+  const extA={x:a.x-ux*margin,y:a.y-uy*margin};
+  const extB={x:b.x+ux*margin,y:b.y+uy*margin};
+  // 각 꼭짓점의 부호 거리 (+1/-1/0=선 위)
+  const lineLen=Math.hypot(extB.x-extA.x,extB.y-extA.y);
+  const signOf=p=>{
+    const d=((extB.y-extA.y)*p.x-(extB.x-extA.x)*p.y+extB.x*extA.y-extB.y*extA.x)/lineLen;
+    return Math.abs(d)<2?0:d>0?1:-1;
+  };
+  const sides=polygon.map(signOf);
+  // augmented polygon 생성: 변 중간 교차점 삽입
+  const aug=[];
+  for(let i=0;i<n;i++){
+    aug.push({pt:{x:polygon[i].x,y:polygon[i].y},isInt:false,pi:i});
+    const ni=(i+1)%n,s1=sides[i],s2=sides[ni];
+    // 양 끝점이 반대편에 있을 때만 변 중간 교차점 삽입
+    if(s1!==0&&s2!==0&&s1!==s2){
+      const ip=segIntersection(extA,extB,polygon[i],polygon[ni]);
+      if(ip){
+        const edx=polygon[ni].x-polygon[i].x,edy=polygon[ni].y-polygon[i].y,len2=edx*edx+edy*edy;
+        if(len2>=1){
+          const t=((ip.x-polygon[i].x)*edx+(ip.y-polygon[i].y)*edy)/len2;
+          if(t>0.001&&t<0.999) aug.push({pt:{x:Math.round(ip.x),y:Math.round(ip.y)},isInt:true,pi:-1});
+        }
+      }
+    }
+  }
+  // 선 위에 있는 꼭짓점 중 진짜 교차점(이웃이 반대편)만 isInt 표시
+  for(let i=0;i<aug.length;i++){
+    const e=aug[i];
+    if(e.pi<0||sides[e.pi]!==0) continue;
+    let prev=0,next=0;
+    for(let k=1;k<=n;k++){const s=sides[(e.pi-k+n)%n];if(s!==0){prev=s;break;}}
+    for(let k=1;k<=n;k++){const s=sides[(e.pi+k)%n];if(s!==0){next=s;break;}}
+    if(prev!==0&&next!==0&&prev!==next) e.isInt=true;
+  }
+  const intIdxs=[];
+  aug.forEach((p,i)=>{if(p.isInt) intIdxs.push(i);});
+  if(intIdxs.length<2) return null;
+  // 두 교차점으로 폴리곤 분할 시도
+  function trySplit(ia,ib){
+    const m=aug.length;
+    const p1=[];
+    for(let k=ia;k<=ib;k++) p1.push(aug[k].pt);
+    const p2=[];
+    let k=ib;
+    do{p2.push(aug[k].pt);k=(k+1)%m;}while(k!==ia);
+    p2.push(aug[ia].pt);
+    return(p1.length>=3&&p2.length>=3)?[p1,p2]:null;
+  }
+  if(intIdxs.length===2) return trySplit(intIdxs[0],intIdxs[1]);
+  // 교차점이 3개 이상(오목 다각형): 가장 먼 쌍(첫·끝)부터 시도
+  const r=trySplit(intIdxs[0],intIdxs[intIdxs.length-1]);
+  if(r) return r;
+  for(let ai=0;ai<intIdxs.length-1;ai++)
+    for(let bi=ai+1;bi<intIdxs.length;bi++){
+      const r2=trySplit(intIdxs[ai],intIdxs[bi]);
+      if(r2) return r2;
+    }
+  return null;
+}
+
+function addLine(x1,y1,x2,y2){
+  if(Math.hypot(x2-x1,y2-y1)<50) return;
+  const a={x:x1,y:y1},b={x:x2,y:y2};
+  // 공간을 가로지르면 분할
+  const toRemove=[],toAdd=[];
+  STATE.spaces.forEach(s=>{
+    const result=splitPolygonByLine(s.polygon,a,b);
+    if(!result) return;
+    toRemove.push(s.id);
+    result.forEach(poly=>toAdd.push({poly,source:s}));
+  });
+  if(toAdd.length){
+    const srcWallMats=new Map(toRemove.map(id=>[id,STATE.walls.find(w=>w.spaceId===id&&!w.isLine)?.finishMaterial||null]));
+    STATE.spaces=STATE.spaces.filter(s=>!toRemove.includes(s.id));
+    STATE.walls=STATE.walls.filter(w=>!toRemove.includes(w.spaceId));
+    toAdd.forEach(({poly,source},idx)=>{
+      const tk=source.type;
+      const typeIndex=STATE.spaces.filter(s=>s.type===tk).length+1;
+      const layerName='A-AREA-'+SPACE_TYPES[tk].code+'-'+String(typeIndex).padStart(2,'0');
+      const vertexIds=polygonToVertexIds(simplifySpacePoly(poly.map(p=>({x:Math.round(p.x),y:Math.round(p.y)}))));
+      const s=makeSpaceVEF(vertexIds,{
+        name:source.name+'-'+(idx+1),type:tk,typeIndex,layerName,
+        ceilingHeight_mm:source.ceilingHeight_mm,
+        floorMaterial:source.floorMaterial,
+        ceilingMaterial:source.ceilingMaterial,
+      });
+      STATE.spaces.push(s);
+      const N=vertexIds.length;
+      for(let i=0;i<N;i++){
+        const aId=vertexIds[i],bId=vertexIds[(i+1)%N];
+        if(!STATE.walls.some(w=>(w.v1Id===aId&&w.v2Id===bId)||(w.v1Id===bId&&w.v2Id===aId)))
+          STATE.walls.push(makeWallVEF(aId,bId,{layerName:layerName.replace('AREA','WALL'),spaceId:s.id,finishMaterial:srcWallMats.get(source.id)||null}));
+      }
+    });
+    saveHistory();renderAll();refreshUI();
+    cmdToast('공간 분할 — '+toAdd.length+'개로 분리');
+    return;
+  }
+  // 공간 없으면 참조선으로 추가 (공간 테두리 스타일)
+  const mid={x:(x1+x2)/2,y:(y1+y2)/2};
+  const sp=findNearestSpace(mid);
+  const v1=ensureVertex(x1,y1),v2=ensureVertex(x2,y2);
+  const w=makeWallVEF(v1.id,v2.id,{layerName:makeLayerName('LINE',sp),spaceId:sp?sp.id:null});
+  w.isLine=true;
+  STATE.walls.push(w);
   saveHistory();renderAll();refreshUI();
 }
 
@@ -1921,9 +2318,9 @@ function addWall(x1,y1,x2,y2){
 // (vertex 자동 생성 — 교차점에서 4개 작은 벽으로 분할)
 // 무한 루프 방지: 한 패스만 실행, 새 벽들은 큐에 추가
 function splitWallsAtIntersections(){
-  const TOL=50; // mm — 끝점 근처 교차는 무시 (이미 vertex 있음)
-  let changed=true, safety=20; // 최대 20번 반복 (안전장치)
-  while(changed && safety-->0){
+  const TOL=50;
+  let changed=true, safety=20;
+  while(changed&&safety-->0){
     changed=false;
     outer: for(let i=0;i<STATE.walls.length;i++){
       const a=STATE.walls[i];
@@ -1933,50 +2330,30 @@ function splitWallsAtIntersections(){
           {x:a.x1,y:a.y1},{x:a.x2,y:a.y2},
           {x:b.x1,y:b.y1},{x:b.x2,y:b.y2});
         if(!ip) continue;
-        // 교차점이 양 끝점에 너무 가까우면 무시 (이미 vertex 있음)
-        const distAEnds=Math.min(
-          Math.hypot(ip.x-a.x1,ip.y-a.y1),
-          Math.hypot(ip.x-a.x2,ip.y-a.y2));
-        const distBEnds=Math.min(
-          Math.hypot(ip.x-b.x1,ip.y-b.y1),
-          Math.hypot(ip.x-b.x2,ip.y-b.y2));
-        // 양쪽 벽 모두 끝점 근처면 vertex 이미 있음 → skip
-        if(distAEnds<TOL && distBEnds<TOL) continue;
-        // 한쪽이라도 변 중간에서 교차 → 분할 필요
-        const ipR={x:Math.round(ip.x),y:Math.round(ip.y)};
-        // 벽 a 분할 (단, 교차점이 a의 끝점이 아닐 때만)
+        const dAe=Math.min(Math.hypot(ip.x-a.x1,ip.y-a.y1),Math.hypot(ip.x-a.x2,ip.y-a.y2));
+        const dBe=Math.min(Math.hypot(ip.x-b.x1,ip.y-b.y1),Math.hypot(ip.x-b.x2,ip.y-b.y2));
+        if(dAe<TOL&&dBe<TOL) continue;
+        // VEF: 교차 버텍스를 공유 버텍스로 생성
+        const iv=ensureVertex(Math.round(ip.x),Math.round(ip.y),TOL);
         const newWalls=[];
-        if(distAEnds>=TOL){
-          newWalls.push(
-            {id:makeId('w'),x1:a.x1,y1:a.y1,x2:ipR.x,y2:ipR.y,thickness:a.thickness||100,layerName:a.layerName,spaceId:a.spaceId},
-            {id:makeId('w'),x1:ipR.x,y1:ipR.y,x2:a.x2,y2:a.y2,thickness:a.thickness||100,layerName:a.layerName,spaceId:a.spaceId});
-        }else{
-          newWalls.push(a);
-        }
-        // 벽 b 분할
-        if(distBEnds>=TOL){
-          newWalls.push(
-            {id:makeId('w'),x1:b.x1,y1:b.y1,x2:ipR.x,y2:ipR.y,thickness:b.thickness||100,layerName:b.layerName,spaceId:b.spaceId},
-            {id:makeId('w'),x1:ipR.x,y1:ipR.y,x2:b.x2,y2:b.y2,thickness:b.thickness||100,layerName:b.layerName,spaceId:b.spaceId});
-        }else{
-          newWalls.push(b);
-        }
-        // 길이 100mm 미만 조각 제거
-        const filtered=newWalls.filter(w=>{
-          if(w===a||w===b) return true; // 보존된 원본
-          return Math.hypot(w.x2-w.x1,w.y2-w.y1)>=100;
-        });
-        // a, b를 빼고 분할 결과 추가
+        if(dAe>=TOL){
+          if(Math.hypot(iv.x-a.x1,iv.y-a.y1)>=100) newWalls.push(makeWallVEF(a.v1Id,iv.id,a));
+          if(Math.hypot(iv.x-a.x2,iv.y-a.y2)>=100) newWalls.push(makeWallVEF(iv.id,a.v2Id,a));
+        }else newWalls.push(a);
+        if(dBe>=TOL){
+          if(Math.hypot(iv.x-b.x1,iv.y-b.y1)>=100) newWalls.push(makeWallVEF(b.v1Id,iv.id,b));
+          if(Math.hypot(iv.x-b.x2,iv.y-b.y2)>=100) newWalls.push(makeWallVEF(iv.id,b.v2Id,b));
+        }else newWalls.push(b);
         STATE.walls=STATE.walls.filter(w=>w.id!==a.id&&w.id!==b.id);
-        filtered.forEach(w=>{if(w!==a&&w!==b) STATE.walls.push(w);});
-        if(filtered.includes(a)) STATE.walls.push(a);
-        if(filtered.includes(b)) STATE.walls.push(b);
+        newWalls.forEach(w=>{if(w!==a&&w!==b) STATE.walls.push(w);});
+        if(newWalls.includes(a)) STATE.walls.push(a);
+        if(newWalls.includes(b)) STATE.walls.push(b);
         changed=true;
-        break outer; // 한 분할 후 처음부터 다시
+        break outer;
       }
     }
   }
-  if(safety<=0) console.warn('[ECOREAN v5.8] splitWallsAtIntersections: 안전 한계 도달');
+  if(safety<=0) console.warn('[VEF] splitWallsAtIntersections: 안전 한계');
 }
 function addOpening(pos,type){
   const mm=getMm(pos);
@@ -2158,6 +2535,14 @@ function endPolygon(){
 }
 function startWall(pos){const mm=getMm(pos);drawState={type:'wall',start:mm,current:mm};updatePreview();}
 function updateWall(pos){if(!drawState||drawState.type!=='wall') return;let mm=getMm(pos);mm=applyOrtho(drawState.start,mm);drawState.current=mm;updatePreview();}
+function startLine(pos){const mm=getMm(pos);drawState={type:'line',start:mm,current:mm};updatePreview();}
+function updateLine(pos){if(!drawState||drawState.type!=='line') return;let mm=getMm(pos);mm=applyOrtho(drawState.start,mm);drawState.current=mm;updatePreview();}
+function endLine(){
+  if(!drawState||drawState.type!=='line') return;
+  const s=drawState.start,e=drawState.current;
+  addLine(s.x,s.y,e.x,e.y);
+  drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+}
 function endWall(){
   if(!drawState||drawState.type!=='wall') return;
   let end=drawState.current;
@@ -2175,6 +2560,62 @@ function endCircle(){
   if(r>=10) addCircle(c.x,c.y,r);
   drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
 }
+
+// ===== 원형공간 (64점 폴리곤 공간) =====
+function circleToPolygon(cx,cy,r,n=32){
+  return Array.from({length:n},(_,i)=>{
+    const a=(2*Math.PI*i)/n;
+    return {x:Math.round(cx+r*Math.cos(a)),y:Math.round(cy+r*Math.sin(a))};
+  });
+}
+function startCircleSpace(pos){
+  const mm=getMm(pos);
+  drawState={type:'circlespace',center:mm,current:mm};
+  updatePreview();
+}
+function updateCircleSpace(pos){
+  if(!drawState||drawState.type!=='circlespace') return;
+  drawState.current=getMm(pos);
+  updatePreview();
+}
+function endCircleSpace(){
+  if(!drawState||drawState.type!=='circlespace') return;
+  const c=drawState.center,p=drawState.current;
+  const r=Math.hypot(p.x-c.x,p.y-c.y);
+  if(r>=100){
+    addCircleSpace(c.x,c.y,r);
+  }else{
+    // 클릭만 했으면 수치 입력 모드
+    enterCmdMode('circlespace-r',{cx:c.x,cy:c.y},'반지름(mm):','원형공간 반지름 입력 후 Enter');
+    return;
+  }
+  drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+}
+function addCircleSpace(cx,cy,r){
+  const poly=circleToPolygon(cx,cy,r);
+  const tk=STATE.selectedSpaceType;
+  const typeIndex=STATE.spaces.filter(s=>s.type===tk).length+1;
+  const layerName='A-AREA-'+SPACE_TYPES[tk].code+'-'+String(typeIndex).padStart(2,'0');
+  const dm=defaultMaterials(tk);
+  const vertexIds=polygonToVertexIds(poly);
+  const s=makeSpaceVEF(vertexIds,{
+    name:SPACE_TYPES[tk].name+typeIndex,type:tk,typeIndex,layerName,
+    ceilingHeight_mm:SPACE_TYPES[tk].ceil||null,
+    floorMaterial:dm.floor,ceilingMaterial:'GYPSUM',
+  });
+  s._circleMeta={cx,cy,r};
+  STATE.spaces.push(s);
+  const N=vertexIds.length;
+  for(let i=0;i<N;i++){
+    const aId=vertexIds[i],bId=vertexIds[(i+1)%N];
+    if(!STATE.walls.some(w=>(w.v1Id===aId&&w.v2Id===bId)||(w.v1Id===bId&&w.v2Id===aId))){
+      STATE.walls.push(makeWallVEF(aId,bId,{layerName:layerName.replace('AREA','WALL'),spaceId:s.id,finishMaterial:dm.wall}));
+    }
+  }
+  STATE.videoSequenceOrder=null;
+  saveHistory();selectObj('space',s.id);
+}
+
 // v5.3: 아크 (드래그=중심+반지름, 미리 그리고 cmdMode로 각도 입력)
 function startArc(pos){const mm=getMm(pos);drawState={type:'arc',center:mm,current:mm,startAngle:0,endAngle:90};updatePreview();}
 function updateArc(pos){if(!drawState||drawState.type!=='arc') return;drawState.current=getMm(pos);updatePreview();}
@@ -2246,20 +2687,46 @@ function deleteBoxSelection(){
 
 // v5.3+v5.4: 트림 — 벽·공간·원 모두 지원, 깨지면 도형 분해
 function handleTrim(pos){
+  // Boolean 메뉴가 열려있으면 트림 무시 (메뉴 버튼 클릭 중)
+  const bm=document.getElementById('bool-menu');
+  if(bm&&bm.style.display==='flex') return;
   const mm=getMm(pos);
-  // 후보: 벽, 공간 폴리곤 변, 원 — 가장 가까운 것 선정
+
+  // ====== 면 트림: 클릭한 공간 = 상위(커터) → Boolean 메뉴 표시 ======
+  const faceSp=[...STATE.spaces].reverse().find(s=>ptInPoly(mm,s.polygon));
+  if(faceSp){
+    // 겹치는 하위 공간 수집 (faceSp 안에 포함되거나 겹치는 것 모두)
+    const lowers=STATE.spaces.filter(s=>{
+      if(s.id===faceSp.id) return false;
+      return suthHodg(s.polygon,faceSp.polygon).length>=3&&
+        (ptInPoly(mm,s.polygon)||s.polygon.every(p=>ptInPoly(p,faceSp.polygon)));
+    });
+    if(lowers.length){showBoolMenu(pos,faceSp,lowers);return;}
+    cmdToast('클릭 위치에 겹치는 하위 공간 없음 — 겹침 영역을 직접 클릭하세요');
+    return;
+  }
+
+  // 후보: 벽 우선 → 벽 없을 때만 공간 에지 → 원
   let kind=null,target=null,minD=500,extra=null;
+
+  // 1순위: 벽 (공간 에지보다 항상 우선)
   STATE.walls.forEach(w=>{
     const d=pointToSegmentDist(mm,{x:w.x1,y:w.y1},{x:w.x2,y:w.y2});
     if(d<minD){minD=d;target=w;kind='wall';extra=null;}
   });
-  STATE.spaces.forEach(s=>{
-    for(let i=0;i<s.polygon.length;i++){
-      const a=s.polygon[i], b=s.polygon[(i+1)%s.polygon.length];
-      const d=pointToSegmentDist(mm,a,b);
-      if(d<minD){minD=d;target=s;kind='space';extra={edgeIdx:i};}
-    }
-  });
+
+  // 2순위: 공간 에지 — 벽이 선택되지 않은 경우에만 체크
+  if(kind!=='wall'){
+    STATE.spaces.forEach(s=>{
+      for(let i=0;i<s.polygon.length;i++){
+        const a=s.polygon[i], b=s.polygon[(i+1)%s.polygon.length];
+        const d=pointToSegmentDist(mm,a,b);
+        if(d<minD){minD=d;target=s;kind='space';extra={edgeIdx:i};}
+      }
+    });
+  }
+
+  // 3순위: 원 (항상 체크)
   STATE.circles.forEach(c=>{
     const dx=mm.x-c.x, dy=mm.y-c.y;
     const dr=Math.abs(Math.sqrt(dx*dx+dy*dy)-c.radius_mm);
@@ -2281,36 +2748,23 @@ function handleTrim(pos){
     fragments.forEach(f=>{
       const ax=target.x1+(target.x2-target.x1)*f.t1, ay=target.y1+(target.y2-target.y1)*f.t1;
       const bx=target.x1+(target.x2-target.x1)*f.t2, by=target.y1+(target.y2-target.y1)*f.t2;
-      if(Math.sqrt((bx-ax)**2+(by-ay)**2)>=100){
-        STATE.walls.push({id:makeId('w'),x1:Math.round(ax),y1:Math.round(ay),x2:Math.round(bx),y2:Math.round(by),
-          thickness:target.thickness||100,layerName:target.layerName,spaceId:target.spaceId});
-      }
+      if(Math.sqrt((bx-ax)**2+(by-ay)**2)<100) return;
+      // VEF: t=0이면 원래 v1Id, t=1이면 원래 v2Id 재사용 (vertex 공유 유지)
+      const hasVEF='v1Id' in target;
+      const va=hasVEF&&f.t1<0.001?target.v1Id:ensureVertex(Math.round(ax),Math.round(ay),20).id;
+      const vb=hasVEF&&f.t2>0.999?target.v2Id:ensureVertex(Math.round(bx),Math.round(by),20).id;
+      STATE.walls.push(makeWallVEF(va,vb,{thickness:target.thickness||100,layerName:target.layerName,spaceId:target.spaceId,isLine:target.isLine||false}));
     });
     saveHistory();renderAll();refreshUI();
     cmdToast('벽 트림 — '+fragments.length+'조각');
     return;
   }
 
-  // ====== 공간(사각/다각) 트림: 변 하나 잘라내고 폴리곤이 깨지면 walls로 변환 ======
+  // ====== 공간 에지 클릭 → 클릭한 공간 = 상위(커터) → Boolean 메뉴 ======
   if(kind==='space'){
-    const space=target, edgeIdx=extra.edgeIdx;
-    const a=space.polygon[edgeIdx], b=space.polygon[(edgeIdx+1)%space.polygon.length];
-    // 깨짐 = 공간을 walls로 분해
-    cmdToast('공간 → 벽으로 분해 (트림된 변 제거)');
-    // 트림된 변을 제외한 모든 변을 wall로 추가
-    for(let i=0;i<space.polygon.length;i++){
-      if(i===edgeIdx) continue;
-      const p1=space.polygon[i], p2=space.polygon[(i+1)%space.polygon.length];
-      if(Math.sqrt((p2.x-p1.x)**2+(p2.y-p1.y)**2)>=100){
-        STATE.walls.push({id:makeId('w'),x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y,thickness:100,
-          layerName:'A-WALL-'+SPACE_TYPES[space.type].code+'-'+String(space.typeIndex||1).padStart(2,'0'),
-          spaceId:null});
-      }
-    }
-    // 공간 객체 제거 (해당 공간에 속한 도어/창은 spaceId null로 남김)
-    STATE.openings.forEach(o=>{if(o.spaceId===space.id) o.spaceId=null;});
-    STATE.spaces=STATE.spaces.filter(s=>s.id!==space.id);
-    saveHistory();renderAll();refreshUI();
+    const lowers2=STATE.spaces.filter(s=>s.id!==target.id&&suthHodg(s.polygon,target.polygon).length>=3);
+    if(lowers2.length){showBoolMenu(pos,target,lowers2);return;}
+    cmdToast('겹치는 공간 없음 — 면 트림 불가');
     return;
   }
 
@@ -2370,10 +2824,21 @@ function handleTrim(pos){
 }
 function collectWallIntersections(target){
   const intersections=[];
+  const ta={x:target.x1,y:target.y1}, tb={x:target.x2,y:target.y2};
+  // 다른 벽과의 교차점
   STATE.walls.forEach(w=>{
     if(w.id===target.id) return;
-    const ip=segIntersection({x:target.x1,y:target.y1},{x:target.x2,y:target.y2},{x:w.x1,y:w.y1},{x:w.x2,y:w.y2});
+    const ip=segIntersection(ta,tb,{x:w.x1,y:w.y1},{x:w.x2,y:w.y2});
     if(ip) intersections.push(ip);
+  });
+  // 공간 폴리곤 변과의 교차점 — 공간은 수정하지 않고 절단 기준으로만 참조
+  STATE.spaces.forEach(s=>{
+    for(let i=0;i<s.polygon.length;i++){
+      const a=s.polygon[i],b=s.polygon[(i+1)%s.polygon.length];
+      const ip=segIntersection(ta,tb,a,b);
+      if(ip&&!intersections.some(p=>Math.abs(p.x-ip.x)<2&&Math.abs(p.y-ip.y)<2))
+        intersections.push(ip);
+    }
   });
   return intersections;
 }
@@ -2531,12 +2996,24 @@ function mirrorObject(obj,a,b){
     // v5.7: shape 좌우반전 플래그 — 라이브러리 shape이 비대칭일 때 시각 반영
     obj.flipped=!obj.flipped;
   }
-  if('x1' in obj){
+  // VEF: 벽 미러 — 새 버텍스 생성 후 getter 재설치
+  if('v1Id' in obj){
+    const r1=reflectPoint({x:obj.x1,y:obj.y1},a,b);
+    const r2=reflectPoint({x:obj.x2,y:obj.y2},a,b);
+    obj.v1Id=ensureVertex(r1.x,r1.y).id;
+    obj.v2Id=ensureVertex(r2.x,r2.y).id;
+    reinstallVEF(obj);
+  } else if('x1' in obj){
     const r1=reflectPoint({x:obj.x1,y:obj.y1},a,b);
     const r2=reflectPoint({x:obj.x2,y:obj.y2},a,b);
     obj.x1=r1.x;obj.y1=r1.y;obj.x2=r2.x;obj.y2=r2.y;
   }
-  if(obj.polygon){
+  // VEF: 공간 미러 — 새 버텍스 생성 후 getter 재설치
+  if('vertexIds' in obj&&obj.polygon){
+    const reflected=obj.polygon.map(p=>reflectPoint(p,a,b));
+    obj.vertexIds=reflected.map(p=>ensureVertex(p.x,p.y).id);
+    reinstallVEF(obj);
+  } else if(obj.polygon&&!('vertexIds' in obj)){
     obj.polygon=obj.polygon.map(p=>reflectPoint(p,a,b));
   }
   if('startAngle' in obj){
@@ -2556,15 +3033,27 @@ function handleDimWall(pos){
     if(d<minD){minD=d;target=w;}
   });
   if(!target||minD>500){cmdToast('치수 잴 벽 가까이 클릭');return;}
-  // 벽 끝점을 그대로 측정선 끝점으로 사용
+
+  // 클릭 위치 기준 치수선 방향 결정 (클릭한 쪽으로 치수선 나감)
+  const wdx=target.x2-target.x1, wdy=target.y2-target.y1;
+  const wlen=Math.sqrt(wdx*wdx+wdy*wdy)||1;
+  const perpx=-wdy/wlen, perpy=wdx/wlen; // 좌회전 수직
+  const midx=(target.x1+target.x2)/2, midy=(target.y1+target.y2)/2;
+  const dot=(mm.x-midx)*perpx+(mm.y-midy)*perpy;
+  const side=dot>=0?1:-1;
+
+  const layerSuffix=target.spaceId?(STATE.spaces.find(s=>s.id===target.spaceId)?SPACE_TYPES[STATE.spaces.find(s=>s.id===target.spaceId).type].code:'GEN'):'GEN';
   STATE.measures.push({
     id:makeId('m'),
     x1:target.x1,y1:target.y1,x2:target.x2,y2:target.y2,
-    layerName:'A-DIMS-'+(target.spaceId?(STATE.spaces.find(s=>s.id===target.spaceId)?SPACE_TYPES[STATE.spaces.find(s=>s.id===target.spaceId).type].code:'GEN')+'-01':'GEN'),
+    layerName:'A-DIMS-'+layerSuffix+'-01',
+    style:'arch',
+    offsetMm:700,
+    side:side,
   });
   saveHistory();renderAll();refreshUI();
   const len=Math.round(Math.sqrt((target.x2-target.x1)**2+(target.y2-target.y1)**2));
-  cmdToast('치수선 추가 — '+len+'mm');
+  cmdToast('치수선 추가 — '+len+'mm (I 키 반복·클릭 위치로 방향 전환)');
 }
 function handleBreak(pos){
   const mm=getMm(pos);
@@ -2578,10 +3067,74 @@ function handleBreak(pos){
   if(t<=0.01||t>=0.99){cmdToast('선분 끝점 너무 가까움');return;}
   const px=target.x1+(target.x2-target.x1)*t, py=target.y1+(target.y2-target.y1)*t;
   STATE.walls=STATE.walls.filter(w=>w.id!==target.id);
-  STATE.walls.push({id:makeId('w'),x1:target.x1,y1:target.y1,x2:Math.round(px),y2:Math.round(py),thickness:target.thickness||100,layerName:target.layerName,spaceId:target.spaceId});
-  STATE.walls.push({id:makeId('w'),x1:Math.round(px),y1:Math.round(py),x2:target.x2,y2:target.y2,thickness:target.thickness||100,layerName:target.layerName,spaceId:target.spaceId});
+  const bv=ensureVertex(Math.round(px),Math.round(py));
+  if('v1Id' in target){
+    STATE.walls.push(makeWallVEF(target.v1Id,bv.id,target));
+    STATE.walls.push(makeWallVEF(bv.id,target.v2Id,target));
+  }else{
+    const sv1=ensureVertex(target.x1,target.y1);
+    const sv2=ensureVertex(target.x2,target.y2);
+    STATE.walls.push(makeWallVEF(sv1.id,bv.id,target));
+    STATE.walls.push(makeWallVEF(bv.id,sv2.id,target));
+  }
   saveHistory();renderAll();refreshUI();
   cmdToast('브레이크 완료 — 2조각');
+}
+// 지우개: 클릭 위치의 가장 가까운 객체 삭제 (모든 타입)
+function handleEraser(pos){
+  const mm=getMm(pos);
+  const HIT=300;
+  let best=null,bestD=HIT;
+  function tryHit(kind,obj,d){if(d<bestD){bestD=d;best={kind,obj};}}
+
+  // 포인트 객체 (문/창/가구/위생/조명/전기/공조)
+  STATE.openings.forEach(o=>tryHit('opening',o,Math.hypot(mm.x-o.x,mm.y-o.y)));
+  [[STATE.furniture,'furniture'],[STATE.fixtures,'fixtures'],
+   [STATE.lights,'lights'],[STATE.electric,'electric'],[STATE.hvac,'hvac']
+  ].forEach(([arr,k])=>arr.forEach(o=>tryHit(k,o,Math.hypot(mm.x-o.x,mm.y-o.y))));
+  STATE.texts.forEach(t=>tryHit('texts',t,Math.hypot(mm.x-t.x,mm.y-t.y)));
+
+  // 선/호 객체
+  STATE.walls.forEach(w=>tryHit('wall',w,pointToSegmentDist(mm,{x:w.x1,y:w.y1},{x:w.x2,y:w.y2})));
+  STATE.measures.forEach(m=>tryHit('measures',m,pointToSegmentDist(mm,{x:m.x1,y:m.y1},{x:m.x2,y:m.y2})));
+  STATE.circles.forEach(c=>tryHit('circles',c,Math.abs(Math.hypot(mm.x-c.x,mm.y-c.y)-c.radius_mm)));
+  STATE.arcs.forEach(a=>tryHit('arcs',a,Math.abs(Math.hypot(mm.x-a.x,mm.y-a.y)-a.radius_mm)));
+
+  // 공간 에지 (벽보다 낮은 우선순위)
+  if(!best||bestD>50){
+    STATE.spaces.forEach(s=>{
+      for(let i=0;i<s.polygon.length;i++){
+        const a=s.polygon[i],b=s.polygon[(i+1)%s.polygon.length];
+        tryHit('space',s,pointToSegmentDist(mm,a,b));
+      }
+    });
+  }
+
+  // 공간 면 (최후 수단: 에지/선 없을 때)
+  if(!best){
+    const sp=[...STATE.spaces].reverse().find(s=>ptInPoly(mm,s.polygon));
+    if(sp) best={kind:'space',obj:sp};
+  }
+
+  if(!best){cmdToast('지울 객체 없음');return;}
+
+  const {kind,obj}=best;
+  if(kind==='space'){
+    STATE.spaces=STATE.spaces.filter(x=>x.id!==obj.id);
+    STATE.openings=STATE.openings.filter(o=>o.spaceId!==obj.id);
+    STATE.walls=STATE.walls.filter(w=>w.spaceId!==obj.id);
+  }else if(kind==='wall'){
+    STATE.walls=STATE.walls.filter(x=>x.id!==obj.id);
+  }else if(kind==='opening'){
+    STATE.openings=STATE.openings.filter(x=>x.id!==obj.id);
+  }else{
+    const arr=getArr(kind);
+    if(arr){const idx=arr.findIndex(x=>x.id===obj.id);if(idx>=0)arr.splice(idx,1);}
+  }
+  cleanupOrphanVertices();
+  saveHistory();renderAll();refreshUI();
+  const names={space:'공간',wall:'벽/선',opening:'문/창',furniture:'가구',fixtures:'위생',lights:'조명',electric:'전기',hvac:'공조',texts:'텍스트',measures:'치수',circles:'원',arcs:'아크'};
+  cmdToast((names[kind]||'객체')+' 삭제됨');
 }
 // 헬퍼: 선분 매개변수 t (0~1)
 function segParam(seg,p){
@@ -2590,6 +3143,348 @@ function segParam(seg,p){
   if(len2<1) return 0;
   let t=((p.x-seg.x1)*dx+(p.y-seg.y1)*dy)/len2;
   return Math.max(0,Math.min(1,t));
+}
+// 레이캐스팅 — 점이 폴리곤 내부인지
+function ptInPoly(pt,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;
+    if(((yi>pt.y)!==(yj>pt.y))&&(pt.x<(xj-xi)*(pt.y-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+// 선분 P→Q와 직선 A→B의 교차점 (clip 쪽은 무한선, subject 쪽만 [0,1] 제한)
+function lineSegIntersect(P,Q,A,B){
+  const dx1=Q.x-P.x,dy1=Q.y-P.y,dx2=B.x-A.x,dy2=B.y-A.y;
+  const denom=dx1*dy2-dy1*dx2;
+  if(Math.abs(denom)<1e-6) return null;
+  const t=((A.x-P.x)*dy2-(A.y-P.y)*dx2)/denom;
+  if(t<-0.001||t>1.001) return null;
+  return {x:P.x+t*dx1,y:P.y+t*dy1};
+}
+// Sutherland-Hodgman 폴리곤 교집합 — clip 변은 무한선으로 처리(버그 수정)
+function suthHodg(subject,clip){
+  let out=subject.map(p=>({x:p.x,y:p.y}));
+  for(let c=0;c<clip.length;c++){
+    if(!out.length) return [];
+    const inp=out.slice();out=[];
+    const A=clip[c],B=clip[(c+1)%clip.length];
+    const ins=p=>(B.x-A.x)*(p.y-A.y)-(B.y-A.y)*(p.x-A.x)>=-1;
+    for(let p=0;p<inp.length;p++){
+      const curr=inp[p],prev=inp[(p+inp.length-1)%inp.length];
+      const ci=ins(curr),pi=ins(prev);
+      if(ci){
+        if(!pi){const ip=lineSegIntersect(prev,curr,A,B);if(ip)out.push({x:Math.round(ip.x),y:Math.round(ip.y)});}
+        out.push(curr);
+      }else if(pi){
+        const ip=lineSegIntersect(prev,curr,A,B);if(ip)out.push({x:Math.round(ip.x),y:Math.round(ip.y)});
+      }
+    }
+  }
+  return out;
+}
+// 공간 경계 벽 동기화: 트림 후 점(vertex)·선(wall)·면(polygon) 전부 갱신
+function syncSpaceWalls(space,oldPoly){
+  const newPoly=space.polygon;
+  const TOL=8;
+  function edgeEq(x1,y1,x2,y2,px,py,qx,qy){
+    return (Math.hypot(x1-px,y1-py)<TOL&&Math.hypot(x2-qx,y2-qy)<TOL)||
+           (Math.hypot(x1-qx,y1-qy)<TOL&&Math.hypot(x2-px,y2-py)<TOL);
+  }
+  // 1. 이 공간 소속 벽(spaceId 일치) 중 newPoly에 없는 에지 제거
+  //    다른 공간의 벽(spaceId 불일치)은 절대 건드리지 않음 → 중복선 방지
+  STATE.walls=STATE.walls.filter(w=>{
+    if(w.spaceId!==space.id) return true; // 타 공간 소속 → 무조건 유지
+    const onNew=newPoly.some((_,i)=>{
+      const a=newPoly[i],b=newPoly[(i+1)%newPoly.length];
+      return edgeEq(w.x1,w.y1,w.x2,w.y2,a.x,a.y,b.x,b.y);
+    });
+    return onNew;
+  });
+  // 2. 새 에지에 벽 없으면 생성 (교차점으로 생긴 신규 경계)
+  newPoly.forEach((_,i)=>{
+    const p=newPoly[i],q=newPoly[(i+1)%newPoly.length];
+    const exists=STATE.walls.some(w=>edgeEq(w.x1,w.y1,w.x2,w.y2,p.x,p.y,q.x,q.y));
+    if(!exists){
+      const v1=ensureVertex(p.x,p.y,1),v2=ensureVertex(q.x,q.y,1);
+      const layer=(space.layerName||'SPACE_1F').replace('SPACE','WALL').replace('AREA','WALL');
+      STATE.walls.push(makeWallVEF(v1.id,v2.id,{layerName:layer,spaceId:space.id,thickness:100}));
+    }
+  });
+  // 3. vertexIds를 newPoly 전체와 완전 재동기화
+  //    트림 후 cut edge에 생긴 신규 vertex가 vertexIds에 없으면
+  //    이동 시 해당 vertex가 안 따라오고 벽이 늘어나는 버그 발생
+  if('vertexIds' in space){
+    space.vertexIds=newPoly.map(p=>{
+      // 최소거리 버텍스 선택 (first-match → min-dist, tol=2)
+      let best=null,bestD=Infinity;
+      STATE.vertices.forEach(v=>{const d=Math.hypot(v.x-p.x,v.y-p.y);if(d<2&&d<bestD){bestD=d;best=v;}});
+      if(best) return best.id;
+      const nv={id:makeId('v'),x:p.x,y:p.y};
+      STATE.vertices.push(nv);
+      return nv.id;
+    });
+  }
+  cleanupOrphanVertices(); // 4. 고아 버텍스(점) 정리
+}
+// ===== Boolean 연산 메뉴 =====
+let boolOpCtx=null; // {faceSp, lowers, pos}
+
+function showBoolMenu(pos,faceSp,lowers){
+  boolOpCtx={faceSp,lowers};
+  const menu=document.getElementById('bool-menu');
+  if(!menu) return;
+  // 흡수 버튼: 하위 공간 중 하나라도 faceSp에 완전 포함이면 표시
+  const hasContained=lowers.some(s=>s.polygon.every(p=>ptInPoly(p,faceSp.polygon)));
+  const absorbBtn=document.getElementById('bool-absorb-btn');
+  if(absorbBtn) absorbBtn.style.display=hasContained?'flex':'none';
+  // 화면 좌표 변환
+  const rect=stage.container().getBoundingClientRect();
+  let px=rect.left+pos.x, py=rect.top+pos.y-80;
+  if(py<10) py=rect.top+pos.y+20;
+  menu.style.left=px+'px'; menu.style.top=py+'px';
+  menu.style.display='flex';
+}
+function hideBoolMenu(){
+  const menu=document.getElementById('bool-menu');
+  if(menu) menu.style.display='none';
+  boolOpCtx=null;
+}
+function applyBoolOp(op){
+  const ctx=boolOpCtx;   // hideBoolMenu가 null로 만들기 전에 먼저 저장
+  hideBoolMenu();
+  if(op==='cancel'||!ctx) return;
+  const {faceSp,lowers}=ctx;
+
+  if(op==='subtract'){
+    // 차감: 하위 공간에서 상위 공간만큼 차감
+    let ok=false;
+    for(const ls of lowers){if(doFaceTrimBy(ls,faceSp)) ok=true;}
+    if(ok){saveHistory();renderAll();refreshUI();cmdToast('차감 완료');}
+    else cmdToast('차감 불가');
+
+  }else if(op==='union'){
+    // 병합: 가장 많이 겹치는 하위 공간과 합집합
+    const lower=lowers[0];
+    const merged=polyUnion(lower.polygon,faceSp.polygon);
+    if(merged&&merged.length>=3){
+      const poly=simplifySpacePoly(merged.map(p=>({x:Math.round(p.x),y:Math.round(p.y)})));
+      if(poly.length>=3){
+        const oldPoly=lower.polygon.map(p=>({x:p.x,y:p.y}));
+        lower.polygon=poly;
+        // 상위 공간(faceSp)의 이름·타입을 하위에 병합 (하위가 기본 이름인 경우만)
+        if(faceSp.name&&lower.name===SPACE_TYPES[lower.type]?.name+(lower.typeIndex||'')){
+          lower.name=lower.name+'+'+faceSp.name;
+        }
+        // 상위 공간(faceSp) 제거 — 하위 공간에 흡수됨
+        STATE.spaces=STATE.spaces.filter(s=>s.id!==faceSp.id);
+        STATE.walls=STATE.walls.filter(w=>w.spaceId!==faceSp.id);
+        syncSpaceWalls(lower,oldPoly);
+        saveHistory();renderAll();refreshUI();
+        cmdToast('병합 완료 — '+parseFloat(spArea(lower).toFixed(2))+'㎡');
+      }
+    }else cmdToast('병합 불가 — 겹침 없음');
+
+  }else if(op==='intersect'){
+    // 교집합: 두 공간의 겹치는 부분만 남김
+    const lower=lowers[0];
+    const inter=suthHodg(lower.polygon,faceSp.polygon);
+    if(inter&&inter.length>=3){
+      const poly=simplifySpacePoly(inter.map(p=>({x:Math.round(p.x),y:Math.round(p.y)})));
+      if(poly.length>=3){
+        const oldPolyL=lower.polygon.map(p=>({x:p.x,y:p.y}));
+        lower.polygon=poly;
+        STATE.spaces=STATE.spaces.filter(s=>s.id!==faceSp.id);
+        STATE.walls=STATE.walls.filter(w=>w.spaceId!==faceSp.id);
+        syncSpaceWalls(lower,oldPolyL);
+        saveHistory();renderAll();refreshUI();
+        cmdToast('교집합 완료 — '+parseFloat(spArea(lower).toFixed(2))+'㎡');
+      }
+    }else cmdToast('교집합 불가 — 겹침 없음');
+
+  }else if(op==='absorb'){
+    // 흡수: faceSp 안에 완전히 포함된 하위 공간 삭제
+    const contained=lowers.filter(s=>s.polygon.every(p=>ptInPoly(p,faceSp.polygon)));
+    if(contained.length){
+      contained.forEach(s=>{
+        STATE.spaces=STATE.spaces.filter(x=>x.id!==s.id);
+        STATE.walls=STATE.walls.filter(w=>w.spaceId!==s.id);
+        STATE.openings=STATE.openings.filter(o=>o.spaceId!==s.id);
+      });
+      cleanupOrphanVertices();
+      saveHistory();renderAll();refreshUI();
+      cmdToast('흡수 완료 — '+contained.length+'개 공간 제거');
+    }else cmdToast('완전 포함된 공간 없음');
+  }
+}
+
+// 두 폴리곤의 합집합 (Weiler-Atherton Union)
+function polyUnion(subject,clip){
+  const TOL=3;
+  if(suthHodg(subject,clip).length<3) return null;
+  if(subject.every(p=>ptInPoly(p,clip))) return clip.slice();
+  if(clip.every(p=>ptInPoly(p,subject))) return subject.slice();
+  function buildAug(poly,other){
+    const aug=[];
+    for(let i=0;i<poly.length;i++){
+      const a=poly[i],b=poly[(i+1)%poly.length];
+      aug.push({x:a.x,y:a.y,isIP:false});
+      const ips=[];
+      for(let j=0;j<other.length;j++){
+        const c=other[j],d=other[(j+1)%other.length];
+        const ip=segIntersection(a,b,c,d);
+        if(ip){
+          const dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy;
+          if(l2<1) continue;
+          const t=((ip.x-a.x)*dx+(ip.y-a.y)*dy)/l2;
+          if(t>0.002&&t<0.998) ips.push({x:Math.round(ip.x),y:Math.round(ip.y),isIP:true,t});
+        }
+      }
+      ips.sort((a,b)=>a.t-b.t);
+      ips.forEach(ip=>{if(!aug.some(p=>p.isIP&&Math.abs(p.x-ip.x)<TOL&&Math.abs(p.y-ip.y)<TOL))aug.push(ip);});
+    }
+    return aug;
+  }
+  const augS=buildAug(subject,clip),augC=buildAug(clip,subject);
+  let inC=ptInPoly(augS[0],clip);
+  for(const p of augS){if(p.isIP){p.entering=!inC;inC=!inC;}}
+  let inS=ptInPoly(augC[0],subject);
+  for(const p of augC){if(p.isIP){p.entering=!inS;inS=!inS;}}
+  const startIdx=augS.findIndex(p=>!p.isIP&&!ptInPoly(p,clip));
+  if(startIdx<0) return null; // 부분 겹침인데 subject 외부점 없음 = 부동소수점 오류 → 실패 반환
+  const result=[],visited=new Set();
+  let onSubject=true,cur=startIdx;
+  for(let iter=0;iter<augS.length+augC.length+10;iter++){
+    const list=onSubject?augS:augC;
+    const p=list[cur];
+    const key=`${onSubject?'s':'c'}:${cur}`;
+    if(visited.has(key)&&result.length>2) break;
+    visited.add(key);
+    result.push({x:p.x,y:p.y});
+    if(p.isIP){
+      if(onSubject&&p.entering){
+        const ci=augC.findIndex(q=>q.isIP&&Math.abs(q.x-p.x)<TOL&&Math.abs(q.y-p.y)<TOL);
+        if(ci>=0){onSubject=false;cur=(ci+1)%augC.length;continue;}
+      }else if(!onSubject&&p.entering){
+        const si=augS.findIndex(q=>q.isIP&&Math.abs(q.x-p.x)<TOL&&Math.abs(q.y-p.y)<TOL);
+        if(si>=0){onSubject=true;cur=(si+1)%augS.length;continue;}
+      }
+    }
+    cur=(cur+1)%list.length;
+  }
+  return result.length>=3?result:null;
+}
+
+// subject 공간에서 cutter 공간 영역을 차감 (점·선·면 전부 갱신)
+function doFaceTrimBy(subject,cutter){
+  const oldPoly=subject.polygon.map(p=>({x:p.x,y:p.y}));
+  const d=polyDiff(oldPoly,cutter.polygon);
+  if(!d||d.length<3){cmdToast('차감 결과가 유효하지 않음 — 차감 후 공간이 사라짐');return false;}
+  const poly=simplifySpacePoly(d.map(p=>({x:Math.round(p.x),y:Math.round(p.y)})));
+  if(poly.length>=3){
+    subject.polygon=poly;
+    syncSpaceWalls(subject,oldPoly);
+    return true;
+  }
+  cmdToast('차감 불가 — 결과 폴리곤 꼭짓점 부족');
+  return false;
+}
+// 공간 면 트림: 점·선·면 전부 갱신. 성공 시 true 반환
+// clickPt 지정 시 해당 위치의 겹침 영역만 차감; null 이면 전체 차감
+function doFaceTrim(space,clickPt){
+  const allOver=STATE.spaces.filter(o=>o.id!==space.id&&suthHodg(space.polygon,o.polygon).length>=3);
+  if(!allOver.length) return false;
+  let over;
+  if(clickPt){
+    // 1순위: 클릭 지점이 겹침 영역 내부에 있는 공간
+    over=allOver.filter(o=>ptInPoly(clickPt,suthHodg(space.polygon,o.polygon)));
+    // 2순위(에지 클릭 등): 겹침 중심점이 클릭 위치에 가장 가까운 공간 하나
+    if(!over.length){
+      let bestO=null,bestD=Infinity;
+      allOver.forEach(o=>{
+        const inter=suthHodg(space.polygon,o.polygon);
+        const cx=inter.reduce((s,p)=>s+p.x,0)/inter.length;
+        const cy=inter.reduce((s,p)=>s+p.y,0)/inter.length;
+        const d=Math.hypot(cx-clickPt.x,cy-clickPt.y);
+        if(d<bestD){bestD=d;bestO=o;}
+      });
+      // 에지 클릭 허용 범위: 겹침 중심까지 최대 2000mm (2m)
+      if(bestO&&bestD<2000) over=[bestO]; else return false;
+    }
+  }else{
+    over=allOver;
+  }
+  if(!over.length) return false;
+  const oldPoly=space.polygon.map(p=>({x:p.x,y:p.y}));
+  let poly=oldPoly.slice();
+  for(const o of over){
+    const d=polyDiff(poly,o.polygon);
+    if(d&&d.length>=3) poly=d;
+  }
+  poly=simplifySpacePoly(poly.map(p=>({x:Math.round(p.x),y:Math.round(p.y)})));
+  if(poly.length>=3){
+    space.polygon=poly;
+    syncSpaceWalls(space,oldPoly);
+    return true;
+  }
+  return false;
+}
+// 폴리곤 차집합: subject - clip (Weiler-Atherton 방식)
+function polyDiff(subject,clip){
+  const TOL=3;
+  const inter=suthHodg(subject,clip);
+  // 교집합 없음 → 차감 없이 원본 반환
+  if(inter.length<3) return subject.slice();
+  // subject가 clip에 완전 포함 → 완전 제거
+  if(inter.length>=3&&subject.every(p=>ptInPoly(p,clip))) return [];
+  function buildAug(poly,other){
+    const aug=[];
+    for(let i=0;i<poly.length;i++){
+      const a=poly[i],b=poly[(i+1)%poly.length];
+      aug.push({x:a.x,y:a.y,isIP:false});
+      const ips=[];
+      for(let j=0;j<other.length;j++){
+        const c=other[j],d=other[(j+1)%other.length];
+        const ip=segIntersection(a,b,c,d);
+        if(ip){
+          const dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy;
+          if(l2<1)continue;
+          const t=((ip.x-a.x)*dx+(ip.y-a.y)*dy)/l2;
+          if(t>0.002&&t<0.998) ips.push({x:Math.round(ip.x),y:Math.round(ip.y),isIP:true,t});
+        }
+      }
+      ips.sort((a,b)=>a.t-b.t);
+      ips.forEach(ip=>{if(!aug.some(p=>p.isIP&&Math.abs(p.x-ip.x)<TOL&&Math.abs(p.y-ip.y)<TOL))aug.push(ip);});
+    }
+    return aug;
+  }
+  const augS=buildAug(subject,clip),augC=buildAug(clip,subject);
+  let inC=ptInPoly(augS[0],clip);
+  for(const p of augS){if(p.isIP){p.entering=!inC;inC=!inC;}}
+  const startIdx=augS.findIndex(p=>!p.isIP&&!ptInPoly(p,clip));
+  if(startIdx<0) return [];
+  const result=[],visited=new Set();
+  let onSubject=true,cur=startIdx;
+  for(let iter=0;iter<augS.length+augC.length+10;iter++){
+    const list=onSubject?augS:augC;
+    const p=list[cur];
+    const key=`${onSubject?'s':'c'}:${cur}`;
+    if(onSubject&&visited.has(key)&&result.length>2) break;
+    visited.add(key);
+    result.push({x:p.x,y:p.y});
+    if(p.isIP){
+      if(onSubject){
+        const ci=augC.findIndex(q=>q.isIP&&Math.abs(q.x-p.x)<TOL&&Math.abs(q.y-p.y)<TOL);
+        if(ci>=0){onSubject=false;cur=(ci-1+augC.length)%augC.length;continue;}
+      }else{
+        const si=augS.findIndex(q=>q.isIP&&Math.abs(q.x-p.x)<TOL&&Math.abs(q.y-p.y)<TOL);
+        if(si>=0&&!augS[si].entering){onSubject=true;cur=(si+1)%augS.length;continue;}
+      }
+    }
+    if(onSubject) cur=(cur+1)%augS.length;
+    else cur=(cur-1+augC.length)%augC.length;
+  }
+  return result.length>=3?result:null;
 }
 // 헬퍼: 두 선분 교차점 (없으면 null)
 function segIntersection(p1,p2,p3,p4){
@@ -2600,6 +3495,66 @@ function segIntersection(p1,p2,p3,p4){
   const u=-((x1-x2)*(y1-y3)-(y1-y2)*(x1-x3))/denom;
   if(t<-0.001||t>1.001||u<-0.001||u>1.001) return null;
   return {x:x1+t*(x2-x1), y:y1+t*(y2-y1)};
+}
+// 두 폴리곤의 공유 경계(P1→P2)를 제거하고 병합된 폴리곤 반환
+function mergeSpacesBySharedEdge(polyA, polyB, P1, P2, TOL){
+  function vd(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);}
+  function segT(a,b,p){const dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy;return l2<1?0:Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/l2));}
+  // P1,P2를 각 폴리곤에 삽입하여 연속 버텍스로 만들기
+  function insertPts(poly, P1, P2){
+    const N=poly.length, res=[];
+    for(let i=0;i<N;i++){
+      res.push({x:poly[i].x,y:poly[i].y});
+      const nxt=poly[(i+1)%N];
+      const t1=segT(poly[i],nxt,P1), t2=segT(poly[i],nxt,P2);
+      const p1On=pointToSegmentDist(P1,poly[i],nxt)<TOL, p2On=pointToSegmentDist(P2,poly[i],nxt)<TOL;
+      if(p1On&&p2On){
+        if(t1<t2){if(t1>0.01) res.push({x:P1.x,y:P1.y});if(t2<0.99) res.push({x:P2.x,y:P2.y});}
+        else{if(t2>0.01) res.push({x:P2.x,y:P2.y});if(t1<0.99) res.push({x:P1.x,y:P1.y});}
+      } else if(p1On&&t1>0.01&&t1<0.99) res.push({x:P1.x,y:P1.y});
+      else if(p2On&&t2>0.01&&t2<0.99) res.push({x:P2.x,y:P2.y});
+    }
+    return res;
+  }
+  const pA=insertPts(polyA,P1,P2), pB=insertPts(polyB,P1,P2);
+  const nA=pA.length, nB=pB.length;
+  // A에서 P1→P2 에지 인덱스 찾기
+  let idxA=-1;
+  for(let i=0;i<nA;i++) if(vd(pA[i],P1)<TOL&&vd(pA[(i+1)%nA],P2)<TOL){idxA=i;break;}
+  if(idxA===-1) for(let i=0;i<nA;i++) if(vd(pA[i],P2)<TOL&&vd(pA[(i+1)%nA],P1)<TOL){idxA=i;break;}
+  if(idxA===-1) return null;
+  // B에서 P2→P1 에지 인덱스 찾기 (A와 반대 방향)
+  let idxB=-1;
+  for(let i=0;i<nB;i++){
+    if(vd(pB[i],P2)<TOL&&vd(pB[(i+1)%nB],P1)<TOL){idxB=i;break;}
+  }
+  // 같은 방향인 경우도 처리
+  let bReverse=false;
+  if(idxB===-1) for(let i=0;i<nB;i++){
+    if(vd(pB[i],P1)<TOL&&vd(pB[(i+1)%nB],P2)<TOL){idxB=i;bReverse=true;break;}
+  }
+  if(idxB===-1) return null;
+  // 병합: A 순회(공유에지 제외) + B 순회(공유에지 제외)
+  const result=[];
+  for(let i=0;i<nA-1;i++) result.push({x:Math.round(pA[(idxA+1+i)%nA].x),y:Math.round(pA[(idxA+1+i)%nA].y)});
+  if(!bReverse){
+    for(let i=0;i<nB-1;i++) result.push({x:Math.round(pB[(idxB+1+i)%nB].x),y:Math.round(pB[(idxB+1+i)%nB].y)});
+  } else {
+    for(let i=1;i<nB;i++) result.push({x:Math.round(pB[(idxB-i+nB)%nB].x),y:Math.round(pB[(idxB-i+nB)%nB].y)});
+  }
+  return result.length>=3?result:null;
+}
+// 공선 버텍스 제거 (폴리곤 단순화)
+function simplifySpacePoly(poly){
+  const N=poly.length;
+  if(N<3) return poly;
+  const res=[];
+  for(let i=0;i<N;i++){
+    const a=poly[(i+N-1)%N], b=poly[i], c=poly[(i+1)%N];
+    const cross=(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+    if(Math.abs(cross)>1) res.push({x:b.x,y:b.y});
+  }
+  return res.length>=3?res:poly;
 }
 function updatePreview(){
   drawGroup.destroyChildren();
@@ -2623,6 +3578,20 @@ function updatePreview(){
       stroke:isCrossing?'#E2725B':'#5BA0D4',
       strokeWidth:1.2,dash:isCrossing?[3,3]:[]
     }));
+    previewLayer.batchDraw();return;
+  }
+  // 원형공간 미리보기
+  if(drawState.type==='circlespace'){
+    const c=drawState.center,p=drawState.current;
+    const r=Math.hypot(p.x-c.x,p.y-c.y);
+    const cx=STATE.offsetX+mmToPx(c.x),cy=STATE.offsetY+mmToPx(c.y);
+    const td=SPACE_TYPES[STATE.selectedSpaceType];
+    drawGroup.add(new Konva.Circle({x:cx,y:cy,radius:mmToPx(r),stroke:td.color,strokeWidth:2,dash:[6,4],fill:td.color+'33'}));
+    // 중심점
+    drawGroup.add(new Konva.Circle({x:cx,y:cy,radius:4,fill:td.color}));
+    // 반지름 안내선
+    drawGroup.add(new Konva.Line({points:[cx,cy,STATE.offsetX+mmToPx(p.x),STATE.offsetY+mmToPx(p.y)],stroke:td.color,strokeWidth:1,dash:[4,4]}));
+    drawGroup.add(new Konva.Text({x:cx+10,y:cy-18,text:'R '+Math.round(r)+'mm  A '+parseFloat((Math.PI*r*r/1e6).toFixed(2))+'㎡',fontSize:11,fontFamily:'JetBrains Mono',fill:td.color}));
     previewLayer.batchDraw();return;
   }
   // v5.3: 원 미리보기
@@ -2662,13 +3631,21 @@ function updatePreview(){
     const color=SPACE_TYPES[STATE.selectedSpaceType].color;
     drawGroup.add(new Konva.Line({points:pts,stroke:color,strokeWidth:1.5,dash:[6,4]}));
     drawState.points.forEach(p=>{drawGroup.add(new Konva.Circle({x:STATE.offsetX+mmToPx(p.x),y:STATE.offsetY+mmToPx(p.y),radius:4,fill:color}));});
-  }else if(drawState.type==='wall'){
+  }else if(drawState.type==='wall'||drawState.type==='line'){
     const x1=STATE.offsetX+mmToPx(drawState.start.x),y1=STATE.offsetY+mmToPx(drawState.start.y);
     const x2=STATE.offsetX+mmToPx(drawState.current.x),y2=STATE.offsetY+mmToPx(drawState.current.y);
-    drawGroup.add(new Konva.Line({points:[x1,y1,x2,y2],stroke:'#C9A961',strokeWidth:6,opacity:0.6,lineCap:'square'}));
+    const isLine=drawState.type==='line';
+    const prevColor=isLine?(SPACE_TYPES[STATE.selectedSpaceType]?.color||'#7B82B5'):'#C9A961';
+    drawGroup.add(new Konva.Line({points:[x1,y1,x2,y2],stroke:prevColor,strokeWidth:isLine?2.2:6,opacity:0.85,lineCap:'square',dash:isLine?[10,4]:[]}));
     const dxMm=drawState.current.x-drawState.start.x,dyMm=drawState.current.y-drawState.start.y;
     const d=Math.sqrt(dxMm*dxMm+dyMm*dyMm);
-    drawGroup.add(new Konva.Text({x:(x1+x2)/2-50,y:(y1+y2)/2-20,text:Math.round(d)+' mm',width:100,align:'center',fontSize:11,fontFamily:'JetBrains Mono',fill:'#C9A961'}));
+    // 선이 공간을 관통하면 "분할 예정" 표시
+    if(isLine){
+      const a={x:drawState.start.x,y:drawState.start.y},b={x:drawState.current.x,y:drawState.current.y};
+      const willSplit=STATE.spaces.some(s=>splitPolygonByLine(s.polygon,a,b));
+      if(willSplit) drawGroup.add(new Konva.Text({x:(x1+x2)/2-50,y:(y1+y2)/2-22,text:'✂ 분할',width:100,align:'center',fontSize:12,fontFamily:'Inter',fill:prevColor,fontStyle:'bold'}));
+    }
+    drawGroup.add(new Konva.Text({x:(x1+x2)/2-50,y:(y1+y2)/2-6,text:Math.round(d)+' mm',width:100,align:'center',fontSize:11,fontFamily:'JetBrains Mono',fill:prevColor}));
   }
   previewLayer.batchDraw();
 }
@@ -2682,6 +3659,7 @@ stage.on('mousedown touchstart',e=>{
   const isMiddleClick=e.evt&&e.evt.button===1; // v5.5: 휠클릭 패닝
   if(isMiddleClick||STATE.selectedTool==='pan'){isPanning=true;panStart={x:pos.x,y:pos.y};if(e.evt) e.evt.preventDefault();return;}
   if(STATE.selectedTool==='rect') startRect(pos);
+  else if(STATE.selectedTool==='circlespace') startCircleSpace(pos);
   // v5.5: wall은 mousedown으로 시작 안 함 (클릭+클릭 모드만)
   else if(STATE.selectedTool==='circle') startCircle(pos);
   else if(STATE.selectedTool==='arc') startArc(pos);
@@ -2709,15 +3687,84 @@ stage.on('mousedown touchstart',e=>{
       if(id){
         const found=findObjById(id);
         if(found){
+          const isAlt=!!(e.evt&&e.evt.altKey);
           STATE.selectedKind=found.kind;STATE.selectedId=found.id;
           STATE.boxSelection=[];
-          dragMoveState={kind:found.kind,id:found.id,startMm:getMm(pos),baseObj:JSON.parse(JSON.stringify(found.obj))};
+          if(isAlt){
+            // Alt+드래그: 복사본 생성 후 복사본을 드래그 (원본 제자리)
+            const copy=altCopyObj(found.kind,found.obj);
+            if(copy){
+              STATE.selectedKind=found.kind;STATE.selectedId=copy.id;
+              dragMoveState={kind:found.kind,id:copy.id,startMm:getMm(pos),baseObj:JSON.parse(JSON.stringify(copy)),altCopy:true};
+            }
+          }else{
+            // 공간 드래그 시작: 다른 공간과 공유 중인 vertex 분리 (이동 오염 방지)
+            // vertexIds 뿐 아니라 이 공간의 walls.v1Id/v2Id도 함께 교체해야 벽이 늘어나지 않음
+            if(found.kind==='space'&&found.obj.vertexIds){
+              found.obj.vertexIds=found.obj.vertexIds.map(vid=>{
+                const isShared=STATE.spaces.some(s=>s.id!==found.obj.id&&s.vertexIds&&s.vertexIds.includes(vid));
+                if(isShared){
+                  const v=STATE.vertices.find(v=>v.id===vid);
+                  if(v){
+                    const nv={id:makeId('v'),x:v.x,y:v.y};
+                    STATE.vertices.push(nv);
+                    STATE.walls.forEach(w=>{
+                      if(w.spaceId!==found.obj.id) return;
+                      if(w.v1Id===vid) w.v1Id=nv.id;
+                      if(w.v2Id===vid) w.v2Id=nv.id;
+                    });
+                    return nv.id;
+                  }
+                }
+                return vid;
+              });
+            }
+            dragMoveState={kind:found.kind,id:found.id,startMm:getMm(pos),baseObj:JSON.parse(JSON.stringify(found.obj))};
+          }
           renderAll();refreshUI();
         }
       }
     }
   }
 });
+// Alt+드래그 복사: 원본 제자리, 복사본을 새 위치로 드래그
+function altCopyObj(kind,obj){
+  const arr=getArr(kind);
+  if(!arr) return null;
+  const raw=JSON.parse(JSON.stringify(obj));
+  raw.id=makeId(kind.charAt(0));
+  if('v1Id' in raw){
+    // 벽: 독립 버텍스 생성
+    const nv1={id:makeId('v'),x:Math.round(obj.x1),y:Math.round(obj.y1)};
+    const nv2={id:makeId('v'),x:Math.round(obj.x2),y:Math.round(obj.y2)};
+    STATE.vertices.push(nv1,nv2);
+    raw.v1Id=nv1.id; raw.v2Id=nv2.id;
+    reinstallVEF(raw);
+  }else if('vertexIds' in raw){
+    // 공간: 버텍스 복제 + 소속 벽도 같은 버텍스 공유로 복사
+    const poly=obj.polygon;
+    const vidMap={};
+    obj.vertexIds.forEach((vid,i)=>{
+      const p=poly[i]||{x:0,y:0};
+      const nv={id:makeId('v'),x:Math.round(p.x),y:Math.round(p.y)};
+      STATE.vertices.push(nv);
+      vidMap[vid]=nv.id;
+    });
+    raw.vertexIds=obj.vertexIds.map(vid=>vidMap[vid]||vid);
+    STATE.walls.filter(w=>w.spaceId===obj.id).forEach(w=>{
+      const wraw=JSON.parse(JSON.stringify(w));
+      wraw.id=makeId('w'); wraw.spaceId=raw.id;
+      if(vidMap[w.v1Id]){wraw.v1Id=vidMap[w.v1Id];}else{const nv={id:makeId('v'),x:Math.round(w.x1),y:Math.round(w.y1)};STATE.vertices.push(nv);wraw.v1Id=nv.id;}
+      if(vidMap[w.v2Id]){wraw.v2Id=vidMap[w.v2Id];}else{const nv={id:makeId('v'),x:Math.round(w.x2),y:Math.round(w.y2)};STATE.vertices.push(nv);wraw.v2Id=nv.id;}
+      reinstallVEF(wraw);
+      STATE.walls.push(wraw);
+    });
+    reinstallVEF(raw);
+  }
+  arr.push(raw);
+  return raw;
+}
+
 // v5.4: id로 객체 검색 (모든 배열 순회)
 function findObjById(id){
   const map=[
@@ -2734,6 +3781,28 @@ function findObjById(id){
   }
   return null;
 }
+// Shift 누름/해제 시 드래그·선 미리보기 즉시 재계산
+function _refreshShiftOrtho(){
+  const cur=stage.getPointerPosition();
+  if(!cur) return;
+  const mm=getMm(cur);
+  // 드래그 이동 중
+  if(dragMoveState&&isMouseDown){
+    const dx2=mm.x-dragMoveState.startMm.x, dy2=mm.y-dragMoveState.startMm.y;
+    applyDragMove(dragMoveState,dx2,dy2);
+    renderAll();
+  }
+  // 선/벽·다각형 그리기 중
+  if(drawState){
+    if(drawState.type==='wall'||drawState.type==='arc'){
+      drawState.current=applyOrtho(drawState.start,mm);
+    } else if(drawState.type==='polygon'&&drawState.points.length>0){
+      drawState.current=applyOrtho(drawState.points[drawState.points.length-1],mm);
+    }
+    updatePreview();
+  }
+}
+
 // v5.4: 드래그 이동 적용 — 원본 baseObj 기준으로 dx,dy 만큼
 // v5.8: 공간 드래그 시 폴리곤 점들을 다른 공간 변에 자동 스냅 (#1 요구사항)
 function applyDragMove(state,dx,dy){
@@ -2743,6 +3812,11 @@ function applyDragMove(state,dx,dy){
   if(!obj) return;
   const base=state.baseObj;
   let sx=Math.round(dx), sy=Math.round(dy);
+  // Shift 직교: F8 OFF+Shift 또는 F8 ON+Shift 미누름 시 수평/수직 이동만 허용
+  const orthoActive=(STATE.snap.ortho&&!STATE.shiftPressed)||(!STATE.snap.ortho&&STATE.shiftPressed);
+  if(orthoActive){
+    if(Math.abs(sx)>=Math.abs(sy)) sy=0; else sx=0;
+  }
 
   // v5.8: 공간 드래그 — 한 점이라도 다른 공간 변에 가까우면 그 점 기준으로 전체 이동량 보정
   if(state.kind==='space' && base.polygon){
@@ -2769,8 +3843,20 @@ function applyDragMove(state,dx,dy){
   }
 
   if('x' in obj&&'x' in base){obj.x=base.x+sx;obj.y=base.y+sy;}
-  if('x1' in obj&&'x1' in base){obj.x1=base.x1+sx;obj.y1=base.y1+sy;obj.x2=base.x2+sx;obj.y2=base.y2+sy;}
-  if(obj.polygon&&base.polygon){obj.polygon=base.polygon.map(p=>({x:p.x+sx,y:p.y+sy}));}
+  // VEF: 벽 — 공유 버텍스를 이동 (연결된 모든 벽/공간 자동 연동)
+  if('v1Id' in obj){
+    if(base.x1!=null) moveVertex(obj.v1Id,base.x1+sx,base.y1+sy);
+    if(base.x2!=null) moveVertex(obj.v2Id,base.x2+sx,base.y2+sy);
+  } else if('x1' in base){
+    obj.x1=base.x1+sx;obj.y1=base.y1+sy;obj.x2=base.x2+sx;obj.y2=base.y2+sy;
+  }
+  // VEF: 공간 — vertex만 이동 (polygon getter가 vertexIds→vertices에서 자동 계산)
+  // setter 호출 금지: polygonToVertexIds가 vertexIds를 덮어써서 벽 참조 불일치 유발
+  if('vertexIds' in obj&&base.polygon){
+    obj.vertexIds.forEach((vid,i)=>{const bp=base.polygon[i];if(bp)moveVertex(vid,bp.x+sx,bp.y+sy);});
+  } else if(base.polygon){
+    obj.polygon=base.polygon.map(p=>({x:p.x+sx,y:p.y+sy}));
+  }
 }
 stage.on('mousemove touchmove',e=>{
   const pos=stage.getPointerPosition();if(!pos) return;
@@ -2784,6 +3870,7 @@ stage.on('mousemove touchmove',e=>{
   }
   if(STATE.selectedTool==='rect'&&isMouseDown) updateRect(pos);
   // v5.5: wall은 mousemove 미리보기를 cmdMode wall-len에서 처리
+  else if(STATE.selectedTool==='circlespace'&&isMouseDown) updateCircleSpace(pos);
   else if(STATE.selectedTool==='circle'&&isMouseDown) updateCircle(pos);
   else if(STATE.selectedTool==='arc'&&isMouseDown) updateArc(pos);
   else if(STATE.selectedTool==='select'&&isMouseDown&&dragMoveState){
@@ -2797,7 +3884,7 @@ stage.on('mousemove touchmove',e=>{
   }
   else if(STATE.selectedTool==='polygon') updatePolygonPreview(pos);
   // v5.1+v5.2: cmdMode 활성 시 마우스 방향 추적
-  else if(STATE.cmdMode==='wall-len'&&drawState&&drawState.type==='wall'){
+  else if(STATE.cmdMode==='wall-len'&&drawState&&(drawState.type==='wall'||drawState.type==='line')){
     let p=applyOrtho(drawState.start,mm);
     drawState.current=p;updatePreview();
   }
@@ -2820,7 +3907,19 @@ stage.on('mouseup touchend',e=>{
   const isClick=dragDist<5;
   // v5.4: 객체 드래그 이동 종료
   if(dragMoveState){
-    if(!isClick) saveHistory();
+    if(!isClick){
+      saveHistory();
+      if(dragMoveState.altCopy) cmdToast('복사됨 (Alt+드래그)');
+    }else if(dragMoveState.altCopy){
+      // Alt+클릭(드래그 없음): 제자리 복사본 제거
+      const arr=getArr(dragMoveState.kind);
+      if(arr){
+        if(dragMoveState.kind==='space') STATE.walls=STATE.walls.filter(w=>w.spaceId!==dragMoveState.id);
+        const idx=arr.findIndex(o=>o.id===dragMoveState.id);
+        if(idx>=0) arr.splice(idx,1);
+        cleanupOrphanVertices();
+      }
+    }
     dragMoveState=null;
     mouseDownPos=null;
     return;
@@ -2835,22 +3934,34 @@ stage.on('mouseup touchend',e=>{
       endRect();
     }
   }else if(STATE.selectedTool==='wall'){
-    // v5.5: 클릭+클릭만 (드래그 방식 제거)
-    if(!isClick) return; // 드래그면 무시
+    if(!isClick) return;
     if(STATE.cmdMode==='wall-len'&&drawState&&drawState.type==='wall'){
-      // 두 번째 클릭 = 끝점
-      let endMm=getMm(pos);
-      endMm=applyOrtho(drawState.start,endMm);
+      let endMm=getMm(pos);endMm=applyOrtho(drawState.start,endMm);
       addWall(drawState.start.x,drawState.start.y,endMm.x,endMm.y);
       drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
-      exitCmdMode();
-      cmdToast('벽 추가 (클릭+클릭)');
+      exitCmdMode();cmdToast('벽 추가');
     }else{
-      // 첫 번째 클릭 = 시작점 + 단계별 모드 진입
       const mm=getMm(pos);
       drawState={type:'wall',start:mm,current:mm};
-      enterCmdMode('wall-len',{},'길이(mm):','거리 Enter / 또는 끝점 클릭 / Shift=직교 반전 / esc=취소');
+      enterCmdMode('wall-len',{},'길이(mm):','거리 Enter / 끝점 클릭 / Shift=직교 / esc=취소');
     }
+  }else if(STATE.selectedTool==='line'){
+    if(!isClick) return;
+    if(STATE.cmdMode==='wall-len'&&drawState&&drawState.type==='line'){
+      let endMm=getMm(pos);endMm=applyOrtho(drawState.start,endMm);
+      addLine(drawState.start.x,drawState.start.y,endMm.x,endMm.y);
+      drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+      exitCmdMode();cmdToast('선 추가');
+    }else{
+      const mm=getMm(pos);
+      drawState={type:'line',start:mm,current:mm};
+      enterCmdMode('wall-len',{},'길이(mm):','거리 Enter / 끝점 클릭 / Shift=직교 / esc=취소');
+    }
+  }
+  else if(STATE.selectedTool==='circlespace'){
+    if(isClick&&drawState&&drawState.type==='circlespace'){
+      enterCmdMode('circlespace-r',{cx:drawState.center.x,cy:drawState.center.y},'반지름(mm):','원형공간 반지름 입력 후 Enter (esc=취소)');
+    }else{ endCircleSpace(); }
   }
   else if(STATE.selectedTool==='circle'){
     if(isClick&&drawState&&drawState.type==='circle'){
@@ -2881,6 +3992,7 @@ stage.on('mouseup touchend',e=>{
     else if(STATE.selectedTool==='measure') handleMeasure(pos);
     else if(STATE.selectedTool==='trim') handleTrim(pos);
     else if(STATE.selectedTool==='break') handleBreak(pos);
+    else if(STATE.selectedTool==='eraser') handleEraser(pos);
     else if(STATE.selectedTool==='dimwall') handleDimWall(pos);
     else if(STATE.selectedTool==='offset') handleOffsetClick(pos); // v5.6
     else if(STATE.selectedTool==='mirror') handleMirrorClick(pos); // v5.6
@@ -2901,12 +4013,35 @@ stage.on('wheel',e=>{
   drawGrid();renderAll();
   document.getElementById('zoom-pct').textContent=Math.round(STATE.zoom*100)+'%';
 });
-container.addEventListener('contextmenu',e=>e.preventDefault());
+container.addEventListener('contextmenu',e=>{
+  e.preventDefault();
+  const rect=container.getBoundingClientRect();
+  const kx=e.clientX-rect.left, ky=e.clientY-rect.top;
+  const hit=stage.getIntersection({x:kx,y:ky});
+  if(hit){
+    let node=hit,id=null;
+    while(node&&node!==stage){if(node.id&&node.id()){id=node.id();break;}node=node.getParent();}
+    if(id){
+      const found=findObjById(id);
+      if(found&&(found.kind==='wall'||found.kind==='space')){
+        showFinishMenu(found.kind,found.obj,e.clientX,e.clientY);
+        return;
+      }
+    }
+  }
+  doEnterAction();
+});
 
 // ===== 키보드 =====
 document.addEventListener('keydown',e=>{
+  // Shift는 INPUT focus 무관하게 항상 감지
+  if(e.key==='Shift'){
+    STATE.shiftPressed=true;
+    _refreshShiftOrtho();
+  }
+  // Boolean 메뉴 열려있으면 Esc로 닫기
+  if(e.key==='Escape'){hideBoolMenu();}
   if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA') return;
-  if(e.key==='Shift') STATE.shiftPressed=true;
   // v5.2: F8 직교 토글
   if(e.key==='F8'){e.preventDefault();toggleOrtho();return;}
   if(e.ctrlKey||e.metaKey){
@@ -2919,24 +4054,37 @@ document.addEventListener('keydown',e=>{
   switch(e.key.toLowerCase()){
     case 'v':setTool('select');break;
     case 'r':if(STATE.selectedKind&&STATE.selectedId) rotateSelected();else setTool('rect');break;
+    case 'g':setTool('circlespace');break;
     case 'p':setTool('polygon');break;
     case 'a':setTool('arc');break;  // v5.6: A = arc (단독)
-    case 'l':setTool('wall');break; // v5.6: L = line (선/벽 — AutoCAD 표준)
+    case 'l':setTool('line');break;
+    case 'b':setTool('wall');break;
     case 'd':setTool('door');break;
-    case 'n':setTool('window');break;
+    case 'w':setTool('window');break;
     case 'o':setTool('offset');cmdToast('옵셋 — 거리 입력 후 객체 클릭, 방향 클릭');break; // v5.6: O = offset
     case 't':setTool('text');break;
     case 'm':setTool('measure');break;
     case 'h':setTool('pan');break;
     case 'c':setTool('circle');break;
     case 'i':setTool('dimwall');cmdToast('치수 모드 — 벽 클릭');break;
-    case 'g':toggleGrid();break;
+    case 'f':toggleGrid();break;
+    case 'x':setTool('trim');cmdToast('트림 모드 — 자를 부분 클릭');break;
+    case 'z':setTool('break');cmdToast('분할 모드 — 분할할 점 클릭');break;
+    case 'e':setTool('eraser');cmdToast('지우개 — 지울 객체 클릭');break;
     // v5.6: 1~5 = 라이브러리 카테고리
     case '1':setTool('furniture');setLibCategory('furniture');break;
     case '2':setTool('fixture');setLibCategory('fixture');break;
     case '3':setTool('light');setLibCategory('light');break;
     case '4':setTool('electric');setLibCategory('electric');break;
     case '5':setTool('hvac');setLibCategory('hvac');break;
+    case 'enter':
+      e.preventDefault();
+      doEnterAction();
+      break;
+    case ' ':
+      e.preventDefault();
+      doEnterAction();
+      break;
     case 'escape':drawState=null;STATE.measureFirst=null;
       if(polygonClickTimer){clearTimeout(polygonClickTimer);polygonClickTimer=null;}
       drawGroup.destroyChildren();previewLayer.batchDraw();deselect();
@@ -2948,7 +4096,13 @@ document.addEventListener('keydown',e=>{
       break;
   }
 });
-document.addEventListener('keyup',e=>{if(e.key==='Shift') STATE.shiftPressed=false;});
+document.addEventListener('keyup',e=>{
+  if(e.key==='Shift'){STATE.shiftPressed=false;_refreshShiftOrtho();}
+  if(e.key==='Alt'){stage.container().style.cursor='';}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Alt'&&STATE.selectedTool==='select'){stage.container().style.cursor='copy';e.preventDefault();}
+});
 
 // v5.6: 라이브러리 카테고리 전환 — 도구 + UI 패널 동기화
 function setLibCategory(toolName){
@@ -2988,6 +4142,7 @@ function toggleOrtho(){
   // snap UI checkbox 동기화
   const cb=document.querySelector('input[data-snap="ortho"]');
   if(cb) cb.checked=STATE.snap.ortho;
+  _refreshShiftOrtho(); // 작업 중 F8 즉시 반영
 }
 function updateOrthoFAB(){
   const fab=document.getElementById('ortho-fab');
@@ -3105,8 +4260,8 @@ function refreshSpaceList(){
     const td=SPACE_TYPES[s.type];
     const sel=STATE.selectedKind==='space'&&STATE.selectedId===s.id||STATE.boxSelection.some(b=>b.kind==='space'&&b.id===s.id);
     return '<div class="space-item'+(sel?' selected':'')+'" data-id="'+s.id+'" style="border-left-color:'+td.color+'">'+
-      '<div class="si-head"><span class="si-name">'+s.name+'</span>'+
-      '<span class="si-type" style="background:'+td.color+'33;color:'+td.color+'">'+td.name+'</span></div>'+
+      '<div class="si-head"><span class="si-name">'+escapeHtml(s.name)+'</span>'+
+      '<span class="si-type" style="background:'+td.color+'33;color:'+td.color+'">'+escapeHtml(td.name)+'</span></div>'+
       '<div class="si-stats"><span><span class="num">'+spArea(s).toFixed(1)+'</span>㎡</span>'+
       '<span><span class="num">'+spWall(s).toFixed(1)+'</span>벽㎡</span>'+
       '<span><span class="num">'+spPeri(s).toFixed(1)+'</span>m</span></div></div>';
@@ -3129,9 +4284,10 @@ function refreshDetail(){
     const s=STATE.spaces.find(x=>x.id===STATE.selectedId);
     if(!s) return;
     // v5.8: 자재 누락 방지 — 마이그레이션
-    if(!s.floorMaterial){const dm=defaultMaterials(s.type);s.floorMaterial=dm.floor;s.wallMaterial=dm.wall;}
+    if(!s.floorMaterial){s.floorMaterial=defaultMaterials(s.type).floor;}
+    if(!s.ceilingMaterial){s.ceilingMaterial='GYPSUM';}
     dc.innerHTML=
-      '<div class="field"><label class="field-label">이름</label><input type="text" id="d-name" value="'+s.name+'"></div>'+
+      '<div class="field"><label class="field-label">이름</label><input type="text" id="d-name" value="'+escapeHtml(s.name)+'"></div>'+
       '<div class="field"><label class="field-label">타입</label><select id="d-type">'+
       Object.entries(SPACE_TYPES).map(([k,td])=>'<option value="'+k+'"'+(k===s.type?' selected':'')+'>'+td.name+'</option>').join('')+'</select></div>'+
       '<div class="field"><label class="field-label">개별 천장고 (mm)</label>'+
@@ -3142,9 +4298,8 @@ function refreshDetail(){
       Object.entries(FLOOR_MATERIALS).map(([k,m])=>'<option value="'+k+'"'+(k===s.floorMaterial?' selected':'')+'>'+m.name+'</option>').join('')+
       '</select></div>'+
       '<div class="field"><label class="field-label">벽자재</label>'+
-      '<select id="d-wall">'+
-      Object.entries(WALL_MATERIALS).map(([k,m])=>'<option value="'+k+'"'+(k===s.wallMaterial?' selected':'')+'>'+m.name+'</option>').join('')+
-      '</select></div></div>'+
+      '<span style="font-size:11px;color:var(--text-tertiary)">벽 선택 → 개별 설정</span>'+
+      '</div></div>'+
       '<div class="field-row"><div class="field"><label class="field-label">자재 등급</label>'+
       '<select id="d-grade"><option value="STANDARD"'+(s.materialGrade==='STANDARD'?' selected':'')+'>표준</option>'+
       '<option value="PREMIUM"'+(s.materialGrade==='PREMIUM'?' selected':'')+'>프리미엄</option>'+
@@ -3159,12 +4314,12 @@ function refreshDetail(){
       s.type=e.target.value;
       // v5.8: 타입 변경 시 자재 기본값 자동 갱신 (사용자 미설정 시)
       const dm=defaultMaterials(s.type);
-      s.floorMaterial=dm.floor;s.wallMaterial=dm.wall;
+      s.floorMaterial=dm.floor;
+      STATE.walls.filter(w=>w.spaceId===s.id&&!w.isLine).forEach(w=>w.finishMaterial=dm.wall);
       renderAll();refreshUI();
     });
     document.getElementById('d-ch').addEventListener('change',e=>{s.ceilingHeight_mm=e.target.value?parseInt(e.target.value):null;refreshUI();});
     document.getElementById('d-floor').addEventListener('change',e=>{s.floorMaterial=e.target.value;saveHistory();refreshUI();showStatus('바닥재: '+FLOOR_MATERIALS[e.target.value].name);});
-    document.getElementById('d-wall').addEventListener('change',e=>{s.wallMaterial=e.target.value;saveHistory();refreshUI();showStatus('벽자재: '+WALL_MATERIALS[e.target.value].name);});
     document.getElementById('d-grade').addEventListener('change',e=>{s.materialGrade=e.target.value;refreshUI();});
     document.getElementById('d-diff').addEventListener('change',e=>{s.difficulty=e.target.value;refreshUI();});
     document.getElementById('d-del').addEventListener('click',deleteSelected);
@@ -3225,6 +4380,28 @@ function refreshDetail(){
     document.getElementById('d-rot-90').addEventListener('click',()=>{o.angle=((o.angle||0)+90)%360;saveHistory();renderAll();refreshUI();});
     document.getElementById('d-rot-m90').addEventListener('click',()=>{o.angle=((o.angle||0)-90+360)%360;saveHistory();renderAll();refreshUI();});
     document.getElementById('d-rot-180').addEventListener('click',()=>{o.angle=((o.angle||0)+180)%360;saveHistory();renderAll();refreshUI();});
+    document.getElementById('d-dup').addEventListener('click',duplicateSelected);
+    document.getElementById('d-del').addEventListener('click',deleteSelected);
+  }
+  else if(STATE.selectedKind==='wall'){
+    const w=STATE.walls.find(x=>x.id===STATE.selectedId);
+    if(!w) return;
+    dc.innerHTML=
+      '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">벽</strong></p>'+
+      '<div class="field"><label class="field-label">벽 마감재</label>'+
+      '<select id="d-wmat">'+
+      '<option value=""'+(w.finishMaterial?'':' selected')+'>미정</option>'+
+      Object.entries(WALL_MATERIALS).map(([k,m])=>'<option value="'+k+'"'+(k===w.finishMaterial?' selected':'')+'>'+m.name+'</option>').join('')+
+      '</select></div>'+
+      '<div class="field"><label class="field-label">개별 높이 (mm)</label>'+
+      '<input type="number" id="d-wh" value="'+(w.height_mm||'')+'" placeholder="공간 천장고 따름" step="50"></div>'+
+      '<div class="field"><label class="field-label">두께 (mm)</label>'+
+      '<input type="number" id="d-wthick" value="'+(w.thickness||100)+'" step="10"></div>'+
+      '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
+      '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
+    document.getElementById('d-wmat').addEventListener('change',e=>{w.finishMaterial=e.target.value||null;saveHistory();refreshUI();showStatus('벽 마감재: '+(WALL_MATERIALS[e.target.value]?.name||'미정'));});
+    document.getElementById('d-wh').addEventListener('change',e=>{w.height_mm=e.target.value?parseInt(e.target.value):null;saveHistory();refreshUI();});
+    document.getElementById('d-wthick').addEventListener('change',e=>{w.thickness=parseInt(e.target.value)||100;saveHistory();renderAll();refreshUI();});
     document.getElementById('d-dup').addEventListener('click',duplicateSelected);
     document.getElementById('d-del').addEventListener('click',deleteSelected);
   }
@@ -3348,7 +4525,7 @@ function refreshEstimate(){
   });
 
   const aw=[];
-  STATE.spaces.forEach(s=>computeWarns(s).forEach(w=>aw.push({lv:w.lv,msg:'['+s.name+'] '+w.msg})));
+  STATE.spaces.forEach(s=>computeWarns(s).forEach(w=>aw.push({lv:w.lv,msg:'['+escapeHtml(s.name)+'] '+w.msg})));
   if(STATE.spaces.length===0) aw.push({lv:'warning',msg:'공간 없음.'});
   if(tf>0&&STATE.openings.length===0) aw.push({lv:'warning',msg:'⚠ 개구부 0개. 벽 면적 정확도 ↓.'});
   document.getElementById('t-warns').innerHTML=aw.length===0?'<div class="warn success">✓ 견적 입력 준비 완료. 단가 = UNKNOWN/NEEDS_RESEARCH.</div>':aw.map(w=>'<div class="warn '+w.lv+'">'+w.msg+'</div>').join('');
@@ -3401,19 +4578,98 @@ function computeQty(catKey,c){
   return qty;
 }
 
+function showFinishMenu(kind,obj,cx,cy){
+  const menu=document.getElementById('finish-ctx-menu');
+  const titleEl=document.getElementById('finish-ctx-title');
+  const itemsEl=document.getElementById('finish-ctx-items');
+  itemsEl.innerHTML='';
+  function makeSection(label,materials,currentCode,surfaceKey){
+    const sec=document.createElement('div');
+    const hdr=document.createElement('div');
+    hdr.style.cssText='padding:5px 13px 3px;color:#6b7a99;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;';
+    hdr.textContent=label;
+    sec.appendChild(hdr);
+    Object.values(materials).forEach(m=>{
+      const btn=document.createElement('button');
+      const active=m.code===currentCode;
+      btn.style.cssText='display:block;width:100%;text-align:left;padding:7px 14px 7px 18px;background:none;border:none;color:'+(active?'#C9A961':'#C8C2B4')+';cursor:pointer;font-size:12px;font-family:Inter,sans-serif;white-space:nowrap;';
+      btn.textContent=(active?'✓ ':'')+m.name;
+      btn.addEventListener('mouseenter',()=>{btn.style.background='rgba(255,255,255,0.07)';});
+      btn.addEventListener('mouseleave',()=>{btn.style.background='none';});
+      btn.addEventListener('click',()=>{applyFinish(kind,obj,surfaceKey,m.code);menu.style.display='none';});
+      sec.appendChild(btn);
+    });
+    return sec;
+  }
+  if(kind==='wall'){
+    titleEl.textContent='벽 마감재';
+    itemsEl.appendChild(makeSection('벽 마감재',WALL_MATERIALS,obj.finishMaterial||'UNDECIDED','finishMaterial'));
+  }else if(kind==='space'){
+    titleEl.textContent=obj.name+' 마감재';
+    itemsEl.appendChild(makeSection('바닥재',FLOOR_MATERIALS,obj.floorMaterial||'UNDECIDED','floorMaterial'));
+    const div=document.createElement('div');
+    div.style.cssText='height:1px;background:#2e3347;margin:4px 0;';
+    itemsEl.appendChild(div);
+    itemsEl.appendChild(makeSection('천정재',CEILING_MATERIALS,obj.ceilingMaterial||'GYPSUM','ceilingMaterial'));
+  }
+  menu.style.display='block';
+  const mw=menu.offsetWidth,mh=menu.offsetHeight;
+  let x=cx,y=cy;
+  if(x+mw>window.innerWidth) x=window.innerWidth-mw-8;
+  if(y+mh>window.innerHeight) y=window.innerHeight-mh-8;
+  menu.style.left=x+'px';menu.style.top=y+'px';
+}
+function applyFinish(kind,obj,surfaceKey,materialCode){
+  obj[surfaceKey]=materialCode;
+  saveHistory();
+  selectObj(kind,obj.id);
+  document.querySelectorAll('.tab-btn').forEach(x=>x.classList.toggle('active',x.dataset.tab==='material'));
+  document.querySelectorAll('.tab-content').forEach(x=>x.classList.toggle('active',x.dataset.tabContent==='material'));
+  renderAll();refreshUI();
+  const map={floorMaterial:['바닥재',FLOOR_MATERIALS],ceilingMaterial:['천정재',CEILING_MATERIALS],finishMaterial:['벽 마감재',WALL_MATERIALS]};
+  const [label,dict]=map[surfaceKey]||['마감재',{}];
+  showStatus(label+': '+(dict[materialCode]?.name||materialCode));
+}
+// 외부 클릭 시 컨텍스트 메뉴 닫기
+document.addEventListener('mousedown',e=>{
+  const menu=document.getElementById('finish-ctx-menu');
+  if(menu&&menu.style.display!=='none'&&!menu.contains(e.target)) menu.style.display='none';
+});
+
 function refreshMaterial(){
   const md=document.getElementById('material-detail');
+  function finishRow(label,name){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px;">'+
+      '<span style="color:var(--text-tertiary)">'+label+'</span>'+
+      '<span style="color:var(--text-primary);font-weight:500">'+name+'</span></div>';
+  }
   if(STATE.selectedKind==='space'&&STATE.selectedId){
     const s=STATE.spaces.find(x=>x.id===STATE.selectedId);
     if(s){
-      md.innerHTML='<p style="font-size:11px;margin-bottom:8px">선택: <strong style="color:var(--gold)">'+s.name+'</strong></p>'+
-        '<div class="field"><label class="field-label">컬러 적용</label>'+
-        '<input type="color" id="mat-color" value="'+(s.materialColor?s.materialColor.substring(0,7):'#C9A961')+'" style="width:100%;height:36px;cursor:pointer"></div>'+
-        '<button class="btn sm" id="mat-clear" style="width:100%">기본 색상으로</button>';
+      if(!s.ceilingMaterial) s.ceilingMaterial='GYPSUM';
+      md.innerHTML=
+        '<p style="font-size:11px;margin-bottom:8px">선택: <strong style="color:var(--gold)">'+escapeHtml(s.name)+'</strong></p>'+
+        finishRow('바닥재',FLOOR_MATERIALS[s.floorMaterial]?.name||s.floorMaterial||'미정')+
+        finishRow('벽 마감재',(()=>{const ws=STATE.walls.filter(w=>w.spaceId===s.id&&!w.isLine);const mats=[...new Set(ws.map(w=>w.finishMaterial).filter(Boolean))];return mats.length===0?'미정':mats.length===1?(WALL_MATERIALS[mats[0]]?.name||mats[0]):'('+mats.length+'종 혼합)'})())+
+        finishRow('천정재',CEILING_MATERIALS[s.ceilingMaterial]?.name||s.ceilingMaterial||'미정')+
+        '<p style="font-size:10px;color:var(--text-tertiary);margin:8px 0 4px">우클릭으로 마감재 변경</p>'+
+        '<div class="field" style="margin-top:8px"><label class="field-label">공간 컬러</label>'+
+        '<input type="color" id="mat-color" value="'+(s.materialColor?s.materialColor.substring(0,7):'#C9A961')+'" style="width:100%;height:32px;cursor:pointer"></div>'+
+        '<button class="btn sm" id="mat-clear" style="width:100%;margin-top:4px">기본 색상으로</button>';
       document.getElementById('mat-color').addEventListener('change',e=>{s.materialColor=e.target.value+'66';renderAll();});
       document.getElementById('mat-clear').addEventListener('click',()=>{s.materialColor=null;renderAll();refreshMaterial();});
     }
-  }else{md.innerHTML='<p style="font-size:11px;color:var(--text-tertiary)">공간을 선택하세요</p>';}
+  }else if(STATE.selectedKind==='wall'&&STATE.selectedId){
+    const w=STATE.walls.find(x=>x.id===STATE.selectedId);
+    if(w){
+      md.innerHTML=
+        '<p style="font-size:11px;margin-bottom:8px">벽 선택됨</p>'+
+        finishRow('벽 마감재',WALL_MATERIALS[w.finishMaterial]?.name||'미정')+
+        '<p style="font-size:10px;color:var(--text-tertiary);margin-top:8px">우클릭으로 마감재 변경</p>';
+    }
+  }else{
+    md.innerHTML='<p style="font-size:11px;color:var(--text-tertiary)">벽 또는 공간을 우클릭하여<br>마감재를 지정하세요</p>';
+  }
   document.getElementById('color-palette').innerHTML=COLOR_PALETTES.map(p=>
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px;background:var(--bg-tertiary);border-radius:3px">'+
     '<div style="display:flex;border-radius:2px;overflow:hidden;width:60px;height:24px">'+
@@ -3698,6 +4954,7 @@ function buildJSON(){
 
   return{
     schema:'ECOREAN.FloorPlan.v5.8',
+    vertices:STATE.vertices,  // VEF: 공유 버텍스 원본
     meta:{
       project:STATE.projectName,
       unit:'mm',
@@ -3737,8 +4994,6 @@ function buildJSON(){
       // v5.8: 자재 선정 (사용자 드롭다운 입력)
       floorMaterial:s.floorMaterial||'UNDECIDED',
       floorMaterialName:FLOOR_MATERIALS[s.floorMaterial||'UNDECIDED'].name,
-      wallMaterial:s.wallMaterial||'UNDECIDED',
-      wallMaterialName:WALL_MATERIALS[s.wallMaterial||'UNDECIDED'].name,
       // v5.7: AI 친화 시맨틱
       semanticTag:'space_'+SPACE_TYPES[s.type].code.toLowerCase(),
       promptDescriptor:(s.name||SPACE_TYPES[s.type].name)+', '+parseFloat(spArea(s).toFixed(2))+'sqm, '+SPACE_TYPES[s.type].code.toLowerCase(),
@@ -3844,7 +5099,7 @@ function refreshVideoSeqUI(){
     const camLabel=i===0?'establishing_wide':cam[1+(i-1)%4];
     row.innerHTML=`<span style="color:var(--text-tertiary);font-family:var(--mono);min-width:14px">${i+1}</span>`
       +dot
-      +`<span style="flex:1;color:var(--text-primary)">${sp?sp.name:'?'} ${s.name||''}</span>`
+      +`<span style="flex:1;color:var(--text-primary)">${sp?escapeHtml(sp.name):'?'} ${escapeHtml(s.name||'')}</span>`
       +`<span style="color:var(--text-tertiary);font-family:var(--mono);font-size:9px">${camLabel}</span>`
       +`<span style="color:var(--text-tertiary);cursor:grab;padding:0 2px">⋮⋮</span>`;
     // 드래그 이벤트
@@ -3906,12 +5161,23 @@ function duplicateSelected(){
     const copy=JSON.parse(JSON.stringify(obj));
     copy.id=makeId(t.kind.charAt(0));
     if('x' in copy){copy.x+=500;copy.y+=500;}
-    if('x1' in copy){copy.x1+=500;copy.y1+=500;copy.x2+=500;copy.y2+=500;}
-    if(copy.polygon) copy.polygon=copy.polygon.map(p=>({x:p.x+500,y:p.y+500}));
+    // VEF: 새 버텍스 생성 후 getter 재설치
+    if('v1Id' in copy){
+      copy.v1Id=ensureVertex(copy.x1+500,copy.y1+500).id;
+      copy.v2Id=ensureVertex(copy.x2+500,copy.y2+500).id;
+      reinstallVEF(copy);
+    } else if('x1' in copy){
+      copy.x1+=500;copy.y1+=500;copy.x2+=500;copy.y2+=500;
+    }
+    if('vertexIds' in copy&&copy.polygon){
+      copy.vertexIds=copy.polygon.map(p=>ensureVertex(p.x+500,p.y+500).id);
+      reinstallVEF(copy);
+    } else if(copy.polygon&&!('vertexIds' in copy)){
+      copy.polygon=copy.polygon.map(p=>({x:p.x+500,y:p.y+500}));
+    }
     arr.push(copy);
     newSel.push({kind:t.kind,id:copy.id});
   });
-  // 다중 처리 시 새로 만든 것을 박스 선택으로 옮김 (단일이면 그대로)
   if(targets.length>1){STATE.boxSelection=newSel;STATE.selectedKind=null;STATE.selectedId=null;}
   saveHistory();renderAll();refreshUI();showStatus('복제됨 ('+targets.length+'개)');
 }
@@ -3936,6 +5202,7 @@ function deleteSelected(){
     STATE.videoSequenceOrder=STATE.videoSequenceOrder.filter(id=>!delIds.has(id));
     if(STATE.videoSequenceOrder.length===0) STATE.videoSequenceOrder=null;
   }
+  cleanupOrphanVertices();
   saveHistory();renderAll();refreshUI();showStatus('삭제 ('+targets.length+'개)');
 }
 
@@ -3998,6 +5265,7 @@ function loadJSON(){
         if(!d.schema||!d.schema.startsWith('ECOREAN.FloorPlan')){alert('ECOREAN MiniCAD 파일이 아닙니다');return;}
         STATE.projectName=d.meta.project||'불러온 프로젝트';
         STATE.ceilingHeight=d.meta.ceilingHeight_mm||2400;
+        STATE.vertices=d.vertices||[];
         STATE.spaces=d.spaces||[];STATE.walls=d.walls||[];
         STATE.openings=d.openings||[];STATE.furniture=d.furniture||[];
         STATE.fixtures=d.fixtures||[];STATE.lights=d.lights||[];
@@ -4026,7 +5294,8 @@ function loadJSON(){
 // - layerName 누락 객체 자동 생성
 // - typeIndex 누락 자동 채움
 // - flipped 기본값 false
-// - floorMaterial/wallMaterial 누락 시 defaultMaterials() 기반 자동 보충 (v5.8 Task 5)
+// - floorMaterial 누락 시 defaultMaterials() 기반 자동 보충 (v5.8)
+// - wallMaterial → wall.finishMaterial 이전 (v5.9)
 // - parentId(가구→공간, 도어→벽) 자동 추론 NEEDS_CONFIRMATION 처리
 function migrateLoadedState(schema){
   let warns=0;
@@ -4039,11 +5308,11 @@ function migrateLoadedState(schema){
     if(!s.code) s.code=SPACE_TYPES[s.type].code;
     if(!s.layerName) s.layerName='A-AREA-'+s.code+'-'+String(s.typeIndex).padStart(2,'0');
     if(s.waterproofRecommended===undefined) s.waterproofRecommended=SPACE_TYPES[s.type].waterproof?'CONDITIONAL':false;
-    // v5.8 Task 5: floorMaterial/wallMaterial 자동 보충 (v5.0~v5.7 저장 파일 호환)
-    if(!s.floorMaterial||!s.wallMaterial){
-      const dm=defaultMaterials(s.type);
-      if(!s.floorMaterial){s.floorMaterial=dm.floor;warns++;}
-      if(!s.wallMaterial){s.wallMaterial=dm.wall;warns++;}
+    if(!s.floorMaterial){s.floorMaterial=defaultMaterials(s.type).floor;warns++;}
+    // v5.9: wallMaterial → wall.finishMaterial 이전 (구버전 호환)
+    if(s.wallMaterial){
+      STATE.walls.filter(w=>w.spaceId===s.id&&!w.isLine).forEach(w=>{if(!w.finishMaterial)w.finishMaterial=s.wallMaterial;});
+      delete s.wallMaterial;
     }
   });
   // 벽 layerName 보충
@@ -4079,6 +5348,22 @@ function migrateLoadedState(schema){
     });
   });
   if(warns>0) console.warn('[ECOREAN v5.7] 마이그레이션: '+warns+'개 객체 layerName 자동 보충 (원본 schema='+schema+')');
+
+  // VEF 마이그레이션: 구버전(flat x1/y1/x2/y2) → 버텍스 시스템으로 업그레이드
+  STATE.walls=STATE.walls.map(w=>{
+    if('v1Id' in w) return reinstallVEF(w); // v5.8+ 파일: getter만 재설치
+    // 구버전: flat 좌표 → 버텍스 생성
+    const v1=ensureVertex(w.x1||0,w.y1||0);
+    const v2=ensureVertex(w.x2||0,w.y2||0);
+    return makeWallVEF(v1.id,v2.id,w);
+  });
+  STATE.spaces=STATE.spaces.map(s=>{
+    if('vertexIds' in s) return reinstallVEF(s); // v5.8+ 파일: getter만 재설치
+    // 구버전: flat polygon → 버텍스 생성
+    const polygon=s.polygon||[];
+    const vertexIds=polygonToVertexIds(polygon);
+    return makeSpaceVEF(vertexIds,{...s});
+  });
 }
 
 // ===== 인쇄 =====
@@ -4305,7 +5590,8 @@ function importDXF(text){
         i++;
       }
       if(Math.hypot(x2-x1,y2-y1)>=50){
-        STATE.walls.push({id:makeId('w'),x1,y1,x2,y2,thickness:100,layerName:lyr});
+        const dv1=ensureVertex(x1,y1),dv2=ensureVertex(x2,y2);
+        STATE.walls.push(makeWallVEF(dv1.id,dv2.id,{thickness:100,layerName:lyr}));
         newWalls++;
       }
     } else if(c===0&&v==='POLYLINE'){
@@ -4338,7 +5624,7 @@ function importDXF(text){
           code:sp.code,layerName:'A-AREA-'+sp.code+'-'+String(cnt).padStart(2,'0'),
           name:'',ceilingHeight:sp.ceil||STATE.ceilingHeight,
           waterproofRecommended:sp.waterproof?'CONDITIONAL':false,
-          floorMaterial:dm.floor,wallMaterial:dm.wall,color:sp.color,
+          floorMaterial:dm.floor,color:sp.color,
         });
         newSpaces++;
       }
@@ -4460,7 +5746,7 @@ document.getElementById('btn-export').addEventListener('click',()=>{
 });
 document.getElementById('btn-copy-json').addEventListener('click',()=>copyToClipboard(JSON.stringify(buildJSON(),null,2)));
 document.getElementById('btn-help').addEventListener('click',()=>{
-  alert('ECOREAN MiniCAD v5.0\n\n[v5 신규 — AutoCAD 명령어]\n• 하단 명령어 바에서 좌표/크기 직접 입력\n• @2000,3000 → 정확한 사각공간 생성\n• r 90 / m x,y / cp x,y / del\n• ? 또는 / 입력 시 명령어 도움말\n\n[v4 기능]\n• 공간 치수 자동 표시 (📐 토글)\n• 도어 5종 + 창호 6종 W×H×D\n• 스냅 3모드 / 견적 카탈로그 24공정\n\n[도구]\nV 선택 / R 사각공간 / P 다각공간 / A 벽\nD 문 / N 창 / F 가구 / X 위생\nL 조명 / O 전기 / T 텍스트 / M 줄자 / H 이동\n\n[조작]\nShift: 직각 / Esc: 취소 / Del: 삭제\nCtrl+Z: 실행취소 / R(객체): 회전\n휠: 줌 / 우클릭 드래그: 이동\n\n[원칙]\n※ mm 정수 / 표시만 m·㎡\n※ 방수 = CONDITIONAL\n※ 단가 추정 금지');
+  document.getElementById('canvas-help').classList.toggle('visible');
 });
 document.getElementById('snap-unit').addEventListener('change',e=>{STATE.gridSize=parseInt(e.target.value);drawGrid();showStatus('스냅 거리: '+e.target.value+'mm');});
 document.getElementById('ceiling-height').addEventListener('change',e=>{STATE.ceilingHeight=parseInt(e.target.value);refreshUI();});
@@ -4468,6 +5754,20 @@ document.getElementById('project-name').addEventListener('change',e=>{STATE.proj
 document.getElementById('zoom-in').addEventListener('click',()=>zoomBy(1.2));
 document.getElementById('zoom-out').addEventListener('click',()=>zoomBy(0.8));
 document.getElementById('zoom-fit').addEventListener('click',zoomFit);
+
+// ===== Boolean 메뉴 이벤트 초기화 =====
+(function initBoolMenu(){
+  const menu=document.getElementById('bool-menu');
+  if(!menu) return;
+  // 버튼 클릭
+  menu.querySelectorAll('.bool-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{e.stopPropagation();applyBoolOp(btn.dataset.op);});
+  });
+  // 외부 클릭 시 닫기
+  document.addEventListener('mousedown',e=>{
+    if(menu.style.display!=='none'&&!menu.contains(e.target)) hideBoolMenu();
+  });
+})();
 
 // ===== 리사이즈 =====
 function handleResize(){const sz=getContainerSize();stage.size(sz);drawGrid();renderAll();}
@@ -4478,9 +5778,11 @@ const CMD_HINTS={
   select:'선택(V): 클릭=단일 / 드래그=박스(좌→우 Window/우→좌 Crossing) / Del=일괄삭제',
   rect:'사각공간(R): 클릭 → 폭 → 높이 / 또는 드래그',
   polygon:'다각공간(P): 클릭 → 거리 또는 @dx,dy → c=닫기',
-  wall:'선/벽(L): 클릭+클릭 또는 클릭→길이 입력 (두께 100mm)',
+  circlespace:'원형공간(G): 중심 클릭 → 반지름(mm) Enter / 또는 드래그',
+  wall:'벽(B): 클릭+클릭 또는 클릭→길이 입력 (두께 100mm)',
+  line:'선(L): 클릭+클릭 또는 클릭→길이 입력 / 공간 내부 → 공간 분할',
   door:'문(D): 공간/벽 가까이 클릭 → 자동 각도 정렬',
-  window:'창(N): 공간/벽 가까이 클릭 → 자동 각도 정렬',
+  window:'창(W): 공간/벽 가까이 클릭 → 자동 각도 정렬',
   furniture:'1 가구: 라이브러리 선택 → 클릭',
   fixture:'2 위생/주방: 라이브러리 선택 → 클릭',
   light:'3 조명: 라이브러리 선택 → 클릭',
@@ -4494,10 +5796,12 @@ const CMD_HINTS={
   arc:'아크(A): 클릭 → 반지름 → 시작각° → 끝각°',
   trim:'트림(tr): 자를 선분 클릭 — 다른 선분과 교차 부분 제거',
   break:'분할(br): 선분 클릭한 위치에서 둘로 분할',
+  eraser:'지우개(E): 지울 객체 클릭 — 벽/공간/문/가구 등 모든 객체 삭제',
   offset:'옵셋(O): 거리 입력 → 객체 클릭 → 방향 클릭',
   mirror:'미러(mi): 객체 선택 후 → 기준선 1점 → 2점 → 대칭 복제',
 };
 
+function toggleSection(el){el.parentElement.classList.toggle('collapsed');}
 function cmdToast(msg){
   const el=document.getElementById('cmd-toast');
   el.textContent=msg;
@@ -4526,6 +5830,17 @@ function exitCmdMode(){
   const tool=STATE.selectedTool;
   document.getElementById('cmd-hint').textContent=CMD_HINTS[tool]||'명령어 입력';
   document.getElementById('cmd-input').placeholder='명령어 — 도구 선택 후 캔버스 클릭하면 단계별 입력 / @W,H / r 90 / del / ?';
+}
+
+function doEnterAction(){
+  const inp=document.getElementById('cmd-input');
+  if(document.activeElement===inp){
+    const cmd=inp.value;
+    if(cmd.trim()){processCommand(cmd);inp.value='';inp.blur();}
+    else{inp.blur();}
+  }else{
+    inp.focus();
+  }
 }
 
 function processCommand(rawCmd){
@@ -4566,7 +5881,8 @@ function processCommand(rawCmd){
   // v5.6: 옵셋·미러·선 명령어
   if(/^(o|of|offset)$/i.test(c)){setTool('offset');return;}
   if(/^(mi|mirror)$/i.test(c)){startMirror();return;}
-  if(/^(l|line|wall)$/i.test(c)){setTool('wall');return;}
+  if(/^(l|line)$/i.test(c)){setTool('line');return;}
+  if(/^(b|wall|벽)$/i.test(c)){setTool('wall');return;}
 
   // del / delete
   if(/^(del|delete|d)$/i.test(c)){deleteSelected();cmdToast('삭제');return;}
@@ -4624,6 +5940,16 @@ function handleCmdModeInput(c){
     return true;
   }
 
+  // ===== circlespace-r: 원형공간 반지름 =====
+  if(mode==='circlespace-r'){
+    const num=parseFloat(c);
+    if(!isFinite(num)||num<=0){cmdToast('양수 반지름(mm) 입력');return true;}
+    const{cx,cy}=STATE.cmdData;
+    addCircleSpace(cx,cy,num);
+    drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+    exitCmdMode();
+    return true;
+  }
   // v5.3 ===== circle-r: 원 반지름 =====
   if(mode==='circle-r'){
     const num=parseFloat(c);
@@ -4690,16 +6016,17 @@ function handleCmdModeInput(c){
 
   // ===== wall-len: 벽 길이 입력 → 마우스 방향으로 생성 =====
   if(mode==='wall-len'){
-    if(!drawState||drawState.type!=='wall'){exitCmdMode();return true;}
+    if(!drawState||(drawState.type!=='wall'&&drawState.type!=='line')){exitCmdMode();return true;}
+    const isLineMode=drawState.type==='line';
     // @dx,dy 형식도 허용
     const relM=c.match(/^@\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
     if(relM){
       const dx=parseFloat(relM[1]),dy=parseFloat(relM[2]);
       const s=drawState.start;
-      addWall(s.x,s.y,s.x+dx,s.y+dy);
+      isLineMode?addLine(s.x,s.y,s.x+dx,s.y+dy):addWall(s.x,s.y,s.x+dx,s.y+dy);
       drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
       exitCmdMode();
-      cmdToast('벽 추가: '+Math.round(Math.sqrt(dx*dx+dy*dy))+'mm');
+      cmdToast((isLineMode?'선':'벽')+' 추가: '+Math.round(Math.sqrt(dx*dx+dy*dy))+'mm');
       return true;
     }
     const num=parseFloat(c);
@@ -4709,7 +6036,6 @@ function handleCmdModeInput(c){
     const d=Math.sqrt(dx*dx+dy*dy);
     if(d<1){dx=1;dy=0;} else {dx/=d;dy/=d;}
     let endX,endY;
-    // v5.2: ortho 자동 (snap.ortho ON 또는 Shift로 임시 반전)
     const orthoActive=(STATE.snap.ortho&&!STATE.shiftPressed)||(!STATE.snap.ortho&&STATE.shiftPressed);
     if(orthoActive){
       if(Math.abs(dx)>=Math.abs(dy)){endX=s.x+Math.sign(dx||1)*num;endY=s.y;}
@@ -4718,7 +6044,7 @@ function handleCmdModeInput(c){
       endX=s.x+dx*num;endY=s.y+dy*num;
     }
     endX=snapMm(endX);endY=snapMm(endY);
-    addWall(s.x,s.y,endX,endY);
+    isLineMode?addLine(s.x,s.y,endX,endY):addWall(s.x,s.y,endX,endY);
     drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
     exitCmdMode();
     cmdToast('벽 '+Math.round(num)+'mm 추가');
@@ -4856,10 +6182,16 @@ function handleRelativeCoord(dx,dy){
       addWall(start.x,start.y,start.x+dx,start.y+dy);
       drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
       cmdToast('벽 추가: '+Math.round(Math.sqrt(dx*dx+dy*dy))+'mm');
-    }else{
-      addWall(0,0,dx,dy);
-      cmdToast('벽 추가 (원점부터)');
-    }
+    }else{addWall(0,0,dx,dy);cmdToast('벽 추가 (원점부터)');}
+  }
+  // 선
+  else if(STATE.selectedTool==='line'){
+    if(drawState&&drawState.type==='line'){
+      const start=drawState.start;
+      addLine(start.x,start.y,start.x+dx,start.y+dy);
+      drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+      cmdToast('선 추가: '+Math.round(Math.sqrt(dx*dx+dy*dy))+'mm');
+    }else{addLine(0,0,dx,dy);cmdToast('선 추가 (원점부터)');}
   }
   // 줄자
   else if(STATE.selectedTool==='measure'){
@@ -4969,8 +6301,17 @@ function moveSelectedBy(dx,dy){
     const arr=getArr(t.kind); if(!arr) return;
     const obj=arr.find(x=>x.id===t.id); if(!obj) return;
     if('x' in obj){obj.x+=dx;obj.y+=dy;}
-    if('x1' in obj){obj.x1+=dx;obj.y1+=dy;obj.x2+=dx;obj.y2+=dy;}
-    if(obj.polygon) obj.polygon=obj.polygon.map(p=>({x:p.x+dx,y:p.y+dy}));
+    if('v1Id' in obj){
+      moveVertex(obj.v1Id,obj.x1+dx,obj.y1+dy);
+      moveVertex(obj.v2Id,obj.x2+dx,obj.y2+dy);
+    } else if('x1' in obj){
+      obj.x1+=dx;obj.y1+=dy;obj.x2+=dx;obj.y2+=dy;
+    }
+    if('vertexIds' in obj){
+      obj.vertexIds.forEach(vid=>{const v=getVertex(vid);if(v){v.x=Math.round(v.x+dx);v.y=Math.round(v.y+dy);}});
+    } else if(obj.polygon){
+      obj.polygon=obj.polygon.map(p=>({x:p.x+dx,y:p.y+dy}));
+    }
     n++;
   });
   if(n===0) return;
@@ -5003,8 +6344,19 @@ function duplicateSelectedAt(dx,dy){
     const copy=JSON.parse(JSON.stringify(obj));
     copy.id=makeId(t.kind.charAt(0));
     if('x' in copy){copy.x+=dx;copy.y+=dy;}
-    if('x1' in copy){copy.x1+=dx;copy.y1+=dy;copy.x2+=dx;copy.y2+=dy;}
-    if(copy.polygon) copy.polygon=copy.polygon.map(p=>({x:p.x+dx,y:p.y+dy}));
+    if('v1Id' in copy){
+      copy.v1Id=ensureVertex(copy.x1+dx,copy.y1+dy).id;
+      copy.v2Id=ensureVertex(copy.x2+dx,copy.y2+dy).id;
+      reinstallVEF(copy);
+    } else if('x1' in copy){
+      copy.x1+=dx;copy.y1+=dy;copy.x2+=dx;copy.y2+=dy;
+    }
+    if('vertexIds' in copy&&copy.polygon){
+      copy.vertexIds=copy.polygon.map(p=>ensureVertex(p.x+dx,p.y+dy).id);
+      reinstallVEF(copy);
+    } else if(copy.polygon&&!('vertexIds' in copy)){
+      copy.polygon=copy.polygon.map(p=>({x:p.x+dx,y:p.y+dy}));
+    }
     arr.push(copy);
     newSel.push({kind:t.kind,id:copy.id});
   });
@@ -5074,8 +6426,7 @@ const cmdInput=document.getElementById('cmd-input');
 cmdInput.addEventListener('keydown',e=>{
   if(e.key==='Enter'){
     e.preventDefault();
-    const cmd=cmdInput.value;
-    if(cmd.trim()){processCommand(cmd);cmdInput.value='';}
+    doEnterAction();
   }else if(e.key==='ArrowUp'){
     e.preventDefault();
     if(STATE.cmdHistoryIdx+1<STATE.cmdHistory.length){
