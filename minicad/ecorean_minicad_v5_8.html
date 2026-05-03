@@ -2496,8 +2496,9 @@ function endRect(){
   drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
 }
 let polyState=null; // {n:int, center?:{x,y}, phase:'center'|'radius'}
+let polyClickGuard=false; // polygon-n 처리 직후 Enter keyup 등 의도치 않은 클릭 방지
 function clickPolygon(pos){
-  if(!polyState) return;
+  if(!polyState||polyClickGuard) return;
   if(polyState.phase==='center'){
     polyState.center=getMm(pos);
     polyState.phase='radius';
@@ -4135,7 +4136,7 @@ document.addEventListener('keydown',e=>{
       e.preventDefault();
       doEnterAction();
       break;
-    case 'escape':drawState=null;STATE.measureFirst=null;offsetState=null;polyState=null;
+    case 'escape':drawState=null;STATE.measureFirst=null;offsetState=null;polyState=null;polyClickGuard=false;
       drawGroup.destroyChildren();previewLayer.batchDraw();deselect();
       if(STATE.cmdMode) exitCmdMode();
       STATE.boxSelection=[];renderAll();
@@ -5825,7 +5826,7 @@ window.addEventListener('resize',handleResize);
 const CMD_HINTS={
   select:'선택(V): 클릭=단일 / 드래그=박스(좌→우 Window/우→좌 Crossing) / Del=일괄삭제',
   rect:'사각공간(R): 클릭 → 폭 → 높이 / 또는 드래그',
-  polygon:'다각공간(P): 클릭 → 거리 또는 @dx,dy → c=닫기',
+  polygon:'다각공간(P): 꼭짓점 수 입력 → 중심 클릭 → 반지름(mm) 입력',
   circlespace:'원형공간(G): 중심 클릭 → 반지름(mm) Enter / 또는 드래그',
   wall:'벽(B): 클릭+클릭 또는 클릭→길이 입력 (두께 100mm)',
   line:'선(L): 클릭+클릭 또는 클릭→길이 입력 / 공간 내부 → 공간 분할',
@@ -6106,7 +6107,11 @@ function handleCmdModeInput(c){
     const n=parseInt(c);
     if(!isFinite(n)||n<3||n>20){cmdToast('3~20 사이 정수 입력');return true;}
     polyState={n,phase:'center'};
+    // Enter keyup 이 캔버스로 전파되어 즉시 center 클릭으로 처리되는 것을 방지
+    polyClickGuard=true;
+    setTimeout(()=>{polyClickGuard=false;},200);
     exitCmdMode();
+    document.getElementById('cmd-hint').textContent=n+'각형 — 중심점을 클릭하세요';
     cmdToast(n+'각형 — 중심점을 클릭하세요');
     return true;
   }
