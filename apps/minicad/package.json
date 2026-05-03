@@ -1,0 +1,12 @@
+{
+  "name": "@ecorean/minicad",
+  "version": "5.8.1",
+  "private": true,
+  "main": "index.html",
+  "dependencies": {
+    "@ecorean/schema": "*"
+  },
+  "scripts": {
+    "start": "echo MiniCAD placeholder"
+  }
+}

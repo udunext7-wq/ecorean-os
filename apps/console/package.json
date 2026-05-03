@@ -1,0 +1,12 @@
+{
+  "name": "@ecorean/console",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 7000 -c-1 --cors"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

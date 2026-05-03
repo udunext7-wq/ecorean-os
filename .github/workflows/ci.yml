@@ -1,0 +1,26 @@
+name: ECOREAN Constitution Verification
+
+on:
+  push:
+    branches: [master, main, develop]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Install
+        run: npm install
+      - name: Verify Constitution
+        run: npm run verify:constitution
+      - name: Verify Seeds (159 entries)
+        run: npm run verify:seeds
+      - name: Verify Schema v6.0
+        run: npm run verify:schema

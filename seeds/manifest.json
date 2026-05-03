@@ -1,0 +1,13 @@
+{
+  "version": "6.0",
+  "totalEntries": 159,
+  "files": [
+    { "name": "processes-62.json", "count": 62, "category": "process" },
+    { "name": "materials-35.json", "count": 35, "category": "material" },
+    { "name": "labor-22.json", "count": 22, "category": "labor" },
+    { "name": "ontology-11.json", "count": 11, "category": "ontology" },
+    { "name": "brands-29.json", "count": 29, "category": "brand" }
+  ],
+  "constitution": "v6.0",
+  "lastUpdated": "2026-05-03"
+}

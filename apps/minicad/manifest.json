@@ -1,0 +1,6 @@
+{
+  "id": "minicad",
+  "name": "MiniCAD",
+  "version": "5.8.1",
+  "description": "도면 작성 + JSON SSoT 출력 모듈"
+}

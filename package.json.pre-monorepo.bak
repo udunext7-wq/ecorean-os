@@ -1,32 +1,18 @@
 {
   "name": "ecorean-os",
-  "version": "7.0.0-alpha.0",
-  "description": "ECOREAN Build Operation Center — BOC OS v7",
+  "version": "2.0.0",
+  "description": "ECOREAN Build Operation Center — 마이크로 프론트엔드",
   "main": "electron/main.js",
   "private": true,
   "workspaces": [
     "shell",
     "modules/*",
-    "shared",
-    "apps/*",
-    "packages/*"
+    "shared"
   ],
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win --x64",
-    "test": "node test-engine.js",
-    "verify:constitution": "node scripts/verify-constitution.cjs",
-    "verify:seeds": "node scripts/verify-seeds.cjs",
-    "verify:schema": "node scripts/verify-schema.cjs",
-    "verify:all": "npm run verify:constitution && npm run verify:seeds && npm run verify:schema",
-    "console": "npm run start --workspace=apps/console",
-    "minicad": "npm run start --workspace=apps/minicad",
-    "estimator": "npm run start --workspace=apps/estimator",
-    "test:all": "npm run test --workspaces --if-present"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "test": "node test-engine.js"
   },
   "build": {
     "appId": "com.ecorean.boc",

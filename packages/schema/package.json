@@ -1,0 +1,6 @@
+{
+  "name": "@ecorean/schema",
+  "version": "6.0.0",
+  "private": true,
+  "main": "index.js"
+}

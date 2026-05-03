@@ -1,0 +1,14 @@
+{
+  "name": "@ecorean/estimator",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.html",
+  "dependencies": {
+    "@ecorean/schema": "*",
+    "@ecorean/engines": "*",
+    "@ecorean/db": "*"
+  },
+  "scripts": {
+    "start": "echo Estimator placeholder"
+  }
+}

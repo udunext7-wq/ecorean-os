@@ -1,0 +1,16 @@
+{
+  "root": true,
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["../../apps/*", "../../../apps/*"],
+            "message": "Cross-app direct import forbidden. Use packages/* instead."
+          }
+        ]
+      }
+    ]
+  }
+}
