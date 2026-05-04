@@ -52,6 +52,11 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
 .lib-btn{background:var(--bg-card);border:1px solid var(--border);padding:7px 6px;font-size:10px;cursor:pointer;border-radius:3px;color:var(--text-secondary);text-align:left;transition:all 0.12s;display:flex;align-items:center;gap:5px}
 .lib-btn:hover{border-color:var(--gold);color:var(--gold)}
 .lib-btn.active{background:rgba(201,169,97,0.15);border-color:var(--gold);color:var(--gold)}
+.lib-cat-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px}
+.libcat-btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text-secondary);padding:7px 4px;font-size:10px;font-weight:500;cursor:pointer;border-radius:3px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all 0.12s}
+.libcat-btn:hover{border-color:var(--gold);color:var(--gold)}
+.libcat-btn.active{background:rgba(201,169,97,0.18);border-color:var(--gold);color:var(--gold)}
+.lib-panel-list{display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto;margin-top:4px}
 .lib-icon{font-size:14px;width:16px;text-align:center}
 .field{margin-bottom:10px}
 .field-label{font-family:var(--mono);font-size:9px;color:var(--text-tertiary);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;display:block}
@@ -230,21 +235,16 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
       <div class="tool-grid">
         <button class="tool-btn active" data-tool="select"><span class="ti">↖</span><span>선택</span><span class="tk">V</span></button>
         <button class="tool-btn" data-tool="rect"><span class="ti">▭</span><span>사각공간</span><span class="tk">R</span></button>
-        <button class="tool-btn" data-tool="circlespace"><span class="ti">⬤</span><span>원형공간</span><span class="tk">G</span></button>
+        <button class="tool-btn" data-tool="circlespace"><span class="ti">⬤</span><span>원형공간</span><span class="tk">C</span></button>
         <button class="tool-btn" data-tool="polygon"><span class="ti">⬡</span><span>다각공간</span><span class="tk">P</span></button>
         <button class="tool-btn" data-tool="wall"><span class="ti">▬</span><span>벽</span><span class="tk">B</span></button>
         <button class="tool-btn" data-tool="line"><span class="ti">╱</span><span>선</span><span class="tk">L</span></button>
         <button class="tool-btn" data-tool="door"><span class="ti">⌐</span><span>문</span><span class="tk">D</span></button>
         <button class="tool-btn" data-tool="window"><span class="ti">▦</span><span>창</span><span class="tk">W</span></button>
-        <button class="tool-btn" data-tool="furniture"><span class="ti">🛋</span><span>가구</span><span class="tk">1</span></button>
-        <button class="tool-btn" data-tool="fixture"><span class="ti">🚽</span><span>위생</span><span class="tk">2</span></button>
-        <button class="tool-btn" data-tool="light"><span class="ti">●</span><span>조명</span><span class="tk">3</span></button>
-        <button class="tool-btn" data-tool="electric"><span class="ti">⚡</span><span>전기</span><span class="tk">4</span></button>
-        <button class="tool-btn" data-tool="hvac"><span class="ti">❄</span><span>공조/소방</span><span class="tk">5</span></button>
         <button class="tool-btn" data-tool="text"><span class="ti">T</span><span>텍스트</span><span class="tk">T</span></button>
         <button class="tool-btn" data-tool="measure"><span class="ti">📏</span><span>줄자</span><span class="tk">M</span></button>
         <button class="tool-btn" data-tool="dimwall"><span class="ti">⊢</span><span>벽치수</span><span class="tk">I</span></button>
-        <button class="tool-btn" data-tool="circle"><span class="ti">○</span><span>원</span><span class="tk">C</span></button>
+        <button class="tool-btn" data-tool="circle"><span class="ti">○</span><span>원</span><span class="tk">G</span></button>
         <button class="tool-btn" data-tool="arc"><span class="ti">⌒</span><span>아크</span><span class="tk">A</span></button>
         <button class="tool-btn" data-tool="offset"><span class="ti">⫽</span><span>옵셋</span><span class="tk">O</span></button>
         <button class="tool-btn" data-tool="mirror" id="btn-mirror"><span class="ti">⇋</span><span>미러</span><span class="tk">mi</span></button>
@@ -253,6 +253,17 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--sa
         <button class="tool-btn" data-tool="eraser"><span class="ti">⌫</span><span>지우개</span><span class="tk">E</span></button>
         <button class="tool-btn" data-tool="pan"><span class="ti">✋</span><span>화면</span><span class="tk">H</span></button>
       </div>
+    </div>
+    <div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">라이브러리</div><span class="psec-chevron">▾</span></div>
+      <div class="lib-cat-tabs">
+        <button class="libcat-btn" data-cat="furniture" onclick="setTool('furniture');setLibCategory('furniture')"><span class="ti">🛋</span><span>가구</span><span class="tk">1</span></button>
+        <button class="libcat-btn" data-cat="fixture" onclick="setTool('fixture');setLibCategory('fixture')"><span class="ti">🚽</span><span>위생</span><span class="tk">2</span></button>
+        <button class="libcat-btn" data-cat="light" onclick="setTool('light');setLibCategory('light')"><span class="ti">●</span><span>조명</span><span class="tk">3</span></button>
+        <button class="libcat-btn" data-cat="electric" onclick="setTool('electric');setLibCategory('electric')"><span class="ti">⚡</span><span>전기</span><span class="tk">4</span></button>
+        <button class="libcat-btn" data-cat="hvac" onclick="setTool('hvac');setLibCategory('hvac')"><span class="ti">❄</span><span>공조</span><span class="tk">5</span></button>
+      </div>
+      <div class="lib-panel-list" id="lib-panel"></div>
     </div>
     <div>
       <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">공간 타입</div><span class="psec-chevron">▾</span></div>
@@ -1952,7 +1963,7 @@ function renderMeasures(){
       const ux=dx/lenmm, uy=dy/lenmm;   // 치수선 방향 단위벡터
       const perpx=-uy, perpy=ux;         // 수직 단위벡터 (좌회전 90°)
       const side=m.side!=null?m.side:1;
-      const offMm=(m.offsetMm||700)*side;// 벽~치수선 거리
+      const offMm=(m.offsetMm||1500)*side;// 벽~치수선 거리
       const gapMm=50*side;               // 벽면~보조선 시작 갭
       const extMm=100*side;              // 치수선 너머 보조선 연장
       const tickPx=mmToPx(90);           // 사선 마크 반길이 (px)
@@ -1979,11 +1990,13 @@ function renderMeasures(){
       g.add(new Konva.Line({points:[TX(d1x)-tkx,TY(d1y)-tky,TX(d1x)+tkx,TY(d1y)+tky],stroke:color,strokeWidth:1.4}));
       g.add(new Konva.Line({points:[TX(d2x)-tkx,TY(d2y)-tky,TX(d2x)+tkx,TY(d2y)+tky],stroke:color,strokeWidth:1.4}));
 
-      // 치수 수치 — 치수선 위 중앙 (벽 방향 텍스트 회전)
-      const tmx=(d1x+d2x)/2-perpx*textOffMm*side;
-      const tmy=(d1y+d2y)/2-perpy*textOffMm*side;
+      // 치수 수치 — 항상 위쪽(수평)/왼쪽(수직) 고정
+      let tpx=perpx,tpy=perpy;
+      if(tpy>1e-9||(Math.abs(tpy)<1e-9&&tpx>0)){tpx=-tpx;tpy=-tpy;}
+      const tmx=(d1x+d2x)/2+tpx*textOffMm;
+      const tmy=(d1y+d2y)/2+tpy*textOffMm;
       let rot=Math.atan2(dy,dx)*180/Math.PI;
-      if(rot>90||rot<-90) rot+=180;
+      if(rot>=90||rot<-90) rot+=180;
       const t=new Konva.Text({x:TX(tmx),y:TY(tmy),text:Math.round(lenmm).toString(),fontSize:11,fontFamily:'JetBrains Mono',fill:color,fontStyle:'600',rotation:rot});
       t.offsetX(t.width()/2);t.offsetY(t.height()/2);
       g.add(t);
@@ -3071,8 +3084,7 @@ function handleDimWall(pos){
   const wlen=Math.sqrt(wdx*wdx+wdy*wdy)||1;
   const perpx=-wdy/wlen, perpy=wdx/wlen; // 좌회전 수직
   const midx=(target.x1+target.x2)/2, midy=(target.y1+target.y2)/2;
-  const dot=(mm.x-midx)*perpx+(mm.y-midy)*perpy;
-  const side=dot>=0?1:-1;
+  const side=-1; // 항상 외부(CW 기준 우회전 방향)
 
   const layerSuffix=target.spaceId?(STATE.spaces.find(s=>s.id===target.spaceId)?SPACE_TYPES[STATE.spaces.find(s=>s.id===target.spaceId).type].code:'GEN'):'GEN';
   STATE.measures.push({
@@ -3080,7 +3092,7 @@ function handleDimWall(pos){
     x1:target.x1,y1:target.y1,x2:target.x2,y2:target.y2,
     layerName:'A-DIMS-'+layerSuffix+'-01',
     style:'arch',
-    offsetMm:700,
+    offsetMm:1500,
     side:side,
   });
   saveHistory();renderAll();refreshUI();
@@ -4105,7 +4117,7 @@ document.addEventListener('keydown',e=>{
   switch(e.key.toLowerCase()){
     case 'v':setTool('select');break;
     case 'r':if(STATE.selectedKind&&STATE.selectedId) rotateSelected();else setTool('rect');break;
-    case 'g':setTool('circlespace');break;
+    case 'g':setTool('circle');break;
     case 'p':setTool('polygon');break;
     case 'a':setTool('arc');break;  // v5.6: A = arc (단독)
     case 'l':setTool('line');break;
@@ -4116,7 +4128,7 @@ document.addEventListener('keydown',e=>{
     case 't':setTool('text');break;
     case 'm':setTool('measure');break;
     case 'h':setTool('pan');break;
-    case 'c':setTool('circle');break;
+    case 'c':setTool('circlespace');break;
     case 'i':setTool('dimwall');cmdToast('치수 모드 — 벽 클릭');break;
     case 'f':toggleGrid();break;
     case 'x':setTool('trim');cmdToast('트림 모드 — 자를 부분 클릭');break;
@@ -4208,9 +4220,10 @@ function setTool(tool){
   drawState=null;STATE.measureFirst=null;polyState=null;
   drawGroup.destroyChildren();previewLayer.batchDraw();
   container.className='tool-'+tool;
+  document.querySelectorAll('.libcat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===tool));
   const libTools={furniture:FURNITURE_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB};
-  if(libTools[tool]) showLibPopup(tool,libTools[tool]);
-  else{hideLibPopup();STATE.selectedLib=null;}
+  if(libTools[tool]) rebuildLibPanel(tool);
+  else{const p=document.getElementById('lib-panel');if(p)p.innerHTML='';STATE.selectedLib=null;}
   showStatus('도구: '+tool);
 }
 document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECOREAN MiniCAD v5.8 — 공간 변 스냅 + 라이브러리 드래그 + 벽 자동 분할 + 공정별 분류 + 자재 선정</title>
+<script src="js/konva.min.js"></script>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="loading"><div class="spinner"></div><div class="msg">ECOREAN MiniCAD v5.8 로딩…</div></div>
+
+<div class="topbar">
+  <div class="brand">ECOREAN <span class="em">MiniCAD</span><span class="brand-sub">v5.8</span></div>
+  <div class="topbar-mid">
+    <button class="btn sm icon-only" id="btn-undo" title="실행취소 (Ctrl+Z)">↶</button>
+    <button class="btn sm icon-only" id="btn-redo" title="재실행 (Ctrl+Y)">↷</button>
+    <button class="btn sm" id="btn-grid" title="그리드">⊞ Grid</button>
+    <button class="btn sm" id="btn-dim" title="치수 표시">📐 치수</button>
+    <button class="btn sm" id="btn-2_5d" title="2.5D 영업 모드 (기본 OFF, 인쇄·JSON 강제 OFF)">◐ 2.5D</button>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn sm" id="btn-help">단축키</button>
+    <button class="btn sm" id="btn-print">인쇄</button>
+    <button class="btn sm" id="btn-load">불러오기</button>
+    <button class="btn sm" id="btn-save">저장</button>
+    <button class="btn sm" id="btn-ai-bundle" title="AI 생성 번들 다운로드 (PNG평면+JSON+이미지프롬프트+영상프롬프트)">🤖 AI 번들</button>
+    <button class="btn sm" id="btn-dxf-export" title="DXF 내보내기 — AutoCAD R12 호환 (외주 업체 인계용)">↳ DXF</button>
+    <button class="btn sm" id="btn-dxf-import" title="DXF 가져오기 (LINE→벽, 닫힌 POLYLINE→공간)">↑ DXF</button>
+    <input type="file" id="dxf-file-input" accept=".dxf" style="display:none">
+    <button class="btn sm danger" id="btn-clear-all">전체삭제</button>
+    <button class="btn gold" id="btn-export">→ 견적</button>
+  </div>
+</div>
+
+<div class="kpi-bar">
+  <div class="kpi-item"><div class="kpi-item-label">총 바닥</div><div><span class="kpi-item-val" id="t-floor">0</span><span class="kpi-item-unit">㎡</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">총 벽</div><div><span class="kpi-item-val" id="t-wall">0</span><span class="kpi-item-unit">㎡</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">총 천장</div><div><span class="kpi-item-val" id="t-ceiling">0</span><span class="kpi-item-unit">㎡</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">총 둘레</div><div><span class="kpi-item-val" id="t-peri">0</span><span class="kpi-item-unit">m</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">방수(욕·발)</div><div><span class="kpi-item-val" id="t-water">0</span><span class="kpi-item-unit">㎡</span></div></div>
+  <div class="kpi-item"><div class="kpi-item-label">개구부</div><div><span class="kpi-item-val" id="t-open">0</span><span class="kpi-item-unit">개</span></div></div>
+</div>
+
+<div class="main">
+  <div class="panel-left">
+    <div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">도구</div><span class="psec-chevron">▾</span></div>
+      <div class="tool-grid">
+        <button class="tool-btn active" data-tool="select"><span class="ti">↖</span><span>선택</span><span class="tk">V</span></button>
+        <button class="tool-btn" data-tool="rect"><span class="ti">▭</span><span>사각공간</span><span class="tk">R</span></button>
+        <button class="tool-btn" data-tool="circlespace"><span class="ti">⬤</span><span>원형공간</span><span class="tk">C</span></button>
+        <button class="tool-btn" data-tool="polygon"><span class="ti">⬡</span><span>다각공간</span><span class="tk">P</span></button>
+        <button class="tool-btn" data-tool="wall"><span class="ti">▬</span><span>벽</span><span class="tk">B</span></button>
+        <button class="tool-btn" data-tool="line"><span class="ti">╱</span><span>선</span><span class="tk">L</span></button>
+        <button class="tool-btn" data-tool="door"><span class="ti">⌐</span><span>문</span><span class="tk">D</span></button>
+        <button class="tool-btn" data-tool="window"><span class="ti">▦</span><span>창</span><span class="tk">W</span></button>
+        <button class="tool-btn" data-tool="text"><span class="ti">T</span><span>텍스트</span><span class="tk">T</span></button>
+        <button class="tool-btn" data-tool="measure"><span class="ti">📏</span><span>줄자</span><span class="tk">M</span></button>
+        <button class="tool-btn" data-tool="dimwall"><span class="ti">⊢</span><span>벽치수</span><span class="tk">I</span></button>
+        <button class="tool-btn" data-tool="circle"><span class="ti">○</span><span>원</span><span class="tk">G</span></button>
+        <button class="tool-btn" data-tool="arc"><span class="ti">⌒</span><span>아크</span><span class="tk">A</span></button>
+        <button class="tool-btn" data-tool="offset"><span class="ti">⫽</span><span>옵셋</span><span class="tk">O</span></button>
+        <button class="tool-btn" data-tool="mirror" id="btn-mirror"><span class="ti">⇋</span><span>미러</span><span class="tk">mi</span></button>
+        <button class="tool-btn" data-tool="trim"><span class="ti">✂</span><span>트림</span><span class="tk">X</span></button>
+        <button class="tool-btn" data-tool="break"><span class="ti">⊥</span><span>분할</span><span class="tk">Z</span></button>
+        <button class="tool-btn" data-tool="eraser"><span class="ti">⌫</span><span>지우개</span><span class="tk">E</span></button>
+        <button class="tool-btn" data-tool="pan"><span class="ti">✋</span><span>화면</span><span class="tk">H</span></button>
+      </div>
+    </div>
+    <div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">라이브러리</div><span class="psec-chevron">▾</span></div>
+      <div class="lib-cat-tabs">
+        <button class="libcat-btn" data-cat="furniture" onclick="setTool('furniture');setLibCategory('furniture')"><span class="ti">🛋</span><span>가구</span><span class="tk">1</span></button>
+        <button class="libcat-btn" data-cat="fixture" onclick="setTool('fixture');setLibCategory('fixture')"><span class="ti">🚽</span><span>위생</span><span class="tk">2</span></button>
+        <button class="libcat-btn" data-cat="light" onclick="setTool('light');setLibCategory('light')"><span class="ti">●</span><span>조명</span><span class="tk">3</span></button>
+        <button class="libcat-btn" data-cat="electric" onclick="setTool('electric');setLibCategory('electric')"><span class="ti">⚡</span><span>전기</span><span class="tk">4</span></button>
+        <button class="libcat-btn" data-cat="hvac" onclick="setTool('hvac');setLibCategory('hvac')"><span class="ti">❄</span><span>공조</span><span class="tk">5</span></button>
+      </div>
+      <div class="lib-panel-list" id="lib-panel"></div>
+    </div>
+    <div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">공간 타입</div><span class="psec-chevron">▾</span></div>
+      <div class="stype-grid" id="stype-grid"></div>
+    </div>
+    <div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">스냅 설정</div><span class="psec-chevron">▾</span></div>
+      <div class="snap-list" id="snap-list"></div>
+      <div class="field" style="margin-top:8px"><label class="field-label" for="snap-unit">스냅 거리</label>
+        <select id="snap-unit"><option value="50">50mm</option><option value="100" selected>100mm</option><option value="200">200mm</option><option value="500">500mm</option></select></div>
+    </div>
+    <div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">레이어</div><span class="psec-chevron">▾</span></div>
+      <div class="layer-list" id="layer-list"></div>
+    </div>
+    <div>
+      <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">프로젝트</div><span class="psec-chevron">▾</span></div>
+      <div class="field"><label class="field-label" for="project-name">프로젝트명</label><input type="text" id="project-name" value="신규 인테리어"></div>
+      <div class="field"><label class="field-label" for="ceiling-height">기본 천장고 (mm)</label>
+        <input type="number" id="ceiling-height" value="2400" min="2000" max="4000" step="50"></div>
+      <div class="field-row">
+        <div class="field"><label class="field-label" for="total-area">㎡</label><input type="number" id="total-area" readonly></div>
+        <div class="field"><label class="field-label" for="total-pyeong">평수</label><input type="number" id="total-pyeong" readonly></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-area">
+    <div id="canvas-container"></div>
+    <div class="zoom-ctrl">
+      <button class="zoom-btn" id="zoom-in" title="확대">+</button>
+      <button class="zoom-btn" id="zoom-fit" title="화면 맞춤">⤢</button>
+      <button class="zoom-btn" id="zoom-out" title="축소">−</button>
+    </div>
+    <div class="canvas-status hidden" id="canvas-status"></div>
+    <div class="canvas-help" id="canvas-help">
+      <h5>단축키</h5>
+      <kbd>V</kbd>선택 <kbd>R</kbd>사각 <kbd>P</kbd>다각<br>
+      <kbd>G</kbd>원형공간 <kbd>C</kbd>원 <kbd>A</kbd>아크<br>
+      <kbd>B</kbd>벽 <kbd>L</kbd>선 <kbd>D</kbd>문 <kbd>W</kbd>창<br>
+      <kbd>T</kbd>글자 <kbd>M</kbd>줄자 <kbd>H</kbd>이동<br>
+      <kbd>X</kbd>트림 <kbd>Z</kbd>분할 <kbd>E</kbd>지우개<br>
+      <kbd>O</kbd>옵셋 <kbd>I</kbd>치수 <kbd>F</kbd>그리드<br>
+      <kbd>1~5</kbd>라이브러리 <kbd>F8</kbd>직교<br>
+      <kbd>Ctrl+Z</kbd>실행취소 <kbd>Del</kbd>삭제<br>
+      <kbd>휠</kbd>줌 <kbd>Shift</kbd>직교 <kbd>Esc</kbd>취소
+    </div>
+    <div class="canvas-info">
+      <span><span class="gold">XY:</span> <span id="cursor-pos">0,0</span></span>
+      <span><span class="gold">Zoom:</span> <span id="zoom-pct">100%</span></span>
+      <span><span class="gold">공간:</span> <span id="space-count">0</span></span>
+      <span><span class="gold">객체:</span> <span id="object-count">0</span></span>
+    </div>
+    <div class="lib-popup" id="lib-popup">
+      <h4 id="lib-popup-title">라이브러리</h4>
+      <div class="lib-pop-grid" id="lib-popup-grid"></div>
+    </div>
+  </div>
+
+  <div class="panel-right">
+    <div class="panel-tabs">
+      <button class="tab-btn active" data-tab="space">공간</button>
+      <button class="tab-btn" data-tab="estimate">견적</button>
+      <button class="tab-btn" data-tab="material">자재</button>
+      <button class="tab-btn" data-tab="json">JSON</button>
+    </div>
+
+    <div class="tab-content active" data-tab-content="space">
+      <div id="sp-empty" style="text-align:center;padding:30px 16px;color:var(--text-tertiary)">
+        <p style="font-size:12px;margin-bottom:6px">공간 또는 객체를 그려주세요</p>
+        <p style="font-size:10px">왼쪽 도구에서 사각/다각/벽 선택 후 캔버스에 그리세요</p>
+      </div>
+      <div id="sp-detail" style="display:none">
+        <div class="card"><h4>선택 객체</h4><div id="detail-content"></div></div>
+        <div class="card" id="detail-stats-card" style="display:none"><h4>자동 계산</h4>
+          <div class="stats-grid">
+            <div class="stat-cell"><div class="stat-cell-label">바닥</div><div class="stat-cell-value"><span id="cell-floor">0</span><span class="stat-cell-unit">㎡</span></div></div>
+            <div class="stat-cell"><div class="stat-cell-label">벽</div><div class="stat-cell-value"><span id="cell-wall">0</span><span class="stat-cell-unit">㎡</span></div></div>
+            <div class="stat-cell"><div class="stat-cell-label">천장</div><div class="stat-cell-value"><span id="cell-ceiling">0</span><span class="stat-cell-unit">㎡</span></div></div>
+            <div class="stat-cell"><div class="stat-cell-label">둘레</div><div class="stat-cell-value"><span id="cell-peri">0</span><span class="stat-cell-unit">m</span></div></div>
+          </div>
+        </div>
+        <div class="card" id="detail-warn-card" style="display:none"><h4>경고 / 확인</h4><div id="detail-warns"></div></div>
+      </div>
+      <div class="card"><h4>모든 공간</h4><div class="space-list" id="space-list"></div></div>
+    </div>
+
+    <div class="tab-content" data-tab-content="estimate">
+      <div class="card"><h4>공정별 합산 (공정별 분류)</h4>
+        <table class="tbl"><thead><tr><th>공정</th><th>카테고리</th><th style="text-align:right">수량</th><th style="text-align:right">적용공간</th></tr></thead><tbody id="t-table"></tbody></table>
+        <div class="hint" style="margin-top:6px">※ 공간별 분류 대신 공정별 합산. 단가는 NEEDS_RESEARCH로 BOC 전송.</div>
+      </div>
+      <div class="card"><h4>공정별 견적 입력 (자동 산출 + 자재 옵션)</h4>
+        <div id="t-catalog"></div>
+        <div class="hint" style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px">
+          ※ 단가 = NEEDS_RESEARCH (헌법 절대 규칙). 자재 옵션 선택 후 BOC EstimateEngine으로 전송.
+        </div>
+      </div>
+      <div class="card"><h4>NEEDS_CONFIRMATION</h4><div id="t-warns"></div></div>
+    </div>
+
+    <div class="tab-content" data-tab-content="material">
+      <div class="card"><h4>자재 / 컬러 적용</h4>
+        <p class="hint" style="margin-bottom:10px">선택된 공간에 자재 컬러를 적용합니다.</p>
+        <div id="material-detail"></div>
+      </div>
+      <div class="card"><h4>컬러 팔레트 (60-30-10)</h4>
+        <div id="color-palette"></div>
+        <p class="hint" style="margin-top:8px">Primary 60% · Secondary 30% · Accent 10%</p>
+      </div>
+    </div>
+
+    <div class="tab-content" data-tab-content="json">
+      <div class="card" style="border:1px solid #C9A961;background:rgba(201,169,97,0.05)"><h4 style="color:#C9A961">🤖 AI 생성 파이프라인 (v5.7 SSoT)</h4>
+        <p class="hint" style="margin-bottom:10px">JSON → T2I 모델 → 이미지 → T2V 모델 → 영상. 5개 힌트가 프롬프트 자동 조립의 기반.</p>
+        <div style="display:grid;grid-template-columns:80px 1fr;gap:6px;align-items:center;font-size:12px">
+          <label for="ai-style">스타일</label>
+          <select id="ai-style" style="padding:4px;background:#0A0A0A;color:#F5F1EB;border:1px solid #2A2A2A;border-radius:3px">
+            <option value="modern_luxury">modern_luxury (모던 럭셔리)</option>
+            <option value="scandinavian">scandinavian (스칸디)</option>
+            <option value="industrial">industrial (인더스트리얼)</option>
+            <option value="wabi_sabi">wabi_sabi (와비사비)</option>
+            <option value="korean_modern">korean_modern (한국 모던)</option>
+            <option value="minimal">minimal (미니멀)</option>
+            <option value="classic">classic (클래식)</option>
+            <option value="bohemian">bohemian (보헤미안)</option>
+            <option value="mid_century">mid_century (미드센추리)</option>
+            <option value="art_deco">art_deco (아르데코)</option>
+            <option value="contemporary">contemporary (컨템포러리)</option>
+            <option value="rustic">rustic (러스틱)</option>
+            <option value="hotel_lux">hotel_lux (호텔 럭셔리)</option>
+            <option value="natural_organic">natural_organic (내추럴 오가닉)</option>
+          </select>
+          <label for="ai-mood">분위기</label>
+          <select id="ai-mood" style="padding:4px;background:#0A0A0A;color:#F5F1EB;border:1px solid #2A2A2A;border-radius:3px">
+            <option value="warm_sophisticated">warm_sophisticated</option>
+            <option value="cool_calm">cool_calm</option>
+            <option value="bright_airy">bright_airy</option>
+            <option value="cozy_intimate">cozy_intimate</option>
+            <option value="dramatic">dramatic</option>
+            <option value="serene">serene</option>
+            <option value="energetic">energetic</option>
+          </select>
+          <label for="ai-light">조명</label>
+          <select id="ai-light" style="padding:4px;background:#0A0A0A;color:#F5F1EB;border:1px solid #2A2A2A;border-radius:3px">
+            <option value="natural_warm_3000K">natural_warm_3000K</option>
+            <option value="bright_daylight_5000K">bright_daylight_5000K</option>
+            <option value="cool_4000K">cool_4000K</option>
+            <option value="golden_hour">golden_hour</option>
+            <option value="evening_ambient">evening_ambient</option>
+          </select>
+          <label for="ai-camera">카메라</label>
+          <select id="ai-camera" style="padding:4px;background:#0A0A0A;color:#F5F1EB;border:1px solid #2A2A2A;border-radius:3px">
+            <option value="isometric_eye_level">isometric_eye_level</option>
+            <option value="top_down">top_down (도면형)</option>
+            <option value="wide_angle">wide_angle</option>
+            <option value="dolly_in">dolly_in</option>
+            <option value="orbit">orbit</option>
+          </select>
+          <label for="ai-palette">팔레트</label>
+          <input type="text" id="ai-palette" style="padding:4px;background:#0A0A0A;color:#F5F1EB;border:1px solid #2A2A2A;border-radius:3px;font-size:11px" placeholder="walnut, white_oak, brass, beige_paint" />
+        </div>
+        <button class="btn sm gold" id="btn-ai-bundle-side" style="width:100%;margin-top:10px">🤖 AI 번들 다운로드 (PNG+JSON+이미지프롬프트+영상프롬프트)</button>
+      </div>
+      <div class="card" id="video-seq-card">
+        <h4>영상 동선 순서 편집 (v5.8)</h4>
+        <p class="hint" style="margin-bottom:8px">드래그로 촬영 순서 변경 → JSON videoSequence에 즉시 반영. <span id="video-seq-hint" style="color:var(--gold)"></span></p>
+        <div id="video-seq-list" style="display:flex;flex-direction:column;gap:4px"></div>
+        <button class="btn sm" id="btn-video-seq-reset" style="width:100%;margin-top:6px">↺ 자동 순서 (면적순)</button>
+      </div>
+      <div class="card"><h4>FloorPlan JSON v5.8 (SSoT)</h4>
+        <p class="hint" style="margin-bottom:6px">EstimateEngine 입력 + AI 생성 파이프라인 단일 진실 소스 + 자재 선정</p>
+        <div class="json-out" id="json-out"></div>
+        <button class="btn sm gold" id="btn-copy-json" style="width:100%;margin-top:6px">→ 클립보드 복사</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AutoCAD 스타일 명령어 입력 바 -->
+<div class="cmd-bar">
+  <span class="cmd-prompt" id="cmd-prompt">▶</span>
+  <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" placeholder="명령어 — 도구 선택 후 캔버스 클릭하면 단계별 입력 / @W,H / r 90 / del / ?" />
+  <span class="cmd-hint" id="cmd-hint">사각공간: 클릭 후 @W,H 입력</span>
+  <button class="cmd-help-btn" id="btn-cmd-help" title="명령어 도움말">?</button>
+</div>
+
+<div class="cmd-toast hidden" id="cmd-toast"></div>
+
+<!-- Boolean 연산 팝업 메뉴 -->
+<div id="bool-menu" style="display:none;position:fixed;z-index:9999;background:#1A1B2E;border:1px solid #3D4466;border-radius:10px;padding:8px 10px;box-shadow:0 6px 28px rgba(0,0,0,0.6);flex-direction:column;gap:6px;min-width:160px;">
+  <div style="font-size:10px;color:#7B82B5;margin-bottom:2px;font-weight:600;letter-spacing:.5px">공간 Boolean 연산</div>
+  <button class="bool-btn" data-op="union"     style="background:#2B6CB0;color:#fff;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12px;text-align:left;display:flex;align-items:center;gap:8px"><span>🔗</span><span>병합 (Union)</span></button>
+  <button class="bool-btn" data-op="subtract"  style="background:#276749;color:#fff;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12px;text-align:left;display:flex;align-items:center;gap:8px"><span>✂</span><span>차감 (Subtract)</span></button>
+  <button class="bool-btn" data-op="intersect" style="background:#744210;color:#fff;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12px;text-align:left;display:flex;align-items:center;gap:8px"><span>◈</span><span>교집합 (Intersect)</span></button>
+  <button class="bool-btn" data-op="absorb"    style="background:#553C9A;color:#fff;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12px;text-align:left;display:flex;align-items:center;gap:8px" id="bool-absorb-btn"><span>⬆</span><span>흡수 (Absorb)</span></button>
+  <button class="bool-btn" data-op="cancel"    style="background:#2D3748;color:#9CA3AF;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:11px;text-align:center">취소 (Esc)</button>
+</div>
+
+<!-- v5.2: 플로팅 액션 버튼 (모바일+데스크톱 공용) -->
+<div id="fab-stack" style="position:fixed;right:14px;bottom:60px;display:flex;flex-direction:column;gap:8px;z-index:40;pointer-events:none;">
+  <button id="ortho-fab" class="fab-btn" style="pointer-events:auto" title="직교 (F8 / Ctrl+L)">직교 OFF</button>
+  <button id="polyclose-fab" class="fab-btn hidden" style="pointer-events:auto" title="다각형 닫기">⨯ 닫기</button>
+</div>
+
+<!-- v5.2: 빠른 치수칩 (cmdMode 활성 시 등장) -->
+<div id="quick-chips" class="hidden" style="position:fixed;left:50%;transform:translateX(-50%);bottom:60px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:90vw;z-index:35;pointer-events:none;">
+  <!-- 동적 생성 -->
+</div>
+
+<!-- 마감재 우클릭 컨텍스트 메뉴 -->
+<div id="finish-ctx-menu" style="display:none;position:fixed;z-index:9999;background:#1e2130;border:1px solid #3a3f55;border-radius:7px;padding:4px 0;min-width:190px;box-shadow:0 8px 28px rgba(0,0,0,.7);font-family:Inter,sans-serif;font-size:12px;">
+  <div id="finish-ctx-title" style="padding:7px 13px 6px;color:#C9A961;font-size:11px;font-weight:600;border-bottom:1px solid #2e3347;letter-spacing:0.04em;"></div>
+  <div id="finish-ctx-items" style="max-height:340px;overflow-y:auto;padding:3px 0;"></div>
+</div>
+
+<script src="js/state.js"></script>
+<script src="js/data.js"></script>
+<script src="js/library.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/tests.js"></script>
+<script>
+'use strict';
+window.addEventListener('load',()=>setTimeout(initApp,50));
+function initApp(){
+  if(typeof Konva==='undefined'){
+    document.getElementById('loading').innerHTML='<div style="color:#E2725B;font-family:monospace;font-size:12px;text-align:center;padding:20px">Konva 로드 실패</div>';
+    return;
+  }
+  Konva.showWarnings=false;
+  try{
+    initKonva();
+    initTools();
+    initUI();
+  }catch(e){
+    console.error('[ECOREAN] 오류:',e);
+    document.getElementById('loading').innerHTML='<div style="color:#E2725B;font-family:monospace;font-size:11px;text-align:center;padding:20px">오류: '+e.message+'</div>';
+  }
+}
+</script>
+</body>
+</html>
