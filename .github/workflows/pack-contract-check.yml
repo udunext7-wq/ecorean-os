@@ -1,0 +1,36 @@
+# 팩 규약 자동 검사 (pack-contract.md 6장)
+# 규약 위반 시 커밋/PR 차단 — 짜집기 재발 방지
+name: Pack Contract Check
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 앱 팩 매니페스트 검사
+        run: |
+          # apps/{앱}/ 에 pack.manifest.ts 없으면 실패
+          for dir in apps/*/; do
+            if [ ! -f "$dir/pack.manifest.ts" ] && [ ! -f "$dir/.gitkeep" ]; then
+              echo "::error::$dir 에 pack.manifest.ts 없음"
+              exit 1
+            fi
+          done
+      - name: 엔진 팩 UI 의존성 검사
+        run: |
+          # engines/ 에 React/JSX import 발견 시 실패 (P2 위반)
+          if grep -rl "from 'react'" engines/ 2>/dev/null; then
+            echo "::error::엔진에 React import 발견 (P2 위반)"
+            exit 1
+          fi
+      - name: 앱 간 직접 import 검사
+        run: |
+          # apps/ 끼리 직접 import 발견 시 실패
+          if grep -rE "from '\.\./(order-form|schedule|boc|customer)" apps/ 2>/dev/null; then
+            echo "::error::앱 간 직접 import 발견 (hooks 경유 필요)"
+            exit 1
+          fi
+      - name: 결과
+        run: echo "팩 규약 검사 통과"
