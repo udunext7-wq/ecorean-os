@@ -1,105 +1,15 @@
 {
   "name": "ecorean-os",
-  "version": "7.0.0-alpha.0",
-  "description": "ECOREAN Build Operation Center — BOC OS v7",
-  "main": "electron/main.js",
+  "version": "0.1.0",
   "private": true,
+  "description": "ECOREAN OS - 인테리어/건설 자동화 BOC 시스템",
   "workspaces": [
-    "shell",
-    "modules/*",
-    "shared",
+    "core/*",
+    "engines/*",
     "apps/*",
-    "packages/*"
+    "shared/*"
   ],
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder --win --x64",
-    "test": "node test-engine.js",
-    "verify:constitution": "node scripts/verify-constitution.cjs",
-    "verify:seeds": "node scripts/verify-seeds.cjs",
-    "verify:schema": "node scripts/verify-schema.cjs",
-    "verify:all": "npm run verify:constitution && npm run verify:seeds && npm run verify:schema",
-    "console": "npm run start --workspace=apps/console",
-    "minicad": "npm run start --workspace=apps/minicad",
-    "estimator": "npm run start --workspace=apps/estimator",
-    "test:all": "npm run test --workspaces --if-present"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
-  },
-  "build": {
-    "appId": "com.ecorean.boc",
-    "productName": "ECOREAN BOC",
-    "copyright": "Copyright © 2026 ECOREAN",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "electron/**/*",
-      "modules-html/**/*",
-      "shared/**/*",
-      "shell/**/*",
-      "scripts/**/*",
-      "src/**/*",
-      "js/**/*",
-      "style.css",
-      "*.json",
-      "!node_modules/**/*",
-      "!dist/**/*",
-      "!ecorean-estimate-os*",
-      "!생성파일저장/**/*",
-      "!docs/**/*",
-      "!docscd/**/*",
-      "!**/*.zip",
-      "!**/*.bat",
-      "!**/*.xlsx"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "forceCodeSigning": false,
-      "signAndEditExecutable": false
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "ECOREAN BOC"
-    },
-    "portable": {
-      "artifactName": "ECOREAN-BOC-${version}-portable.exe"
-    }
-  },
-  "keywords": [
-    "ecorean",
-    "boc",
-    "estimate",
-    "construction"
-  ],
-  "author": "ECOREAN",
-  "license": "UNLICENSED",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/udunext7-wq/ecorean-os.git"
-  },
-  "dependencies": {
-    "better-sqlite3": "^11.10.0",
-    "cytoscape": "^3.33.3",
-    "dotenv": "^17.4.2",
-    "konva": "^10.2.5"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2",
-    "electron": "^41.3.0",
-    "electron-builder": "^26.8.1",
-    "xlsx": "^0.18.5"
+    "check:contract": "echo 'pack-contract 검사는 .github/workflows 참조'"
   }
 }
