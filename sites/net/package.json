@@ -1,0 +1,11 @@
+{
+  "name": "@ecorean/site-net",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ecorean.net 호스트 — 내부 운영 (BOC + MiniCAD + System + Partner). 의존성은 모노레포 루트 package.json 에서 관리 (D: exFAT symlink 미지원 → 워크스페이스 링크 회피)",
+  "scripts": {
+    "dev": "node ../../scripts/run-next.mjs dev -p 3100",
+    "build": "node ../../scripts/run-next.mjs build",
+    "start": "node ../../scripts/run-next.mjs start -p 3100"
+  }
+}

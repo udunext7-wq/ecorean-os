@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": { "@/*": ["./*"] },
+    "allowJs": true,
+    "incremental": true,
+    "plugins": [{ "name": "next" }]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "../../apps/**/*.ts",
+    "../../apps/**/*.tsx",
+    "../../core/**/*.ts",
+    "../../core/**/*.tsx",
+    "../../shared/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

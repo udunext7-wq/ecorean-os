@@ -19,6 +19,7 @@ ecorean-os/                    ← 모노레포 루트
 ├── engines/                   ★ 백엔드 두뇌 (13 엔진, 순수 함수)
 ├── apps/                      ★ 프론트 얼굴 (앱 팩, 계속 추가)
 ├── shared/                    ★ 앱·엔진 공유 (스키마·타입·유틸)
+├── sites/                     ★ 도메인별 Next.js 호스트 (net = ecorean.net, kr = ecorean.kr)
 │
 ├── ontology/                  Neo4j 온톨로지 정의·시드 (로컬 SSoT)
 ├── supabase/                  DB 마이그레이션·RLS·시드
@@ -105,6 +106,24 @@ shared/
 
 들어감: 앱과 엔진 양쪽이 쓰는 것
 안 들어감: 특정 앱/엔진 전용 (그건 각자 폴더로)
+```
+
+### 2.4-2 sites/ — 도메인별 Next.js 호스트 (2026-07-16 추가)
+
+```
+sites/
+├── net/           ecorean.net 호스트 (Next.js 14 App Router, Vercel 프로젝트 1)
+│                  마운트: apps/boc + apps/system + apps/partner + apps/minicad
+└── kr/            ecorean.kr 호스트 (Vercel 프로젝트 2, 추후)
+                   마운트: apps/homepage + apps/customer
+
+들어감: Next.js 설정·라우팅 껍데기·미들웨어(인증/역할 게이트)·전역 레이아웃.
+        각 라우트 파일은 apps/{앱}/ 의 화면을 re-export 만 한다.
+안 들어감: 화면 본문(→ apps/), 공통 컴포넌트(→ core/ui), 로직(→ engines/)
+근거: D-010(Next.js 모노레포) + D-020(kr/net 물리 분리 = Vercel 프로젝트 2개).
+      앱 팩은 페이지 컴포넌트 단위(pack-contract 2.2)라 도메인별 조립 지점이 필요.
+규칙: sites/ 는 apps/·core/·shared/ 를 import 할 수 있다 (앱 팩과 동일 방향).
+      apps/·engines/·core/ 가 sites/ 를 import 하는 것은 금지.
 ```
 
 ### 2.5 ontology/ — Neo4j 정의 (로컬 SSoT)
@@ -198,3 +217,4 @@ core/db   ──→  supabase/
 | 날짜 | 변경 | 주체 |
 |------|------|------|
 | 2026-07-01 | 최초 작성. 4레이어 경계 + 의존성 방향 확정. | 대표 + 김비서 |
+| 2026-07-16 | sites/ 경계 추가 (도메인별 Next.js 호스트, 4장 절차 적용). boc 앱 구현 착수에 필요. | 클로드코드 |
