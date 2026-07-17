@@ -3,12 +3,12 @@
 import type { Role } from '@/shared/types/pack';
 import type { DataStatus } from '@/shared/constants/data-status';
 
-/** public.profiles (20260716000001_profiles.sql) */
+/** public.profiles — 실 스키마 기준 (7/15 선생성 + 20260717 마이그레이션) */
 export interface ProfileRow {
   id: string;
-  tenant_id: string;
   email: string | null;
-  full_name: string | null;
+  display_name: string | null;
+  phone: string | null;
   role: Role;
   created_at: string;
   updated_at: string;

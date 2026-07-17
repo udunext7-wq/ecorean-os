@@ -20,13 +20,13 @@ export async function getSessionProfile(): Promise<ProfileRow | null> {
     .eq('id', user.id)
     .maybeSingle();
 
-  // profiles 행이 아직 없으면(마이그레이션 이전 가입자) 최소 권한으로 취급
+  // profiles 행이 아직 없으면(트리거 이전 가입자) 최소 권한으로 취급
   if (!data) {
     return {
       id: user.id,
-      tenant_id: 'HQ',
       email: user.email ?? null,
-      full_name: null,
+      display_name: null,
+      phone: null,
       role: 'visitor',
       created_at: '',
       updated_at: '',
