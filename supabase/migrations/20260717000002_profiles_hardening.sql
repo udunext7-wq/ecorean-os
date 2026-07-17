@@ -1,4 +1,4 @@
--- ⚠️ 아직 원격 미적용 — 대표 승인 후 MCP apply_migration 으로 적용할 것
+-- 적용됨 (2026-07-17 대표 승인, 2분할: profiles_hardening_columns / profiles_hardening_policies)
 -- profiles 정합화 — 7/15 수동 생성분과 v0.1 마이그레이션 병합 정리
 -- 핵심: profiles_update_own 정책은 본인 role 자가 승격(→master)을 허용하는 보안 구멍
 -- rollback:
