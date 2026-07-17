@@ -1,0 +1,9 @@
+# 배포 업로드 제외 (빌드에 불필요)
+node_modules
+.next
+.vercel
+legacy
+assets
+supabase/seeds
+docs
+*.log

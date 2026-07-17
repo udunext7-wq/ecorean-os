@@ -8,7 +8,9 @@ import path from 'node:path';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixPath = path.join(here, 'fix-exfat-readlink.cjs');
 
-const require = createRequire(path.join(here, '..', 'package.json'));
+// next 해석은 실행 위치(사이트 폴더) 기준 — 로컬은 루트 node_modules 로 폴백,
+// Vercel 은 사이트 폴더의 node_modules 를 사용
+const require = createRequire(path.join(process.cwd(), 'package.json'));
 const nextBin = require.resolve('next/dist/bin/next');
 
 const nodeOptions = [process.env.NODE_OPTIONS, `--require ${fixPath}`]
