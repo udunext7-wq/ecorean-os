@@ -12,6 +12,7 @@ const MENU: { href: string; label: string; minRole?: 'admin' }[] = [
   { href: '/boc/cost-items', label: '공정 단가' },
   { href: '/boc/materials', label: '통합 자재' },
   { href: '/boc/tiles', label: '타일 SKU' },
+  { href: '/boc/minicad-prices', label: 'MiniCAD 단가 승인', minRole: 'admin' },
   { href: '/boc/role-requests', label: '승급 신청 관리', minRole: 'admin' },
 ];
 

@@ -29,6 +29,25 @@ export interface RoleRequestRow {
   created_at: string;
 }
 
+/** public.minicad_price_keys (20260712000006 + 20260717000004) */
+export interface MinicadPriceKeyRow {
+  id: string;
+  tenant_id: string;
+  price_key: string;
+  cost_item_code: string | null;
+  material_id: string | null;
+  price_override: number | null;
+  is_approved: boolean;
+  approved_at: string | null;
+  approved_by: string | null;
+  proposed_price: number | null;
+  proposed_by: string | null;
+  proposed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /** public.cost_items (20260712000002_core_masters.sql) */
 export interface CostItemRow {
   id: string;

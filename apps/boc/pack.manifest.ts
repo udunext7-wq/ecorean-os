@@ -24,13 +24,23 @@ export const manifest: AppPackManifest = {
       'tile_products',
       'v_all_materials', // 통합 자재 뷰
       'role_requests', // 승급 신청 (admin+ 목록)
+      'minicad_price_keys', // MiniCAD 단가 제안·승인 현황
+      'v_minicad_price_table', // MiniCAD 승인 단가 뷰
+      'minicad_config',
     ],
-    // 마스터 DB 쓰기는 여전히 없음 (헌법 3조). 승급 결정은 DB 함수
-    // decide_role_request(security definer) 경유 — 함수가 권한 검증.
-    write: ['role_requests', 'profiles'],
+    // 마스터 DB 직접 쓰기는 여전히 없음 (헌법 3조). 모든 쓰기는 security definer
+    // 함수(decide_role_request / minicad_decide_price) 경유 — 함수가 권한 검증.
+    write: ['role_requests', 'profiles', 'minicad_price_keys'],
   },
 
-  routes: ['/boc', '/boc/cost-items', '/boc/materials', '/boc/tiles', '/boc/role-requests'],
+  routes: [
+    '/boc',
+    '/boc/cost-items',
+    '/boc/materials',
+    '/boc/tiles',
+    '/boc/role-requests',
+    '/boc/minicad-prices',
+  ],
   menu: {
     area: 'admin',
     group: '마스터 DB',

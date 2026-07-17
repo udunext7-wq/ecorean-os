@@ -45,6 +45,10 @@ export async function middleware(request: NextRequest) {
     PUBLIC_EXACT.includes(path) || PUBLIC_PREFIXES.some((p) => path.startsWith(p));
 
   if (!user && !isPublic) {
+    // API는 HTML 로그인 페이지 대신 401 JSON (클라이언트 fetch가 판별 가능하게)
+    if (path.startsWith('/api')) {
+      return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.search = `next=${encodeURIComponent(path)}`;

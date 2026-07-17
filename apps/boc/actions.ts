@@ -18,3 +18,19 @@ export async function decideRoleRequest(formData: FormData): Promise<void> {
   if (error) throw new Error(`결정 실패: ${error.message}`);
   revalidatePath('/boc/role-requests');
 }
+
+// MiniCAD 단가 제안 승인/거절 — DB의 minicad_decide_price(admin+)가 권한 검증.
+// 승인 = price_override 확정 + is_approved → v_minicad_price_table 로 전사 노출 (D-051 승인 절차)
+export async function decideMinicadPrice(formData: FormData): Promise<void> {
+  const priceKey = String(formData.get('price_key') ?? '');
+  const approve = formData.get('decision') === 'approve';
+  if (!priceKey) return;
+
+  const supabase = createServerSupabase();
+  const { error } = await supabase.rpc('minicad_decide_price', {
+    p_key: priceKey,
+    approve,
+  });
+  if (error) throw new Error(`결정 실패: ${error.message}`);
+  revalidatePath('/boc/minicad-prices');
+}
