@@ -5,7 +5,7 @@ export const manifest: AppPackManifest = {
   id: 'boc',
   name: 'BOC 관리',
   icon: 'layout-dashboard',
-  version: '0.1.0',
+  version: '0.2.0',
 
   zone: 'net',                          // ecorean.net 내부 전용 (D-020)
   roles: ['staff', 'admin', 'master'],  // 직원 이상 (D-021)
@@ -23,11 +23,14 @@ export const manifest: AppPackManifest = {
       'labor_roles',
       'tile_products',
       'v_all_materials', // 통합 자재 뷰
+      'role_requests', // 승급 신청 (admin+ 목록)
     ],
-    write: [], // v0.1 읽기 전용. 쓰기(승인·단가 수정)는 헌법 3조에 따라 승인 절차와 함께 추가
+    // 마스터 DB 쓰기는 여전히 없음 (헌법 3조). 승급 결정은 DB 함수
+    // decide_role_request(security definer) 경유 — 함수가 권한 검증.
+    write: ['role_requests', 'profiles'],
   },
 
-  routes: ['/', '/boc/cost-items', '/boc/materials', '/boc/tiles'],
+  routes: ['/boc', '/boc/cost-items', '/boc/materials', '/boc/tiles', '/boc/role-requests'],
   menu: {
     area: 'admin',
     group: '마스터 DB',

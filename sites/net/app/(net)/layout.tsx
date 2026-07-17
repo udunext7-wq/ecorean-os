@@ -3,15 +3,16 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionProfile } from '@/core/auth/session';
-import { netRedirectTarget } from '@/core/auth/roles';
+import { hasRole, netRedirectTarget } from '@/core/auth/roles';
 import { manifest as bocManifest } from '@/apps/boc/pack.manifest';
 import { Badge, Button, Card } from '@/core/ui';
 
-const MENU: { href: string; label: string }[] = [
-  { href: '/', label: '대시보드' },
+const MENU: { href: string; label: string; minRole?: 'admin' }[] = [
+  { href: '/boc', label: '대시보드' },
   { href: '/boc/cost-items', label: '공정 단가' },
   { href: '/boc/materials', label: '통합 자재' },
   { href: '/boc/tiles', label: '타일 SKU' },
+  { href: '/boc/role-requests', label: '승급 신청 관리', minRole: 'admin' },
 ];
 
 export default async function NetLayout({ children }: { children: ReactNode }) {
@@ -21,7 +22,7 @@ export default async function NetLayout({ children }: { children: ReactNode }) {
   if (!profile) redirect('/login');
   // D-021: 상업고객이 net 접속 시 kr 로 리다이렉트
   if (target === 'kr') redirect('https://ecorean.kr');
-  // visitor 등 권한 미부여 계정 — 안내만 (권한 부여는 master가 수행)
+  // visitor 등 권한 미부여 계정 — 승급 신청 안내
   if (target === 'login') {
     return (
       <main className="flex min-h-screen items-center justify-center p-4">
@@ -29,10 +30,14 @@ export default async function NetLayout({ children }: { children: ReactNode }) {
           <h1 className="text-lg font-semibold text-slate-900">접근 권한이 없습니다</h1>
           <p className="mt-2 text-sm text-slate-500">
             {profile.email} 계정에 직원 권한(staff 이상)이 아직 부여되지 않았습니다.
-            <br />
-            관리자에게 권한 부여를 요청하세요.
           </p>
-          <form action="/auth/signout" method="post" className="mt-4">
+          <Link
+            href="/request-role"
+            className="mt-4 inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            승급 신청하기
+          </Link>
+          <form action="/auth/signout" method="post" className="mt-3">
             <Button type="submit" variant="secondary">
               로그아웃
             </Button>
@@ -53,15 +58,17 @@ export default async function NetLayout({ children }: { children: ReactNode }) {
           <p className="px-2 pb-1 text-xs font-semibold uppercase text-slate-400">
             {bocManifest.menu.group}
           </p>
-          {MENU.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="block rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {MENU.filter((item) => !item.minRole || hasRole(profile.role, item.minRole)).map(
+            (item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="block rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700"
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
         </nav>
         <div className="border-t border-slate-100 p-3">
           <p className="truncate text-xs text-slate-500">{profile.email}</p>

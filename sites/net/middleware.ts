@@ -4,7 +4,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PREFIXES = ['/login', '/auth'];
+const PUBLIC_PREFIXES = ['/login', '/signup', '/auth'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PREFIXES.some((p) => path.startsWith(p));
+  const isPublic = path === '/' || PUBLIC_PREFIXES.some((p) => path.startsWith(p));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
@@ -41,9 +41,10 @@ export async function middleware(request: NextRequest) {
     url.search = '';
     return NextResponse.redirect(url);
   }
-  if (user && path.startsWith('/login')) {
+  // 로그인 상태에서 랜딩·로그인·가입 화면 접근 → 업무시스템(/boc)으로
+  if (user && (path === '/' || path.startsWith('/login') || path.startsWith('/signup'))) {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/boc';
     url.search = '';
     return NextResponse.redirect(url);
   }

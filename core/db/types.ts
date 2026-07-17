@@ -14,6 +14,21 @@ export interface ProfileRow {
   updated_at: string;
 }
 
+/** public.role_requests (20260717000003_role_requests.sql) */
+export interface RoleRequestRow {
+  id: string;
+  user_id: string;
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+  requested_role: 'business_customer' | 'staff' | 'admin';
+  reason: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+}
+
 /** public.cost_items (20260712000002_core_masters.sql) */
 export interface CostItemRow {
   id: string;
