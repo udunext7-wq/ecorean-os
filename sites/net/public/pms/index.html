@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style id="ecorean-gate-style">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+/* ECOREAN 직원 인증 게이트 — 비로그인/무권한 시 /work/ 로그인으로 이동 후 복귀 */
+(async function () {
+  function deny() { location.replace('/work/?next=' + encodeURIComponent(location.pathname)); }
+  try {
+    var gsb = window.supabase.createClient(
+      'https://gdcfqbdgubgpzusbtftf.supabase.co',
+      'sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ'
+    );
+    var session = (await gsb.auth.getSession()).data.session;
+    if (!session) return deny();
+    var res = await gsb.from('profiles').select('role').eq('id', session.user.id).single();
+    var role = res.data && res.data.role;
+    if (role !== 'staff' && role !== 'admin') return deny();
+    var g = document.getElementById('ecorean-gate-style');
+    if (g) g.remove();
+  } catch (e) { deny(); }
+})();
+</script>
+<title>BOC 공정관리 시스템</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📋</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{min-height:100vh}
+body.sched-mode{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#eee;color:#222;font-size:13px}
+body.sched-mode{background:#f7f5f0}
+header{background:#1a1a2e;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+header h1{font-size:15px;font-weight:700}
+header small{font-size:10px;opacity:.7;display:block}
+.bar-top{background:#333;color:#fff;padding:6px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px}
+.bar-top label{opacity:.7}
+.bar-top input[type=date],.bar-top select{background:#555;border:1px solid #666;color:#fff;padding:2px 6px;border-radius:3px;font-size:11px}
+.btn{padding:4px 12px;border:1px solid #c9a84c;background:none;color:#c9a84c;border-radius:3px;cursor:pointer;font-size:10px;font-weight:600}
+.btn:hover{background:#c9a84c;color:#1a1a2e}
+.btn-g{border-color:#1d9e75;color:#1d9e75}.btn-g:hover{background:#1d9e75;color:#fff}
+.btn-r{border-color:#e24b4a;color:#e24b4a}.btn-r:hover{background:#e24b4a;color:#fff}
+.btn-b{border-color:#185fa5;color:#185fa5}.btn-b:hover{background:#185fa5;color:#fff}
+
+/* === PROJECT LIST VIEW === */
+#projectView{padding:24px;max-width:1100px;margin:0 auto}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-top:16px}
+.proj-card{background:#fff;border-radius:10px;padding:16px;border:1px solid #ddd;cursor:pointer;transition:.15s;position:relative}
+.proj-card:hover{border-color:#c9a84c;box-shadow:0 4px 14px rgba(0,0,0,.1);transform:translateY(-2px)}
+.proj-card h3{font-size:14px;margin-bottom:4px}
+.proj-card .addr{font-size:11px;color:#888;margin-bottom:8px}
+.proj-card .meta{display:flex;gap:8px;flex-wrap:wrap;font-size:10px}
+.proj-card .meta span{background:#f5f3ee;padding:2px 8px;border-radius:10px;color:#666}
+.proj-card .tmpl-tag{position:absolute;top:12px;right:12px;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700}
+.proj-card .del-x{position:absolute;bottom:10px;right:12px;color:#ccc;font-size:14px;cursor:pointer;padding:4px}
+.proj-card .del-x:hover{color:#e24b4a}
+.new-card{background:none;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;min-height:120px;font-size:13px;color:#888}
+.new-card:hover{border-color:#c9a84c;color:#c9a84c}
+.empty-msg{text-align:center;padding:60px 20px;color:#999}
+
+/* === SCHEDULE VIEW === */
+#scheduleView{display:none;background:#fff}
+body.sched-mode #scheduleView{display:flex !important;flex-direction:column;flex:1 1 auto;min-height:0}
+.tabs{display:flex;background:#fff;border-bottom:2px solid #ddd;padding:0 12px}
+.tab{padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#888;transition:.15s}
+.tab:hover{color:#222}.tab.on{color:#1a1a2e;border-bottom-color:#1a1a2e}
+.panel{display:none;background:#fff}
+body.sched-mode .panel.on{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.tabs{background:#fff}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;padding:8px 12px;background:#f5f3ee}
+.info-box{background:#fff;border-radius:5px;padding:8px;border:1px solid #ddd}
+.info-l{font-size:9px;color:#888}.info-v{font-size:18px;font-weight:700}.info-u{font-size:9px;color:#888}
+.gw{overflow:auto;flex:1 1 auto;min-height:0;border:1px solid #ccc;background:#fff;width:100%}
+table.gantt{border-collapse:separate;border-spacing:0}
+table.gantt th.fix,table.gantt td.fix{position:-webkit-sticky;position:sticky;left:0;z-index:10;background:#fff;border-right:2px solid #bbb}
+table.gantt th.fix2,table.gantt td.fix2{position:-webkit-sticky;position:sticky;left:200px;z-index:10;background:#fff;border-right:1px solid #ddd}
+table.gantt th.fix3,table.gantt td.fix3{position:-webkit-sticky;position:sticky;left:278px;z-index:10;background:#fff;border-right:2px solid #bbb}
+table.gantt thead th{position:-webkit-sticky;position:sticky;z-index:15}
+table.gantt thead tr:nth-child(1) th{top:0}
+table.gantt thead tr:nth-child(2) th{top:22px}
+table.gantt thead tr:nth-child(3) th{top:44px}
+table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-index:20}
+/* 일수·기간 컬럼 접기 → 공정명만 노출 */
+#ganttWrap.cols-collapsed table.gantt th.fix2,#ganttWrap.cols-collapsed table.gantt td.fix2,
+#ganttWrap.cols-collapsed table.gantt th.fix3,#ganttWrap.cols-collapsed table.gantt td.fix3{display:none}
+/* 공정명 헤더 모서리 토글 버튼 (좌:레이어패널 / 우:일수·기간) */
+.hdr-tg{position:absolute;top:4px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.1);color:#fff;border-radius:6px;cursor:pointer;font-size:11px;line-height:1;padding:0;z-index:2;transition:background .15s,border-color .15s,transform .1s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.hdr-tg:hover{background:rgba(255,255,255,.32);border-color:rgba(255,255,255,.75)}
+.hdr-tg:active{transform:scale(.88)}
+.hdr-tg.left{left:4px}
+.hdr-tg.right{right:4px}
+/* 좁은 화면(모바일): 공정명 고정 컬럼 폭 축소 + 고정 오프셋 동기화 → 간트 공간 확보 */
+@media (max-width:600px){
+  table.gantt td.fix,table.gantt th.fix{min-width:150px;max-width:150px}
+  table.gantt th.fix2,table.gantt td.fix2{left:150px}
+  table.gantt th.fix3,table.gantt td.fix3{left:228px}
+}
+table.gantt th{padding:3px 4px;font-weight:600;white-space:nowrap}
+table.gantt td{padding:0;border-bottom:1px solid #f0f0f0;height:28px;vertical-align:middle}
+table.gantt td.fix{min-width:200px;max-width:200px;padding:4px 8px;font-size:11px;vertical-align:middle}
+table.gantt td.fix .fix-inner{display:flex;align-items:center;gap:0;line-height:1.3}
+table.gantt td.fix .pn{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+table.gantt td.fix2{min-width:78px;max-width:78px;text-align:center;font-size:11px;color:#666}
+table.gantt td.fix3{min-width:80px;max-width:80px;text-align:center;font-size:10px;color:#888}
+.dc{min-width:26px;max-width:26px;width:26px;position:relative;border-left:1px solid rgba(0,0,0,.06)}
+.dc.we{background:rgba(0,0,0,.04)}.dc.sat{background:rgba(37,99,235,.07)}.dc.sun{background:rgba(226,75,74,.07)}.dc.wk{border-left:1px solid #ddd}.dc.mn{border-left:2px solid #aaa}
+.dc.today-col{background:rgba(139,92,246,.07);box-shadow:inset 1px 0 0 rgba(139,92,246,.55),inset -1px 0 0 rgba(139,92,246,.55)}
+tr.cat-hdr td{background:#333 !important;color:#fff;font-weight:700;font-size:11px;height:24px;padding:0 10px !important}
+.gbar{position:absolute;height:20px;top:4px;border-radius:4px;z-index:2;display:flex;align-items:center;padding:0 5px;cursor:pointer;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.gbar:hover{filter:brightness(1.12);transform:scaleY(1.2);z-index:4}
+.gbar-text{font-size:8px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.gbar-out{position:absolute;top:50%;transform:translateY(-50%);font-size:9px;font-weight:600;color:#555;white-space:nowrap;pointer-events:none;z-index:1}
+.gbar.is-cp{outline:2.5px solid #e24b4a;outline-offset:1px}
+.gbar{cursor:grab}
+.gbar:active{cursor:grabbing}
+.gbar.dragging{opacity:.8;z-index:50 !important;box-shadow:0 4px 16px rgba(0,0,0,.35) !important}
+.gbar .rz{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:5}
+.gbar .rz-l{left:-1px}
+.gbar .rz-r{right:-1px}
+.gbar .rz::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:10px;background:rgba(255,255,255,.7);border-radius:1px}
+.gbar:hover .rz::after{height:12px}
+.drag-ghost{position:fixed;pointer-events:none;z-index:9999;background:#1a1a2e;color:#fff;font-size:11px;padding:3px 8px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap}
+.gbar.bar-done{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px) !important;opacity:.95}
+.gbar.bar-prog{opacity:.55}
+.st-chip{flex:0 0 auto;cursor:pointer;font-size:13px;margin-right:5px;width:14px;text-align:center;user-select:none;align-self:flex-start;margin-top:1px}
+.drag-grip{flex:0 0 auto;margin-right:5px;cursor:grab;color:#ccc;font-size:13px;user-select:none;opacity:0;transition:opacity .1s;letter-spacing:-2px;align-self:flex-start;margin-top:1px}
+tr:hover .drag-grip{opacity:1}
+.drag-grip:active{cursor:grabbing}
+.drag-grip:hover{color:#185fa5}
+tr.prow.row-dragging{opacity:.4}
+tr.prow.drop-above td{box-shadow:inset 0 3px 0 #185fa5}
+tr.prow.drop-below td{box-shadow:inset 0 -3px 0 #185fa5}
+tr.prow.row-sel td{background:color-mix(in srgb,var(--selc,#c9a84c) 15%,#fff) !important;box-shadow:inset 0 1px 0 var(--selc,#c9a84c),inset 0 -1px 0 var(--selc,#c9a84c)}
+tr.prow.row-sel td.fix{background:color-mix(in srgb,var(--selc,#c9a84c) 15%,#fff) !important;box-shadow:inset 3px 0 0 var(--selc,#c9a84c),inset 0 1px 0 var(--selc,#c9a84c),inset 0 -1px 0 var(--selc,#c9a84c)}
+tr.prow.row-sel td.today-col{background:linear-gradient(rgba(139,92,246,.16),rgba(139,92,246,.16)),color-mix(in srgb,var(--selc,#c9a84c) 15%,#fff) !important;box-shadow:inset 0 1px 0 var(--selc,#c9a84c),inset 0 -1px 0 var(--selc,#c9a84c),inset 1px 0 0 rgba(139,92,246,.6),inset -1px 0 0 rgba(139,92,246,.6)}
+.st-chip:hover{transform:scale(1.3)}
+.pn.done{text-decoration:line-through;color:#999 !important}
+.rename-input{font-size:11px;font-weight:600;border:1.5px solid #185fa5;border-radius:3px;padding:1px 4px;width:140px;background:#fff;outline:none}
+.dur-box{display:inline-flex;align-items:center;gap:1px}
+.dur-btn{cursor:pointer;width:14px;height:18px;line-height:16px;text-align:center;background:#eee;border-radius:3px;font-size:13px;font-weight:700;color:#555;user-select:none}
+.dur-btn:hover{background:#c9a84c;color:#fff}
+.dur-box .dur-edit{width:26px;padding:1px}
+.cp-dot{width:7px;height:7px;border-radius:50%;background:#e24b4a;display:inline-block;margin-right:4px;vertical-align:baseline}
+.pn{font-weight:600;cursor:pointer;font-size:11px;line-height:1.25}.pn:hover{color:#185fa5;text-decoration:underline}.pn.is-cp{color:#e24b4a}
+.dur-edit{width:34px;text-align:center;border:1px solid #ddd;border-radius:2px;font-size:11px;padding:1px;background:none}
+.mh{background:#1a1a2e;color:#fff;font-size:10px;text-align:center;height:22px;line-height:1.25;padding:2px 4px}
+.lh{background:#000 !important;color:#fff !important;padding:4px 6px !important}
+.lh .lh-t{font-weight:800;font-size:14px;color:#fff;letter-spacing:-0.3px}
+.lh .lh-s{font-size:9px;font-weight:400;color:#bbb;margin-top:1px}
+.wkh{background:#e0ddd5;color:#666;font-size:9px;text-align:center;height:22px}
+.dayh{position:relative;font-size:9px;text-align:center;height:30px;line-height:1.1;background:#f5f3ee;color:#555}
+.dayh.we{background:#ede9e0}
+.dayh.today{background:rgba(139,92,246,.10);box-shadow:inset 0 0 0 1.5px #8b5cf6}
+.dayh .dwl{font-size:8px;line-height:1;opacity:.8;margin-top:1px}
+.today-flag{position:absolute;left:50%;bottom:-13px;transform:translateX(-50%);background:#8b5cf6;color:#fff;font-size:8px;line-height:1.1;padding:1px 4px;border-radius:3px;white-space:nowrap;z-index:30;box-shadow:0 1px 3px rgba(0,0,0,.25);pointer-events:none}
+.lock-chip{cursor:pointer;font-size:11px;margin-right:3px;opacity:.45;user-select:none}
+.lock-chip.on{opacity:1}
+.gbar.bar-locked{cursor:not-allowed;box-shadow:0 0 0 1.5px #1a1a2e,0 1px 4px rgba(0,0,0,.2);opacity:.92}
+.layer-item{display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:1px 4px;border-radius:4px}
+.layer-item:hover{background:rgba(0,0,0,.05)}
+.layer-sw{width:16px;height:16px;padding:0;border:1px solid rgba(0,0,0,.25);border-radius:3px;background:none;cursor:pointer}
+.layer-sw::-webkit-color-swatch-wrapper{padding:0}
+.layer-sw::-webkit-color-swatch{border:none;border-radius:2px}
+.layer-reset{cursor:pointer;font-size:10px;color:#888;border:1px solid #ddd;border-radius:4px;padding:1px 6px;background:#fff}
+.layer-reset:hover{color:#444;border-color:#bbb}
+/* 분류 범례 — 화면에선 숨기고(세로 패널로 대체) 인쇄에서만 표시 */
+.cat-legend{display:none;padding:5px 12px;background:#fafafa;border-bottom:1px solid #eee;flex-wrap:wrap;gap:4px 12px;font-size:10px}
+/* 항상 보이는 세로 레이어 패널 */
+.gantt-row{display:flex;flex:1 1 auto;min-height:0}
+.gantt-row>.gw{min-width:0;border-left:none}
+.layer-panel{flex:0 0 196px;width:196px;display:flex;flex-direction:column;min-height:0;border:1px solid #ccc;border-right:none;background:#fafafa;overflow:hidden}
+.layer-panel.collapsed{display:none}
+.lp-head{display:flex;align-items:center;gap:6px;padding:6px 8px;background:#1a1a2e;color:#fff;font-size:11px;font-weight:700;white-space:nowrap}
+.lp-head .lp-title{flex:1;overflow:hidden;text-overflow:ellipsis}
+.lp-tg{cursor:pointer;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:4px;padding:1px 6px;font-size:11px}
+.lp-edit{cursor:pointer;background:#fff;color:#185fa5;border:none;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700}
+.layer-panel.collapsed .lp-list,.layer-panel.collapsed .lp-title,.layer-panel.collapsed .lp-edit{display:none}
+.lp-list{flex:1 1 auto;min-height:0;overflow-y:auto}
+.lp-row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid #ececec;font-size:11px;cursor:pointer}
+.lp-row.unused{opacity:.45}
+.lp-row:hover{background:#f0ece0}
+@keyframes catFlash{0%{box-shadow:inset 0 0 0 9999px rgba(255,214,64,.5)}100%{box-shadow:inset 0 0 0 9999px rgba(255,214,64,0)}}
+tr.prow.cat-flash td{animation:catFlash 1.5s ease-out}
+.lp-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333}
+.lp-cnt{font-size:9px;color:#777;background:#e9e9e9;border-radius:8px;padding:0 6px}
+.lyr-row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #f0f0f0}
+.lyr-name{flex:1;font-size:13px;font-weight:600;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lyr-cnt{font-size:10px;color:#999;background:#f3f3f3;border-radius:10px;padding:1px 8px;white-space:nowrap}
+.lyr-btn{border:1px solid #ddd;background:#fff;color:#555;border-radius:4px;cursor:pointer;font-size:12px;padding:3px 7px}
+.lyr-btn:hover{background:#f3f3f3;border-color:#bbb}
+.lyr-del{border:1px solid #eebfbf;background:#fff;color:#e24b4a;border-radius:4px;cursor:pointer;font-size:12px;padding:3px 7px}
+.lyr-del:hover:not(:disabled){background:#fdecec}
+.lyr-del:disabled{opacity:.35;cursor:not-allowed;border-color:#eee;color:#bbb}
+#toastEl{position:fixed;left:50%;bottom:42px;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:8px 16px;border-radius:6px;font-size:12px;z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s;box-shadow:0 3px 12px rgba(0,0,0,.35)}
+#toastEl.show{opacity:.96}
+table.gantt tbody tr:not(.cat-hdr):hover td{background:#faf6e8 !important}
+.mod-wrap{padding:12px;overflow:auto;flex:1 1 auto;min-height:0}
+table.mod{width:100%;border-collapse:collapse;font-size:12px}
+table.mod th{background:#1a1a2e;color:#fff;padding:6px 10px;font-size:10px;text-align:center;border:1px solid #333;position:sticky;top:0;z-index:2}
+table.mod td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:middle}
+table.mod tr:hover{background:#faf6e8}
+table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;padding:4px 10px}
+.early{background:#fff0f0 !important;color:#e24b4a;font-weight:700}
+.tip{display:none;position:fixed;background:#fff;border:1px solid #ccc;border-radius:8px;padding:12px;font-size:12px;z-index:999;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,.2);pointer-events:none}
+.tip.vis{display:block}
+.mo-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;justify-content:center;align-items:center}
+.mo-bg.open{display:flex}
+.mo{background:#fff;border-radius:10px;padding:20px;width:92%;max-width:520px;max-height:85vh;overflow-y:auto}
+.mo h3{margin-bottom:12px}.mo label{display:block;font-size:11px;color:#888;margin:8px 0 3px}
+.mo input,.mo select,.mo textarea{width:100%;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px}
+.mo textarea{height:80px;resize:vertical}
+.mo-btns{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+.mo .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media print{
+  @page{size:A3 landscape;margin:8mm}
+  body{background:#fff;font-size:10px}
+  header{display:none !important}
+  .bar-top,.tabs,.btn,.mo-bg,.tip,#projectView,.layer-panel{display:none !important}
+  .gantt-row{display:block !important}
+  body.sched-mode #scheduleView,#scheduleView{display:block !important;height:auto !important;min-height:0 !important}
+  /* 간트 인쇄 모드: 간트 패널만 표시, 나머지 탭 숨김 */
+  body.print-gantt .panel{display:none !important}
+  body.print-gantt #p_gantt{display:block !important;page-break-before:avoid;flex:none !important;min-height:0 !important;text-align:center}
+  body.print-gantt #ganttWrap{display:inline-block;margin:0 auto;overflow:visible !important}
+  /* 분할 인쇄: 좌상단 기준, 페이지 넘김 허용 */
+  body.print-split #p_gantt{text-align:left !important}
+  body.print-split #ganttWrap{display:block !important;margin:0 !important}
+  body.print-split #ganttWrap table.gantt{transform-origin:top left !important}
+  body.print-gantt #catLegend{display:flex !important;justify-content:center;flex-wrap:wrap;gap:4px 12px}
+  body.print-gantt .panel.on,body.print-gantt .panel{}
+  /* (구) 전체 인쇄 폴백 */
+  body:not(.print-gantt) .panel{display:block !important;page-break-before:always;flex:none !important;min-height:0 !important}
+  body:not(.print-gantt) .panel:first-of-type{page-break-before:avoid}
+  .print-title{display:block !important;background:#1a1a2e;color:#fff;padding:8px 12px;font-size:14px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;text-align:center}
+  .gw,.mod-wrap{max-height:none !important;height:auto !important;flex:none !important;overflow:visible !important;border:none}
+  #ganttWrap{display:inline-block;margin:0 auto}
+  table.gantt th.fix,table.gantt td.fix,table.gantt th.fix2,table.gantt td.fix2,table.gantt th.fix3,table.gantt td.fix3,table.gantt thead th,table.mod th{position:static !important}
+  table.gantt .dc{min-width:12px !important;max-width:12px !important;width:12px !important}
+  .cat-hdr td,.cat-r td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  tr{page-break-inside:avoid}
+}
+.print-title{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1 id="hdrTitle">BOC 공정관리 시스템</h1>
+    <small id="hdrSub">ECOREAN | 프로젝트별 공정표 관리 | 템플릿 기반 생성</small>
+  </div>
+  <div id="todayBadge" style="font-size:11px;background:rgba(255,255,255,.12);padding:4px 10px;border-radius:6px;white-space:nowrap;margin-left:auto"></div>
+  <div style="display:flex;gap:6px" id="hdrBtns">
+    <button class="btn" onclick="exportAll()">💾 전체백업</button>
+    <button class="btn" onclick="document.getElementById('fileIn').click()">📂 백업복원/가져오기</button>
+    <input type="file" id="fileIn" accept=".json" style="display:none" onchange="importAll(event)">
+  </div>
+</header>
+
+<!-- ============ PROJECT LIST VIEW ============ -->
+<div id="projectView">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <div>
+      <h2 style="font-size:18px">프로젝트 목록</h2>
+      <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. 데이터는 브라우저에 자동 저장됩니다.</p>
+    </div>
+    <button class="btn btn-b" style="font-size:11px;padding:6px 14px" onclick="document.getElementById('fileIn').click()">📥 JSON 프로젝트 가져오기</button>
+  </div>
+  <div class="proj-grid" id="projGrid"></div>
+</div>
+
+<!-- ============ SCHEDULE VIEW ============ -->
+<div id="scheduleView">
+  <div class="bar-top">
+    <button class="btn" onclick="backToList()">← 목록</button>
+    <label style="margin-left:10px">착공일</label>
+    <input type="date" id="startDate" onchange="updateStartDate()">
+    <label style="margin-left:10px">연면적(㎡)</label>
+    <input type="number" id="areaInput" min="1" step="0.01" style="width:80px" onchange="updateArea()" oninput="updateArea()" title="면적을 바꾸면 일수가 자동 조정됩니다 (인력은 적정 고정)">
+    <label style="margin-left:6px">평</label>
+    <input type="number" id="areaPyeong" min="1" step="0.01" style="width:68px" oninput="updateAreaFromPyeong()" title="평으로 입력하면 ㎡로 자동 환산됩니다 (1평=3.3058㎡)">
+    <label style="margin-left:10px">인력투입 <span id="speedVal" style="color:#185fa5;font-weight:700">100%</span></label>
+    <input type="range" id="speedInput" min="1" max="2" step="0.1" value="1" style="width:90px;vertical-align:middle" oninput="updateSpeed()" title="인력을 늘려 공기 단축 (적정 100% → 최대 200%)">
+    <span id="areaHint" style="font-size:10px;color:#888;margin-left:4px"></span>
+    <button class="btn" style="margin-left:10px" onclick="openAdd()">+ 공정추가</button>
+    <button class="btn" onclick="resetAllStatus()">진행상태 초기화</button>
+    <button class="btn btn-b" onclick="saveProjectFile()">💾 이 프로젝트 저장</button>
+    <button class="btn btn-g" onclick="openPrintBox()">🖨 간트 인쇄</button>
+    <button class="btn btn-g" onclick="printAll()" title="간트+공정상세+자재발주+인력투입 전체를 페이지별로 인쇄">🖨 전체 인쇄</button>
+    <button class="btn" onclick="saveAsTemplate()" title="현재 공정표를 내 템플릿으로 저장">📑 템플릿 저장</button>
+  </div>
+  <div id="infoArea" class="info"></div>
+  <div class="tabs">
+    <div class="tab on" onclick="showTab('gantt',this)">📊 간트차트</div>
+    <div class="tab" onclick="showTab('detail',this)">📋 공정상세</div>
+    <div class="tab" onclick="showTab('material',this)">📦 자재발주</div>
+    <div class="tab" onclick="showTab('crew',this)">👷 인력투입</div>
+  </div>
+  <div class="panel on" id="p_gantt"><div class="print-title" id="printTitle1">📊 간트차트</div>
+<div style="padding:5px 12px;background:#f9f7f0;font-size:11px;color:#777;border-bottom:1px solid #eee">💡 <b>⠿ 드래그</b> = 순서 이동 · <b>행 클릭</b> = 선택 후 <b>Delete</b> 삭제 · <b>공정명 클릭</b> = 편집 · <b>바 드래그</b> = 일정 이동 · <b>바 양끝</b> = 기간 조정 · <b>휠 클릭+드래그</b> = 화면 이동</div>
+<div id="catLegend" class="cat-legend"></div>
+<div class="gantt-row"><div id="layerPanel" class="layer-panel"></div><div class="gw" id="ganttWrap"></div></div></div>
+  <div class="panel" id="p_detail"><div class="print-title">📋 공정 상세 내역</div><div class="mod-wrap" id="detailWrap"></div></div>
+  <div class="panel" id="p_material"><div class="print-title">📦 자재 발주표</div><div class="mod-wrap" id="matWrap"></div></div>
+  <div class="panel" id="p_crew"><div class="print-title">👷 인력 투입표</div><div class="mod-wrap" id="crewWrap"></div></div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<!-- 내 템플릿 관리 모달 -->
+<div class="mo-bg" id="tmplMgr">
+  <div class="mo" style="max-width:480px">
+    <h3 style="margin-bottom:14px">📑 내 템플릿 관리</h3>
+    <div id="tmplMgrList" style="max-height:360px;overflow-y:auto"></div>
+    <div style="margin-top:16px">
+      <button class="btn" style="width:100%" onclick="closeTmplManager()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 인쇄 설정 박스 -->
+<div class="mo-bg" id="printBox">
+  <div class="mo" style="max-width:680px">
+    <h3 style="margin-bottom:12px">🖨 간트차트 인쇄</h3>
+    <div style="display:flex;gap:16px">
+      <!-- 좌측: 설정 -->
+      <div style="flex:0 0 240px">
+        <label>용지 방향</label>
+        <select id="pOrient" onchange="updatePreview()">
+          <option value="landscape">가로 (권장)</option>
+          <option value="portrait">세로</option>
+        </select>
+        <label>용지 크기</label>
+        <select id="pSize" onchange="updatePreview()">
+          <option value="A3">A3 (큰 공정표)</option>
+          <option value="A4">A4</option>
+          <option value="A2">A2 (초대형)</option>
+        </select>
+        <label>인쇄 비율 <span id="pScaleVal" style="color:#185fa5;font-weight:700">100%</span></label>
+        <input type="range" id="pScale" min="20" max="200" value="100" step="5" style="width:100%" oninput="setPScale(this.value)">
+        <div style="display:flex;gap:5px;margin-top:6px">
+          <button class="btn" style="flex:1;font-size:10px;padding:5px 0" onclick="setPScale(50)">50%</button>
+          <button class="btn" style="flex:1;font-size:10px;padding:5px 0" onclick="setPScale(100)">100%</button>
+          <button class="btn" style="flex:1;font-size:10px;padding:5px 0" onclick="fitPScale()">한장맞춤</button>
+        </div>
+        <div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+            <input type="checkbox" id="pSplit" style="width:auto" onchange="updatePreview()"> 분할 인쇄 (여러 장 이어붙이기)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;margin-top:6px">
+            <input type="checkbox" id="pCenter" checked style="width:auto" onchange="updatePreview()"> 용지 중앙 정렬
+          </label>
+        </div>
+        <div id="pInfo" style="font-size:11px;color:#666;margin-top:10px;line-height:1.5"></div>
+      </div>
+      <!-- 우측: 미리보기 -->
+      <div style="flex:1;background:#e8e8e8;border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px">
+        <div style="font-size:11px;color:#888;margin-bottom:8px">미리보기</div>
+        <div id="pvWrap" style="position:relative;overflow:auto;max-height:300px;max-width:100%"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn" style="flex:1" onclick="closePrintBox()">취소</button>
+      <button class="btn btn-g" style="flex:2" onclick="doPrintGantt()">인쇄하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW PROJECT MODAL -->
+<div class="mo-bg" id="newProjModal">
+  <div class="mo">
+    <h3>새 프로젝트 생성</h3>
+    <label>현장명 *</label><input id="np_name" placeholder="예: 칠원동 566-1 단독주택">
+    <label>주소</label><input id="np_addr" placeholder="예: 평택시 칠원동 566-1">
+    <div class="row2">
+      <div><label>연면적 (㎡ / 평)</label><div style="display:flex;gap:4px"><input id="np_area" type="number" placeholder="㎡ 389.67" style="width:50%" oninput="syncNpPyeong()"><input id="np_area_p" type="number" placeholder="평 117.9" style="width:50%" oninput="syncNpArea()"></div></div>
+      <div><label>층수</label><input id="np_floors" placeholder="지상2층"></div>
+    </div>
+    <div class="row2">
+      <div><label>구조</label><input id="np_struct" placeholder="RC구조"></div>
+      <div><label>착공일 *</label><input id="np_start" type="date"></div>
+    </div>
+    <label>공정 템플릿 *</label>
+    <select id="np_tmpl">
+      <option value="rc_new">RC 신축 (지내력검사~준공, 65공정)</option>
+      <option value="frame_rc">RC 골조만 (이팀장 순서, 면적연동, 30공정)</option>
+      <option value="interior">실내건축 (철거~인도, 34공정)</option>
+      <option value="rc_full">RC신축 전체 (신축~준공 통합)</option>
+      <option value="partial">부분시공 (욕실+주방, 9공정)</option>
+      <option value="blank">빈 템플릿 (직접 작성)</option>
+    </select>
+    <label>비고</label><input id="np_note" placeholder="발주처, 특이사항 등">
+    <div class="mo-btns">
+      <button class="btn btn-r" onclick="closeNewProj()">취소</button>
+      <button class="btn btn-g" onclick="createProject()">생성</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE EDIT MODAL -->
+<div class="mo-bg" id="modalBg">
+  <div class="mo">
+    <h3 id="mTitle">편집</h3>
+    <label>공정코드</label><input id="f_id">
+    <label>공정명</label><input id="f_nm">
+    <label>세부설명</label><input id="f_sub">
+    <label>분류</label>
+    <select id="f_cat" onchange="syncCatColor()">
+      <option value="plan">기획·인허가</option><option value="prep">착수·준비</option><option value="demo">철거·해체</option><option value="earth">토공사</option><option value="mep_pre">기초설비선행</option><option value="found">기초공사</option><option value="struct">골조공사</option><option value="roof">지붕공사</option><option value="wp">방수</option><option value="insul">단열</option><option value="ext">외벽마감</option><option value="win">창호</option><option value="frame">조적·가벽</option><option value="plb">설비배관</option><option value="hvac">공조·환기</option><option value="elec">전기·통신·소방</option><option value="frame_in">내부벽·천장틀</option><option value="ceil">천장</option><option value="wall">벽체·미장</option><option value="floor_h">바닥난방</option><option value="tile">타일·석재</option><option value="paint">도장·도배</option><option value="floor_f">바닥마감</option><option value="wood">목공·도어</option><option value="furn">가구·집기</option><option value="metal">금속·유리·사인</option><option value="fix">위생·조명·기구</option><option value="out">외부·조경</option><option value="fin">준공·인도</option>
+    </select>
+    <label>공정 색상 <span style="font-weight:400;color:#888;font-size:10px">(분류 기본색을 덮어씁니다)</span></label>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <input id="f_color" type="color" style="width:46px;height:28px;padding:0;border:1px solid #ccc;border-radius:4px;cursor:pointer">
+      <button type="button" class="btn" onclick="syncCatColor()" style="font-size:10px">분류 기본색으로</button>
+    </div>
+    <label>기간(일)</label><input id="f_dur" type="number" min="1">
+    <label>선행공정 (먼저 끝나야 하는 공정 체크)</label>
+    <input id="f_dep" type="hidden">
+    <div id="depList" style="max-height:160px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:6px;font-size:11px"></div>
+    <div class="row2">
+      <div><label>착수지연 (선행완료 +N일)</label><input id="f_offset" type="number" min="0" placeholder="0"></div>
+      <div><label>시작일 고정 (달력 못박기)</label><input id="f_lock" type="date"></div>
+    </div>
+    <div class="row2">
+      <div><label>크리티컬패스</label><select id="f_cp"><option value="1">예</option><option value="0">아니오</option></select></div>
+      <div><label>진행상태</label><select id="f_status"><option value="todo">미착수</option><option value="prog">진행중</option><option value="done">완료</option></select></div>
+    </div>
+    <label>세부작업 (줄바꿈)</label><textarea id="f_tasks"></textarea>
+    <label>인력 (예: 철근공:4,형틀공:6)</label><input id="f_crew">
+    <label>자재 (예: 철근:7,레미콘:3 — 숫자=리드타임일)</label><input id="f_mat">
+    <div class="mo-btns">
+      <button class="btn" onclick="deletePhase()" id="delBtn" style="margin-right:auto;border-color:#e24b4a;color:#e24b4a">🗑 삭제</button>
+      <button class="btn btn-r" onclick="closeModal()">취소</button>
+      <button class="btn btn-g" onclick="saveModal()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="mo-bg" id="layerModal">
+  <div class="mo" style="max-width:460px">
+    <h3>⚙ 레이어(공정 분류) 편집</h3>
+    <p style="font-size:11px;color:#888;margin-bottom:8px">🎨 색상칩=색 변경 · ✏=이름 수정 · 🗑=삭제(공정 없는 레이어만). 변경은 모든 프로젝트에 공통 적용됩니다.</p>
+    <div id="layerList" style="max-height:48vh;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:4px 8px"></div>
+    <label style="display:block;font-size:11px;color:#888;margin:12px 0 3px">새 레이어 추가</label>
+    <div style="display:flex;align-items:center;gap:8px;padding-top:2px">
+      <input type="color" id="newLayerColor" class="layer-sw" value="#888888" style="width:34px;height:30px" title="새 레이어 색상">
+      <input id="newLayerNm" placeholder="새 레이어 이름" style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px" onkeydown="if(event.key==='Enter')addLayer()">
+      <button class="btn btn-g" onclick="addLayer()" style="white-space:nowrap">➕ 추가</button>
+    </div>
+    <div class="mo-btns">
+      <button class="btn" onclick="restoreDefaultLayers()" style="margin-right:auto;font-size:11px">↺ 기본 레이어 복원</button>
+      <button class="btn btn-r" onclick="closeLayerEditor()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// CATEGORY DEFINITIONS (건축 + 실내 통합)
+// ================================================================
+var CI={
+plan:{n:"기획·인허가",c:"#6b7280",b:"#f3f4f6"},
+prep:{n:"착수·준비",c:"#5f5e5a",b:"#f1efe8"},
+demo:{n:"철거·해체",c:"#44403c",b:"#f5f5f4"},
+earth:{n:"토공사",c:"#92400e",b:"#fef3e2"},
+mep_pre:{n:"기초설비선행",c:"#2563eb",b:"#eff6ff"},
+found:{n:"기초공사",c:"#854f0b",b:"#faeeda"},
+struct:{n:"골조공사",c:"#185fa5",b:"#e6f1fb"},
+roof:{n:"지붕공사",c:"#0e7490",b:"#ecfeff"},
+wp:{n:"방수",c:"#0f6e56",b:"#e1f5ee"},
+insul:{n:"단열",c:"#ea580c",b:"#fff1e7"},
+ext:{n:"외벽마감",c:"#9a3412",b:"#fdece4"},
+win:{n:"창호",c:"#a16207",b:"#fef9c3"},
+frame:{n:"조적·가벽",c:"#854f0b",b:"#faeeda"},
+plb:{n:"설비배관",c:"#6d28d9",b:"#f1ecfe"},
+hvac:{n:"공조·환기",c:"#5b4bb7",b:"#eeedfe"},
+elec:{n:"전기·통신·소방",c:"#2563eb",b:"#eff6ff"},
+frame_in:{n:"내부벽·천장틀",c:"#a16207",b:"#fef9c3"},
+ceil:{n:"천장",c:"#ca8a04",b:"#fefce8"},
+wall:{n:"벽체·미장",c:"#b45309",b:"#fef3e2"},
+floor_h:{n:"바닥난방",c:"#dc2626",b:"#fef2f2"},
+tile:{n:"타일·석재",c:"#0891b2",b:"#ecfeff"},
+paint:{n:"도장·도배",c:"#16a34a",b:"#f0fdf4"},
+floor_f:{n:"바닥마감",c:"#db2777",b:"#fce7f1"},
+wood:{n:"목공·도어",c:"#92400e",b:"#fef3e2"},
+furn:{n:"가구·집기",c:"#c2410c",b:"#ffedd5"},
+metal:{n:"금속·유리·사인",c:"#7c3aed",b:"#f5f3ff"},
+fix:{n:"위생·조명·기구",c:"#1e40af",b:"#e6f1fb"},
+out:{n:"외부·조경",c:"#65a30d",b:"#f0fbe2"},
+fin:{n:"준공·인도",c:"#16a34a",b:"#eaf6e2"}
+};
+// 카테고리 색 기본값 스냅샷 — 프로젝트별 사용자 지정 색을 적용/복원할 때 기준
+var CI_DEFAULT=JSON.parse(JSON.stringify(CI));
+// 원본(빌트인) 분류 스냅샷 — '기본 레이어 전체 복원'용. 절대 변형하지 않음
+var CI_BUILTIN=JSON.parse(JSON.stringify(CI));
+// hex → 90% 화이트로 섞은 옅은 배경색 (행 배경용)
+function lightTint(hex){
+  var h=(hex||"").replace("#","");
+  if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  if(h.length<6)return "#f5f5f5";
+  var r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  function m(v){return Math.round(v+(255-v)*0.9)}
+  function hx(v){return v.toString(16).padStart(2,"0")}
+  return "#"+hx(m(r))+hx(m(g))+hx(m(b));
+}
+// 현재 프로젝트의 사용자 지정 색을 CI에 반영 (없는 분류는 기본값 복원)
+function applyCatColors(){
+  for(var k in CI_DEFAULT){if(CI[k]){CI[k].c=CI_DEFAULT[k].c;CI[k].b=CI_DEFAULT[k].b}}
+  var ov=currentProj&&currentProj.catColors;
+  if(ov)for(var cat in ov){if(CI[cat]){CI[cat].c=ov[cat];CI[cat].b=lightTint(ov[cat])}}
+}
+// 레이어창에서 색상 변경 → 프로젝트에 저장하고 간트·공정명·범례 전체 반영
+function setCatColor(cat,hex){
+  if(!currentProj)return;
+  if(!currentProj.catColors)currentProj.catColors={};
+  currentProj.catColors[cat]=hex;
+  applyCatColors();
+  recalc();          // 간트 바·공정명 컬러바·범례 일괄 갱신
+  saveStore();
+  toast("🎨 "+(CI[cat]?CI[cat].n:cat)+" 색상 변경");
+}
+
+// ── 사용자 레이어(분류) 저장소 — 전역(모든 프로젝트 공용) ──
+var UCAT_KEY="boc_user_cats_v1";
+var userCats={cats:{},removed:[]};   // cats:추가/이름변경된 분류, removed:삭제한 기본 분류 키
+function loadUserCats(){
+  try{var raw=localStorage.getItem(UCAT_KEY);if(raw)userCats=JSON.parse(raw)}catch(e){}
+  if(!userCats||typeof userCats!=="object")userCats={cats:{},removed:[]};
+  if(!userCats.cats)userCats.cats={};
+  if(!Array.isArray(userCats.removed))userCats.removed=[];
+  // 사용자 분류를 CI·기본값에 병합 (이름이 비었으면 빌트인/키로 자동 복구해 분류명이 절대 사라지지 않게)
+  for(var k in userCats.cats){
+    var uc=userCats.cats[k]||{};
+    var base=CI[k]||CI_BUILTIN[k]||{};
+    var nm=(uc.n&&String(uc.n).trim())||base.n||k;
+    var col=uc.c||base.c||"#888888";
+    var bg=uc.b||base.b||lightTint(col);
+    CI[k]={n:nm,c:col,b:bg};
+    CI_DEFAULT[k]={n:nm,c:col,b:bg};
+    userCats.cats[k]={n:nm,c:col,b:bg};   // 저장본도 정상 이름으로 자가 치유
+  }
+  // 삭제된 기본 분류 제거
+  userCats.removed.forEach(function(k){delete CI[k];delete CI_DEFAULT[k]});
+  saveUserCats();
+}
+function saveUserCats(){try{localStorage.setItem(UCAT_KEY,JSON.stringify(userCats))}catch(e){console.warn("레이어 저장실패",e)}cloudPush(UCAT_KEY,userCats)}
+
+var TMPL_INFO={
+rc_new:{n:"RC신축",c:"#185fa5",b:"#e6f1fb"},
+interior:{n:"실내건축",c:"#7c3aed",b:"#f5f3ff"},
+rc_full:{n:"통합(신축+실내)",c:"#0f6e56",b:"#e1f5ee"},
+partial:{n:"부분시공",c:"#ba7517",b:"#faeeda"},
+frame_rc:{n:"RC골조(이팀장)",c:"#185fa5",b:"#e6f1fb"},
+ssangyong:{n:"쌍용동 실내건축",c:"#0f766e",b:"#e6f5f2"},
+blank:{n:"빈템플릿",c:"#888",b:"#f5f5f5"}
+};
+
+// ================================================================
+// TEMPLATES — 공사 유형별 기본 공정 (현장 정보와 무관한 일반형)
+// ================================================================
+var TEMPLATES={};
+
+TEMPLATES.rc_new=[{"id": "GEO", "nm": "지내력검사", "sub": "평판재하·지질조사", "dur": 3, "dep": [], "cat": "prep", "cp": 1, "tasks": ["평판재하시험", "지질조사보고서", "동결선 확인", "부족시 지반보강 검토"], "crew": "측량:1,시험기사:2", "mat": ""}, {"id": "PRE", "nm": "착공준비·가설", "sub": "착공신고·가설·측량", "dur": 7, "dep": ["GEO"], "cat": "prep", "cp": 1, "tasks": ["착공신고·보험가입", "가설울타리·안전펜스", "가설전기·가설용수", "가설사무소·화장실", "규준틀·기준점(BM)", "장비 반입", "양중 동선"], "crew": "소장:1,관리:1,잡역:4", "mat": "가설울타리:3,가설전기:5"}, {"id": "EAR", "nm": "토공사·터파기", "sub": "터파기·잔토·다짐", "dur": 6, "dep": ["PRE"], "cat": "earth", "cp": 1, "tasks": ["지장물 철거·이설", "터파기(동결선 이하)", "흙막이(필요시)", "잔토 반출", "잡석 다짐", "배수로 확보"], "crew": "굴삭기:1,덤프:2,잡역:4", "mat": "잡석:2"}, {"id": "BLC", "nm": "버림콘크리트·먹매김", "sub": "PE필름·버림·먹매김", "dur": 3, "dep": ["EAR"], "cat": "earth", "cp": 1, "tasks": ["PE필름 2겹", "버림콘크리트(THK50)", "양생", "기초 중심선 먹매김"], "crew": "콘크리트공:2,잡역:3", "mat": "PE필름:2,레미콘:1"}, {"id": "UG_SAN", "nm": "지중 오배수관 매설", "sub": "★기초하부 오수·배수", "dur": 4, "dep": ["BLC"], "cat": "mep_pre", "cp": 1, "tasks": ["오수관 매설(D100~150)", "배수관(D75~100)", "통기관·트랩·소제구", "기초 관통 슬리브", "구배 확인", "정화조 배관(해당시)"], "crew": "배관공:3,잡역:2", "mat": "PVC오수관:3,슬리브:3"}, {"id": "UG_WAT", "nm": "급수 인입관 매설", "sub": "상수도→건물", "dur": 2, "dep": ["BLC"], "cat": "mep_pre", "cp": 0, "tasks": ["수도계량기 위치", "급수 인입관(PE)", "관통 슬리브", "수압시험"], "crew": "배관공:2,잡역:1", "mat": "수도용PE관:3"}, {"id": "UG_ELE", "nm": "전기 인입관 매설", "sub": "한전→맨홀→건물", "dur": 3, "dep": ["BLC"], "cat": "mep_pre", "cp": 0, "tasks": ["맨홀 설치", "지중 관로", "접지동봉 매설", "관통 슬리브", "접지저항 측정"], "crew": "전기공:2,잡역:2", "mat": "인입케이블:7,맨홀:5,접지동봉:5"}, {"id": "UG_GAS", "nm": "가스 인입관 매설", "sub": "도시가스→건물", "dur": 2, "dep": ["BLC"], "cat": "mep_pre", "cp": 0, "tasks": ["가스 인입관(PE)", "계량기 위치", "관통 슬리브"], "crew": "가스공:2,잡역:1", "mat": "가스용PE관:5"}, {"id": "UG_DRN", "nm": "우수관·집수정", "sub": "우수배수 지중", "dur": 3, "dep": ["BLC"], "cat": "mep_pre", "cp": 0, "tasks": ["우수관 매설(PE이중벽)", "집수정·맨홀", "빗물받이", "시하수관 연결"], "crew": "배관공:2,토공:2", "mat": "우수관:5,집수정:5"}, {"id": "UG_CHK", "nm": "매설 검수·사진 ★게이트", "sub": "되메우기 전 기록", "dur": 1, "dep": ["UG_SAN", "UG_WAT", "UG_ELE", "UG_GAS", "UG_DRN"], "cat": "mep_pre", "cp": 1, "tasks": ["매설 위치 실측·기록", "사진 촬영(전 배관)", "감리 확인", "되메우기·다짐"], "crew": "관리:1,잡역:2", "mat": ""}, {"id": "FND_RE", "nm": "기초 배근", "sub": "매트/줄기초 배근", "dur": 5, "dep": ["UG_CHK"], "cat": "found", "cp": 1, "tasks": ["기초 철근 배근", "단부 보강", "슬리브 관통부 보강", "스페이서·간격재"], "crew": "철근공:6,잡역:3", "mat": "기초철근:7"}, {"id": "FND_FW", "nm": "기초 거푸집", "sub": "매트기초 거푸집", "dur": 3, "dep": ["FND_RE"], "cat": "found", "cp": 1, "tasks": ["외벽 거푸집", "수직수평 확인", "간격재", "타설 전 청소"], "crew": "형틀공:4,잡역:2", "mat": "거푸집합판:5"}, {"id": "FND_CK", "nm": "기초 배근검사 ★게이트", "sub": "감리 입회", "dur": 1, "dep": ["FND_FW"], "cat": "found", "cp": 1, "tasks": ["배근 간격·피복 확인", "슬리브 위치 확인", "감리 입회·서명"], "crew": "관리:1", "mat": ""}, {"id": "FND_CON", "nm": "기초 콘크리트 타설·양생", "sub": "타설+양생7일", "dur": 8, "dep": ["FND_CK"], "cat": "found", "cp": 1, "tasks": ["콘크리트 타설", "다짐·레벨", "양생(7일)", "거푸집 해체", "기초 외벽 방수", "되메우기"], "crew": "콘크리트공:4,잡역:4", "mat": "레미콘:3,방수재:5"}, {"id": "W1_RE", "nm": "1층 벽체·기둥 배근", "sub": "배근+★매립CD관", "dur": 8, "dep": ["FND_CON"], "cat": "struct", "cp": 1, "tasks": ["기둥 배근", "후프·스터럽", "벽체 수직·수평근", "단부 보강", "★벽체 매립 전기CD관", "★통신관 매립"], "crew": "철근공:6,전기공:2,잡역:3", "mat": "철근:7,CD관:3"}, {"id": "W1_FW", "nm": "1층 거푸집", "sub": "기둥+벽체", "dur": 5, "dep": ["W1_RE"], "cat": "struct", "cp": 1, "tasks": ["기둥 거푸집", "벽체 거푸집", "세파타이·폼타이", "창호 개구부", "타설 전 청소"], "crew": "형틀공:6,잡역:3", "mat": "거푸집:5,폼타이:3"}, {"id": "W1_CK", "nm": "1층 배근검사 ★게이트", "sub": "감리 입회", "dur": 1, "dep": ["W1_FW"], "cat": "struct", "cp": 1, "tasks": ["배근·매립관 확인", "개구부 확인", "감리 입회·서명"], "crew": "관리:1", "mat": ""}, {"id": "W1_CON", "nm": "1층 콘크리트 타설·양생", "sub": "타설+양생5일", "dur": 6, "dep": ["W1_CK"], "cat": "struct", "cp": 1, "tasks": ["콘크리트 타설", "바이브레이터", "수직 확인", "양생(5일)"], "crew": "콘크리트공:4,잡역:4", "mat": "레미콘:3"}, {"id": "S2_FW", "nm": "2층 슬래브 거푸집", "sub": "슬래브+보", "dur": 5, "dep": ["W1_CON"], "cat": "struct", "cp": 1, "tasks": ["동바리 설치", "보 거푸집", "슬래브 거푸집", "레벨 확인"], "crew": "형틀공:8,잡역:4", "mat": "동바리:5,거푸집:5"}, {"id": "S2_MEP", "nm": "★2층슬래브 매립설비", "sub": "타설 전 매립", "dur": 3, "dep": ["S2_FW"], "cat": "mep_pre", "cp": 1, "tasks": ["전기 CD관 매립", "통신 배관", "욕실·발코니 배수관", "난방 슬리브", "아웃렛 박스"], "crew": "전기공:3,배관공:2", "mat": "CD관:3,배수관:3"}, {"id": "S2_RE", "nm": "2층 슬래브·보 배근", "sub": "보+슬래브+계단", "dur": 5, "dep": ["S2_MEP"], "cat": "struct", "cp": 1, "tasks": ["보 배근", "스터럽", "슬래브 배근", "계단 배근"], "crew": "철근공:6,잡역:3", "mat": "철근:7"}, {"id": "S2_CK", "nm": "2층 슬래브 배근검사 ★게이트", "sub": "감리 입회", "dur": 1, "dep": ["S2_RE"], "cat": "struct", "cp": 1, "tasks": ["배근·매립 확인", "감리 입회·서명"], "crew": "관리:1", "mat": ""}, {"id": "S2_CON", "nm": "2층 슬래브 타설·양생", "sub": "타설+양생7일", "dur": 9, "dep": ["S2_CK"], "cat": "struct", "cp": 1, "tasks": ["콘크리트 타설", "다짐·레벨", "양생(7일)", "공시체 강도"], "crew": "콘크리트공:5,잡역:4", "mat": "레미콘:3"}, {"id": "W2_RE", "nm": "2층 벽체 배근", "sub": "배근+★매립배관", "dur": 7, "dep": ["S2_CON"], "cat": "struct", "cp": 1, "tasks": ["기둥·벽체 배근", "린텔보", "★전기CD관·통신관", "★급수 슬리브"], "crew": "철근공:5,전기공:2,잡역:3", "mat": "철근:7,CD관:3"}, {"id": "W2_FW", "nm": "2층 거푸집", "sub": "벽체+기둥", "dur": 4, "dep": ["W2_RE"], "cat": "struct", "cp": 1, "tasks": ["기둥·벽체 거푸집", "개구부", "수직 확인"], "crew": "형틀공:5,잡역:3", "mat": "거푸집:3"}, {"id": "W2_CON", "nm": "2층 벽체 타설·양생", "sub": "타설+양생", "dur": 6, "dep": ["W2_FW"], "cat": "struct", "cp": 1, "tasks": ["콘크리트 타설", "다짐", "양생(5일)"], "crew": "콘크리트공:3,잡역:3", "mat": "레미콘:3"}, {"id": "RS_FW", "nm": "지붕 슬래브 거푸집", "sub": "거푸집+동바리", "dur": 4, "dep": ["W2_CON"], "cat": "struct", "cp": 1, "tasks": ["동바리", "슬래브·보 거푸집", "레벨 확인"], "crew": "형틀공:6,잡역:3", "mat": "동바리:5,거푸집:5"}, {"id": "RS_MEP", "nm": "★지붕 매립설비", "sub": "타설 전 매립", "dur": 2, "dep": ["RS_FW"], "cat": "mep_pre", "cp": 1, "tasks": ["전기배관 매립", "환기·에어컨 슬리브", "배수 드레인"], "crew": "전기공:2,배관공:1", "mat": "CD관:2,슬리브:2"}, {"id": "RS_RE", "nm": "지붕 슬래브 배근", "sub": "슬래브 배근", "dur": 4, "dep": ["RS_MEP"], "cat": "struct", "cp": 1, "tasks": ["슬래브 배근", "보 배근", "개구부 보강"], "crew": "철근공:4,잡역:2", "mat": "철근:7"}, {"id": "RS_CON", "nm": "지붕 콘크리트 타설·양생", "sub": "타설+양생7일", "dur": 8, "dep": ["RS_RE"], "cat": "struct", "cp": 1, "tasks": ["콘크리트 타설", "다짐·마감", "양생(7일)", "강도 확인"], "crew": "콘크리트공:4,잡역:3", "mat": "레미콘:3"}, {"id": "ROF", "nm": "지붕틀·마감", "sub": "징크/기와+단열+홈통", "dur": 10, "dep": ["RS_CON"], "cat": "roof", "cp": 1, "tasks": ["지붕틀·서까래", "지붕 단열", "방수시트·투습지", "지붕재(징크/기와/슁글)", "처마·선홈통", "후레싱·물끊기"], "crew": "판금공:4,비계공:2,잡역:2", "mat": "지붕재:14,단열재:7,홈통:7"}, {"id": "WPF", "nm": "방수공사(옥상·욕실·발코니)", "sub": "방수 도포", "dur": 8, "dep": ["RS_CON"], "cat": "wp", "cp": 0, "tasks": ["옥상 방수", "욕실 방수(각소)", "발코니 방수", "코너·관통부 보강", "보호몰탈"], "crew": "방수공:4,잡역:2", "mat": "액체방수재:5,우레탄방수:5"}, {"id": "WP_TEST", "nm": "방수 담수시험 ★게이트", "sub": "48h 침수", "dur": 3, "dep": ["WPF"], "cat": "wp", "cp": 0, "tasks": ["담수(48h) 침수", "하부층 누수 확인", "살수시험", "감리 검수"], "crew": "방수공:1,관리:1", "mat": ""}, {"id": "INS", "nm": "외벽 단열", "sub": "외단열+열교차단", "dur": 10, "dep": ["ROF"], "cat": "insul", "cp": 1, "tasks": ["비계 설치", "단열재 부착", "앵커 고정", "메쉬+접착몰탈", "열교 차단"], "crew": "단열공:5,비계공:2,잡역:2", "mat": "단열재:7,앵커:5"}, {"id": "EXT", "nm": "외벽 마감(벽돌/스타코)", "sub": "외장재 시공", "dur": 14, "dep": ["INS"], "cat": "ext", "cp": 1, "tasks": ["외장재(벽돌/석재/스타코)", "줄눈·코킹", "코너비드", "처마밑 마감", "비계 해체"], "crew": "미장공:4,조적공:4,비계공:2,잡역:2", "mat": "외장재:14,마감재:7"}, {"id": "WIN", "nm": "창호공사(창·현관문·셔터)", "sub": "창호+유리 설치", "dur": 7, "dep": ["INS"], "cat": "win", "cp": 0, "tasks": ["시스템창호·유리", "현관 단열도어", "방화문(인접대지)", "전동셔터", "소방관 진입창", "단열·기밀 충전", "외부 실란트"], "crew": "창호공:4,잡역:2", "mat": "창호:21,현관문:14,셔터:14"}, {"id": "PLB_R", "nm": "설비 배관(급배수·난방)", "sub": "내부 급배수·난방관", "dur": 10, "dep": ["WP_TEST", "WIN"], "cat": "plb", "cp": 1, "tasks": ["급수·급탕 배관(전실)", "오배수 입상·횡주관", "난방 분배기 위치", "욕실·주방 수전 위치", "세탁·다용도 급배수", "배관 보온"], "crew": "배관공:4,잡역:2", "mat": "급수관:7,배수관:5,분배기:7"}, {"id": "PLB_BLR", "nm": "보일러·가스 배관", "sub": "보일러·가스", "dur": 3, "dep": ["WP_TEST"], "cat": "plb", "cp": 0, "tasks": ["보일러 설치", "연도·배기", "가스배관", "보일러 전원 협의"], "crew": "배관공:2,가스공:2", "mat": "보일러:14,가스관:5"}, {"id": "PLB_TEST", "nm": "배관 수압·가스시험 ★게이트", "sub": "수압·누설", "dur": 2, "dep": ["PLB_R", "PLB_BLR"], "cat": "plb", "cp": 0, "tasks": ["급수 수압시험", "난방 가압시험", "가스 누설시험", "배수 통수"], "crew": "배관공:2,관리:1", "mat": ""}, {"id": "ELC_R", "nm": "전기 배관·입선", "sub": "전등·전열·통신 배선", "dur": 10, "dep": ["WP_TEST", "WIN"], "cat": "elec", "cp": 1, "tasks": ["분전반·간선", "전등 배관·입선", "콘센트 배관·입선", "전용회로(인덕션·에어컨)", "스위치·콘센트 박스", "통신단자함·UTP", "소방 배관(해당시)", "접지 결선"], "crew": "전기공:3,통신공:2,잡역:2", "mat": "전선:5,분전반:10,UTP:5"}, {"id": "HVAC_R", "nm": "환기·에어컨 배관", "sub": "덕트·냉매관", "dur": 4, "dep": ["WP_TEST", "WIN"], "cat": "hvac", "cp": 0, "tasks": ["욕실·주방 배기덕트", "외기 급배기 슬리브", "에어컨 냉매·배수관", "후드 덕트"], "crew": "덕트공:2,잡역:1", "mat": "덕트:3,냉매관:5"}, {"id": "IW_WALL", "nm": "내부 간벽·석고", "sub": "간벽+벽 석고", "dur": 6, "dep": ["PLB_TEST", "ELC_R", "HVAC_R"], "cat": "frame_in", "cp": 1, "tasks": ["경량벽체 간벽", "단열·차음 충전", "석고보드 2P(벽)", "도어프레임", "개구부 보강"], "crew": "목공:4,경량철골:3,잡역:2", "mat": "석고보드:5,경량스터드:5"}, {"id": "IW_CEIL", "nm": "천장틀·천장석고", "sub": "천정틀+석고", "dur": 4, "dep": ["IW_WALL"], "cat": "frame_in", "cp": 1, "tasks": ["목재·경량철골 천정틀", "등박스·다운라이트 박스", "간접등·커튼박스", "점검구", "천장 석고보드 2P"], "crew": "목공:3,경량철골:2,잡역:1", "mat": "천정틀:5,석고보드:5"}, {"id": "FLH", "nm": "바닥난방·방통", "sub": "단열+난방+방통", "dur": 8, "dep": ["IW_CEIL"], "cat": "floor_h", "cp": 1, "tasks": ["바닥 단열재·차음재", "측면완충재", "난방 엑셀관 포설", "분배기 연결", "경량기포 콘크리트", "방통(시멘트 미장)", "온도조절기 배선"], "crew": "난방공:3,미장공:3,잡역:2", "mat": "단열재:5,엑셀관:5,차음재:5"}, {"id": "FLH_TEST", "nm": "난방시험·방통양생 ★게이트", "sub": "가동+양생/함수율", "dur": 4, "dep": ["FLH"], "cat": "floor_h", "cp": 1, "tasks": ["보일러 가동·온도", "유량 조정", "누수 확인", "방통 양생", "함수율 확인"], "crew": "난방공:1,관리:1", "mat": ""}, {"id": "TIL", "nm": "타일·석재(욕실·현관)", "sub": "바닥·벽 타일", "dur": 8, "dep": ["WP_TEST", "IW_CEIL"], "cat": "tile", "cp": 0, "tasks": ["욕실 바닥·벽 타일", "현관 타일·석재", "문턱석", "줄눈", "실란트", "보양"], "crew": "타일공:4,잡역:2", "mat": "타일:7,석재:10,줄눈재:3"}, {"id": "CEIL_W", "nm": "욕실 천장 마감(SMC)", "sub": "SMC 천장", "dur": 2, "dep": ["TIL"], "cat": "ceil", "cp": 0, "tasks": ["욕실 SMC 천장", "점검구", "환기구 마감 하지"], "crew": "경량철골:2", "mat": "SMC천정재:7"}, {"id": "PNT", "nm": "도장·도배", "sub": "천장·벽 마감", "dur": 8, "dep": ["IW_CEIL", "FLH_TEST"], "cat": "paint", "cp": 1, "tasks": ["퍼티·샌딩", "천장 도장", "벽 도장/도배", "초배·정배", "포인트벽지", "계단실"], "crew": "도장공:4,도배공:2,잡역:2", "mat": "페인트:3,벽지:5"}, {"id": "FLR", "nm": "바닥마감(마루·장판)", "sub": "마루·장판", "dur": 6, "dep": ["FLH_TEST", "PNT"], "cat": "floor_f", "cp": 1, "tasks": ["함수율 재확인", "방습필름", "거실·침실 마루", "주방 마루", "걸레받이", "문턱·몰딩"], "crew": "바닥공:4,잡역:2", "mat": "마루:7,걸레받이:7"}, {"id": "DOOR", "nm": "내부도어·중문 설치", "sub": "도어+하드웨어", "dur": 4, "dep": ["PNT", "FLR"], "cat": "wood", "cp": 0, "tasks": ["내부 도어(각실)", "중문·슬라이딩", "욕실 도어(방수형)", "하드웨어(레버·경첩)", "개폐·단차 조정"], "crew": "목공:3,잡역:1", "mat": "내부도어:10,중문:14,하드웨어:5"}, {"id": "WOOD_F", "nm": "몰딩·아트월·목공마감", "sub": "몰딩·디테일", "dur": 3, "dep": ["PNT", "FLR"], "cat": "wood", "cp": 0, "tasks": ["천장 몰딩", "아트월·TV벽", "계단 디딤판·난간", "웨인스코팅"], "crew": "목공:3,잡역:1", "mat": "몰딩:3,아트월재:7"}, {"id": "FURN_K", "nm": "주방가구 설치", "sub": "상·하부장+상판+빌트인", "dur": 4, "dep": ["FLR", "DOOR"], "cat": "furn", "cp": 1, "tasks": ["하부장·수평", "싱크볼", "상판(인조대리석)", "상부장", "인덕션·후드 빌트인", "식기세척기", "조정·실란트"], "crew": "가구공:3,잡역:1", "mat": "주방가구:21,상판:14"}, {"id": "FURN_B", "nm": "붙박이·신발장·수납", "sub": "붙박이장·신발장", "dur": 4, "dep": ["FLR", "DOOR"], "cat": "furn", "cp": 0, "tasks": ["신발장·현관수납", "드레스룸 시스템장", "침실 붙박이장", "수납가구", "조정·내부LED"], "crew": "가구공:3,잡역:1", "mat": "붙박이장:21,신발장:14"}, {"id": "METAL", "nm": "금속·유리·파티션", "sub": "난간·유리·거울", "dur": 3, "dep": ["FLR", "TIL"], "cat": "metal", "cp": 0, "tasks": ["계단·발코니 난간", "샤워부스 유리", "유리 파티션", "거울"], "crew": "금속공:2,유리공:1,잡역:1", "mat": "유리:10,난간재:10"}, {"id": "FIX_SAN", "nm": "위생도기 설치", "sub": "양변기·세면·욕조·수전", "dur": 4, "dep": ["TIL", "CEIL_W", "FLR"], "cat": "fix", "cp": 1, "tasks": ["양변기", "세면기·세면수전", "욕조·욕조수전", "샤워수전·샤워부스", "주방수전", "세탁수전", "비데", "배수 최종 연결"], "crew": "배관공:3,잡역:1", "mat": "양변기:10,세면기:10,욕조:14,수전류:7"}, {"id": "FIX_LIT", "nm": "조명·전기기구 설치", "sub": "조명+스위치+콘센트", "dur": 4, "dep": ["IW_CEIL", "FLR", "PNT"], "cat": "fix", "cp": 1, "tasks": ["거실·방 조명", "다운라이트·간접등", "센서등·현관등", "주방등·욕실등", "스위치 마감", "콘센트 마감(접지·방수)", "조광기", "월패드·인터폰", "점등 시험"], "crew": "전기공:3,잡역:1", "mat": "조명기구:7,스위치:5,콘센트:5,조광기:5"}, {"id": "FIX_AC", "nm": "에어컨·환기기구 설치", "sub": "실내외기+환기팬", "dur": 3, "dep": ["FLR", "IW_CEIL"], "cat": "fix", "cp": 0, "tasks": ["에어컨 실내기", "실외기·냉매충전", "환기팬", "배기 그릴·후드캡", "후드 시운전", "풍량 확인"], "crew": "에어컨공:2,잡역:1", "mat": "에어컨:7,환기그릴:3"}, {"id": "FIX_ACC", "nm": "욕실 액세서리·기타기구", "sub": "거울·선반·수건걸이", "dur": 2, "dep": ["FIX_SAN"], "cat": "fix", "cp": 0, "tasks": ["거울·수납선반", "수건걸이·휴지걸이", "코너선반", "욕실 액세서리", "현관·실내 액세서리"], "crew": "잡역:2", "mat": "욕실액세서리:7"}, {"id": "OTD", "nm": "외부·조경", "sub": "주차장·데크·식재", "dur": 10, "dep": ["EXT"], "cat": "out", "cp": 0, "tasks": ["주차장 마감·카스토퍼", "데크·난간", "대문·담장", "마당 포장·경계석", "조경 식재·잔디", "옥외 수전·조명"], "crew": "조경:3,토공:2,목공:2,잡역:3", "mat": "조경수목:7,데크재:10,경계석:5"}, {"id": "SIL", "nm": "실란트·코킹·터치업", "sub": "전체 마감 보수", "dur": 3, "dep": ["FURN_K", "FURN_B", "FIX_SAN", "FIX_LIT", "FIX_AC", "METAL", "WOOD_F", "FIX_ACC"], "cat": "fin", "cp": 1, "tasks": ["창호 실란트", "욕조·세면기 주변", "싱크 상판 주변", "걸레받이 접합부", "타일 코너 보수", "터치업", "보양 철거·필름 제거"], "crew": "잡역:3,도장공:1", "mat": "실란트:3"}, {"id": "CL_RGH", "nm": "거친청소", "sub": "잔재 반출+1차", "dur": 2, "dep": ["SIL", "OTD"], "cat": "fin", "cp": 1, "tasks": ["잔재물 반출", "바닥 1차 청소", "먼지 제거", "창문 1차"], "crew": "청소:4,잡역:2", "mat": ""}, {"id": "CL_FIN", "nm": "정밀청소·입주청소", "sub": "입주 전 청소", "dur": 3, "dep": ["CL_RGH"], "cat": "fin", "cp": 1, "tasks": ["바닥 물청소·광택", "유리 정밀", "욕실 정밀세척", "주방·붙박이 내부", "조명·면판", "걸레받이·몰딩"], "crew": "청소:6", "mat": ""}, {"id": "FIX_CHK", "nm": "하자 전수점검 ★게이트", "sub": "전공종 작동·마감", "dur": 3, "dep": ["CL_FIN"], "cat": "fin", "cp": 1, "tasks": ["마감 점검(도장·타일·바닥)", "도어·창호 개폐", "수전 누수", "배수 속도", "난방 온도", "전기 전회로", "조명 점등", "통신·TV", "에어컨·환기", "보일러 시운전", "가구 개폐"], "crew": "목공:1,배관공:1,전기공:1,도장공:1,잡역:1", "mat": ""}, {"id": "GOV", "nm": "관청 검사·준공", "sub": "소방·가스·사용승인", "dur": 5, "dep": ["FIX_CHK"], "cat": "fin", "cp": 1, "tasks": ["소방 완공검사", "정화조·가스 검사", "사용승인(준공검사)", "건축물대장 등재", "에너지효율인증", "준공사진"], "crew": "관리:2", "mat": ""}, {"id": "HND", "nm": "건축주 인도", "sub": "검수·인도·AS", "dur": 2, "dep": ["GOV"], "cat": "fin", "cp": 1, "tasks": ["건축주 최종 검수·서명", "하자리스트·보수", "열쇠·리모컨 인도", "사용설명(보일러·에어컨·조광·월패드)", "유지관리 안내", "AS 안내", "준공서류·도면·보증서"], "crew": "소장:1,관리:1", "mat": ""}];
+
+TEMPLATES.interior=[{"id": "PRE", "nm": "현장조사·실측·보양", "sub": "실측·보양·준비", "dur": 2, "dep": [], "cat": "prep", "cp": 1, "tasks": ["현장 실측·기존도면 대조", "천장고·보·기둥 위치 확인", "기존 설비 위치 파악(급배수·전기)", "누수·균열·결로 점검", "바닥·공용부 보양", "자재 반입 동선 확보", "공정표 게시"], "crew": "소장:1,관리:1,잡역:2", "mat": ""}, {"id": "DEM", "nm": "철거·해체", "sub": "마감·습식·설비 철거", "dur": 3, "dep": ["PRE"], "cat": "demo", "cp": 1, "tasks": ["바닥재 철거(마루·장판·타일)", "벽지·도장면·필름 철거", "천장재 철거", "걸레받이·몰딩 철거", "욕실 타일·도기 철거", "경량·조적벽 철거(비내력 확인)", "문틀·창틀 철거", "기존 배관 캡 처리", "기존 배선 철거", "주방·붙박이 철거"], "crew": "철거공:4,잡역:2", "mat": ""}, {"id": "DEM_OUT", "nm": "폐기물 반출·정리", "sub": "분리·반출", "dur": 1, "dep": ["DEM"], "cat": "demo", "cp": 1, "tasks": ["폐기물 분리(가연·불연·지정)", "마대·집게차 반출", "비산먼지·소음 관리", "바닥 쓸기·현장 정리"], "crew": "잡역:3", "mat": ""}, {"id": "FRM", "nm": "조적·가벽·구조보수", "sub": "가벽 신설·구조보강", "dur": 4, "dep": ["DEM_OUT"], "cat": "frame", "cp": 1, "tasks": ["균열·구조 보수", "조적 가벽(필요시)", "경량철골 스터드 설치", "단열·차음재 충전", "개구부·문틀 하지", "레벨·기준먹·먹매김"], "crew": "목공:3,경량철골:2,잡역:2", "mat": "경량스터드:5,단열재:5"}, {"id": "WPF", "nm": "방수(욕실·발코니)", "sub": "바닥·벽 액체방수", "dur": 3, "dep": ["FRM"], "cat": "wp", "cp": 1, "tasks": ["바닥 면처리·프라이머", "액체방수 1차·2차", "벽면 방수(샤워벽 H1.8m/일반 H1.2m)", "코너·드레인·관통부 보강", "발코니 우레탄 방수", "보호몰탈"], "crew": "방수공:3,잡역:1", "mat": "액체방수재:5,보호몰탈:3"}, {"id": "WP_TEST", "nm": "방수 담수시험 ★게이트", "sub": "48h 침수시험", "dur": 3, "dep": ["WPF"], "cat": "wp", "cp": 1, "tasks": ["담수(48h) 침수", "하부층 누수 확인", "발코니 살수시험", "감리·건축주 확인", "불합격시 재시공"], "crew": "방수공:1,관리:1", "mat": ""}, {"id": "PLB_R", "nm": "설비 배관(급배수·난방)", "sub": "급배수·난방관 배관", "dur": 5, "dep": ["WP_TEST"], "cat": "plb", "cp": 1, "tasks": ["급수·급탕 배관(욕실·주방)", "오배수·통기관", "난방 분배기 위치", "욕실·주방 수전 위치 셋업", "세탁·다용도 급배수", "배관 고정·보온"], "crew": "배관공:3,잡역:1", "mat": "급수관:7,배수관:5,분배기:7"}, {"id": "PLB_BLR", "nm": "보일러·가스 배관", "sub": "보일러·가스관", "dur": 2, "dep": ["WP_TEST"], "cat": "plb", "cp": 0, "tasks": ["보일러 설치", "연도·배기", "가스배관(D25)", "보일러 전원 협의"], "crew": "배관공:2,가스공:1", "mat": "보일러:14,가스관:5"}, {"id": "PLB_TEST", "nm": "배관 수압·가스시험 ★게이트", "sub": "수압·누설 시험", "dur": 2, "dep": ["PLB_R", "PLB_BLR"], "cat": "plb", "cp": 1, "tasks": ["급수 수압시험", "난방 가압시험", "가스 누설시험", "배수 통수 확인"], "crew": "배관공:2,관리:1", "mat": ""}, {"id": "HVAC_R", "nm": "환기·에어컨 배관", "sub": "덕트·냉매관 매립", "dur": 3, "dep": ["FRM"], "cat": "hvac", "cp": 0, "tasks": ["욕실·주방 배기 덕트", "외기 급배기 슬리브", "에어컨 냉매·배수관 매립", "후드 덕트"], "crew": "덕트공:2,잡역:1", "mat": "덕트:3,냉매관:5"}, {"id": "ELC_R", "nm": "전기 배관·입선", "sub": "전등·전열·통신 배관/배선", "dur": 5, "dep": ["FRM"], "cat": "elec", "cp": 1, "tasks": ["분전반 위치·간선", "전등 배관·입선", "콘센트 배관·입선", "전용회로(인덕션·에어컨·세탁)", "스위치·콘센트 박스 설치", "통신·TV·홈넷 배관/UTP", "소방 배관(해당시)", "스위치박스 위치 확인(FL+1200)"], "crew": "전기공:3,통신공:1,잡역:1", "mat": "전선:5,분전반:10,UTP:5,콘센트박스:3"}, {"id": "CEIL_F", "nm": "천장틀·하지", "sub": "천정틀+등박스+점검구", "dur": 3, "dep": ["PLB_TEST", "ELC_R", "HVAC_R"], "cat": "ceil", "cp": 1, "tasks": ["목재·경량철골 천정틀", "등박스·다운라이트 박스", "간접등·커튼박스", "점검구 위치", "천장 배선 정리"], "crew": "목공:3,경량철골:2,잡역:1", "mat": "천정틀:5"}, {"id": "WALL", "nm": "벽체 석고·미장·면처리", "sub": "석고·조인트·면처리", "dur": 5, "dep": ["PLB_TEST", "ELC_R"], "cat": "wall", "cp": 1, "tasks": ["단열·결로 처리", "석고보드 2P 부착", "조인트·메지·퍼티", "샌딩·면고르기", "코너비드", "아트월 하지"], "crew": "목공:4,잡역:2", "mat": "석고보드:5,퍼티:3"}, {"id": "CEIL_M", "nm": "천장 석고·마감틀", "sub": "천장 석고+점검구", "dur": 3, "dep": ["CEIL_F", "WALL"], "cat": "ceil", "cp": 1, "tasks": ["천장 석고보드 2P", "조인트·퍼티", "점검구 설치", "몰딩 하지"], "crew": "목공:3,잡역:1", "mat": "석고보드:5"}, {"id": "FLH", "nm": "바닥난방·방통", "sub": "단열+난방관+방통", "dur": 5, "dep": ["WALL"], "cat": "floor_h", "cp": 1, "tasks": ["바닥 단열재·차음재", "측면완충재", "난방 엑셀관 포설", "분배기 연결", "경량기포 콘크리트", "방통(시멘트 미장)", "온도조절기 배선"], "crew": "난방공:3,미장공:3,잡역:2", "mat": "단열재:5,엑셀관:5,차음재:5"}, {"id": "FLH_TEST", "nm": "난방시험·방통양생 ★게이트", "sub": "가동+양생/함수율", "dur": 4, "dep": ["FLH"], "cat": "floor_h", "cp": 1, "tasks": ["보일러 가동·전구간 온도", "분배기 유량 조정", "누수 확인(48h)", "방통 양생", "함수율 확인(마루 시공 가능 기준)"], "crew": "난방공:1,관리:1", "mat": ""}, {"id": "TIL", "nm": "타일·석재(욕실·현관)", "sub": "바닥·벽 타일+석재", "dur": 5, "dep": ["WP_TEST", "CEIL_M"], "cat": "tile", "cp": 0, "tasks": ["욕실 바닥 타일(미끄럼방지)", "욕실 벽 타일", "현관 바닥 타일·석재", "문턱석", "줄눈 시공", "코너·드레인 실란트", "보양"], "crew": "타일공:3,잡역:1", "mat": "타일:7,석재:10,줄눈재:3"}, {"id": "CEIL_W", "nm": "욕실 천장 마감(SMC)", "sub": "SMC·돔천장", "dur": 1, "dep": ["TIL"], "cat": "ceil", "cp": 0, "tasks": ["욕실 SMC 천장재", "점검구", "환기구 마감 하지"], "crew": "경량철골:2", "mat": "SMC천정재:7"}, {"id": "PNT", "nm": "도장·도배", "sub": "천장·벽 마감", "dur": 6, "dep": ["CEIL_M", "FLH_TEST"], "cat": "paint", "cp": 1, "tasks": ["퍼티·샌딩 마무리", "천장 도장(초벌·정벌)", "벽면 도장 또는 도배", "초배·정배", "포인트벽지", "계단실 도장"], "crew": "도장공:3,도배공:2,잡역:1", "mat": "페인트:3,벽지:5"}, {"id": "FLR", "nm": "바닥마감(마루·장판)", "sub": "마루·장판 시공", "dur": 4, "dep": ["FLH_TEST", "PNT"], "cat": "floor_f", "cp": 1, "tasks": ["바닥 함수율 재확인", "방습필름", "거실·침실 마루", "주방 마루", "걸레받이", "문턱·마감몰딩"], "crew": "바닥공:3,잡역:1", "mat": "마루:7,걸레받이:7,방습필름:3"}, {"id": "DOOR", "nm": "내부도어·중문 설치", "sub": "도어+하드웨어", "dur": 3, "dep": ["PNT", "FLR"], "cat": "wood", "cp": 0, "tasks": ["내부 도어 설치(각실)", "중문·슬라이딩", "욕실 도어(방수형)", "도어 하드웨어(레버·경첩·스토퍼)", "개폐·단차 조정"], "crew": "목공:3,잡역:1", "mat": "내부도어:10,중문:14,하드웨어:5"}, {"id": "WOOD_F", "nm": "몰딩·아트월·목공마감", "sub": "몰딩·디테일", "dur": 2, "dep": ["PNT", "FLR"], "cat": "wood", "cp": 0, "tasks": ["천장 몰딩·마이너스몰딩", "아트월·TV벽", "웨인스코팅·라인몰딩", "계단 디딤판·난간"], "crew": "목공:2,잡역:1", "mat": "몰딩:3,아트월재:7"}, {"id": "FURN_K", "nm": "주방가구 설치", "sub": "상·하부장+상판+빌트인", "dur": 3, "dep": ["FLR", "DOOR"], "cat": "furn", "cp": 1, "tasks": ["하부장 설치·수평", "싱크볼", "상판(인조대리석)", "상부장", "인덕션·후드 빌트인", "식기세척기 빌트인", "손잡이·경첩 조정", "상판-벽 실란트"], "crew": "가구공:3,잡역:1", "mat": "주방가구:21,상판:14"}, {"id": "FURN_B", "nm": "붙박이·신발장·수납", "sub": "붙박이장·신발장", "dur": 3, "dep": ["FLR", "DOOR"], "cat": "furn", "cp": 0, "tasks": ["신발장·현관수납", "드레스룸 시스템장", "침실 붙박이장", "수납가구", "도어·슬라이딩 조정", "내부 LED"], "crew": "가구공:3,잡역:1", "mat": "붙박이장:21,신발장:14"}, {"id": "METAL", "nm": "금속·유리·파티션", "sub": "난간·유리·거울", "dur": 3, "dep": ["FLR", "TIL"], "cat": "metal", "cp": 0, "tasks": ["난간·핸드레일", "샤워부스 유리파티션", "유리 파티션·중문 유리", "거울 설치", "간판·사인(상업)"], "crew": "금속공:2,유리공:1,잡역:1", "mat": "유리:10,난간재:10,샤워파티션:10"}, {"id": "FIX_SAN", "nm": "위생도기 설치", "sub": "양변기·세면·욕조·수전", "dur": 3, "dep": ["TIL", "CEIL_W", "FLR"], "cat": "fix", "cp": 1, "tasks": ["양변기 설치", "세면기·세면수전", "욕조·욕조수전", "샤워수전·샤워부스", "주방수전", "세탁수전", "비데", "트랩·배수 최종 연결"], "crew": "배관공:3,잡역:1", "mat": "양변기:10,세면기:10,욕조:14,수전류:7"}, {"id": "FIX_LIT", "nm": "조명·전기기구 설치", "sub": "조명+스위치+콘센트 마감", "dur": 3, "dep": ["CEIL_M", "FLR", "PNT"], "cat": "fix", "cp": 1, "tasks": ["거실등·방등 설치", "다운라이트·간접등", "센서등·현관등", "주방등·욕실 방습등", "스위치 마감(1~3구·3로)", "콘센트 마감(2구 접지·방수)", "조광기", "월패드·인터폰", "전등 점등 시험"], "crew": "전기공:3,잡역:1", "mat": "조명기구:7,스위치:5,콘센트:5,조광기:5"}, {"id": "FIX_AC", "nm": "에어컨·환기기구 설치", "sub": "실내외기+환기팬+그릴", "dur": 2, "dep": ["FLR", "CEIL_M"], "cat": "fix", "cp": 0, "tasks": ["에어컨 실내기", "실외기 설치·냉매충전", "환기팬 설치", "배기 그릴·후드캡", "주방 후드 시운전", "환기 풍량 확인"], "crew": "에어컨공:2,잡역:1", "mat": "에어컨:7,환기그릴:3"}, {"id": "FIX_ACC", "nm": "욕실 액세서리·기타기구", "sub": "거울·선반·수건걸이", "dur": 1, "dep": ["FIX_SAN"], "cat": "fix", "cp": 0, "tasks": ["거울·수납선반", "수건걸이·휴지걸이", "코너선반", "욕실 액세서리", "현관·실내 액세서리"], "crew": "잡역:2", "mat": "욕실액세서리:7"}, {"id": "SIL", "nm": "실란트·코킹·터치업", "sub": "전체 마감 보수", "dur": 2, "dep": ["FURN_K", "FURN_B", "FIX_SAN", "FIX_LIT", "FIX_AC", "METAL", "WOOD_F", "FIX_ACC"], "cat": "fin", "cp": 1, "tasks": ["창호 주변 실란트", "욕조·세면기 주변", "싱크 상판 주변", "걸레받이-바닥 접합부", "도어프레임 주변", "타일 코너 보수", "도장·도배 터치업", "보양 철거·보호필름 제거"], "crew": "잡역:3,도장공:1", "mat": "실란트:3"}, {"id": "CL_RGH", "nm": "거친청소", "sub": "잔재 반출+1차청소", "dur": 1, "dep": ["SIL"], "cat": "fin", "cp": 1, "tasks": ["잔재물 전량 반출", "바닥 1차 청소", "벽·천장 먼지 제거", "창문 1차"], "crew": "청소:4,잡역:1", "mat": ""}, {"id": "CL_FIN", "nm": "정밀청소·입주청소", "sub": "입주 전 전문청소", "dur": 2, "dep": ["CL_RGH"], "cat": "fin", "cp": 1, "tasks": ["바닥 물청소·광택", "유리 정밀(전체 창호)", "욕실·화장실 정밀세척", "주방가구 내외부", "붙박이장 내부", "조명·스위치·콘센트 면판", "걸레받이·몰딩"], "crew": "청소:5", "mat": ""}, {"id": "FIX_CHK", "nm": "하자 전수점검 ★게이트", "sub": "전공종 작동·마감 점검", "dur": 2, "dep": ["CL_FIN"], "cat": "fin", "cp": 1, "tasks": ["도장·도배·타일 마감 점검", "바닥재 들뜸·단차", "도어·창호 개폐·잠금", "수전 전체 누수", "배수 속도(전개소)", "난방 구간별 온도", "전기 전회로 작동(차단기별)", "조명 전체 점등", "통신·TV·인터폰", "에어컨 냉방·환기", "보일러 최종 시운전", "가구 도어 개폐"], "crew": "목공:1,배관공:1,전기공:1,잡역:1", "mat": ""}, {"id": "HND", "nm": "준공·인도", "sub": "검수·인도·AS", "dur": 1, "dep": ["FIX_CHK"], "cat": "fin", "cp": 1, "tasks": ["건축주 실별 검수·서명", "하자리스트·즉시보수", "열쇠·리모컨 인도", "사용설명(보일러·에어컨·조광·월패드)", "마감재 유지관리 안내", "AS 기간·연락처", "준공서류·도면·보증서 전달"], "crew": "소장:1,관리:1", "mat": ""}];
+
+// ── 쌍용동 실내건축 (현장 실측 일정 기반 / 2025.06.16 착공 / 29공정) ──
+TEMPLATES.ssangyong=[
+{id:"PLB_R",nm:"설비 배관(급배수·난방)",sub:"급배수·난방 배관",dur:4,dep:[],cat:"plb",cp:1,tasks:["급수·급탕 배관(욕실·주방)","오배수·통기관","난방 분배기 위치","수전 위치 셋업","배관 고정·보온"],crew:"배관공:3,잡역:1",mat:"급수관:7,배수관:5,분배기:7"},
+{id:"PLB_TEST",nm:"배관 수압·누설시험 ★게이트",sub:"수압·가스 누설(권장 추가)",dur:1,dep:["PLB_R"],cat:"plb",cp:1,tasks:["급수 수압시험","난방 가압시험","가스 누설시험","배수 통수 확인"],crew:"배관공:2,관리:1",mat:""},
+{id:"ROF",nm:"지붕공사(방수·마감)",sub:"지붕 방수·마감",dur:5,dep:[],cat:"roof",cp:1,tasks:["지붕 바탕 정리","방수시트·우레탄","처마·선홈통","후레싱·물끊기","누수 확인"],crew:"방수공:3,판금공:2,잡역:2",mat:"방수재:5,홈통:7"},
+{id:"WPF",nm:"방수(욕실·발코니)",sub:"바닥·벽 액체방수",dur:2,dep:["PLB_R"],cat:"wp",cp:1,tasks:["면처리·프라이머","액체방수 1·2차","벽면 방수(샤워벽 H1.8m)","코너·드레인·관통부 보강","발코니 우레탄"],crew:"방수공:3,잡역:1",mat:"액체방수재:5,보호몰탈:3"},
+{id:"WP_TEST",nm:"방수 담수시험 ★게이트",sub:"48h 침수(권장 추가)",dur:2,dep:["WPF"],cat:"wp",cp:1,tasks:["담수(48h) 침수","하부층 누수 확인","발코니 살수시험","감리·건축주 확인"],crew:"방수공:1,관리:1",mat:""},
+{id:"HEAT_AX",nm:"난방 엑셀배관(설비 액셀)",sub:"엑셀관 포설",dur:1,dep:["WP_TEST","PLB_TEST"],cat:"floor_h",cp:1,tasks:["바닥 단열·차음재","측면완충재","엑셀관 포설·결속","분배기 연결","가압 누수 확인"],crew:"난방공:3,잡역:1",mat:"엑셀관:5,단열재:5,차음재:5"},
+{id:"FLH",nm:"방통(기포·미장)",sub:"기포 콘크리트+방통",dur:1,dep:["HEAT_AX"],cat:"floor_h",cp:1,tasks:["경량기포 콘크리트","방통(시멘트 미장) 레벨","온도조절기 배선","※양생 7~14일 확보(마루 전 함수율 확인)"],crew:"미장공:3,잡역:2",mat:"기포레미콘:3,몰탈:2"},
+{id:"MAT_ORD",nm:"목재·자재 발주",sub:"목자재·마감재 발주",dur:1,dep:[],cat:"prep",cp:1,tasks:["목자재 물량 산출","목재·합판 발주","마감재 발주(도어·가구 리드타임 확인)","납기·양중일 협의"],crew:"관리:1",mat:""},
+{id:"FACADE",nm:"상가 멀리언·폴딩도어",sub:"외부 창호·폴딩도어",dur:1,dep:["ROF"],cat:"metal",cp:0,tasks:["멀리언 실측·설치","폴딩도어 프레임·패널","유리 끼움","기밀·실란트","개폐 조정"],crew:"금속공:2,유리공:1,잡역:1",mat:"멀리언:21,폴딩도어:21"},
+{id:"ENTDOOR",nm:"현관문 설치",sub:"현관 단열도어",dur:1,dep:["ROF"],cat:"win",cp:0,tasks:["문틀 실측·설치","단열도어 설치","도어록·하드웨어","기밀·실란트","개폐 조정"],crew:"창호공:2,잡역:1",mat:"현관문:14"},
+{id:"AC_PIPE",nm:"에어컨 배관",sub:"냉매·배수관 매립",dur:1,dep:["FLH"],cat:"hvac",cp:0,tasks:["에어컨 냉매관 매립","드레인 배수관","외기 슬리브","실외기 위치 확인"],crew:"에어컨공:2,잡역:1",mat:"냉매관:5"},
+{id:"ELC_IN",nm:"전기 인입·배관입선",sub:"인입+전등·전열 배선",dur:3,dep:["FLH"],cat:"elec",cp:1,tasks:["전기 인입·계량","분전반·간선","전등·콘센트 배관·입선","전용회로(인덕션·에어컨)","스위치·콘센트 박스","통신·TV·UTP"],crew:"전기공:3,통신공:1,잡역:1",mat:"전선:5,분전반:10,UTP:5"},
+{id:"HOIST",nm:"자재 양중",sub:"목자재·마감재 양중",dur:1,dep:["ELC_IN","MAT_ORD"],cat:"prep",cp:1,tasks:["양중 장비·동선 확보","목자재 층별 반입","마감재 반입","자재 보양·정리"],crew:"잡역:4",mat:""},
+{id:"CARP",nm:"목공사(목수)",sub:"천장틀·벽체·가벽·하지",dur:8,dep:["HOIST","FLH"],cat:"frame_in",cp:1,tasks:["경량·목 가벽 설치","단열·차음 충전","천장틀·등박스·커튼박스","석고보드 2P(벽·천장)","도어프레임·개구부 하지","아트월·몰딩 하지","점검구"],crew:"목공:4,잡역:2",mat:"석고보드:5,경량스터드:5,천정틀:5"},
+{id:"TIL",nm:"타일·석재(욕실·현관)",sub:"바닥·벽 타일",dur:4,dep:["CARP","WP_TEST"],cat:"tile",cp:1,tasks:["욕실 바닥·벽 타일","현관 타일·석재","문턱석","줄눈·실란트","보양"],crew:"타일공:3,잡역:1",mat:"타일:7,석재:10,줄눈재:3"},
+{id:"PNT",nm:"도장",sub:"천장·벽 도장",dur:1,dep:["TIL"],cat:"paint",cp:1,tasks:["퍼티·샌딩","천장 도장(초벌·정벌)","벽 도장(해당부)","계단실·몰딩 도장"],crew:"도장공:3,잡역:1",mat:"페인트:3"},
+{id:"ELC_CHK",nm:"전기 점검",sub:"배선·회로 중간점검",dur:1,dep:["PNT"],cat:"elec",cp:0,tasks:["회로별 통전·절연","결선 확인","누전차단기 시험","스위치·콘센트 위치 확인"],crew:"전기공:2",mat:""},
+{id:"FIX_SAN",nm:"위생기구·보일러·온도조절기",sub:"위생도기+보일러+조절기",dur:2,dep:["TIL"],cat:"fix",cp:1,tasks:["양변기·세면기·수전","욕조·샤워수전","주방·세탁 수전","보일러 설치·연도","각방 온도조절기","배수 최종 연결"],crew:"배관공:3,잡역:1",mat:"양변기:10,세면기:10,수전류:7,보일러:14"},
+{id:"GLASS",nm:"유리난간",sub:"강화유리 난간",dur:1,dep:["FIX_SAN"],cat:"metal",cp:0,tasks:["난간 베이스·고정","강화유리 설치","핸드레일","코킹·마감"],crew:"금속공:2,유리공:1",mat:"강화유리:10,난간재:10"},
+{id:"AC_SET",nm:"에어컨 설치",sub:"실내외기+시운전",dur:1,dep:["FIX_SAN"],cat:"fix",cp:0,tasks:["실내기 설치","실외기·냉매충전","시운전·풍량","드레인 배수 확인"],crew:"에어컨공:2,잡역:1",mat:"에어컨:7"},
+{id:"FLR",nm:"마루 설치",sub:"바닥 마루 시공",dur:3,dep:["FIX_SAN","PNT"],cat:"floor_f",cp:1,tasks:["방통 함수율 확인","방습필름","거실·침실 마루","걸레받이","문턱·몰딩","※도배 전 보양 철저(아래 검토의견 참조)"],crew:"바닥공:3,잡역:1",mat:"마루:7,걸레받이:7,방습필름:3"},
+{id:"LIT",nm:"조명 설치",sub:"조명+스위치+콘센트 마감",dur:2,dep:["FLR"],cat:"fix",cp:1,tasks:["거실·방 조명","다운라이트·간접등","현관·센서등","스위치·콘센트 마감","조광기·월패드","점등 시험"],crew:"전기공:3,잡역:1",mat:"조명기구:7,스위치:5,콘센트:5"},
+{id:"WALLP",nm:"도배",sub:"초배·정배",dur:3,dep:["LIT"],cat:"paint",cp:1,tasks:["바탕 면처리","초배","정배","포인트벽지","마감 정리"],crew:"도배공:3,잡역:1",mat:"벽지:5"},
+{id:"FURN",nm:"가구(주방·붙박이)",sub:"주방+붙박이+수납",dur:5,dep:["WALLP"],cat:"furn",cp:1,tasks:["주방 하부장·상판·상부장","싱크볼·인덕션·후드 빌트인","신발장·현관수납","붙박이장·드레스룸","조정·내부LED","상판-벽 실란트"],crew:"가구공:3,잡역:1",mat:"주방가구:21,상판:14,붙박이장:21"},
+{id:"CCTV",nm:"시시티비",sub:"CCTV·통신 마감",dur:1,dep:["FURN"],cat:"elec",cp:0,tasks:["카메라 설치","NVR·모니터","배선·결선","녹화·원격 확인"],crew:"통신공:2",mat:"CCTV:10"},
+{id:"SIL",nm:"실리콘 등 마무리작업",sub:"실란트·터치업·보양철거",dur:2,dep:["FURN","GLASS","AC_SET","CCTV"],cat:"fin",cp:1,tasks:["창호·욕실·싱크 실란트","걸레받이·도어 주변","타일 코너 보수","도장·도배 터치업","보양 철거·필름 제거"],crew:"잡역:3,도장공:1",mat:"실란트:3"},
+{id:"CLEAN",nm:"입주청소",sub:"정밀 입주청소",dur:1,dep:["SIL"],cat:"fin",cp:1,tasks:["바닥 물청소·광택","유리 정밀","욕실 정밀세척","주방·붙박이 내부","조명·면판·몰딩"],crew:"청소:5",mat:""},
+{id:"CHK",nm:"최종점검 ★게이트",sub:"전공종 작동·마감 점검",dur:1,dep:["CLEAN"],cat:"fin",cp:1,tasks:["마감(도장·도배·타일·바닥) 점검","도어·창호 개폐","수전 누수·배수속도","난방 구간 온도","전기 전회로·조명","에어컨·환기·CCTV","보일러 시운전","가구 개폐"],crew:"목공:1,배관공:1,전기공:1,잡역:1",mat:""},
+{id:"HND",nm:"인도",sub:"검수·인도·AS",dur:1,dep:["CHK"],cat:"fin",cp:1,tasks:["건축주 검수·서명","하자리스트·즉시보수","열쇠·리모컨 인도","사용설명(보일러·에어컨·조광)","AS 안내","서류·보증서 전달","※8/15 광복절 — 인도일 협의"],crew:"소장:1,관리:1",mat:""}
+];
+
+TEMPLATES.partial=[
+{id:"DEM",nm:"철거",sub:"욕실+주방 철거",dur:3,dep:[],cat:"demo",cp:1,tasks:["보양작업","욕실철거","주방철거","폐기물반출"],crew:"철거공:3,잡역:2",mat:""},
+{id:"WPF",nm:"방수",sub:"욕실 액체방수",dur:3,dep:["DEM"],cat:"wp",cp:1,tasks:["바닥방수","벽면방수","방수시험(48h)"],crew:"방수공:2",mat:"액체방수재:5"},
+{id:"PLB",nm:"설비배관",sub:"급배수 교체",dur:3,dep:["DEM"],cat:"plb",cp:0,tasks:["급수배관","배수배관","수전위치조정"],crew:"배관공:2",mat:"급수관:7"},
+{id:"ELC",nm:"전기",sub:"콘센트+조명 배선",dur:2,dep:["DEM"],cat:"elec",cp:0,tasks:["욕실방수콘센트","주방전용회로","조명배선"],crew:"전기공:2",mat:"전선:5"},
+{id:"TIL",nm:"타일",sub:"욕실 바닥+벽",dur:4,dep:["WPF","PLB"],cat:"tile",cp:1,tasks:["바닥타일","벽타일","줄눈","실란트"],crew:"타일공:3,잡역:1",mat:"타일:7,줄눈재:3"},
+{id:"FUR",nm:"주방가구",sub:"싱크대 교체",dur:3,dep:["DEM","ELC"],cat:"furn",cp:0,tasks:["하부장","싱크대","상부장","인덕션","상판"],crew:"가구공:3",mat:"주방가구:21"},
+{id:"FIX",nm:"위생도기",sub:"도기 설치",dur:2,dep:["TIL"],cat:"fix",cp:1,tasks:["양변기","세면기","수전류","액세서리"],crew:"배관공:2",mat:"위생도기:10"},
+{id:"CLN",nm:"청소",sub:"정밀청소+보수",dur:2,dep:["FIX","FUR"],cat:"fin",cp:1,tasks:["정밀청소","하자보수","보양철거"],crew:"청소:3",mat:""},
+{id:"HND",nm:"인도",sub:"검수+인도",dur:1,dep:["CLN"],cat:"fin",cp:1,tasks:["검수","인도","AS안내"],crew:"관리:1",mat:""}
+];
+
+// rc_full = rc_new + interior (실내공정은 골조 완료 후 시작하도록 의존성 연결)
+TEMPLATES.rc_full=JSON.parse(JSON.stringify(TEMPLATES.rc_new));
+
+TEMPLATES.frame_rc=[{"id": "FND_CON", "nm": "기초 매트 콘크리트 타설", "sub": "매트기초 타설+양생1일", "dur": 1, "dep": [], "cat": "struct", "cp": 1, "tasks": ["펌프카 배치·신호수 배치", "매트 콘크리트 타설", "바이브레이터 다짐", "레벨 마감", "양생(1일)"], "crew": "타설공:6,목공:2,신호수:1,펌프카:1", "mat": "레미콘27MPa:1", "cure": 1, "areaBase": 390, "baseCrew": {"타설공": 6, "목공": 2}, "fixCrew": {"신호수": 1, "펌프카": 1}, "cap": {"타설공": 10, "목공": 4}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_LAYOUT", "nm": "기초 먹메김·거푸집해체·수평목", "sub": "먹메김+해체정리", "dur": 2, "dep": ["FND_CON"], "cat": "struct", "cp": 1, "tasks": ["기초 매트 위 먹메김", "기초 거푸집 해체·정리", "수평목 설치"], "crew": "목공:4", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 4}, "fixCrew": {}, "cap": {"목공": 8}, "prop": true, "baseDur": 2, "offset": 1, "lock": "", "status": "todo"}, {"id": "F1_SCAF", "nm": "시스템 비계 설치", "sub": "가설재 반입+비계", "dur": 1, "dep": ["F1_LAYOUT"], "cat": "struct", "cp": 1, "tasks": ["가설재(목재) 반입", "시스템 비계 설치"], "crew": "비계공:3", "mat": "비계재:1", "cure": 0, "areaBase": 390, "baseCrew": {"비계공": 3}, "fixCrew": {}, "cap": {"비계공": 6}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_OUTFW", "nm": "1층 외부벽체 대형거푸집 설치", "sub": "인양설치+철근반입", "dur": 1, "dep": ["F1_SCAF"], "cat": "struct", "cp": 1, "tasks": ["철근 반입", "외부면 벽체 대형거푸집 크레인 인양", "대형거푸집 설치"], "crew": "목공:5,크레인:1", "mat": "거푸집:1", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 5}, "fixCrew": {"크레인": 1}, "cap": {"목공": 8}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_OPEN", "nm": "1층 창호개구부 거푸집", "sub": "개구부 거푸집", "dur": 1, "dep": ["F1_OUTFW"], "cat": "struct", "cp": 1, "tasks": ["창호 개구부 거푸집 설치"], "crew": "목공:3", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 3}, "fixCrew": {}, "cap": {"목공": 6}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_WALLRE", "nm": "1층 벽체 철근 가공·조립", "sub": "벽체 배근", "dur": 1, "dep": ["F1_OPEN"], "cat": "struct", "cp": 1, "tasks": ["벽체 철근 가공", "벽체 철근 조립", "단부 보강"], "crew": "철근공:5", "mat": "철근:1", "cure": 0, "areaBase": 390, "baseCrew": {"철근공": 5}, "fixCrew": {}, "cap": {"철근공": 8}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_MEP1", "nm": "★1층 벽체 설비·전기 매립", "sub": "슬리브·배관·박스", "dur": 1, "dep": ["F1_WALLRE"], "cat": "mep_pre", "cp": 1, "tasks": ["★설비 슬리브·배관 설치", "★전기 박스·배관 설치"], "crew": "설비공:2,전기공:2", "mat": "슬리브:1,CD관:1", "cure": 0, "areaBase": 390, "baseCrew": {"설비공": 2, "전기공": 2}, "fixCrew": {}, "cap": {"설비공": 4, "전기공": 4}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_INFW", "nm": "1층 내부벽체·계단 거푸집", "sub": "내부면 거푸집(다일)", "dur": 5, "dep": ["F1_MEP1"], "cat": "struct", "cp": 1, "tasks": ["내부면 벽체 거푸집 설치", "계단부 거푸집 설치"], "crew": "목공:5", "mat": "거푸집:1", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 5}, "fixCrew": {}, "cap": {"목공": 8}, "prop": true, "baseDur": 5, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_SLABFW", "nm": "1층 보·슬래브 거푸집", "sub": "제작·인양·설치+동바리", "dur": 3, "dep": ["F1_INFW"], "cat": "struct", "cp": 1, "tasks": ["가설재 동바리 반입", "보·슬래브 거푸집 제작", "크레인 인양·설치", "설치 마무리"], "crew": "목공:6,크레인:1", "mat": "거푸집:1,동바리:1", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 6}, "fixCrew": {"크레인": 1}, "cap": {"목공": 10}, "prop": true, "baseDur": 3, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_SLABRE", "nm": "1층 슬래브·보 철근", "sub": "인양·가공·조립", "dur": 2, "dep": ["F1_SLABFW"], "cat": "struct", "cp": 1, "tasks": ["철근 인양", "슬래브·보 철근 가공", "철근 조립"], "crew": "철근공:5,크레인:1", "mat": "철근:1", "cure": 0, "areaBase": 390, "baseCrew": {"철근공": 5}, "fixCrew": {"크레인": 1}, "cap": {"철근공": 8}, "prop": true, "baseDur": 2, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_MEP2", "nm": "★1층 슬래브 설비·전기 매립", "sub": "슬리브·박스", "dur": 1, "dep": ["F1_SLABRE"], "cat": "mep_pre", "cp": 1, "tasks": ["★슬래브 설비 슬리브·배관", "★전기 박스·배관"], "crew": "설비공:2,전기공:2", "mat": "슬리브:1,CD관:1", "cure": 0, "areaBase": 390, "baseCrew": {"설비공": 2, "전기공": 2}, "fixCrew": {}, "cap": {"설비공": 4, "전기공": 4}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_FIX", "nm": "1층 거푸집 보강·마무리", "sub": "보강+계단 마무리", "dur": 1, "dep": ["F1_MEP2"], "cat": "struct", "cp": 1, "tasks": ["거푸집 보강", "계단부 거푸집 마무리"], "crew": "목공:4", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 4}, "fixCrew": {}, "cap": {"목공": 6}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_CON", "nm": "1층 벽체·보·슬래브 타설", "sub": "타설+양생1일", "dur": 1, "dep": ["F1_FIX"], "cat": "struct", "cp": 1, "tasks": ["펌프카·신호수 배치", "벽체·보·슬래브 콘크리트 타설", "바이브레이터 다짐", "양생(1일)"], "crew": "타설공:6,목공:2,신호수:1,펌프카:1", "mat": "레미콘27MPa:1", "cure": 1, "areaBase": 390, "baseCrew": {"타설공": 6, "목공": 2}, "fixCrew": {"신호수": 1, "펌프카": 1}, "cap": {"타설공": 10, "목공": 4}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F1_STRIP", "nm": "1층 벽체 거푸집 해체", "sub": "해체·정리", "dur": 1, "dep": ["F1_CON"], "cat": "struct", "cp": 1, "tasks": ["1층 벽체 거푸집 해체", "정리"], "crew": "목공:4", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 4}, "fixCrew": {}, "cap": {"목공": 6}, "prop": true, "baseDur": 1, "offset": 1, "lock": "", "status": "todo"}, {"id": "F2_LAYOUT", "nm": "2층 먹메김·외부거푸집 준비", "sub": "먹메김+수평목", "dur": 1, "dep": ["F1_STRIP"], "cat": "struct", "cp": 1, "tasks": ["2층 바닥 먹메김", "수평목 설치", "외부벽체 대형거푸집 인양 준비"], "crew": "목공:4", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 4}, "fixCrew": {}, "cap": {"목공": 8}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_OUTFW", "nm": "2층 외부벽체 대형거푸집", "sub": "인양설치+철근반입", "dur": 1, "dep": ["F2_LAYOUT"], "cat": "struct", "cp": 1, "tasks": ["외부벽체 대형거푸집 인양·설치", "철근·가설재 크레인 인양", "철근 반입"], "crew": "목공:5,크레인:1", "mat": "거푸집:1", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 5}, "fixCrew": {"크레인": 1}, "cap": {"목공": 8}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_OPEN", "nm": "2층 외부면·창호개구부 거푸집", "sub": "개구부 거푸집", "dur": 1, "dep": ["F2_OUTFW"], "cat": "struct", "cp": 1, "tasks": ["외부면 벽체 거푸집 설치", "창호 개구부 거푸집"], "crew": "목공:4", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 4}, "fixCrew": {}, "cap": {"목공": 6}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_WALLRE", "nm": "2층 벽체 철근 가공·조립", "sub": "벽체 배근", "dur": 1, "dep": ["F2_OPEN"], "cat": "struct", "cp": 1, "tasks": ["2층 벽체 철근 가공", "벽체 철근 조립"], "crew": "철근공:5", "mat": "철근:1", "cure": 0, "areaBase": 390, "baseCrew": {"철근공": 5}, "fixCrew": {}, "cap": {"철근공": 8}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_MEP1", "nm": "★2층 벽체 설비·전기 매립", "sub": "박스·배관", "dur": 1, "dep": ["F2_WALLRE"], "cat": "mep_pre", "cp": 1, "tasks": ["★전기 박스·배관 설치", "★설비 배관 설치"], "crew": "설비공:2,전기공:2", "mat": "슬리브:1,CD관:1", "cure": 0, "areaBase": 390, "baseCrew": {"설비공": 2, "전기공": 2}, "fixCrew": {}, "cap": {"설비공": 4, "전기공": 4}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_INFW", "nm": "2층 내부벽체 거푸집", "sub": "내부면 거푸집(다일)", "dur": 7, "dep": ["F2_MEP1"], "cat": "struct", "cp": 1, "tasks": ["2층 내부면 벽체 거푸집 설치"], "crew": "목공:5", "mat": "거푸집:1", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 5}, "fixCrew": {}, "cap": {"목공": 8}, "prop": true, "baseDur": 7, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_ROOFFW", "nm": "지붕 슬래브 동바리·거푸집", "sub": "동바리+합판거푸집", "dur": 4, "dep": ["F2_INFW"], "cat": "struct", "cp": 1, "tasks": ["지붕 슬래브 동바리 설치", "지붕 슬래브 합판 거푸집 설치"], "crew": "목공:6", "mat": "거푸집:1,동바리:1", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 6}, "fixCrew": {}, "cap": {"목공": 10}, "prop": true, "baseDur": 4, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_SLABRE", "nm": "지붕 슬래브·보 철근", "sub": "인양·가공·조립", "dur": 2, "dep": ["F2_ROOFFW"], "cat": "struct", "cp": 1, "tasks": ["철근 인양", "슬래브·보 철근 가공·조립"], "crew": "철근공:5,크레인:1", "mat": "철근:1", "cure": 0, "areaBase": 390, "baseCrew": {"철근공": 5}, "fixCrew": {"크레인": 1}, "cap": {"철근공": 8}, "prop": true, "baseDur": 2, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_MEP2", "nm": "★지붕 설비·전기 매립", "sub": "슬리브·박스", "dur": 1, "dep": ["F2_SLABRE"], "cat": "mep_pre", "cp": 1, "tasks": ["★지붕 설비 슬리브·배관", "★전기 박스·배관"], "crew": "설비공:2,전기공:2", "mat": "슬리브:1,CD관:1", "cure": 0, "areaBase": 390, "baseCrew": {"설비공": 2, "전기공": 2}, "fixCrew": {}, "cap": {"설비공": 4, "전기공": 4}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_FIX", "nm": "지붕 거푸집 보강·마무리", "sub": "보강+마무리", "dur": 1, "dep": ["F2_MEP2"], "cat": "struct", "cp": 1, "tasks": ["거푸집 보강", "마무리 작업"], "crew": "목공:4", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 4}, "fixCrew": {}, "cap": {"목공": 6}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_CON", "nm": "2층 벽체·슬래브 타설", "sub": "타설+양생1일", "dur": 1, "dep": ["F2_FIX"], "cat": "struct", "cp": 1, "tasks": ["펌프카·신호수 배치", "2층 벽체·슬래브 콘크리트 타설", "다짐", "양생(1일)"], "crew": "타설공:6,목공:2,신호수:1,펌프카:1", "mat": "레미콘27MPa:1", "cure": 1, "areaBase": 390, "baseCrew": {"타설공": 6, "목공": 2}, "fixCrew": {"신호수": 1, "펌프카": 1}, "cap": {"타설공": 10, "목공": 4}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_STRIP", "nm": "2층 벽체 거푸집 해체", "sub": "해체·정리", "dur": 2, "dep": ["F2_CON"], "cat": "struct", "cp": 1, "tasks": ["2층 벽체 거푸집 해체·정리"], "crew": "목공:5", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 5}, "fixCrew": {}, "cap": {"목공": 8}, "prop": true, "baseDur": 2, "offset": 1, "lock": "", "status": "todo"}, {"id": "F1_SLABSTRIP", "nm": "1층 슬래브 동바리·거푸집 해체", "sub": "동바리·합판 해체", "dur": 1, "dep": ["F2_STRIP"], "cat": "struct", "cp": 0, "tasks": ["1층 슬래브 동바리 해체", "슬래브 합판 거푸집 해체·정리"], "crew": "목공:4", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 4}, "fixCrew": {}, "cap": {"목공": 6}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}, {"id": "MAT_OUT1", "nm": "가설재·목자재 반출", "sub": "반출 정리", "dur": 2, "dep": ["F1_SLABSTRIP"], "cat": "struct", "cp": 0, "tasks": ["가설재·목자재 반출 정리"], "crew": "목공:3", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 3}, "fixCrew": {}, "cap": {"목공": 5}, "prop": true, "baseDur": 2, "offset": 0, "lock": "", "status": "todo"}, {"id": "F2_SLABSTRIP", "nm": "2층 슬래브 동바리·거푸집 해체", "sub": "양생후 해체", "dur": 1, "dep": ["F2_CON", "MAT_OUT1"], "cat": "struct", "cp": 1, "tasks": ["★2차 타설 충분 양생 확인", "2층 슬래브 동바리 해체", "슬래브 합판 거푸집 해체·정리"], "crew": "목공:4", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 4}, "fixCrew": {}, "cap": {"목공": 6}, "prop": true, "baseDur": 1, "offset": 1, "lock": "", "status": "todo"}, {"id": "MAT_OUT2", "nm": "가설재 반출·현장정리", "sub": "폐목 반출·정리", "dur": 1, "dep": ["F2_SLABSTRIP"], "cat": "struct", "cp": 1, "tasks": ["가설재 반출", "현장 정리", "폐목재 반출"], "crew": "목공:3", "mat": "", "cure": 0, "areaBase": 390, "baseCrew": {"목공": 3}, "fixCrew": {}, "cap": {"목공": 5}, "prop": true, "baseDur": 1, "offset": 0, "lock": "", "status": "todo"}];
+TEMPLATES.blank=[
+{id:"P1",nm:"공정 1",sub:"첫 공정 - 클릭하여 편집",dur:5,dep:[],cat:"prep",cp:1,tasks:["세부작업 1","세부작업 2"],crew:"인력:1",mat:""}
+];
+
+// ================================================================
+// STORAGE — 프로젝트 목록 + 각 프로젝트 데이터
+// ================================================================
+var STORE_KEY="boc_projects_v1";
+var projects=[];      // [{id, name, addr, area, floors, struct, startDate, tmpl, note, created, phases:[...]}]
+var currentProj=null; // 현재 열린 프로젝트
+var editIdx=-1, DPX=26;
+
+function loadStore(){
+  try{var raw=localStorage.getItem(STORE_KEY);if(raw)projects=JSON.parse(raw)}catch(e){projects=[]}
+  if(!Array.isArray(projects))projects=[];
+}
+function saveStore(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){console.warn("저장실패",e)}
+  cloudPush(STORE_KEY,projects);
+  if(!_histLock)histPush();
+}
+
+// ── 되돌리기/다시실행 (Ctrl+Z / Ctrl+Shift+Z) ──
+var _undo=[], _redo=[], _cur=null, _histLock=false;
+function _snap(){ return JSON.stringify(currentProj.phases,function(k,v){return k.charAt(0)==="_"?undefined:v}); }
+function histInit(){ _cur=currentProj?_snap():null; _undo=[]; _redo=[]; }
+function histPush(){
+  if(!currentProj)return;
+  var s=_snap();
+  if(s===_cur)return;            // 변화 없음
+  if(_cur!==null)_undo.push(_cur);
+  _cur=s; _redo=[];
+  if(_undo.length>200)_undo.shift();
+}
+function histApply(s){
+  _histLock=true;
+  currentProj.phases=JSON.parse(s);
+  recalc(); saveStore();
+  _histLock=false;
+}
+function histUndo(){
+  if(!currentProj||!_undo.length){toast("되돌릴 작업이 없습니다");return}
+  _redo.push(_cur); _cur=_undo.pop();
+  histApply(_cur); toast("↶ 실행취소 ("+_undo.length+")");
+}
+function histRedo(){
+  if(!currentProj||!_redo.length){toast("다시 실행할 작업이 없습니다");return}
+  _undo.push(_cur); _cur=_redo.pop();
+  histApply(_cur); toast("↷ 다시실행 ("+_redo.length+")");
+}
+// ── 토스트 ──
+function toast(msg){
+  var t=document.getElementById("toastEl");
+  if(!t){t=document.createElement("div");t.id="toastEl";document.body.appendChild(t)}
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(window._toastT);
+  window._toastT=setTimeout(function(){t.classList.remove("show")},1500);
+}
+
+// ── 사용자 정의 템플릿 ──
+var UTMPL_KEY="boc_user_templates_v1";
+var userTemplates={}; // {key:{name,phases,created}}
+function loadUserTemplates(){
+  try{var raw=localStorage.getItem(UTMPL_KEY);if(raw)userTemplates=JSON.parse(raw)}catch(e){userTemplates={}}
+  if(typeof userTemplates!=="object"||!userTemplates)userTemplates={};
+}
+function saveUserTemplates(){
+  try{localStorage.setItem(UTMPL_KEY,JSON.stringify(userTemplates))}catch(e){console.warn("템플릿 저장실패",e)}
+  cloudPush(UTMPL_KEY,userTemplates);
+}
+// 현재 공정표를 내 템플릿으로 저장
+function saveAsTemplate(){
+  if(!currentProj||!currentProj.phases.length){alert("저장할 공정표가 없습니다");return}
+  var nm=prompt("템플릿 이름을 입력하세요:",currentProj.name+" 템플릿");
+  if(!nm)return;
+  nm=nm.trim();if(!nm)return;
+  // 중복 이름 확인
+  var exists=Object.keys(userTemplates).find(function(k){return userTemplates[k].name===nm});
+  if(exists&&!confirm('"'+nm+'" 템플릿이 이미 있습니다. 덮어쓸까요?'))return;
+  var key=exists||("ut_"+Date.now());
+  // 진행상태·잠금 초기화한 깨끗한 공정 복사 (템플릿이므로)
+  var clean=JSON.parse(JSON.stringify(currentProj.phases)).map(function(p){
+    p.status="todo";p.lock="";return p;
+  });
+  userTemplates[key]={name:nm,phases:clean,created:new Date().toISOString(),area:currentProj.area||""};
+  saveUserTemplates();
+  alert('"'+nm+'" 템플릿으로 저장했습니다 ('+clean.length+'개 공정).\n새 프로젝트 만들 때 선택할 수 있습니다.');
+}
+// 사용자 템플릿 삭제
+function deleteUserTemplate(key){
+  if(!userTemplates[key])return;
+  if(!confirm('"'+userTemplates[key].name+'" 템플릿을 삭제할까요?'))return;
+  delete userTemplates[key];
+  saveUserTemplates();
+  refreshTmplDropdown();
+  renderTmplManager();
+}
+// 새 프로젝트 모달의 템플릿 드롭다운 갱신 (기본+사용자)
+function refreshTmplDropdown(){
+  var sel=document.getElementById("np_tmpl");
+  if(!sel)return;
+  var cur=sel.value;
+  // 기본 옵션 (고정)
+  var base='<option value="rc_new">RC 신축 (지내력검사~준공, 65공정)</option>'+
+    '<option value="frame_rc">RC 골조만 (이팀장 순서, 면적연동, 30공정)</option>'+
+    '<option value="interior">실내건축 (철거~인도, 34공정)</option>'+
+    '<option value="ssangyong">⭐ 쌍용동 실내건축 (현장 실측, 29공정)</option>'+
+    '<option value="rc_full">RC신축 전체 (신축~준공 통합)</option>'+
+    '<option value="partial">부분시공 (욕실+주방, 9공정)</option>'+
+    '<option value="blank">빈 템플릿 (직접 작성)</option>';
+  // 사용자 템플릿
+  var keys=Object.keys(userTemplates);
+  if(keys.length){
+    base+='<option disabled>──── 내 템플릿 ────</option>';
+    keys.forEach(function(k){
+      base+='<option value="'+k+'">⭐ '+esc(userTemplates[k].name)+' ('+userTemplates[k].phases.length+'공정)</option>';
+    });
+  }
+  sel.innerHTML=base;
+  if(cur)sel.value=cur;
+}
+
+// ================================================================
+// PROJECT LIST VIEW
+// ================================================================
+function renderProjects(){
+  var grid=document.getElementById("projGrid");
+  var h='';
+  projects.forEach(function(p,i){
+    var ti=TMPL_INFO[p.tmpl]||TMPL_INFO.blank;
+    var phaseCount=p.phases?p.phases.length:0;
+    h+='<div class="proj-card" onclick="openProject('+i+')">';
+    h+='<span class="tmpl-tag" style="background:'+ti.b+';color:'+ti.c+'">'+ti.n+'</span>';
+    h+='<h3>'+esc(p.name)+'</h3>';
+    h+='<div class="addr">'+esc(p.addr||'')+'</div>';
+    h+='<div class="meta">';
+    if(p.area)h+='<span>'+p.area+'㎡</span>';
+    if(p.floors)h+='<span>'+esc(p.floors)+'</span>';
+    if(p.struct)h+='<span>'+esc(p.struct)+'</span>';
+    h+='<span>착공 '+p.startDate+'</span>';
+    h+='<span>'+phaseCount+'개 공정</span>';
+    h+='</div>';
+    h+='<span class="del-x" onclick="event.stopPropagation();deleteProject('+i+')">✕</span>';
+    h+='</div>';
+  });
+  h+='<div class="proj-card new-card" onclick="openNewProj()">+ 새 프로젝트</div>';
+  var utCount=Object.keys(userTemplates).length;
+  h+='<div class="proj-card new-card" style="border-color:#c9a84c;color:#c9a84c" onclick="openTmplManager()">📑 내 템플릿 관리'+(utCount?' ('+utCount+')':'')+'</div>';
+  grid.innerHTML=h;
+}
+// 템플릿 관리 모달
+function openTmplManager(){
+  renderTmplManager();
+  document.getElementById("tmplMgr").classList.add("open");
+}
+function closeTmplManager(){document.getElementById("tmplMgr").classList.remove("open")}
+function renderTmplManager(){
+  var el=document.getElementById("tmplMgrList");
+  var keys=Object.keys(userTemplates);
+  if(!keys.length){el.innerHTML='<p style="color:#888;padding:20px;text-align:center">저장된 내 템플릿이 없습니다.<br><br>공정표를 연 뒤 상단의 <b>📑 템플릿 저장</b> 버튼으로<br>현재 공정표를 템플릿으로 저장할 수 있습니다.</p>';return}
+  var h='';
+  keys.forEach(function(k){
+    var t=userTemplates[k];
+    var d=t.created?new Date(t.created).toLocaleDateString("ko-KR"):"";
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #e5e2d8;border-radius:6px;margin-bottom:8px">';
+    h+='<div><div style="font-weight:700">⭐ '+esc(t.name)+'</div><div style="font-size:11px;color:#888;margin-top:2px">'+t.phases.length+'개 공정'+(t.area?' · 기준 '+t.area+'㎡':'')+' · '+d+'</div></div>';
+    h+='<button class="btn btn-r" style="font-size:11px;padding:5px 10px" onclick="deleteUserTemplate(\''+k+'\')">삭제</button>';
+    h+='</div>';
+  });
+  el.innerHTML=h;
+}
+
+function esc(s){return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function openNewProj(){
+  document.getElementById("np_name").value="";
+  document.getElementById("np_addr").value="";
+  document.getElementById("np_area").value="";document.getElementById("np_area_p").value="";
+  document.getElementById("np_floors").value="";
+  document.getElementById("np_struct").value="";
+  document.getElementById("np_start").value=new Date().toISOString().slice(0,10);
+  refreshTmplDropdown();
+  document.getElementById("np_tmpl").value="rc_new";
+  document.getElementById("np_note").value="";
+  document.getElementById("newProjModal").classList.add("open");
+}
+function closeNewProj(){document.getElementById("newProjModal").classList.remove("open")}
+
+function createProject(){
+  var name=document.getElementById("np_name").value.trim();
+  var start=document.getElementById("np_start").value;
+  if(!name){alert("현장명을 입력하세요");return}
+  if(!start){alert("착공일을 선택하세요");return}
+  var tmpl=document.getElementById("np_tmpl").value;
+  // 템플릿 소스: 기본 TEMPLATES 또는 사용자 템플릿
+  var srcPhases;
+  if(TEMPLATES[tmpl])srcPhases=TEMPLATES[tmpl];
+  else if(userTemplates[tmpl])srcPhases=userTemplates[tmpl].phases;
+  else srcPhases=TEMPLATES.blank;
+  var proj={
+    id:"prj_"+Date.now(),
+    name:name,
+    addr:document.getElementById("np_addr").value.trim(),
+    area:document.getElementById("np_area").value,
+    floors:document.getElementById("np_floors").value.trim(),
+    struct:document.getElementById("np_struct").value.trim(),
+    startDate:start,
+    tmpl:tmpl,
+    note:document.getElementById("np_note").value.trim(),
+    created:new Date().toISOString(),
+    phases:JSON.parse(JSON.stringify(srcPhases))
+  };
+  projects.push(proj);
+  saveStore();
+  closeNewProj();
+  renderProjects();
+  openProject(projects.length-1);
+}
+
+function deleteProject(i){
+  if(!confirm('"'+projects[i].name+'" 프로젝트를 삭제하시겠습니까?\n복구할 수 없습니다.'))return;
+  projects.splice(i,1);
+  saveStore();
+  renderProjects();
+}
+
+function openProject(i){
+  currentProj=projects[i];
+  ensureBaseline();
+  histInit();
+  selectedRow=-1;
+  document.body.classList.add("sched-mode");
+  document.getElementById("projectView").style.display="none";
+  document.getElementById("scheduleView").style.display="";
+  document.getElementById("hdrTitle").textContent=currentProj.name;
+  var sub=[currentProj.addr,currentProj.struct,currentProj.floors,currentProj.area?currentProj.area+"㎡":""].filter(Boolean).join(" | ");
+  document.getElementById("hdrSub").textContent=sub||"BOC 공정관리";
+  document.getElementById("printTitle1").textContent="📊 간트차트 — "+currentProj.name;
+  document.getElementById("startDate").value=currentProj.startDate;
+  document.getElementById("areaInput").value=currentProj.area||"";
+  var _pm=parseFloat(currentProj.area);document.getElementById("areaPyeong").value=isNaN(_pm)?"":(_pm/3.305785).toFixed(2);
+  var sf=parseFloat(currentProj.speedFactor)||1;
+  document.getElementById("speedInput").value=sf;
+  document.getElementById("speedVal").textContent=(sf*100).toFixed(0)+"%";
+  var hint=document.getElementById("areaHint");
+  var hasScale=currentProj.phases.some(function(p){return p.baseCrew});
+  if(hint)hint.textContent=hasScale?"※ 인력 고정·일수 자동조정":"";
+  applyAreaScaling();
+  recalc();
+}
+
+function backToList(){
+  saveStore();
+  currentProj=null;
+  document.body.classList.remove("sched-mode");
+  document.getElementById("scheduleView").style.display="none";
+  document.getElementById("projectView").style.display="block";
+  document.getElementById("hdrTitle").textContent="BOC 공정관리 시스템";
+  document.getElementById("hdrSub").textContent="ECOREAN | 프로젝트별 공정표 관리 | 템플릿 기반 생성";
+  renderProjects();
+}
+
+function updateStartDate(){
+  if(!currentProj)return;
+  currentProj.startDate=document.getElementById("startDate").value;
+  saveStore();
+  recalc();
+}
+
+// ================================================================
+// BACKUP / RESTORE (전체)
+// ================================================================
+function exportAll(){
+  var blob=new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),projects:projects},null,2)],{type:"application/json"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="BOC_전체백업_"+new Date().toISOString().slice(0,10)+".json";
+  a.click();
+}
+function importAll(ev){
+  var f=ev.target.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(e){
+    try{
+      var d=JSON.parse(e.target.result);
+      if(d.projects&&Array.isArray(d.projects)){
+        if(confirm("백업의 "+d.projects.length+"개 프로젝트로 교체하시겠습니까?\n(취소하면 기존에 추가됩니다)")){
+          projects=d.projects;
+        }else{
+          projects=projects.concat(d.projects);
+        }
+        saveStore();renderProjects();
+        alert("복원 완료: "+projects.length+"개 프로젝트");
+      }else if(d.phases){
+        // 단일 프로젝트 파일
+        var proj={id:"prj_"+Date.now(),name:d.name||"가져온 프로젝트",addr:d.addr||"",area:d.area||"",floors:d.floors||"",struct:d.struct||"",startDate:d.startDate||new Date().toISOString().slice(0,10),tmpl:d.tmpl||"blank",note:"",created:new Date().toISOString(),phases:d.phases};
+        projects.push(proj);saveStore();renderProjects();
+        alert("프로젝트 가져오기 완료: "+proj.name);
+      }else{alert("올바른 백업 파일이 아닙니다")}
+    }catch(err){alert("파일 오류: "+err.message)}
+  };
+  r.readAsText(f);
+  ev.target.value="";
+}
+function saveProjectFile(){
+  if(!currentProj)return;
+  var data={name:currentProj.name,addr:currentProj.addr,area:currentProj.area,floors:currentProj.floors,struct:currentProj.struct,startDate:currentProj.startDate,tmpl:currentProj.tmpl,phases:currentProj.phases};
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=currentProj.name.replace(/[\/\\:*?"<>|]/g,"_")+"_공정표.json";
+  a.click();
+}
+
+// ================================================================
+// SCHEDULE CALCULATION
+// ================================================================
+function getSD(){return new Date(document.getElementById("startDate").value+"T00:00:00")}
+var WD=["일","월","화","수","목","금","토"];
+function wd(d){return WD[d.getDay()]}
+function fms(d){return(d.getMonth()+1)+"/"+d.getDate()+"("+WD[d.getDay()]+")"}
+function fmf(d){return d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0")+"("+WD[d.getDay()]+")"}
+function fmLock(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function updateTodayBadge(){var el=document.getElementById("todayBadge");if(el)el.textContent="📅 오늘 "+fmf(new Date())}
+function showTab(id,el){document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("on")});document.querySelectorAll(".panel").forEach(function(p){p.classList.remove("on")});el.classList.add("on");document.getElementById("p_"+id).classList.add("on")}
+
+// 공정명 인라인 편집 (더블클릭)
+function startRenamePhase(ev,i){
+  ev.stopPropagation();
+  var span=ev.target;
+  var p=currentProj.phases[i];
+  var inp=document.createElement("input");
+  inp.type="text";inp.value=p.nm;inp.className="rename-input";
+  inp.onclick=function(e){e.stopPropagation()};
+  inp.onkeydown=function(e){
+    if(e.key==="Enter"){inp.blur()}
+    else if(e.key==="Escape"){inp.value=p.nm;inp.blur()}
+  };
+  inp.onblur=function(){
+    var v=inp.value.trim();
+    if(v&&v!==p.nm){p.nm=v;recalc()}
+    else{recalc()}
+  };
+  span.replaceWith(inp);
+  inp.focus();inp.select();
+}
+// 상태 순환: 미착수 → 진행중 → 완료 → 미착수
+function cycleStatus(i){
+  var p=currentProj.phases[i];
+  var s=p.status||"todo";
+  p.status=s==="todo"?"prog":s==="prog"?"done":"todo";
+  recalc(); saveStore();
+}
+// 순환 의존 탐지 (DFS) — 있으면 경로 배열, 없으면 null
+function findCycle(phases){
+  var map={};phases.forEach(function(p){map[p.id]=p.dep||[]});
+  var state={}; // 0=미방문,1=방문중,2=완료
+  var path=[];
+  function dfs(id){
+    if(state[id]===1){path.push(id);return true}
+    if(state[id]===2||!map[id])return false;
+    state[id]=1;path.push(id);
+    for(var i=0;i<map[id].length;i++){
+      if(dfs(map[id][i]))return true;
+    }
+    path.pop();state[id]=2;return false;
+  }
+  for(var k in map){
+    path=[];
+    if(dfs(k)){
+      // path에서 순환 구간만 추출
+      var last=path[path.length-1];
+      var start=path.indexOf(last);
+      return path.slice(start);
+    }
+  }
+  return null;
+}
+// 공정 행 순서 이동 (위/아래)
+function movePhase(i,dir){
+  var arr=currentProj.phases;
+  var j=i+dir;
+  if(j<0||j>=arr.length)return;
+  var tmp=arr[i];arr[i]=arr[j];arr[j]=tmp;
+  recalc();
+}
+// ── 노션식 행 드래그-드롭 순서 이동 ──
+var rowDrag={from:-1,to:-1,pos:""};
+function attachRowDrag(){
+  var wrap=document.getElementById("ganttWrap");
+  if(!wrap)return;
+  // 드래그 시작 (grip에서만)
+  wrap.querySelectorAll(".drag-grip").forEach(function(g){
+    g.ondragstart=function(e){
+      rowDrag.from=parseInt(g.getAttribute("data-grip"));
+      rowDrag.to=-1;
+      e.dataTransfer.effectAllowed="move";
+      e.dataTransfer.setData("text/plain",rowDrag.from);
+      var tr=g.closest("tr.prow");
+      if(tr)tr.classList.add("row-dragging");
+    };
+    g.ondragend=function(e){
+      clearRowMarks();
+      var tr=g.closest("tr.prow");
+      if(tr)tr.classList.remove("row-dragging");
+      rowDrag={from:-1,to:-1,pos:""};
+    };
+  });
+  // 드롭 대상 (각 행)
+  wrap.querySelectorAll("tr.prow").forEach(function(tr){
+    tr.ondragover=function(e){
+      if(rowDrag.from<0)return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect="move";
+      var idx=parseInt(tr.getAttribute("data-row"));
+      if(idx===rowDrag.from)return clearRowMarks();
+      var rect=tr.getBoundingClientRect();
+      var above=(e.clientY-rect.top)<rect.height/2;
+      clearRowMarks();
+      tr.classList.add(above?"drop-above":"drop-below");
+      rowDrag.to=idx;rowDrag.pos=above?"above":"below";
+    };
+    tr.ondrop=function(e){
+      e.preventDefault();
+      if(rowDrag.from<0||rowDrag.to<0){clearRowMarks();return}
+      doRowMove(rowDrag.from,rowDrag.to,rowDrag.pos);
+    };
+  });
+}
+function clearRowMarks(){
+  document.querySelectorAll("tr.prow.drop-above,tr.prow.drop-below").forEach(function(t){
+    t.classList.remove("drop-above","drop-below");
+  });
+}
+function doRowMove(from,to,pos){
+  var arr=currentProj.phases;
+  if(from<0||from>=arr.length)return;
+  var item=arr.splice(from,1)[0];
+  // splice 후 to 인덱스 보정
+  var target=to;
+  if(from<to)target--;          // 앞에서 빼면 뒤 인덱스 -1
+  if(pos==="below")target++;    // 아래에 놓기
+  if(target<0)target=0;
+  if(target>arr.length)target=arr.length;
+  arr.splice(target,0,item);
+  recalc();
+}
+// 일수 빠른 조정
+function bumpDur(i,delta){
+  var p=currentProj.phases[i];
+  if(p.locked){toast("🔒 잠긴 공정입니다");return}
+  p.dur=Math.max(1,(parseInt(p.dur)||1)+delta);
+  recalc(); saveStore();
+}
+// 공정 잠금/해제 — 잠그면 현재 시작일을 절대날짜로 고정(의존성 변동에도 안 움직임)
+function toggleLock(i){
+  var p=currentProj.phases[i];
+  freezeAll();                      // 다른 공정들 현재 위치 고정 → 튕김 방지
+  p.locked=!p.locked;
+  if(p._ds)p.lock=fmLock(p._ds);    // 위치는 잠금/해제 모두 현재 자리에 고정 (해제해도 안 튕김)
+  toast((p.locked?"🔒 잠금: ":"🔓 잠금 해제: ")+p.nm);
+  recalc(); saveStore();
+}
+// 전체 일괄: 모두 미착수로 리셋
+function resetAllStatus(){
+  if(!confirm("모든 공정 진행상태를 미착수로 초기화할까요?"))return;
+  currentProj.phases.forEach(function(p){p.status="todo"});
+  recalc();
+}
+// ── 간트 인쇄 ──
+// 용지 크기(mm) [가로,세로]
+var PAPER={A4:[297,210],A3:[420,297],A2:[594,420]};
+var MM2PX=3.78; // 96dpi 근사
+function paperPx(){
+  var orient=document.getElementById("pOrient").value;
+  var size=document.getElementById("pSize").value;
+  var d=PAPER[size]||PAPER.A3;
+  var wmm=(orient==="landscape"?d[0]:d[1])-16; // 좌우 margin 8mm씩
+  var hmm=(orient==="landscape"?d[1]:d[0])-16;
+  return {w:wmm*MM2PX,h:hmm*MM2PX,wmm:wmm,hmm:hmm};
+}
+function ganttSize(){
+  var tbl=document.querySelector("#ganttWrap table.gantt");
+  if(!tbl)return{w:0,h:0};
+  return {w:tbl.scrollWidth,h:tbl.scrollHeight};
+}
+function openPrintBox(){
+  if(!currentProj){alert("공정표를 먼저 여세요");return}
+  document.getElementById("printBox").classList.add("open");
+  setPScale(100);
+}
+function closePrintBox(){document.getElementById("printBox").classList.remove("open")}
+function setPScale(v){
+  v=Math.round(v);
+  document.getElementById("pScale").value=v;
+  document.getElementById("pScaleVal").textContent=v+"%";
+  updatePreview();
+}
+// 한 장 맞춤: 간트 전체가 1페이지에 들어가는 비율
+function fitPScale(){
+  var g=ganttSize(),p=paperPx();
+  if(!g.w)return;
+  var sx=p.w/g.w, sy=p.h/g.h;
+  var scale=Math.floor(Math.min(sx,sy)*100);
+  scale=Math.min(200,Math.max(20,scale));
+  // 분할 끄기 (한장맞춤이므로)
+  document.getElementById("pSplit").checked=false;
+  setPScale(scale);
+}
+// 미리보기 렌더: 실제 간트차트를 축소하여 용지 위에 표시
+function updatePreview(){
+  var box=document.getElementById("printBox");
+  if(!box.classList.contains("open"))return;
+  var scale=parseInt(document.getElementById("pScale").value)/100;
+  var split=document.getElementById("pSplit").checked;
+  var center=document.getElementById("pCenter").checked;
+  var g=ganttSize(),p=paperPx();
+  if(!g.w){return}
+  var gW=g.w*scale, gH=g.h*scale;
+  var cols=split?Math.max(1,Math.ceil(gW/p.w)):1;
+  var rows=split?Math.max(1,Math.ceil(gH/p.h)):1;
+  // 미리보기 영역에 맞춘 축소율
+  var PVW=360;
+  var totalW=cols*p.w, totalH=rows*p.h;
+  var pv=PVW/totalW;
+  if(totalH*pv>300)pv=300/totalH;
+  var wrap=document.getElementById("pvWrap");
+  // 실제 간트 HTML 클론
+  var srcTbl=document.querySelector("#ganttWrap table.gantt");
+  var clone=srcTbl?srcTbl.cloneNode(true):null;
+  var offX=0,offY=0;
+  if(!split&&center){offX=(totalW-gW)/2;if(offX<0)offX=0;offY=(totalH-gH)/2;if(offY<0)offY=0}
+  // 컨테이너
+  var html='<div style="position:relative;width:'+(totalW*pv)+'px;height:'+(totalH*pv)+'px;background:#ccc">';
+  // 페이지 흰 배경
+  for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
+    html+='<div style="position:absolute;left:'+(c*p.w*pv)+'px;top:'+(r*p.h*pv)+'px;width:'+(p.w*pv)+'px;height:'+(p.h*pv)+'px;background:#fff;border:1px solid #999;box-sizing:border-box"></div>';
+  }
+  html+='</div>';
+  wrap.innerHTML=html;
+  // 실제 간트 클론을 축소해서 얹기 (스케일 = pv × 인쇄scale)
+  if(clone){
+    var holder=document.createElement("div");
+    holder.style.cssText="position:absolute;left:"+(offX*pv)+"px;top:"+(offY*pv)+"px;transform:scale("+(pv*scale)+");transform-origin:top left;pointer-events:none";
+    // 클론 내부 sticky 해제 (미리보기에서 겹침 방지)
+    clone.querySelectorAll("th,td").forEach(function(el){el.style.position="static"});
+    clone.style.background="#fff";
+    holder.appendChild(clone);
+    wrap.firstChild.appendChild(holder);
+  }
+  // 분할선
+  if(split&&(cols>1||rows>1)){
+    var cont=wrap.firstChild;
+    for(var c2=1;c2<cols;c2++){var d=document.createElement("div");d.style.cssText="position:absolute;left:"+(c2*p.w*pv)+"px;top:0;width:0;height:"+(totalH*pv)+"px;border-left:1.5px dashed #e24b4a;z-index:5";cont.appendChild(d)}
+    for(var r2=1;r2<rows;r2++){var d2=document.createElement("div");d2.style.cssText="position:absolute;top:"+(r2*p.h*pv)+"px;left:0;height:0;width:"+(totalW*pv)+"px;border-top:1.5px dashed #e24b4a;z-index:5";cont.appendChild(d2)}
+  }
+  // 정보
+  var info=document.getElementById("pInfo");
+  var pages=cols*rows;
+  var txt="간트 원본: "+Math.round(g.w)+"×"+Math.round(g.h)+"px<br>";
+  txt+="비율 "+Math.round(scale*100)+"% → "+Math.round(gW)+"×"+Math.round(gH)+"px<br>";
+  if(split){
+    txt+="<b style='color:#e24b4a'>분할: "+cols+"열 × "+rows+"행 = 총 "+pages+"장</b>";
+  }else{
+    if(gW>p.w+2||gH>p.h+2)txt+="<b style='color:#e24b4a'>⚠ 한 페이지 초과</b> — 비율↓ 또는 분할 인쇄";
+    else txt+="<b style='color:#1d9e75'>✓ 한 페이지에 맞음</b>";
+  }
+  info.innerHTML=txt;
+}
+// ── 전체 인쇄: 간트 + 공정상세 + 자재발주 + 인력투입 (페이지별) ──
+function printAll(){
+  if(!currentProj){alert("공정표를 먼저 여세요");return}
+  recalc(); // 모든 탭(자재·인력·상세) 최신 렌더 보장
+  var old=document.getElementById("printDyn");if(old)old.remove();
+  document.body.classList.remove("print-gantt");
+  document.body.classList.remove("print-split");
+  // 간트가 A3 가로 폭을 넘으면 자동 축소(표는 원본 그대로)
+  var g=ganttSize();
+  var pageW=(420-16)*MM2PX;
+  var scale=(g.w>pageW)?Math.max(0.2,pageW/g.w):1;
+  var st=document.createElement("style");st.id="printDyn";
+  st.textContent='@media print{@page{size:A3 landscape;margin:8mm}'+
+    '#ganttWrap table.gantt{transform:scale('+scale.toFixed(3)+');transform-origin:top left}'+
+    '#ganttWrap{overflow:visible !important}}';
+  document.head.appendChild(st);
+  window.print();
+  setTimeout(function(){var s=document.getElementById("printDyn");if(s)s.remove();},500);
+}
+function doPrintGantt(){
+  var scale=parseInt(document.getElementById("pScale").value)/100;
+  var orient=document.getElementById("pOrient").value;
+  var size=document.getElementById("pSize").value;
+  var split=document.getElementById("pSplit").checked;
+  var center=document.getElementById("pCenter").checked;
+  closePrintBox();
+  var old=document.getElementById("printDyn");if(old)old.remove();
+  var st=document.createElement("style");st.id="printDyn";
+  var css='@media print{@page{size:'+size+' '+orient+';margin:8mm}';
+  css+='#ganttWrap table.gantt{transform:scale('+scale+');transform-origin:top left}';
+  if(split){
+    // 분할: 표를 자연스럽게 흐르게 두고 브라우저가 페이지 넘김 처리
+    // transform-origin top left로 좌상단 기준, 페이지 넘침 허용
+    css+='#ganttWrap{overflow:visible !important}';
+    css+='#p_gantt{text-align:left}';
+  }else{
+    // 단일 페이지: 중앙 정렬 옵션
+    css+='#p_gantt{text-align:'+(center?'center':'left')+'}';
+    if(center)css+='#ganttWrap table.gantt{transform-origin:top center}';
+  }
+  css+='}';
+  st.textContent=css;
+  document.head.appendChild(st);
+  document.body.classList.add("print-gantt");
+  if(split)document.body.classList.add("print-split");
+  window.print();
+  setTimeout(function(){
+    document.body.classList.remove("print-gantt");
+    document.body.classList.remove("print-split");
+  },500);
+}
+// ── 면적 연동: 인원/일수 자동 조정 ──
+// 면적이 바뀌면 baseCrew 메타가 있는 공정의 인원·일수 재계산
+// 기준선 캡처: baseCrew/baseDur(기준 인력·일수)와 areaBaseRef(기준 면적)를 1회 기록
+// → 어떤 템플릿이든 "현재 면적·인력을 기준"으로 면적/인력 연동이 동작하게 함
+function ensureBaseline(){
+  if(!currentProj)return;
+  currentProj.phases.forEach(function(p){
+    if(!p.baseCrew){
+      var bc={};(p.crew||"").split(",").forEach(function(s){var x=s.split(":");var nm=(x[0]||"").trim();if(nm)bc[nm]=parseInt(x[1])||1});
+      p.baseCrew=bc;
+    }
+    if(p.baseDur==null)p.baseDur=p.dur||1;
+  });
+  if(!currentProj.areaBaseRef){var a=parseFloat(currentProj.area);currentProj.areaBaseRef=(a&&a>0)?a:390;}
+}
+function applyAreaScaling(){
+  if(!currentProj)return;
+  ensureBaseline();
+  var area=parseFloat(currentProj.area);
+  var base=parseFloat(currentProj.areaBaseRef)||390;
+  // 일부 공정의 areaBase 우선(이팀장 골조 템플릿 호환)
+  currentProj.phases.forEach(function(p){if(p.areaBase)base=p.areaBase});
+  var ratio=(area&&area>0)?area/base:1;
+  // 공기 단축 배수 (1.0=적정인력, >1=증원해서 단축)
+  var sf=parseFloat(currentProj.speedFactor)||1;
+  if(sf<1)sf=1;if(sf>2.5)sf=2.5;
+  currentProj.phases.forEach(function(p){
+    if(!p.baseCrew)return;
+    var r=(p.prop===false)?1:ratio;
+    var baseDur=p.baseDur||1;
+    // 면적 비례 일수 (인력 고정)
+    var rawDur=baseDur*r;
+    // 인력 증원으로 단축: 증원효율 80% (2배 인력 → 1.6배 속도)
+    if(sf>1){
+      var effSpeed=1+(sf-1)*0.8;
+      rawDur=rawDur/effSpeed;
+    }
+    var dur=Math.max(1,Math.ceil(rawDur));
+    // 타설은 물량 무관 하루 (양생은 cure로 별도)
+    if(/타설/.test(p.nm)&&!/철근|거푸집/.test(p.nm))dur=Math.max(1,baseDur);
+    // 인력 = 적정인력 × 증원배수 (증원시에만)
+    var crew={};
+    for(var job in p.baseCrew){
+      crew[job]=(sf>1)?Math.ceil(p.baseCrew[job]*sf):p.baseCrew[job];
+    }
+    if(p.fixCrew)for(var fj in p.fixCrew)crew[fj]=p.fixCrew[fj];
+    var arr=[];for(var k in crew)arr.push(k+":"+crew[k]);
+    p.crew=arr.join(",");
+    p.dur=dur;
+  });
+}
+function updateSpeed(){
+  if(!currentProj)return;
+  var v=document.getElementById("speedInput").value;
+  currentProj.speedFactor=v;
+  document.getElementById("speedVal").textContent=(parseFloat(v)*100).toFixed(0)+"%";
+  applyAreaScaling();recalc();saveStore();
+}
+function updateArea(){
+  if(!currentProj)return;
+  var v=document.getElementById("areaInput").value;
+  currentProj.area=v;
+  var hasScale=currentProj.phases.some(function(p){return p.baseCrew});
+  applyAreaScaling();
+  recalc();
+  saveStore();
+  // 헤더 면적 표시도 갱신
+  var hint=document.getElementById("areaHint");
+  if(hint){
+    if(!hasScale)hint.textContent="※ 이 템플릿은 면적연동 미지원";
+    else hint.textContent="※ 면적→일수 조정 ("+v+"㎡, 인력 고정)";
+  }
+  // 헤더 부제목의 면적도 갱신
+  var sub=[currentProj.addr,currentProj.struct,currentProj.floors,currentProj.area?currentProj.area+"㎡":""].filter(Boolean).join(" | ");
+  var hs=document.getElementById("hdrSub");if(hs)hs.textContent=sub;
+  // ㎡ → 평 환산 표시 (평 칸을 직접 입력 중이면 건드리지 않음)
+  var pyEl=document.getElementById("areaPyeong");
+  if(pyEl&&document.activeElement!==pyEl){var m=parseFloat(v);pyEl.value=isNaN(m)?"":(m/3.305785).toFixed(2)}
+}
+// 평 입력 → ㎡ 환산 후 면적 반영
+function updateAreaFromPyeong(){
+  var p=parseFloat(document.getElementById("areaPyeong").value);
+  document.getElementById("areaInput").value=isNaN(p)?"":(p*3.305785).toFixed(2);
+  updateArea();
+}
+// 새 프로젝트 모달 ㎡↔평 양방향 환산
+function syncNpPyeong(){var m=parseFloat(document.getElementById("np_area").value);document.getElementById("np_area_p").value=isNaN(m)?"":(m/3.305785).toFixed(2)}
+function syncNpArea(){var p=parseFloat(document.getElementById("np_area_p").value);document.getElementById("np_area").value=isNaN(p)?"":(p*3.305785).toFixed(2)}
+// 화면에 보이는 모든 공정의 현재 시작일을 절대날짜로 고정(핀) — 이후 어떤 작업을 해도 위치가 안 튕김
+function freezeAll(){
+  if(!currentProj)return;
+  currentProj.phases.forEach(function(p){
+    if(!p.lock&&p._ds)p.lock=fmLock(p._ds);
+  });
+}
+function recalc(){
+  if(!currentProj)return;
+  applyCatColors();   // 프로젝트별 사용자 지정 분류색 반영
+  var DATA=currentProj.phases;
+  var sd=getSD(),es={},ef={};
+  DATA.forEach(function(p){es[p.id]=0;ef[p.id]=0});
+  // lock(시작일고정)이 있으면 착공일로부터의 일수로 환산
+  function lockDay(p){
+    if(!p.lock)return null;
+    var ld=new Date(p.lock+"T00:00:00");
+    return Math.round((ld-sd)/864e5);
+  }
+  for(var iter=0;iter<DATA.length*2;iter++)DATA.forEach(function(p){
+    var mx=0;
+    p.dep.forEach(function(d){if(ef[d]>mx)mx=ef[d]});
+    var off=p.offset?parseInt(p.offset):0;       // 착수지연(일)
+    var start=mx+off;
+    var lk=lockDay(p);
+    if(lk!==null)start=lk;                         // 시작일 고정이 최우선
+    if(start>es[p.id]||lk!==null){es[p.id]=start;ef[p.id]=start+p.dur}
+    else if(!ef[p.id])ef[p.id]=es[p.id]+p.dur;
+  });
+  var td=0;DATA.forEach(function(p){if(ef[p.id]>td)td=ef[p.id]});
+  DATA.forEach(function(p){p._sd=es[p.id];p._ed=ef[p.id];p._ds=new Date(sd.getTime()+es[p.id]*864e5);p._de=new Date(sd.getTime()+ef[p.id]*864e5)});
+  renderInfo(td,sd);renderGantt(td,sd);renderDetail();renderMat(sd);renderCrew();
+  saveStore();
+}
+
+function renderInfo(td,sd){
+  var DATA=currentProj.phases;
+  var ed=new Date(sd.getTime()+td*864e5),cp=0,tk=0,md=0;
+  DATA.forEach(function(p){if(p.cp)cp++;tk+=p.tasks.length;if(p.crew)p.crew.split(",").forEach(function(c){md+=(parseInt(c.split(":")[1])||0)*p.dur})});
+  var done=0,prog=0;DATA.forEach(function(p){if(p.status==="done")done++;else if(p.status==="prog")prog++});
+  var pct=DATA.length?Math.round(done/DATA.length*100):0;
+  // 지연 경보: 오늘 기준 시작했어야 하는데 미착수
+  var tw0=new Date();tw0.setHours(0,0,0,0);var delayed=0;
+  DATA.forEach(function(p){if((!p.status||p.status==="todo")&&p._ds&&p._ds<tw0)delayed++});
+  document.getElementById("infoArea").innerHTML='<div class="info-box"><div class="info-l">총 공사기간</div><div class="info-v">'+td+'<span class="info-u"> 일('+Math.ceil(td/30)+'개월)</span></div></div><div class="info-box"><div class="info-l">착공일</div><div class="info-v" style="font-size:14px">'+fmf(sd)+'</div></div><div class="info-box"><div class="info-l">준공예정일</div><div class="info-v" style="font-size:14px">'+fmf(ed)+'</div></div><div class="info-box"><div class="info-l">진행률</div><div class="info-v" style="color:'+(pct===100?"#1d9e75":"#185fa5")+'">'+pct+'<span class="info-u">% ('+done+'/'+DATA.length+')</span></div></div><div class="info-box"><div class="info-l">진행중</div><div class="info-v">'+prog+'<span class="info-u">개</span></div></div><div class="info-box"><div class="info-l">연인원</div><div class="info-v" style="color:#c9a84c">'+md+'<span class="info-u">인일</span></div></div><div class="info-box"><div class="info-l">지연경보</div><div class="info-v" style="color:'+(delayed>0?"#e24b4a":"#888")+'">'+delayed+'<span class="info-u">개</span></div></div>';
+}
+
+function renderGantt(td,sd){
+  var DATA=currentProj.phases;
+  var tw=new Date();tw.setHours(0,0,0,0);
+  var ds=[];for(var i=0;i<td;i++)ds.push(new Date(sd.getTime()+i*864e5));
+  var h='<table class="gantt"><thead><tr>'+
+    '<th class="fix mh lh" rowspan=3 style="position:relative;text-align:center">'+
+      '<button class="hdr-tg left" id="panelTgBtn" onclick="toggleLayerPanel()" title="'+(layerPanelCollapsed?"레이어 패널 펼치기":"레이어 패널 접기")+'">'+(layerPanelCollapsed?"▶":"◀")+'</button>'+
+      '<div class="lh-t">공정명</div><div class="lh-s">상태칩·명칭(클릭=편집)</div>'+
+      '<button class="hdr-tg right" id="colsTgBtn" onclick="toggleCols()" title="'+(colsCollapsed?"일수·기간 펼치기":"일수·기간 접기 (공정명만 보기)")+'">'+(colsCollapsed?"▶":"◀")+'</button>'+
+    '</th>'+
+    '<th class="fix2 mh lh" rowspan=3><div class="lh-t">일수</div><div class="lh-s">−/+ 조정</div></th>'+
+    '<th class="fix3 mh lh" rowspan=3><div class="lh-t">기간</div><div class="lh-s">시작~종료</div></th>';
+  var mi=0;while(mi<ds.length){var cm=ds[mi].getMonth(),cy=ds[mi].getFullYear(),cn=0,j=mi;while(j<ds.length&&ds[j].getMonth()===cm){cn++;j++}h+='<th class="mh" colspan='+cn+' style="min-width:'+cn*DPX+'px">'+cy+'.'+String(cm+1).padStart(2,"0")+'</th>';mi=j}
+  h+='</tr><tr>';mi=0;var wn=1;while(mi<ds.length){var cn=0,j=mi;do{cn++;j++}while(j<ds.length&&ds[j].getDay()!==1);h+='<th class="wkh" colspan='+cn+' style="min-width:'+cn*DPX+'px">'+wn+'주</th>';mi=j;wn++}
+  h+='</tr><tr>';for(var i=0;i<ds.length;i++){var d=ds[i],dw=d.getDay(),sat=dw===6,sun=dw===0,we=sat||sun,f=d.getDate()===1,mo=dw===1;var bs='';if(f)bs='border-left:2px solid #aaa;';else if(mo)bs='border-left:1px solid #ccc;';var dcol=sun?'color:#e24b4a;font-weight:700;':(sat?'color:#2563eb;font-weight:700;':'');var tdy=d.getTime()===tw.getTime();h+='<th class="dayh'+(we?' we':'')+(tdy?' today':'')+'" style="min-width:'+DPX+'px;max-width:'+DPX+'px;'+bs+dcol+'">'+d.getDate()+'<div class="dwl">'+WD[dw]+'</div>'+(tdy?'<div class="today-flag">오늘('+WD[dw]+')</div>':'')+'</th>'}
+  h+='</tr></thead><tbody>';
+  DATA.forEach(function(p,idx){
+  var catBg=CI[p.cat]?CI[p.cat].b:'#f9f9f9';
+  var bg=catBg,cl=p.color||(CI[p.cat]?CI[p.cat].c:'#888');
+  var st=p.status||"todo";
+  var stIcon=st==="done"?'✓':st==="prog"?'◐':'○';
+  var stColor=st==="done"?'#1d9e75':st==="prog"?'#185fa5':'#ccc';
+  var tw1=new Date();tw1.setHours(0,0,0,0);
+  var isLate=(st==="todo")&&p._ds&&p._ds<tw1;
+  var marks='';
+  if(p.lock)marks+='<span title="시작일 고정: '+p.lock+'" style="color:#ba7517;font-size:9px;margin-left:3px">🔒</span>';
+  if(p.offset&&parseInt(p.offset)>0)marks+='<span title="착수지연 '+p.offset+'일" style="color:#888;font-size:9px;margin-left:2px">+'+p.offset+'d</span>';
+  if(isLate)marks+='<span title="지연" style="color:#e24b4a;font-size:9px;margin-left:2px">⚠</span>';
+  var selCls=(selectedRow===idx)?' row-sel':'';
+  h+='<tr class="prow'+selCls+'" draggable="false" data-row="'+idx+'" onclick="selectRow('+idx+')" style="background:'+bg+';--selc:'+cl+'"><td class="fix" style="background:'+bg+';border-left:5px solid '+cl+'">';
+  h+='<div class="fix-inner">';
+  h+='<span class="drag-grip" draggable="'+(p.locked?'false':'true')+'" data-grip="'+idx+'" title="드래그하여 순서 이동" onclick="event.stopPropagation()">⠿</span>';
+  h+='<span class="lock-chip'+(p.locked?' on':'')+'" onclick="event.stopPropagation();toggleLock('+idx+')" title="'+(p.locked?'잠금 해제':'공정 잠금 (이동·기간 고정)')+'">'+(p.locked?'🔒':'🔓')+'</span>';
+  h+='<span class="st-chip" onclick="event.stopPropagation();cycleStatus('+idx+')" title="클릭: 미착수→진행중→완료" style="color:'+stColor+'">'+stIcon+'</span>';
+  h+='<span class="pn'+(p.cp?' is-cp':'')+(st==="done"?' done':'')+'" data-idx="'+idx+'" ondblclick="event.stopPropagation();startRenamePhase(event,'+idx+')" onclick="event.stopPropagation();openEdit('+idx+')" title="클릭=상세편집, 더블클릭=이름수정">'+(p.cp?'<span class="cp-dot"></span>':'')+esc(p.nm)+marks+'</span>';
+  h+='</div></td>';
+  h+='<td class="fix2" style="background:'+bg+'"><div class="dur-box">'+(p.locked?'<span style="font-size:11px;color:#999">'+p.dur+'일 🔒</span>':'<span class="dur-btn" onclick="bumpDur('+idx+',-1)">−</span><input class="dur-edit" type=number min=1 value='+p.dur+' onchange="currentProj.phases['+idx+'].dur=Math.max(1,parseInt(this.value)||1);recalc();saveStore()"><span class="dur-btn" onclick="bumpDur('+idx+',1)">+</span>')+'</div></td>';
+  h+='<td class="fix3" style="background:'+bg+'">'+(p._ds?fms(p._ds):'')+'~'+(p._de?fms(p._de):'')+'</td>';
+  for(var i=0;i<td;i++){var d=ds[i],dw=d.getDay(),sat=dw===6,sun=dw===0,we=sat||sun,f=d.getDate()===1,mo=dw===1;var cls='dc';if(sun)cls+=' sun';else if(sat)cls+=' sat';if(mo)cls+=' wk';if(f)cls+=' mn';var to=Math.floor((tw-sd)/864e5);var tdc=(i===to);if(tdc)cls+=' today-col';var ex='';
+  if(i===p._sd){var bw=p.dur*DPX-2;
+    var dateRange=(p._ds?fms(p._ds):'')+'~'+(p._de?fms(p._de):'');
+    // 바 내부 라벨: 공정명 + 일수 (긴 바)
+    var inLabel=p.dur>=5?esc(p.nm)+' '+p.dur+'일':p.dur>=3?esc(p.nm):'';
+    // 바가 짧으면(2일이하) 정보를 바 오른쪽 빈공간에 오버플로우로 표시
+    var outLabel=p.dur<3?esc(p.nm)+' '+p.dur+'일 ('+dateRange+')':'';
+    var stClass=p.status==="done"?' bar-done':p.status==="prog"?' bar-prog':'';
+    ex+='<div class="gbar'+(p.cp?' is-cp':'')+stClass+(p.locked?' bar-locked':'')+'" data-idx="'+idx+'" style="left:0;width:'+bw+'px;background:'+cl+'" title="좌클릭: 내역 보기 / 우클릭: 편집">'+
+        (p.locked?'':'<div class="rz rz-l" data-mode="resL" data-idx="'+idx+'"></div>')+
+        '<span class="gbar-text">'+(p.locked?'🔒 ':'')+inLabel+'</span>'+
+        (p.locked?'':'<div class="rz rz-r" data-mode="resR" data-idx="'+idx+'"></div>')+
+      '</div>'+
+      (outLabel?'<span class="gbar-out" style="left:'+(bw+5)+'px">'+outLabel+'</span>':'')}
+  var cellZ=(i===p._sd)?';z-index:2':'';
+  h+='<td class="'+cls+'" style="position:relative'+cellZ+'">'+ex+'</td>'}h+='</tr>'});
+  h+='</tbody></table>';var gwEl=document.getElementById("ganttWrap");gwEl.innerHTML=h;
+  gwEl.classList.toggle("cols-collapsed",colsCollapsed);   // 접기 상태 유지
+  renderCatLegend();
+  renderLayerPanel();
+  attachDrag();
+  attachRowDrag();
+}
+// 항상 보이는 세로 레이어 패널 — 전체 분류(레이어)를 목록으로 표시·색상 제어
+var layerPanelCollapsed=false;
+function toggleLayerPanel(){
+  layerPanelCollapsed=!layerPanelCollapsed;
+  var el=document.getElementById("layerPanel");
+  if(el)el.classList.toggle("collapsed",layerPanelCollapsed);
+  var b=document.getElementById("panelTgBtn");
+  if(b){b.textContent=layerPanelCollapsed?"▶":"◀";b.title=layerPanelCollapsed?"레이어 패널 펼치기":"레이어 패널 접기";}
+}
+// 일수·기간 컬럼 접기 (공정명만 노출) — 리렌더 없이 클래스만 토글
+var colsCollapsed=false;
+function toggleCols(){
+  colsCollapsed=!colsCollapsed;
+  var w=document.getElementById("ganttWrap");
+  if(w)w.classList.toggle("cols-collapsed",colsCollapsed);
+  var b=document.getElementById("colsTgBtn");
+  if(b){b.textContent=colsCollapsed?"▶":"◀";b.title=colsCollapsed?"일수·기간 펼치기":"일수·기간 접기 (공정명만 보기)";}
+}
+function renderLayerPanel(){
+  var el=document.getElementById("layerPanel");if(!el)return;
+  var keys=Object.keys(CI);
+  var h='<div class="lp-head">'+
+    '<span class="lp-title">🎨 레이어 '+keys.length+'</span>'+
+    '<button class="lp-edit" onclick="openLayerEditor()" title="레이어 생성·삭제·이름수정">⚙ 편집</button>'+
+    '</div><div class="lp-list">';
+  keys.forEach(function(k){
+    var ci=CI[k]||{},nm=ci.n||k,c=ci.c||"#888888";
+    var cnt=catUseCount(k),used=cnt>0;
+    h+='<div class="lp-row'+(used?'':' unused')+'" onclick="scrollToCat(\''+k+'\')" title="'+esc(nm)+(used?(' · 공정 '+cnt+'개 · 클릭=공정으로 이동'):' · 이 프로젝트 미사용')+'">'+
+       '<input type="color" class="layer-sw" value="'+c+'" onchange="setCatColor(\''+k+'\',this.value)" onclick="event.stopPropagation()" title="색상 변경">'+
+       '<span class="lp-nm">'+esc(nm)+'</span>'+
+       (used?'<span class="lp-cnt">'+cnt+'</span>':'')+
+       '</div>';
+  });
+  h+='</div>';
+  el.innerHTML=h;
+  el.classList.toggle("collapsed",layerPanelCollapsed);
+}
+// 레이어 행 클릭 → 해당 분류 첫 공정으로 스크롤 + 그 분류 공정 전체 잠깐 강조
+function scrollToCat(key){
+  if(!currentProj)return;
+  var phases=currentProj.phases,firstIdx=-1;
+  for(var i=0;i<phases.length;i++){if(phases[i].cat===key){firstIdx=i;break}}
+  if(firstIdx<0){toast("'"+(CI[key]?CI[key].n:key)+"' 분류의 공정이 없습니다");return}
+  var wrap=document.getElementById("ganttWrap");if(!wrap)return;
+  wrap.querySelectorAll("tr.prow.cat-flash").forEach(function(t){t.classList.remove("cat-flash")});
+  var first=wrap.querySelector('tr.prow[data-row="'+firstIdx+'"]');
+  if(first)first.scrollIntoView({behavior:"smooth",block:"center",inline:"nearest"});
+  phases.forEach(function(p,idx){
+    if(p.cat===key){var tr=wrap.querySelector('tr.prow[data-row="'+idx+'"]');if(tr)tr.classList.add("cat-flash")}
+  });
+  clearTimeout(window._catFlashT);
+  window._catFlashT=setTimeout(function(){wrap.querySelectorAll("tr.prow.cat-flash").forEach(function(t){t.classList.remove("cat-flash")})},1500);
+}
+// 분류 범례 (인쇄용) — 현재 프로젝트에 존재하는 분류의 색·이름만
+function renderCatLegend(){
+  var el=document.getElementById("catLegend");if(!el)return;
+  var seen={},order=[];
+  currentProj.phases.forEach(function(p){if(!seen[p.cat]){seen[p.cat]=1;order.push(p.cat)}});
+  var h="";
+  order.forEach(function(cat){
+    var c=CI[cat]?CI[cat].c:"#888888",n=CI[cat]?CI[cat].n:cat;
+    h+='<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:'+c+';display:inline-block"></span>'+esc(n)+'</span>';
+  });
+  el.innerHTML=h;
+}
+function resetCatColors(){
+  if(!currentProj)return;
+  currentProj.catColors={};
+  applyCatColors();recalc();saveStore();
+  toast("↺ 분류 색상 기본값 복원");
+}
+// 현재 프로젝트의 분류별 공정 수
+function catUseCount(cat){
+  if(!currentProj)return 0;
+  return currentProj.phases.filter(function(p){return p.cat===cat}).length;
+}
+// 모든 프로젝트 통틀어 분류 사용 수 (레이어는 전역이므로 삭제 가드는 전체 기준)
+function catUseCountAll(cat){
+  var n=0;projects.forEach(function(pr){(pr.phases||[]).forEach(function(p){if(p.cat===cat)n++})});return n;
+}
+// 편집 모달의 분류 드롭다운을 CI 기준으로 동적 생성
+function renderCatOptions(){
+  var sel=document.getElementById("f_cat");if(!sel)return;
+  var cur=sel.value,h="";
+  for(var k in CI)h+='<option value="'+k+'">'+esc(CI[k].n||(CI_BUILTIN[k]&&CI_BUILTIN[k].n)||k)+'</option>';
+  sel.innerHTML=h;
+  if(CI[cur])sel.value=cur;
+}
+// ── 레이어(분류) 편집창 ──
+function openLayerEditor(){
+  renderLayerEditor();
+  document.getElementById("layerModal").classList.add("open");
+}
+function closeLayerEditor(){document.getElementById("layerModal").classList.remove("open")}
+function renderLayerEditor(){
+  var list=document.getElementById("layerList");if(!list)return;
+  var keys=Object.keys(CI);
+  if(!keys.length){list.innerHTML='<div style="padding:16px;color:#bbb;text-align:center">레이어가 없습니다. 아래에서 추가하세요.</div>';return}
+  var h="";
+  keys.forEach(function(k){
+    var ci=CI[k]||{}, nm=ci.n||k, c=ci.c||"#888888";
+    var cnt=catUseCount(k), allCnt=catUseCountAll(k);
+    h+='<div class="lyr-row" data-k="'+k+'">'+
+       '<input type="color" class="layer-sw" value="'+c+'" onchange="setCatColor(\''+k+'\',this.value);renderLayerEditor()" title="색상 변경">'+
+       '<span class="lyr-name">'+esc(nm)+'</span>'+
+       '<span class="lyr-cnt">'+(cnt>0?('사용 '+cnt):'미사용')+'</span>'+
+       '<button class="lyr-btn" onclick="promptRenameLayer(\''+k+'\')" title="이름 수정">✏</button>'+
+       '<button class="lyr-del" onclick="removeLayer(\''+k+'\')"'+(allCnt>0?' disabled title="공정이 있어 삭제 불가"':' title="레이어 삭제"')+'>🗑</button>'+
+       '</div>';
+  });
+  list.innerHTML=h;
+}
+function promptRenameLayer(key){
+  if(!CI[key])return;
+  var v=prompt("레이어 이름을 입력하세요",CI[key].n||"");
+  if(v===null)return;          // 취소
+  v=v.trim(); if(!v){alert("이름을 비울 수 없습니다");return}
+  renameLayer(key,v);
+  renderLayerEditor();
+}
+// 추가·삭제·이름변경한 레이어 설정을 모두 지우고 기본 분류로 복원
+function restoreDefaultLayers(){
+  if(!confirm("추가·삭제·이름변경한 레이어 설정을 모두 지우고 기본 분류로 되돌릴까요?\\n(공정의 분류 연결과 프로젝트별 색상은 그대로 유지됩니다)"))return;
+  userCats={cats:{},removed:[]};
+  saveUserCats();
+  for(var k in CI)delete CI[k];
+  for(var k2 in CI_DEFAULT)delete CI_DEFAULT[k2];
+  for(var b in CI_BUILTIN){CI[b]={n:CI_BUILTIN[b].n,c:CI_BUILTIN[b].c,b:CI_BUILTIN[b].b};CI_DEFAULT[b]={n:CI_BUILTIN[b].n,c:CI_BUILTIN[b].c,b:CI_BUILTIN[b].b}}
+  renderCatOptions();renderLayerEditor();
+  if(currentProj)recalc();
+  toast("↺ 기본 레이어로 복원");
+}
+function addLayer(){
+  var nm=document.getElementById("newLayerNm").value.trim();
+  if(!nm){alert("레이어 이름을 입력하세요");return}
+  var col=document.getElementById("newLayerColor").value||"#888888";
+  var key="u"+Date.now().toString(36);
+  CI[key]={n:nm,c:col,b:lightTint(col)};
+  CI_DEFAULT[key]={n:nm,c:col,b:lightTint(col)};
+  userCats.cats[key]={n:nm,c:col,b:lightTint(col)};
+  // 혹시 removed 목록에 있던 키면 제거
+  userCats.removed=userCats.removed.filter(function(x){return x!==key});
+  saveUserCats();
+  document.getElementById("newLayerNm").value="";
+  renderCatOptions();renderLayerEditor();
+  if(currentProj)recalc();
+  toast("➕ 레이어 추가: "+nm);
+}
+function renameLayer(key,name){
+  name=(name||"").trim();
+  if(!name||!CI[key])return;
+  CI[key].n=name; CI_DEFAULT[key].n=name;
+  // 사용자 저장소에 이름 반영 (기본 분류면 색까지 포함해 보존)
+  userCats.cats[key]={n:name,c:CI_DEFAULT[key].c,b:CI_DEFAULT[key].b};
+  saveUserCats();
+  renderCatOptions();
+  if(currentProj)recalc();
+  toast("✏ 레이어 이름 변경: "+name);
+}
+function removeLayer(key){
+  if(!CI[key])return;
+  var here=catUseCount(key),all=catUseCountAll(key);
+  if(all>0){
+    if(here>0)alert('"'+CI[key].n+'" 레이어에 공정이 '+here+'개 있어 삭제할 수 없습니다.\\n공정을 다른 레이어로 옮기거나 삭제한 뒤 다시 시도하세요.');
+    else alert('"'+CI[key].n+'" 레이어가 다른 프로젝트에서 '+all+'개 사용 중이라 삭제할 수 없습니다.');
+    return;
+  }
+  if(!confirm('"'+CI[key].n+'" 레이어를 삭제하시겠습니까?'))return;
+  delete CI[key]; delete CI_DEFAULT[key];
+  delete userCats.cats[key];
+  if(userCats.removed.indexOf(key)<0)userCats.removed.push(key);
+  // 프로젝트별 색상 지정도 정리
+  if(currentProj&&currentProj.catColors&&currentProj.catColors[key]){delete currentProj.catColors[key];saveStore()}
+  saveUserCats();
+  renderCatOptions();renderLayerEditor();
+  if(currentProj)recalc();
+  toast("🗑 레이어 삭제");
+}
+
+// ================================================================
+// 드래그/리사이즈 엔진 (프리미어 스타일 클립 조정)
+// ================================================================
+var dragState=null;
+// 마우스 휠(가운데 버튼) 드래그로 화면 패닝
+var panState=null;
+function attachWheelPan(){
+  var gw=document.querySelector(".gw");
+  if(!gw||gw._panAttached)return;
+  gw._panAttached=true;
+  gw.addEventListener("pointerdown",function(e){
+    if(e.button!==1)return; // 가운데 버튼만
+    e.preventDefault();
+    panState={x:e.clientX,y:e.clientY,sl:gw.scrollLeft,st:gw.scrollTop};
+    gw.style.cursor="grabbing";
+    gw.setPointerCapture(e.pointerId);
+  });
+  gw.addEventListener("pointermove",function(e){
+    if(!panState)return;
+    gw.scrollLeft=panState.sl-(e.clientX-panState.x);
+    gw.scrollTop=panState.st-(e.clientY-panState.y);
+  });
+  gw.addEventListener("pointerup",function(e){
+    if(e.button!==1&&panState===null)return;
+    panState=null;gw.style.cursor="";
+  });
+  // 가운데 버튼 기본 자동스크롤 방지
+  gw.addEventListener("mousedown",function(e){if(e.button===1)e.preventDefault()});
+  gw.addEventListener("auxclick",function(e){if(e.button===1)e.preventDefault()});
+}
+// 중복되지 않는 공정코드 생성 (사본용)
+function uniqueId(base){
+  var used={};currentProj.phases.forEach(function(p){used[p.id]=1});
+  var c=base+"-C",n=2;
+  while(used[c]){c=base+"-C"+n;n++}
+  return c;
+}
+function attachDrag(){
+  attachWheelPan();
+  var wrap=document.getElementById("ganttWrap");
+  if(!wrap)return;
+  wrap.onpointerdown=function(e){
+    if(e.button!==0)return;   // 좌클릭만 (우클릭=편집은 contextmenu에서)
+    hideTip();                // 좌클릭 시작 → 기존 내역 닫기
+    var bar=e.target.closest(".gbar");
+    if(!bar)return;
+    var idx=parseInt(bar.getAttribute("data-idx"));
+    var p=currentProj.phases[idx];
+    if(p&&p.locked&&!e.altKey){toast("🔒 잠긴 공정은 이동·기간조정할 수 없습니다");return}
+    var mode="move";
+    if(e.target.classList.contains("rz")){mode=e.target.getAttribute("data-mode")}
+    e.preventDefault();
+    var isCopy=false;
+    // Alt+드래그 → 공정 복사 (원본은 두고 사본을 드래그)
+    if(e.altKey&&mode==="move"){
+      var copy=JSON.parse(JSON.stringify(p,function(k,v){return k.charAt(0)==="_"?undefined:v}));
+      copy.id=uniqueId(p.id); copy.locked=false;
+      copy.lock=(p._ds?fmLock(p._ds):"");   // 사본을 원본 현재 위치에 그대로 생성
+      currentProj.phases.splice(idx+1,0,copy);
+      freezeAll();                    // 나머지 공정 위치 고정 → 튕김 방지
+      recalc();                       // 사본 일정 계산 + 리렌더
+      idx=idx+1; p=currentProj.phases[idx];
+      bar=document.querySelector('.gbar[data-idx="'+idx+'"]');
+      if(!bar)return;
+      isCopy=true;
+      toast("📋 복사 — 드래그하여 배치");
+    }
+    var sd=getSD();
+    dragState={
+      idx:idx, mode:mode, bar:bar,
+      startX:e.clientX,
+      origStartDay:p._sd, origDur:p.dur,
+      moved:false, isCopy:isCopy
+    };
+    bar.classList.add("dragging");
+    bar.setPointerCapture(e.pointerId);
+    // 고스트 라벨
+    var g=document.createElement("div");
+    g.className="drag-ghost";g.id="dragGhost";
+    document.body.appendChild(g);
+    updateGhost(e,p);
+    window.addEventListener("pointermove",onDragMove);
+    window.addEventListener("pointerup",onDragEnd);
+  };
+  // 우클릭 → 편집창
+  wrap.oncontextmenu=function(e){
+    var bar=e.target.closest(".gbar");
+    if(!bar)return;
+    e.preventDefault();
+    hideTip();
+    openEdit(parseInt(bar.getAttribute("data-idx")));
+  };
+}
+function updateGhost(e,p){
+  var g=document.getElementById("dragGhost");if(!g)return;
+  var sd=getSD();
+  var s=new Date(sd.getTime()+p._sd*864e5);
+  var en=new Date(sd.getTime()+(p._sd+p.dur)*864e5);
+  var modeTxt=dragState.mode==="move"?"이동":dragState.mode==="resR"?"기간조정":"착수일조정";
+  g.innerHTML=modeTxt+": "+fms(s)+"~"+fms(en)+" ("+p.dur+"일)";
+  g.style.left=(e.clientX+14)+"px";
+  g.style.top=(e.clientY-10)+"px";
+}
+function onDragMove(e){
+  if(!dragState)return;
+  var dx=e.clientX-dragState.startX;
+  var deltaDays=Math.round(dx/DPX);
+  if(Math.abs(deltaDays)>0)dragState.moved=true;
+  var p=currentProj.phases[dragState.idx];
+  var sd=getSD();
+  if(dragState.mode==="move"){
+    // 시작일 이동 → lock 으로 고정 (절대 날짜)
+    var newStart=Math.max(0,dragState.origStartDay+deltaDays);
+    var nd=new Date(sd.getTime()+newStart*864e5);
+    p.lock=fmLock(nd);
+    p._sd=newStart;p._ds=nd;p._de=new Date(sd.getTime()+(newStart+p.dur)*864e5);
+  }else if(dragState.mode==="resR"){
+    // 우측 핸들 → 기간 조정
+    var newDur=Math.max(1,dragState.origDur+deltaDays);
+    p.dur=newDur;p._de=new Date(sd.getTime()+(p._sd+newDur)*864e5);
+  }else if(dragState.mode==="resL"){
+    // 좌측 핸들 → 착수일 당기고/밀고, 기간은 반대로 (종료일 고정)
+    var shift=deltaDays;
+    var newStart=Math.max(0,dragState.origStartDay+shift);
+    var newDur=Math.max(1,dragState.origDur-(newStart-dragState.origStartDay));
+    var nd=new Date(sd.getTime()+newStart*864e5);
+    p.lock=fmLock(nd);
+    p.dur=newDur;p._sd=newStart;p._ds=nd;p._de=new Date(sd.getTime()+(newStart+newDur)*864e5);
+  }
+  // 라이브 미리보기: 바 위치/폭만 갱신 (전체 리렌더는 무거우니 종료 시)
+  livePreview();
+  updateGhost(e,p);
+}
+function livePreview(){
+  // 드래그 중인 바의 시각적 위치만 갱신
+  var p=currentProj.phases[dragState.idx];
+  var bar=dragState.bar;
+  // 바가 속한 셀 기준 left=0 이었으므로, 시작일 변화량만큼 translateX
+  var shift=(p._sd-dragState.origStartDay)*DPX;
+  bar.style.transform="translateX("+shift+"px)";
+  bar.style.width=(p.dur*DPX-2)+"px";
+  var txt=bar.querySelector(".gbar-text");
+  if(txt)txt.textContent=p.dur>=5?p.nm+" "+p.dur+"일":p.dur>=3?p.nm:"";
+}
+function onDragEnd(e){
+  window.removeEventListener("pointermove",onDragMove);
+  window.removeEventListener("pointerup",onDragEnd);
+  var g=document.getElementById("dragGhost");if(g)g.remove();
+  if(!dragState)return;
+  var wasMoved=dragState.moved;
+  var idx=dragState.idx;
+  var isCopy=dragState.isCopy;
+  if(dragState.bar)dragState.bar.classList.remove("dragging");
+  dragState=null;
+  if(wasMoved){
+    recalc(); // 전체 재계산 (후속 공정 전파)
+    saveStore(); // 이동 결과 저장 + 되돌리기 기록
+  }else if(isCopy){
+    // Alt+복사 후 안 움직여도 사본은 유지·저장
+    recalc(); saveStore(); toast("📋 복사됨");
+  }else{
+    // 안 움직였으면 = 좌클릭 → 내역 표시 (편집은 우클릭)
+    showTip(e,idx);
+  }
+}
+
+// ================================================================
+// 대시보드 — 오늘할일 / 이번주 발주마감 / 지연경보 / 다가오는 게이트
+// ================================================================
+function renderDetail(){
+  var DATA=currentProj.phases;
+  var h='<table class="mod"><thead><tr><th>No</th><th style="width:70px">코드</th><th style="width:140px">대공정</th><th>세부작업</th><th style="width:50px">시작</th><th style="width:50px">종료</th><th>CP</th></tr></thead><tbody>';
+  var n=0,cc='';DATA.forEach(function(p){if(p.cat!==cc){cc=p.cat;h+='<tr class="cat-r"><td colspan=7>◆ '+(CI[p.cat]?CI[p.cat].n:p.cat)+'</td></tr>'}
+  p.tasks.forEach(function(t,ti){n++;h+='<tr><td style="text-align:center;font-size:10px">'+n+'</td><td style="text-align:center;font-size:10px;font-weight:600">'+esc(p.id)+'</td><td style="font-size:11px;font-weight:'+(ti===0?'700':'400')+'">'+((ti===0)?esc(p.nm):'')+'</td><td>'+esc(t)+'</td><td style="text-align:center;font-size:10px">'+((ti===0&&p._ds)?fms(p._ds):'')+'</td><td style="text-align:center;font-size:10px">'+((ti===0&&p._de)?fms(p._de):'')+'</td><td style="text-align:center">'+((ti===0&&p.cp)?'<span style="background:#e24b4a;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">CP</span>':'')+'</td></tr>'})});
+  h+='</tbody></table>';document.getElementById("detailWrap").innerHTML=h;
+}
+
+function renderMat(sd){
+  var DATA=currentProj.phases;
+  var h='<table class="mod"><thead><tr><th>No</th><th style="width:130px">공정</th><th>자재명</th><th>리드타임</th><th>공정시작</th><th>발주시점</th><th>사전발주</th><th>상태</th></tr></thead><tbody>';
+  var n=0,cc='';DATA.forEach(function(p){if(!p.mat)return;
+  if(p.cat!==cc){cc=p.cat;h+='<tr class="cat-r"><td colspan=8>◆ '+(CI[p.cat]?CI[p.cat].n:p.cat)+'</td></tr>'}
+  p.mat.split(",").forEach(function(m){if(!m.trim())return;var pts=m.trim().split(":");var nm=pts[0],lt=parseInt(pts[1])||7;n++;
+  var od=new Date((p._ds||sd).getTime()-lt*864e5);var early=od<sd;
+  h+='<tr'+(early?' class="early"':'')+'><td style="text-align:center;font-size:10px">'+n+'</td><td style="font-size:11px">'+esc(p.nm)+'</td><td style="font-weight:600">'+esc(nm)+'</td><td style="text-align:center">'+lt+'일</td><td style="text-align:center;font-size:10px">'+(p._ds?fms(p._ds):'')+'</td><td style="text-align:center;'+(early?'color:#e24b4a;font-weight:700':'')+'">'+fmf(od)+'</td><td style="text-align:center">'+(early?'⚠착공전':'')+'</td><td style="text-align:center;color:#888;font-size:10px">미발주</td></tr>'})});
+  h+='</tbody></table>';document.getElementById("matWrap").innerHTML=h;
+}
+
+function renderCrew(){
+  var DATA=currentProj.phases;
+  var h='<table class="mod"><thead><tr><th>No</th><th style="width:150px">공정</th><th>기간</th><th>투입인력</th><th>소계</th><th>연인원</th><th>시작</th><th>종료</th></tr></thead><tbody>';
+  var cc='',gm=0;DATA.forEach(function(p,idx){if(!p.crew)return;
+  if(p.cat!==cc){cc=p.cat;h+='<tr class="cat-r"><td colspan=8>◆ '+(CI[p.cat]?CI[p.cat].n:p.cat)+'</td></tr>'}
+  var entries=p.crew.split(",").filter(function(x){return x.trim()});var total=0;entries.forEach(function(e){total+=parseInt(e.split(":")[1])||0});var md=total*p.dur;gm+=md;
+  h+='<tr><td style="text-align:center;font-size:10px">'+(idx+1)+'</td><td style="font-weight:600">'+(p.cp?'<span class="cp-dot"></span>':'')+esc(p.nm)+'</td><td style="text-align:center">'+p.dur+'일</td><td style="font-size:11px">'+entries.map(function(e){var pts=e.split(":");return esc(pts[0])+" "+pts[1]+"명"}).join(", ")+'</td><td style="text-align:center;font-weight:600">'+total+'</td><td style="text-align:center;font-weight:700;color:#185fa5">'+md+'</td><td style="text-align:center;font-size:10px">'+(p._ds?fms(p._ds):'')+'</td><td style="text-align:center;font-size:10px">'+(p._de?fms(p._de):'')+'</td></tr>'});
+  h+='<tr style="background:#1a1a2e"><td colspan=5 style="text-align:right;color:#fff;font-weight:700;padding:8px">총 연인원</td><td style="text-align:center;color:#c9a84c;font-weight:700;font-size:16px">'+gm+'</td><td colspan=2 style="color:#fff;text-align:center">인일</td></tr></tbody></table>';
+  document.getElementById("crewWrap").innerHTML=h;
+}
+
+// ================================================================
+// TOOLTIP
+// ================================================================
+function showTip(ev,i){var p=currentProj.phases[i],t=document.getElementById("tip");var h='<div style="font-weight:700;font-size:14px;margin-bottom:5px">'+esc(p.nm)+'</div><div style="color:#888;font-size:11px;margin-bottom:8px">'+esc(p.sub)+'</div><div style="font-size:12px"><b>기간:</b> '+p.dur+'일 ('+(p._ds?fmf(p._ds):'')+' ~ '+(p._de?fmf(p._de):'')+')</div>';if(p.dep.length)h+='<div style="font-size:11px;margin-top:4px"><b>선행:</b> '+p.dep.map(esc).join(", ")+'</div>';if(p.cp)h+='<div style="font-size:11px;color:#e24b4a;margin-top:4px">● 크리티컬패스</div>';if(p.crew)h+='<div style="font-size:11px;margin-top:4px"><b>인력:</b> '+esc(p.crew.replace(/:/g," ").replace(/,/g,", "))+'</div>';h+='<div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5">'+p.tasks.map(esc).join(" · ")+'</div>';t.innerHTML=h;t.classList.add("vis");t.style.left=Math.min(ev.clientX+15,innerWidth-340)+"px";t.style.top=Math.min(ev.clientY+15,innerHeight-250)+"px"}
+function hideTip(){document.getElementById("tip").classList.remove("vis")}
+
+// ================================================================
+// PHASE EDIT MODAL
+// ================================================================
+// 선행공정 체크리스트 렌더
+function renderDepList(selfIdx){
+  var el=document.getElementById("depList");
+  var sel=document.getElementById("f_dep").value.split(",").map(function(s){return s.trim()}).filter(Boolean);
+  var h="";
+  currentProj.phases.forEach(function(p,i){
+    if(i===selfIdx)return; // 자기 자신 제외
+    var checked=sel.indexOf(p.id)>=0?"checked":"";
+    var cc=CI[p.cat]?CI[p.cat].c:"#888";
+    h+='<label style="display:flex;align-items:center;gap:5px;padding:2px 3px;cursor:pointer;border-radius:3px" onmouseover="this.style.background=\'#f5f3ee\'" onmouseout="this.style.background=\'\'">'+
+       '<input type="checkbox" value="'+p.id+'" '+checked+' onchange="syncDep('+selfIdx+')" style="width:auto;margin:0">'+
+       '<span style="width:8px;height:8px;border-radius:2px;background:'+cc+';display:inline-block;flex-shrink:0"></span>'+
+       '<span style="color:#888;font-size:9px;min-width:48px">'+esc(p.id)+'</span>'+
+       '<span>'+esc(p.nm)+'</span></label>';
+  });
+  el.innerHTML=h||'<div style="color:#bbb;padding:8px">다른 공정이 없습니다</div>';
+}
+// 체크박스 → hidden f_dep 동기화
+function syncDep(selfIdx){
+  var boxes=document.querySelectorAll("#depList input[type=checkbox]:checked");
+  var ids=Array.prototype.map.call(boxes,function(b){return b.value});
+  document.getElementById("f_dep").value=ids.join(",");
+}
+function openEdit(i){editIdx=i;var p=currentProj.phases[i];renderCatOptions();document.getElementById("mTitle").textContent="편집: "+p.nm;document.getElementById("f_id").value=p.id;document.getElementById("f_nm").value=p.nm;document.getElementById("f_sub").value=p.sub;document.getElementById("f_cat").value=p.cat;document.getElementById("f_color").value=p.color||(CI[p.cat]?CI[p.cat].c:"#888888");document.getElementById("f_dur").value=p.dur;document.getElementById("f_dep").value=p.dep.join(",");document.getElementById("f_offset").value=p.offset||"";document.getElementById("f_lock").value=p.lock||"";document.getElementById("f_cp").value=p.cp?"1":"0";document.getElementById("f_status").value=p.status||"todo";document.getElementById("f_tasks").value=p.tasks.join("\n");document.getElementById("f_crew").value=p.crew||"";document.getElementById("f_mat").value=p.mat||"";document.getElementById("delBtn").style.display="inline-block";renderDepList(i);document.getElementById("modalBg").classList.add("open")}
+function openAdd(){editIdx=-1;renderCatOptions();document.getElementById("mTitle").textContent="공정 추가";document.getElementById("f_id").value="";document.getElementById("f_nm").value="";document.getElementById("f_sub").value="";document.getElementById("f_cat").value="fin";document.getElementById("f_color").value=(CI["fin"]?CI["fin"].c:"#888888");document.getElementById("f_dur").value="5";document.getElementById("f_dep").value="";document.getElementById("f_offset").value="";document.getElementById("f_lock").value="";document.getElementById("f_cp").value="0";document.getElementById("f_status").value="todo";document.getElementById("f_tasks").value="";document.getElementById("f_crew").value="";document.getElementById("f_mat").value="";document.getElementById("delBtn").style.display="none";renderDepList(-1);document.getElementById("modalBg").classList.add("open")}
+function closeModal(){document.getElementById("modalBg").classList.remove("open")}
+function syncCatColor(){var c=document.getElementById("f_cat").value;document.getElementById("f_color").value=(CI[c]&&CI[c].c)||"#888888"}
+function saveModal(){
+  var o={id:document.getElementById("f_id").value.trim()||("N"+Date.now()),nm:document.getElementById("f_nm").value,sub:document.getElementById("f_sub").value,dur:parseInt(document.getElementById("f_dur").value)||5,dep:document.getElementById("f_dep").value.split(",").map(function(s){return s.trim()}).filter(Boolean),cat:document.getElementById("f_cat").value,cp:document.getElementById("f_cp").value==="1"?1:0,offset:document.getElementById("f_offset").value?parseInt(document.getElementById("f_offset").value):0,lock:document.getElementById("f_lock").value||"",status:document.getElementById("f_status").value,tasks:document.getElementById("f_tasks").value.split("\n").filter(Boolean),crew:document.getElementById("f_crew").value,mat:document.getElementById("f_mat").value};
+  var pc=document.getElementById("f_color").value,catC=((CI[o.cat]&&CI[o.cat].c)||"").toLowerCase();
+  if(pc&&pc.toLowerCase()!==catC)o.color=pc;
+  if(editIdx>=0){
+    // 기존 공정 편집 시 면적연동 메타데이터 보존
+    var prev=currentProj.phases[editIdx];
+    if(prev){
+      ["baseCrew","fixCrew","cap","prop","baseDur","areaBase","cure"].forEach(function(k){
+        if(prev[k]!==undefined)o[k]=prev[k];
+      });
+    }
+    currentProj.phases[editIdx]=o;
+  }else currentProj.phases.push(o);
+  // 순환 의존 검사
+  var cyc=findCycle(currentProj.phases);
+  if(cyc){
+    alert("⚠ 순환 의존이 생깁니다: "+cyc.join(" → ")+"\\n선행공정 설정을 확인하세요. (저장은 됐지만 일정이 꼬일 수 있습니다)");
+  }
+  closeModal();recalc();
+}
+function deletePhase(){
+  if(editIdx<0)return;
+  if(deletePhaseByIdx(editIdx,true))closeModal();
+}
+// 공정 삭제 (인덱스 기반, 키보드/모달 공용). confirmFirst=확인창 여부
+var selectedRow=-1;
+function deletePhaseByIdx(idx,confirmFirst){
+  if(idx<0||idx>=currentProj.phases.length)return false;
+  var p=currentProj.phases[idx];
+  if(confirmFirst&&!confirm('"'+p.nm+'" 공정을 삭제하시겠습니까?'))return false;
+  // 이 공정을 선행으로 가진 다른 공정에서 제거
+  currentProj.phases.forEach(function(q){q.dep=q.dep.filter(function(d){return d!==p.id})});
+  currentProj.phases.splice(idx,1);
+  if(selectedRow===idx)selectedRow=-1;
+  else if(selectedRow>idx)selectedRow--;
+  recalc();
+  return true;
+}
+// 행 선택 (공정명 클릭 시)
+function selectRow(idx){
+  selectedRow=(selectedRow===idx)?-1:idx;
+  recalc();
+}
+
+// ================================================================
+// INIT — 첫 실행 시 칠원동 샘플 2건 자동 생성
+// ================================================================
+var BUILTIN_SSANGYONG=[{"id": "PRE", "nm": "현장준비·보양", "sub": "골조검수·보양·가설정리", "dur": 2, "dep": [], "cat": "wp", "cp": 1, "tasks": ["골조 상태 검수(균열/레벨)", "바닥 레벨 측정(전실)", "창호 개구부 치수 실측", "가설전기 분전반 확인", "바닥/계단 보양", "자재 야적장 확보", "공정표 게시"], "crew": "소장:1,관리:1,잡역:2", "mat": ""}, {"id": "WP_1H", "nm": "1층 화장실 방수", "sub": "바닥+벽H=1.2m 액체방수2종", "dur": 2, "dep": ["PRE"], "cat": "wp", "cp": 0, "tasks": ["바닥면 청소/프라이머", "액체방수2종 1차 도포", "액체방수2종 2차 도포", "벽면 방수(H=1.2m)", "코너/드레인 우레탄 보강", "보호몰탈 타설"], "crew": "방수공:2,잡역:1", "mat": "액체방수재2종:5,보호몰탈:3"}, {"id": "WP_2B", "nm": "2층 욕실 방수", "sub": "바닥+벽 전체 액체방수2종", "dur": 2, "dep": ["PRE"], "cat": "wp", "cp": 1, "tasks": ["바닥면 프라이머", "액체방수 1차/2차", "벽면 전체 방수", "욕조 설치부 보강", "샤워부스 구간 보강", "코너 보강", "보호몰탈"], "crew": "방수공:2,잡역:1", "mat": "액체방수재2종:5,보호몰탈:3"}, {"id": "WP_2H", "nm": "2층 화장실 방수", "sub": "바닥+벽H=1.2m", "dur": 1, "dep": ["PRE"], "cat": "wp", "cp": 0, "tasks": ["바닥 프라이머", "액체방수 도포", "벽면 방수(H=1.2m)", "보호몰탈"], "crew": "방수공:2", "mat": "액체방수재:5"}, {"id": "WP_BL", "nm": "발코니 방수", "sub": "우레탄 노출방수", "dur": 1, "dep": ["PRE"], "cat": "wp", "cp": 0, "tasks": ["바닥 면처리", "우레탄 프라이머", "우레탄 방수 2회", "배수구 주변 보강"], "crew": "방수공:2", "mat": "우레탄방수재:5"}, {"id": "WP_TEST", "nm": "방수시험 ★게이트", "sub": "48시간 침수시험 전개소", "dur": 3, "dep": ["WP_1H", "WP_2B", "WP_2H", "WP_BL"], "cat": "wp", "cp": 1, "tasks": ["1층 화장실 48h 침수", "2층 욕실 48h 침수", "2층 화장실 48h 침수", "발코니 살수시험", "하부층 천장 누수확인", "수위 변화 기록/사진", "검수 서명", "불합격 구간 재시공 후 재시험"], "crew": "방수공:1,관리:1", "mat": ""}, {"id": "PL_BLR", "nm": "보일러·온수분배기", "sub": "보일러 1대+분배기 1F/2F", "dur": 3, "dep": ["PRE"], "cat": "plb", "cp": 1, "tasks": ["보일러 설치(30,000kcal급 콘덴싱)", "연도/배기 설치", "1층 온수분배기(6구) 설치", "2층 온수분배기(7구) 설치", "급수/급탕 주관 배관", "난방 공급/환수 주관", "가스배관 연결(D25)", "보일러 전원 협의(전기)"], "crew": "배관공:3,가스공:1,잡역:1", "mat": "가스보일러:14,온수분배기6구:7,온수분배기7구:7,가스배관자재:5"}, {"id": "PL_1F", "nm": "1층 급배수 배관", "sub": "화장실+주방+다용도실", "dur": 3, "dep": ["WP_TEST"], "cat": "plb", "cp": 0, "tasks": ["화장실 급수/급탕(스테인리스 Ø15)", "화장실 오수관(D100)·바닥배수(D75)", "양변기/세면기 급배수 위치", "주방 싱크 급수/급탕", "주방 배수(D50)·식기세척기 분기", "다용도실 세탁 급배수", "수압시험(전구간)"], "crew": "배관공:3,잡역:1", "mat": "스테인리스강관:7,PVC배수관:5,수전박스:5"}, {"id": "PL_2F", "nm": "2층 급배수 배관", "sub": "욕실+화장실", "dur": 3, "dep": ["WP_TEST"], "cat": "plb", "cp": 0, "tasks": ["욕실 급수/급탕", "욕조 급배수(D75)", "샤워부스 급배수", "욕실 오수관(D100)", "화장실 양변기/세면기 급배수", "바닥배수 트랩", "수압시험"], "crew": "배관공:3,잡역:1", "mat": "스테인리스강관:7,PVC배수관:5"}, {"id": "PL_VN", "nm": "환기설비", "sub": "배기팬+덕트 전개소", "dur": 2, "dep": ["PRE"], "cat": "plb", "cp": 0, "tasks": ["1층 화장실 배기팬+덕트(Ø100)", "2층 욕실 배기팬+덕트", "2층 화장실 배기팬", "주방 렌지후드 덕트(스테인리스)", "외벽 관통부 후드캡", "역류방지댐퍼 확인"], "crew": "배관공:2,잡역:1", "mat": "배기팬:7,PVC덕트:3,후드캡:3"}, {"id": "EL_PNL", "nm": "분전반·간선", "sub": "분전반+회로 구성", "dur": 2, "dep": ["PRE"], "cat": "elec", "cp": 1, "tasks": ["분전반 설치(주차단 50A)", "전등회로 L1(1층)/L2(2층)", "전열회로 R1~R6", "에어컨 전용회로 A1/A2", "주방 인덕션 전용회로", "접지 결선/저항 확인"], "crew": "전기공:2", "mat": "분전반:10,차단기:5"}, {"id": "EL_1F", "nm": "1층 전등·전열 배선", "sub": "거실·주방·현관·방1·화장실", "dur": 3, "dep": ["EL_PNL"], "cat": "elec", "cp": 0, "tasks": ["거실 전등 배선(HFIX 2.5㎟)", "거실 콘센트(2구 접지) 배선", "주방 전열(인덕션/냉장고/전자레인지/식기세척기)", "현관 센서등 배선", "방1 전등+콘센트", "화장실 방수콘센트(비데용)", "다용도실 보일러/세탁기 콘센트(방수형)", "스위치박스 위치 확인(FL+1200)"], "crew": "전기공:3,잡역:1", "mat": "HFIX전선:5,콘센트:5,스위치:5,CD관:3"}, {"id": "EL_2F", "nm": "2층 전등·전열 배선", "sub": "부부침실·침실2·침실3·가족실", "dur": 3, "dep": ["EL_PNL"], "cat": "elec", "cp": 0, "tasks": ["부부침실 전등+콘센트+조광기 배선", "드레스룸 전등", "침실2 전등+콘센트", "침실3 전등+콘센트", "가족실 전등+콘센트", "욕실 방수콘센트", "화장실 비데 콘센트", "복도/계단 3로 스위치"], "crew": "전기공:3,잡역:1", "mat": "HFIX전선:5,콘센트:5,3로스위치:5"}, {"id": "EL_COM", "nm": "통신·TV 배선", "sub": "UTP+동축+단자함", "dur": 2, "dep": ["EL_PNL"], "cat": "elec", "cp": 0, "tasks": ["세대단자함 설치", "각실 UTP CAT.5E 포설(거실/방3/가족실)", "TV 동축배선(거실/부부침실/가족실)", "광케이블 인입 협의", "인터폰 배선(현관)"], "crew": "통신공:2,잡역:1", "mat": "UTP:5,동축케이블:5,세대단자함:7"}, {"id": "IW_1F", "nm": "1층 간벽·석고보드", "sub": "경량간벽+석고2P+도어프레임", "dur": 4, "dep": ["PL_1F", "PL_BLR", "EL_1F"], "cat": "frame_in", "cp": 1, "tasks": ["화장실/다용도실 경량간벽(스터드+석고)", "단열 보강(외벽 내측 결로부위)", "석고보드 2P 부착 — 거실", "석고보드 2P — 주방/식당", "석고보드 2P — 현관/복도", "석고보드 2P — 방1", "석고보드 2P — 다용도실", "도어프레임 설치(각실)", "개구부 보강"], "crew": "목공:4,경량철골공:2,잡역:2", "mat": "석고보드9.5T:5,경량스터드:5,단열재:5,도어프레임:10"}, {"id": "IW_2F", "nm": "2층 간벽·석고보드", "sub": "경량간벽+석고2P+도어프레임", "dur": 4, "dep": ["PL_2F", "EL_2F"], "cat": "frame_in", "cp": 0, "tasks": ["드레스룸 간벽", "욕실/화장실 간벽", "석고보드 2P — 부부침실", "석고보드 2P — 침실2", "석고보드 2P — 침실3", "석고보드 2P — 가족실", "석고보드 2P — 복도", "도어프레임 설치"], "crew": "목공:4,경량철골공:2,잡역:2", "mat": "석고보드9.5T:5,경량스터드:5,도어프레임:10"}, {"id": "CL_1F", "nm": "1층 천장틀·천장석고", "sub": "목재틀+커튼박스+간접등박스", "dur": 3, "dep": ["IW_1F"], "cat": "frame_in", "cp": 1, "tasks": ["거실 목재천정틀(우물천장 포함)", "거실 간접등박스", "거실 커튼박스", "주방 천정틀", "현관/복도 천정틀", "방1 천정틀", "화장실 경량철골 천정틀", "다용도실 천정틀", "천장 석고보드 2P(전실)", "점검구 위치 확보"], "crew": "목공:3,경량철골공:2,잡역:1", "mat": "목재천정틀:5,석고보드:5,경량철골:5"}, {"id": "CL_2F", "nm": "2층 천장틀·천장석고", "sub": "목재틀+간접등박스", "dur": 3, "dep": ["IW_2F"], "cat": "frame_in", "cp": 0, "tasks": ["부부침실 천정틀+간접등박스", "침실2/침실3 천정틀", "가족실 천정틀+커튼박스", "복도 천정틀", "욕실/화장실 경량철골 천정틀", "천장 석고보드 2P(전실)"], "crew": "목공:3,경량철골공:2,잡역:1", "mat": "목재천정틀:5,석고보드:5"}, {"id": "TL_1H", "nm": "1층 화장실 타일", "sub": "바닥 미끄럼방지+벽 자기질", "dur": 2, "dep": ["WP_TEST", "CL_1F"], "cat": "tile", "cp": 0, "tasks": ["바닥 타일(자기질 미끄럼방지 300각)", "벽 타일(자기질 300×600)", "문턱석 설치", "줄눈 시공", "코너/배수구 실란트"], "crew": "타일공:2,잡역:1", "mat": "자기질타일:7,줄눈재:3,문턱석:7"}, {"id": "TL_2B", "nm": "2층 욕실 타일", "sub": "바닥+벽 전체 자기질", "dur": 3, "dep": ["WP_TEST", "CL_2F"], "cat": "tile", "cp": 1, "tasks": ["바닥 타일(미끄럼방지)", "벽 타일(전체)", "욕조 에이프런 타일", "샤워부스 벽 타일", "문턱석", "줄눈 시공", "실란트"], "crew": "타일공:3,잡역:1", "mat": "자기질타일:7,줄눈재:3"}, {"id": "TL_2H", "nm": "2층 화장실 타일", "sub": "바닥+벽 자기질", "dur": 2, "dep": ["WP_TEST", "CL_2F"], "cat": "tile", "cp": 0, "tasks": ["바닥 타일(미끄럼방지)", "벽 타일", "문턱석", "줄눈"], "crew": "타일공:2,잡역:1", "mat": "자기질타일:7"}, {"id": "TL_ENT", "nm": "현관 타일", "sub": "바닥 도기질+걸레받이", "dur": 1, "dep": ["CL_1F"], "cat": "tile", "cp": 0, "tasks": ["현관 바닥 타일(도기질 600각)", "디딤판 단차 마감", "석재 걸레받이", "줄눈"], "crew": "타일공:2", "mat": "도기질타일:7,석재걸레받이:10"}, {"id": "FH_1F", "nm": "1층 바닥난방", "sub": "단열+차음+기포콘+XL관+몰탈", "dur": 4, "dep": ["CL_1F"], "cat": "floor_h", "cp": 1, "tasks": ["바닥 단열재(비드법보온판)", "층간차음재(THK30)", "측면완충재 둘레 설치", "경량기포 콘크리트(THK40)", "거실 XL관 포설(Ø15 P-200)", "주방/식당 XL관", "방1 XL관", "다용도실 XL관", "시멘트몰탈(THK40) 미장", "온도조절기 설치(2개소)", "난방 가압시험"], "crew": "난방공:3,미장공:3,잡역:2", "mat": "바닥단열재:5,차음재:5,XL관:5,기포콘크리트:3,온도조절기:5"}, {"id": "FH_2F", "nm": "2층 바닥난방", "sub": "차음+기포콘+XL관+몰탈", "dur": 4, "dep": ["CL_2F"], "cat": "floor_h", "cp": 0, "tasks": ["층간차음재(THK30)", "측면완충재", "경량기포 콘크리트(THK40)", "부부침실 XL관", "침실2/침실3 XL관", "가족실 XL관", "복도 XL관", "시멘트몰탈(THK40)", "온도조절기 설치(4개소)", "난방 가압시험"], "crew": "난방공:3,미장공:3,잡역:2", "mat": "차음재:5,XL관:5,기포콘크리트:3,온도조절기:5"}, {"id": "FH_TEST", "nm": "난방시험 ★게이트", "sub": "48시간 가동시험+몰탈양생", "dur": 4, "dep": ["FH_1F", "FH_2F"], "cat": "floor_h", "cp": 1, "tasks": ["보일러 가동", "1층 전구간 온도 확인", "2층 전구간 온도 확인", "분배기 유량 조정", "누수 확인(48h)", "몰탈 양생 확인(바닥재 시공가능 함수율)", "검수 기록"], "crew": "난방공:1,관리:1", "mat": ""}, {"id": "PT_1F", "nm": "1층 도장", "sub": "친환경페인트 2회(천장+벽)", "dur": 3, "dep": ["CL_1F", "FH_TEST"], "cat": "paint", "cp": 0, "tasks": ["퍼티/샌딩(석고 조인트)", "거실 천장 초벌/정벌", "거실 벽면 초벌/정벌", "주방 천장+벽", "현관/복도 천장+벽", "방1 천장+벽", "다용도실 천장+벽"], "crew": "도장공:3,잡역:1", "mat": "친환경페인트:3,퍼티:3"}, {"id": "PT_2F", "nm": "2층 도장", "sub": "친환경페인트 2회", "dur": 3, "dep": ["CL_2F", "FH_TEST"], "cat": "paint", "cp": 0, "tasks": ["퍼티/샌딩", "부부침실 천장+벽", "침실2/침실3 천장+벽", "가족실 천장+벽", "복도/계단실 천장+벽"], "crew": "도장공:3,잡역:1", "mat": "친환경페인트:3"}, {"id": "WD_ALL", "nm": "도배(선택실)", "sub": "침실 실크도배", "dur": 3, "dep": ["PT_1F", "PT_2F"], "cat": "fin", "cp": 0, "tasks": ["초배지 시공", "부부침실 실크벽지", "침실2 실크벽지", "침실3 실크벽지", "포인트월(가족실 1면)", "걸레받이부 마감"], "crew": "도배공:3,잡역:1", "mat": "실크벽지:5,초배지:3"}, {"id": "SM_WET", "nm": "욕실 SMC 천장", "sub": "SMC천정재+점검구", "dur": 1, "dep": ["TL_1H", "TL_2B", "TL_2H"], "cat": "ceil", "cp": 0, "tasks": ["1층 화장실 SMC", "2층 욕실 SMC", "2층 화장실 SMC", "점검구 설치(각소)"], "crew": "경량철골공:2", "mat": "SMC천정재:7"}, {"id": "SM_DRY", "nm": "천정지 마감", "sub": "각실 천정지+간접등 마감", "dur": 2, "dep": ["PT_1F", "PT_2F"], "cat": "ceil", "cp": 0, "tasks": ["거실 천정지", "주방 천정지", "각 침실 천정지", "가족실 천정지", "간접등박스 내부 마감"], "crew": "도배공:2,잡역:1", "mat": "천정지:5"}, {"id": "FL_1F", "nm": "1층 바닥마감", "sub": "강마루(거실·주방·방1)", "dur": 3, "dep": ["FH_TEST", "PT_1F"], "cat": "floor_f", "cp": 1, "tasks": ["바닥 함수율 확인", "방습필름 깔기", "거실 강마루", "주방/식당 강마루", "방1 강마루", "다용도실 강마루", "MDF랩핑 걸레받이(THK9)", "문턱석/마감재 연결부"], "crew": "바닥공:3,잡역:1", "mat": "강마루:7,MDF걸레받이:7,방습필름:3"}, {"id": "FL_2F", "nm": "2층 바닥마감", "sub": "강마루(전실)", "dur": 3, "dep": ["FH_TEST", "PT_2F", "WD_ALL"], "cat": "floor_f", "cp": 0, "tasks": ["부부침실 강마루", "드레스룸 강마루", "침실2/침실3 강마루", "가족실 강마루", "복도 강마루", "MDF랩핑 걸레받이", "문턱석"], "crew": "바닥공:3,잡역:1", "mat": "강마루:7,MDF걸레받이:7"}, {"id": "FL_ST", "nm": "계단 마감", "sub": "디딤판+난간", "dur": 2, "dep": ["PT_1F", "PT_2F"], "cat": "floor_f", "cp": 0, "tasks": ["계단 디딤판(집성목/멜라민)", "챌판 마감", "계단 난간 설치(막힘시공)", "논슬립 부착", "계단 걸레받이"], "crew": "목공:2,잡역:1", "mat": "계단디딤판:10,난간재:10"}, {"id": "DR_1F", "nm": "1층 내부도어", "sub": "각실 도어+하드웨어", "dur": 2, "dep": ["FL_1F"], "cat": "wood", "cp": 0, "tasks": ["방1 도어", "화장실 도어(방수형)", "다용도실 도어", "도어 하드웨어(레버/경첩/스토퍼)", "개폐/단차 조정"], "crew": "목공:2,잡역:1", "mat": "내부도어:10,도어하드웨어:5"}, {"id": "DR_2F", "nm": "2층 내부도어", "sub": "각실 도어+하드웨어", "dur": 2, "dep": ["FL_2F"], "cat": "wood", "cp": 0, "tasks": ["부부침실 도어", "드레스룸 도어(슬라이딩)", "침실2/침실3 도어", "가족실 도어", "욕실 도어(방수형)", "화장실 도어", "하드웨어/조정"], "crew": "목공:2,잡역:1", "mat": "내부도어:10,슬라이딩하드웨어:10"}, {"id": "FX_1H", "nm": "1층 화장실 도기", "sub": "양변기+세면기+수전", "dur": 1, "dep": ["TL_1H", "SM_WET"], "cat": "fix", "cp": 0, "tasks": ["양변기(절수형 2등급)", "세면기+세면수전(싱글레버)", "샤워수전", "비데 설치", "거울/수건걸이/선반"], "crew": "배관공:2", "mat": "양변기:10,세면기:10,수전류:7,비데:7"}, {"id": "FX_2B", "nm": "2층 욕실 도기", "sub": "양변기+세면기+욕조+샤워", "dur": 2, "dep": ["TL_2B", "SM_WET"], "cat": "fix", "cp": 0, "tasks": ["양변기(절수형)", "세면기+수전", "욕조 설치+욕조수전", "샤워부스 수전+슬라이드바", "샤워파티션(유리)", "거울/선반/수건걸이"], "crew": "배관공:2,잡역:1", "mat": "양변기:10,세면기:10,욕조:14,샤워파티션:10"}, {"id": "FX_2H", "nm": "2층 화장실 도기", "sub": "양변기+세면기", "dur": 1, "dep": ["TL_2H", "SM_WET"], "cat": "fix", "cp": 0, "tasks": ["양변기", "세면기+수전", "비데", "거울/액세서리"], "crew": "배관공:2", "mat": "양변기:10,세면기:10"}, {"id": "FX_KIT", "nm": "주방 수전·기기 연결", "sub": "주방수전+식기세척기", "dur": 1, "dep": ["FL_1F"], "cat": "fix", "cp": 0, "tasks": ["주방수전(싱글레버 절수형)", "정수기 분기 밸브", "식기세척기 급배수 연결", "싱크 배수트랩 최종 연결"], "crew": "배관공:1", "mat": "주방수전:7"}, {"id": "LT_1F", "nm": "1층 조명·기구", "sub": "LED+스위치+콘센트 마감", "dur": 2, "dep": ["SM_DRY", "FL_1F"], "cat": "fix", "cp": 0, "tasks": ["거실등(LED 평판/간접 포함)", "주방등(LED 직부)", "현관 센서등", "방1 방등", "화장실 방습등", "다용도실 직부등", "복도 다운라이트", "스위치 마감(1~3구/3로)", "콘센트 마감(2구 접지)", "조광기 설치(거실)"], "crew": "전기공:2,잡역:1", "mat": "LED조명:7,스위치:5,콘센트:5,조광기:5"}, {"id": "LT_2F", "nm": "2층 조명·기구", "sub": "LED+스위치+콘센트 마감", "dur": 2, "dep": ["SM_DRY", "FL_2F"], "cat": "fix", "cp": 0, "tasks": ["부부침실 방등+간접등", "침실2/침실3 방등", "가족실 등+다운라이트", "드레스룸 등", "욕실 방습등", "계단 벽부등(3로)", "스위치/콘센트 마감"], "crew": "전기공:2,잡역:1", "mat": "LED조명:7,스위치:5"}, {"id": "FR_KIT", "nm": "주방가구", "sub": "상부장+하부장+싱크+가전", "dur": 3, "dep": ["FL_1F", "LT_1F"], "cat": "furn", "cp": 1, "tasks": ["하부장 설치/수평", "싱크볼 설치", "상판(인조대리석) 시공", "상부장 설치", "인덕션 매립", "후드 설치/덕트 연결", "식기세척기 빌트인", "손잡이/경첩 조정", "상판-벽 실란트"], "crew": "가구공:3,잡역:1", "mat": "주방가구세트:21,인조대리석상판:14"}, {"id": "FR_SH", "nm": "현관 신발장", "sub": "키큰장+벤치", "dur": 1, "dep": ["TL_ENT", "LT_1F"], "cat": "furn", "cp": 0, "tasks": ["신발장 키큰장 설치", "벤치/거울 부착", "내부 LED", "도어 조정"], "crew": "가구공:2", "mat": "신발장:14"}, {"id": "FR_WD", "nm": "붙박이장·드레스룸", "sub": "부부침실 드레스룸+침실 붙박이", "dur": 3, "dep": ["FL_2F", "LT_2F"], "cat": "furn", "cp": 0, "tasks": ["드레스룸 시스템장(행거/서랍/선반)", "부부침실 붙박이장", "침실2 붙박이장", "침실3 붙박이장", "도어/슬라이딩 조정", "내부 조명"], "crew": "가구공:3,잡역:1", "mat": "시스템드레스룸:21,붙박이장:21"}, {"id": "AC_ALL", "nm": "에어컨 설치", "sub": "실내기 2대+실외기", "dur": 1, "dep": ["LT_1F", "LT_2F"], "cat": "fix", "cp": 0, "tasks": ["거실 실내기(스탠드/벽걸이)", "부부침실 실내기", "냉매배관 연결", "실외기 설치(배수 포함)", "진공/냉매충전", "시운전"], "crew": "에어컨공:2", "mat": "에어컨:7,냉매배관:5"}, {"id": "VN_FIN", "nm": "환기구·그릴 마감", "sub": "전개소 마감", "dur": 1, "dep": ["SM_DRY", "SM_WET"], "cat": "fix", "cp": 0, "tasks": ["배기팬 그릴 마감", "외벽 후드캡 최종 확인", "주방 후드 시운전", "욕실 배기 풍량 확인"], "crew": "잡역:2", "mat": "환기그릴:3"}, {"id": "AC_SIL", "nm": "실란트·코킹", "sub": "전체 접합부 마감", "dur": 2, "dep": ["FR_KIT", "FR_WD", "DR_1F", "DR_2F", "FX_2B"], "cat": "fin", "cp": 0, "tasks": ["창호 주변 내부 실란트", "욕조/세면기 주변", "싱크 상판 주변", "걸레받이-바닥 접합부", "도어프레임 주변", "타일 코너 보수"], "crew": "잡역:2", "mat": "실란트:3"}, {"id": "AC_MLD", "nm": "몰딩·터치업·보양철거", "sub": "마감 보수+보양 제거", "dur": 2, "dep": ["AC_SIL"], "cat": "fin", "cp": 0, "tasks": ["코너몰딩/마이너스몰딩 보수", "도장 터치업(전실)", "도배 터치업", "바닥 보양재 철거", "창호 보호필름 제거", "스크래치 점검/보수"], "crew": "잡역:3,도장공:1", "mat": "몰딩:3"}, {"id": "CL_RGH", "nm": "거친청소", "sub": "잔재물 반출+1차 청소", "dur": 1, "dep": ["AC_MLD", "VN_FIN", "AC_ALL", "FX_KIT", "FX_1H", "FX_2H", "FR_SH", "FL_ST"], "cat": "fin", "cp": 1, "tasks": ["잔재물/폐기물 전량 반출", "바닥 1차 청소", "벽/천장 먼지 제거", "창문 1차"], "crew": "청소:4,잡역:2", "mat": ""}, {"id": "CL_FIN", "nm": "정밀청소", "sub": "입주 전 전문 청소", "dur": 2, "dep": ["CL_RGH"], "cat": "fin", "cp": 1, "tasks": ["바닥 물청소/광택", "유리 정밀(전체 창호)", "욕실/화장실 정밀 세척", "주방가구 내외부", "붙박이장 내부", "조명/스위치/콘센트 면판", "걸레받이/몰딩 닦기"], "crew": "청소:5", "mat": ""}, {"id": "CL_FIX", "nm": "하자점검·보수 ★게이트", "sub": "전 공종 최종 점검", "dur": 3, "dep": ["CL_FIN"], "cat": "fin", "cp": 1, "tasks": ["도장/도배 터치업", "타일 줄눈 보수", "바닥재 들뜸/단차 확인", "도어 전체 개폐 조정", "창호 개폐/잠금/방충망", "수전 전체 누수 확인", "배수 속도 확인(전개소)", "난방 구간별 온도 확인", "전기 전회로 작동(차단기별)", "조명 전체 점등", "통신/TV 수신 확인", "에어컨 냉방 확인", "보일러 최종 시운전", "환기팬 작동"], "crew": "목공:1,배관공:1,전기공:1,도장공:1,잡역:1", "mat": ""}, {"id": "CL_HND", "nm": "건축주 인도", "sub": "검수·열쇠·AS·사용설명", "dur": 1, "dep": ["CL_FIX"], "cat": "fin", "cp": 1, "tasks": ["건축주 실별 동행 검수", "하자리스트 작성/서명", "지적사항 즉시 보수", "열쇠/리모컨 전체 인도", "AS 기간·연락처 안내", "보일러/에어컨/조광기 사용설명", "마감재 유지관리 안내", "준공 서류 전달"], "crew": "소장:1,관리:1", "mat": ""}];
+
+// ================================================================
+// CLOUD SYNC — Supabase BOC 프로젝트 (boc_pms_state 테이블)
+// 로컬(localStorage) 우선 부팅 → 클라우드가 더 최신이면 채택
+// 저장 시마다 0.8초 디바운스 후 업서트. 실패해도 로컬은 유지(오프라인 모드)
+// ================================================================
+var CLOUD={
+  url:"https://gdcfqbdgubgpzusbtftf.supabase.co",
+  key:"sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ",
+  table:"boc_pms_state",
+  ready:false,   // 최초 풀(pull) 완료 전에는 푸시 금지 (샘플데이터가 클라우드를 덮지 않게)
+  timers:{}
+};
+function cloudHeaders(){return{"apikey":CLOUD.key,"Authorization":"Bearer "+CLOUD.key,"Content-Type":"application/json"}}
+function cloudTsGet(){try{return JSON.parse(localStorage.getItem("boc_cloud_ts")||"{}")}catch(e){return{}}}
+function cloudTsSet(k,ts){try{var m=cloudTsGet();m[k]=ts;localStorage.setItem("boc_cloud_ts",JSON.stringify(m))}catch(e){}}
+function cloudDot(ok){
+  var el=document.getElementById("cloudDot");
+  if(!el){
+    el=document.createElement("span");el.id="cloudDot";
+    el.style.cssText="font-size:9px;margin-left:8px;font-weight:400;vertical-align:middle";
+    var h=document.querySelector("header h1");
+    if(h)h.appendChild(el);
+  }
+  if(el){el.textContent=ok?"☁ 동기화됨":"⚠ 오프라인(로컬저장)";el.style.color=ok?"#7dd3a8":"#e8b84a"}
+}
+function cloudPush(key,obj){
+  if(!CLOUD.ready)return;
+  clearTimeout(CLOUD.timers[key]);
+  CLOUD.timers[key]=setTimeout(function(){
+    fetch(CLOUD.url+"/rest/v1/"+CLOUD.table+"?on_conflict=key",{
+      method:"POST",
+      headers:Object.assign(cloudHeaders(),{"Prefer":"resolution=merge-duplicates,return=representation"}),
+      body:JSON.stringify([{key:key,data:obj}])
+    }).then(function(r){return r.ok?r.json():Promise.reject("HTTP "+r.status)})
+      .then(function(rows){if(rows&&rows[0])cloudTsSet(key,rows[0].updated_at);cloudDot(true)})
+      .catch(function(e){console.warn("클라우드 저장 실패:",key,e);cloudDot(false)});
+  },800);
+}
+function cloudInit(){
+  fetch(CLOUD.url+"/rest/v1/"+CLOUD.table+"?select=key,data,updated_at",{headers:cloudHeaders()})
+    .then(function(r){return r.ok?r.json():Promise.reject("HTTP "+r.status)})
+    .then(function(rows){
+      var ts=cloudTsGet(),adoptedProjects=false,have={};
+      rows.forEach(function(row){
+        have[row.key]=1;
+        var localTs=ts[row.key];
+        if(localTs&&new Date(row.updated_at)<=new Date(localTs))return; // 로컬이 같거나 최신
+        // 클라우드가 더 최신 → 채택
+        if(row.key===STORE_KEY&&!currentProj&&Array.isArray(row.data)){
+          projects=row.data;
+          try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){}
+          adoptedProjects=true;
+        }else if(row.key===UCAT_KEY&&row.data){
+          try{localStorage.setItem(UCAT_KEY,JSON.stringify(row.data))}catch(e){}
+          loadUserCats();
+        }else if(row.key===UTMPL_KEY&&row.data){
+          userTemplates=row.data;
+          try{localStorage.setItem(UTMPL_KEY,JSON.stringify(userTemplates))}catch(e){}
+        }
+        cloudTsSet(row.key,row.updated_at);
+      });
+      CLOUD.ready=true;
+      if(adoptedProjects){renderProjects();toast("☁ 클라우드 데이터를 불러왔습니다")}
+      // 클라우드에 없거나 로컬이 더 최신인 키는 업로드
+      if(!have[STORE_KEY]||!adoptedProjects)cloudPush(STORE_KEY,projects);
+      if(!have[UCAT_KEY])cloudPush(UCAT_KEY,userCats);
+      if(!have[UTMPL_KEY])cloudPush(UTMPL_KEY,userTemplates);
+      cloudDot(true);
+    })
+    .catch(function(e){
+      CLOUD.ready=true; // 이후 저장분은 푸시 시도 (재연결 대비)
+      console.warn("클라우드 연결 실패 — 로컬 모드로 동작:",e);
+      cloudDot(false);
+    });
+}
+
+loadStore();
+loadUserTemplates();
+loadUserCats();
+if(projects.length===0){
+  projects.push({
+    id:"prj_sample_1",name:"칠원동 566-1 단독주택 신축",addr:"평택시 칠원동 566-1",
+    area:"389.67",floors:"지상2층",struct:"RC구조",startDate:"2026-05-29",
+    tmpl:"rc_new",note:"fck27MPa SD400 매트기초THK500",created:new Date().toISOString(),
+    phases:JSON.parse(JSON.stringify(TEMPLATES.rc_new))
+  });
+  projects.push({
+    id:"prj_sample_2",name:"칠원동 566-1 실내건축",addr:"평택시 칠원동 566-1",
+    area:"389.67",floors:"지상2층",struct:"RC구조",startDate:"2026-09-15",
+    tmpl:"interior",note:"건축 골조 완료 후 착수",created:new Date().toISOString(),
+    phases:JSON.parse(JSON.stringify(TEMPLATES.interior))
+  });
+}
+// 칠원동 골조(이팀장 순서, 면적연동) — 없으면 자동 추가
+if(!projects.some(function(p){return p.id==="prj_frame_chilwon"})){
+  projects.push({
+    id:"prj_frame_chilwon",name:"칠원동 566-1 골조공사(이팀장)",addr:"평택시 칠원동 566-1",
+    area:"389.67",floors:"지상2층",struct:"RC구조",startDate:"2026-05-29",
+    tmpl:"frame_rc",note:"이팀장 골조 진행순서 / 면적 연동 인원·일수 자동조정 / 타설후 양생1일",created:new Date().toISOString(),
+    phases:JSON.parse(JSON.stringify(TEMPLATES.frame_rc))
+  });
+}else{
+  // 기존 골조 프로젝트가 면적연동 메타데이터 없으면 복구 (구버전 저장본 호환)
+  var fp=projects.find(function(p){return p.id==="prj_frame_chilwon"});
+  if(fp&&fp.phases&&!fp.phases.some(function(ph){return ph.baseCrew})){
+    var meta={};
+    TEMPLATES.frame_rc.forEach(function(t){meta[t.id]=t});
+    fp.phases.forEach(function(ph){
+      var t=meta[ph.id];
+      if(t){["baseCrew","fixCrew","cap","prop","baseDur","areaBase","cure"].forEach(function(k){if(t[k]!==undefined)ph[k]=t[k]})}
+    });
+  }
+}
+// 쌍용동 프로젝트 — localStorage에 없으면 자동 추가 (기존 사용자도 보이도록)
+if(!projects.some(function(p){return p.id==="prj_ssangyong"})){
+  projects.push({
+    id:"prj_ssangyong",name:"쌍용동 단독주택 인테리어",addr:"천안시 쌍용동",
+    area:"198",floors:"지상2층",struct:"RC구조(골조완료)",startDate:"2026-07-01",
+    tmpl:"interior",note:"60평 2층 / RC골조 이후 인테리어 전체 / 게이트3개(방수·난방·하자)",created:new Date().toISOString(),
+    phases:JSON.parse(JSON.stringify(BUILTIN_SSANGYONG))
+  });
+}
+// 키보드: Delete/Backspace로 선택 공정 삭제
+document.addEventListener("keydown",function(e){
+  // 공정표 화면에서만, 입력 중이 아닐 때만
+  if(!currentProj)return;
+  var t=e.target.tagName;
+  if(t==="INPUT"||t==="TEXTAREA"||t==="SELECT")return;
+  // 모달 열려 있으면 무시
+  var mb=document.getElementById("modalBg");
+  if(mb&&mb.classList.contains("open"))return;
+  var lm=document.getElementById("layerModal");
+  if(lm&&lm.classList.contains("open"))return;
+  // 되돌리기 / 다시실행
+  if((e.ctrlKey||e.metaKey)&&(e.key==="z"||e.key==="Z")){
+    e.preventDefault();
+    if(e.shiftKey)histRedo(); else histUndo();
+    return;
+  }
+  if((e.ctrlKey||e.metaKey)&&(e.key==="y"||e.key==="Y")){ e.preventDefault(); histRedo(); return; }
+  if((e.key==="Delete"||e.key==="Backspace")&&selectedRow>=0){
+    e.preventDefault();
+    deletePhaseByIdx(selectedRow,true);
+  }
+  // F: 선택된 공정 잠금/해제 (한/영 무관하게 물리키로 판정)
+  if(e.code==="KeyF"&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&selectedRow>=0){
+    e.preventDefault();
+    toggleLock(selectedRow);
+  }
+  // Esc로 선택 해제
+  if(e.key==="Escape"&&selectedRow>=0){selectedRow=-1;recalc()}
+});
+// 내역 툴팁: 바·툴팁 바깥을 클릭하면 닫기
+document.addEventListener("pointerdown",function(e){
+  if(e.target.closest&&(e.target.closest(".gbar")||e.target.closest("#tip")))return;
+  hideTip();
+});
+saveStore();
+renderProjects();
+updateTodayBadge();setInterval(updateTodayBadge,60000);
+cloudInit();
+</script>
+</body>
+</html>

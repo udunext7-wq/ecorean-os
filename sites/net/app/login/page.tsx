@@ -25,7 +25,10 @@ export default function LoginPage() {
       setError('로그인 실패: 이메일 또는 비밀번호를 확인하세요.');
       return;
     }
-    router.push('/boc');
+    // ?next= 가 있으면 그 모듈로, 없으면 업무 허브로 (open redirect 방지)
+    const raw = new URLSearchParams(window.location.search).get('next');
+    const next = raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/hub';
+    router.push(next);
     router.refresh();
   }
 

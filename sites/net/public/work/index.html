@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#05070d">
+<meta name="robots" content="noindex">
+<title>ECOREAN WORK — 직원 포털</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #05070d; --bg2: #0c111c; --bg3: #111827; --line: #1c2536;
+    --text: #e8ecf4; --dim: #8b95a8; --accent: #4ade80; --accent-dim: rgba(74,222,128,.12);
+    --red: #f87171; --blue: #60a5fa; --amber: #fbbf24;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter Tight','Pretendard',-apple-system,'Malgun Gothic',sans-serif; line-height:1.55; font-size:15px; }
+  button { font-family:inherit; cursor:pointer; }
+  input, select, textarea { font-family:inherit; font-size:14px; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; width:100%; }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:#2f4368; }
+  label { font-size:12px; color:var(--dim); display:block; margin-bottom:4px; }
+  .field { margin-bottom:12px; }
+  .btn { background:var(--bg3); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 16px; font-size:14px; transition:background .15s; }
+  .btn:hover { background:#1a2436; }
+  .btn.primary { background:var(--accent); color:#052e12; border-color:transparent; font-weight:600; }
+  .btn.primary:hover { background:#5ee897; }
+  .btn.danger { color:var(--red); }
+  .btn.sm { padding:4px 10px; font-size:13px; border-radius:6px; }
+
+  /* 로그인 */
+  #loginView { min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .login-box { width:min(380px,92%); background:var(--bg2); border:1px solid var(--line); border-radius:16px; padding:36px 30px; }
+  .login-box .logo { font-size:22px; font-weight:700; letter-spacing:.14em; text-align:center; margin-bottom:6px; }
+  .login-box .logo span { color:var(--accent); }
+  .login-box .sub { text-align:center; color:var(--dim); font-size:13px; margin-bottom:26px; }
+  .login-err { color:var(--red); font-size:13px; margin-top:10px; min-height:18px; }
+
+  /* 앱 셸 */
+  #appView { display:none; min-height:100vh; }
+  .shell { display:flex; min-height:100vh; }
+  aside { width:210px; flex-shrink:0; background:var(--bg2); border-right:1px solid var(--line); padding:22px 14px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
+  aside .logo { font-size:17px; font-weight:700; letter-spacing:.12em; padding:0 10px 18px; }
+  aside .logo span { color:var(--accent); }
+  aside nav { flex:1; }
+  aside nav a { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:9px; color:var(--dim); text-decoration:none; font-size:14px; margin-bottom:2px; }
+  aside nav a:hover { background:var(--bg3); color:var(--text); }
+  aside nav a.active { background:var(--accent-dim); color:var(--accent); font-weight:600; }
+  aside .me { font-size:12px; color:var(--dim); padding:10px 12px; border-top:1px solid var(--line); }
+  aside .me b { display:block; color:var(--text); font-size:13px; }
+  main { flex:1; padding:28px 32px; min-width:0; }
+  .page-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+  .page-head h1 { font-size:21px; font-weight:700; }
+  .filters { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .filters select, .filters input { width:auto; min-width:130px; }
+
+  /* 테이블 */
+  .tbl-wrap { background:var(--bg2); border:1px solid var(--line); border-radius:12px; overflow-x:auto; }
+  table.tbl { width:100%; border-collapse:collapse; font-size:14px; min-width:640px; }
+  .tbl th { text-align:left; font-size:12px; color:var(--dim); font-weight:600; padding:11px 14px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .tbl td { padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .tbl tr:last-child td { border-bottom:none; }
+  .tbl tr.row:hover { background:var(--bg3); cursor:pointer; }
+  .tbl .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .empty { padding:36px; text-align:center; color:var(--dim); font-size:14px; }
+  .badge { display:inline-block; font-size:12px; border-radius:99px; padding:2px 10px; background:var(--bg3); color:var(--dim); white-space:nowrap; }
+  .badge.g { background:var(--accent-dim); color:var(--accent); }
+  .badge.b { background:rgba(96,165,250,.12); color:var(--blue); }
+  .badge.r { background:rgba(248,113,113,.12); color:var(--red); }
+  .badge.y { background:rgba(251,191,36,.12); color:var(--amber); }
+
+  /* 대시보드 */
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:24px; }
+  .stat { background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:18px 20px; }
+  .stat .k { font-size:12px; color:var(--dim); margin-bottom:6px; }
+  .stat .v { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .stat .v small { font-size:13px; color:var(--dim); font-weight:400; }
+
+  /* 모달 */
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(2,4,10,.72); z-index:50; align-items:flex-start; justify-content:center; overflow-y:auto; padding:40px 16px; }
+  .modal-bg.open { display:flex; }
+  .modal { background:var(--bg2); border:1px solid var(--line); border-radius:14px; width:min(680px,100%); padding:26px; }
+  .modal h2 { font-size:17px; margin-bottom:18px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 14px; }
+  .modal-actions { display:flex; justify-content:space-between; gap:10px; margin-top:8px; }
+  .modal-actions .right { display:flex; gap:8px; }
+
+  /* 발주 품목 편집 */
+  .items-editor { border:1px solid var(--line); border-radius:10px; overflow-x:auto; margin-bottom:10px; }
+  .items-editor table { width:100%; border-collapse:collapse; min-width:560px; }
+  .items-editor th { font-size:11px; color:var(--dim); padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; }
+  .items-editor td { padding:4px 5px; }
+  .items-editor input { padding:6px 8px; font-size:13px; border-radius:6px; }
+  .sum-row { display:flex; justify-content:flex-end; gap:18px; font-size:14px; margin:8px 2px 14px; font-variant-numeric:tabular-nums; }
+  .sum-row b { color:var(--accent); }
+
+  /* 간트 */
+  .gantt-wrap { background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:18px; overflow-x:auto; }
+  .gantt { min-width:700px; }
+  .g-head { display:grid; font-size:10px; color:var(--dim); border-bottom:1px solid var(--line); padding-bottom:6px; margin-bottom:8px; }
+  .g-head div { text-align:center; overflow:hidden; white-space:nowrap; }
+  .g-row { display:grid; align-items:center; height:34px; }
+  .g-label { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:10px; cursor:pointer; }
+  .g-bar { height:20px; border-radius:5px; position:relative; opacity:.92; min-width:6px; }
+  .g-bar .pg { position:absolute; inset:0; width:var(--pg); background:rgba(255,255,255,.28); border-radius:5px 0 0 5px; }
+  .g-bar span { position:absolute; left:6px; top:50%; transform:translateY(-50%); font-size:10px; color:#04101f; font-weight:700; white-space:nowrap; }
+
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--bg3); border:1px solid var(--line); color:var(--text); padding:10px 20px; border-radius:10px; font-size:14px; z-index:99; display:none; }
+
+  /* 인쇄 (발주서 A4) */
+  #printArea { display:none; }
+  @media print {
+    body * { visibility:hidden; }
+    #printArea, #printArea * { visibility:visible; }
+    #printArea { display:block; position:absolute; inset:0; background:#fff; color:#111; padding:14mm; font-size:12px; }
+    #printArea h1 { font-size:20px; text-align:center; letter-spacing:8px; margin-bottom:14px; }
+    #printArea table { width:100%; border-collapse:collapse; margin-bottom:10px; }
+    #printArea th, #printArea td { border:1px solid #333; padding:6px 8px; text-align:left; }
+    #printArea th { background:#f0f0f0; font-size:11px; }
+    #printArea .num { text-align:right; }
+    #printArea .sign { margin-top:28px; display:flex; justify-content:space-between; }
+    #printArea .sign div { width:45%; border-top:1px solid #333; padding-top:8px; text-align:center; }
+  }
+  @media (max-width: 860px) {
+    .shell { flex-direction:column; }
+    aside { width:100%; height:auto; position:static; flex-direction:row; align-items:center; padding:10px 12px; overflow-x:auto; }
+    aside .logo { padding:0 12px 0 4px; font-size:15px; }
+    aside nav { display:flex; flex:1; }
+    aside nav a { white-space:nowrap; padding:8px 10px; }
+    aside .me { display:none; border:none; }
+    main { padding:18px 14px; }
+    .grid2, .grid3 { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="loginView">
+  <form class="login-box" id="loginForm">
+    <div class="logo">ECO<span>REAN</span> WORK</div>
+    <div class="sub">직원 전용 업무 포털</div>
+    <div class="field"><label>이메일</label><input type="email" id="loginEmail" autocomplete="username" required></div>
+    <div class="field"><label>비밀번호</label><input type="password" id="loginPw" autocomplete="current-password" required></div>
+    <button class="btn primary" style="width:100%; padding:11px;" type="submit">로그인</button>
+    <div class="login-err" id="loginErr"></div>
+    <div style="font-size:12px; color:var(--dim); text-align:center; margin-top:10px;">계정은 관리자에게 문의하세요</div>
+  </form>
+</div>
+
+<!-- 앱 -->
+<div id="appView">
+  <div class="shell">
+    <aside>
+      <div class="logo">ECO<span>REAN</span></div>
+      <nav id="navTabs">
+        <a href="#dashboard" data-tab="dashboard">📊 대시보드</a>
+        <a href="#sites" data-tab="sites">🏗️ 현장</a>
+        <a href="#po" data-tab="po">📦 발주서</a>
+        <a href="#daily" data-tab="daily">📝 공사일보</a>
+        <a href="#invoice" data-tab="invoice">🧾 계산서</a>
+        <a href="#schedule" data-tab="schedule">📅 공정표</a>
+        <a href="#inquiry" data-tab="inquiry">📨 상담 문의</a>
+        <a href="#staff" data-tab="staff" id="staffTabLink" style="display:none;">👥 직원 관리</a>
+        <a href="/minicad/" target="_blank">📐 MiniCAD ↗</a>
+        <a href="/pms/" target="_blank">📋 공정관리 ↗</a>
+        <a href="/biz/" target="_blank">💼 사업장부 ↗</a>
+        <a href="/editor/" target="_blank">🎨 아티팩트 생성기 ↗</a>
+      </nav>
+      <div class="me"><b id="meName">—</b><span id="meRole"></span><br><a href="#" id="logoutBtn" style="color:var(--dim);">로그아웃</a></div>
+    </aside>
+    <main id="mainContent"></main>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+
+<script>
+const SB_URL = 'https://gdcfqbdgubgpzusbtftf.supabase.co';
+const SB_KEY = 'sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+let me = null;          // { id, display_name, role }
+let sites = [];         // 현장 캐시 (셀렉트 옵션용)
+let currentTab = 'dashboard';
+
+const $ = s => document.querySelector(s);
+const fmt = n => (n == null ? '—' : Number(n).toLocaleString('ko-KR'));
+const won = n => fmt(n) + '원';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => new Date().toISOString().slice(0,10);
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 2600); }
+function siteName(id) { const s = sites.find(x => x.id === id); return s ? s.name : '—'; }
+function siteOptions(sel) { return '<option value="">현장 선택 안 함</option>' + sites.map(s => `<option value="${s.id}" ${s.id===sel?'selected':''}>${esc(s.name)}</option>`).join(''); }
+
+const STATUS_BADGE = {
+  '예정':'y','진행중':'g','완료':'b','보류':'r',
+  '작성중':'y','발주':'g','입고완료':'b','취소':'r',
+  '발행':'g','수금완료':'b','지급완료':'b'
+};
+const badge = s => `<span class="badge ${STATUS_BADGE[s]||''}">${esc(s)}</span>`;
+
+/* ───── 인증 ───── */
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#loginErr').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('#loginEmail').value.trim(), password: $('#loginPw').value });
+  if (error) $('#loginErr').textContent = '로그인 실패: 이메일 또는 비밀번호를 확인하세요.';
+});
+$('#logoutBtn').addEventListener('click', async e => { e.preventDefault(); await sb.auth.signOut(); location.reload(); });
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) await enterApp(session.user);
+  else { $('#loginView').style.display = 'flex'; $('#appView').style.display = 'none'; }
+});
+
+async function enterApp(user) {
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if (!profile || !['staff','admin'].includes(profile.role)) {
+    $('#loginErr').textContent = '직원 권한이 없는 계정입니다. 관리자에게 문의하세요.';
+    await sb.auth.signOut();
+    return;
+  }
+  me = profile;
+  const next = new URLSearchParams(location.search).get('next');
+  if (next && /^\/(?!\/)/.test(next)) { location.replace(next); return; }
+  $('#meName').textContent = profile.display_name || user.email;
+  $('#meRole').textContent = profile.role === 'admin' ? '관리자' : '직원';
+  if (profile.role === 'admin') $('#staffTabLink').style.display = 'flex';
+  $('#loginView').style.display = 'none';
+  $('#appView').style.display = 'block';
+  await loadSites();
+  route();
+}
+
+/* ───── 라우팅 ───── */
+window.addEventListener('hashchange', route);
+function route() {
+  if (!me) return;
+  const tab = (location.hash || '#dashboard').slice(1);
+  currentTab = tab;
+  document.querySelectorAll('#navTabs a[data-tab]').forEach(a => a.classList.toggle('active', a.dataset.tab === tab));
+  const views = { dashboard: viewDashboard, sites: viewSites, po: viewPO, daily: viewDaily, invoice: viewInvoice, schedule: viewSchedule, staff: viewStaff, inquiry: viewInquiry };
+  (views[tab] || viewDashboard)();
+}
+
+async function loadSites() {
+  const { data } = await sb.from('work_sites').select('*').order('created_at', { ascending: false });
+  sites = data || [];
+}
+
+/* ───── 모달 공통 ───── */
+function openModal(html) { $('#modalBox').innerHTML = html; $('#modalBg').classList.add('open'); }
+function closeModal() { $('#modalBg').classList.remove('open'); }
+$('#modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
+async function del(table, id, refresh) {
+  if (!confirm('정말 삭제할까요? 되돌릴 수 없습니다.')) return;
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error) return toast('삭제 실패: ' + error.message);
+  toast('삭제되었습니다'); closeModal(); refresh();
+}
+
+/* ───── 대시보드 ───── */
+async function viewDashboard() {
+  const first = today().slice(0,8) + '01';
+  const [act, po, sal, pur, rep] = await Promise.all([
+    sb.from('work_sites').select('id', { count:'exact', head:true }).eq('status','진행중'),
+    sb.from('work_purchase_orders').select('supply_amount,vat_amount').gte('order_date', first).neq('status','취소'),
+    sb.from('work_invoices').select('supply_amount,vat_amount').eq('invoice_type','매출').gte('issue_date', first).neq('status','취소'),
+    sb.from('work_invoices').select('supply_amount,vat_amount').eq('invoice_type','매입').gte('issue_date', first).neq('status','취소'),
+    sb.from('work_daily_reports').select('id', { count:'exact', head:true }).eq('report_date', today()),
+  ]);
+  const sum = rows => (rows.data||[]).reduce((a,r)=>a+(r.supply_amount||0)+(r.vat_amount||0),0);
+  const { data: recentPO } = await sb.from('work_purchase_orders').select('*').order('created_at',{ascending:false}).limit(5);
+  const { data: recentRep } = await sb.from('work_daily_reports').select('*').order('report_date',{ascending:false}).limit(5);
+
+  $('#mainContent').innerHTML = `
+    <div class="page-head"><h1>대시보드</h1><div style="color:var(--dim);font-size:13px;">${today()}</div></div>
+    <div class="stats">
+      <div class="stat"><div class="k">진행중 현장</div><div class="v">${act.count ?? 0}<small> 곳</small></div></div>
+      <div class="stat"><div class="k">이번 달 발주 (VAT 포함)</div><div class="v">${fmt(sum(po))}<small> 원</small></div></div>
+      <div class="stat"><div class="k">이번 달 매출 계산서</div><div class="v">${fmt(sum(sal))}<small> 원</small></div></div>
+      <div class="stat"><div class="k">이번 달 매입 계산서</div><div class="v">${fmt(sum(pur))}<small> 원</small></div></div>
+      <div class="stat"><div class="k">오늘 공사일보</div><div class="v">${rep.count ?? 0}<small> 건</small></div></div>
+    </div>
+    <div class="grid2" style="gap:16px; align-items:start;">
+      <div><h2 style="font-size:15px;margin-bottom:10px;color:var(--dim);">최근 발주서</h2>
+        <div class="tbl-wrap"><table class="tbl"><tbody>
+          ${(recentPO||[]).map(r=>`<tr class="row" onclick="location.hash='po'"><td>${esc(r.po_no)}</td><td>${esc(r.vendor_name)}</td><td class="num">${won(r.total_amount)}</td><td>${badge(r.status)}</td></tr>`).join('') || '<tr><td class="empty">발주서가 없습니다</td></tr>'}
+        </tbody></table></div></div>
+      <div><h2 style="font-size:15px;margin-bottom:10px;color:var(--dim);">최근 공사일보</h2>
+        <div class="tbl-wrap"><table class="tbl"><tbody>
+          ${(recentRep||[]).map(r=>`<tr class="row" onclick="location.hash='daily'"><td>${r.report_date}</td><td>${esc(siteName(r.site_id))}</td><td>${esc((r.work_today||'').slice(0,26))}</td></tr>`).join('') || '<tr><td class="empty">일보가 없습니다</td></tr>'}
+        </tbody></table></div></div>
+    </div>`;
+}
+
+/* ───── 현장 ───── */
+async function viewSites() {
+  await loadSites();
+  $('#mainContent').innerHTML = `
+    <div class="page-head"><h1>현장 관리</h1><button class="btn primary" onclick="siteForm()">+ 새 현장</button></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>현장명</th><th>발주처</th><th>주소</th><th>기간</th><th>상태</th></tr></thead>
+      <tbody>${sites.map(s=>`<tr class="row" onclick="siteForm('${s.id}')">
+        <td><b>${esc(s.name)}</b></td><td>${esc(s.client_name||'—')}</td><td>${esc(s.address||'—')}</td>
+        <td style="white-space:nowrap;">${s.start_date||'?'} ~ ${s.end_date||'?'}</td><td>${badge(s.status)}</td></tr>`).join('')
+        || '<tr><td colspan="5" class="empty">등록된 현장이 없습니다. 새 현장을 추가하세요.</td></tr>'}</tbody>
+    </table></div>`;
+}
+
+window.siteForm = function(id) {
+  const s = sites.find(x=>x.id===id) || {};
+  openModal(`
+    <h2>${id?'현장 수정':'새 현장'}</h2>
+    <div class="field"><label>현장명 *</label><input id="f_name" value="${esc(s.name||'')}"></div>
+    <div class="grid2">
+      <div class="field"><label>발주처(고객)</label><input id="f_client" value="${esc(s.client_name||'')}"></div>
+      <div class="field"><label>상태</label><select id="f_status">${['예정','진행중','완료','보류'].map(v=>`<option ${s.status===v?'selected':''}>${v}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>주소</label><input id="f_addr" value="${esc(s.address||'')}"></div>
+    <div class="grid2">
+      <div class="field"><label>착공일</label><input type="date" id="f_start" value="${s.start_date||''}"></div>
+      <div class="field"><label>준공 예정일</label><input type="date" id="f_end" value="${s.end_date||''}"></div>
+    </div>
+    <div class="field"><label>메모</label><textarea id="f_memo" rows="2">${esc(s.memo||'')}</textarea></div>
+    <div class="modal-actions">
+      <div>${id?`<button class="btn danger" onclick="del('work_sites','${id}',viewSites)">삭제</button>`:''}</div>
+      <div class="right"><button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn primary" onclick="saveSite('${id||''}')">저장</button></div>
+    </div>`);
+};
+window.saveSite = async function(id) {
+  const row = {
+    name: $('#f_name').value.trim(), client_name: $('#f_client').value.trim() || null,
+    status: $('#f_status').value, address: $('#f_addr').value.trim() || null,
+    start_date: $('#f_start').value || null, end_date: $('#f_end').value || null,
+    memo: $('#f_memo').value.trim() || null,
+  };
+  if (!row.name) return toast('현장명을 입력하세요');
+  if (!id) row.created_by = me.id;
+  const q = id ? sb.from('work_sites').update(row).eq('id', id) : sb.from('work_sites').insert(row);
+  const { error } = await q;
+  if (error) return toast('저장 실패: ' + error.message);
+  toast('저장되었습니다'); closeModal(); viewSites();
+};
+
+/* ───── 발주서 ───── */
+let poCache = [];
+async function viewPO() {
+  const { data } = await sb.from('work_purchase_orders').select('*').order('order_date',{ascending:false}).order('created_at',{ascending:false});
+  poCache = data || [];
+  $('#mainContent').innerHTML = `
+    <div class="page-head"><h1>발주서</h1>
+      <div class="filters">
+        <select id="poSiteFilter" onchange="renderPOList()">${'<option value="">전체 현장</option>'+sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+        <button class="btn primary" onclick="poForm()">+ 새 발주서</button>
+      </div></div>
+    <div id="poList"></div>`;
+  renderPOList();
+}
+window.renderPOList = function() {
+  const f = $('#poSiteFilter')?.value;
+  const rows = poCache.filter(r => !f || r.site_id === f);
+  $('#poList').innerHTML = `<div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>발주번호</th><th>거래처</th><th>현장</th><th>발주일</th><th>납기</th><th class="num">합계(VAT포함)</th><th>상태</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr class="row" onclick="poForm('${r.id}')">
+      <td><b>${esc(r.po_no)}</b></td><td>${esc(r.vendor_name)}</td><td>${esc(siteName(r.site_id))}</td>
+      <td>${r.order_date}</td><td>${r.due_date||'—'}</td><td class="num">${won(r.total_amount)}</td><td>${badge(r.status)}</td>
+      <td><button class="btn sm" onclick="event.stopPropagation();printPO('${r.id}')">인쇄</button></td></tr>`).join('')
+      || '<tr><td colspan="8" class="empty">발주서가 없습니다</td></tr>'}</tbody></table></div>`;
+};
+
+function itemRowHTML(it = {}) {
+  return `<tr>
+    <td><input class="it-name" value="${esc(it.name||'')}" placeholder="품명"></td>
+    <td style="width:90px;"><input class="it-spec" value="${esc(it.spec||'')}" placeholder="규격"></td>
+    <td style="width:60px;"><input class="it-unit" value="${esc(it.unit||'')}" placeholder="단위"></td>
+    <td style="width:70px;"><input class="it-qty" type="number" min="0" step="any" value="${it.qty ?? ''}" placeholder="수량" oninput="calcPO()"></td>
+    <td style="width:110px;"><input class="it-price" type="number" min="0" value="${it.unit_price ?? ''}" placeholder="단가" oninput="calcPO()"></td>
+    <td style="width:110px;"><input class="it-amt" readonly value="${it.qty&&it.unit_price?fmt(Math.round(it.qty*it.unit_price)):''}" style="opacity:.7;"></td>
+    <td style="width:34px;"><button class="btn sm danger" onclick="this.closest('tr').remove();calcPO()">×</button></td></tr>`;
+}
+window.poForm = function(id) {
+  const r = poCache.find(x=>x.id===id) || {};
+  const items = r.items?.length ? r.items : [{},{},{}];
+  const poNo = r.po_no || ('PO-' + today().replace(/-/g,'') + '-' + String(poCache.length+1).padStart(3,'0'));
+  openModal(`
+    <h2>${id?'발주서 수정':'새 발주서'}</h2>
+    <div class="grid3">
+      <div class="field"><label>발주번호</label><input id="f_pono" value="${esc(poNo)}"></div>
+      <div class="field"><label>발주일</label><input type="date" id="f_odate" value="${r.order_date||today()}"></div>
+      <div class="field"><label>납기일</label><input type="date" id="f_due" value="${r.due_date||''}"></div>
+    </div>
+    <div class="grid3">
+      <div class="field"><label>거래처 *</label><input id="f_vendor" value="${esc(r.vendor_name||'')}"></div>
+      <div class="field"><label>거래처 연락처</label><input id="f_vcontact" value="${esc(r.vendor_contact||'')}"></div>
+      <div class="field"><label>상태</label><select id="f_pstatus">${['작성중','발주','입고완료','취소'].map(v=>`<option ${r.status===v?'selected':''}>${v}</option>`).join('')}</select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>현장</label><select id="f_psite">${siteOptions(r.site_id)}</select></div>
+      <div class="field"><label>납품 장소</label><input id="f_place" value="${esc(r.delivery_place||'')}"></div>
+    </div>
+    <label>품목</label>
+    <div class="items-editor"><table>
+      <thead><tr><th>품명</th><th>규격</th><th>단위</th><th>수량</th><th>단가(원)</th><th>금액</th><th></th></tr></thead>
+      <tbody id="itemRows">${items.map(itemRowHTML).join('')}</tbody>
+    </table></div>
+    <button class="btn sm" onclick="document.getElementById('itemRows').insertAdjacentHTML('beforeend', itemRowHTML_())">+ 품목 추가</button>
+    <div class="sum-row"><span>공급가 <b id="sumSupply">0</b>원</span><span>부가세 <b id="sumVat">0</b>원</span><span>합계 <b id="sumTotal">0</b>원</span></div>
+    <div class="field"><label>비고</label><textarea id="f_pmemo" rows="2">${esc(r.memo||'')}</textarea></div>
+    <div class="modal-actions">
+      <div>${id?`<button class="btn danger" onclick="del('work_purchase_orders','${id}',viewPO)">삭제</button>`:''}</div>
+      <div class="right">${id?`<button class="btn" onclick="printPO('${id}')">인쇄</button>`:''}
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn primary" onclick="savePO('${id||''}')">저장</button></div>
+    </div>`);
+  calcPO();
+};
+window.itemRowHTML_ = () => itemRowHTML();
+window.calcPO = function() {
+  let supply = 0;
+  document.querySelectorAll('#itemRows tr').forEach(tr => {
+    const qty = parseFloat(tr.querySelector('.it-qty').value) || 0;
+    const price = parseInt(tr.querySelector('.it-price').value) || 0;
+    const amt = Math.round(qty * price);
+    tr.querySelector('.it-amt').value = amt ? fmt(amt) : '';
+    supply += amt;
+  });
+  const vat = Math.round(supply * 0.1);
+  $('#sumSupply').textContent = fmt(supply);
+  $('#sumVat').textContent = fmt(vat);
+  $('#sumTotal').textContent = fmt(supply + vat);
+};
+function collectItems() {
+  const out = [];
+  document.querySelectorAll('#itemRows tr').forEach(tr => {
+    const name = tr.querySelector('.it-name').value.trim();
+    if (!name) return;
+    const qty = parseFloat(tr.querySelector('.it-qty').value) || 0;
+    const unit_price = parseInt(tr.querySelector('.it-price').value) || 0;
+    out.push({ name, spec: tr.querySelector('.it-spec').value.trim(), unit: tr.querySelector('.it-unit').value.trim(),
+      qty, unit_price, amount: Math.round(qty * unit_price) });
+  });
+  return out;
+}
+window.savePO = async function(id) {
+  const items = collectItems();
+  const supply = items.reduce((a,i)=>a+i.amount,0);
+  const row = {
+    po_no: $('#f_pono').value.trim(), vendor_name: $('#f_vendor').value.trim(),
+    vendor_contact: $('#f_vcontact').value.trim() || null,
+    order_date: $('#f_odate').value || today(), due_date: $('#f_due').value || null,
+    site_id: $('#f_psite').value || null, delivery_place: $('#f_place').value.trim() || null,
+    items, supply_amount: supply, vat_amount: Math.round(supply * 0.1),
+    status: $('#f_pstatus').value, memo: $('#f_pmemo').value.trim() || null,
+  };
+  if (!row.vendor_name) return toast('거래처를 입력하세요');
+  if (!row.po_no) return toast('발주번호를 입력하세요');
+  if (!id) row.created_by = me.id;
+  const q = id ? sb.from('work_purchase_orders').update(row).eq('id', id) : sb.from('work_purchase_orders').insert(row);
+  const { error } = await q;
+  if (error) return toast('저장 실패: ' + error.message);
+  toast('저장되었습니다'); closeModal(); viewPO();
+};
+window.printPO = function(id) {
+  const r = poCache.find(x=>x.id===id);
+  if (!r) return;
+  $('#printArea').innerHTML = `
+    <h1>발 주 서</h1>
+    <table><tr>
+      <th style="width:14%;">발주번호</th><td style="width:36%;">${esc(r.po_no)}</td>
+      <th style="width:14%;">발주일</th><td>${r.order_date}</td></tr>
+      <tr><th>거래처</th><td>${esc(r.vendor_name)} ${r.vendor_contact?'('+esc(r.vendor_contact)+')':''}</td><th>납기일</th><td>${r.due_date||'협의'}</td></tr>
+      <tr><th>현장</th><td>${esc(siteName(r.site_id))}</td><th>납품장소</th><td>${esc(r.delivery_place||'현장')}</td></tr>
+    </table>
+    <table><thead><tr><th style="width:6%;">No</th><th>품명</th><th style="width:12%;">규격</th><th style="width:8%;">단위</th><th style="width:9%;">수량</th><th style="width:13%;">단가</th><th style="width:14%;">금액</th></tr></thead>
+    <tbody>${(r.items||[]).map((it,i)=>`<tr><td class="num">${i+1}</td><td>${esc(it.name)}</td><td>${esc(it.spec||'')}</td><td>${esc(it.unit||'')}</td><td class="num">${fmt(it.qty)}</td><td class="num">${fmt(it.unit_price)}</td><td class="num">${fmt(it.amount)}</td></tr>`).join('')}
+      <tr><th colspan="6">공급가액</th><td class="num">${fmt(r.supply_amount)}</td></tr>
+      <tr><th colspan="6">부가세</th><td class="num">${fmt(r.vat_amount)}</td></tr>
+      <tr><th colspan="6">합계</th><td class="num"><b>${fmt(r.total_amount)}</b></td></tr>
+    </tbody></table>
+    ${r.memo?`<p style="margin:6px 0;">비고: ${esc(r.memo)}</p>`:''}
+    <p style="margin-top:14px;">위와 같이 발주합니다.</p>
+    <p style="text-align:right; margin-top:10px;">${r.order_date}<br><b>ECOREAN</b></p>
+    <div class="sign"><div>발주자 (인)</div><div>수주자 (인)</div></div>`;
+  window.print();
+};
+
+/* ───── 공사일보 ───── */
+let dailyCache = [];
+async function viewDaily() {
+  const { data } = await sb.from('work_daily_reports').select('*').order('report_date',{ascending:false}).limit(200);
+  dailyCache = data || [];
+  $('#mainContent').innerHTML = `
+    <div class="page-head"><h1>공사일보</h1>
+      <div class="filters">
+        <select id="dailySiteFilter" onchange="renderDailyList()">${'<option value="">전체 현장</option>'+sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+        <button class="btn primary" onclick="dailyForm()">+ 일보 작성</button>
+      </div></div>
+    <div id="dailyList"></div>`;
+  renderDailyList();
+}
+window.renderDailyList = function() {
+  const f = $('#dailySiteFilter')?.value;
+  const rows = dailyCache.filter(r => !f || r.site_id === f);
+  $('#dailyList').innerHTML = `<div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>일자</th><th>현장</th><th>날씨</th><th>인원</th><th>금일 작업</th><th>특이사항</th></tr></thead>
+    <tbody>${rows.map(r=>{
+      const cnt = (r.workers||[]).reduce((a,w)=>a+(Number(w.count)||0),0);
+      return `<tr class="row" onclick="dailyForm('${r.id}')">
+      <td style="white-space:nowrap;">${r.report_date}</td><td>${esc(siteName(r.site_id))}</td><td>${esc(r.weather||'—')}</td>
+      <td class="num">${cnt}명</td><td>${esc((r.work_today||'').slice(0,38))}</td><td>${esc((r.issues||'').slice(0,20))||'—'}</td></tr>`;}).join('')
+      || '<tr><td colspan="6" class="empty">공사일보가 없습니다</td></tr>'}</tbody></table></div>`;
+};
+function workerRowHTML(w = {}) {
+  return `<tr>
+    <td><input class="wk-role" value="${esc(w.role||'')}" placeholder="직종 (예: 타일공)"></td>
+    <td style="width:80px;"><input class="wk-count" type="number" min="0" value="${w.count ?? ''}" placeholder="인원"></td>
+    <td><input class="wk-note" value="${esc(w.note||'')}" placeholder="비고"></td>
+    <td style="width:34px;"><button class="btn sm danger" onclick="this.closest('tr').remove()">×</button></td></tr>`;
+}
+window.workerRowHTML_ = () => workerRowHTML();
+window.dailyForm = function(id) {
+  const r = dailyCache.find(x=>x.id===id) || {};
+  const workers = r.workers?.length ? r.workers : [{},{}];
+  openModal(`
+    <h2>${id?'공사일보 수정':'공사일보 작성'}</h2>
+    <div class="grid3">
+      <div class="field"><label>일자</label><input type="date" id="f_rdate" value="${r.report_date||today()}"></div>
+      <div class="field"><label>현장 *</label><select id="f_rsite">${siteOptions(r.site_id)}</select></div>
+      <div class="field"><label>날씨</label><select id="f_weather">${['','맑음','흐림','비','눈','바람'].map(v=>`<option ${r.weather===v?'selected':''}>${v}</option>`).join('')}</select></div>
+    </div>
+    <label>투입 인원</label>
+    <div class="items-editor"><table>
+      <thead><tr><th>직종</th><th>인원</th><th>비고</th><th></th></tr></thead>
+      <tbody id="workerRows">${workers.map(workerRowHTML).join('')}</tbody></table></div>
+    <button class="btn sm" style="margin-bottom:12px;" onclick="document.getElementById('workerRows').insertAdjacentHTML('beforeend', workerRowHTML_())">+ 인원 추가</button>
+    <div class="field"><label>금일 작업 내용</label><textarea id="f_wtoday" rows="3">${esc(r.work_today||'')}</textarea></div>
+    <div class="field"><label>명일 작업 예정</label><textarea id="f_wtomorrow" rows="2">${esc(r.work_tomorrow||'')}</textarea></div>
+    <div class="grid2">
+      <div class="field"><label>자재 입고</label><textarea id="f_matin" rows="2">${esc(r.materials_in||'')}</textarea></div>
+      <div class="field"><label>특이사항 / 안전</label><textarea id="f_issues" rows="2">${esc(r.issues||'')}</textarea></div>
+    </div>
+    <div class="modal-actions">
+      <div>${id?`<button class="btn danger" onclick="del('work_daily_reports','${id}',viewDaily)">삭제</button>`:''}</div>
+      <div class="right"><button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn primary" onclick="saveDaily('${id||''}')">저장</button></div>
+    </div>`);
+};
+window.saveDaily = async function(id) {
+  const workers = [];
+  document.querySelectorAll('#workerRows tr').forEach(tr => {
+    const role = tr.querySelector('.wk-role').value.trim();
+    if (!role) return;
+    workers.push({ role, count: Number(tr.querySelector('.wk-count').value) || 0, note: tr.querySelector('.wk-note').value.trim() });
+  });
+  const row = {
+    report_date: $('#f_rdate').value || today(), site_id: $('#f_rsite').value || null,
+    weather: $('#f_weather').value || null, workers,
+    work_today: $('#f_wtoday').value.trim() || null, work_tomorrow: $('#f_wtomorrow').value.trim() || null,
+    materials_in: $('#f_matin').value.trim() || null, issues: $('#f_issues').value.trim() || null,
+  };
+  if (!row.site_id) return toast('현장을 선택하세요');
+  if (!id) row.created_by = me.id;
+  const q = id ? sb.from('work_daily_reports').update(row).eq('id', id) : sb.from('work_daily_reports').insert(row);
+  const { error } = await q;
+  if (error) return toast('저장 실패: ' + error.message);
+  toast('저장되었습니다'); closeModal(); viewDaily();
+};
+
+/* ───── 계산서 ───── */
+let invCache = [];
+async function viewInvoice() {
+  const { data } = await sb.from('work_invoices').select('*').order('issue_date',{ascending:false}).limit(300);
+  invCache = data || [];
+  $('#mainContent').innerHTML = `
+    <div class="page-head"><h1>계산서 대장</h1>
+      <div class="filters">
+        <select id="invTypeFilter" onchange="renderInvList()"><option value="">매출+매입</option><option>매출</option><option>매입</option></select>
+        <select id="invSiteFilter" onchange="renderInvList()">${'<option value="">전체 현장</option>'+sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+        <button class="btn primary" onclick="invForm()">+ 계산서 등록</button>
+      </div></div>
+    <div id="invSummary" class="stats" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));"></div>
+    <div id="invList"></div>
+    <p style="color:var(--dim);font-size:12px;margin-top:10px;">※ 이 대장은 발행 기록 관리용입니다. 실제 세금계산서 발행은 홈택스에서 진행하세요.</p>`;
+  renderInvList();
+}
+window.renderInvList = function() {
+  const ft = $('#invTypeFilter')?.value, fs = $('#invSiteFilter')?.value;
+  const rows = invCache.filter(r => (!ft || r.invoice_type === ft) && (!fs || r.site_id === fs));
+  const sum = t => rows.filter(r=>r.invoice_type===t && r.status!=='취소').reduce((a,r)=>a+r.total_amount,0);
+  $('#invSummary').innerHTML = `
+    <div class="stat"><div class="k">매출 합계 (표시분)</div><div class="v" style="color:var(--accent);">${fmt(sum('매출'))}<small> 원</small></div></div>
+    <div class="stat"><div class="k">매입 합계 (표시분)</div><div class="v" style="color:var(--blue);">${fmt(sum('매입'))}<small> 원</small></div></div>
+    <div class="stat"><div class="k">차액</div><div class="v">${fmt(sum('매출')-sum('매입'))}<small> 원</small></div></div>`;
+  $('#invList').innerHTML = `<div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>발행일</th><th>구분</th><th>거래처</th><th>품목</th><th>현장</th><th class="num">공급가</th><th class="num">부가세</th><th class="num">합계</th><th>상태</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr class="row" onclick="invForm('${r.id}')">
+      <td style="white-space:nowrap;">${r.issue_date}</td>
+      <td><span class="badge ${r.invoice_type==='매출'?'g':'b'}">${r.invoice_type}</span></td>
+      <td>${esc(r.counterparty)}</td><td>${esc((r.item_desc||'').slice(0,24))}</td><td>${esc(siteName(r.site_id))}</td>
+      <td class="num">${fmt(r.supply_amount)}</td><td class="num">${fmt(r.vat_amount)}</td><td class="num"><b>${fmt(r.total_amount)}</b></td>
+      <td>${badge(r.status)}</td></tr>`).join('')
+      || '<tr><td colspan="9" class="empty">등록된 계산서가 없습니다</td></tr>'}</tbody></table></div>`;
+};
+window.invForm = function(id) {
+  const r = invCache.find(x=>x.id===id) || {};
+  openModal(`
+    <h2>${id?'계산서 수정':'계산서 등록'}</h2>
+    <div class="grid3">
+      <div class="field"><label>구분 *</label><select id="f_itype"><option ${r.invoice_type==='매출'?'selected':''}>매출</option><option ${r.invoice_type==='매입'?'selected':''}>매입</option></select></div>
+      <div class="field"><label>발행일</label><input type="date" id="f_idate" value="${r.issue_date||today()}"></div>
+      <div class="field"><label>상태</label><select id="f_istatus">${['예정','발행','수금완료','지급완료','취소'].map(v=>`<option ${r.status===v?'selected':''}>${v}</option>`).join('')}</select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>거래처 *</label><input id="f_icp" value="${esc(r.counterparty||'')}"></div>
+      <div class="field"><label>현장</label><select id="f_isite">${siteOptions(r.site_id)}</select></div>
+    </div>
+    <div class="field"><label>품목/내용</label><input id="f_idesc" value="${esc(r.item_desc||'')}"></div>
+    <div class="grid3">
+      <div class="field"><label>공급가액(원) *</label><input type="number" min="0" id="f_isupply" value="${r.supply_amount ?? ''}" oninput="document.getElementById('f_ivat').value = Math.round((parseInt(this.value)||0)*0.1)"></div>
+      <div class="field"><label>부가세(원)</label><input type="number" min="0" id="f_ivat" value="${r.vat_amount ?? ''}"></div>
+      <div class="field"><label>합계</label><input readonly id="f_itotal" value="${r.total_amount!=null?fmt(r.total_amount):''}" style="opacity:.7;"></div>
+    </div>
+    <div class="field"><label>메모</label><textarea id="f_imemo" rows="2">${esc(r.memo||'')}</textarea></div>
+    <div class="modal-actions">
+      <div>${id?`<button class="btn danger" onclick="del('work_invoices','${id}',viewInvoice)">삭제</button>`:''}</div>
+      <div class="right"><button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn primary" onclick="saveInv('${id||''}')">저장</button></div>
+    </div>`);
+};
+window.saveInv = async function(id) {
+  const row = {
+    invoice_type: $('#f_itype').value, issue_date: $('#f_idate').value || today(),
+    status: $('#f_istatus').value, counterparty: $('#f_icp').value.trim(),
+    site_id: $('#f_isite').value || null, item_desc: $('#f_idesc').value.trim() || null,
+    supply_amount: parseInt($('#f_isupply').value) || 0, vat_amount: parseInt($('#f_ivat').value) || 0,
+    memo: $('#f_imemo').value.trim() || null,
+  };
+  if (!row.counterparty) return toast('거래처를 입력하세요');
+  if (!id) row.created_by = me.id;
+  const q = id ? sb.from('work_invoices').update(row).eq('id', id) : sb.from('work_invoices').insert(row);
+  const { error } = await q;
+  if (error) return toast('저장 실패: ' + error.message);
+  toast('저장되었습니다'); closeModal(); viewInvoice();
+};
+
+/* ───── 상담 문의 (홈페이지 접수) ───── */
+const INQ_BADGE = { '신규':'g', '확인중':'y', '완료':'b', '보류':'r' };
+let inqCache = [];
+async function viewInquiry() {
+  const { data, error } = await sb.from('site_inquiries').select('*').order('created_at', { ascending: false }).limit(300);
+  if (error) { $('#mainContent').innerHTML = `<div class="empty">불러오기 실패: ${esc(error.message)}</div>`; return; }
+  inqCache = data || [];
+  const newCnt = inqCache.filter(r => r.status === '신규').length;
+  $('#mainContent').innerHTML = `
+    <div class="page-head"><h1>상담 문의</h1>
+      <div style="color:var(--dim);font-size:13px;">홈페이지 접수 · 신규 <b style="color:var(--accent);">${newCnt}</b>건</div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>접수일시</th><th>성함</th><th>연락처</th><th>서비스</th><th>규모</th><th>내용</th><th>상태</th></tr></thead>
+      <tbody>${inqCache.map(r=>`<tr class="row" onclick="inqDetail('${r.id}')">
+        <td style="white-space:nowrap;">${(r.created_at||'').slice(0,16).replace('T',' ')}</td>
+        <td><b>${esc(r.name)}</b></td>
+        <td style="white-space:nowrap;"><a href="tel:${esc(r.phone)}" onclick="event.stopPropagation()" style="color:var(--blue);">${esc(r.phone)}</a></td>
+        <td>${esc(r.service_type||'—')}</td><td>${esc(r.area_size||'—')}</td>
+        <td>${esc((r.message||'').slice(0,30))}</td>
+        <td><span class="badge ${INQ_BADGE[r.status]||''}">${esc(r.status)}</span></td></tr>`).join('')
+        || '<tr><td colspan="7" class="empty">접수된 상담 문의가 없습니다</td></tr>'}</tbody>
+    </table></div>`;
+}
+window.inqDetail = function(id) {
+  const r = inqCache.find(x=>x.id===id);
+  if (!r) return;
+  openModal(`
+    <h2>상담 문의 상세</h2>
+    <div class="grid2">
+      <div class="field"><label>성함</label><input readonly value="${esc(r.name)}"></div>
+      <div class="field"><label>연락처</label><input readonly value="${esc(r.phone)}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>이메일</label><input readonly value="${esc(r.email||'—')}"></div>
+      <div class="field"><label>접수일시</label><input readonly value="${(r.created_at||'').slice(0,16).replace('T',' ')}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>서비스 유형</label><input readonly value="${esc(r.service_type||'—')}"></div>
+      <div class="field"><label>공간 규모</label><input readonly value="${esc(r.area_size||'—')}"></div>
+    </div>
+    <div class="field"><label>문의 내용</label><textarea readonly rows="4">${esc(r.message||'')}</textarea></div>
+    <div class="grid2">
+      <div class="field"><label>처리 상태</label><select id="f_qstatus">${['신규','확인중','완료','보류'].map(v=>`<option ${r.status===v?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="field"><label>직원 메모</label><input id="f_qmemo" value="${esc(r.staff_memo||'')}"></div>
+    </div>
+    <div class="modal-actions">
+      <div><button class="btn danger" onclick="del('site_inquiries','${id}',viewInquiry)">삭제</button></div>
+      <div class="right">
+        <a class="btn" href="tel:${esc(r.phone)}">📞 전화</a>
+        <button class="btn" onclick="closeModal()">닫기</button>
+        <button class="btn primary" onclick="saveInq('${id}')">저장</button></div>
+    </div>`);
+};
+window.saveInq = async function(id) {
+  const { error } = await sb.from('site_inquiries')
+    .update({ status: $('#f_qstatus').value, staff_memo: $('#f_qmemo').value.trim() || null }).eq('id', id);
+  if (error) return toast('저장 실패: ' + error.message);
+  toast('저장되었습니다'); closeModal(); viewInquiry();
+};
+
+/* ───── 직원 관리 (admin 전용) ───── */
+const ROLE_LABEL = { admin:'관리자', staff:'직원', customer:'미승인' };
+async function viewStaff() {
+  if (me.role !== 'admin') { location.hash = 'dashboard'; return; }
+  const { data: profiles, error } = await sb.from('profiles').select('*').order('created_at');
+  if (error) { $('#mainContent').innerHTML = `<div class="empty">불러오기 실패: ${esc(error.message)}</div>`; return; }
+  $('#mainContent').innerHTML = `
+    <div class="page-head"><h1>직원 관리</h1></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>이메일</th><th>이름</th><th>가입일</th><th>권한</th><th></th></tr></thead>
+      <tbody>${(profiles||[]).map(p=>`<tr>
+        <td>${esc(p.email||'—')}</td>
+        <td><input id="nm_${p.id}" value="${esc(p.display_name||'')}" style="min-width:110px;"></td>
+        <td style="white-space:nowrap;">${(p.created_at||'').slice(0,10)}</td>
+        <td><select id="rl_${p.id}" ${p.id===me.id?'disabled title="본인 권한은 변경할 수 없습니다"':''}>
+          ${['admin','staff','customer'].map(r=>`<option value="${r}" ${p.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')}
+        </select></td>
+        <td><button class="btn sm primary" onclick="saveStaff('${p.id}')">저장</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <div style="color:var(--dim);font-size:13px;margin-top:14px;line-height:1.8;">
+      <b style="color:var(--text);">권한 안내</b><br>
+      · <b>관리자</b> — 모든 업무 + 직원 관리 &nbsp;· <b>직원</b> — 모든 업무 사용 가능 &nbsp;· <b>미승인</b> — 포털 접근 불가<br>
+      새 직원 추가: Supabase 대시보드 → Authentication → Users → <b>Add user</b>(Auto Confirm 체크)로 계정을 만들면
+      이 목록에 "미승인"으로 나타납니다. 여기서 <b>직원</b>으로 바꾸고 저장하면 끝.
+    </div>`;
+}
+window.saveStaff = async function(id) {
+  const sel = document.getElementById('rl_' + id);
+  const row = { display_name: document.getElementById('nm_' + id).value.trim() || null };
+  if (sel && !sel.disabled) row.role = sel.value;
+  const { error } = await sb.from('profiles').update(row).eq('id', id);
+  if (error) return toast('저장 실패: ' + error.message);
+  toast('저장되었습니다');
+};
+
+/* ───── 공정표 ───── */
+const GANTT_COLORS = ['#4ade80','#60a5fa','#fbbf24','#f87171','#c084fc','#34d399','#f472b6','#a3e635','#22d3ee','#fb923c'];
+let schCache = [];
+async function viewSchedule() {
+  await loadSites();
+  const saved = sessionStorage.getItem('schSite');
+  const siteId = saved && sites.some(s=>s.id===saved) ? saved : (sites[0]?.id || '');
+  $('#mainContent').innerHTML = `
+    <div class="page-head"><h1>공정표</h1>
+      <div class="filters">
+        <select id="schSite" onchange="sessionStorage.setItem('schSite',this.value);loadSchedule()">${sites.map(s=>`<option value="${s.id}" ${s.id===siteId?'selected':''}>${esc(s.name)}</option>`).join('') || '<option value="">현장 없음</option>'}</select>
+        <button class="btn primary" onclick="schForm()">+ 공정 추가</button>
+      </div></div>
+    <div id="ganttArea"></div>`;
+  if (siteId) loadSchedule(); else $('#ganttArea').innerHTML = '<div class="empty">먼저 [현장] 탭에서 현장을 등록하세요.</div>';
+}
+window.loadSchedule = async function() {
+  const siteId = $('#schSite').value;
+  const { data } = await sb.from('work_schedule_items').select('*').eq('site_id', siteId).order('sort_order').order('start_date');
+  schCache = data || [];
+  renderGantt();
+};
+function renderGantt() {
+  if (!schCache.length) { $('#ganttArea').innerHTML = '<div class="gantt-wrap"><div class="empty">공정이 없습니다. [+ 공정 추가]로 시작하세요.</div></div>'; return; }
+  const d0 = new Date(Math.min(...schCache.map(r=>+new Date(r.start_date))));
+  const d1 = new Date(Math.max(...schCache.map(r=>+new Date(r.end_date))));
+  const days = Math.max(1, Math.round((d1-d0)/86400000) + 1);
+  const dayCol = `180px repeat(${days}, minmax(18px,1fr))`;
+  let head = `<div class="g-head" style="grid-template-columns:${dayCol};"><div></div>`;
+  for (let i=0;i<days;i++) {
+    const d = new Date(+d0 + i*86400000);
+    head += `<div style="${d.getDay()===0?'color:var(--red);':''}">${d.getDate()===1||i===0 ? (d.getMonth()+1)+'/' : ''}${d.getDate()}</div>`;
+  }
+  head += '</div>';
+  const rows = schCache.map((r,idx) => {
+    const s = Math.round((+new Date(r.start_date) - +d0)/86400000);
+    const len = Math.round((+new Date(r.end_date) - +new Date(r.start_date))/86400000) + 1;
+    const color = r.color || GANTT_COLORS[idx % GANTT_COLORS.length];
+    return `<div class="g-row" style="grid-template-columns:${dayCol};">
+      <div class="g-label" onclick="schForm('${r.id}')" title="수정">${esc(r.process_name)} <span style="color:var(--dim);font-size:11px;">${r.progress}%</span></div>
+      <div class="g-bar" onclick="schForm('${r.id}')" style="grid-column:${s+2} / span ${len}; background:${color}; --pg:${r.progress}%; cursor:pointer;">
+        <div class="pg"></div><span>${len}일</span></div></div>`;
+  }).join('');
+  $('#ganttArea').innerHTML = `<div class="gantt-wrap"><div class="gantt">${head}${rows}</div></div>
+    <p style="color:var(--dim);font-size:12px;margin-top:10px;">막대를 클릭하면 수정할 수 있습니다. 밝은 영역 = 진척률.</p>`;
+}
+window.schForm = function(id) {
+  const r = schCache.find(x=>x.id===id) || {};
+  openModal(`
+    <h2>${id?'공정 수정':'공정 추가'}</h2>
+    <div class="grid2">
+      <div class="field"><label>공정명 *</label><input id="f_sname" value="${esc(r.process_name||'')}" placeholder="예: 철거, 방수, 타일"></div>
+      <div class="field"><label>진척률 (%)</label><input type="number" min="0" max="100" id="f_sprog" value="${r.progress ?? 0}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>시작일 *</label><input type="date" id="f_sstart" value="${r.start_date||today()}"></div>
+      <div class="field"><label>종료일 *</label><input type="date" id="f_send" value="${r.end_date||today()}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>정렬 순서</label><input type="number" id="f_sord" value="${r.sort_order ?? schCache.length}"></div>
+      <div class="field"><label>색상</label><input type="color" id="f_scolor" value="${r.color||GANTT_COLORS[schCache.length % GANTT_COLORS.length]}" style="height:38px;padding:3px;"></div>
+    </div>
+    <div class="field"><label>메모</label><textarea id="f_smemo" rows="2">${esc(r.memo||'')}</textarea></div>
+    <div class="modal-actions">
+      <div>${id?`<button class="btn danger" onclick="del('work_schedule_items','${id}',loadSchedule)">삭제</button>`:''}</div>
+      <div class="right"><button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn primary" onclick="saveSch('${id||''}')">저장</button></div>
+    </div>`);
+};
+window.saveSch = async function(id) {
+  const row = {
+    site_id: $('#schSite').value, process_name: $('#f_sname').value.trim(),
+    start_date: $('#f_sstart').value, end_date: $('#f_send').value,
+    progress: Math.min(100, Math.max(0, parseInt($('#f_sprog').value) || 0)),
+    sort_order: parseInt($('#f_sord').value) || 0, color: $('#f_scolor').value,
+    memo: $('#f_smemo').value.trim() || null,
+  };
+  if (!row.process_name) return toast('공정명을 입력하세요');
+  if (!row.start_date || !row.end_date) return toast('시작일/종료일을 입력하세요');
+  if (row.end_date < row.start_date) return toast('종료일이 시작일보다 빠릅니다');
+  if (!id) row.created_by = me.id;
+  const q = id ? sb.from('work_schedule_items').update(row).eq('id', id) : sb.from('work_schedule_items').insert(row);
+  const { error } = await q;
+  if (error) return toast('저장 실패: ' + error.message);
+  toast('저장되었습니다'); closeModal(); loadSchedule();
+};
+</script>
+</body>
+</html>

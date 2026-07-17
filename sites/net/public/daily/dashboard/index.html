@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style id="ecorean-gate-style">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+/* ECOREAN 직원 인증 게이트 — 비로그인/무권한 시 /work/ 로그인으로 이동 후 복귀 */
+(async function () {
+  function deny() { location.replace('/work/?next=' + encodeURIComponent(location.pathname)); }
+  try {
+    var gsb = window.supabase.createClient(
+      'https://gdcfqbdgubgpzusbtftf.supabase.co',
+      'sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ'
+    );
+    var session = (await gsb.auth.getSession()).data.session;
+    if (!session) return deny();
+    var res = await gsb.from('profiles').select('role').eq('id', session.user.id).single();
+    var role = res.data && res.data.role;
+    if (role !== 'staff' && role !== 'admin') return deny();
+    var g = document.getElementById('ecorean-gate-style');
+    if (g) g.remove();
+  } catch (e) { deny(); }
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOC 프로젝트 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --bg:#F4F1EA;--bg-panel:#FBFAF6;--bg-soft:#EAE5DA;
+  --ink:#1A1F2E;--ink-2:#3D4555;--ink-3:#6B7384;
+  --line:#C9C3B5;--line-soft:#DDD6C5;
+  --accent:#B85420;--accent-soft:#F2D4C0;
+  --crit:#A32D2D;--ok:#0F6E56;--info:#1B4D8C;--warn:#946200;
+  --font-sans:'Manrope','Pretendard',-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono','D2Coding',monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font-sans);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px 60px}
+.hdr{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px}
+.hdr h1{font-size:20px;font-weight:800;margin:0}
+.hdr .sub{font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:0.08em;margin-top:3px}
+.asset{display:inline-block;font-family:var(--font-mono);font-size:9px;color:var(--crit);border:1px solid var(--crit);padding:2px 7px;border-radius:2px;margin-top:8px}
+.btn{font-family:var(--font-mono);font-size:11px;letter-spacing:0.04em;padding:7px 11px;border:1px solid var(--line);background:var(--bg-panel);color:var(--ink-2);cursor:pointer;border-radius:2px}
+.btn:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.drop{border:2px dashed var(--line);border-radius:5px;padding:26px;text-align:center;color:var(--ink-3);cursor:pointer;background:var(--bg-panel);margin-bottom:16px;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.drop b{color:var(--ink);font-weight:700}
+.drop small{display:block;font-family:var(--font-mono);font-size:10px;margin-top:6px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:16px}
+.kpi .c{background:var(--bg-panel);padding:14px}
+.kpi .c.main{background:var(--ink);color:var(--bg)}
+.kpi .l{font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;color:var(--ink-3);text-transform:uppercase}
+.kpi .c.main .l{color:var(--bg-soft)}
+.kpi .v{font-size:22px;font-weight:800;margin-top:4px;font-family:var(--font-mono)}
+.kpi .v small{font-size:11px;font-weight:500;color:var(--ink-3)}
+.kpi .c.main .v small{color:var(--bg-soft)}
+.pbar{height:7px;background:var(--bg-soft);border-radius:4px;overflow:hidden;margin-top:8px}
+.kpi .c.main .pbar{background:rgba(255,255,255,.2)}
+.pbar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.panel{background:var(--bg-panel);border:1px solid var(--line);margin-bottom:14px}
+.panel-h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line-soft);background:var(--bg-soft)}
+.panel-h .t{font-weight:700;font-size:13px}
+.panel-h .mark{font-family:var(--font-mono);font-size:9px;color:var(--ink-3);letter-spacing:0.08em}
+.panel-b{padding:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.hb{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+.hb-l{width:130px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb-bar{flex:1;height:14px;background:var(--bg-soft);border-radius:3px;overflow:hidden}
+.hb-bar i{display:block;height:100%;background:var(--info);border-radius:3px}
+.hb-v{width:96px;flex:none;text-align:right;font-family:var(--font-mono);font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--bg-soft);padding:8px 10px;text-align:left;font-family:var(--font-mono);font-size:9px;color:var(--ink-3);letter-spacing:0.06em;border-bottom:1px solid var(--line)}
+td{padding:7px 10px;border-bottom:1px solid var(--line-soft)}
+.num{text-align:right;font-family:var(--font-mono)}
+.empty{text-align:center;padding:24px;color:var(--ink-3);font-family:var(--font-mono);font-size:11px}
+.dim{color:var(--ink-3);font-size:10px}
+.footer{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);font-size:10px;color:var(--ink-3)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:4px;font-size:13px;font-family:var(--font-mono);opacity:0;transition:.25s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+.chart-cap{font-family:var(--font-mono);font-size:9px;color:var(--ink-3);margin-bottom:6px;letter-spacing:0.05em}
+.hidden{display:none}
+.modal{position:fixed;inset:0;background:rgba(20,18,14,.5);display:none;align-items:flex-start;justify-content:center;z-index:300;padding:28px 14px;overflow:auto}
+.modal.show{display:flex}
+.modal-box{background:var(--bg-panel);max-width:700px;width:100%;border:1px solid var(--line);border-radius:6px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+.modal-h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:2px solid var(--ink);position:sticky;top:0;background:var(--bg-panel);border-radius:6px 6px 0 0}
+.modal-h .t{font-weight:800;font-size:16px}
+.modal-h .x{cursor:pointer;font-size:22px;line-height:1;border:none;background:none;color:var(--ink-3)}
+.modal-b{padding:18px}
+.help-s{margin-bottom:16px}
+.help-s h4{font-size:13px;margin:0 0 7px;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:7px}
+.help-s h4 .n{font-family:var(--font-mono);font-size:10px;background:var(--ink);color:var(--bg);width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border-radius:3px}
+.help-s ul{margin:0;padding-left:22px}
+.help-s li{font-size:12.5px;margin-bottom:5px;line-height:1.55;color:var(--ink-2)}
+.help-s li b{color:var(--ink);font-weight:700}
+.help-tip{background:var(--bg-soft);border-left:3px solid var(--accent);padding:10px 12px;font-size:12px;color:var(--ink-2);border-radius:0 3px 3px 0;margin-top:4px}
+.clock{font-family:var(--font-mono);font-size:12px;color:var(--ink-2);margin-top:5px;letter-spacing:0.04em}
+.clock b{color:var(--accent);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hdr">
+    <div>
+      <h1>프로젝트 대시보드</h1>
+      <div class="sub">PROJECT DASHBOARD · 일별 일보 누적 집계 · ECOREAN BOC</div>
+      <span class="asset">🔒 복제금지 · ECOREAN 자산</span>
+      <div class="clock" id="clock">—</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn primary" onclick="pullShared(false)">📥 공사일보에서 가져오기</button>
+      <button class="btn" onclick="document.getElementById('fileIn').click()">📂 일보 파일 추가</button>
+      <button class="btn" onclick="window.print()">🖨 인쇄</button>
+      <button class="btn" onclick="resetAll()">↺ 초기화</button>
+      <button class="btn" onclick="openHelp()">❓ 사용방법</button>
+    </div>
+    <input type="file" id="fileIn" accept=".html,.json" multiple class="hidden" onchange="onPick(event)">
+  </header>
+
+  <div class="drop" id="drop" onclick="document.getElementById('fileIn').click()">
+    📥 <b>일별 일보 파일을 끌어다 놓으세요</b> (여러 개 동시 가능)
+    <small>각 날짜의 「일보 HTML 내보내기」 파일 또는 JSON · 같은 날짜는 최신본으로 갱신</small>
+  </div>
+
+  <div id="content" class="hidden">
+    <div class="kpi" id="kpi"></div>
+
+    <div class="panel">
+      <div class="panel-h"><span class="t">공정률 추이 (S-curve)</span><span class="mark">PROGRESS</span></div>
+      <div class="panel-b"><div class="chart-cap" id="progCap"></div><div id="progChart"></div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-h"><span class="t">현금 잔액 추이</span><span class="mark">CASH BALANCE</span></div>
+        <div class="panel-b"><div id="balChart"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><span class="t">공정별 지출 (누적)</span><span class="mark">EXPENSE BY PHASE</span></div>
+        <div class="panel-b"><div id="phaseExp"></div></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-h"><span class="t">일자별 투입인원</span><span class="mark">MANPOWER/DAY</span></div>
+        <div class="panel-b"><div id="mpChart"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><span class="t">직종별 누적 연인원</span><span class="mark">MAN-DAYS BY TRADE</span></div>
+        <div class="panel-b"><div id="byTrade"></div></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-h"><span class="t">안전 · 검측 현황</span><span class="mark">SAFETY/INSPECTION</span></div>
+        <div class="panel-b"><div id="safety"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><span class="t">현금 요약</span><span class="mark">CASH SUMMARY</span></div>
+        <div class="panel-b"><div id="cashSum"></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span class="t">일보 목록</span><span class="mark" id="logCount"></span></div>
+      <div class="panel-b" style="padding:0">
+        <table><thead><tr><th style="width:96px">날짜</th><th style="width:50px">날씨</th><th>주요 공정</th><th style="width:120px">진행률</th><th style="width:60px">인원</th><th style="width:96px">지출</th><th style="width:104px">잔액</th></tr></thead><tbody id="logBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <span>ⓒ 2026 ECOREAN · 프로젝트 대시보드 v1.0 · 무단 복제·배포 금지 · ECOREAN 자산</span>
+    <span id="saveStatus"></span>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="modal" id="helpModal" onclick="if(event.target===this)closeHelp()">
+  <div class="modal-box">
+    <div class="modal-h"><span class="t">프로젝트 대시보드 — 사용방법</span><button class="x" onclick="closeHelp()">✕</button></div>
+    <div class="modal-b">
+      <div class="help-s">
+        <h4><span class="n">1</span>일보 모으기 (2가지 방법)</h4>
+        <ul>
+          <li><b>방법 A (간편) — 한 번에 전송:</b> 공사일보에서 <b>📤 대시보드로 전송</b>을 누르면, 같은 브라우저/사이트에서는 파일 없이 바로 반영됩니다. 대시보드가 열려 있으면 <b>실시간 자동 갱신</b>, 닫혀 있었다면 <b>📥 공사일보에서 가져오기</b>로 불러옵니다.</li>
+          <li><b>방법 B (파일) — 드래그&드롭:</b> 공사일보의 <b>📄 일보 HTML 내보내기</b> 파일들을 이 화면에 끌어다 놓습니다(여러 개 가능). 다른 기기/사람이 작성한 경우에 사용합니다.</li>
+          <li>같은 날짜는 항상 <b>최신본으로 자동 갱신</b>됩니다.</li>
+        </ul>
+      </div>
+      <div class="help-s">
+        <h4><span class="n">2</span>무엇이 보이나</h4>
+        <ul>
+          <li><b>상단 KPI</b> — 전체 공정률 · 현장/기간 · 일보수/경과일 · 현재 잔액 · 누적 지출/수입 · 누적 연인원</li>
+          <li><b>공정률 S-curve</b> — 공정표 기준 가중 진행률 추이</li>
+          <li><b>현금 잔액 추이 · 공정별 지출</b> — 현금출납부 누적</li>
+          <li><b>일자별 투입인원 · 직종별 누적 연인원</b> — 출역 집계</li>
+          <li><b>안전(TBM)·검측 현황 · 일보 목록</b></li>
+        </ul>
+      </div>
+      <div class="help-s">
+        <h4><span class="n">3</span>저장 · 초기화</h4>
+        <ul>
+          <li>올린 데이터는 브라우저에 저장되어 <b>다시 열어도 유지</b>됩니다.</li>
+          <li><b>↺ 초기화</b>로 전체 집계를 지울 수 있습니다. <b>🖨 인쇄</b>로 보고서 출력.</li>
+        </ul>
+      </div>
+      <div class="help-s">
+        <h4><span class="n">4</span>주의</h4>
+        <ul>
+          <li>일보 파일 안에 데이터가 내장된 <b>최신 버전 일보</b>만 인식됩니다 (구버전 파일은 인식 불가).</li>
+          <li>인식 결과는 우측 하단 메시지로 표시됩니다 (예: "30개 일보 반영" / "인식실패 N").</li>
+        </ul>
+        <div class="help-tip">💡 한 현장(프로젝트)의 일보들만 모아 올리세요. 30일 공사면 30개 파일을 모으면 전체 현황이 한 화면에 집계됩니다.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══ 저장: Supabase 클라우드 + localStorage 캐시(오프라인 폴백) ═══ */
+(function(){
+  const SB_URL='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/boc_daily_storage';
+  const SB_KEY='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
+  const HDR={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+  let ok=true; try{const t='__d__';localStorage.setItem(t,'1');localStorage.removeItem(t);}catch(e){ok=false;}
+  const mem={}, store=ok?localStorage:null;
+  const lsGet=k=>{try{return store?store.getItem(k):(mem[k]??null);}catch(e){return mem[k]??null;}};
+  const lsSet=(k,v)=>{try{if(store)store.setItem(k,v);else mem[k]=v;}catch(e){mem[k]=v;}};
+  const lsDel=k=>{try{if(store)store.removeItem(k);}catch(e){}delete mem[k];};
+  /* 동기화 상태 배지 */
+  const badge=document.createElement('div');
+  badge.style.cssText='position:fixed;left:10px;bottom:10px;z-index:9999;font:11px/1.7 sans-serif;padding:2px 10px;border-radius:12px;background:#e1f5ee;color:#0f6e56;opacity:.9;pointer-events:none;transition:opacity .4s';
+  badge.textContent='☁ 클라우드 연결 중…';
+  if(document.body)document.body.appendChild(badge);
+  else document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(badge));
+  let badgeT=null;
+  function setBadge(txt,bad){badge.textContent=txt;badge.style.background=bad?'#fdeaea':'#e1f5ee';badge.style.color=bad?'#b3261e':'#0f6e56';badge.style.opacity='.9';clearTimeout(badgeT);if(!bad)badgeT=setTimeout(()=>badge.style.opacity='0',2500);}
+  /* 쓰기: 디바운스 후 업서트, 페이지 이탈 시 즉시 전송 */
+  const pending={},timers={};
+  async function push(k,v,keepalive){
+    try{
+      const r=await fetch(SB_URL+'?on_conflict=key',{method:'POST',keepalive:!!keepalive,
+        headers:{...HDR,'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify([{key:k,value:v}])});
+      if(!r.ok)throw new Error(r.status);
+      setBadge('☁ 클라우드 저장됨');
+    }catch(e){setBadge('☁ 오프라인 — 이 기기에만 저장됨',true);}
+  }
+  function queue(k,v){pending[k]=v;clearTimeout(timers[k]);timers[k]=setTimeout(()=>{const val=pending[k];delete pending[k];push(k,val);},800);}
+  function flush(){for(const k in pending){const v=pending[k];delete pending[k];clearTimeout(timers[k]);push(k,v,true);}}
+  window.addEventListener('pagehide',flush);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush();});
+  window.storage={
+    async get(k){
+      if(pending[k]!=null)return{key:k,value:pending[k]};
+      try{
+        const r=await fetch(SB_URL+'?key=eq.'+encodeURIComponent(k)+'&select=value',{headers:HDR});
+        if(!r.ok)throw new Error(r.status);
+        const rows=await r.json();
+        if(rows.length){lsSet(k,rows[0].value);setBadge('☁ 클라우드에서 불러옴');return{key:k,value:rows[0].value};}
+        const v=lsGet(k);
+        if(v!=null)queue(k,v); /* 클라우드에 없으면 로컬 데이터를 최초 이관 */
+        return v==null?null:{key:k,value:v};
+      }catch(e){
+        setBadge('☁ 오프라인 — 이 기기 데이터 사용',true);
+        const v=lsGet(k);return v==null?null:{key:k,value:v};
+      }
+    },
+    async set(k,v){lsSet(k,v);queue(k,v);return{key:k,value:v};},
+    async delete(k){lsDel(k);return{key:k,deleted:true};}
+  };
+})();
+
+const CI={pre:'#5f5e5a',found:'#854f0b',mep_pre:'#2563eb',struct:'#185fa5',roof:'#0f6e56',ext:'#993c1d',mep:'#534ab7',fin:'#d4537e',close:'#639922',i_demo:'#5f5e5a',i_mep:'#534ab7',i_carp:'#854f0b',i_wtil:'#0f6e56',i_fin:'#d4537e',i_furn:'#993c1d',i_close:'#639922'};
+const COL={accent:'#B85420',ok:'#0F6E56',info:'#1B4D8C',crit:'#A32D2D',ink3:'#6B7384'};
+const won=n=>(n||0).toLocaleString('ko-KR');
+const esc=v=>(v==null?'':String(v)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const DAY=864e5;
+let state={site:{},schedule:null,days:{}};
+
+function balanceOf(c){if(!c)return 0;const d=(c.deposits||[]).reduce((s,x)=>s+(+x.amount||0),0);const e=(c.expenses||[]).reduce((s,x)=>s+(+x.amount||0),0);return (+c.carry||0)+d-e;}
+function mpTotal(r){return (r.manpower||[]).reduce((s,m)=>s+(+m.count||0),0);}
+function md(d){const p=d.split('-');return p.length===3?(+p[1])+'/'+(+p[2]):d;}
+function sortedDates(){return Object.keys(state.days).sort();}
+
+/* ── 파일 입력 ── */
+function onPick(e){importFiles(e.target.files);e.target.value='';}
+const drop=document.getElementById('drop');
+// 페이지 어디에 놓아도 적용되도록 window 전역에서 처리(브라우저가 파일 여는 기본동작 차단)
+let dragDepth=0;
+window.addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;drop.classList.add('over');});
+window.addEventListener('dragover',e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';});
+window.addEventListener('dragleave',e=>{e.preventDefault();dragDepth=Math.max(0,dragDepth-1);if(dragDepth===0)drop.classList.remove('over');});
+window.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;drop.classList.remove('over');const fl=e.dataTransfer&&e.dataTransfer.files;if(fl&&fl.length)importFiles(fl);});
+
+async function importFiles(fileList){
+  let added=0,fail=0;
+  for(const f of fileList){
+    let text='';try{text=await f.text();}catch(e){fail++;continue;}
+    let recs=[];const t=text.trim();
+    if(f.name.toLowerCase().endsWith('.json')||t[0]==='{'){
+      try{const d=JSON.parse(t);
+        if(d.reports){Object.values(d.reports).forEach(r=>recs.push({site:d.site,schedule:d.schedule,report:r}));}
+        else if(d.type==='boc-daily-record'||d.report){recs.push(d);}
+      }catch(e){}
+    }
+    if(!recs.length){
+      const m=text.match(/<script id=["']boc-data["'][^>]*>([\s\S]*?)<\/script>/);
+      if(m){try{recs.push(JSON.parse(m[1].replace(/\\u003c/g,'<')));}catch(e){}}
+    }
+    if(!recs.length){fail++;continue;}
+    recs.forEach(rc=>{
+      if(rc.site&&rc.site.name)state.site=rc.site;
+      if(rc.schedule&&(rc.schedule.phases||[]).length&&(!state.schedule||(rc.schedule.phases||[]).length>=(state.schedule.phases||[]).length))state.schedule=rc.schedule;
+      if(rc.report&&rc.report.date){state.days[rc.report.date]=rc.report;added++;}
+    });
+  }
+  persist();render();
+  toast(`${added}개 일보 반영 (총 ${Object.keys(state.days).length}일)`+(fail?` · 인식실패 ${fail}`:''));
+}
+
+/* ── 집계 ── */
+function progressSeries(){
+  const dates=sortedDates(),durById={};let totalDur=0;
+  if(state.schedule&&state.schedule.phases){state.schedule.phases.forEach(p=>{durById[p.id]=p.dur;totalDur+=p.dur;});}
+  const latest={},out=[];
+  dates.forEach(d=>{(state.days[d].processes||[]).forEach(p=>{if(p.id)latest[p.id]=p.progress;});
+    let ov;
+    if(totalDur){let acc=0;Object.keys(latest).forEach(id=>acc+=(latest[id]||0)/100*(durById[id]||0));ov=Math.round(acc/totalDur*100);}
+    else{const ps=state.days[d].processes||[];ov=ps.length?Math.round(ps.reduce((a,p)=>a+(p.progress||0),0)/ps.length):0;}
+    out.push({label:md(d),value:ov});
+  });
+  return out;
+}
+function aggExpenseByPhase(){const a={};sortedDates().forEach(d=>(state.days[d].cash&&state.days[d].cash.expenses||[]).forEach(e=>{const k=e.phase||'공통/기타';a[k]=(a[k]||0)+(+e.amount||0);}));return Object.entries(a).map(([label,value])=>({label,value}));}
+function aggByTrade(){const a={};sortedDates().forEach(d=>(state.days[d].manpower||[]).forEach(m=>{const k=m.trade||'기타';a[k]=(a[k]||0)+(+m.count||0);}));return Object.entries(a).map(([label,value])=>({label,value}));}
+
+/* ── SVG 차트 ── */
+function svgLine(series,{color=COL.accent,h=170,fmtY=v=>v,area=false}={}){
+  if(!series.length)return '<div class="empty">데이터 없음</div>';
+  const n=series.length,w=Math.max(n*46,340),padL=34,padB=20,padT=10;
+  const ph=h-padB-padT,pw=w-padL-12,ys=series.map(s=>s.value);
+  const mx=Math.max(...ys,1),mn=Math.min(...ys,0);
+  const X=i=>padL+(n>1?i/(n-1)*pw:pw/2),Y=v=>padT+(mx===mn?ph/2:(1-(v-mn)/(mx-mn))*ph);
+  const pts=series.map((s,i)=>`${X(i).toFixed(1)},${Y(s.value).toFixed(1)}`).join(' ');
+  const areaPath=area?`<polygon fill="${color}" opacity="0.10" points="${X(0).toFixed(1)},${(padT+ph)} ${pts} ${X(n-1).toFixed(1)},${(padT+ph)}"/>`:'';
+  const dots=series.map((s,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(s.value).toFixed(1)}" r="2.4" fill="${color}"/>`).join('');
+  const step=Math.ceil(n/9)||1;
+  const xlab=series.map((s,i)=>(i%step===0||i===n-1)?`<text x="${X(i).toFixed(1)}" y="${h-5}" font-size="9" text-anchor="middle" fill="#6B7384">${s.label}</text>`:'').join('');
+  const ymax=`<text x="2" y="${padT+8}" font-size="9" fill="#6B7384">${fmtY(mx)}</text>`;
+  const ymin=`<text x="2" y="${padT+ph}" font-size="9" fill="#6B7384">${fmtY(mn)}</text>`;
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMid meet" style="width:100%;height:${h}px">${areaPath}<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts}"/>${dots}${xlab}${ymax}${ymin}</svg>`;
+}
+function svgBars(items,{color=COL.info,h=170,fmtY=v=>v}={}){
+  if(!items.length)return '<div class="empty">데이터 없음</div>';
+  const n=items.length,w=Math.max(n*42,340),padB=20,padT=14;
+  const ph=h-padB-padT,mx=Math.max(...items.map(i=>i.value),1),slot=(w-16)/n,bw=Math.min(26,slot-6);
+  const step=Math.ceil(n/12)||1;
+  const bars=items.map((it,i)=>{const bh=it.value/mx*ph,x=8+i*slot+(slot-bw)/2,y=padT+ph-bh;
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(bh,0).toFixed(1)}" rx="1" fill="${color}"/>`+
+      (i%step===0?`<text x="${(x+bw/2).toFixed(1)}" y="${h-5}" font-size="8.5" text-anchor="middle" fill="#6B7384">${it.label}</text>`:'');}).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMid meet" style="width:100%;height:${h}px">${bars}<text x="2" y="${padT+8}" font-size="9" fill="#6B7384">${fmtY(mx)}</text></svg>`;
+}
+function hbars(items,fmt,color=COL.info){
+  if(!items.length)return '<div class="empty">데이터 없음</div>';
+  const mx=Math.max(...items.map(i=>i.value),1);
+  return items.sort((a,b)=>b.value-a.value).map(it=>`<div class="hb"><span class="hb-l" title="${esc(it.label)}">${esc(it.label)}</span><span class="hb-bar"><i style="width:${(it.value/mx*100).toFixed(1)}%;background:${color}"></i></span><span class="hb-v">${fmt(it.value)}</span></div>`).join('');
+}
+
+/* ── 렌더 ── */
+function render(){
+  const dates=sortedDates();
+  document.getElementById('content').classList.toggle('hidden',dates.length===0);
+  document.getElementById('drop').classList.toggle('hidden',false);
+  if(!dates.length)return;
+  const first=dates[0],last=dates[dates.length-1];
+  const start=(state.site&&state.site.startDate)||first;
+  const elapsed=Math.round((new Date(last+'T00:00:00')-new Date(start+'T00:00:00'))/DAY);
+  const totalDur=state.schedule&&state.schedule.phases?state.schedule.phases.reduce((s,p)=>s+(p.dur||0),0):0;
+  const prog=progressSeries();const overall=prog.length?prog[prog.length-1].value:0;
+  let totalDep=0,totalExp=0,totalMD=0;
+  dates.forEach(d=>{const r=state.days[d];totalDep+=(r.cash&&r.cash.deposits||[]).reduce((s,x)=>s+(+x.amount||0),0);totalExp+=(r.cash&&r.cash.expenses||[]).reduce((s,x)=>s+(+x.amount||0),0);totalMD+=mpTotal(r);});
+  const curBal=balanceOf(state.days[last].cash);
+
+  document.getElementById('kpi').innerHTML=`
+    <div class="c main"><div class="l">전체 공정률</div><div class="v">${overall}<small>%</small></div><div class="pbar"><i style="width:${overall}%"></i></div></div>
+    <div class="c"><div class="l">현장</div><div class="v" style="font-size:15px">${esc(state.site.name)||'-'}</div><div class="dim">${esc(first)} ~ ${esc(last)}</div></div>
+    <div class="c"><div class="l">일보 / 경과</div><div class="v">${dates.length}<small> 일보</small></div><div class="dim">경과 ${elapsed}일${totalDur?' / 총 '+totalDur+'일':''}</div></div>
+    <div class="c"><div class="l">현재 현금잔액</div><div class="v">${won(curBal)}<small> 원</small></div></div>
+    <div class="c"><div class="l">누적 지출</div><div class="v">${won(totalExp)}<small> 원</small></div><div class="dim">수입 ${won(totalDep)}</div></div>
+    <div class="c"><div class="l">누적 연인원</div><div class="v">${totalMD}<small> 인일</small></div><div class="dim">일평균 ${(totalMD/dates.length).toFixed(1)}명</div></div>`;
+
+  document.getElementById('progCap').textContent=totalDur?'공정표 기준 가중 진행률':'보고 공정 평균(공정표 미연동)';
+  document.getElementById('progChart').innerHTML=svgLine(prog,{color:COL.accent,fmtY:v=>v+'%',area:true});
+  document.getElementById('balChart').innerHTML=svgLine(dates.map(d=>({label:md(d),value:balanceOf(state.days[d].cash)})),{color:COL.ok,fmtY:v=>won(Math.round(v/10000)) +'만'});
+  document.getElementById('phaseExp').innerHTML=hbars(aggExpenseByPhase(),v=>won(v)+'원',COL.crit);
+  document.getElementById('mpChart').innerHTML=svgBars(dates.map(d=>({label:md(d),value:mpTotal(state.days[d])})),{color:COL.info});
+  document.getElementById('byTrade').innerHTML=hbars(aggByTrade(),v=>v+'인일',COL.accent);
+
+  // 안전·검측
+  const tbmDays=dates.filter(d=>state.days[d].safety&&state.days[d].safety.tbm).length;
+  const inspMap={};dates.forEach(d=>(state.days[d].inspections||[]).forEach(x=>{if(!(x.label in inspMap))inspMap[x.label]=false;if(x.done)inspMap[x.label]=true;}));
+  const inspTot=Object.keys(inspMap).length,inspDone=Object.values(inspMap).filter(Boolean).length;
+  document.getElementById('safety').innerHTML=`
+    <div class="hb"><span class="hb-l">TBM 실시일</span><span class="hb-bar"><i style="width:${(tbmDays/dates.length*100).toFixed(0)}%;background:var(--ok)"></i></span><span class="hb-v">${tbmDays}/${dates.length}일</span></div>
+    <div class="hb"><span class="hb-l">검측 완료</span><span class="hb-bar"><i style="width:${inspTot?(inspDone/inspTot*100).toFixed(0):0}%;background:var(--info)"></i></span><span class="hb-v">${inspDone}/${inspTot}건</span></div>
+    ${inspTot?'<div style="margin-top:8px">'+Object.entries(inspMap).map(([l,done])=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px dashed var(--line-soft)">${done?'☑':'☐'} ${esc(l)}</div>`).join('')+'</div>':''}`;
+
+  document.getElementById('cashSum').innerHTML=`
+    <div class="hb"><span class="hb-l">누적 수입</span><span class="hb-v" style="width:auto;color:var(--ok)">${won(totalDep)} 원</span></div>
+    <div class="hb"><span class="hb-l">누적 지출</span><span class="hb-v" style="width:auto;color:var(--crit)">${won(totalExp)} 원</span></div>
+    <div class="hb"><span class="hb-l">현재 잔액</span><span class="hb-v" style="width:auto;font-weight:700">${won(curBal)} 원</span></div>
+    <div class="dim" style="margin-top:6px">착공 ${esc(start)} · 일평균 지출 ${won(Math.round(totalExp/dates.length))}원</div>`;
+
+  document.getElementById('logCount').textContent=dates.length+'일';
+  document.getElementById('logBody').innerHTML=dates.slice().reverse().map(d=>{const r=state.days[d];
+    const procs=(r.processes||[]).map(p=>p.nm).slice(0,2).join(', ')+((r.processes||[]).length>2?` 외 ${r.processes.length-2}`:'');
+    const avg=(r.processes||[]).length?Math.round(r.processes.reduce((s,p)=>s+(p.progress||0),0)/r.processes.length):0;
+    const exp=(r.cash&&r.cash.expenses||[]).reduce((s,x)=>s+(+x.amount||0),0);
+    return `<tr><td style="font-family:var(--font-mono)">${esc(d)}</td><td>${esc(r.weather)||'-'}</td><td style="font-size:11px">${esc(procs)||'-'}</td>
+      <td><span style="display:inline-block;width:50px;height:6px;background:var(--bg-soft);border-radius:3px;vertical-align:middle;overflow:hidden;margin-right:5px"><i style="display:block;height:100%;width:${avg}%;background:var(--ok)"></i></span>${avg}%</td>
+      <td class="num">${mpTotal(r)}명</td><td class="num">${won(exp)}</td><td class="num">${won(balanceOf(r.cash))}</td></tr>`;}).join('');
+}
+
+async function pullShared(silent){
+  try{const g=await window.storage.get('boc-shared-project');
+    if(!g||!g.value){if(!silent)toast('공사일보에서 전송된 데이터가 없습니다');return;}
+    const sh=JSON.parse(g.value);
+    if(sh.site&&sh.site.name)state.site=sh.site;
+    if(sh.schedule&&(sh.schedule.phases||[]).length&&(!state.schedule||(sh.schedule.phases||[]).length>=(state.schedule.phases||[]).length))state.schedule=sh.schedule;
+    let n=0;Object.values(sh.days||{}).forEach(rep=>{if(rep&&rep.date){state.days[rep.date]=rep;n++;}});
+    persist();render();
+    if(!silent)toast(n?`📥 공사일보에서 ${n}일 불러옴 (총 ${Object.keys(state.days).length}일)`:'받은 데이터가 없습니다');
+  }catch(e){if(!silent)toast('불러오기 실패');}
+}
+async function persist(){await window.storage.set('boc-dashboard',JSON.stringify(state));document.getElementById('saveStatus').textContent='저장됨 '+new Date().toLocaleTimeString('ko-KR');}
+async function restore(){const r=await window.storage.get('boc-dashboard');if(r&&r.value){try{Object.assign(state,JSON.parse(r.value));}catch(e){}}}
+function resetAll(){if(!confirm('모든 집계 데이터를 지울까요? (공사일보에서 다시 가져올 수 있습니다)'))return;state={site:{},schedule:null,days:{}};persist();render();toast('초기화 완료');}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
+function openHelp(){document.getElementById('helpModal').classList.add('show');}
+function closeHelp(){document.getElementById('helpModal').classList.remove('show');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeHelp();});
+(function(){const WD=['일','월','화','수','목','금','토'],z=n=>String(n).padStart(2,'0');
+  function tick(){const el=document.getElementById('clock');if(!el)return;const d=new Date();
+    el.innerHTML=`${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} (${WD[d.getDay()]}) <b>${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}</b>`;}
+  tick();setInterval(tick,1000);})();
+/* 공사일보가 같은 브라우저/사이트에서 전송하면 실시간 자동 반영 */
+window.addEventListener('storage',e=>{if(e.key==='boc-shared-project')pullShared(true);});
+/* 다른 기기에서 전송된 일보를 60초마다 확인 (updatedAt 변경 시에만 반영) */
+let _lastShared=0;
+setInterval(async()=>{
+  if(document.visibilityState==='hidden')return;
+  try{const g=await window.storage.get('boc-shared-project');if(!g||!g.value)return;
+    const sh=JSON.parse(g.value);
+    if((sh.updatedAt||0)>_lastShared){_lastShared=sh.updatedAt||0;await pullShared(true);}
+  }catch(e){}
+},60000);
+
+(async function(){await restore();await pullShared(true);render();})();
+</script>
+</body>
+</html>
