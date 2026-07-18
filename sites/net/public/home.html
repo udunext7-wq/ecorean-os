@@ -1318,18 +1318,19 @@ async function handleSubmit(e) {
   btn.disabled = true;
   btn.textContent = '접수 중…';
   try {
-    const sb = window.supabase.createClient(
-      'https://gdcfqbdgubgpzusbtftf.supabase.co',
-      'sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ'
-    );
-    const { error } = await sb.from('site_inquiries').insert({
-      name, phone,
-      email: document.getElementById('fi_email').value.trim() || null,
-      service_type: document.getElementById('fi_service').value || null,
-      area_size: document.getElementById('fi_area').value || null,
-      message: document.getElementById('fi_msg').value.trim() || null,
+    // 서버 API 로 접수 (DB 저장 + 대표 메일 알림, 2026-07-18)
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name, phone,
+        email: document.getElementById('fi_email').value.trim() || null,
+        service_type: document.getElementById('fi_service').value || null,
+        area_size: document.getElementById('fi_area').value || null,
+        message: document.getElementById('fi_msg').value.trim() || null,
+      }),
     });
-    if (error) throw error;
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     btn.textContent = '✓ 접수 완료 — 1영업일 내 연락드립니다';
     btn.style.background = '#B8965A';
     btn.style.color = '#1A1814';

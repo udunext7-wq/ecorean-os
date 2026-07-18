@@ -5,7 +5,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PREFIXES = ['/login', '/signup', '/auth'];
+const PUBLIC_PREFIXES = ['/login', '/signup', '/auth', '/api/contact'];
 const PUBLIC_EXACT = ['/', '/home.html'];
 
 function safeNext(raw: string | null): string | null {
