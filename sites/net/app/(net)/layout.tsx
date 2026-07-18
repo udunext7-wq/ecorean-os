@@ -28,13 +28,13 @@ export default async function NetLayout({ children }: { children: ReactNode }) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
-          <h1 className="text-lg font-semibold text-slate-900">접근 권한이 없습니다</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <h1 className="text-lg font-semibold text-cream">접근 권한이 없습니다</h1>
+          <p className="mt-2 text-sm text-muted">
             {profile.email} 계정에 직원 권한(staff 이상)이 아직 부여되지 않았습니다.
           </p>
           <Link
             href="/request-role"
-            className="mt-4 inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="mt-4 inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-ink hover:bg-brand-400"
           >
             승급 신청하기
           </Link>
@@ -50,13 +50,13 @@ export default async function NetLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-56 flex-col border-r border-slate-200 bg-white">
-        <div className="border-b border-slate-100 px-4 py-4">
+      <aside className="flex w-56 flex-col border-r border-stroke bg-panel">
+        <div className="border-b border-stroke px-4 py-4">
           <p className="text-sm font-bold text-brand-700">ECOREAN 내부 운영</p>
-          <p className="text-xs text-slate-400">ecorean.net</p>
+          <p className="text-xs text-faint">ecorean.net</p>
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          <p className="px-2 pb-1 text-xs font-semibold uppercase text-slate-400">
+          <p className="px-2 pb-1 text-xs font-semibold uppercase text-faint">
             {bocManifest.menu.group}
           </p>
           {MENU.filter((item) => !item.minRole || hasRole(profile.role, item.minRole)).map(
@@ -64,19 +64,19 @@ export default async function NetLayout({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="block rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700"
+                className="block rounded-md px-2 py-1.5 text-sm text-cream/90 hover:bg-brand-50 hover:text-brand-700"
               >
                 {item.label}
               </Link>
             ),
           )}
         </nav>
-        <div className="border-t border-slate-100 p-3">
-          <p className="truncate text-xs text-slate-500">{profile.email}</p>
+        <div className="border-t border-stroke p-3">
+          <p className="truncate text-xs text-muted">{profile.email}</p>
           <div className="mt-1 flex items-center justify-between">
             <Badge tone="info">{profile.role}</Badge>
             <form action="/auth/signout" method="post">
-              <button type="submit" className="text-xs text-slate-400 hover:text-slate-600">
+              <button type="submit" className="text-xs text-faint hover:text-muted">
                 로그아웃
               </button>
             </form>

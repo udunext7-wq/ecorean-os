@@ -54,9 +54,9 @@ export default async function TilesPage({ searchParams }: { searchParams: ListSe
                 <Th>상태</Th>
               </tr>
             </THead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-stroke">
               {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50">
+                <tr key={r.id} className="hover:bg-panel2">
                   <Td>
                     {r.img_thumb_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -67,11 +67,11 @@ export default async function TilesPage({ searchParams }: { searchParams: ListSe
                         className="h-10 w-10 rounded object-cover"
                       />
                     ) : (
-                      <span className="text-xs text-slate-300">없음</span>
+                      <span className="text-xs text-faint">없음</span>
                     )}
                   </Td>
                   <Td className="font-mono text-xs">{r.code}</Td>
-                  <Td className="font-medium text-slate-900">{r.tag || r.name}</Td>
+                  <Td className="font-medium text-cream">{r.tag || r.name}</Td>
                   <Td>{r.category}</Td>
                   <Td>{r.brand ?? '—'}</Td>
                   <Td className="tabular-nums">{formatSizeMm(r.size_w_mm, r.size_h_mm)}</Td>
@@ -83,7 +83,7 @@ export default async function TilesPage({ searchParams }: { searchParams: ListSe
               ))}
               {rows.length === 0 ? (
                 <tr>
-                  <Td colSpan={8} className="py-8 text-center text-slate-400">
+                  <Td colSpan={8} className="py-8 text-center text-faint">
                     결과 없음
                   </Td>
                 </tr>

@@ -77,14 +77,14 @@ export default function RequestRolePage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
-        <h1 className="text-lg font-semibold text-slate-900">승급 신청</h1>
+        <h1 className="text-lg font-semibold text-cream">승급 신청</h1>
 
         {state === 'loading' ? (
-          <p className="mt-4 text-sm text-slate-400">확인 중…</p>
+          <p className="mt-4 text-sm text-faint">확인 중…</p>
         ) : null}
 
         {state === 'already-staff' ? (
-          <div className="mt-4 text-sm text-slate-600">
+          <div className="mt-4 text-sm text-muted">
             <p>
               이미 직원 권한입니다 <Badge tone="ok">{role}</Badge>
             </p>
@@ -95,20 +95,20 @@ export default function RequestRolePage() {
         ) : null}
 
         {state === 'pending' ? (
-          <p className="mt-4 text-sm text-slate-600">
+          <p className="mt-4 text-sm text-muted">
             이미 접수된 승급 신청이 <b>승인 대기 중</b>입니다. 관리자 승인 후 다시 로그인해 주세요.
           </p>
         ) : null}
 
         {state === 'done' ? (
-          <p className="mt-4 text-sm text-slate-600">
+          <p className="mt-4 text-sm text-muted">
             승급 신청이 접수되었습니다. 관리자 승인 후 업무시스템을 사용할 수 있습니다.
           </p>
         ) : null}
 
         {state === 'form' ? (
           <>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-muted">
               현재 권한 <Badge>{role ?? 'visitor'}</Badge> → 직원(staff) 승급을 신청합니다.
             </p>
             <form onSubmit={onSubmit} className="mt-6 space-y-3">

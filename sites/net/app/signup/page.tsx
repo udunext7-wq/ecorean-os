@@ -49,8 +49,8 @@ export default function SignupPage() {
     return (
       <main className="flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-sm text-center">
-          <h1 className="text-lg font-semibold text-slate-900">확인 메일을 보냈습니다</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <h1 className="text-lg font-semibold text-cream">확인 메일을 보냈습니다</h1>
+          <p className="mt-2 text-sm text-muted">
             {email} 로 보낸 메일의 링크를 눌러 가입을 완료한 뒤,
             <br />
             로그인하고 승급 신청을 해주세요.
@@ -66,8 +66,8 @@ export default function SignupPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
-        <h1 className="text-lg font-semibold text-slate-900">회원가입</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-lg font-semibold text-cream">회원가입</h1>
+        <p className="mt-1 text-sm text-muted">
           가입 후 승급 신청을 하면 관리자 승인 뒤 업무시스템을 사용할 수 있습니다.
         </p>
         <form onSubmit={onSubmit} className="mt-6 space-y-3">
@@ -102,7 +102,7 @@ export default function SignupPage() {
             {loading ? '가입 중…' : '가입하기'}
           </Button>
         </form>
-        <p className="mt-4 border-t border-slate-100 pt-4 text-center text-sm text-slate-500">
+        <p className="mt-4 border-t border-stroke pt-4 text-center text-sm text-muted">
           이미 계정이 있으신가요?{' '}
           <Link href="/login" className="font-medium text-brand-600 hover:underline">
             로그인

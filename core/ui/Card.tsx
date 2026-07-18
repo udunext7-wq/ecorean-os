@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-lg border border-slate-200 bg-white p-4 shadow-sm ${className}`}>
+    <div className={`rounded-lg border border-stroke bg-panel p-4 shadow-sm ${className}`}>
       {children}
     </div>
   );
@@ -19,9 +19,9 @@ export function StatCard({
 }) {
   return (
     <Card>
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-slate-400">{hint}</p> : null}
+      <p className="text-sm text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-brand-500">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-faint">{hint}</p> : null}
     </Card>
   );
 }

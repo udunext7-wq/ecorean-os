@@ -756,9 +756,10 @@ footer {
       </div>
     </div>
     <div class="nav-work">
-      <button class="nav-work-btn" id="workMenuBtn" type="button">업무시스템</button>
+      <button class="nav-work-btn" id="workMenuBtn" type="button">업무시스템 ▾</button>
       <div class="work-menu" id="workMenu">
         <div class="work-menu-label">ECOREAN WORK</div>
+        <a href="/hub">업무 허브 <small>전체 모듈</small></a>
         <a href="/minicad/">MiniCAD <small>도면·견적</small></a>
         <a href="/work/#po">발주서</a>
         <a href="/work/#daily">공사일보</a>
@@ -1402,9 +1403,9 @@ async function handleSubmit(e) {
   });
 })();
 </script>
-<!-- ══ 업무시스템 로그인 창 (2026-07-17): 우측 상단 업무시스템 클릭 → 로그인 → 창 안에서 모듈 사용 ══ -->
+<!-- ══ 업무시스템 로그인 창 (2026-07-17, 2026-07-19 드롭다운 복원):
+     업무시스템 클릭 → 모듈 드롭다운 → 모듈 클릭 → 로그인 창 → 창 안에서 해당 모듈 ══ -->
 <style>
-  #workMenu { display: none !important; } /* 드롭다운 모듈 목록은 로그인 후 창 안(/hub)으로 이동 */
   #workLoginModal { display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(10, 12, 10, .72); backdrop-filter: blur(3px); }
   #workLoginModal.open { display: block; }
   #workLoginModal .wl-frame-wrap { position: absolute; inset: 2.5%; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.5); }
@@ -1418,14 +1419,17 @@ async function handleSubmit(e) {
 </div>
 <script>
 (function () {
-  var btn = document.getElementById('workMenuBtn');
+  var menu = document.getElementById('workMenu');
   var modal = document.getElementById('workLoginModal');
   var frame = document.getElementById('workLoginFrame');
   var close = document.getElementById('workLoginClose');
-  if (!btn || !modal) return;
-  function openModal() {
-    if (frame.getAttribute('src') === 'about:blank') {
-      frame.src = '/login?next=%2Fhub'; // 로그인하면 같은 창 안에서 /hub(업무 모듈)로 이동
+  if (!menu || !modal) return;
+  var currentTarget = null;
+  function openModal(target) {
+    // 로그인 창을 띄우고, 로그인되어 있으면 미들웨어가 바로 해당 모듈로 보낸다
+    if (target !== currentTarget) {
+      frame.src = '/login?next=' + encodeURIComponent(target);
+      currentTarget = target;
     }
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1434,12 +1438,14 @@ async function handleSubmit(e) {
     modal.classList.remove('open');
     document.body.style.overflow = '';
   }
-  // 기존 드롭다운 토글보다 먼저(capture) 가로채서 로그인 창을 연다
-  btn.addEventListener('click', function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    openModal();
-  }, true);
+  // 드롭다운(업무시스템 ▾ 토글은 원래 동작 유지)의 모듈 링크 → 로그인 창 안에서 열기
+  menu.querySelectorAll('a').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      menu.classList.remove('open');
+      openModal(a.getAttribute('href'));
+    });
+  });
   close.addEventListener('click', closeModal);
   modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });

@@ -12,8 +12,8 @@ export function PageHeader({
   return (
     <div className="mb-6 flex items-start justify-between gap-4">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+        <h1 className="text-xl font-semibold text-brand-500">{title}</h1>
+        {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
       </div>
       {actions}
     </div>

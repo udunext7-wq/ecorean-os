@@ -57,14 +57,14 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Li
                 <Th>상태</Th>
               </tr>
             </THead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-stroke">
               {rows.map((r) => (
-                <tr key={`${r.origin_table}-${r.item_id}`} className="hover:bg-slate-50">
+                <tr key={`${r.origin_table}-${r.item_id}`} className="hover:bg-panel2">
                   <Td>
                     <Badge tone="info">{ORIGIN_LABEL[r.origin_table]}</Badge>
                   </Td>
                   <Td className="font-mono text-xs">{r.item_id}</Td>
-                  <Td className="font-medium text-slate-900">{r.name}</Td>
+                  <Td className="font-medium text-cream">{r.name}</Td>
                   <Td>{r.brand ?? '—'}</Td>
                   <Td>{r.unit ?? '—'}</Td>
                   <Td className="text-right tabular-nums">{formatKRW(r.unit_price)}</Td>
@@ -75,7 +75,7 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Li
               ))}
               {rows.length === 0 ? (
                 <tr>
-                  <Td colSpan={7} className="py-8 text-center text-slate-400">
+                  <Td colSpan={7} className="py-8 text-center text-faint">
                     결과 없음
                   </Td>
                 </tr>

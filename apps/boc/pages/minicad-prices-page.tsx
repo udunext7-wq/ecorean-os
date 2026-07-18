@@ -29,7 +29,7 @@ export default async function MinicadPricesPage() {
         <p className="text-sm text-danger">조회 오류: {error.message}</p>
       ) : (
         <>
-          <h2 className="mb-2 text-sm font-semibold text-slate-900">
+          <h2 className="mb-2 text-sm font-semibold text-cream">
             승인 대기 <Badge tone="warn">{pending.length}건</Badge>
           </h2>
           <Table>
@@ -43,11 +43,11 @@ export default async function MinicadPricesPage() {
                 <Th>처리</Th>
               </tr>
             </THead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-stroke">
               {pending.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50">
+                <tr key={r.id} className="hover:bg-panel2">
                   <Td className="font-mono text-xs">{r.price_key}</Td>
-                  <Td className="text-right font-medium tabular-nums text-slate-900">
+                  <Td className="text-right font-medium tabular-nums text-cream">
                     {formatKRW(r.proposed_price)}
                   </Td>
                   <Td>{r.proposed_by ?? '—'}</Td>
@@ -77,7 +77,7 @@ export default async function MinicadPricesPage() {
               ))}
               {pending.length === 0 ? (
                 <tr>
-                  <Td colSpan={6} className="py-6 text-center text-slate-400">
+                  <Td colSpan={6} className="py-6 text-center text-faint">
                     대기 중인 제안이 없습니다
                   </Td>
                 </tr>
@@ -85,7 +85,7 @@ export default async function MinicadPricesPage() {
             </tbody>
           </Table>
 
-          <h2 className="mb-2 mt-8 text-sm font-semibold text-slate-900">
+          <h2 className="mb-2 mt-8 text-sm font-semibold text-cream">
             등록된 priceKey <Badge>{decided.length}건</Badge>
           </h2>
           <Table>
@@ -98,9 +98,9 @@ export default async function MinicadPricesPage() {
                 <Th>매핑</Th>
               </tr>
             </THead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-stroke">
               {decided.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50">
+                <tr key={r.id} className="hover:bg-panel2">
                   <Td className="font-mono text-xs">{r.price_key}</Td>
                   <Td className="text-right tabular-nums">{formatKRW(r.price_override)}</Td>
                   <Td>
@@ -114,7 +114,7 @@ export default async function MinicadPricesPage() {
               ))}
               {decided.length === 0 ? (
                 <tr>
-                  <Td colSpan={5} className="py-6 text-center text-slate-400">
+                  <Td colSpan={5} className="py-6 text-center text-faint">
                     아직 등록된 priceKey가 없습니다 — MiniCAD에서 단가를 입력하면 여기에 제안이 쌓입니다
                   </Td>
                 </tr>

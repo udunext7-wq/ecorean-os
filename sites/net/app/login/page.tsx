@@ -35,8 +35,8 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
-        <h1 className="text-lg font-semibold text-slate-900">업무시스템 로그인</h1>
-        <p className="mt-1 text-sm text-slate-500">ECOREAN 내부 운영 — 직원 계정으로 로그인하세요.</p>
+        <h1 className="text-lg font-semibold text-cream">업무시스템 로그인</h1>
+        <p className="mt-1 text-sm text-muted">ECOREAN 내부 운영 — 직원 계정으로 로그인하세요.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-3">
           <Input
             type="email"
@@ -62,7 +62,7 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-4 border-t border-slate-100 pt-4 text-center text-sm text-slate-500">
+        <div className="mt-4 border-t border-stroke pt-4 text-center text-sm text-muted">
           <p>
             계정이 없으신가요?{' '}
             <Link href="/signup" className="font-medium text-brand-600 hover:underline">

@@ -55,12 +55,12 @@ export default async function CostItemsPage({ searchParams }: { searchParams: Li
                 <Th>승인</Th>
               </tr>
             </THead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-stroke">
               {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50">
+                <tr key={r.id} className="hover:bg-panel2">
                   <Td className="font-mono text-xs">{r.code}</Td>
                   <Td>{r.major_category}</Td>
-                  <Td className="font-medium text-slate-900">{r.name}</Td>
+                  <Td className="font-medium text-cream">{r.name}</Td>
                   <Td>{r.unit}</Td>
                   <Td className="text-right tabular-nums">{formatKRW(r.labor_cost)}</Td>
                   <Td className="text-right tabular-nums">{formatKRW(r.material_cost)}</Td>
@@ -72,7 +72,7 @@ export default async function CostItemsPage({ searchParams }: { searchParams: Li
               ))}
               {rows.length === 0 ? (
                 <tr>
-                  <Td colSpan={8} className="py-8 text-center text-slate-400">
+                  <Td colSpan={8} className="py-8 text-center text-faint">
                     결과 없음
                   </Td>
                 </tr>

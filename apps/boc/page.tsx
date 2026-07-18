@@ -41,8 +41,8 @@ export default async function BocDashboardPage() {
       </div>
 
       <Card className="mt-6">
-        <h2 className="text-sm font-semibold text-slate-900">데이터 이슈 (헌법 9조: 추정 금지 — 표시만)</h2>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+        <h2 className="text-sm font-semibold text-cream">데이터 이슈 (헌법 9조: 추정 금지 — 표시만)</h2>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
           <li>
             단가 미확보 타일 SKU: <b>{tilesNoPrice.toLocaleString('ko-KR')}건</b> (unit_price=null →
             NEEDS_RESEARCH)

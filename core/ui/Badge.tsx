@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 
 const TONES = {
-  ok: 'bg-brand-100 text-brand-700',
-  warn: 'bg-amber-100 text-amber-800',
-  danger: 'bg-red-100 text-red-700',
-  neutral: 'bg-slate-100 text-slate-600',
-  info: 'bg-blue-100 text-blue-700',
+  ok: 'bg-ok/15 text-ok',
+  warn: 'bg-warn/15 text-warn',
+  danger: 'bg-danger/15 text-danger',
+  neutral: 'bg-panel2 text-muted',
+  info: 'bg-brand-100 text-brand-500',
 } as const;
 
 export type BadgeTone = keyof typeof TONES;

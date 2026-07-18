@@ -16,11 +16,11 @@ export function Pagination({
   const prev = Math.max(1, page - 1);
   const next = Math.min(lastPage, page + 1);
   const linkCls =
-    'rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 aria-disabled:pointer-events-none aria-disabled:opacity-40';
+    'rounded-md border border-stroke bg-panel px-3 py-1.5 text-sm text-cream hover:bg-panel2 aria-disabled:pointer-events-none aria-disabled:opacity-40';
 
   return (
     <nav className="mt-4 flex items-center justify-between">
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-muted">
         총 {total.toLocaleString('ko-KR')}건 · {page}/{lastPage} 페이지
       </p>
       <div className="flex gap-2">

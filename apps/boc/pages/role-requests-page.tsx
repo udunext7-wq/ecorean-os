@@ -43,13 +43,13 @@ export default async function RoleRequestsPage() {
               <Th>처리</Th>
             </tr>
           </THead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-stroke">
             {rows.map((r) => {
               const badge = STATUS_BADGE[r.status];
               return (
-                <tr key={r.id} className="hover:bg-slate-50">
+                <tr key={r.id} className="hover:bg-panel2">
                   <Td className="whitespace-nowrap text-xs">{r.created_at?.slice(0, 10)}</Td>
-                  <Td className="font-medium text-slate-900">{r.name ?? '—'}</Td>
+                  <Td className="font-medium text-cream">{r.name ?? '—'}</Td>
                   <Td>{r.email ?? '—'}</Td>
                   <Td>{r.phone ?? '—'}</Td>
                   <Td>
@@ -80,7 +80,7 @@ export default async function RoleRequestsPage() {
                         </form>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400">완료</span>
+                      <span className="text-xs text-faint">완료</span>
                     )}
                   </Td>
                 </tr>
@@ -88,7 +88,7 @@ export default async function RoleRequestsPage() {
             })}
             {rows.length === 0 ? (
               <tr>
-                <Td colSpan={8} className="py-8 text-center text-slate-400">
+                <Td colSpan={8} className="py-8 text-center text-faint">
                   승급 신청이 없습니다
                 </Td>
               </tr>

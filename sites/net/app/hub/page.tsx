@@ -39,17 +39,17 @@ export default async function HubPage() {
   if (target === 'login') {
     // visitor — 승급 신청 안내
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
+      <main className="flex min-h-screen items-center justify-center bg-ink p-4">
         <Card className="w-full max-w-md text-center">
-          <h1 className="text-lg font-semibold text-slate-900">직원 권한이 필요합니다</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <h1 className="text-lg font-semibold text-cream">직원 권한이 필요합니다</h1>
+          <p className="mt-2 text-sm text-muted">
             {profile.email} 계정은 아직 직원(staff) 권한이 없습니다.
             <br />
             승급 신청 후 관리자 승인을 받아주세요.
           </p>
           <Link
             href="/request-role"
-            className="mt-4 inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="mt-4 inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-ink hover:bg-brand-400"
           >
             승급 신청하기
           </Link>
@@ -64,15 +64,15 @@ export default async function HubPage() {
   }
 
   const tile =
-    'block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand-500 hover:shadow-md';
+    'block rounded-xl border border-stroke bg-panel p-4 shadow-sm transition hover:border-brand-500 hover:shadow-md';
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6">
+    <main className="min-h-screen bg-ink p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">ECOREAN 업무시스템</h1>
-            <p className="mt-0.5 text-sm text-slate-500">
+            <h1 className="text-xl font-bold text-cream">ECOREAN 업무시스템</h1>
+            <p className="mt-0.5 text-sm text-muted">
               {profile.email} <Badge tone="info">{profile.role}</Badge>
             </p>
           </div>
@@ -83,26 +83,26 @@ export default async function HubPage() {
           </form>
         </div>
 
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-faint">
           업무 모듈
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {MODULES.map((m) => (
             <a key={m.href} href={m.href} className={tile}>
-              <p className="font-semibold text-slate-900">{m.name}</p>
-              <p className="mt-1 text-xs text-slate-500">{m.desc}</p>
+              <p className="font-semibold text-cream">{m.name}</p>
+              <p className="mt-1 text-xs text-muted">{m.desc}</p>
             </a>
           ))}
         </div>
 
-        <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-slate-400">
+        <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-faint">
           BOC 마스터 DB
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {BOC_MODULES.filter((m) => !m.minRole || hasRole(profile.role, m.minRole)).map((m) => (
             <Link key={m.href} href={m.href} className={tile}>
-              <p className="font-semibold text-slate-900">{m.name}</p>
-              <p className="mt-1 text-xs text-slate-500">{m.desc}</p>
+              <p className="font-semibold text-cream">{m.name}</p>
+              <p className="mt-1 text-xs text-muted">{m.desc}</p>
             </Link>
           ))}
         </div>
