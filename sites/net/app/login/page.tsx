@@ -1,18 +1,34 @@
 'use client';
 
-// 로그인 — Supabase Auth (D-011). 회원가입·승급신청 진입점 포함 (대표 지시 2026-07-17)
-import { useState, type FormEvent } from 'react';
+// 로그인 — Supabase Auth (D-011). 회원가입·승급신청 진입점 + 아이디 저장 (대표 지시 2026-07-20)
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/core/db/browser';
 import { Button, Card, Input } from '@/core/ui';
 
+const SAVED_EMAIL_KEY = 'ecorean.savedEmail';
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // 저장된 아이디 프리필
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SAVED_EMAIL_KEY);
+      if (saved) {
+        setEmail(saved);
+        setRemember(true);
+      }
+    } catch {
+      /* no-op */
+    }
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -24,6 +40,12 @@ export default function LoginPage() {
     if (error) {
       setError('로그인 실패: 이메일 또는 비밀번호를 확인하세요.');
       return;
+    }
+    try {
+      if (remember) localStorage.setItem(SAVED_EMAIL_KEY, email);
+      else localStorage.removeItem(SAVED_EMAIL_KEY);
+    } catch {
+      /* no-op */
     }
     // ?next= 가 있으면 그 모듈로, 없으면 업무 허브로 (open redirect 방지)
     const raw = new URLSearchParams(window.location.search).get('next');
@@ -56,6 +78,15 @@ export default function LoginPage() {
             className="w-full"
             autoComplete="current-password"
           />
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 accent-[#B8965A]"
+            />
+            아이디 저장
+          </label>
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? '확인 중…' : '로그인'}

@@ -5,5 +5,6 @@ import { createServerSupabase } from '@/core/db/server';
 export async function POST(request: Request) {
   const supabase = createServerSupabase();
   await supabase.auth.signOut();
-  return NextResponse.redirect(new URL('/login', request.url), { status: 302 });
+  // 홈페이지로 복귀 (홈 드롭다운·플랫폼 어디서든 일관)
+  return NextResponse.redirect(new URL('/', request.url), { status: 302 });
 }

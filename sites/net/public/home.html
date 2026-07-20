@@ -1449,6 +1449,24 @@ async function handleSubmit(e) {
   close.addEventListener('click', closeModal);
   modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+  // 로그인 상태면 드롭다운에 사용자 표시 + 로그아웃 항목 추가 (2026-07-20)
+  fetch('/api/me', { credentials: 'same-origin' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (me) {
+      if (!me || !me.email) return;
+      var a = document.createElement('a');
+      a.href = '#';
+      a.innerHTML = '로그아웃 <small>' + me.email.split('@')[0] + ' · ' + (me.role || '') + '</small>';
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        fetch('/auth/signout', { method: 'POST', credentials: 'same-origin' })
+          .then(function () { location.reload(); })
+          .catch(function () { location.reload(); });
+      });
+      menu.appendChild(a);
+    })
+    .catch(function () { /* 미로그인 — 표시 없음 */ });
 })();
 </script>
 </body>

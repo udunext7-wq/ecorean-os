@@ -28,11 +28,20 @@ export default function SignupPage() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: {
+        data: { full_name: name },
+        // 확인 메일 링크가 업무시스템 로그인으로 돌아오도록 (Supabase URL 허용목록 등록 필요)
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
     });
     setLoading(false);
     if (error) {
-      setError(`가입 실패: ${error.message}`);
+      const msg = /rate limit/i.test(error.message)
+        ? '가입 요청이 몰려 잠시 제한되었습니다. 1시간 후 다시 시도해 주세요.'
+        : /already registered/i.test(error.message)
+          ? '이미 가입된 이메일입니다. 로그인해 주세요.'
+          : `가입 실패: ${error.message}`;
+      setError(msg);
       return;
     }
     if (data.session) {
