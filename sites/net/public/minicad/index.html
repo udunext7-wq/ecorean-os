@@ -567,6 +567,10 @@
   </div>
 </div>
 
+<!-- v5.9m: 반응형 드로어 토글 핸들 (≤900px에서만 표시, CSS로 제어) -->
+<button type="button" id="drawer-toggle-left" class="drawer-toggle" aria-label="도구 패널 열기/닫기" aria-expanded="false">▸</button>
+<button type="button" id="drawer-toggle-right" class="drawer-toggle" aria-label="정보 패널 열기/닫기" aria-expanded="false">◂</button>
+
 <!-- v5.9: 저작권 푸터 (우측 하단 고정) -->
 <div id="copyright-footer" style="position:fixed;right:8px;bottom:6px;z-index:9000;font-size:9px;color:rgba(168,168,184,0.55);font-family:'JetBrains Mono',monospace;pointer-events:auto;user-select:none;letter-spacing:0.3px">
   © 2026 ECOREAN · MiniCAD v5.9 · <a href="#" id="copyright-link" style="color:inherit;text-decoration:underline dotted">All Rights Reserved</a>
@@ -609,6 +613,33 @@
   </div>
 </div>
 
+<script>
+'use strict';
+/* v5.9m: 모바일/태블릿 드로어 토글 — 레이아웃 전용, 도구/인증/EULA 로직 불변 */
+(function(){
+  var lt=document.getElementById('drawer-toggle-left'),
+      rt=document.getElementById('drawer-toggle-right'),
+      lp=document.querySelector('.panel-left'),
+      rp=document.querySelector('.panel-right');
+  if(!lt||!rt||!lp||!rp) return;
+  function set(panel,handle,open,arrOpen,arrClosed){
+    panel.classList.toggle('drawer-open',open);
+    handle.classList.toggle('open',open);
+    handle.textContent=open?arrOpen:arrClosed;
+    handle.setAttribute('aria-expanded',open?'true':'false');
+  }
+  lt.addEventListener('click',function(){
+    var o=!lp.classList.contains('drawer-open');
+    set(lp,lt,o,'◂','▸');
+    if(o) set(rp,rt,false,'▸','◂');
+  });
+  rt.addEventListener('click',function(){
+    var o=!rp.classList.contains('drawer-open');
+    set(rp,rt,o,'▸','◂');
+    if(o) set(lp,lt,false,'◂','▸');
+  });
+})();
+</script>
 <script src="js/state.js?v=space_esc"></script>
 <script src="js/data.js?v=space_esc"></script>
 <script src="js/library.js?v=space_esc"></script>

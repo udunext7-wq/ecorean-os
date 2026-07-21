@@ -248,6 +248,27 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
 .preset-btn.on{background:#d4af3722;border-color:#d4af37;color:#d4af37}
 
 .shadow-preview{width:100%;height:34px;border-radius:4px;background:#1a1b22;margin:4px 0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#666}
+
+/* ===== MOBILE / TABLET (≤900px) — 데스크톱 레이아웃은 변경 없음 ===== */
+.mobile-panel-btn{display:none}
+#m-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2400}
+@media(max-width:900px){
+  .mobile-panel-btn{display:inline-flex}
+  .resize-handle{display:none}
+  #topbar{flex-wrap:wrap;height:auto;min-height:50px;padding:6px 10px;row-gap:4px}
+  #topbar .btn{font-size:0;gap:0;padding:6px 8px}
+  #topbar .btn i{font-size:14px}
+  #left,#right{position:fixed;top:0;bottom:0;width:min(300px,85vw)!important;min-width:0;max-width:85vw;z-index:2500;transition:transform 0.25s ease;box-shadow:0 0 40px rgba(0,0,0,0.6)}
+  #left{left:0;transform:translateX(-105%)}
+  #right{right:0;transform:translateX(105%)}
+  body.m-left-open #left,body.m-right-open #right{transform:translateX(0)}
+  body.m-left-open #m-backdrop,body.m-right-open #m-backdrop{display:block}
+  #statusbar{height:auto;min-height:22px;flex-wrap:wrap;padding:3px 10px;gap:4px 10px;line-height:1.6}
+  #canvas-wrap{padding:10px}
+}
+@media(max-width:480px){
+  #statusbar span:last-of-type{display:none}
+}
 </style>
 </head>
 <body>
@@ -260,6 +281,7 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
       <button data-dev="tablet" title="Tablet"><i class="ti ti-device-tablet"></i></button>
       <button data-dev="mobile" title="Mobile"><i class="ti ti-device-mobile"></i></button>
     </div>
+    <button class="btn mobile-panel-btn" id="btn-mob-left" title="컴포넌트 패널"><i class="ti ti-layout-sidebar"></i></button>
     <div class="spacer"></div>
     <button class="btn" id="btn-undo" title="Ctrl+Z 실행취소"><i class="ti ti-arrow-back-up"></i></button><button class="btn" id="btn-redo" title="Ctrl+Y 다시실행"><i class="ti ti-arrow-forward-up"></i></button>
     <button class="btn" id="btn-preview"><i class="ti ti-eye"></i> 미리보기</button>
@@ -268,6 +290,7 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
     <button class="btn" id="btn-code"><i class="ti ti-code"></i> 코드</button>
     <button class="btn pri" id="btn-export"><i class="ti ti-download"></i> HTML</button>
     <button class="btn" id="btn-reset" title="모두 삭제"><i class="ti ti-trash"></i></button>
+    <button class="btn mobile-panel-btn" id="btn-mob-right" title="속성 패널"><i class="ti ti-layout-sidebar-right"></i></button>
   </header>
 
   <div id="main">
@@ -316,6 +339,21 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
     <span style="color:#d4af3788">ECOREAN Visual Editor v9</span>
   </div>
 </div>
+<div id="m-backdrop"></div>
+<script>
+/* 모바일 패널 드로어 토글 — 에디터 로직과 무관한 독립 스크립트 */
+(function(){
+  var L=document.getElementById('btn-mob-left'),R=document.getElementById('btn-mob-right'),B=document.getElementById('m-backdrop');
+  if(!L||!R||!B)return;
+  function close(){document.body.classList.remove('m-left-open','m-right-open');}
+  L.addEventListener('click',function(){var o=document.body.classList.contains('m-left-open');close();if(!o)document.body.classList.add('m-left-open');});
+  R.addEventListener('click',function(){var o=document.body.classList.contains('m-right-open');close();if(!o)document.body.classList.add('m-right-open');});
+  B.addEventListener('click',close);
+  /* 컴포넌트를 캔버스에 추가하면 드로어 자동 닫기 */
+  var lc=document.getElementById('left-content');
+  if(lc)lc.addEventListener('click',function(e){if(window.innerWidth<=900&&e.target.closest('.comp-item'))close();});
+})();
+</script>
 
 <script>
 // ========== 테마 프리셋 ==========

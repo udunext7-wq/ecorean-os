@@ -78,7 +78,7 @@ body {
 }
 #loader.out { opacity: 0; pointer-events: none; }
 .loader-logo {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 3rem; font-weight: 300; letter-spacing: .5em;
   color: var(--cream); opacity: 0;
   animation: fadeIn .8s .3s ease forwards;
@@ -93,7 +93,7 @@ body {
 
 /* ── NAV ── */
 nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 950;
   padding: 2rem 4rem;
   display: flex; align-items: center; justify-content: space-between;
   transition: background .4s, padding .4s;
@@ -105,7 +105,7 @@ nav.scrolled {
   border-bottom: 1px solid rgba(184,150,90,.15);
 }
 .nav-logo {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 1.6rem; font-weight: 400; letter-spacing: .25em;
   color: var(--cream); text-decoration: none;
   transition: color .4s;
@@ -181,7 +181,7 @@ nav.scrolled .mobile-menu-btn { color: var(--gold); }
 
 /* ── HERO ── */
 #hero {
-  height: 100vh; position: relative; overflow: hidden;
+  height: 100vh; height: 100svh; position: relative; overflow: hidden;
   display: flex; align-items: flex-end;
 }
 .hero-bg {
@@ -211,7 +211,7 @@ nav.scrolled .mobile-menu-btn { color: var(--gold); }
 }
 .sound-toggle:hover { background: var(--gold); color: var(--dark); }
 @media (max-width: 900px) {
-  .sound-toggle { left: 1.5rem; bottom: 6.5rem; }
+  .sound-toggle { left: 1.5rem; bottom: 2.2rem; padding: .55rem 1rem; }
 }
 /* 플로팅 상담 버튼 */
 .float-actions {
@@ -248,9 +248,9 @@ nav.scrolled .mobile-menu-btn { color: var(--gold); }
 }
 .hero-eyebrow::before { content: ''; width: 40px; height: 1px; background: var(--gold); }
 .hero-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(52px, 7vw, 96px);
-  font-weight: 300; line-height: 1.05; letter-spacing: .02em;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
+  font-size: clamp(44px, 7vw, 96px);
+  font-weight: 300; line-height: 1.18; letter-spacing: .02em;
   color: var(--cream); margin-bottom: 2rem;
   opacity: 0; animation: slideUp .9s .7s ease forwards;
 }
@@ -309,7 +309,7 @@ nav.scrolled .mobile-menu-btn { color: var(--gold); }
 .hero-stat:nth-child(2) { animation-delay: 1.5s; }
 .hero-stat:nth-child(3) { animation-delay: 1.7s; }
 .stat-num {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 2.2rem; font-weight: 300; color: var(--cream); line-height: 1;
 }
 .stat-label {
@@ -341,7 +341,7 @@ nav.scrolled .mobile-menu-btn { color: var(--gold); }
 .award-icon { font-size: 1rem; }
 
 /* ── SECTION BASE ── */
-section { padding: 9rem 4rem; }
+section { padding: 9rem 4rem; scroll-margin-top: 4.5rem; }
 .sec-eyebrow {
   font-size: .6rem; letter-spacing: .3em; text-transform: uppercase;
   color: var(--gold); margin-bottom: 1.2rem;
@@ -349,7 +349,7 @@ section { padding: 9rem 4rem; }
 }
 .sec-eyebrow::before { content: ''; width: 30px; height: 1px; background: var(--gold); }
 .sec-title {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: clamp(38px, 5vw, 68px);
   font-weight: 300; line-height: 1.1; letter-spacing: .02em;
 }
@@ -377,7 +377,7 @@ section { padding: 9rem 4rem; }
   text-align: center;
 }
 .badge-num {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 2.4rem; font-weight: 300; color: var(--dark); line-height: 1;
 }
 .badge-label { font-size: .55rem; letter-spacing: .15em; text-transform: uppercase; color: var(--dark); margin-top: .2rem; }
@@ -395,7 +395,7 @@ section { padding: 9rem 4rem; }
   padding-top: 1.2rem;
 }
 .value-title {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 1.1rem; font-weight: 400; color: var(--gold-light); margin-bottom: .4rem;
 }
 .value-desc { font-size: .72rem; line-height: 1.8; color: rgba(248,244,238,.4); }
@@ -434,11 +434,11 @@ section { padding: 9rem 4rem; }
   position: absolute; bottom: 0; left: 0; right: 0; padding: 2rem;
 }
 .service-num {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: .85rem; color: var(--gold); letter-spacing: .1em; margin-bottom: .8rem;
 }
 .service-name {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 1.7rem; font-weight: 400; color: var(--cream);
   line-height: 1.2; margin-bottom: .7rem;
 }
@@ -519,7 +519,7 @@ section { padding: 9rem 4rem; }
   color: var(--gold); margin-bottom: .4rem;
 }
 .port-name {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 1.5rem; font-weight: 400; color: var(--cream);
 }
 .port-location { font-size: .7rem; color: rgba(248,244,238,.55); margin-top: .3rem; }
@@ -544,11 +544,11 @@ section { padding: 9rem 4rem; }
 }
 .test-card:hover { background: rgba(184,150,90,.06); border-color: rgba(184,150,90,.2); }
 .test-quote {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 3rem; color: var(--gold); line-height: 1; margin-bottom: .5rem; opacity: .4;
 }
 .test-text {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 1rem; font-style: italic; font-weight: 300;
   color: rgba(248,244,238,.7); line-height: 1.8; margin-bottom: 2rem;
 }
@@ -576,12 +576,12 @@ section { padding: 9rem 4rem; }
 .step:last-child { border-right: none; padding-right: 0; }
 .step:hover { background: rgba(184,150,90,.04); }
 .step-num {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 3.5rem; font-weight: 300; color: var(--gold); opacity: .25; line-height: 1;
   margin-bottom: 1.5rem;
 }
 .step-title {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 1.4rem; font-weight: 400; color: var(--dark);
   margin-bottom: 1rem;
 }
@@ -602,7 +602,7 @@ section { padding: 9rem 4rem; }
 .cta-content .sec-eyebrow { justify-content: center; margin-bottom: 1.5rem; }
 .cta-content .sec-eyebrow::before { display: none; }
 .cta-title {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: clamp(36px, 5vw, 60px); font-weight: 300; color: var(--cream);
   line-height: 1.15; margin-bottom: 2rem;
 }
@@ -661,7 +661,7 @@ footer {
   padding-bottom: 4rem; border-bottom: 1px solid rgba(184,150,90,.1);
 }
 .footer-brand .logo {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
   font-size: 1.8rem; font-weight: 300; letter-spacing: .2em; color: var(--cream);
   display: block; margin-bottom: 1rem;
 }
@@ -699,17 +699,23 @@ footer {
 
 /* ── MOBILE ── */
 @media (max-width: 900px) {
-  nav { padding: 1.2rem 1.5rem; }
+  nav { padding: 1rem 1rem; gap: .6rem; }
+  nav.scrolled { padding: .9rem 1rem; }
+  .nav-logo { font-size: 1.2rem; letter-spacing: .18em; flex-shrink: 0; }
   .nav-links, .nav-cta { display: none; }
-  .nav-work-btn { padding: .5rem 1rem; font-size: .6rem; }
-  .work-menu { right: -8px; min-width: 200px; }
+  .nav-work-btn { padding: .5rem .85rem; font-size: .58rem; letter-spacing: .1em; white-space: nowrap; }
+  .work-menu { right: -8px; min-width: 200px; max-height: 70vh; overflow-y: auto; }
   section { padding: 5rem 1.5rem; }
   #hero { padding: 0; }
-  .hero-content { padding: 0 1.5rem 4rem; }
+  .hero-content { padding: 0 1.5rem 7.5rem; }
+  .hero-actions { flex-direction: column; align-items: flex-start; gap: 1.1rem; }
   .hero-counter, .hero-scroll { display: none; }
   .about-layout, .services-header, .contact-layout, .test-layout { grid-template-columns: 1fr; gap: 3rem; }
   .about-img-accent, .about-badge { display: none; }
   .services-grid { grid-template-columns: 1fr; }
+  .contact-item { padding-right: 5rem; }
+  .portfolio-header { flex-direction: column; align-items: flex-start; gap: 1.2rem; }
+  .portfolio-filters { flex-wrap: wrap; gap: 1.2rem; }
   .portfolio-grid { grid-template-columns: 1fr 1fr; }
   .port-item { grid-column: span 1 !important; aspect-ratio: 4/3 !important; }
   .process-steps { grid-template-columns: 1fr 1fr; }
@@ -718,6 +724,16 @@ footer {
   .footer-top { grid-template-columns: 1fr 1fr; gap: 2rem; }
   .brand-bar { flex-wrap: wrap; gap: 1rem; }
   .brand-divider { display: none; }
+}
+
+/* ── TOUCH DEVICES — 호버 전용 UI를 항상 표시 ── */
+@media (hover: none) {
+  body { cursor: auto; }
+  #cur { display: none; }
+  .service-desc { max-height: 100px; opacity: 1; }
+  .service-arrow { opacity: 1; transform: none; }
+  .port-overlay { background: linear-gradient(to top, rgba(26,24,20,.72) 0%, rgba(26,24,20,0) 55%); }
+  .port-info { opacity: 1; transform: none; }
 }
 </style>
 </head>
@@ -1412,6 +1428,10 @@ async function handleSubmit(e) {
   #workLoginModal iframe { width: 100%; height: 100%; border: 0; }
   #workLoginModal .wl-close { position: absolute; top: calc(2.5% - 14px); right: calc(2.5% - 14px); width: 36px; height: 36px; border-radius: 50%; border: 0; background: #16a34a; color: #fff; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
   #workLoginModal .wl-close:hover { background: #15803d; }
+  @media (max-width: 700px) {
+    #workLoginModal .wl-frame-wrap { inset: 0; border-radius: 0; }
+    #workLoginModal .wl-close { top: 10px; right: 10px; }
+  }
 </style>
 <div id="workLoginModal" role="dialog" aria-modal="true" aria-label="업무시스템">
   <div class="wl-frame-wrap"><iframe id="workLoginFrame" src="about:blank" title="업무시스템"></iframe></div>
