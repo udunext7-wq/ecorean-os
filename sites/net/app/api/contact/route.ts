@@ -79,7 +79,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         from: FROM,
         to: [NOTIFY_EMAIL],
-        reply_to: email ?? undefined,
+        // reply_to 에 고객 주소를 넣으면 Gmail 이 메일을 조용히 버리는 사례 확인(2026-07-22) —
+        // 고객 이메일은 본문 표에 이미 포함되므로 reply_to 는 사용하지 않는다
         subject: `[에코리안 상담신청] ${name} (${serviceType ?? '유형 미선택'})`,
         html,
       }),
