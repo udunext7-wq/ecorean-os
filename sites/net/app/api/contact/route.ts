@@ -10,6 +10,24 @@ export const dynamic = 'force-dynamic';
 const NOTIFY_EMAIL = 'udunext7@gmail.com';
 const FROM = process.env.CONTACT_FROM ?? 'ECOREAN 상담신청 <onboarding@resend.dev>';
 
+// ecorean.kr(정적 사이트) 상담 폼도 이 API 로 접수하므로 교차 출처 허용
+const ALLOWED_ORIGINS = new Set(['https://ecorean.kr', 'https://www.ecorean.kr']);
+function corsHeaders(origin: string | null): Record<string, string> {
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      Vary: 'Origin',
+    };
+  }
+  return {};
+}
+
+export async function OPTIONS(request: Request) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(request.headers.get('origin')) });
+}
+
 function esc(s: string | null): string {
   return (s ?? '—').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
@@ -21,6 +39,7 @@ function clean(v: unknown, max: number): string | null {
 }
 
 export async function POST(request: Request) {
+  const cors = corsHeaders(request.headers.get('origin'));
   const body = await request.json().catch(() => null);
   const name = clean(body?.name, 60);
   const phone = clean(body?.phone, 40);
@@ -30,7 +49,7 @@ export async function POST(request: Request) {
   const message = clean(body?.message, 2000);
 
   if (!name || !phone) {
-    return NextResponse.json({ error: 'NAME_PHONE_REQUIRED' }, { status: 400 });
+    return NextResponse.json({ error: 'NAME_PHONE_REQUIRED' }, { status: 400, headers: cors });
   }
 
   // 1) DB 저장 (원천)
@@ -44,7 +63,7 @@ export async function POST(request: Request) {
     message,
   });
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: cors });
   }
 
   // 2) 메일 알림 (Resend, 베스트 에포트)
@@ -92,5 +111,5 @@ export async function POST(request: Request) {
     console.warn('[contact] Resend 발송 오류:', (e as Error).message);
   }
 
-  return NextResponse.json({ status: 'received', emailSent });
+  return NextResponse.json({ status: 'received', emailSent }, { headers: cors });
 }
