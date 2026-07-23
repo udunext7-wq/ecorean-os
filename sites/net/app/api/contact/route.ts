@@ -7,8 +7,9 @@ import { createServerSupabase } from '@/core/db/server';
 
 export const dynamic = 'force-dynamic';
 
-const NOTIFY_EMAIL = 'udunext7@gmail.com';
-const FROM = process.env.CONTACT_FROM ?? 'ECOREAN 상담신청 <onboarding@resend.dev>';
+// 2026-07-23 ecorean.net 도메인 Resend 인증 완료 → 대표 메일 수신 + 자체 도메인 발신
+const NOTIFY_EMAIL = 'ecorean7@gmail.com';
+const FROM = process.env.CONTACT_FROM ?? 'ECOREAN 상담신청 <notify@ecorean.net>';
 
 // ecorean.kr(정적 사이트) 상담 폼도 이 API 로 접수하므로 교차 출처 허용
 const ALLOWED_ORIGINS = new Set(['https://ecorean.kr', 'https://www.ecorean.kr']);
