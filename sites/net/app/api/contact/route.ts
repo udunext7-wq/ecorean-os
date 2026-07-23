@@ -4,6 +4,7 @@
 //    도메인(ecorean.net) 인증 전에는 from=onboarding@resend.dev / to=계정 소유자만 가능
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '@/core/db/server';
+import { kakaoSendToMe } from '@/sites/net/lib/kakao-notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,5 +113,13 @@ export async function POST(request: Request) {
     console.warn('[contact] Resend 발송 오류:', (e as Error).message);
   }
 
-  return NextResponse.json({ status: 'received', emailSent }, { headers: cors });
+  // 3) 카톡 알림 (나에게 보내기, 베스트 에포트 — 미연동이면 조용히 스킵)
+  const kakaoSent = await kakaoSendToMe(
+    `[에코리안 상담신청]\n` +
+      `성함: ${name}\n연락처: ${phone}\n` +
+      `이메일: ${email ?? '—'}\n유형: ${serviceType ?? '—'} · 규모: ${areaSize ?? '—'}\n` +
+      `문의: ${(message ?? '—').slice(0, 300)}`,
+  );
+
+  return NextResponse.json({ status: 'received', emailSent, kakaoSent }, { headers: cors });
 }
