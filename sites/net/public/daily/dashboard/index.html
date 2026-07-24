@@ -4,25 +4,7 @@
 <meta charset="UTF-8">
 <style id="ecorean-gate-style">html{visibility:hidden}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>
-/* ECOREAN 직원 인증 게이트 — 비로그인/무권한 시 /work/ 로그인으로 이동 후 복귀 */
-(async function () {
-  function deny() { location.replace('/work/?next=' + encodeURIComponent(location.pathname)); }
-  try {
-    var gsb = window.supabase.createClient(
-      'https://gdcfqbdgubgpzusbtftf.supabase.co',
-      'sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ'
-    );
-    var session = (await gsb.auth.getSession()).data.session;
-    if (!session) return deny();
-    var res = await gsb.from('profiles').select('role').eq('id', session.user.id).single();
-    var role = res.data && res.data.role;
-    if (role !== 'staff' && role !== 'admin') return deny();
-    var g = document.getElementById('ecorean-gate-style');
-    if (g) g.remove();
-  } catch (e) { deny(); }
-})();
-</script>
+<script src="/ecorean-gate.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BOC 프로젝트 대시보드</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">

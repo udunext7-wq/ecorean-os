@@ -182,6 +182,33 @@ const SB_URL = 'https://gdcfqbdgubgpzusbtftf.supabase.co';
 const SB_KEY = 'sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
 
+/* 업무시스템 SSO — 허브(/login, 쿠키 세션)에서 로그인했으면 세션을 이어받아 재로그인 제거 */
+(function () {
+  function rc(n) {
+    var rows = document.cookie ? document.cookie.split('; ') : [];
+    for (var i = 0; i < rows.length; i++) {
+      var eq = rows[i].indexOf('=');
+      if (rows[i].slice(0, eq) === n) return decodeURIComponent(rows[i].slice(eq + 1));
+    }
+    return null;
+  }
+  var K = 'sb-gdcfqbdgubgpzusbtftf-auth-token', v = rc(K);
+  if (!v) { var p = [], i = 0, c; while ((c = rc(K + '.' + i))) { p.push(c); i++; } v = p.length ? p.join('') : null; }
+  if (!v) return;
+  try {
+    if (v.indexOf('base64-') === 0) {
+      var b = v.slice(7).replace(/-/g, '+').replace(/_/g, '/');
+      while (b.length % 4) b += '=';
+      v = atob(b);
+    }
+    var s = JSON.parse(v);
+    if (!s || !s.access_token || !s.refresh_token) return;
+    sb.auth.getSession().then(function (r) {
+      if (!r.data.session) sb.auth.setSession({ access_token: s.access_token, refresh_token: s.refresh_token });
+    });
+  } catch (e) {}
+})();
+
 let me = null;          // { id, display_name, role }
 let sites = [];         // 현장 캐시 (셀렉트 옵션용)
 let currentTab = 'dashboard';
