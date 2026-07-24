@@ -48,6 +48,10 @@ export default function SignupPage() {
       // 즉시 로그인됨 → 바로 승급 신청으로
       router.push('/request-role');
       router.refresh();
+    } else if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      // 이미 가입된 이메일 — Supabase 는 보안상 성공처럼 응답하지만 identities 가 비어 있고
+      // 확인 메일도 발송되지 않으므로, 확인 안내 대신 로그인 유도가 맞다 (2026-07-24 대표 실사용 혼동)
+      setError('이미 가입된 이메일입니다. 로그인해 주세요.');
     } else {
       // 이메일 확인이 켜져 있는 경우
       setNeedConfirm(true);
