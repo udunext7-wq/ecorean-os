@@ -6,7 +6,8 @@
     }
   ],
   "routes": [
-    { "src": "/", "dest": "/sites/net/home.html" },
+    { "src": "/", "dest": "/sites/net/intro.html" },
+    { "src": "/home/?", "dest": "/sites/net/home.html" },
     {
       "src": "/(minicad|pms|work|daily|vector|editor|biz)",
       "status": 308,
