@@ -17,6 +17,18 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // 이미 로그인된 상태로 진입(타워 로딩 → 로그인 경유 등)하면 재로그인 없이 바로 통과 (2026-07-30 대표 지시)
+  useEffect(() => {
+    const supabase = createBrowserSupabase();
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) return;
+      const raw = new URLSearchParams(window.location.search).get('next');
+      const next = raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/hub';
+      router.replace(next);
+      router.refresh();
+    });
+  }, [router]);
+
   // 저장된 아이디 프리필
   useEffect(() => {
     try {

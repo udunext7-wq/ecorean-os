@@ -772,21 +772,7 @@ footer {
       </div>
     </div>
     <div class="nav-work">
-      <button class="nav-work-btn" id="workMenuBtn" type="button">업무시스템 ▾</button>
-      <div class="work-menu" id="workMenu">
-        <div class="work-menu-label">ECOREAN WORK</div>
-        <a href="/hub">업무 허브 <small>전체 모듈</small></a>
-        <a href="/minicad/">MiniCAD <small>도면·견적</small></a>
-        <a href="/work/#po">발주서</a>
-        <a href="/work/#daily">공사일보</a>
-        <a href="/work/#invoice">계산서</a>
-        <a href="/pms/">공정표 <small>공정관리 PMS</small></a>
-        <a href="/daily/">현장 일보 <small>단독앱</small></a>
-        <a href="/vector/">벡터 변환기 <small>이미지→SVG</small></a>
-        <a href="/editor/">아티팩트 생성기 <small>비주얼 에디터</small></a>
-        <a href="/work/">직원 포털 홈 <small>로그인</small></a>
-        <a href="/biz/">사업장부 <small>BOC BIZ</small></a>
-      </div>
+      <button class="nav-work-btn" id="workMenuBtn" type="button">업무시스템</button>
     </div>
   </div>
 </nav>
@@ -1397,9 +1383,9 @@ async function handleSubmit(e) {
   stats.forEach(el => io.observe(el));
 })();
 
-/* 드롭다운 메뉴 (업무 시스템 + 모바일 메뉴) */
+/* 드롭다운 메뉴 (모바일 메뉴) */
 (function () {
-  var pairs = [['workMenuBtn','workMenu'], ['mobileMenuBtn','mobileMenu']];
+  var pairs = [['mobileMenuBtn','mobileMenu']];
   var menus = [];
   pairs.forEach(function (p) {
     var btn = document.getElementById(p[0]);
@@ -1420,74 +1406,26 @@ async function handleSubmit(e) {
   });
 })();
 </script>
-<!-- ══ 업무시스템 로그인 창 (2026-07-17, 2026-07-19 드롭다운 복원):
-     업무시스템 클릭 → 모듈 드롭다운 → 모듈 클릭 → 로그인 창 → 창 안에서 해당 모듈 ══ -->
-<style>
-  #workLoginModal { display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(10, 12, 10, .72); backdrop-filter: blur(3px); }
-  #workLoginModal.open { display: block; }
-  #workLoginModal .wl-frame-wrap { position: absolute; inset: 2.5%; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.5); }
-  #workLoginModal iframe { width: 100%; height: 100%; border: 0; }
-  #workLoginModal .wl-close { position: absolute; top: calc(2.5% - 14px); right: calc(2.5% - 14px); width: 36px; height: 36px; border-radius: 50%; border: 0; background: #16a34a; color: #fff; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
-  #workLoginModal .wl-close:hover { background: #15803d; }
-  @media (max-width: 700px) {
-    #workLoginModal .wl-frame-wrap { inset: 0; border-radius: 0; }
-    #workLoginModal .wl-close { top: 10px; right: 10px; }
-  }
-</style>
-<div id="workLoginModal" role="dialog" aria-modal="true" aria-label="업무시스템">
-  <div class="wl-frame-wrap"><iframe id="workLoginFrame" src="about:blank" title="업무시스템"></iframe></div>
-  <button type="button" class="wl-close" id="workLoginClose" aria-label="닫기">✕</button>
-</div>
+<!-- ══ 업무시스템 진입 (2026-07-30 대표 지시, 이전 드롭다운→모달 로그인 대체):
+     업무시스템 클릭 → 타워 로딩(/system.html) → WELCOME → 로그인창 → /work/ ══ -->
 <script>
 (function () {
-  var menu = document.getElementById('workMenu');
-  var modal = document.getElementById('workLoginModal');
-  var frame = document.getElementById('workLoginFrame');
-  var close = document.getElementById('workLoginClose');
-  if (!menu || !modal) return;
-  var currentTarget = null;
-  function openModal(target) {
-    // 로그인 창을 띄우고, 로그인되어 있으면 미들웨어가 바로 해당 모듈로 보낸다
-    if (target !== currentTarget) {
-      frame.src = '/login?next=' + encodeURIComponent(target);
-      currentTarget = target;
-    }
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
+  var btn = document.getElementById('workMenuBtn');
+  if (!btn) return;
+  // 첫 호버/터치 때 타워 페이지를 미리 받아 클릭 시 즉시 뜨게 한다
+  var prefetched = false;
+  function prefetch() {
+    if (prefetched) return;
+    prefetched = true;
+    var link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = '/system.html';
+    link.as = 'document';
+    document.head.appendChild(link);
   }
-  function closeModal() {
-    modal.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-  // 드롭다운(업무시스템 ▾ 토글은 원래 동작 유지)의 모듈 링크 → 로그인 창 안에서 열기
-  menu.querySelectorAll('a').forEach(function (a) {
-    a.addEventListener('click', function (e) {
-      e.preventDefault();
-      menu.classList.remove('open');
-      openModal(a.getAttribute('href'));
-    });
-  });
-  close.addEventListener('click', closeModal);
-  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
-
-  // 로그인 상태면 드롭다운에 사용자 표시 + 로그아웃 항목 추가 (2026-07-20)
-  fetch('/api/me', { credentials: 'same-origin' })
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (me) {
-      if (!me || !me.email) return;
-      var a = document.createElement('a');
-      a.href = '#';
-      a.innerHTML = '로그아웃 <small>' + me.email.split('@')[0] + ' · ' + (me.role || '') + '</small>';
-      a.addEventListener('click', function (e) {
-        e.preventDefault();
-        fetch('/auth/signout', { method: 'POST', credentials: 'same-origin' })
-          .then(function () { location.reload(); })
-          .catch(function () { location.reload(); });
-      });
-      menu.appendChild(a);
-    })
-    .catch(function () { /* 미로그인 — 표시 없음 */ });
+  btn.addEventListener('pointerenter', prefetch);
+  btn.addEventListener('touchstart', prefetch, { passive: true });
+  btn.addEventListener('click', function () { location.href = '/system.html'; });
 })();
 </script>
 </body>
