@@ -20,7 +20,7 @@
         { "type": "cookie", "key": "sb-gdcfqbdgubgpzusbtftf-auth-token.0" }
       ],
       "status": 307,
-      "headers": { "Location": "/login?next=/$1/" }
+      "headers": { "Location": "/system.html?next=/$1/" }
     },
     { "src": "/daily/dashboard/?", "dest": "/sites/net/daily/dashboard/index.html" },
     { "src": "/(minicad|pms|work|daily|vector|editor|biz)/", "dest": "/sites/net/$1/index.html" },
