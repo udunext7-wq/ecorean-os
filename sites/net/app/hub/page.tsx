@@ -25,7 +25,8 @@ const MODULES: { href: string; name: string; desc: string; external?: boolean }[
 const BOC_MODULES: { href: string; name: string; desc: string; minRole?: 'admin' }[] = [
   { href: '/boc', name: 'BOC 대시보드', desc: '마스터 DB 현황' },
   { href: '/boc/cost-items', name: '공정 단가', desc: '670건' },
-  { href: '/boc/materials', name: '통합 자재', desc: '2,658건' },
+  { href: '/boc/materials', name: '통합 자재', desc: '2,701건' },
+  { href: '/boc/materials/manage', name: '자재 설정', desc: '추가·CSV 업로드', minRole: 'admin' },
   { href: '/boc/tiles', name: '타일 SKU', desc: '2,550건' },
   { href: '/boc/minicad-prices', name: 'MiniCAD 단가 승인', desc: '제안 단가 확정', minRole: 'admin' },
   { href: '/boc/role-requests', name: '승급 신청 관리', desc: '직원 승인', minRole: 'admin' },

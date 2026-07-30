@@ -37,8 +37,13 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Li
     <div>
       <PageHeader
         title="통합 자재"
-        description="v_all_materials — materials + brands + MiniCAD 코드 + 타일 SKU 합본 (2,658건)"
+        description="v_all_materials — materials + brands + MiniCAD 코드 + 타일 SKU 합본"
       />
+      <p className="mb-4 text-sm">
+        <a href="/boc/materials/manage" className="text-brand-400 hover:underline">
+          ⚙ 자재 설정 — 자재 추가·CSV 일괄 업로드 →
+        </a>
+      </p>
       <SearchForm action="/boc/materials" placeholder="자재명·ID·브랜드 검색" defaultValue={q} />
 
       {error ? (
