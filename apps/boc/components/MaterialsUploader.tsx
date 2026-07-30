@@ -87,8 +87,27 @@ export function MaterialsUploader() {
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    setCsvText(await f.text());
     e.target.value = '';
+    const buf = await f.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    // 엑셀(.xlsx) 파일은 zip(PK) 시그니처 — CSV 로 저장해서 올리도록 안내
+    if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+      setResult({
+        ok: false,
+        message:
+          '엑셀(.xlsx) 파일은 직접 읽을 수 없습니다. 엑셀에서 [다른 이름으로 저장 → CSV(쉼표로 분리)]로 저장한 뒤 올려주세요.',
+      });
+      return;
+    }
+    // 엑셀이 저장한 CSV 는 EUC-KR 인 경우가 많다 — UTF-8 해석 실패 시 EUC-KR 로 재시도
+    let text: string;
+    try {
+      text = new TextDecoder('utf-8', { fatal: true }).decode(buf);
+    } catch {
+      text = new TextDecoder('euc-kr').decode(buf);
+    }
+    setResult(null);
+    setCsvText(text);
   }
 
   const tabBtn = (active: boolean) =>
