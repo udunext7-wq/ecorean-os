@@ -1556,6 +1556,7 @@ function wallsOverlap(a,b){
 // *** 개구부 — 도어/창 W×H×D 풀 데이터 (요구사항 #2, #3) ***
 function renderOpenings(){
   groups.openings.destroyChildren();
+  labelOpeningsGroup.destroyChildren(); // v5.9.5: 라벨 미정리로 W×H 글씨가 렌더마다 중첩되던 버그 수정
   STATE.openings.forEach(o=>{
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const w=mmToPx(o.width_mm);
@@ -2307,7 +2308,11 @@ function renderSpaceHandles(){
   });
 }
 // v5.4: 벽들이 만드는 폐곡면 자동 감지 → 면적 라벨 표시 (㎡)
+// (v5.9에서 비활성화 상태 — 재활성화 대비 라벨 중첩 방지 정리 포함, v5.9.5)
+var labelAutoAreasGroup=null;
 function renderAutoAreas(){
+  if(!labelAutoAreasGroup){labelAutoAreasGroup=new Konva.Group({listening:false});labelGroup.add(labelAutoAreasGroup);}
+  labelAutoAreasGroup.destroyChildren();
   const cycles=findClosedCyclesInWalls();
   cycles.forEach(poly=>{
     // 이미 spaces로 등록된 폴리곤과 거의 같으면 스킵 (중복 표시 방지)
@@ -2319,7 +2324,7 @@ function renderAutoAreas(){
     poly.forEach(p=>{cx+=p.x;cy+=p.y;});
     cx/=poly.length;cy/=poly.length;
     const px=STATE.offsetX+mmToPx(cx), py=STATE.offsetY+mmToPx(cy);
-    labelGroup.add(new Konva.Text({
+    labelAutoAreasGroup.add(new Konva.Text({
       x:px-50,y:py-12,text:'⌂ '+area.toFixed(2)+' ㎡',width:100,align:'center',
       fontSize:11,fontFamily:'JetBrains Mono',fill:'#5BA0D4',fontStyle:'600',
       shadowColor:'#000',shadowBlur:4,shadowOpacity:0.5,
