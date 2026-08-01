@@ -199,7 +199,10 @@ select.fi option{background:#1f1f1f}
   font-size:11px;color:var(--t1);vertical-align:middle}
 .rtw tr:last-child td{border-bottom:none}
 .rtw tbody tr:hover{background:rgba(201,168,76,.04)}
-td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 견적서 헤더-열 정렬: 숫자열 헤더는 우측, 단위·수량·번호는 중앙 — 셀 정렬과 일치 */
+.rtw th.num{text-align:right}
+.rtw th.ctr,.rtw td.ctr{text-align:center}
 td.gold{color:var(--g);font-weight:700}
 td.muted{color:var(--t3)}
 td.blu{color:#60a5fa}
@@ -354,6 +357,8 @@ td.org{color:var(--org)}
   tr{page-break-inside:avoid;page-break-after:auto}
   thead{display:table-header-group}
   .card{page-break-inside:avoid}
+  /* 고객용 공식 견적서는 항상 새 페이지에서 시작 (내부 내역서와 분리 제출) */
+  #print-invoice{page-break-before:always;page-break-inside:auto}
 }
 
 /* ══ LUXURY LOGIN PAGE ══ */
@@ -2402,8 +2407,8 @@ const DEF_SP=[
   {id:1,fl:'1F',type:'거실',nm:'거실',area:28,perim:22,h:2400,wet:false,flF:'강마루',wlF:'도장'},
   {id:2,fl:'1F',type:'주방',nm:'주방',area:10,perim:13,h:2400,wet:false,flF:'강마루',wlF:'도장'},
   {id:3,fl:'1F',type:'욕실',nm:'욕실1',area:4.5,perim:8.5,h:2400,wet:true,flF:'타일',wlF:'타일'},
-  {id:4,fl:'2F',type:'침실',nm:'침실1',area:13,perim:16,h:2400,wet:false,flF:'강마루',wlF:'도배'},
-  {id:5,fl:'2F',type:'침실',nm:'침실2',area:10,perim:14,h:2400,wet:false,flF:'장판',wlF:'도배'},
+  {id:4,fl:'2F',type:'침실',nm:'침실1',area:13,perim:16,h:2400,wet:false,flF:'강마루',wlF:'실크도배'},
+  {id:5,fl:'2F',type:'침실',nm:'침실2',area:10,perim:14,h:2400,wet:false,flF:'장판',wlF:'실크도배'},
   {id:6,fl:'2F',type:'욕실',nm:'욕실2',area:3.5,perim:7.5,h:2400,wet:true,flF:'타일',wlF:'타일'},
   {id:7,fl:'1F',type:'현관',nm:'현관',area:3,perim:7,h:2400,wet:false,flF:'타일',wlF:'도장'},
 ];
@@ -2626,9 +2631,9 @@ const FLOOR_FINS=['강마루','LVT','원목마루','장판','타일','에폭시'
 const WALL_FINS=['도장','실크도배','합지도배','광폭합지','수입도배','타일','필름','마이크로시멘트'];
 /* 공간 유형별 기본값 */
 const SP_DEF={거실:{wet:false,flF:'강마루',wlF:'도장'},주방:{wet:false,flF:'강마루',wlF:'도장'},계단:{wet:false,flF:'타일',wlF:'도장'},발코니:{wet:false,flF:'타일',wlF:'도장'},
-  침실:{wet:false,flF:'강마루',wlF:'도배'},욕실:{wet:true,flF:'타일',wlF:'타일'},
+  침실:{wet:false,flF:'강마루',wlF:'실크도배'},욕실:{wet:true,flF:'타일',wlF:'타일'},
   현관:{wet:false,flF:'타일',wlF:'도장'},다용도실:{wet:true,flF:'타일',wlF:'도장'},
-  드레스룸:{wet:false,flF:'강마루',wlF:'도배'},서재:{wet:false,flF:'강마루',wlF:'도배'},
+  드레스룸:{wet:false,flF:'강마루',wlF:'실크도배'},서재:{wet:false,flF:'강마루',wlF:'실크도배'},
   복도:{wet:false,flF:'강마루',wlF:'도장'},베란다:{wet:false,flF:'타일',wlF:'도장'}};
 
 function renderSp(){
@@ -2660,7 +2665,7 @@ function applySpDef(id,type){
 }
 function addSpace(){playSound('add');
   const defH=S.ceilingH||2400;
-  const n={id:uid(),fl:'1F',type:'침실',nm:`공간${S.spaces.length+1}`,area:10,perim:13,h:defH,wet:false,flF:'강마루',wlF:'도배'};
+  const n={id:uid(),fl:'1F',type:'침실',nm:`공간${S.spaces.length+1}`,area:10,perim:13,h:defH,wet:false,flF:'강마루',wlF:'실크도배'};
   S.spaces.push(n);renderSp();calcDebounced();aS();
   setTimeout(()=>{const r=$('sr-'+n.id);if(r){const inp=r.querySelector('.ce');if(inp)inp.focus();}},50);
 }
@@ -3222,6 +3227,9 @@ function calcEst(){
     '포세린타일(바닥)':'WET_TF_PO','포세린타일(벽)':'WET_TW_PO',
     '자기질타일(바닥)':'WET_TF_PO','자기질타일(벽)':'WET_TW_PO',
     '대리석(바닥)':'WET_TF_MA','대리석(벽)':'WET_TW_MA',
+    /* 매핑 누락 수정 — SPEC_MUL에 등급계수(테라조 1.85·모자이크 1.65)가 이미 있어
+       포세린 기준단가 × 사양계수로 계산됨 (기존엔 선택해도 0원 무반영) */
+    '테라조(바닥)':'WET_TF_PO','모자이크타일(벽)':'WET_TW_PO',
   };
   S.tiles.forEach(t=>{
     const code=tileCodes[t.mat];if(!code)return;
@@ -3245,14 +3253,20 @@ function calcEst(){
     '알루미늄 이중창':'WIN_AL','알루미늄 시스템창호':'WIN_AL2',
     '폴딩도어(PVC)':'WIN_FD',
     '중문(3연동 슬라이딩)':'WIN_MD','중문(여닫이)':'WIN_MD2',
+    /* 매핑 누락 수정 — 기존엔 아래 4종 선택 시 0원 무반영.
+       중문 파생형은 3연동/여닫이 단가 × 도어 사양계수표 비율 준용 */
+    '중문(4연동 슬라이딩)':'WIN_MD','중문(원도어)':'WIN_MD2','중문(디바이딩)':'WIN_MD',
+    '방화문 교체':'WIN_EN',
     '롤방충망':'WIN_SC','미세방충망':'WIN_SC2','강화유리 파티션':'WIN_GL',
   };
-  const winEaTypes=['중문(3연동 슬라이딩)','중문(4연동 슬라이딩)','중문(여닫이)','중문(원도어)','중문(디바이딩)','롤방충망','미세방충망'];
+  /* 중문 파생형 자재 배율 (SPEC_MUL 도어 계수표 비율: 4연동 2.80/2.40 · 원도어 1.80/2.00 · 디바이딩 2.65/2.40) */
+  const winTypeMul={'중문(4연동 슬라이딩)':1.17,'중문(원도어)':0.90,'중문(디바이딩)':1.10};
+  const winEaTypes=['중문(3연동 슬라이딩)','중문(4연동 슬라이딩)','중문(여닫이)','중문(원도어)','중문(디바이딩)','방화문 교체','롤방충망','미세방충망'];
   S.windows.forEach(w=>{
     const code=winCodeMap[w.type];if(!code)return;
     const q=winEaTypes.includes(w.type)?(w.qty||1):R(w.W*w.H/1e6*(w.qty||1));
-    /* 유리두께(gcomp) → 사양계수 적용 */
-    const specMt=getSpecMul(w.gcomp);
+    /* 유리두께(gcomp) 사양계수 × 중문 파생형 배율 */
+    const specMt=getSpecMul(w.gcomp)*(winTypeMul[w.type]||1.0);
     if(q>0)push(code,q,`${w.fl} ${w.sp} ${w.loc} [${w.gcomp||'기본'}]`,specMt);
   });
 
@@ -4549,8 +4563,8 @@ function renderResult(){
   html+=`<div class="card"><div class="ch"><div class="ci">📋</div>내부 세부 내역서
     <span class="cdesc">소분류 단위 · 노무/자재/원가/마진/공급가 전체 · VAT 별도</span></div>
     <div class="rtw"><table><thead><tr>
-      <th>대분류</th><th>중분류</th><th>항목명</th><th>단위</th><th>수량</th>
-      <th>노무비</th><th>자재비</th><th>원가</th><th>마진율</th><th>마진금액</th><th>공급가</th><th>비고</th>
+      <th>대분류</th><th>중분류</th><th>항목명</th><th class="ctr">단위</th><th class="num">수량</th>
+      <th class="num">노무비</th><th class="num">자재비</th><th class="num">원가</th><th class="num">마진율</th><th class="num">마진금액</th><th class="num">공급가</th><th>비고</th>
     </tr></thead><tbody>`;
   gList.forEach((g,gi)=>{
     const gS=g.rows.reduce((s,r)=>s+r.sup,0);
@@ -4561,7 +4575,7 @@ function renderResult(){
     g.rows.forEach(r=>{
       const mgR=r.cost>0?Math.round(r.mg/r.cost*1000)/10:0;
       html+=`<tr><td class="muted" style="font-size:9px">${r.mj}</td><td>${r.md}</td>
-        <td style="font-weight:600">${r.nm}</td><td class="muted">${r.u}</td>
+        <td style="font-weight:600">${r.nm}</td><td class="muted ctr">${r.u}</td>
         <td class="num">${r.q.toFixed?r.q.toFixed(2):r.q}</td>
         <td class="num blu">${fn(r.lb)}</td><td class="num grn">${fn(r.mt)}</td>
         <td class="num">${fn(r.cost)}</td><td class="num org">${mgR}%</td>
@@ -4611,9 +4625,9 @@ function renderResult(){
     ].map(([k,v])=>`<div class="dmi"><span class="dmk">${k}</span><span class="dmv">${v}</span></div>`).join('')}
     </div></div>
     <div class="rtw"><table><thead><tr>
-      <th style="width:28px">#</th><th>공 사 명 칭</th>
-      <th style="width:60px">단위</th><th style="width:40px">수량</th>
-      <th style="width:100px;text-align:right">금 액 (원)</th>
+      <th class="ctr" style="width:28px">#</th><th>공 사 명 칭</th>
+      <th class="ctr" style="width:60px">단위</th><th class="ctr" style="width:40px">수량</th>
+      <th class="num" style="width:110px">금 액 (원)</th>
     </tr></thead><tbody>`;
   gList.forEach((g,gi)=>{
     const sp=g.rows.reduce((s2,r)=>s2+r.sup,0);
@@ -5832,8 +5846,8 @@ function applyTemplate(key){
     t59:{area:59,spaces:[
       {id:uid(),fl:'1F',type:'거실',nm:'거실+주방',area:22,perim:19,h:2400,wet:false,flF:'강마루',wlF:'도장'},
       {id:uid(),fl:'1F',type:'욕실',nm:'욕실1',area:3.5,perim:7.5,h:2400,wet:true,flF:'타일',wlF:'타일'},
-      {id:uid(),fl:'2F',type:'침실',nm:'침실1',area:12,perim:14,h:2400,wet:false,flF:'강마루',wlF:'도배'},
-      {id:uid(),fl:'2F',type:'침실',nm:'침실2',area:10,perim:13,h:2400,wet:false,flF:'장판',wlF:'도배'},
+      {id:uid(),fl:'2F',type:'침실',nm:'침실1',area:12,perim:14,h:2400,wet:false,flF:'강마루',wlF:'실크도배'},
+      {id:uid(),fl:'2F',type:'침실',nm:'침실2',area:10,perim:13,h:2400,wet:false,flF:'장판',wlF:'실크도배'},
       {id:uid(),fl:'1F',type:'현관',nm:'현관',area:2.5,perim:6.5,h:2400,wet:false,flF:'타일',wlF:'도장'},
     ]},
     t84:{area:84,spaces:DEF_SP.map(s=>({...s,id:uid()}))},
@@ -5841,9 +5855,9 @@ function applyTemplate(key){
       {id:uid(),fl:'1F',type:'거실',nm:'거실',area:32,perim:24,h:2400,wet:false,flF:'강마루',wlF:'도장'},
       {id:uid(),fl:'1F',type:'주방',nm:'주방',area:13,perim:15,h:2400,wet:false,flF:'강마루',wlF:'도장'},
       {id:uid(),fl:'1F',type:'욕실',nm:'욕실1',area:5,perim:9,h:2400,wet:true,flF:'타일',wlF:'타일'},
-      {id:uid(),fl:'2F',type:'침실',nm:'침실1',area:16,perim:17,h:2400,wet:false,flF:'강마루',wlF:'도배'},
-      {id:uid(),fl:'2F',type:'침실',nm:'침실2',area:13,perim:15,h:2400,wet:false,flF:'강마루',wlF:'도배'},
-      {id:uid(),fl:'2F',type:'침실',nm:'침실3',area:11,perim:13,h:2400,wet:false,flF:'장판',wlF:'도배'},
+      {id:uid(),fl:'2F',type:'침실',nm:'침실1',area:16,perim:17,h:2400,wet:false,flF:'강마루',wlF:'실크도배'},
+      {id:uid(),fl:'2F',type:'침실',nm:'침실2',area:13,perim:15,h:2400,wet:false,flF:'강마루',wlF:'실크도배'},
+      {id:uid(),fl:'2F',type:'침실',nm:'침실3',area:11,perim:13,h:2400,wet:false,flF:'장판',wlF:'실크도배'},
       {id:uid(),fl:'2F',type:'욕실',nm:'욕실2',area:4.5,perim:8.5,h:2400,wet:true,flF:'타일',wlF:'타일'},
       {id:uid(),fl:'1F',type:'현관',nm:'현관',area:3.5,perim:7.5,h:2400,wet:false,flF:'타일',wlF:'도장'},
     ]},
@@ -5851,10 +5865,10 @@ function applyTemplate(key){
       {id:uid(),fl:'1F',type:'거실',nm:'거실',area:40,perim:27,h:2600,wet:false,flF:'원목마루',wlF:'도장'},
       {id:uid(),fl:'1F',type:'주방',nm:'주방',area:17,perim:17,h:2600,wet:false,flF:'강마루',wlF:'도장'},
       {id:uid(),fl:'1F',type:'욕실',nm:'욕실1(안방)',area:6,perim:10,h:2600,wet:true,flF:'타일',wlF:'타일'},
-      {id:uid(),fl:'2F',type:'침실',nm:'안방',area:20,perim:19,h:2600,wet:false,flF:'원목마루',wlF:'도배'},
-      {id:uid(),fl:'2F',type:'침실',nm:'침실2',area:15,perim:16,h:2600,wet:false,flF:'강마루',wlF:'도배'},
-      {id:uid(),fl:'2F',type:'침실',nm:'침실3',area:13,perim:15,h:2600,wet:false,flF:'강마루',wlF:'도배'},
-      {id:uid(),fl:'2F',type:'침실',nm:'침실4',area:12,perim:14,h:2600,wet:false,flF:'장판',wlF:'도배'},
+      {id:uid(),fl:'2F',type:'침실',nm:'안방',area:20,perim:19,h:2600,wet:false,flF:'원목마루',wlF:'실크도배'},
+      {id:uid(),fl:'2F',type:'침실',nm:'침실2',area:15,perim:16,h:2600,wet:false,flF:'강마루',wlF:'실크도배'},
+      {id:uid(),fl:'2F',type:'침실',nm:'침실3',area:13,perim:15,h:2600,wet:false,flF:'강마루',wlF:'실크도배'},
+      {id:uid(),fl:'2F',type:'침실',nm:'침실4',area:12,perim:14,h:2600,wet:false,flF:'장판',wlF:'실크도배'},
       {id:uid(),fl:'2F',type:'욕실',nm:'욕실2',area:5,perim:9,h:2600,wet:true,flF:'타일',wlF:'타일'},
       {id:uid(),fl:'1F',type:'현관',nm:'현관',area:4,perim:8,h:2600,wet:false,flF:'타일',wlF:'도장'},
     ]},
@@ -6229,7 +6243,7 @@ const CARP_CODE_MAP = {
   '내단열 (비드법 50T)':       {code:'CARP_IN', qty:(r)=>+r.area||0},
   '내단열 (경질우레탄 50T)': {code:'CARP_IN', qty:(r)=>+r.area||0},
   '결로방지 단열':              {code:'CARP_IN', qty:(r)=>+r.area||0},
-  '발코니 확장 목공':           {code:'CARP_BK', qty:(r)=>+r.area||0},
+  '발코니 확장 목공':           {code:'EXT_EX', qty:(r)=>+r.area||0}, /* 수정: CARP_BK는 DB에 없는 코드(0원 무반영) → 발코니외부공정 EXT_EX */
 
   '몰딩(2.4m)':      {code:'FIN_ML',  qty:r=>(+r.lenM||+r.ea||0)},
   '걸레받이(2.4m)':   {code:'FIN_BB',  qty:r=>(+r.lenM||+r.ea||0)},

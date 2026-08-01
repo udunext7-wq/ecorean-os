@@ -829,6 +829,9 @@ function redo(){
 function renderSpaces(){
   groups.spaces.destroyChildren();
   labelSpacesGroup.destroyChildren();
+  /* v5.9.4 PERF: 치수 보조선(공간당 변×5개 미세 Line)을 굵기별 통합 Shape 3개로 일괄 드로잉
+     — 수백 공간에서 노드 수 대폭 감소. 색·굵기·시각 결과 동일 */
+  const _dimSegs={w05:[],w07:[],w11:[]};
   STATE.spaces.forEach(s=>{
     const td=SPACE_TYPES[s.type];
     const pts=[];
@@ -976,18 +979,18 @@ function renderSpaces(){
         const d1x=p1.x+nx*offMm, d1y=p1.y+ny*offMm;
         const d2x=p2.x+nx*offMm, d2y=p2.y+ny*offMm;
 
-        // 보조선
-        labelSpacesGroup.add(new Konva.Line({points:[TX(p1.x+nx*gapMm),TY(p1.y+ny*gapMm),TX(p1.x+nx*(offMm+extMm)),TY(p1.y+ny*(offMm+extMm))],stroke:'#6B7A8A',strokeWidth:0.5}));
-        labelSpacesGroup.add(new Konva.Line({points:[TX(p2.x+nx*gapMm),TY(p2.y+ny*gapMm),TX(p2.x+nx*(offMm+extMm)),TY(p2.y+ny*(offMm+extMm))],stroke:'#6B7A8A',strokeWidth:0.5}));
+        // 보조선 (PERF: 통합 Shape로 배치)
+        _dimSegs.w05.push(TX(p1.x+nx*gapMm),TY(p1.y+ny*gapMm),TX(p1.x+nx*(offMm+extMm)),TY(p1.y+ny*(offMm+extMm)));
+        _dimSegs.w05.push(TX(p2.x+nx*gapMm),TY(p2.y+ny*gapMm),TX(p2.x+nx*(offMm+extMm)),TY(p2.y+ny*(offMm+extMm)));
 
         // 치수선
-        labelSpacesGroup.add(new Konva.Line({points:[TX(d1x),TY(d1y),TX(d2x),TY(d2y)],stroke:'#6B7A8A',strokeWidth:0.7}));
+        _dimSegs.w07.push(TX(d1x),TY(d1y),TX(d2x),TY(d2y));
 
         // 사선 마크
         const tkx=(ux*cos45-uy*sin45)*tickPx;
         const tky=(ux*sin45+uy*cos45)*tickPx;
-        labelSpacesGroup.add(new Konva.Line({points:[TX(d1x)-tkx,TY(d1y)-tky,TX(d1x)+tkx,TY(d1y)+tky],stroke:'#6B7A8A',strokeWidth:1.1}));
-        labelSpacesGroup.add(new Konva.Line({points:[TX(d2x)-tkx,TY(d2y)-tky,TX(d2x)+tkx,TY(d2y)+tky],stroke:'#6B7A8A',strokeWidth:1.1}));
+        _dimSegs.w11.push(TX(d1x)-tkx,TY(d1y)-tky,TX(d1x)+tkx,TY(d1y)+tky);
+        _dimSegs.w11.push(TX(d2x)-tkx,TY(d2y)-tky,TX(d2x)+tkx,TY(d2y)+tky);
 
         // 치수 수치
         const tmx=(d1x+d2x)/2-nx*90, tmy=(d1y+d2y)/2-ny*90;
@@ -998,6 +1001,26 @@ function renderSpaces(){
         labelSpacesGroup.add(t);
       }
     }
+  });
+  /* PERF: 누적된 치수 보조선을 굵기별 통합 Shape로 1회 드로잉 */
+  [['w05',0.5],['w07',0.7],['w11',1.1]].forEach(([k,wd])=>{
+    const segs=_dimSegs[k];
+    if(!segs.length)return;
+    labelSpacesGroup.add(new Konva.Shape({
+      listening:false,
+      sceneFunc(ctx){
+        ctx.save();
+        ctx.strokeStyle='#6B7A8A';
+        ctx.lineWidth=wd;
+        ctx.beginPath();
+        for(let i=0;i<segs.length;i+=4){
+          ctx.moveTo(segs[i],segs[i+1]);
+          ctx.lineTo(segs[i+2],segs[i+3]);
+        }
+        ctx.stroke();
+        ctx.restore();
+      },
+    }));
   });
 }
 
@@ -1389,22 +1412,45 @@ function renderWalls(){
 
   // v5.9: 기준선(centerline) 별도 패스 — 정렬에 따라 wall body가 offset된 경우 클릭한 선 위치 식별용
   // CAD 표준 CENTER linetype (장-단 점선) + 라임/골드 강조색
+  /* v5.9.4 PERF: 일반벽 센터라인은 장식 전용(listening:false)이라 벽당 노드 대신
+     단일 통합 Shape 1개로 일괄 드로잉 — 대형 도면에서 노드 수 절반. 시각 결과 동일.
+     내력벽 센터라인만 개별 유지 (moveToTop z-순서 제어 필요) */
+  const _clSegs=[];
   STATE.walls.forEach(w=>{
     if(w.isLine) return;
     const x1c=STATE.offsetX+mmToPx(w.x1),y1c=STATE.offsetY+mmToPx(w.y1);
     const x2c=STATE.offsetX+mmToPx(w.x2),y2c=STATE.offsetY+mmToPx(w.y2);
-    const isBearing=w.wallType==='bearing';
-    const cl=new Konva.Line({
-      points:[x1c,y1c,x2c,y2c],
-      stroke:isBearing?'#D4FF3D':'#C9A961',
-      strokeWidth:0.8,
-      dash:[10,3,2,3], // CENTER linetype: 장점-짧점-장점
-      opacity:0.85,
-      listening:false,
-    });
-    groups.walls.add(cl);
-    if(isBearing) _bearingCenterlineRefs.push(cl);
+    if(w.wallType==='bearing'){
+      const cl=new Konva.Line({
+        points:[x1c,y1c,x2c,y2c],
+        stroke:'#D4FF3D',strokeWidth:0.8,
+        dash:[10,3,2,3], // CENTER linetype: 장점-짧점-장점
+        opacity:0.85,listening:false,
+      });
+      groups.walls.add(cl);
+      _bearingCenterlineRefs.push(cl);
+    }else{
+      _clSegs.push(x1c,y1c,x2c,y2c);
+    }
   });
+  if(_clSegs.length){
+    groups.walls.add(new Konva.Shape({
+      listening:false,opacity:0.85,
+      sceneFunc(ctx){
+        ctx.save();
+        ctx.strokeStyle='#C9A961';
+        ctx.lineWidth=0.8;
+        ctx.setLineDash([10,3,2,3]);
+        ctx.beginPath();
+        for(let i=0;i<_clSegs.length;i+=4){
+          ctx.moveTo(_clSegs[i],_clSegs[i+1]);
+          ctx.lineTo(_clSegs[i+2],_clSegs[i+3]);
+        }
+        ctx.stroke();
+        ctx.restore();
+      },
+    }));
+  }
   // v5.9: 내력벽 시각효과를 일반벽 위로 — 통합 본체 → 개별 hit/select → 센터라인 순으로 moveToTop
   // (moveToTop은 호출 순서대로 쌓이므로 마지막 호출이 최상단)
   if(_mergedBearingRef) _mergedBearingRef.moveToTop();
@@ -1556,7 +1602,6 @@ function wallsOverlap(a,b){
 // *** 개구부 — 도어/창 W×H×D 풀 데이터 (요구사항 #2, #3) ***
 function renderOpenings(){
   groups.openings.destroyChildren();
-  labelOpeningsGroup.destroyChildren(); // v5.9.5: 라벨 미정리로 W×H 글씨가 렌더마다 중첩되던 버그 수정
   STATE.openings.forEach(o=>{
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const w=mmToPx(o.width_mm);
@@ -2308,11 +2353,7 @@ function renderSpaceHandles(){
   });
 }
 // v5.4: 벽들이 만드는 폐곡면 자동 감지 → 면적 라벨 표시 (㎡)
-// (v5.9에서 비활성화 상태 — 재활성화 대비 라벨 중첩 방지 정리 포함, v5.9.5)
-var labelAutoAreasGroup=null;
 function renderAutoAreas(){
-  if(!labelAutoAreasGroup){labelAutoAreasGroup=new Konva.Group({listening:false});labelGroup.add(labelAutoAreasGroup);}
-  labelAutoAreasGroup.destroyChildren();
   const cycles=findClosedCyclesInWalls();
   cycles.forEach(poly=>{
     // 이미 spaces로 등록된 폴리곤과 거의 같으면 스킵 (중복 표시 방지)
@@ -2324,7 +2365,7 @@ function renderAutoAreas(){
     poly.forEach(p=>{cx+=p.x;cy+=p.y;});
     cx/=poly.length;cy/=poly.length;
     const px=STATE.offsetX+mmToPx(cx), py=STATE.offsetY+mmToPx(cy);
-    labelAutoAreasGroup.add(new Konva.Text({
+    labelGroup.add(new Konva.Text({
       x:px-50,y:py-12,text:'⌂ '+area.toFixed(2)+' ㎡',width:100,align:'center',
       fontSize:11,fontFamily:'JetBrains Mono',fill:'#5BA0D4',fontStyle:'600',
       shadowColor:'#000',shadowBlur:4,shadowOpacity:0.5,
