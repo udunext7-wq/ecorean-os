@@ -9,12 +9,12 @@
     { "src": "/", "dest": "/sites/net/intro.html" },
     { "src": "/home/?", "dest": "/sites/net/home.html" },
     {
-      "src": "/(minicad|pms|work|daily|vector|editor|biz)",
+      "src": "/(minicad|estimate|pms|work|daily|vector|editor|biz)",
       "status": 308,
       "headers": { "Location": "/$1/" }
     },
     {
-      "src": "/(minicad)(/.*)?",
+      "src": "/(minicad|estimate)(/.*)?",
       "missing": [
         { "type": "cookie", "key": "sb-gdcfqbdgubgpzusbtftf-auth-token" },
         { "type": "cookie", "key": "sb-gdcfqbdgubgpzusbtftf-auth-token.0" }
@@ -32,7 +32,7 @@
       "headers": { "Location": "/login?next=/$1/" }
     },
     { "src": "/daily/dashboard/?", "dest": "/sites/net/daily/dashboard/index.html" },
-    { "src": "/(minicad|pms|work|daily|vector|editor|biz)/", "dest": "/sites/net/$1/index.html" },
+    { "src": "/(minicad|estimate|pms|work|daily|vector|editor|biz)/", "dest": "/sites/net/$1/index.html" },
     { "src": "/(.*)", "dest": "/sites/net/$1" }
   ]
 }

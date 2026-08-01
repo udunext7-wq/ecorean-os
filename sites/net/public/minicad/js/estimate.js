@@ -31,45 +31,7 @@ function setUnitPrice(priceKey,price){
   if(price==null){delete PRICE_TABLE.items[priceKey];}
   else{PRICE_TABLE.items[priceKey]=Math.round(price);} // 헌법: 원 단위 정수
   savePriceTable();
-  proposePriceToDB(priceKey,price==null?null:Math.round(price));
 }
-
-// ===== DB 연동 (2026-07-17, BOC 방식) =====
-// 읽기: 승인 단가(v_minicad_price_table) + 설정을 서버에서 로드 — 전사 공유.
-//       로컬(localStorage)은 오프라인 캐시. 승인 단가가 로컬 값을 덮는다.
-// 쓰기: 입력한 단가는 본인 화면에 즉시 반영 + DB에 '제안'으로 저장.
-//       admin이 BOC(/boc/minicad-prices)에서 승인해야 전 직원 공식 단가가 된다 (헌법 3조).
-let DB_PRICE_STATUS='offline';
-async function loadPriceTableFromDB(){
-  try{
-    const r=await fetch('/api/minicad/price-table',{credentials:'same-origin'});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const d=await r.json();
-    if(d&&d.items&&typeof d.items==='object'){
-      Object.assign(PRICE_TABLE.items,d.items); // 승인 단가 우선
-      if(d.config){Object.assign(PRICE_TABLE.config,d.config);}
-      DB_PRICE_STATUS='ok';
-      savePriceTable();
-      if(typeof renderAutoEstimate==='function'){try{renderAutoEstimate();}catch(_){}}
-      console.log('[AutoEstimate] DB 승인 단가 '+Object.keys(d.items).length+'건 적용');
-    }
-  }catch(e){
-    DB_PRICE_STATUS='offline';
-    console.warn('[AutoEstimate] DB 단가 로드 실패 — 로컬 단가표로 동작:',e.message);
-  }
-}
-function proposePriceToDB(priceKey,price){
-  if(price==null) return; // 삭제는 로컬만 — DB 제안 철회·삭제는 BOC에서
-  fetch('/api/minicad/price-table',{
-    method:'POST',credentials:'same-origin',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({priceKey:priceKey,price:price})
-  }).then(r=>{
-    if(!r.ok) console.warn('[AutoEstimate] 단가 제안 저장 실패 HTTP '+r.status);
-    else console.log('[AutoEstimate] 단가 제안 저장:',priceKey,price,'(승인 대기)');
-  }).catch(e=>console.warn('[AutoEstimate] 단가 제안 저장 실패:',e.message));
-}
-loadPriceTableFromDB();
 
 // ===== 견적 산출 (결정론적) =====
 function buildAutoEstimate(){

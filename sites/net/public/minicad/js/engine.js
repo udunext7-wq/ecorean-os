@@ -1,6 +1,7 @@
 'use strict';
 // ===== KONVA 전역 변수 =====
 var container, stage, bgLayer, mainLayer, previewLayer, groups, labelGroup, drawGroup, snapGroup, flashGroup, ghostHintGroup;
+var labelSpacesGroup, labelOpeningsGroup; // v5.9.4: 증분 렌더 — 라벨 소유 렌더러별 분리 (공유 시 스킵 불가)
 
 function getContainerSize(){return{width:Math.max((container||document.getElementById('canvas-container')).offsetWidth||800,100),height:Math.max((container||document.getElementById('canvas-container')).offsetHeight||600,100)};}
 
@@ -37,6 +38,9 @@ mainLayer.add(groups.xlines); // v5.9: 무한 안내선 — 벽 위, 핸들 아�
 mainLayer.add(groups.pillars); // v5.9: 기둥 — 벽 위로
 mainLayer.add(groups.spaceHandles); // v5.9: 핸들이 가장 위 — 벽보다 위에서 클릭 가능
 labelGroup=new Konva.Group({listening:false});
+labelSpacesGroup=new Konva.Group({listening:false});
+labelOpeningsGroup=new Konva.Group({listening:false});
+labelGroup.add(labelSpacesGroup);labelGroup.add(labelOpeningsGroup);
 drawGroup=new Konva.Group({listening:false});
 snapGroup=new Konva.Group({listening:false}); // v5.2: 스냅 마커 글로우
 ghostHintGroup=new Konva.Group({listening:false}); // v5.9: 고스트 스냅 힌트 (선 위 잠재적 스냅점 미리 표시)
@@ -824,7 +828,7 @@ function redo(){
 // ===== 렌더 — 공간 =====
 function renderSpaces(){
   groups.spaces.destroyChildren();
-  labelGroup.destroyChildren();
+  labelSpacesGroup.destroyChildren();
   STATE.spaces.forEach(s=>{
     const td=SPACE_TYPES[s.type];
     const pts=[];
@@ -947,7 +951,7 @@ function renderSpaces(){
     const t2=new Konva.Text({text:spArea(s).toFixed(1)+' ㎡',fontSize:10,fontFamily:'JetBrains Mono',fill:td.color});
     t2.offsetX(t2.width()/2);t2.offsetY(0);
     lg.add(t2);
-    labelGroup.add(lg);
+    labelSpacesGroup.add(lg);
 
     // *** 치수 자동 표시 — KS F 1501 건축 평면도 치수표기법 ***
     if(STATE.showDimensions){
@@ -973,17 +977,17 @@ function renderSpaces(){
         const d2x=p2.x+nx*offMm, d2y=p2.y+ny*offMm;
 
         // 보조선
-        labelGroup.add(new Konva.Line({points:[TX(p1.x+nx*gapMm),TY(p1.y+ny*gapMm),TX(p1.x+nx*(offMm+extMm)),TY(p1.y+ny*(offMm+extMm))],stroke:'#6B7A8A',strokeWidth:0.5}));
-        labelGroup.add(new Konva.Line({points:[TX(p2.x+nx*gapMm),TY(p2.y+ny*gapMm),TX(p2.x+nx*(offMm+extMm)),TY(p2.y+ny*(offMm+extMm))],stroke:'#6B7A8A',strokeWidth:0.5}));
+        labelSpacesGroup.add(new Konva.Line({points:[TX(p1.x+nx*gapMm),TY(p1.y+ny*gapMm),TX(p1.x+nx*(offMm+extMm)),TY(p1.y+ny*(offMm+extMm))],stroke:'#6B7A8A',strokeWidth:0.5}));
+        labelSpacesGroup.add(new Konva.Line({points:[TX(p2.x+nx*gapMm),TY(p2.y+ny*gapMm),TX(p2.x+nx*(offMm+extMm)),TY(p2.y+ny*(offMm+extMm))],stroke:'#6B7A8A',strokeWidth:0.5}));
 
         // 치수선
-        labelGroup.add(new Konva.Line({points:[TX(d1x),TY(d1y),TX(d2x),TY(d2y)],stroke:'#6B7A8A',strokeWidth:0.7}));
+        labelSpacesGroup.add(new Konva.Line({points:[TX(d1x),TY(d1y),TX(d2x),TY(d2y)],stroke:'#6B7A8A',strokeWidth:0.7}));
 
         // 사선 마크
         const tkx=(ux*cos45-uy*sin45)*tickPx;
         const tky=(ux*sin45+uy*cos45)*tickPx;
-        labelGroup.add(new Konva.Line({points:[TX(d1x)-tkx,TY(d1y)-tky,TX(d1x)+tkx,TY(d1y)+tky],stroke:'#6B7A8A',strokeWidth:1.1}));
-        labelGroup.add(new Konva.Line({points:[TX(d2x)-tkx,TY(d2y)-tky,TX(d2x)+tkx,TY(d2y)+tky],stroke:'#6B7A8A',strokeWidth:1.1}));
+        labelSpacesGroup.add(new Konva.Line({points:[TX(d1x)-tkx,TY(d1y)-tky,TX(d1x)+tkx,TY(d1y)+tky],stroke:'#6B7A8A',strokeWidth:1.1}));
+        labelSpacesGroup.add(new Konva.Line({points:[TX(d2x)-tkx,TY(d2y)-tky,TX(d2x)+tkx,TY(d2y)+tky],stroke:'#6B7A8A',strokeWidth:1.1}));
 
         // 치수 수치
         const tmx=(d1x+d2x)/2-nx*90, tmy=(d1y+d2y)/2-ny*90;
@@ -991,7 +995,7 @@ function renderSpaces(){
         if(rot>90||rot<-90) rot+=180;
         const t=new Konva.Text({x:TX(tmx),y:TY(tmy),text:Math.round(lenmm).toString(),fontSize:10,fontFamily:'JetBrains Mono',fill:'#8899AA',fontStyle:'500',rotation:rot});
         t.offsetX(t.width()/2);t.offsetY(t.height()/2);
-        labelGroup.add(t);
+        labelSpacesGroup.add(t);
       }
     }
   });
@@ -1408,17 +1412,59 @@ function renderWalls(){
   _bearingCenterlineRefs.forEach(c=>c.moveToTop());
 }
 // v5.5: 벽이 공간 폴리곤 변과 같은 직선상에서 겹치는지 검사
+/* v5.9.3 PERF: mm 좌표 기반 계산이라 뷰(팬/줌)와 무관 — 지오메트리 서명 캐시.
+   벽·공간을 실제 편집할 때만 재계산 (대형 도면에서 renderWalls의 지배 비용이었음) */
+let _wsoCache={key:null,val:null};
 function detectWallSpaceOverlap(){
+  let key;
+  try{
+    key=STATE.walls.length+':'+STATE.spaces.length+':'+
+      JSON.stringify(STATE.walls.map(w=>[w.id,w.x1,w.y1,w.x2,w.y2,w.wallType||0]))+
+      JSON.stringify(STATE.spaces.map(s=>s.polygon));
+  }catch(e){key=null;}
+  if(key!==null&&_wsoCache.key===key) return _wsoCache.val;
   const overlaps=new Set();
+  /* v5.9.4 PERF: 공간 변을 2m 그리드 버킷에 색인 → 벽마다 인근 변만 검사.
+     O(벽×전체변) → O(벽+변). 여유 마진 60mm ≥ wallsOverlap 허용오차(20mm) */
+  const CELL=2000, MARGIN=60;
+  const buckets=new Map();
+  const cellsOf=(x1,y1,x2,y2)=>{
+    const cx1=Math.floor((Math.min(x1,x2)-MARGIN)/CELL), cx2=Math.floor((Math.max(x1,x2)+MARGIN)/CELL);
+    const cy1=Math.floor((Math.min(y1,y2)-MARGIN)/CELL), cy2=Math.floor((Math.max(y1,y2)+MARGIN)/CELL);
+    const out=[];
+    for(let cx=cx1;cx<=cx2;cx++)for(let cy=cy1;cy<=cy2;cy++)out.push(cx+'_'+cy);
+    return out;
+  };
+  const segs=[];
+  STATE.spaces.forEach(s=>{
+    const P=s.polygon;
+    for(let i=0;i<P.length;i++){
+      const a=P[i], b=P[(i+1)%P.length];
+      const seg={x1:a.x,y1:a.y,x2:b.x,y2:b.y};
+      const idx=segs.push(seg)-1;
+      cellsOf(a.x,a.y,b.x,b.y).forEach(c=>{
+        let arr=buckets.get(c);
+        if(!arr){arr=[];buckets.set(c,arr);}
+        arr.push(idx);
+      });
+    }
+  });
+  const seen=new Set();
   STATE.walls.forEach(w=>{
     if(w.wallType==='bearing') return; // v5.9: 내력벽 격리 — 공간 겹침 무시
-    STATE.spaces.forEach(s=>{
-      for(let i=0;i<s.polygon.length;i++){
-        const a=s.polygon[i], b=s.polygon[(i+1)%s.polygon.length];
-        if(wallsOverlap(w,{x1:a.x,y1:a.y,x2:b.x,y2:b.y})){overlaps.add(w.id);return;}
+    seen.clear();
+    outer:
+    for(const c of cellsOf(w.x1,w.y1,w.x2,w.y2)){
+      const arr=buckets.get(c);
+      if(!arr) continue;
+      for(const idx of arr){
+        if(seen.has(idx)) continue;
+        seen.add(idx);
+        if(wallsOverlap(w,segs[idx])){overlaps.add(w.id);break outer;}
       }
-    });
+    }
   });
+  if(key!==null)_wsoCache={key,val:overlaps};
   return overlaps;
 }
 // v5.4: 두 벽이 같은 직선상에 있고 겹치는지 검사
@@ -1591,7 +1637,7 @@ function renderOpenings(){
     groups.openings.add(g);
     // 라벨에 W×H 표시
     const subTypeName=isDoor?(DOOR_TYPES[o.subType]||{name:'문'}).name:(WINDOW_TYPES[o.subType]||{name:'창'}).name;
-    labelGroup.add(new Konva.Text({
+    labelOpeningsGroup.add(new Konva.Text({
       x:x-40,y:y+12,width:80,align:'center',
       text:subTypeName+' '+o.width_mm+'×'+o.height_mm,
       fontSize:9,fontFamily:'JetBrains Mono',fill:color,
@@ -1951,20 +1997,90 @@ function renderXlines(){
     groups.xlines.add(g);
   });
 }
+// ═══ v5.9.3 PERF: 뷰 제스처 최적화 ═══════════════════════════
+// 팬/줌 중 매 이벤트마다 전체 씬을 재구성(약 160ms/대형도면)하던 것을
+// 레이어 변환(scale/position, 약 4ms)으로 대체 — 제스처 종료 시 1회만 재구성.
+// 수학: 노드가 (offset0, zoom0) 기준으로 구성됐을 때 현재 (offset1, zoom1) 뷰는
+//       k=zoom1/zoom0 스케일 + (offset1 - k·offset0) 평행이동과 시각적으로 동일.
+let _viewBase=null;      // {offX,offY,zoom} — 마지막 재구성 시점의 뷰
+let _viewRaf=false;
+let _zoomSettleTimer=null;
+function beginViewTransform(){
+  if(!_viewBase) _viewBase={offX:STATE.offsetX,offY:STATE.offsetY,zoom:STATE.zoom};
+}
+function applyViewTransform(){
+  if(!_viewBase) return;
+  const k=STATE.zoom/_viewBase.zoom;
+  const tx=STATE.offsetX-k*_viewBase.offX;
+  const ty=STATE.offsetY-k*_viewBase.offY;
+  [bgLayer,mainLayer,previewLayer].forEach(l=>{l.scale({x:k,y:k});l.position({x:tx,y:ty});});
+  if(!_viewRaf){_viewRaf=true;requestAnimationFrame(()=>{_viewRaf=false;stage.batchDraw();});}
+}
+function endViewTransform(){
+  if(!_viewBase) return;
+  drawGrid();
+  renderAll(); // renderAll이 변환을 리셋하고 새 좌표로 재구성
+}
+// 데이터 변형 드래그(객체 이동·회전) 중 재구성을 프레임당 1회로 병합
+let _renderRaf=false;
+function renderAllThrottled(){
+  if(_renderRaf) return;
+  _renderRaf=true;
+  requestAnimationFrame(()=>{_renderRaf=false;renderAll();});
+}
+
+/* v5.9.4 PERF: 증분 렌더 — 카테고리별 (데이터+뷰+선택) 서명을 비교해
+   변경된 카테고리만 재구성. 수백 공간 도면에서 클릭 액션당 비용을
+   "전체 재구성"에서 "변경 카테고리 1개 재구성"으로 축소.
+   서명에 누락된 의존성이 생기면 화면 갱신 누락 버그가 되므로,
+   렌더러가 새 STATE 필드를 읽게 되면 반드시 아래 서명에도 추가할 것. */
+const _rsig={};
+function invalidateRenderCache(){for(const k in _rsig)delete _rsig[k];}
+function _rif(cat,sig,fn){
+  if(sig!==null&&_rsig[cat]===sig)return;
+  fn();
+  if(sig!==null)_rsig[cat]=sig;else delete _rsig[cat];
+}
 function renderAll(){
-  renderWalls();renderSpaces();renderOpenings();
-  renderRect(STATE.fixtures,groups.fixtures,FIXTURE_LIB,'fixtures');
-  renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
-  renderRect(STATE.hvac,groups.hvac,HVAC_FIRE_LIB,'hvac'); // v5.6
-  renderLights();renderElectric();renderTexts();renderMeasures();
-  renderCircles();renderArcs(); // v5.3
-  renderCurves(); // v5.9: 자유곡선 (Bezier)
-  renderLeaders(); // v5.9
-  renderXlines(); // v5.9: 무한 안내선
-  renderPillars(); // v5.9: 기둥 (RC)
+  /* 뷰 변환이 걸려 있으면 리셋 후 재구성 (이중 이동 방지) */
+  if(_viewBase){
+    _viewBase=null;
+    [bgLayer,mainLayer,previewLayer].forEach(l=>{l.scale({x:1,y:1});l.position({x:0,y:0});});
+  }
+  /* 서명 계산 — 직렬화 실패 시 전 카테고리 무조건 렌더(기존 동작 폴백) */
+  let J=null,sSpaces=null,gk=null;
+  try{
+    J=JSON.stringify;
+    sSpaces=J(STATE.spaces);
+    const theme=document.body?document.body.getAttribute('data-theme')||'':'';
+    gk=[STATE.offsetX,STATE.offsetY,STATE.zoom,theme,STATE.plus2D?1:0,STATE.selectedTool].join('|')+'§';
+  }catch(e){J=null;}
+  const selK=k=>{
+    if(!J)return '';
+    const box=(STATE.boxSelection||[]);
+    return (STATE.selectedKind===k?String(STATE.selectedId):'')+'·'+box.filter(b=>b.kind===k).map(b=>b.id).join(',')+'§';
+  };
+  const sig=(k,extra)=>{ if(!J)return null; try{return gk+selK(k)+extra;}catch(e){return null;} };
+
+  _rif('walls',   sig('wall',   (J?J(STATE.walls):'')+sSpaces),                                        ()=>renderWalls());
+  _rif('spaces',  sig('space',  sSpaces+(J?J(STATE.rotateState||0):'')+(STATE.showDimensions?1:0)),    ()=>renderSpaces());
+  _rif('openings',sig('opening',(J?J(STATE.openings):'')+sSpaces),                                     ()=>renderOpenings());
+  _rif('fixtures',sig('fixtures',J?J(STATE.fixtures):''),  ()=>renderRect(STATE.fixtures,groups.fixtures,FIXTURE_LIB,'fixtures'));
+  _rif('furniture',sig('furniture',J?J(STATE.furniture):''),()=>renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture'));
+  _rif('hvac',    sig('hvac',   J?J(STATE.hvac):''),        ()=>renderRect(STATE.hvac,groups.hvac,HVAC_FIRE_LIB,'hvac'));
+  _rif('lights',  sig('lights', J?J(STATE.lights):''),      ()=>renderLights());
+  _rif('electric',sig('electric',J?J(STATE.electric):''),   ()=>renderElectric());
+  _rif('texts',   sig('texts',  J?J(STATE.texts):''),       ()=>renderTexts());
+  _rif('measures',sig('measures',J?J(STATE.measures):''),   ()=>renderMeasures());
+  _rif('circles', sig('circles',(J?J(STATE.circles):'')+sSpaces), ()=>renderCircles());
+  _rif('arcs',    sig('arcs',   (J?J(STATE.arcs):'')+sSpaces),    ()=>renderArcs());
+  _rif('curves',  sig('curves', (J?J(STATE.curves||[]):'')+sSpaces),()=>renderCurves());
+  _rif('leaders', sig('leaders',J?J(STATE.leaders):''),     ()=>renderLeaders());
+  _rif('xlines',  sig('xlines', J?J(STATE.xlines||[]):''),  ()=>renderXlines());
+  _rif('pillars', sig('pillars',J?J(STATE.pillars||[]):''), ()=>renderPillars());
   // v5.9: 자동 면적 라벨 비활성화 — 공간 공유 변 사이 부분영역마다 라벨이 생겨 도면이 어지러움
-  renderSpaceHandles(); // v5.9: 선택된 공간 vertex 핸들
-  renderGhostHints(); // v5.9: 고스트 스냅 힌트 (선 위 잠재 스냅점 미리 표시)
+  renderSpaceHandles(); // 선택 의존·저비용 — 항상 실행
+  renderGhostHints();   // 저비용 — 항상 실행
   Object.entries(STATE.layers).forEach(([k,v])=>{if(groups[k]) groups[k].visible(v);});
   mainLayer.batchDraw();previewLayer.batchDraw();
 }

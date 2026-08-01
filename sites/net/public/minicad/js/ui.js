@@ -243,6 +243,10 @@ function buildSnapUI(){
 
 // ===== UI =====
 function refreshUI(){refreshHeader();refreshSpaceList();refreshDetail();refreshEstimate();refreshJSON();refreshMaterial();}
+// v5.9.4 PERF: 비활성 탭 패널은 지연 갱신 — 매 액션마다 견적표(20ms)·JSON(67ms)을
+// 다시 만들던 것을, 해당 탭을 열 때 1회만 재구성 (상단 KPI 바는 항상 갱신 유지)
+let _jsonDirty=false,_estimateDirty=false;
+function _tabActive(tab){const el=document.querySelector('.tab-content[data-tab-content="'+tab+'"]');return !!(el&&el.classList.contains('active'));}
 function refreshHeader(){
   const ta=STATE.spaces.reduce((s,sp)=>s+spArea(sp),0);
   const pyeong=(ta*0.3025).toFixed(1);
@@ -503,7 +507,9 @@ function refreshEstimate(){
   document.getElementById('t-open').textContent=STATE.openings.length;
   document.getElementById('t-door').textContent=STATE.openings.filter(o=>o.type==='DOOR').length;
   document.getElementById('t-window').textContent=STATE.openings.filter(o=>o.type==='WINDOW').length;
-  
+  /* PERF: 상단 KPI 바까지는 항상 갱신 — 무거운 견적표는 견적 탭 활성 시만 */
+  if(!_tabActive('estimate')){_estimateDirty=true;return;}
+  _estimateDirty=false;
   // v5.8: t-table을 공정별 합산으로 변경 (요구사항 #4 — 공간별 X, 공정별 O)
   document.getElementById('t-table').innerHTML=CAT_ORDER.map(cat=>{
     const items=Object.entries(CATALOG).filter(([k,c])=>c.cat===cat);
@@ -1195,6 +1201,8 @@ function buildJSONProfile(profile){
   return j;
 }
 function refreshJSON(){
+  if(!_tabActive('json')){_jsonDirty=true;return;} /* PERF: JSON 탭 열 때만 재구성 */
+  _jsonDirty=false;
   const _prof=document.getElementById('json-profile');
   const t=JSON.stringify(buildJSONProfile(_prof?_prof.value:'full'),null,2);
   const h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -1932,6 +1940,9 @@ document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>
   const tab=b.dataset.tab;
   document.querySelectorAll('.tab-btn').forEach(x=>x.classList.toggle('active',x===b));
   document.querySelectorAll('.tab-content').forEach(x=>x.classList.toggle('active',x.dataset.tabContent===tab));
+  /* PERF: 지연 갱신된 탭은 열 때 재구성 */
+  if(tab==='json'&&_jsonDirty)refreshJSON();
+  if(tab==='estimate'&&_estimateDirty)refreshEstimate();
 }));
 
 // ===== 테마 (v5.9 Cyber dual: lime / architect) =====
@@ -1967,6 +1978,71 @@ document.getElementById('btn-grid').addEventListener('click',toggleGrid);
 document.getElementById('btn-dim').addEventListener('click',toggleDim);
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
+// v5.9.2: 통합견적 OS 브리지 — estimate 프로파일 JSON을 localStorage로 전송.
+// 같은 브라우저에서 ECOREAN_통합견적OS_v17.html이 부팅/포커스 시 자동 감지해 견적을 완성한다.
+function sendToEstimateOS(silent){
+  // estimate 프로파일은 배치 객체(lights/electric/fixtures)까지 제거하므로 브리지는 자체 경량화:
+  // 작도 보조·AI 메타만 제거하고 배치 객체는 유지 (견적OS 전기/설비/가구 매핑에 필요)
+  const j=buildJSON();
+  ['texts','measures','circles','arcs','curves','leaders','xlines','autoDetectedCycles','indices','relationships','vertices'].forEach(k=>delete j[k]);
+  if(j.meta){delete j.meta.aiPromptHints;delete j.meta.videoSequence;delete j.meta.ssotPipeline;}
+  j.profile='bridge';
+  // 도면 스냅샷 PNG — 헌법: export 시 2.5D 강제 OFF (견적서 첨부용)
+  let png=null;
+  try{
+    const wasPlus2D=STATE.plus2D;
+    if(wasPlus2D){STATE.plus2D=false;renderAll();}
+    png=stage.toDataURL({pixelRatio:1.5,mimeType:'image/png'});
+    if(wasPlus2D){STATE.plus2D=true;renderAll();}
+  }catch(e){console.warn('[브리지] PNG 캡처 실패 — 도면 없이 전송',e);}
+  const payload={sentAt:new Date().toISOString(),from:'MiniCAD v5.9',plan:j,png};
+  try{
+    localStorage.setItem('ecorean_bridge_plan_v1',JSON.stringify(payload));
+  }catch(e){
+    // localStorage 용량 초과(대형 도면 PNG) → PNG 없이 재시도
+    payload.png=null;
+    localStorage.setItem('ecorean_bridge_plan_v1',JSON.stringify(payload));
+  }
+  // v5.9.3: Supabase 클라우드 브리지 (기기 간 공유) — 실패해도 로컬 브리지에는 영향 없음
+  if(typeof uploadPlanToCloud==='function') uploadPlanToCloud(payload,silent);
+  if(silent)return; // 테스트 러너용 — 탭 열기/토스트 생략
+  showStatus('📊 견적OS로 전송됨 — 통합견적 OS가 자동 감지합니다');
+  cmdToast('견적OS 전송 완료 (공간 '+STATE.spaces.length+'개)');
+  // 통합견적 OS 자동 열기 — 배포 환경별 분기
+  //  file://            : 폴더 배치 기준 상대경로 (localStorage 브리지 자동 감지)
+  //  ecorean.net 업무시스템: 같은 오리진 /estimate/ (localStorage 브리지 자동 감지)
+  //  단독 웹(vercel.app) : ecorean-estimate.vercel.app (☁ 클라우드 목록으로 수신)
+  try{
+    const target=location.protocol==='file:'
+      ?'../../전문가용/ECOREAN_통합견적OS_v17.html'
+      :(location.hostname.indexOf('ecorean.net')>=0?'/estimate/':'https://ecorean-estimate.vercel.app');
+    window.open(target,'ecorean_estimate_os');
+  }catch(e){}
+}
+// v5.9.3: Supabase 클라우드 브리지 — 기기 간 도면 공유 (테이블: minicad_bridge_plans, anon 정책)
+// 로컬(localStorage) 브리지가 1차 경로, 클라우드는 부가 경로 — 실패해도 로컬 흐름 무영향
+const BRIDGE_SUPA_URL='https://gdcfqbdgubgpzusbtftf.supabase.co';
+const BRIDGE_SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkY2ZxYmRndWJncHp1c2J0ZnRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzODYzNjUsImV4cCI6MjA5Nzk2MjM2NX0.-AnRCk6rYwYCgQk-N82zmeBjpeuAnupHLtVZy6OUHrI';
+function uploadPlanToCloud(payload,silent){
+  if(silent)return; // 테스트 러너 — 네트워크 접근 금지
+  var sum={
+    area_m2:(payload.plan.estimateInput&&payload.plan.estimateInput.summary&&payload.plan.estimateInput.summary.totalFloorArea_m2)||0,
+    spaces:(payload.plan.spaces||[]).length,
+    doors:(payload.plan.openings||[]).filter(function(o){return o.type==='DOOR';}).length,
+    windows:(payload.plan.openings||[]).filter(function(o){return o.type==='WINDOW';}).length,
+  };
+  fetch(BRIDGE_SUPA_URL+'/rest/v1/minicad_bridge_plans',{
+    method:'POST',
+    headers:{apikey:BRIDGE_SUPA_KEY,Authorization:'Bearer '+BRIDGE_SUPA_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify({title:STATE.projectName||'무제 도면',plan:payload.plan,png:payload.png,summary:sum}),
+  }).then(function(r){
+    if(r.ok) showStatus('☁ 클라우드 업로드 완료 — 다른 기기의 견적OS에서도 가져올 수 있습니다');
+    else showStatus('☁ 클라우드 업로드 실패('+r.status+') — 로컬 브리지는 정상 전송됨');
+  }).catch(function(){
+    showStatus('☁ 클라우드 업로드 실패(오프라인?) — 로컬 브리지는 정상 전송됨');
+  });
+}
+document.getElementById('btn-send-estimate').addEventListener('click',()=>sendToEstimateOS());
 document.getElementById('btn-print').addEventListener('click',printPlan);
 // v5.8 Task 3: DXF
 document.getElementById('btn-dxf-export').addEventListener('click',exportDXF);
@@ -2288,6 +2364,7 @@ document.getElementById('btn-clear-all').addEventListener('click',()=>{
 document.getElementById('btn-export').addEventListener('click',()=>{
   document.querySelectorAll('.tab-btn').forEach(x=>x.classList.toggle('active',x.dataset.tab==='estimate'));
   document.querySelectorAll('.tab-content').forEach(x=>x.classList.toggle('active',x.dataset.tabContent==='estimate'));
+  if(_estimateDirty)refreshEstimate(); /* PERF: 지연 갱신 반영 */
 });
 document.getElementById('btn-copy-json').addEventListener('click',()=>{
   const _prof=document.getElementById('json-profile'); // v5.9: 선택된 프로파일 그대로 복사

@@ -211,6 +211,26 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     }catch(e){assert('견적서 예외없음',false,e.message);}
     finally{STATE.spaces=o17;STATE.estimateConfig=oc17;Object.keys(PRICE_TABLE.items).forEach(k=>delete PRICE_TABLE.items[k]);Object.assign(PRICE_TABLE.items,op17);}
   }
+  // === v5.9.2: 견적OS 브리지 (sendToEstimateOS) ===
+  {
+    const _prevBridge=localStorage.getItem('ecorean_bridge_plan_v1');
+    try{
+      assert('브리지: sendToEstimateOS 정의',typeof sendToEstimateOS==='function');
+      sendToEstimateOS(true); // silent — 탭 열기/토스트 없이 기록만
+      const bd=JSON.parse(localStorage.getItem('ecorean_bridge_plan_v1')||'null');
+      assert('브리지: plan 기록 + 스키마',!!(bd&&bd.plan&&String(bd.plan.schema||'').startsWith('ECOREAN.FloorPlan')));
+      assert('브리지: sentAt ISO 타임스탬프',!!(bd&&bd.sentAt&&!isNaN(Date.parse(bd.sentAt))));
+      assert('브리지: 작도보조·AI메타 제거',!!(bd&&bd.plan&&!bd.plan.measures&&!bd.plan.xlines&&!(bd.plan.meta&&bd.plan.meta.aiPromptHints)));
+      assert('브리지: 배치객체 유지 (전기/설비 매핑용)',!!(bd&&bd.plan&&Array.isArray(bd.plan.lights)&&Array.isArray(bd.plan.fixtures)&&Array.isArray(bd.plan.electric)));
+      assert('브리지: estimateInput 유지',!!(bd&&bd.plan&&bd.plan.estimateInput&&bd.plan.estimateInput.summary));
+      assert('브리지: 도면 PNG 스냅샷 포함',!!(bd&&typeof bd.png==='string'&&bd.png.indexOf('data:image/png')===0));
+      assert('브리지: 클라우드 업로드 함수 정의',typeof uploadPlanToCloud==='function');
+    }catch(e){assert('브리지: 예외 없음',false,e.message);}
+    finally{
+      if(_prevBridge===null)localStorage.removeItem('ecorean_bridge_plan_v1');
+      else localStorage.setItem('ecorean_bridge_plan_v1',_prevBridge);
+    }
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

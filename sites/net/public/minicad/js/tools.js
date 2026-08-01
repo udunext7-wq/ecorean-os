@@ -2652,10 +2652,12 @@ stage.on('mousemove touchmove',e=>{
   const mm=getMm(pos);
   document.getElementById('cursor-pos').textContent=mm.x+','+mm.y;
   if(isPanning&&panStart){
+    beginViewTransform(); /* PERF: 이동 전 기준 뷰 캡처 */
     const dx=pos.x-panStart.x,dy=pos.y-panStart.y;
     STATE.offsetX+=dx;STATE.offsetY+=dy;
     panStart={x:pos.x,y:pos.y};
-    drawGrid();renderAll();return;
+    applyViewTransform(); /* 씬 재구성 대신 레이어 평행이동 — 종료 시 1회 재구성 */
+    return;
   }
   // 공간 회전 핸들 드래그 — centroid 기준 각도 delta 누적
   if(STATE.rotateState){
@@ -2669,7 +2671,7 @@ stage.on('mousemove touchmove',e=>{
       if(Math.abs(delta)>0.1){
         STATE.rotateState.totalAngle=(STATE.rotateState.totalAngle||0)+delta;
         rotateSpaceByAngle(STATE.rotateState.spaceId,delta);
-        renderAll();
+        renderAllThrottled(); /* PERF: 프레임당 1회 재구성 */
       }
     }
     STATE.rotateState.lastAngle=curAngle;
@@ -2684,7 +2686,17 @@ stage.on('mousemove touchmove',e=>{
     // v5.4: 선택된 객체 드래그 이동
     const dx=mm.x-dragMoveState.startMm.x, dy=mm.y-dragMoveState.startMm.y;
     applyDragMove(dragMoveState,dx,dy);
-    renderAll();
+    // PERF: 단일 배치객체(가구·위생·조명·전기·공조)는 Konva 노드만 직접 이동 (재구성 생략)
+    const _libKinds={fixtures:1,furniture:1,lights:1,electric:1,hvac:1};
+    if(dragMoveState.kind!=='multi'&&_libKinds[dragMoveState.kind]){
+      const _arr=getArr(dragMoveState.kind);
+      const _obj=_arr&&_arr.find(o=>o.id===dragMoveState.id);
+      const _node=_obj&&stage.findOne('#'+_obj.id);
+      if(_node){
+        _node.position({x:STATE.offsetX+mmToPx(_obj.x),y:STATE.offsetY+mmToPx(_obj.y)});
+        mainLayer.batchDraw();
+      }else renderAllThrottled();
+    }else renderAllThrottled(); /* 벽·공간·다중선택은 프레임당 1회 재구성 */
   }
   else if(STATE.selectedTool==='select'&&isMouseDown&&drawState&&drawState.type==='box'){
     drawState.current=getMm(pos);updatePreview();
@@ -2835,7 +2847,10 @@ stage.on('mousemove touchmove',e=>{
   updateSnapMarker(pos);
 });
 stage.on('mouseup touchend',e=>{
+  const _wasPanning=isPanning;
   isMouseDown=false;isPanning=false;panStart=null;
+  /* PERF: 팬 종료 — 레이어 변환을 실좌표 재구성으로 확정 (1회) */
+  if(_wasPanning){endViewTransform();}
   // v5.9: 스케일 보정 모드 — 일반 도구 동작 무시
   if(_scaleCalActive){
     const pos=stage.getPointerPosition();
@@ -2889,6 +2904,7 @@ stage.on('mouseup touchend',e=>{
   if(dragMoveState){
     if(!isClick){
       saveHistory();
+      renderAll(); /* PERF: 드래그 중 생략된 재구성을 드롭 시점에 1회 확정 */
       if(dragMoveState.altCopy) cmdToast('복사됨 (Alt+드래그)');
     }else if(dragMoveState.altCopy){
       // Alt+클릭(드래그 없음): 제자리 복사본 제거
@@ -3021,11 +3037,14 @@ stage.on('wheel',e=>{
   const delta=e.evt.deltaY>0?0.9:1.1;
   const newZoom=Math.max(0.2,Math.min(5,oldZoom*delta));
   if(newZoom===oldZoom) return;
+  beginViewTransform(); /* PERF: 휠 연타 중 레이어 변환만, 멈추면 1회 재구성 */
   const pos=stage.getPointerPosition();
   STATE.offsetX=pos.x-(pos.x-STATE.offsetX)*(newZoom/oldZoom);
   STATE.offsetY=pos.y-(pos.y-STATE.offsetY)*(newZoom/oldZoom);
   STATE.zoom=newZoom;
-  drawGrid();renderAll();
+  applyViewTransform();
+  clearTimeout(_zoomSettleTimer);
+  _zoomSettleTimer=setTimeout(()=>endViewTransform(),140);
   document.getElementById('zoom-pct').textContent=Math.round(STATE.zoom*100)+'%';
 });
 container.addEventListener('contextmenu',e=>{

@@ -68,6 +68,7 @@
     <button class="btn sm" id="btn-load">불러오기</button>
     <button class="btn sm" id="btn-save">저장</button>
     <button class="btn sm" id="btn-ai-bundle" title="AI 생성 번들 다운로드 (PNG평면+JSON+이미지프롬프트+영상프롬프트)">🤖 AI 번들</button>
+    <button class="btn sm gold" id="btn-send-estimate" title="도면 물량을 통합견적 OS로 전송 — ECOREAN_통합견적OS_v17이 자동 감지해 견적을 완성합니다">📊 견적OS 전송</button>
     <button class="btn sm" id="btn-dxf-export" title="DXF 내보내기 — AutoCAD R12 호환 (외주 업체 인계용)">↳ DXF</button>
     <button class="btn sm" id="btn-dxf-import" title="가져오기 — DXF / DWG(가이드) / SVG / PNG / JPG">↑ 가져오기</button>
     <input type="file" id="dxf-file-input" name="dxf-file-input" aria-label="도면/이미지 파일 선택" accept=".dxf,.dwg,.svg,.png,.jpg,.jpeg" style="display:none">
@@ -549,10 +550,6 @@
   </div>
 </div>
 
-<!-- v5.9m: 반응형 드로어 토글 핸들 (≤900px에서만 표시, CSS로 제어) -->
-<button type="button" id="drawer-toggle-left" class="drawer-toggle" aria-label="도구 패널 열기/닫기" aria-expanded="false">▸</button>
-<button type="button" id="drawer-toggle-right" class="drawer-toggle" aria-label="정보 패널 열기/닫기" aria-expanded="false">◂</button>
-
 <!-- v5.9: 저작권 푸터 (우측 하단 고정) -->
 <div id="copyright-footer" style="position:fixed;right:8px;bottom:6px;z-index:9000;font-size:9px;color:rgba(168,168,184,0.55);font-family:'JetBrains Mono',monospace;pointer-events:auto;user-select:none;letter-spacing:0.3px">
   © 2026 ECOREAN · MiniCAD v5.9 · <a href="#" id="copyright-link" style="color:inherit;text-decoration:underline dotted">All Rights Reserved</a>
@@ -595,33 +592,6 @@
   </div>
 </div>
 
-<script>
-'use strict';
-/* v5.9m: 모바일/태블릿 드로어 토글 — 레이아웃 전용, 도구/인증/EULA 로직 불변 */
-(function(){
-  var lt=document.getElementById('drawer-toggle-left'),
-      rt=document.getElementById('drawer-toggle-right'),
-      lp=document.querySelector('.panel-left'),
-      rp=document.querySelector('.panel-right');
-  if(!lt||!rt||!lp||!rp) return;
-  function set(panel,handle,open,arrOpen,arrClosed){
-    panel.classList.toggle('drawer-open',open);
-    handle.classList.toggle('open',open);
-    handle.textContent=open?arrOpen:arrClosed;
-    handle.setAttribute('aria-expanded',open?'true':'false');
-  }
-  lt.addEventListener('click',function(){
-    var o=!lp.classList.contains('drawer-open');
-    set(lp,lt,o,'◂','▸');
-    if(o) set(rp,rt,false,'▸','◂');
-  });
-  rt.addEventListener('click',function(){
-    var o=!rp.classList.contains('drawer-open');
-    set(rp,rt,o,'▸','◂');
-    if(o) set(lp,lt,false,'◂','▸');
-  });
-})();
-</script>
 <script src="js/state.js?v=space_esc"></script>
 <script src="js/data.js?v=space_esc"></script>
 <script src="js/library.js?v=space_esc"></script>
