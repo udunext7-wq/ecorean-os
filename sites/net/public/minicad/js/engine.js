@@ -1602,6 +1602,9 @@ function wallsOverlap(a,b){
 // *** 개구부 — 도어/창 W×H×D 풀 데이터 (요구사항 #2, #3) ***
 function renderOpenings(){
   groups.openings.destroyChildren();
+  /* v5.9.4 버그수정: 문/창 치수 라벨이 자기 그룹을 비우지 않아 팬/줌(재렌더)마다
+     텍스트가 계속 누적되던 문제 — 본체와 함께 라벨도 매 렌더마다 초기화 */
+  labelOpeningsGroup.destroyChildren();
   STATE.openings.forEach(o=>{
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const w=mmToPx(o.width_mm);
