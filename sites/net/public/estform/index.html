@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style id="ecorean-gate-style">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/ecorean-gate.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ECOREAN 인테리어 견적서 양식 — 주거·상업 반자동</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0b0d;--s1:#141416;--s2:#1c1c1f;--s3:#26262a;--s4:#333338;
+  --g:#C9A84C;--gl:#E8C96A;--gbr:rgba(201,168,76,.22);--gdim:rgba(201,168,76,.08);
+  --t1:#F0EDE6;--t2:rgba(240,237,230,.68);--t3:rgba(240,237,230,.38);
+  --red:#ef4444;--blue:#5BA0D4;--grn:#4ade80;
+  --paper:#ffffff;--ink:#16181c;--ink2:#4a4f57;--line:#d9dce1;--accent:#8a6d1f;
+}
+body{font-family:'Pretendard Variable',Pretendard,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  background:var(--bg);color:var(--t1);font-size:13px;min-height:100vh}
+
+/* ═══ 상단 컨트롤 바 (인쇄 제외) ═══ */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(11,11,13,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--gbr);padding:10px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;margin-right:6px}
+.brand .bx{width:30px;height:30px;background:linear-gradient(135deg,#8B6914,var(--g),var(--gl));
+  border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#000;font-size:12px}
+.brand b{font-size:14px;letter-spacing:.5px}.brand b em{color:var(--g);font-style:normal}
+.brand small{display:block;font-size:8px;color:var(--t3);letter-spacing:1.6px;text-transform:uppercase}
+/* 모드 스위치 */
+.mode{display:flex;background:var(--s2);border:1px solid var(--s4);border-radius:9px;padding:3px;gap:3px}
+.mode button{padding:7px 18px;border:none;border-radius:7px;background:transparent;color:var(--t3);
+  font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;letter-spacing:.3px}
+.mode button.on{background:var(--g);color:#000}
+.mode button.on.biz{background:var(--blue)}
+.tb-sp{flex:1}
+.tbtn{padding:8px 16px;border:1px solid var(--gbr);border-radius:8px;background:transparent;color:var(--g);
+  font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;letter-spacing:.4px}
+.tbtn:hover{background:var(--gdim)}
+.tbtn.pri{background:var(--g);color:#000;border-color:var(--g)}
+.tbtn.pri:hover{background:var(--gl)}
+.tbtn.warn{color:var(--red);border-color:rgba(239,68,68,.35)}
+.savestat{font-size:10px;color:var(--t3);display:flex;align-items:center;gap:5px}
+.savestat .dot{width:6px;height:6px;border-radius:50%;background:var(--grn)}
+
+/* ═══ 공정 프리셋 팔레트 ═══ */
+.palette{max-width:1040px;margin:14px auto 0;padding:0 18px}
+.pal-card{background:var(--s1);border:1px solid var(--gbr);border-radius:13px;padding:13px 16px}
+.pal-hd{font-size:10px;font-weight:800;color:var(--g);letter-spacing:1.2px;text-transform:uppercase;
+  margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.pal-hd small{color:var(--t3);font-weight:500;letter-spacing:0;text-transform:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 12px;border:1px solid var(--s4);border-radius:100px;background:var(--s2);color:var(--t2);
+  font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .13s}
+.chip:hover{border-color:var(--g);color:var(--gl);transform:translateY(-1px)}
+.chip.added{border-color:var(--gbr);color:var(--t3);background:var(--gdim)}
+.chip.added::before{content:'✓ ';color:var(--g)}
+body.biz .chip:hover{border-color:var(--blue);color:#9cc8e8}
+
+/* ═══ 견적서 문서 (A4 지면) ═══ */
+.sheetwrap{max-width:1040px;margin:16px auto 90px;padding:0 18px}
+.sheet{background:var(--paper);color:var(--ink);border-radius:6px;overflow:hidden;
+  box-shadow:0 24px 70px rgba(0,0,0,.55);padding:44px 48px 40px}
+/* 문서 헤드 */
+.doc-top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--ink);padding-bottom:16px}
+.doc-co .nm{font-size:21px;font-weight:900;letter-spacing:1px}
+.doc-co .nm em{font-style:normal;color:var(--accent)}
+.doc-co .sub{font-size:9.5px;color:var(--ink2);letter-spacing:2.6px;text-transform:uppercase;margin-top:2px}
+.doc-badge{text-align:right}
+.doc-kind{display:inline-block;font-size:10px;font-weight:800;letter-spacing:1.6px;padding:4px 12px;
+  border:1.5px solid var(--accent);color:var(--accent);border-radius:100px;margin-bottom:6px}
+body.biz .doc-kind{border-color:#2d6ca3;color:#2d6ca3}
+.doc-no{font-size:10px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.doc-title{text-align:center;font-size:30px;font-weight:900;letter-spacing:26px;text-indent:26px;
+  margin:26px 0 22px;color:var(--ink)}
+/* 메타 그리드 */
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:0 34px;margin-bottom:22px}
+.mrow{display:flex;align-items:center;border-bottom:1px solid var(--line);min-height:34px;gap:10px}
+.mk{width:88px;flex-shrink:0;font-size:11px;font-weight:800;color:var(--ink2);letter-spacing:3px}
+.mv{flex:1}
+.mv input,.mv select{width:100%;border:none;background:transparent;font:inherit;font-size:12.5px;
+  color:var(--ink);outline:none;padding:5px 2px;font-weight:600}
+.mv input::placeholder{color:#b6bac2;font-weight:400}
+.mv select{cursor:pointer;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 4px center}
+.area-pair{display:flex;align-items:center;gap:6px}
+.area-pair input{width:74px;text-align:right}
+.area-pair .u{font-size:11px;color:var(--ink2)}
+.area-pair .eq{font-size:11px;color:#b6bac2}
+
+/* ═══ 내역 표 ═══ */
+.tblwrap{border:1.5px solid var(--ink);border-radius:3px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{background:#f2f3f5;font-size:10.5px;font-weight:800;color:var(--ink2);letter-spacing:1.5px;
+  padding:9px 8px;border-bottom:1.5px solid var(--ink);text-align:left}
+th.c{text-align:center}th.r{text-align:right}
+td{padding:2px 4px;border-bottom:1px solid var(--line);font-size:12px;vertical-align:middle}
+tbody tr:hover{background:#fafbfc}
+td input,td select{width:100%;border:none;background:transparent;font:inherit;font-size:12px;color:var(--ink);
+  outline:none;padding:7px 5px;border-radius:3px}
+td input:focus{background:#f4f0e2}
+body.biz td input:focus{background:#eaf2f9}
+td .num{text-align:right;font-variant-numeric:tabular-nums}
+td.amt{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;padding-right:10px;white-space:nowrap}
+td.no{width:34px;text-align:center;color:var(--ink2);font-size:11px;font-variant-numeric:tabular-nums}
+.rowbtns{display:flex;gap:2px;justify-content:center}
+.rb{width:22px;height:22px;border:none;border-radius:4px;background:transparent;color:#b6bac2;
+  cursor:pointer;font-size:11px;line-height:1;transition:all .12s}
+.rb:hover{background:#eee;color:var(--ink)}
+.rb.del:hover{background:#fde8e8;color:var(--red)}
+/* 합계부 */
+.sumrow td{background:#f7f8f9;font-weight:700;border-top:1.5px solid var(--ink)}
+.calc td{padding:7px 10px;font-size:12px;color:var(--ink2)}
+.calc .pct input{width:52px;text-align:center;border:1px solid var(--line);border-radius:4px;padding:3px}
+.grand td{background:#16181c;color:#fff;font-weight:900;font-size:14.5px;padding:12px 10px;letter-spacing:1px}
+.grand td.amt{color:var(--gl);font-size:16px}
+body.biz .grand td.amt{color:#8ec4ee}
+.hangul{font-size:11px;color:var(--ink2);text-align:right;padding:8px 4px 0;letter-spacing:.5px}
+/* 하단 툴 */
+.tools{display:flex;gap:8px;margin-top:10px}
+.addbtn{flex:1;padding:9px;border:1.5px dashed #c8ccd3;border-radius:6px;background:transparent;color:var(--ink2);
+  font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.addbtn:hover{border-color:var(--accent);color:var(--accent);background:#faf7ef}
+
+/* 특기사항 · 서명 */
+.notes{margin-top:24px}
+.notes .nh{font-size:12px;font-weight:800;letter-spacing:4px;color:var(--ink);border-left:4px solid var(--accent);
+  padding-left:9px;margin-bottom:9px}
+body.biz .notes .nh{border-left-color:#2d6ca3}
+.notes textarea{width:100%;min-height:118px;border:1px solid var(--line);border-radius:5px;padding:11px 13px;
+  font:inherit;font-size:11.5px;line-height:1.95;color:var(--ink2);resize:vertical;outline:none;background:#fcfcfd}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:30px;padding-top:22px;border-top:1.5px solid var(--ink)}
+.sg .lb{font-size:10.5px;font-weight:800;color:var(--ink2);letter-spacing:3px;margin-bottom:9px}
+.sg .box{border:1px solid var(--line);border-radius:5px;padding:13px 15px;font-size:11.5px;line-height:2.1;color:var(--ink2)}
+.sg .box b{color:var(--ink);font-size:12.5px}
+.sg .stamp{position:relative}
+.sg .stamp::after{content:'(인)';position:absolute;right:16px;bottom:14px;color:#b6bac2;font-size:11px}
+.foot{margin-top:20px;text-align:center;font-size:9.5px;color:#b6bac2;letter-spacing:2px}
+
+/* ═══ 인쇄 ═══ */
+@media print{
+  @page{size:A4 portrait;margin:11mm 10mm}
+  body{background:#fff}
+  .topbar,.palette,.tools,.rowbtns,.no-print{display:none!important}
+  .sheetwrap{max-width:none;margin:0;padding:0}
+  .sheet{box-shadow:none;border-radius:0;padding:0}
+  td input:focus{background:transparent}
+  th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .grand td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sumrow td,.calc td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  tr{page-break-inside:avoid}
+  thead{display:table-header-group}
+  .sign{page-break-inside:avoid}
+}
+@media(max-width:760px){
+  .sheet{padding:22px 14px}
+  .meta{grid-template-columns:1fr}
+  .doc-title{font-size:22px;letter-spacing:14px;text-indent:14px}
+  .sign{grid-template-columns:1fr;gap:14px}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ 컨트롤 바 ═══ -->
+<div class="topbar no-print">
+  <div class="brand"><div class="bx">EC</div><div><b>ECO<em>REAN</em></b><small>Estimate Form</small></div></div>
+  <div class="mode" id="mode">
+    <button id="mb-res" class="on" onclick="setMode('res')">🏠 주거공간</button>
+    <button id="mb-biz" class="biz" onclick="setMode('biz')">🏢 상업공간</button>
+  </div>
+  <div class="tb-sp"></div>
+  <div class="savestat"><span class="dot"></span><span id="savestat">자동저장</span></div>
+  <button class="tbtn" onclick="importFromOS()">📥 견적OS 불러오기</button>
+  <button class="tbtn warn" onclick="resetDoc()">↺ 새 견적</button>
+  <button class="tbtn pri" onclick="window.print()">🖨 인쇄 / PDF</button>
+</div>
+
+<!-- ═══ 공정 프리셋 팔레트 ═══ -->
+<div class="palette no-print">
+  <div class="pal-card">
+    <div class="pal-hd">공정 프리셋 <small id="pal-sub">— 클릭하면 견적 행이 추가됩니다 (단가는 직접 입력)</small></div>
+    <div class="chips" id="chips"></div>
+  </div>
+</div>
+
+<!-- ═══ 견적서 지면 ═══ -->
+<div class="sheetwrap">
+<div class="sheet" id="sheet">
+
+  <div class="doc-top">
+    <div class="doc-co">
+      <div class="nm">ECO<em>REAN</em> 인테리어</div>
+      <div class="sub">Interior Design &amp; Construction</div>
+    </div>
+    <div class="doc-badge">
+      <div class="doc-kind" id="kindBadge">주거공간 리모델링</div>
+      <div class="doc-no">견적번호 <span id="docNo">EC-000000-000</span></div>
+    </div>
+  </div>
+
+  <div class="doc-title">견 적 서</div>
+
+  <div class="meta">
+    <div class="mrow"><div class="mk">공 사 명</div><div class="mv"><input id="f-name" placeholder="예) 반포 ○○아파트 34평 전체 리모델링" oninput="upd()"></div></div>
+    <div class="mrow"><div class="mk">공간 유형</div><div class="mv"><select id="f-type" onchange="upd()"></select></div></div>
+    <div class="mrow"><div class="mk">현장 주소</div><div class="mv"><input id="f-addr" placeholder="서울시 ○○구 ○○동 ○○" oninput="upd()"></div></div>
+    <div class="mrow"><div class="mk">면 적</div><div class="mv area-pair">
+      <input id="f-py" type="number" step="0.5" min="0" placeholder="0" oninput="areaFromPy()"><span class="u">평</span>
+      <span class="eq">≈</span>
+      <input id="f-m2" type="number" step="0.1" min="0" placeholder="0" oninput="areaFromM2()"><span class="u">㎡</span>
+    </div></div>
+    <div class="mrow"><div class="mk">고 객 명</div><div class="mv"><input id="f-client" placeholder="홍길동" oninput="upd()"></div></div>
+    <div class="mrow"><div class="mk">연 락 처</div><div class="mv"><input id="f-tel" placeholder="010-0000-0000" oninput="upd()"></div></div>
+    <div class="mrow"><div class="mk">견적 일자</div><div class="mv"><input id="f-date" type="date" oninput="upd()"></div></div>
+    <div class="mrow"><div class="mk">유효 기간</div><div class="mv"><select id="f-valid" onchange="upd()">
+      <option>견적일로부터 30일</option><option>견적일로부터 15일</option><option>견적일로부터 60일</option><option>견적일로부터 90일</option>
+    </select></div></div>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr>
+        <th class="c" style="width:34px">NO</th>
+        <th style="width:17%">공 정</th>
+        <th>세 부 내 용</th>
+        <th class="c" style="width:52px">단위</th>
+        <th class="r" style="width:64px">수량</th>
+        <th class="r" style="width:96px">단가 (원)</th>
+        <th class="r" style="width:112px">금액 (원)</th>
+        <th style="width:11%">비고</th>
+        <th class="c no-print" style="width:76px">편집</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+      <tbody>
+        <tr class="sumrow">
+          <td colspan="6" style="text-align:right;letter-spacing:3px;padding-right:12px">공 사 비 소 계</td>
+          <td class="amt" id="s-sub">0</td><td></td><td class="no-print"></td>
+        </tr>
+        <tr class="calc"><td colspan="5" style="text-align:right">공과잡비</td>
+          <td class="pct" style="text-align:right"><input id="r-ur" type="number" step="0.5" value="2" oninput="upd()"> %</td>
+          <td class="amt" id="s-ur">0</td><td></td><td class="no-print"></td></tr>
+        <tr class="calc"><td colspan="5" style="text-align:right">일반관리비</td>
+          <td class="pct" style="text-align:right"><input id="r-ar" type="number" step="0.5" value="3" oninput="upd()"> %</td>
+          <td class="amt" id="s-ar">0</td><td></td><td class="no-print"></td></tr>
+        <tr class="calc"><td colspan="5" style="text-align:right">기업이윤</td>
+          <td class="pct" style="text-align:right"><input id="r-pr" type="number" step="0.5" value="10" oninput="upd()"> %</td>
+          <td class="amt" id="s-pr">0</td><td></td><td class="no-print"></td></tr>
+        <tr class="calc"><td colspan="5" style="text-align:right">협의 조정 (할인 −)</td>
+          <td></td>
+          <td class="amt"><input id="r-adj" class="num" type="number" step="10000" value="0" style="font-weight:700;text-align:right" oninput="upd()"></td>
+          <td style="font-size:10px;color:#b6bac2">± 직접 입력</td><td class="no-print"></td></tr>
+        <tr class="sumrow">
+          <td colspan="6" style="text-align:right;letter-spacing:3px;padding-right:12px">도 급 합 계 <span style="letter-spacing:0;font-weight:500;font-size:10.5px">(VAT 별도)</span></td>
+          <td class="amt" id="s-net">0</td><td></td><td class="no-print"></td>
+        </tr>
+        <tr class="calc"><td colspan="5" style="text-align:right">부가가치세</td>
+          <td style="text-align:right"><select id="r-vat" onchange="upd()" style="border:1px solid var(--line);border-radius:4px;padding:3px;font-size:11px">
+            <option value="10">별도 10%</option><option value="incl">포함(내포)</option><option value="0">면세/0%</option>
+          </select></td>
+          <td class="amt" id="s-vat">0</td><td></td><td class="no-print"></td></tr>
+        <tr class="grand">
+          <td colspan="6" style="text-align:right;letter-spacing:4px">총 견 적 금 액</td>
+          <td class="amt" id="s-total">0</td><td id="s-vatnote" style="font-size:9.5px;font-weight:500;color:#aab">VAT 포함</td><td class="no-print"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="hangul" id="hangul">一金 영원整</div>
+  <div style="display:flex;justify-content:flex-end;gap:18px;margin-top:4px;font-size:11px;color:var(--ink2)">
+    <span>평당 <b id="s-py" style="color:var(--ink)">—</b></span>
+    <span>㎡당 <b id="s-m2" style="color:var(--ink)">—</b></span>
+  </div>
+
+  <div class="tools no-print">
+    <button class="addbtn" onclick="addRow()">＋ 빈 행 추가</button>
+    <button class="addbtn" onclick="addAllPreset()">📋 전체 공정 한번에 추가</button>
+  </div>
+
+  <div class="notes">
+    <div class="nh">특 기 사 항</div>
+    <textarea id="f-notes" oninput="upd()"></textarea>
+  </div>
+
+  <div class="sign">
+    <div class="sg"><div class="lb">발 주 자 (고객)</div>
+      <div class="box stamp">성&nbsp;&nbsp;&nbsp;명 : <b id="sg-client">&nbsp;</b><br>연 락 처 : <span id="sg-tel">&nbsp;</span></div>
+    </div>
+    <div class="sg"><div class="lb">시 공 사</div>
+      <div class="box stamp"><b>ECOREAN 인테리어</b><br>서울 강남구 논현로10길 30, 505호 · 대표번호 1588-9291</div>
+    </div>
+  </div>
+  <div class="foot">ECOREAN INTERIOR · TEL 1588-9291 · 본 견적은 상기 유효기간 내에 한하여 유효합니다</div>
+</div>
+</div>
+
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════
+   ECOREAN 견적서 양식 v1 — 주거/상업 분리 · 반자동
+   · 프리셋 = 항목·세부문구·단위만 자동 (단가는 반드시 직접 입력 — 단가 추정 금지)
+   · 수량×단가, 소계~총액, 한글 금액, 평당/㎡당 전부 자동
+   · 모드별로 문서를 각각 자동저장 (주거/상업 전환해도 서로 보존)
+═══════════════════════════════════════════════════════ */
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toLocaleString('ko-KR');
+
+/* ── 모드별 프리셋 (공정 / 세부 기본문구 / 단위) — v17 공정 체계 기반 ── */
+const PRESETS={
+res:{
+  kind:'주거공간 리모델링',
+  types:['아파트','빌라·연립','단독주택','오피스텔(주거)','타운하우스'],
+  rows:[
+    ['가설·철거','기존 마감재 철거, 보양, 폐기물 처리','식'],
+    ['설비 공사','욕실·주방 급배수 배관, 보일러 분배기 정리','식'],
+    ['전기 공사','배선 정리, 콘센트·스위치 신설, 조명 배선','식'],
+    ['목공 공사','천장·가벽, 우물천장, 간접등 박스, 문틀 보강','식'],
+    ['욕실 공사','방수 2회, 타일, 위생도기, 돔천장, 악세서리','개소'],
+    ['타일 공사','현관·주방벽 타일 (자재 별도 명기)','㎡'],
+    ['창호 공사','샷시 교체·중문 설치','식'],
+    ['도어 공사','방문·문틀 교체, 하드웨어','EA'],
+    ['필름·도장','몰딩·문틀 필름, 발코니 결로 도장','식'],
+    ['도배 공사','실크·합지 도배 (벽+천장)','식'],
+    ['바닥 공사','강마루/장판 시공 (자재 포함 여부 명기)','㎡'],
+    ['주방 가구','싱크대 상·하부장, 상판, 수전','식'],
+    ['붙박이 가구','붙박이장·신발장·거실장','식'],
+    ['조명 기구','매입등·직부등·간접조명 기구 및 설치','식'],
+    ['실리콘·코킹','전체 마감 실리콘','식'],
+    ['입주 청소','준공 청소 및 보양 해제','식'],
+  ],
+  notes:`① 본 견적서는 현장 실측 전 예비 견적으로, 정밀 실측 후 최종 견적서를 별도 발행합니다.
+② 자재 사양 변경 시(수입 타일·원목마루 등) 금액이 조정될 수 있습니다.
+③ 관리사무소 공사 신고·엘리베이터 보양 및 이웃 세대 동의는 발주자 협조 사항입니다.
+④ 공사 중 발견되는 은폐 하자(누수·결로·구조 결함)의 보수는 별도 협의합니다.
+⑤ 부가가치세는 상기 표기 기준이며 세금계산서 발행이 가능합니다.
+⑥ 계약금 30% · 중도금 40% · 잔금 30% (준공 확인 후) 지급을 기준으로 합니다.`,
+},
+biz:{
+  kind:'상업공간 인테리어',
+  types:['사무실','카페·베이커리','음식점','판매점·쇼룸','병원·의원','학원·교육시설','미용실·뷰티','헬스·필라테스'],
+  rows:[
+    ['가설 공사','현장 보양, 임시 칸막이, 공사 안내물','식'],
+    ['철거 공사','기존 시설물 철거·원상복구 범위 확인, 폐기물 처리','식'],
+    ['금속·유리 공사','전면 파사드, 유리 칸막이, 금속 프레임','식'],
+    ['목공 공사','천장 골조, 가벽, 인테리어 조형물','식'],
+    ['전기·통신 공사','증설 승압, 배선, 통신·POS 배관, 간판 전원','식'],
+    ['소방 공사','스프링클러 이설, 감지기, 유도등 (소방필증 포함 여부 명기)','식'],
+    ['설비·덕트 공사','급배수, 주방 급배기 덕트, 그리스트랩','식'],
+    ['냉난방 공사','시스템 에어컨 (장비 포함 여부 명기)','대'],
+    ['화장실 공사','방수, 타일, 위생도기, 파티션','개소'],
+    ['타일·석재 공사','바닥·벽 타일, 포인트 석재','㎡'],
+    ['바닥 공사','에폭시/디딤석/데코타일 등 (재질 명기)','㎡'],
+    ['도장·필름 공사','내부 도장, 인테리어 필름','식'],
+    ['도배 공사','벽·천장 마감','식'],
+    ['가구·집기 공사','카운터, 붙박이 집기, 진열장','식'],
+    ['조명 기구','레일·매입·펜던트 조명 기구 및 설치','식'],
+    ['간판·사인물','외부 간판, 내부 사인 (허가 대행 포함 여부 명기)','식'],
+    ['준공 청소','오픈 전 청소·보양 해제','식'],
+  ],
+  notes:`① 본 견적서는 현장 실측 전 예비 견적으로, 정밀 실측·도면 확정 후 최종 견적서를 발행합니다.
+② 건물 관리 규정(공사 시간·보양·엘리베이터)에 따른 추가 비용은 협의 후 반영합니다.
+③ 소방·전기 증설 등 인허가 관련 비용은 포함 여부를 각 항목 비고에 명기합니다.
+④ 원상복구 조건·명도 일정에 따른 야간·휴일 공사는 할증이 적용될 수 있습니다.
+⑤ 부가가치세는 상기 표기 기준이며 세금계산서 발행이 가능합니다.
+⑥ 계약금 30% · 중도금 40% · 잔금 30% (준공 확인 후) 지급을 기준으로 합니다.`,
+},
+};
+
+/* ── 상태 ── */
+let MODE='res';
+let ROWS=[];           /* {proc,detail,unit,qty,price,note} */
+let _saveT=null;
+
+function newDocNo(){
+  const d=new Date();
+  const ymd=String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  return 'EC-'+ymd+'-'+String(Math.floor(Math.random()*900)+100);
+}
+
+/* ── 모드 전환 (문서는 모드별로 각각 보존) ── */
+let _booted=false;
+function setMode(m){
+  if(_booted)saveNow(); /* 부팅 시엔 로드 전에 빈 상태를 저장하지 않음 */
+  _booted=true;
+  MODE=m;
+  document.body.classList.toggle('biz',m==='biz');
+  $('mb-res').classList.toggle('on',m==='res');
+  $('mb-biz').classList.toggle('on',m==='biz');
+  load();
+  renderChips();
+}
+
+/* ── 프리셋 칩 ── */
+function renderChips(){
+  const P=PRESETS[MODE];
+  $('kindBadge').textContent=P.kind;
+  const have=new Set(ROWS.map(r=>r.proc));
+  $('chips').innerHTML=P.rows.map(([p,d,u],i)=>
+    `<button class="chip${have.has(p)?' added':''}" onclick="addPreset(${i})">${p}</button>`).join('');
+  /* 공간 유형 select */
+  const sel=$('f-type');const cur=sel.value;
+  sel.innerHTML=P.types.map(t=>`<option>${t}</option>`).join('');
+  if(P.types.includes(cur))sel.value=cur;
+}
+function addPreset(i){
+  const [proc,detail,unit]=PRESETS[MODE].rows[i];
+  ROWS.push({proc,detail,unit,qty:1,price:'',note:''});
+  renderRows();upd();
+}
+function addAllPreset(){
+  const have=new Set(ROWS.map(r=>r.proc));
+  PRESETS[MODE].rows.forEach(([proc,detail,unit])=>{
+    if(!have.has(proc))ROWS.push({proc,detail,unit,qty:1,price:'',note:''});
+  });
+  renderRows();upd();
+}
+function addRow(){ROWS.push({proc:'',detail:'',unit:'식',qty:1,price:'',note:''});renderRows();upd();
+  const last=document.querySelector('#rows tr:last-child input');if(last)last.focus();}
+function delRow(i){ROWS.splice(i,1);renderRows();upd();}
+function mvRow(i,d){
+  const j=i+d;if(j<0||j>=ROWS.length)return;
+  [ROWS[i],ROWS[j]]=[ROWS[j],ROWS[i]];
+  renderRows();upd();
+}
+function upR(i,k,v){ROWS[i][k]=v;if(k==='qty'||k==='price')updAmt(i);upd();}
+
+/* ── 행 렌더 ── */
+function renderRows(){
+  $('rows').innerHTML=ROWS.map((r,i)=>`<tr>
+    <td class="no">${i+1}</td>
+    <td><input value="${esc(r.proc)}" placeholder="공정명" oninput="upR(${i},'proc',this.value)" style="font-weight:700"></td>
+    <td><input value="${esc(r.detail)}" placeholder="세부 내용" oninput="upR(${i},'detail',this.value)"></td>
+    <td><input class="num" style="text-align:center" value="${esc(r.unit)}" oninput="upR(${i},'unit',this.value)"></td>
+    <td><input class="num" type="number" step="0.5" min="0" value="${r.qty}" oninput="upR(${i},'qty',+this.value||0)"></td>
+    <td><input class="num" type="number" step="10000" min="0" value="${r.price}" placeholder="0" oninput="upR(${i},'price',+this.value||0)"></td>
+    <td class="amt" id="amt-${i}">${r.qty&&r.price?fmt(r.qty*r.price):'—'}</td>
+    <td><input value="${esc(r.note)}" placeholder="" oninput="upR(${i},'note',this.value)" style="font-size:11px;color:var(--ink2)"></td>
+    <td class="no-print"><div class="rowbtns">
+      <button class="rb" onclick="mvRow(${i},-1)" title="위로">▲</button>
+      <button class="rb" onclick="mvRow(${i},1)" title="아래로">▼</button>
+      <button class="rb del" onclick="delRow(${i})" title="삭제">✕</button>
+    </div></td>
+  </tr>`).join('');
+  renderChips();
+}
+function updAmt(i){const r=ROWS[i];const el=$('amt-'+i);if(el)el.textContent=r.qty&&r.price?fmt(r.qty*r.price):'—';}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+
+/* ── 면적 평↔㎡ ── */
+function areaFromPy(){const py=+$('f-py').value||0;$('f-m2').value=py?(py*3.3058).toFixed(1):'';upd();}
+function areaFromM2(){const m2=+$('f-m2').value||0;$('f-py').value=m2?(m2/3.3058).toFixed(1):'';upd();}
+
+/* ── 한글 금액 ── */
+function toHangul(n){
+  if(!n)return '영';
+  const D=['','일','이','삼','사','오','육','칠','팔','구'];
+  const U=['','십','백','천'];const B=['','만','억','조'];
+  let out='';let bi=0;
+  while(n>0){
+    const chunk=n%10000;n=Math.floor(n/10000);
+    if(chunk){
+      let s='';
+      String(chunk).split('').reverse().forEach((c,ui)=>{
+        const d=+c;if(!d)return;
+        s=(d===1&&ui>0?'':D[d])+U[ui]+s;
+      });
+      out=s+B[bi]+out;
+    }
+    bi++;
+  }
+  return out;
+}
+
+/* ── 전체 재계산 ── */
+function upd(){
+  let sub=0;
+  ROWS.forEach((r,i)=>{sub+=(+r.qty||0)*(+r.price||0);});
+  const ur=sub*((+$('r-ur').value||0)/100);
+  const ar=sub*((+$('r-ar').value||0)/100);
+  const pr=sub*((+$('r-pr').value||0)/100);
+  const adj=+$('r-adj').value||0;
+  const net=sub+ur+ar+pr-adj;
+  const vatMode=$('r-vat').value;
+  let vat=0,total=net;
+  if(vatMode==='10'){vat=net*0.10;total=net+vat;$('s-vatnote').textContent='VAT 포함';}
+  else if(vatMode==='incl'){vat=net-net/1.1;total=net;$('s-vatnote').textContent='VAT 내포';}
+  else{vat=0;total=net;$('s-vatnote').textContent='면세';}
+  $('s-sub').textContent=fmt(sub);
+  $('s-ur').textContent=fmt(ur);
+  $('s-ar').textContent=fmt(ar);
+  $('s-pr').textContent=fmt(pr);
+  $('s-net').textContent=fmt(net);
+  $('s-vat').textContent=fmt(vat);
+  $('s-total').textContent=fmt(total);
+  $('hangul').textContent='一金 '+toHangul(Math.round(total))+'원整 (₩'+fmt(total)+')';
+  const py=+$('f-py').value||0,m2=+$('f-m2').value||0;
+  $('s-py').textContent=py?fmt(total/py)+'원':'—';
+  $('s-m2').textContent=m2?fmt(total/m2)+'원':'—';
+  $('sg-client').textContent=$('f-client').value||' ';
+  $('sg-tel').textContent=$('f-tel').value||' ';
+  save();
+}
+
+/* ── 저장/복원 (모드별 분리) ── */
+function docState(){
+  return {docNo:$('docNo').textContent,rows:ROWS,
+    name:$('f-name').value,type:$('f-type').value,addr:$('f-addr').value,
+    py:$('f-py').value,m2:$('f-m2').value,client:$('f-client').value,tel:$('f-tel').value,
+    date:$('f-date').value,valid:$('f-valid').value,notes:$('f-notes').value,
+    ur:$('r-ur').value,ar:$('r-ar').value,pr:$('r-pr').value,adj:$('r-adj').value,vat:$('r-vat').value};
+}
+function save(){
+  clearTimeout(_saveT);
+  const st=$('savestat');st.textContent='저장 중...';
+  _saveT=setTimeout(()=>{saveNow();st.textContent='자동저장 완료';},500);
+}
+function saveNow(){
+  try{localStorage.setItem('ecorean_estform_'+MODE,JSON.stringify(docState()));}catch(e){}
+}
+function load(){
+  let sv=null;
+  try{sv=JSON.parse(localStorage.getItem('ecorean_estform_'+MODE)||'null');}catch(e){}
+  const P=PRESETS[MODE];
+  if(sv){
+    ROWS=sv.rows||[];
+    $('docNo').textContent=sv.docNo||newDocNo();
+    $('f-name').value=sv.name||'';$('f-addr').value=sv.addr||'';
+    $('f-py').value=sv.py||'';$('f-m2').value=sv.m2||'';
+    $('f-client').value=sv.client||'';$('f-tel').value=sv.tel||'';
+    $('f-date').value=sv.date||today();$('f-valid').value=sv.valid||'견적일로부터 30일';
+    $('f-notes').value=(sv.notes!==undefined&&sv.notes!=='')?sv.notes:P.notes; /* 비어있으면 모드 기본 문구 복원 */
+    $('r-ur').value=sv.ur??2;$('r-ar').value=sv.ar??3;$('r-pr').value=sv.pr??10;
+    $('r-adj').value=sv.adj||0;$('r-vat').value=sv.vat||'10';
+    renderRows();
+    if(sv.type){$('f-type').value=sv.type;}
+  }else{
+    freshDoc();
+  }
+  upd();
+}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function freshDoc(){
+  ROWS=[];
+  $('docNo').textContent=newDocNo();
+  ['f-name','f-addr','f-py','f-m2','f-client','f-tel'].forEach(id=>$(id).value='');
+  $('f-date').value=today();$('f-valid').value='견적일로부터 30일';
+  $('f-notes').value=PRESETS[MODE].notes;
+  $('r-ur').value=2;$('r-ar').value=3;$('r-pr').value=10;$('r-adj').value=0;$('r-vat').value='10';
+  renderRows();
+}
+function resetDoc(){
+  if(!confirm('현재 '+(MODE==='res'?'주거':'상업')+' 견적서를 비우고 새로 시작할까요?'))return;
+  freshDoc();upd();
+}
+
+/* ── 통합견적OS 연동 (반자동 가져오기) ──
+   v17이 저장한 자동저장(ecorean_pro2)의 계산 결과를 공정 대분류 단위로 가져와
+   행을 자동 구성 — 같은 브라우저(같은 오리진)에서 v17을 쓴 적이 있으면 동작 */
+function importFromOS(){
+  let sv=null;
+  try{sv=JSON.parse(localStorage.getItem('ecorean_pro2')||'null');}catch(e){}
+  if(!sv){alert('통합견적 OS 데이터가 없습니다.\n같은 브라우저에서 통합견적 OS(v17)를 먼저 사용하면 공사명·면적을 가져올 수 있습니다.');return;}
+  if(sv.name)$('f-name').value=sv.name;
+  if(sv.addr)$('f-addr').value=sv.addr;
+  if(sv.tel)$('f-tel').value=sv.tel;
+  if(sv.area){$('f-m2').value=sv.area;areaFromM2();}
+  upd();
+  alert('✅ 통합견적 OS에서 공사명·주소·면적을 가져왔습니다.\n(공정별 금액은 견적OS 결과를 보며 각 행에 입력하세요 — 상세 산출은 v17이 정확합니다)');
+}
+
+/* ── 부팅 ── */
+$('f-date').value=today();
+setMode('res');
+</script>
+</body>
+</html>
