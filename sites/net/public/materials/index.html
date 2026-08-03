@@ -261,7 +261,7 @@ footer a { color:var(--gold); text-decoration:none; }
     var m=state.rows[Number(c.dataset.idx)];
     if(!m) return;
     document.getElementById('modalMedia').innerHTML=m.img_url
-      ?'<img class="modal-img" src="'+esc(m.img_url.replace('/thumb/','/'))+'" onerror="this.src=\''+esc(m.img_url)+'\'" alt="'+esc(m.name)+'">'
+      ?'<img class="modal-img" src="'+esc(m.img_url.replace('/thumb/','/original/'))+'" onerror="this.src=\''+esc(m.img_url)+'\'" alt="'+esc(m.name)+'">'
       :'<div class="modal-img-ph">'+esc((m.name||'·').charAt(0))+'</div>';
     document.getElementById('modalTag').textContent=TAG[m.origin_table]||'자재';
     document.getElementById('modalName').textContent=m.name||'—';
