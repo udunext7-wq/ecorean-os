@@ -1,0 +1,5 @@
+-- 자재 종류(대분류) 매핑 + 종류별 필터 (2026-08-03, 대표 지시) — DB 적용 완료
+-- 거래처식 세부 분류(수입벽·대동바닥·REGNO 등 20여 종)를 고객용 9개 대분류로 정규화.
+-- 대분류: 포세린·수입타일 / 바닥타일 / 벽타일 / 위생도기 / 바닥재·마루 / 벽지·도배 / 주방·욕실 / 창호 / 부자재·기타
+-- public_materials_list 에 p_kind 필터·kind 컬럼 추가(하위호환), public_materials_kinds() 신설.
+-- 상세 SQL: 동명 apply_migration 이력 참조 (public_material_kind / public_materials_list / public_materials_kinds)

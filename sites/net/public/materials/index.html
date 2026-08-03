@@ -155,10 +155,7 @@ footer a { color:var(--gold); text-decoration:none; }
   <div class="controls-inner">
     <input class="search" id="matSearch" type="search" placeholder="자재명·브랜드·종류 검색 — 예: 포세린, 강마루, 벽지">
     <div class="chips" id="matChips">
-      <button class="chip active" data-origin="" type="button">전체</button>
-      <button class="chip" data-origin="tile_products" type="button">타일</button>
-      <button class="chip" data-origin="materials" type="button">공정 자재</button>
-      <button class="chip" data-origin="brands" type="button">브랜드 자재</button>
+      <button class="chip active" data-kind="" type="button">전체</button>
     </div>
   </div>
 </div>
@@ -196,8 +193,9 @@ footer a { color:var(--gold); text-decoration:none; }
 (function(){
   var API='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/rpc/public_materials_list';
   var ANON='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
+  var KINDS_API='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/rpc/public_materials_kinds';
   var PAGE=36;
-  var state={q:'',origin:'',offset:0,total:0,busy:false,rows:[]};
+  var state={q:'',kind:'',offset:0,total:0,busy:false,rows:[]};
   var TAG={tile_products:'타일',materials:'공정 자재',brands:'브랜드'};
   var grid=document.getElementById('matGrid');
   var totalEl=document.getElementById('matTotal');
@@ -210,7 +208,7 @@ footer a { color:var(--gold); text-decoration:none; }
       :'<div class="thumb-ph">'+esc((m.name||'·').charAt(0))+'</div>';
     var meta=[m.brand,m.category].filter(Boolean).join(' · ');
     return '<div class="card" data-idx="'+idx+'">'+thumb
-      +'<div class="info"><span class="tag">'+(TAG[m.origin_table]||'자재')+'</span>'
+      +'<div class="info"><span class="tag">'+esc(m.kind||TAG[m.origin_table]||'자재')+'</span>'
       +'<div class="name">'+esc(m.name)+'</div>'
       +'<div class="meta">'+esc(meta||'—')+'</div></div></div>';
   }
@@ -221,7 +219,7 @@ footer a { color:var(--gold); text-decoration:none; }
     statusEl.textContent='불러오는 중…';
     fetch(API,{method:'POST',
       headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},
-      body:JSON.stringify({p_q:state.q||null,p_origin:state.origin||null,p_limit:PAGE,p_offset:state.offset})})
+      body:JSON.stringify({p_q:state.q||null,p_kind:state.kind||null,p_limit:PAGE,p_offset:state.offset})})
       .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
       .then(function(rows){
         state.total=rows.length?Number(rows[0].total):0;
@@ -248,10 +246,23 @@ footer a { color:var(--gold); text-decoration:none; }
     if(!b) return;
     document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('active');});
     b.classList.add('active');
-    state.origin=b.dataset.origin||'';
+    state.kind=b.dataset.kind||'';
     load(true);
   });
   moreBtn.addEventListener('click',function(){load(false);});
+
+  /* 종류별 분류 칩 — DB에서 종류·수량 로드 */
+  fetch(KINDS_API,{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:'{}'})
+    .then(function(r){return r.json();})
+    .then(function(kinds){
+      var box=document.getElementById('matChips');
+      kinds.forEach(function(k){
+        var b=document.createElement('button');
+        b.type='button'; b.className='chip'; b.dataset.kind=k.kind;
+        b.innerHTML=esc(k.kind)+' <span style="opacity:.6">'+Number(k.cnt).toLocaleString()+'</span>';
+        box.appendChild(b);
+      });
+    }).catch(function(){});
 
   /* 상세 모달 */
   var modal=document.getElementById('modal');
@@ -263,7 +274,7 @@ footer a { color:var(--gold); text-decoration:none; }
     document.getElementById('modalMedia').innerHTML=m.img_url
       ?'<img class="modal-img" src="'+esc(m.img_url.replace('/thumb/','/original/'))+'" onerror="this.src=\''+esc(m.img_url)+'\'" alt="'+esc(m.name)+'">'
       :'<div class="modal-img-ph">'+esc((m.name||'·').charAt(0))+'</div>';
-    document.getElementById('modalTag').textContent=TAG[m.origin_table]||'자재';
+    document.getElementById('modalTag').textContent=m.kind||TAG[m.origin_table]||'자재';
     document.getElementById('modalName').textContent=m.name||'—';
     document.getElementById('modalBrand').textContent=m.brand||'—';
     document.getElementById('modalCat').textContent=m.category||'—';
