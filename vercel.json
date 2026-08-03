@@ -8,6 +8,8 @@
   "routes": [
     { "src": "/", "dest": "/sites/net/intro.html" },
     { "src": "/home/?", "dest": "/sites/net/home.html" },
+    { "src": "/materials", "status": 308, "headers": { "Location": "/materials/" } },
+    { "src": "/materials/?", "dest": "/sites/net/materials/index.html" },
     {
       "src": "/(minicad|estimate|estform|pms|work|daily|vector|editor|biz)",
       "status": 308,

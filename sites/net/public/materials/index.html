@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>자재 라이브러리 — ECOREAN | 에코리안</title>
+<meta name="description" content="ECOREAN이 실제 시공에 사용하는 자재 데이터베이스 — 대형 포세린 타일부터 마루·벽지·마감 자재까지 2,600여 종을 열람하세요.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%231A1814'/><text x='50' y='72' font-size='62' text-anchor='middle' fill='%23B8965A' font-family='Georgia,serif'>E</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Noto+Serif+KR:wght@300;400&family=Montserrat:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+:root { --cream:#F8F4EE; --dark:#1A1814; --gold:#B8965A; --gold-light:#D4B483; --warm-gray:#8C8479; --mid:#3D3830; }
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--dark); color:var(--cream); font-family:'Montserrat',sans-serif; font-weight:300; min-height:100vh; }
+
+/* 헤더 */
+header {
+  position:sticky; top:0; z-index:100;
+  background:rgba(26,24,20,.96); backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(184,150,90,.18);
+  padding:1.1rem 2.5rem;
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+}
+.logo { font-family:'Cormorant Garamond','Noto Serif KR',serif; font-size:1.4rem; letter-spacing:.25em; color:var(--cream); text-decoration:none; white-space:nowrap; }
+.logo small { display:block; font-family:'Montserrat',sans-serif; font-size:.52rem; letter-spacing:.3em; color:var(--gold); margin-top:.15rem; text-transform:uppercase; }
+.head-actions { display:flex; gap:.7rem; align-items:center; }
+.btn-line {
+  font-size:.62rem; letter-spacing:.16em; text-transform:uppercase; text-decoration:none;
+  border:1px solid rgba(184,150,90,.5); color:var(--gold-light); padding:.6rem 1.2rem;
+  transition:all .3s; white-space:nowrap;
+}
+.btn-line:hover { background:var(--gold); color:var(--dark); border-color:var(--gold); }
+.btn-fill { background:var(--gold); color:var(--dark); border-color:var(--gold); }
+.btn-fill:hover { background:var(--gold-light); }
+
+/* 히어로 */
+.hero { padding:3.5rem 2.5rem 2rem; max-width:1500px; margin:0 auto; display:flex; justify-content:space-between; align-items:flex-end; gap:2rem; flex-wrap:wrap; }
+.eyebrow { font-size:.6rem; letter-spacing:.3em; text-transform:uppercase; color:var(--gold); margin-bottom:1rem; display:flex; align-items:center; gap:1rem; }
+.eyebrow::before { content:''; width:30px; height:1px; background:var(--gold); }
+h1 { font-family:'Cormorant Garamond','Noto Serif KR',serif; font-size:clamp(34px,4.5vw,56px); font-weight:300; line-height:1.18; }
+h1 em { font-style:italic; color:var(--gold-light); }
+.hero p { font-size:.82rem; line-height:1.9; color:rgba(248,244,238,.5); margin-top:1.2rem; max-width:520px; }
+.count { font-family:'Cormorant Garamond','Noto Serif KR',serif; font-size:3.4rem; color:var(--gold); line-height:1; text-align:right; }
+.count small { display:block; font-family:'Montserrat',sans-serif; font-size:.56rem; letter-spacing:.22em; color:var(--warm-gray); text-transform:uppercase; margin-top:.5rem; }
+
+/* 컨트롤 */
+.controls {
+  position:sticky; top:64px; z-index:90;
+  background:rgba(26,24,20,.96); backdrop-filter:blur(12px);
+  padding:1rem 2.5rem; border-bottom:1px solid rgba(184,150,90,.12);
+}
+.controls-inner { max-width:1500px; margin:0 auto; display:flex; gap:1rem; flex-wrap:wrap; align-items:center; }
+.search {
+  flex:1; min-width:220px;
+  background:rgba(255,255,255,.04); border:1px solid rgba(184,150,90,.25);
+  color:var(--cream); padding:.85rem 1.2rem; font-family:'Montserrat',sans-serif; font-size:.8rem; outline:none;
+  transition:border-color .3s;
+}
+.search::placeholder { color:rgba(248,244,238,.3); }
+.search:focus { border-color:var(--gold); }
+.chips { display:flex; gap:.5rem; flex-wrap:wrap; }
+.chip {
+  background:transparent; border:1px solid rgba(184,150,90,.3); color:var(--warm-gray);
+  font-family:'Montserrat',sans-serif; font-size:.62rem; letter-spacing:.12em; text-transform:uppercase;
+  padding:.55rem 1rem; cursor:pointer; transition:all .25s;
+}
+.chip.active, .chip:hover { background:var(--gold); color:var(--dark); border-color:var(--gold); }
+
+/* 그리드 */
+main { max-width:1500px; margin:0 auto; padding:2rem 2.5rem 4rem; }
+.grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; }
+.card {
+  background:rgba(255,255,255,.03); border:1px solid rgba(184,150,90,.1);
+  overflow:hidden; cursor:pointer; transition:border-color .3s, transform .3s;
+}
+.card:hover { border-color:rgba(184,150,90,.5); transform:translateY(-3px); }
+.thumb { width:100%; aspect-ratio:1; object-fit:cover; display:block; background:#232019; }
+.thumb-ph {
+  width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  font-family:'Cormorant Garamond','Noto Serif KR',serif; font-size:1.8rem;
+  color:rgba(184,150,90,.55); background:linear-gradient(135deg,#26221A,#1C1913);
+}
+.info { padding:.7rem .8rem .9rem; }
+.tag {
+  display:inline-block; font-size:.5rem; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--gold); border:1px solid rgba(184,150,90,.3); padding:.15rem .45rem; margin-bottom:.5rem;
+}
+.name { font-size:.7rem; color:var(--cream); line-height:1.45; min-height:2.05em; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.meta { font-size:.58rem; color:var(--warm-gray); margin-top:.35rem; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.foot { display:flex; justify-content:center; align-items:center; gap:1.6rem; margin-top:2.6rem; flex-wrap:wrap; }
+.status { font-size:.62rem; color:var(--warm-gray); letter-spacing:.12em; }
+.more {
+  background:transparent; border:1px solid var(--gold); color:var(--gold);
+  font-family:'Montserrat',sans-serif; font-size:.68rem; letter-spacing:.18em; text-transform:uppercase;
+  padding:.9rem 2.4rem; cursor:pointer; transition:all .3s;
+}
+.more:hover { background:var(--gold); color:var(--dark); }
+.more[disabled] { opacity:.3; cursor:default; }
+
+/* 상세 모달 */
+#modal { display:none; position:fixed; inset:0; z-index:500; background:rgba(10,9,7,.82); backdrop-filter:blur(4px); }
+#modal.open { display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+.modal-box {
+  background:#221F19; border:1px solid rgba(184,150,90,.3); max-width:860px; width:100%;
+  display:grid; grid-template-columns:1fr 1fr; overflow:hidden; max-height:90vh;
+}
+.modal-img { width:100%; height:100%; min-height:320px; object-fit:cover; background:#191611; }
+.modal-img-ph { display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond','Noto Serif KR',serif; font-size:4rem; color:rgba(184,150,90,.4); min-height:320px; background:linear-gradient(135deg,#26221A,#17140F); }
+.modal-body { padding:2.2rem; display:flex; flex-direction:column; gap:1rem; overflow-y:auto; }
+.modal-body h2 { font-family:'Cormorant Garamond','Noto Serif KR',serif; font-size:1.5rem; font-weight:400; line-height:1.3; }
+.modal-row { font-size:.75rem; color:rgba(248,244,238,.65); line-height:1.8; border-top:1px solid rgba(184,150,90,.15); padding-top:.8rem; }
+.modal-row b { color:var(--gold-light); font-weight:500; font-size:.62rem; letter-spacing:.15em; text-transform:uppercase; display:block; margin-bottom:.2rem; }
+.modal-cta { margin-top:auto; display:flex; gap:.7rem; flex-wrap:wrap; }
+.modal-close { position:absolute; top:1.2rem; right:1.4rem; background:none; border:1px solid rgba(184,150,90,.4); color:var(--gold-light); width:38px; height:38px; border-radius:50%; font-size:1rem; cursor:pointer; }
+.modal-close:hover { background:var(--gold); color:var(--dark); }
+
+footer { border-top:1px solid rgba(184,150,90,.12); padding:2rem 2.5rem; text-align:center; font-size:.62rem; letter-spacing:.1em; color:rgba(248,244,238,.3); }
+footer a { color:var(--gold); text-decoration:none; }
+
+@media (max-width:1200px) { .grid { grid-template-columns:repeat(4,1fr); } }
+@media (max-width:760px) {
+  header { padding:1rem 1.2rem; }
+  .hero { padding:2.2rem 1.2rem 1.2rem; }
+  .controls { padding: .8rem 1.2rem; top:58px; }
+  main { padding:1.5rem 1.2rem 3rem; }
+  .grid { grid-template-columns:repeat(2,1fr); }
+  .count { text-align:left; font-size:2.6rem; }
+  .modal-box { grid-template-columns:1fr; overflow-y:auto; }
+  .head-actions .hide-m { display:none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/home">ECOREAN<small>Material Library</small></a>
+  <div class="head-actions">
+    <a class="btn-line hide-m" href="/home">← 홈으로</a>
+    <a class="btn-line btn-fill" href="/home#contact">무료 상담</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <div class="eyebrow">Material Library</div>
+    <h1>우리가 다루는<br><em>자재들</em></h1>
+    <p>ECOREAN이 실제 시공에 사용하는 자재 데이터베이스를 그대로 공개합니다.
+      대형 포세린 타일부터 마루·벽지·마감 자재까지 — 검색하고, 눌러서 자세히 확인하세요.
+      자재 단가와 시공 견적은 무료 상담으로 안내해 드립니다.</p>
+  </div>
+  <div class="count"><span id="matTotal">—</span><small>Materials in Library</small></div>
+</section>
+
+<div class="controls">
+  <div class="controls-inner">
+    <input class="search" id="matSearch" type="search" placeholder="자재명·브랜드·종류 검색 — 예: 포세린, 강마루, 벽지">
+    <div class="chips" id="matChips">
+      <button class="chip active" data-origin="" type="button">전체</button>
+      <button class="chip" data-origin="tile_products" type="button">타일</button>
+      <button class="chip" data-origin="materials" type="button">공정 자재</button>
+      <button class="chip" data-origin="brands" type="button">브랜드 자재</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="grid" id="matGrid"></div>
+  <div class="foot">
+    <span class="status" id="matStatus">불러오는 중…</span>
+    <button class="more" id="matMore" type="button">더 보기 +</button>
+  </div>
+</main>
+
+<div id="modal" role="dialog" aria-modal="true">
+  <div class="modal-box" style="position:relative">
+    <div id="modalMedia"></div>
+    <div class="modal-body">
+      <span class="tag" id="modalTag">자재</span>
+      <h2 id="modalName">—</h2>
+      <div class="modal-row"><b>브랜드</b><span id="modalBrand">—</span></div>
+      <div class="modal-row"><b>분류</b><span id="modalCat">—</span></div>
+      <div class="modal-row"><b>규격 · 정보</b><span id="modalSpec">—</span></div>
+      <div class="modal-cta">
+        <a class="btn-line btn-fill" id="modalAsk" href="/home#contact">이 자재로 상담하기 →</a>
+      </div>
+    </div>
+    <button class="modal-close" id="modalClose" aria-label="닫기">✕</button>
+  </div>
+</div>
+
+<footer>
+  단가·재고는 실시간 변동됩니다 — 정확한 견적은 <a href="/home#contact">무료 상담</a>으로 문의해 주세요 · © ECOREAN
+</footer>
+
+<script>
+(function(){
+  var API='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/rpc/public_materials_list';
+  var ANON='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
+  var PAGE=36;
+  var state={q:'',origin:'',offset:0,total:0,busy:false,rows:[]};
+  var TAG={tile_products:'타일',materials:'공정 자재',brands:'브랜드'};
+  var grid=document.getElementById('matGrid');
+  var totalEl=document.getElementById('matTotal');
+  var statusEl=document.getElementById('matStatus');
+  var moreBtn=document.getElementById('matMore');
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';';});}
+  function card(m,idx){
+    var thumb=m.img_url
+      ?'<img class="thumb" loading="lazy" src="'+esc(m.img_url)+'" alt="'+esc(m.name)+'" onerror="this.outerHTML=\'<div class=&quot;thumb-ph&quot;>'+esc((m.name||'·').charAt(0))+'</div>\'">'
+      :'<div class="thumb-ph">'+esc((m.name||'·').charAt(0))+'</div>';
+    var meta=[m.brand,m.category].filter(Boolean).join(' · ');
+    return '<div class="card" data-idx="'+idx+'">'+thumb
+      +'<div class="info"><span class="tag">'+(TAG[m.origin_table]||'자재')+'</span>'
+      +'<div class="name">'+esc(m.name)+'</div>'
+      +'<div class="meta">'+esc(meta||'—')+'</div></div></div>';
+  }
+  function load(reset){
+    if(state.busy) return;
+    state.busy=true;
+    if(reset){state.offset=0;state.rows=[];grid.innerHTML='';}
+    statusEl.textContent='불러오는 중…';
+    fetch(API,{method:'POST',
+      headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({p_q:state.q||null,p_origin:state.origin||null,p_limit:PAGE,p_offset:state.offset})})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(rows){
+        state.total=rows.length?Number(rows[0].total):0;
+        totalEl.textContent=state.total.toLocaleString('ko-KR');
+        var base=state.rows.length;
+        grid.insertAdjacentHTML('beforeend',rows.map(function(m,i){return card(m,base+i);}).join(''));
+        state.rows=state.rows.concat(rows);
+        state.offset+=rows.length;
+        var done=state.offset>=state.total;
+        statusEl.textContent=state.total===0?'검색 결과가 없습니다':state.offset.toLocaleString()+' / '+state.total.toLocaleString()+'종 표시됨';
+        moreBtn.disabled=done;
+        moreBtn.textContent=done?'전체 표시 완료':'더 보기 +';
+      })
+      .catch(function(){statusEl.textContent='자재 목록을 불러오지 못했습니다 — 새로고침해 주세요';})
+      .finally(function(){state.busy=false;});
+  }
+  var deb;
+  document.getElementById('matSearch').addEventListener('input',function(e){
+    clearTimeout(deb);
+    deb=setTimeout(function(){state.q=e.target.value.trim();load(true);},350);
+  });
+  document.getElementById('matChips').addEventListener('click',function(e){
+    var b=e.target.closest('.chip');
+    if(!b) return;
+    document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('active');});
+    b.classList.add('active');
+    state.origin=b.dataset.origin||'';
+    load(true);
+  });
+  moreBtn.addEventListener('click',function(){load(false);});
+
+  /* 상세 모달 */
+  var modal=document.getElementById('modal');
+  grid.addEventListener('click',function(e){
+    var c=e.target.closest('.card');
+    if(!c) return;
+    var m=state.rows[Number(c.dataset.idx)];
+    if(!m) return;
+    document.getElementById('modalMedia').innerHTML=m.img_url
+      ?'<img class="modal-img" src="'+esc(m.img_url.replace('/thumb/','/'))+'" onerror="this.src=\''+esc(m.img_url)+'\'" alt="'+esc(m.name)+'">'
+      :'<div class="modal-img-ph">'+esc((m.name||'·').charAt(0))+'</div>';
+    document.getElementById('modalTag').textContent=TAG[m.origin_table]||'자재';
+    document.getElementById('modalName').textContent=m.name||'—';
+    document.getElementById('modalBrand').textContent=m.brand||'—';
+    document.getElementById('modalCat').textContent=m.category||'—';
+    document.getElementById('modalSpec').textContent=m.spec||'—';
+    modal.classList.add('open');
+    document.body.style.overflow='hidden';
+  });
+  function closeModal(){modal.classList.remove('open');document.body.style.overflow='';}
+  document.getElementById('modalClose').addEventListener('click',closeModal);
+  modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
+
+  load(true);
+})();
+</script>
+</body>
+</html>

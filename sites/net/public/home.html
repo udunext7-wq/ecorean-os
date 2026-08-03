@@ -784,7 +784,7 @@ footer {
     <li><a href="#about">회사소개</a></li>
     <li><a href="#services">서비스</a></li>
     <li><a href="#portfolio">포트폴리오</a></li>
-    <li><a href="#materials">자재</a></li>
+    <li><a href="/materials/">자재</a></li>
     <li><a href="#contact">문의</a></li>
   </ul>
   <div style="display:flex; gap:.8rem; align-items:center;">
@@ -796,7 +796,7 @@ footer {
         <a href="#about">회사소개</a>
         <a href="#services">서비스</a>
         <a href="#portfolio">포트폴리오</a>
-        <a href="#materials">자재</a>
+        <a href="/materials/">자재</a>
         <a href="#contact">상담 신청</a>
         <a href="tel:1588-9291">대표번호 1588-9291</a>
       </div>
@@ -1078,83 +1078,40 @@ footer {
     </div>
     <div class="mat-count reveal"><span id="matTotal">—</span><small>Materials in Library</small></div>
   </div>
-  <div class="mat-controls reveal">
-    <input class="mat-search" id="matSearch" type="search" placeholder="자재명·브랜드·종류 검색 — 예: 포세린, 강마루, 벽지">
-    <div class="mat-chips" id="matChips">
-      <button class="mat-chip active" data-origin="" type="button">전체</button>
-      <button class="mat-chip" data-origin="tile_products" type="button">타일</button>
-      <button class="mat-chip" data-origin="materials" type="button">공정 자재</button>
-      <button class="mat-chip" data-origin="brands" type="button">브랜드 자재</button>
-    </div>
-  </div>
   <div class="mat-grid" id="matGrid"></div>
   <div class="mat-foot">
-    <span class="mat-status" id="matStatus">불러오는 중…</span>
-    <button class="mat-more" id="matMore" type="button">더 보기 +</button>
+    <a class="mat-more" href="/materials/" style="text-decoration:none">자재 라이브러리 전체 열람 →</a>
   </div>
 </section>
 
 <script>
-/* 자재 라이브러리 — 공개 전용 DB 함수(public_materials_list) 실시간 조회. 단가는 서버에서부터 미노출 */
+/* 자재 라이브러리 미리보기 (6종) — 전체 열람은 /materials/ 전용 페이지로 라우팅 */
 (function(){
   var grid=document.getElementById('matGrid');
   if(!grid) return;
   var API='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/rpc/public_materials_list';
   var ANON='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
-  var PAGE=18;
-  var state={q:'',origin:'',offset:0,total:0,busy:false};
   var TAG={tile_products:'타일',materials:'공정 자재',brands:'브랜드'};
-  var totalEl=document.getElementById('matTotal');
-  var statusEl=document.getElementById('matStatus');
-  var moreBtn=document.getElementById('matMore');
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';';});}
-  function card(m){
-    var thumb=m.img_url
-      ?'<img class="mat-thumb" loading="lazy" src="'+esc(m.img_url)+'" alt="'+esc(m.name)+'" onerror="this.outerHTML=\'<div class=&quot;mat-thumb-ph&quot;>'+esc((m.name||'·').charAt(0))+'</div>\'">'
-      :'<div class="mat-thumb-ph">'+esc((m.name||'·').charAt(0))+'</div>';
-    var meta=[m.brand,m.category||m.spec].filter(Boolean).join(' · ');
-    return '<div class="mat-card">'+thumb
-      +'<div class="mat-info"><span class="mat-tag">'+(TAG[m.origin_table]||'자재')+'</span>'
-      +'<div class="mat-name">'+esc(m.name)+'</div>'
-      +'<div class="mat-meta" title="'+esc(m.spec||'')+'">'+esc(meta||'—')+'</div></div></div>';
-  }
-  function load(reset){
-    if(state.busy) return;
-    state.busy=true;
-    if(reset){state.offset=0;grid.innerHTML='';}
-    statusEl.textContent='불러오는 중…';
-    fetch(API,{method:'POST',
-      headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},
-      body:JSON.stringify({p_q:state.q||null,p_origin:state.origin||null,p_limit:PAGE,p_offset:state.offset})})
-      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-      .then(function(rows){
-        state.total=rows.length?Number(rows[0].total):0;
-        totalEl.textContent=state.total.toLocaleString('ko-KR');
-        grid.insertAdjacentHTML('beforeend',rows.map(card).join(''));
-        state.offset+=rows.length;
-        var done=state.offset>=state.total;
-        statusEl.textContent=state.total===0?'검색 결과가 없습니다':state.offset.toLocaleString()+' / '+state.total.toLocaleString()+'종 표시됨';
-        moreBtn.disabled=done;
-        moreBtn.textContent=done?'전체 표시 완료':'더 보기 +';
-      })
-      .catch(function(){statusEl.textContent='자재 목록을 불러오지 못했습니다 — 새로고침해 주세요';})
-      .finally(function(){state.busy=false;});
-  }
-  var deb;
-  document.getElementById('matSearch').addEventListener('input',function(e){
-    clearTimeout(deb);
-    deb=setTimeout(function(){state.q=e.target.value.trim();load(true);},350);
-  });
-  document.getElementById('matChips').addEventListener('click',function(e){
-    var b=e.target.closest('.mat-chip');
-    if(!b) return;
-    document.querySelectorAll('.mat-chip').forEach(function(c){c.classList.remove('active');});
-    b.classList.add('active');
-    state.origin=b.dataset.origin||'';
-    load(true);
-  });
-  moreBtn.addEventListener('click',function(){load(false);});
-  load(true);
+  fetch(API,{method:'POST',
+    headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},
+    body:JSON.stringify({p_limit:6,p_offset:0})})
+    .then(function(r){return r.json();})
+    .then(function(rows){
+      var t=document.getElementById('matTotal');
+      if(t&&rows.length) t.textContent=Number(rows[0].total).toLocaleString('ko-KR');
+      grid.innerHTML=rows.map(function(m){
+        var thumb=m.img_url
+          ?'<img class="mat-thumb" loading="lazy" src="'+esc(m.img_url)+'" alt="'+esc(m.name)+'">'
+          :'<div class="mat-thumb-ph">'+esc((m.name||'·').charAt(0))+'</div>';
+        var meta=[m.brand,m.category||m.spec].filter(Boolean).join(' · ');
+        return '<a class="mat-card" href="/materials/" style="text-decoration:none;display:block">'+thumb
+          +'<div class="mat-info"><span class="mat-tag">'+(TAG[m.origin_table]||'자재')+'</span>'
+          +'<div class="mat-name">'+esc(m.name)+'</div>'
+          +'<div class="mat-meta">'+esc(meta||'—')+'</div></div></a>';
+      }).join('');
+    })
+    .catch(function(){});
 })();
 </script>
 
