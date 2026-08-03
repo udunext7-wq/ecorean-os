@@ -76,10 +76,20 @@ main { max-width:1500px; margin:0 auto; padding:2rem 2.5rem 4rem; }
 .card:hover { border-color:rgba(184,150,90,.5); transform:translateY(-3px); }
 .thumb { width:100%; aspect-ratio:1; object-fit:cover; display:block; background:#232019; }
 .thumb-ph {
-  width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center;
-  font-family:'Cormorant Garamond','Noto Serif KR',serif; font-size:1.8rem;
-  color:rgba(184,150,90,.55); background:linear-gradient(135deg,#26221A,#1C1913);
+  width:100%; aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.35rem;
+  padding:.6rem; text-align:center;
+  background:linear-gradient(135deg,#26221A,#1C1913);
+  border-bottom:1px solid rgba(184,150,90,.12);
 }
+.thumb-ph .ph-b {
+  font-family:'Cormorant Garamond','Noto Serif KR',serif; font-size:1.05rem;
+  color:rgba(212,180,131,.9); line-height:1.25;
+  overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+}
+.thumb-ph .ph-t {
+  font-size:.52rem; letter-spacing:.2em; text-transform:uppercase; color:rgba(140,132,121,.8);
+}
+.thumb-ph .ph-line { width:22px; height:1px; background:rgba(184,150,90,.4); }
 .info { padding:.7rem .8rem .9rem; }
 .tag {
   display:inline-block; font-size:.5rem; letter-spacing:.16em; text-transform:uppercase;
@@ -202,10 +212,14 @@ footer a { color:var(--gold); text-decoration:none; }
   var statusEl=document.getElementById('matStatus');
   var moreBtn=document.getElementById('matMore');
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';';});}
+  function ph(m){
+    return '<div class="thumb-ph"><span class="ph-b">'+esc(m.brand||m.name||'·')+'</span>'
+      +'<span class="ph-line"></span><span class="ph-t">'+esc(m.kind||'자재')+'</span></div>';
+  }
   function card(m,idx){
     var thumb=m.img_url
-      ?'<img class="thumb" loading="lazy" src="'+esc(m.img_url)+'" alt="'+esc(m.name)+'" onerror="this.outerHTML=\'<div class=&quot;thumb-ph&quot;>'+esc((m.name||'·').charAt(0))+'</div>\'">'
-      :'<div class="thumb-ph">'+esc((m.name||'·').charAt(0))+'</div>';
+      ?'<img class="thumb" loading="lazy" src="'+esc(m.img_url)+'" alt="'+esc(m.name)+'">'
+      :ph(m);
     var meta=[m.brand,m.category].filter(Boolean).join(' · ');
     return '<div class="card" data-idx="'+idx+'">'+thumb
       +'<div class="info"><span class="tag">'+esc(m.kind||TAG[m.origin_table]||'자재')+'</span>'
@@ -273,7 +287,9 @@ footer a { color:var(--gold); text-decoration:none; }
     if(!m) return;
     document.getElementById('modalMedia').innerHTML=m.img_url
       ?'<img class="modal-img" src="'+esc(m.img_url.replace('/thumb/','/original/'))+'" onerror="this.src=\''+esc(m.img_url)+'\'" alt="'+esc(m.name)+'">'
-      :'<div class="modal-img-ph">'+esc((m.name||'·').charAt(0))+'</div>';
+      :'<div class="modal-img-ph" style="flex-direction:column;gap:.6rem;font-size:2rem;padding:1rem;text-align:center">'
+        +esc(m.brand||m.name||'·')
+        +'<span style="font-size:.8rem;letter-spacing:.2em;color:rgba(140,132,121,.9)">'+esc(m.kind||'자재')+'</span></div>';
     document.getElementById('modalTag').textContent=m.kind||TAG[m.origin_table]||'자재';
     document.getElementById('modalName').textContent=m.name||'—';
     document.getElementById('modalBrand').textContent=m.brand||'—';
