@@ -524,42 +524,70 @@ section { padding: 9rem 4rem; scroll-margin-top: 4.5rem; }
 }
 .port-location { font-size: .7rem; color: rgba(248,244,238,.55); margin-top: .3rem; }
 
-/* ── TESTIMONIALS ── */
-#testimonials { background: var(--dark); overflow: hidden; }
-.test-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 6rem; align-items: start; }
-.test-left .sec-title { color: var(--cream); margin-bottom: 2rem; }
-.test-left p { font-size: .85rem; line-height: 1.9; color: rgba(248,244,238,.45); }
-.test-rating {
-  display: flex; align-items: center; gap: .4rem; margin-top: 2rem;
-  color: var(--gold); font-size: .9rem;
-}
-.test-rating-text { font-size: .7rem; color: var(--warm-gray); margin-left: .5rem; }
-
-.test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5px; }
-.test-card {
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(184,150,90,.08);
-  padding: 2.5rem;
-  transition: background .3s, border-color .3s;
-}
-.test-card:hover { background: rgba(184,150,90,.06); border-color: rgba(184,150,90,.2); }
-.test-quote {
+/* ── MATERIALS LIBRARY (자재 라이브러리 — 공개 열람, 단가 미노출) ── */
+#materials { background: var(--dark); }
+.mat-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; margin-bottom: 2.5rem; flex-wrap: wrap; }
+.mat-intro { font-size: .85rem; line-height: 1.9; color: rgba(248,244,238,.5); margin-top: 1.5rem; max-width: 480px; }
+.mat-count {
   font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
-  font-size: 3rem; color: var(--gold); line-height: 1; margin-bottom: .5rem; opacity: .4;
+  font-size: 3rem; color: var(--gold); line-height: 1; text-align: right;
 }
-.test-text {
-  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
-  font-size: 1rem; font-style: italic; font-weight: 300;
-  color: rgba(248,244,238,.7); line-height: 1.8; margin-bottom: 2rem;
+.mat-count small {
+  display: block; font-family: 'Montserrat', sans-serif; font-size: .58rem;
+  letter-spacing: .22em; color: var(--warm-gray); text-transform: uppercase; margin-top: .5rem;
 }
-.test-author { display: flex; align-items: center; gap: 1rem; }
-.test-avatar {
-  width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
-  border: 1px solid rgba(184,150,90,.3);
+.mat-controls { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 2rem; }
+.mat-search {
+  flex: 1; min-width: 220px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(184,150,90,.25);
+  color: var(--cream); padding: .85rem 1.2rem;
+  font-family: 'Montserrat', sans-serif; font-size: .8rem; outline: none;
+  transition: border-color .3s;
 }
-.test-name { font-size: .8rem; font-weight: 500; color: var(--cream); }
-.test-loc { font-size: .62rem; letter-spacing: .1em; color: var(--warm-gray); margin-top: .15rem; }
-.test-stars { font-size: .6rem; color: var(--gold); margin-top: .15rem; }
+.mat-search::placeholder { color: rgba(248,244,238,.3); }
+.mat-search:focus { border-color: var(--gold); }
+.mat-chips { display: flex; gap: .5rem; flex-wrap: wrap; }
+.mat-chip {
+  background: transparent; border: 1px solid rgba(184,150,90,.3); color: var(--warm-gray);
+  font-family: 'Montserrat', sans-serif; font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+  padding: .55rem 1rem; cursor: pointer; transition: all .25s;
+}
+.mat-chip.active, .mat-chip:hover { background: var(--gold); color: var(--dark); border-color: var(--gold); }
+.mat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.mat-card {
+  background: rgba(255,255,255,.03); border: 1px solid rgba(184,150,90,.1);
+  overflow: hidden; transition: border-color .3s, transform .3s;
+}
+.mat-card:hover { border-color: rgba(184,150,90,.5); transform: translateY(-3px); }
+.mat-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #232019; }
+.mat-thumb-ph {
+  width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif; font-size: 1.8rem;
+  color: rgba(184,150,90,.55); background: linear-gradient(135deg, #26221A, #1C1913);
+}
+.mat-info { padding: .7rem .8rem .9rem; }
+.mat-tag {
+  display: inline-block; font-size: .5rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--gold); border: 1px solid rgba(184,150,90,.3); padding: .15rem .45rem; margin-bottom: .5rem;
+}
+.mat-name {
+  font-size: .7rem; color: var(--cream); line-height: 1.45; min-height: 2.05em;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.mat-meta {
+  font-size: .58rem; color: var(--warm-gray); margin-top: .35rem; letter-spacing: .03em;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.mat-foot { display: flex; justify-content: center; align-items: center; gap: 1.6rem; margin-top: 2.6rem; flex-wrap: wrap; }
+.mat-status { font-size: .62rem; color: var(--warm-gray); letter-spacing: .12em; }
+.mat-more {
+  background: transparent; border: 1px solid var(--gold); color: var(--gold);
+  font-family: 'Montserrat', sans-serif; font-size: .68rem; letter-spacing: .18em; text-transform: uppercase;
+  padding: .9rem 2.4rem; cursor: pointer; transition: all .3s;
+}
+.mat-more:hover { background: var(--gold); color: var(--dark); }
+.mat-more[disabled] { opacity: .3; cursor: default; }
+@media (max-width: 1200px) { .mat-grid { grid-template-columns: repeat(4, 1fr); } }
 
 /* ── PROCESS ── */
 #process { background: var(--off-white); }
@@ -710,7 +738,7 @@ footer {
   .hero-content { padding: 0 1.5rem 7.5rem; }
   .hero-actions { flex-direction: column; align-items: flex-start; gap: 1.1rem; }
   .hero-counter, .hero-scroll { display: none; }
-  .about-layout, .services-header, .contact-layout, .test-layout { grid-template-columns: 1fr; gap: 3rem; }
+  .about-layout, .services-header, .contact-layout { grid-template-columns: 1fr; gap: 3rem; }
   .about-img-accent, .about-badge { display: none; }
   .services-grid { grid-template-columns: 1fr; }
   .contact-item { padding-right: 5rem; }
@@ -719,7 +747,9 @@ footer {
   .portfolio-grid { grid-template-columns: 1fr 1fr; }
   .port-item { grid-column: span 1 !important; aspect-ratio: 4/3 !important; }
   .process-steps { grid-template-columns: 1fr 1fr; }
-  .test-grid { grid-template-columns: 1fr; }
+  .mat-grid { grid-template-columns: repeat(2, 1fr); }
+  .mat-header { flex-direction: column; align-items: flex-start; }
+  .mat-count { text-align: left; }
   footer { padding: 3rem 1.5rem 2rem; }
   .footer-top { grid-template-columns: 1fr 1fr; gap: 2rem; }
   .brand-bar { flex-wrap: wrap; gap: 1rem; }
@@ -754,7 +784,7 @@ footer {
     <li><a href="#about">회사소개</a></li>
     <li><a href="#services">서비스</a></li>
     <li><a href="#portfolio">포트폴리오</a></li>
-    <li><a href="#testimonials">고객후기</a></li>
+    <li><a href="#materials">자재</a></li>
     <li><a href="#contact">문의</a></li>
   </ul>
   <div style="display:flex; gap:.8rem; align-items:center;">
@@ -766,7 +796,7 @@ footer {
         <a href="#about">회사소개</a>
         <a href="#services">서비스</a>
         <a href="#portfolio">포트폴리오</a>
-        <a href="#testimonials">고객후기</a>
+        <a href="#materials">자재</a>
         <a href="#contact">상담 신청</a>
         <a href="tel:1588-9291">대표번호 1588-9291</a>
       </div>
@@ -1034,71 +1064,99 @@ footer {
   </div>
 </section>
 
-<!-- TESTIMONIALS -->
-<section id="testimonials">
-  <div class="test-layout">
-    <div class="test-left">
-      <div class="sec-eyebrow reveal">Client Reviews</div>
-      <h2 class="sec-title reveal" style="color:var(--cream)">고객이<br><em>전하는 말</em></h2>
-      <p class="reveal">ECOREAN과 함께한 고객들의 진솔한 이야기입니다. 공간이 삶을 어떻게 변화시켰는지 직접 들어보세요.</p>
-      <div class="test-rating reveal">
-        ★★★★★
-        <span class="test-rating-text">고객 만족을 최우선으로</span>
-      </div>
+<!-- MATERIALS LIBRARY (자재 라이브러리 — DB 실시간 열람, 단가 미노출) -->
+<section id="materials">
+  <div class="mat-header">
+    <div>
+      <div class="sec-eyebrow reveal">Material Library</div>
+      <h2 class="sec-title reveal" style="color:var(--cream)">우리가 다루는<br><em>자재들</em></h2>
+      <p class="mat-intro reveal">
+        ECOREAN이 실제 시공에 사용하는 자재 데이터베이스를 그대로 공개합니다.
+        대형 포세린 타일부터 마루·벽지·마감 자재까지 검색하고 둘러보세요.
+        자재 단가와 시공 견적은 무료 상담으로 안내해 드립니다.
+      </p>
     </div>
-
-    <div class="test-grid">
-      <div class="test-card reveal">
-        <div class="test-quote">"</div>
-        <p class="test-text">욕실 방수부터 줄눈 마감까지 과정을 사진으로 보여주시며 진행해 주셨습니다. 꼼꼼한 시공이 무엇인지 알게 됐어요.</p>
-        <div class="test-author">
-          <img class="test-avatar" src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80" alt="고객">
-          <div>
-            <div class="test-name">김OO 고객님</div>
-            <div class="test-loc">욕실 타일 시공 · 서울</div>
-            <div class="test-stars">★★★★★</div>
-          </div>
-        </div>
-      </div>
-      <div class="test-card reveal reveal-delay-1">
-        <div class="test-quote">"</div>
-        <p class="test-text">여러 업체와 상담했지만 도면을 놓고 시공 범위를 정확히 설명해 준 곳은 ECOREAN뿐이었습니다. 견적도 항목별로 투명했습니다.</p>
-        <div class="test-author">
-          <img class="test-avatar" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80" alt="고객">
-          <div>
-            <div class="test-name">박OO 고객님</div>
-            <div class="test-loc">주방 타일 · 서울</div>
-            <div class="test-stars">★★★★★</div>
-          </div>
-        </div>
-      </div>
-      <div class="test-card reveal reveal-delay-1">
-        <div class="test-quote">"</div>
-        <p class="test-text">약속한 일정 안에 천장·몰딩 공사를 끝내주셨고, 마감 라인이 반듯합니다. 담당자가 매일 현장을 챙겨주신 게 컸습니다.</p>
-        <div class="test-author">
-          <img class="test-avatar" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80" alt="고객">
-          <div>
-            <div class="test-name">이OO 고객님</div>
-            <div class="test-loc">천장 · 몰딩 목공 · 서울</div>
-            <div class="test-stars">★★★★★</div>
-          </div>
-        </div>
-      </div>
-      <div class="test-card reveal reveal-delay-2">
-        <div class="test-quote">"</div>
-        <p class="test-text">중문 설치 후 단열과 소음이 확실히 달라졌습니다. 실측부터 시공까지 오차 없이 정확했습니다.</p>
-        <div class="test-author">
-          <img class="test-avatar" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80" alt="고객">
-          <div>
-            <div class="test-name">정OO 고객님</div>
-            <div class="test-loc">중문 설치 · 서울</div>
-            <div class="test-stars">★★★★★</div>
-          </div>
-        </div>
-      </div>
+    <div class="mat-count reveal"><span id="matTotal">—</span><small>Materials in Library</small></div>
+  </div>
+  <div class="mat-controls reveal">
+    <input class="mat-search" id="matSearch" type="search" placeholder="자재명·브랜드·종류 검색 — 예: 포세린, 강마루, 벽지">
+    <div class="mat-chips" id="matChips">
+      <button class="mat-chip active" data-origin="" type="button">전체</button>
+      <button class="mat-chip" data-origin="tile_products" type="button">타일</button>
+      <button class="mat-chip" data-origin="materials" type="button">공정 자재</button>
+      <button class="mat-chip" data-origin="brands" type="button">브랜드 자재</button>
     </div>
   </div>
+  <div class="mat-grid" id="matGrid"></div>
+  <div class="mat-foot">
+    <span class="mat-status" id="matStatus">불러오는 중…</span>
+    <button class="mat-more" id="matMore" type="button">더 보기 +</button>
+  </div>
 </section>
+
+<script>
+/* 자재 라이브러리 — 공개 전용 DB 함수(public_materials_list) 실시간 조회. 단가는 서버에서부터 미노출 */
+(function(){
+  var grid=document.getElementById('matGrid');
+  if(!grid) return;
+  var API='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/rpc/public_materials_list';
+  var ANON='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
+  var PAGE=18;
+  var state={q:'',origin:'',offset:0,total:0,busy:false};
+  var TAG={tile_products:'타일',materials:'공정 자재',brands:'브랜드'};
+  var totalEl=document.getElementById('matTotal');
+  var statusEl=document.getElementById('matStatus');
+  var moreBtn=document.getElementById('matMore');
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';';});}
+  function card(m){
+    var thumb=m.img_url
+      ?'<img class="mat-thumb" loading="lazy" src="'+esc(m.img_url)+'" alt="'+esc(m.name)+'" onerror="this.outerHTML=\'<div class=&quot;mat-thumb-ph&quot;>'+esc((m.name||'·').charAt(0))+'</div>\'">'
+      :'<div class="mat-thumb-ph">'+esc((m.name||'·').charAt(0))+'</div>';
+    var meta=[m.brand,m.category||m.spec].filter(Boolean).join(' · ');
+    return '<div class="mat-card">'+thumb
+      +'<div class="mat-info"><span class="mat-tag">'+(TAG[m.origin_table]||'자재')+'</span>'
+      +'<div class="mat-name">'+esc(m.name)+'</div>'
+      +'<div class="mat-meta" title="'+esc(m.spec||'')+'">'+esc(meta||'—')+'</div></div></div>';
+  }
+  function load(reset){
+    if(state.busy) return;
+    state.busy=true;
+    if(reset){state.offset=0;grid.innerHTML='';}
+    statusEl.textContent='불러오는 중…';
+    fetch(API,{method:'POST',
+      headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({p_q:state.q||null,p_origin:state.origin||null,p_limit:PAGE,p_offset:state.offset})})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(rows){
+        state.total=rows.length?Number(rows[0].total):0;
+        totalEl.textContent=state.total.toLocaleString('ko-KR');
+        grid.insertAdjacentHTML('beforeend',rows.map(card).join(''));
+        state.offset+=rows.length;
+        var done=state.offset>=state.total;
+        statusEl.textContent=state.total===0?'검색 결과가 없습니다':state.offset.toLocaleString()+' / '+state.total.toLocaleString()+'종 표시됨';
+        moreBtn.disabled=done;
+        moreBtn.textContent=done?'전체 표시 완료':'더 보기 +';
+      })
+      .catch(function(){statusEl.textContent='자재 목록을 불러오지 못했습니다 — 새로고침해 주세요';})
+      .finally(function(){state.busy=false;});
+  }
+  var deb;
+  document.getElementById('matSearch').addEventListener('input',function(e){
+    clearTimeout(deb);
+    deb=setTimeout(function(){state.q=e.target.value.trim();load(true);},350);
+  });
+  document.getElementById('matChips').addEventListener('click',function(e){
+    var b=e.target.closest('.mat-chip');
+    if(!b) return;
+    document.querySelectorAll('.mat-chip').forEach(function(c){c.classList.remove('active');});
+    b.classList.add('active');
+    state.origin=b.dataset.origin||'';
+    load(true);
+  });
+  moreBtn.addEventListener('click',function(){load(false);});
+  load(true);
+})();
+</script>
 
 <!-- PROCESS -->
 <section id="process">
