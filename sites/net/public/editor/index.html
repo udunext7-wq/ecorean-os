@@ -2154,52 +2154,6 @@ ${body}
 </div>
 ${bgJs?`<script>${bgJs}<\/script>`:''}
 ${cursorJs}
-<script>
-/* ── 스펙북 → 에디터 핸드오프 (2026-08-05, 3단계) ──
-   /catalog/specbook/ 의 [에디터로 보내기]가 localStorage로 전달한 스펙북을
-   부팅/포커스 시 감지해 새 페이지(표지+위치별 자재 블록)로 생성한다. */
-(function(){
-  var KEY='ecorean_specbook_to_editor';
-  var busy=false;
-  function tryImport(){
-    if(busy) return;
-    var raw=localStorage.getItem(KEY);
-    if(!raw) return;
-    var h;
-    try{h=JSON.parse(raw);}catch(e){localStorage.removeItem(KEY);return;}
-    localStorage.removeItem(KEY);
-    if(!h||!h.items||!h.items.length) return;
-    busy=true;
-    if(!confirm('스펙북 「'+h.name+'」 '+h.items.length+'품목을 새 페이지로 가져올까요?')){busy=false;return;}
-    try{
-      var els=[];
-      function el(type,props){els.push({id:newId(),type:type,props:props,style:{},effects:{}});}
-      el('overline',{text:'ECOREAN — MATERIAL SPEC BOOK'});
-      el('h1',{text:h.name});
-      el('p',{text:(h.site_addr?h.site_addr+'  ·  ':'')+'품목 '+h.items.length+'건  ·  '+(h.date||'')});
-      el('divider',{});
-      var groups={};
-      h.items.forEach(function(it){var k=it.location||'위치 미지정';(groups[k]=groups[k]||[]).push(it);});
-      Object.keys(groups).forEach(function(loc){
-        el('overline',{text:'— '+loc});
-        groups[loc].forEach(function(it){
-          if(it.img_url) el('image',{src:it.img_url,alt:it.name,caption:[it.brand,it.category].filter(Boolean).join(' · '),height:'320'});
-          el('h3',{text:it.name});
-          el('p',{text:[it.brand?'브랜드 '+it.brand:null,it.spec?'규격 '+it.spec:null,(it.qty!=null&&it.qty!==''?'수량 '+it.qty+' '+(it.qty_unit||''):null),it.note||null].filter(Boolean).join('   ·   ')});
-          el('divider-fancy',{style:'dots',label:'',color:'accent'});
-        });
-      });
-      S.pages.push({id:newId(),name:('스펙북 '+h.name).slice(0,18),elements:els});
-      S.activePage=S.pages.length-1;
-      pushHist();renderPageTabs();renderAll();
-      var sv=document.getElementById('btn-save'); if(sv) sv.click();
-    }catch(e){alert('스펙북 가져오기 실패: '+e.message);}
-    busy=false;
-  }
-  setTimeout(tryImport,700);
-  window.addEventListener('focus',function(){setTimeout(tryImport,200);});
-})();
-</script>
 </body>
 </html>`;
 }
@@ -2798,50 +2752,53 @@ renderAll();
 })();
 </script>
 <script>
-/* ── 스펙북 → 에디터 핸드오프 (2026-08-05, 3단계) ──
+/* 스펙북 → 에디터 핸드오프 (2026-08-05, 3단계)
    /catalog/specbook/ 의 [에디터로 보내기]가 localStorage로 전달한 스펙북을
    부팅/포커스 시 감지해 새 페이지(표지+위치별 자재 블록)로 생성한다. */
 (function(){
-  var KEY='ecorean_specbook_to_editor';
+  var HKEY='ecorean_specbook_to_editor';
   var busy=false;
   function tryImport(){
-    if(busy) return;
-    var raw=localStorage.getItem(KEY);
+    if(busy||typeof S==='undefined'||typeof newId!=='function') return;
+    var raw=localStorage.getItem(HKEY);
     if(!raw) return;
     var h;
-    try{h=JSON.parse(raw);}catch(e){localStorage.removeItem(KEY);return;}
-    localStorage.removeItem(KEY);
+    try{h=JSON.parse(raw);}catch(e){localStorage.removeItem(HKEY);return;}
+    localStorage.removeItem(HKEY);
     if(!h||!h.items||!h.items.length) return;
     busy=true;
     if(!confirm('스펙북 「'+h.name+'」 '+h.items.length+'품목을 새 페이지로 가져올까요?')){busy=false;return;}
     try{
       var els=[];
       function el(type,props){els.push({id:newId(),type:type,props:props,style:{},effects:{}});}
-      el('overline',{text:'ECOREAN — MATERIAL SPEC BOOK'});
+      el('overline',{text:'ECOREAN - MATERIAL SPEC BOOK'});
       el('h1',{text:h.name});
       el('p',{text:(h.site_addr?h.site_addr+'  ·  ':'')+'품목 '+h.items.length+'건  ·  '+(h.date||'')});
       el('divider',{});
       var groups={};
       h.items.forEach(function(it){var k=it.location||'위치 미지정';(groups[k]=groups[k]||[]).push(it);});
       Object.keys(groups).forEach(function(loc){
-        el('overline',{text:'— '+loc});
+        el('overline',{text:'- '+loc});
         groups[loc].forEach(function(it){
-          if(it.img_url) el('image',{src:it.img_url,alt:it.name,caption:[it.brand,it.category].filter(Boolean).join(' · '),height:'320'});
-          el('h3',{text:it.name});
+          if(it.img_url) el('image',{src:it.img_url,alt:it.name||'',caption:[it.brand,it.category].filter(Boolean).join(' · '),height:'320'});
+          el('h3',{text:it.name||''});
           el('p',{text:[it.brand?'브랜드 '+it.brand:null,it.spec?'규격 '+it.spec:null,(it.qty!=null&&it.qty!==''?'수량 '+it.qty+' '+(it.qty_unit||''):null),it.note||null].filter(Boolean).join('   ·   ')});
           el('divider-fancy',{style:'dots',label:'',color:'accent'});
         });
       });
       S.pages.push({id:newId(),name:('스펙북 '+h.name).slice(0,18),elements:els});
       S.activePage=S.pages.length-1;
-      pushHist();renderPageTabs();renderAll();
+      if(typeof pushHist==='function')pushHist();
+      if(typeof renderPageTabs==='function')renderPageTabs();
+      if(typeof renderAll==='function')renderAll();
       var sv=document.getElementById('btn-save'); if(sv) sv.click();
     }catch(e){alert('스펙북 가져오기 실패: '+e.message);}
     busy=false;
   }
-  setTimeout(tryImport,700);
+  setTimeout(tryImport,1200);
   window.addEventListener('focus',function(){setTimeout(tryImport,200);});
 })();
 </script>
+
 </body>
 </html>
