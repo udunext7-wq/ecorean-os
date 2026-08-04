@@ -1,0 +1,3 @@
+-- 스펙북 1단계 (2026-08-05, 대표 지시) — DB 적용 완료 (apply_migration: spec_books 이력 참조)
+-- spec_books(프로젝트) + spec_book_items(담은 자재: source/이미지/규격/적용위치/수량/공급처/단가)
+-- RLS: staff 이상만 전체 권한 (도감 장바구니 → 스펙북 발행 팀 공유 도구)

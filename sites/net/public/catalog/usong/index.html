@@ -171,6 +171,14 @@ function card(e){
       ${szSel}
       ${priceBlock}
     </div>`;
+  /* 스펙북 담기 (cart.js) */
+  const ab=document.createElement('button');
+  ab.className='sb-add';ab.type='button';ab.textContent='+ 스펙북 담기';
+  ab.onclick=(ev)=>{ev.stopPropagation();window.SB_ADD&&SB_ADD({
+    source:'usong',source_key:String(e.id),name:e.design,brand:e.brand,
+    category:secKo(e.section),spec:[(e.sku||''),(e.sizes||[]).join('/')].filter(Boolean).join(' · '),
+    img_url:img||null,price:getPrice(e),supplier:'유송타일'});};
+  c.querySelector('.meta').appendChild(ab);
   if(!state.editing) c.onclick=()=>openLB(e);
   return c;
 }
@@ -240,5 +248,6 @@ function parseCSV(line){
 function secKo(s){const f=SECTIONS.find(x=>x[0]===s);return f?f[1]:s;}
 function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 </script>
+<script src="/ecorean-gate.js"></script><link rel="stylesheet" href="/catalog/cart.css"><script src="/catalog/cart.js" defer></script>
 </body>
 </html>

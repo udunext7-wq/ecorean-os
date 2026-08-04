@@ -22,6 +22,7 @@ const MODULES: { href: string; name: string; desc: string; external?: boolean }[
   { href: '/biz/', name: '사업장부', desc: 'BOC BIZ' },
   { href: '/catalog/usong/', name: '유송타일 도감', desc: '단가 포함 · 직원용' },
   { href: '/catalog/lx/', name: 'LX Z:IN 도감', desc: '단가 포함 · 직원용' },
+  { href: '/catalog/specbook/', name: '스펙북 발행', desc: '장바구니 → 현장 사양서' },
 ];
 
 const BOC_MODULES: { href: string; name: string; desc: string; minRole?: 'admin' }[] = [

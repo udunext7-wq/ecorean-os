@@ -141,6 +141,15 @@ function card(it){
  const sz=sizeOf(it);
  c.innerHTML='<div class="thumb-wrap">'+thumb+'<span class="badge">'+esc(it.leaf)+'</span>'+(it.isNew?'<span class="nbadge">NEW</span>':'')+'</div>'+
    '<div class="meta"><div class="leaf">'+esc(it.top)+'</div><div class="nm">'+esc(it.name)+'</div>'+(sz?'<div class="sz">📐 '+esc(sz)+'</div>':'')+(it.code?'<div class="sz" style="font-family:monospace;color:var(--mut)">'+esc(it.code)+'</div>':'')+priceHTML(it)+'</div>';
+ /* 스펙북 담기 (cart.js) */
+ var ab=document.createElement('button');
+ ab.className='sb-add';ab.type='button';ab.textContent='+ 스펙북 담기';
+ ab.onclick=function(ev){ev.stopPropagation();window.SB_ADD&&SB_ADD({
+   source:'lx',source_key:String(it.id),name:it.name,brand:'LX하우시스',
+   category:it.top+(it.path&&it.path[1]?' > '+it.path[1]:''),
+   spec:[it.leaf,it.code,sizeOf(it)].filter(Boolean).join(' · '),
+   img_url:u||null,price:(it.price!=null&&isFinite(it.price))?it.price:null,supplier:'LX(신화모젤)'});};
+ c.querySelector('.meta').appendChild(ab);
  c.onclick=()=>openMo(it);
  return c;
 }
@@ -162,5 +171,6 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMo();});
 document.getElementById('search').oninput=e=>{state.q=e.target.value.toLowerCase().trim();render();};
 document.getElementById('sort').onchange=e=>{state.sort=e.target.value;render();};
 </script>
+<script src="/ecorean-gate.js"></script><link rel="stylesheet" href="/catalog/cart.css"><script src="/catalog/cart.js" defer></script>
 </body>
 </html>

@@ -19,8 +19,8 @@
       "status": 307,
       "headers": { "Location": "/login?next=/catalog/" }
     },
-    { "src": "/catalog/(usong|lx)", "status": 308, "headers": { "Location": "/catalog/$1/" } },
-    { "src": "/catalog/(usong|lx)/", "dest": "/sites/net/catalog/$1/index.html" },
+    { "src": "/catalog/(usong|lx|specbook)", "status": 308, "headers": { "Location": "/catalog/$1/" } },
+    { "src": "/catalog/(usong|lx|specbook)/", "dest": "/sites/net/catalog/$1/index.html" },
     {
       "src": "/(minicad|estimate|estform|pms|work|daily|vector|editor|biz)",
       "status": 308,
