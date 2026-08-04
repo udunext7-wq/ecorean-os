@@ -64,6 +64,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   </div>
   <button id="printBtn" type="button">🖨 인쇄 / PDF</button>
   <button id="poBtn" type="button" class="ghost" style="border:1px solid var(--gold);background:transparent;color:var(--gold)">📦 발주서 생성</button>
+  <button id="editorBtn" type="button" class="ghost" style="border:1px solid var(--gold);background:transparent;color:var(--gold)">🎨 에디터로 보내기</button>
   <a class="btn ghost" href="/hub">허브</a>
 </div>
 
@@ -223,6 +224,23 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       if(fails.length) alert('발주서 '+done+'건 생성, 실패 '+fails.length+'건:\n'+fails.join('\n'));
       else if(confirm('발주서 초안 '+done+'건이 생성되었습니다.\n직원 포털 발주서 화면으로 이동할까요?')) location.href='/work/#po';
     });
+  };
+
+  /* ── 3단계: 아티팩트 생성기(에디터)로 보내기 — 고객 PT용 디자인 스펙북 ── */
+  document.getElementById('editorBtn').onclick=function(){
+    if(!state.book||!state.items.length){alert('보낼 품목이 없습니다.');return;}
+    var now=new Date();
+    var payload={
+      name:state.book.name,
+      site_addr:state.book.site_addr||null,
+      date:now.getFullYear()+'. '+(now.getMonth()+1)+'. '+now.getDate()+'.',
+      items:state.items.map(function(it){return {
+        name:it.name,brand:it.brand,category:it.category,spec:it.spec,
+        img_url:it.img_url,qty:it.qty,qty_unit:it.qty_unit,location:it.location,note:it.note};})
+    };
+    try{localStorage.setItem('ecorean_specbook_to_editor',JSON.stringify(payload));}
+    catch(e){alert('전달 실패: '+e.message);return;}
+    window.open('/editor/','_blank');
   };
 
   loadBooks().catch(function(){document.getElementById('doc').innerHTML='<div class="empty">불러오기 실패 — 로그인 상태를 확인해 주세요 (/hub 새로고침 후 재시도)</div>';});
