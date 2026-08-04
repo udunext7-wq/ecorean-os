@@ -23,7 +23,9 @@
   }
   function req(path, opts) {
     if (!token()) return Promise.reject(new Error('NO_SESSION'));
-    return fetch(API + path, Object.assign({ headers: hdr(opts && opts.headers) }, opts || {})).then(function (r) {
+    var o = Object.assign({}, opts || {});
+    o.headers = hdr(o.headers); // 인증 헤더가 opts.headers(Prefer 등)에 덮이지 않도록 마지막에 병합
+    return fetch(API + path, o).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { throw new Error(r.status + ' ' + t.slice(0, 140)); });
       return r.text().then(function (t) { return t ? JSON.parse(t) : null; });
     });
