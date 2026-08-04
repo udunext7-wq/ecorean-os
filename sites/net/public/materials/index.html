@@ -168,6 +168,9 @@ footer a { color:var(--gold); text-decoration:none; }
       <button class="chip active" data-kind="" type="button">전체</button>
     </div>
   </div>
+  <div class="controls-inner" id="matSubRow" style="display:none;margin-top:.7rem">
+    <div class="chips" id="matSubChips"></div>
+  </div>
 </div>
 
 <main>
@@ -204,9 +207,10 @@ footer a { color:var(--gold); text-decoration:none; }
   var API='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/rpc/public_materials_list';
   var ANON='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
   var KINDS_API='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/rpc/public_materials_kinds';
+  var SUBS_API='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/rpc/public_materials_subs';
   var PAGE=36;
-  var state={q:'',kind:'',offset:0,total:0,busy:false,rows:[]};
-  var TAG={tile_products:'타일',materials:'공정 자재',brands:'브랜드'};
+  var state={q:'',kind:'',sub:'',offset:0,total:0,busy:false,rows:[]};
+  var TAG={tile_products:'타일',materials:'공정 자재',brands:'브랜드',lx_products:'LX'};
   var grid=document.getElementById('matGrid');
   var totalEl=document.getElementById('matTotal');
   var statusEl=document.getElementById('matStatus');
@@ -220,7 +224,7 @@ footer a { color:var(--gold); text-decoration:none; }
     var thumb=m.img_url
       ?'<img class="thumb" loading="lazy" src="'+esc(m.img_url)+'" alt="'+esc(m.name)+'">'
       :ph(m);
-    var meta=[m.brand,m.category].filter(Boolean).join(' · ');
+    var meta=[m.brand,m.sub||m.category].filter(Boolean).join(' · ');
     return '<div class="card" data-idx="'+idx+'">'+thumb
       +'<div class="info"><span class="tag">'+esc(m.kind||TAG[m.origin_table]||'자재')+'</span>'
       +'<div class="name">'+esc(m.name)+'</div>'
@@ -233,7 +237,7 @@ footer a { color:var(--gold); text-decoration:none; }
     statusEl.textContent='불러오는 중…';
     fetch(API,{method:'POST',
       headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},
-      body:JSON.stringify({p_q:state.q||null,p_kind:state.kind||null,p_limit:PAGE,p_offset:state.offset})})
+      body:JSON.stringify({p_q:state.q||null,p_kind:state.kind||null,p_sub:state.sub||null,p_limit:PAGE,p_offset:state.offset})})
       .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
       .then(function(rows){
         state.total=rows.length?Number(rows[0].total):0;
@@ -255,12 +259,36 @@ footer a { color:var(--gold); text-decoration:none; }
     clearTimeout(deb);
     deb=setTimeout(function(){state.q=e.target.value.trim();load(true);},350);
   });
+  /* 중분류 서브칩 — 대분류 선택 시 트리 하위 표시 */
+  var subRow=document.getElementById('matSubRow');
+  var subBox=document.getElementById('matSubChips');
+  function loadSubs(kind){
+    state.sub='';
+    if(!kind){subRow.style.display='none';subBox.innerHTML='';return;}
+    fetch(SUBS_API,{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:JSON.stringify({p_kind:kind})})
+      .then(function(r){return r.json();})
+      .then(function(subs){
+        if(!subs||subs.length<2){subRow.style.display='none';subBox.innerHTML='';return;}
+        subBox.innerHTML='<button class="chip active" data-sub="" type="button">'+esc(kind)+' 전체</button>'
+          +subs.map(function(s){return '<button class="chip" data-sub="'+esc(s.sub)+'" type="button">'+esc(s.sub)+' <span style="opacity:.6">'+Number(s.cnt).toLocaleString()+'</span></button>';}).join('');
+        subRow.style.display='';
+      }).catch(function(){subRow.style.display='none';});
+  }
+  subBox.addEventListener('click',function(e){
+    var b=e.target.closest('.chip');
+    if(!b) return;
+    subBox.querySelectorAll('.chip').forEach(function(c){c.classList.remove('active');});
+    b.classList.add('active');
+    state.sub=b.dataset.sub||'';
+    load(true);
+  });
   document.getElementById('matChips').addEventListener('click',function(e){
     var b=e.target.closest('.chip');
     if(!b) return;
-    document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('active');});
+    document.getElementById('matChips').querySelectorAll('.chip').forEach(function(c){c.classList.remove('active');});
     b.classList.add('active');
     state.kind=b.dataset.kind||'';
+    loadSubs(state.kind);
     load(true);
   });
   moreBtn.addEventListener('click',function(){load(false);});
@@ -293,7 +321,7 @@ footer a { color:var(--gold); text-decoration:none; }
     document.getElementById('modalTag').textContent=m.kind||TAG[m.origin_table]||'자재';
     document.getElementById('modalName').textContent=m.name||'—';
     document.getElementById('modalBrand').textContent=m.brand||'—';
-    document.getElementById('modalCat').textContent=m.category||'—';
+    document.getElementById('modalCat').textContent=(m.category||'—')+(m.sub&&m.sub!==m.category?' › '+m.sub:'');
     document.getElementById('modalSpec').textContent=m.spec||'—';
     modal.classList.add('open');
     document.body.style.overflow='hidden';

@@ -92,7 +92,7 @@ export interface TileProductRow {
 /** public.v_all_materials (20260712000011_all_materials_view_with_tiles.sql) */
 export interface AllMaterialRow {
   tenant_id: string;
-  origin_table: 'materials' | 'brands' | 'minicad_material_codes' | 'tile_products';
+  origin_table: 'materials' | 'brands' | 'minicad_material_codes' | 'tile_products' | 'lx_products';
   item_id: string;
   name: string;
   brand: string | null;

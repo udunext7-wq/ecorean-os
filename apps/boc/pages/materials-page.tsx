@@ -14,6 +14,7 @@ const ORIGIN_LABEL: Record<AllMaterialRow['origin_table'], string> = {
   brands: '브랜드',
   minicad_material_codes: 'MiniCAD',
   tile_products: '타일SKU',
+  lx_products: 'LX 도감',
 };
 
 export default async function MaterialsPage({ searchParams }: { searchParams: ListSearchParams }) {

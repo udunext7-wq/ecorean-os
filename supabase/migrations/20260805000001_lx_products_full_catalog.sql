@@ -1,0 +1,19 @@
+-- LX Z:IN 전 제품 도감 반입 (2026-08-05, 대표 지시) — DB 적용 완료 (3단계 apply_migration:
+--   lx_products_table / lx_products_view_integration / lx_kinds_tree_functions 이력 참조)
+--
+-- 요약:
+-- 1) lx_products 테이블 신설 — lx-zin-catalog.netlify.app 2,547종 전량 반입
+--    (id/code/name/top/mid/leaf/path/썸네일/원본URL/specs/price(신화모젤 실단가982+시세추정) 등)
+--    썸네일 2,547장은 LX CDN(m2img.lxzin.com)에서 300px로 내려받아 자체 스토리지
+--    tiles/lx/<id>.png 로 미러링 (실패 0).
+-- 2) materials.public_hidden 추가 — 기존 신화모젤 수기 반입 43종(MAT-SHW/MAT-LXW)은
+--    도감과 중복되므로 공개 목록에서 숨김 (견적·내부용 유지). brand '신화모젤'→'LX하우시스'.
+-- 3) v_all_materials 재생성 — lx_products 합류 + sub(중분류)/public_hidden 컬럼 추가.
+--    타일SKU는 sub=거래처분류.
+-- 4) 분류 트리 확장: public_material_kind에 LX 대분류 매핑 추가
+--    (창호/벽지·도배/바닥재·마루/인조대리석·상판/포세린·수입타일/인테리어필름/
+--     도어·중문/주방·욕실/보드·단열재 — 대분류 13종 체계),
+--    public_materials_list에 p_sub 필터+sub 반환, public_materials_subs(p_kind) 신설.
+-- 5) 임시 반입 정책(lx_import_tmp, tiles_migration_upload) 제거 완료.
+--
+-- 공개 목록 총계: 5,167종 (숨김 43 제외) / v_all_materials 총 5,248행.
