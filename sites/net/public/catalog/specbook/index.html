@@ -63,6 +63,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     <button id="vClient" type="button">👤 고객 제안용</button>
   </div>
   <button id="printBtn" type="button">🖨 인쇄 / PDF</button>
+  <button id="poBtn" type="button" class="ghost" style="border:1px solid var(--gold);background:transparent;color:var(--gold)">📦 발주서 생성</button>
   <a class="btn ghost" href="/hub">허브</a>
 </div>
 
@@ -174,6 +175,55 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   document.getElementById('vSite').onclick=function(){state.mode='site';this.classList.add('on');document.getElementById('vClient').classList.remove('on');render();};
   document.getElementById('vClient').onclick=function(){state.mode='client';this.classList.add('on');document.getElementById('vSite').classList.remove('on');render();};
   document.getElementById('printBtn').onclick=function(){window.print();};
+
+  /* ── 2단계: 공급처별 발주서 자동 생성 (work_purchase_orders 초안) ── */
+  document.getElementById('poBtn').onclick=function(){
+    if(!state.book||!state.items.length){alert('발주할 품목이 없습니다.');return;}
+    var groups={};
+    state.items.forEach(function(it){var k=it.supplier||'공급처 미지정';(groups[k]=groups[k]||[]).push(it);});
+    var names=Object.keys(groups);
+    var plan=names.map(function(s){return '· '+s+' — '+groups[s].length+'품목';}).join('\n');
+    if(!confirm('공급처별로 발주서 초안 '+names.length+'건을 생성합니다:\n\n'+plan+'\n\n수량·단가 미입력 품목은 0으로 들어가며, 발주서 화면에서 수정 후 발주하세요.')) return;
+    var uid=window.ECOREAN_AUTH&&window.ECOREAN_AUTH.session&&window.ECOREAN_AUTH.session.user?window.ECOREAN_AUTH.session.user.id:null;
+    var now=new Date();
+    var ymd=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');
+    var hm=String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
+    var todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+    var done=0, fails=[];
+    var seq=0;
+    var jobs=names.map(function(sup){
+      seq++;
+      var items=groups[sup].map(function(it){
+        var qty=(it.qty!=null&&isFinite(it.qty))?Number(it.qty):0;
+        var price=(it.price!=null&&isFinite(it.price))?Math.round(it.price):0;
+        return {
+          name:(it.location?'['+it.location+'] ':'')+it.name,
+          spec:it.spec||'', unit:it.qty_unit||'',
+          qty:qty, unit_price:price, amount:Math.round(qty*price)
+        };
+      });
+      var supply=items.reduce(function(a,i){return a+i.amount;},0);
+      var row={
+        po_no:'PO-'+ymd+'-SB'+hm+String(seq),
+        vendor_name:sup,
+        order_date:todayStr,
+        delivery_place:state.book.site_addr||null,
+        items:items,
+        supply_amount:supply,
+        vat_amount:Math.round(supply*0.1),
+        status:'작성중',
+        memo:'스펙북 「'+state.book.name+'」에서 자동 생성 ('+todayStr+')',
+        created_by:uid
+      };
+      return api('/work_purchase_orders',{method:'POST',body:JSON.stringify(row)})
+        .then(function(){done++;})
+        .catch(function(e){fails.push(sup+': '+e.message);});
+    });
+    Promise.all(jobs).then(function(){
+      if(fails.length) alert('발주서 '+done+'건 생성, 실패 '+fails.length+'건:\n'+fails.join('\n'));
+      else if(confirm('발주서 초안 '+done+'건이 생성되었습니다.\n직원 포털 발주서 화면으로 이동할까요?')) location.href='/work/#po';
+    });
+  };
 
   loadBooks().catch(function(){document.getElementById('doc').innerHTML='<div class="empty">불러오기 실패 — 로그인 상태를 확인해 주세요 (/hub 새로고침 후 재시도)</div>';});
 })();
