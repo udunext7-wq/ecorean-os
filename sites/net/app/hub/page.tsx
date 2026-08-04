@@ -8,31 +8,49 @@ import { Badge, Button, Card } from '@/core/ui';
 
 export const dynamic = 'force-dynamic';
 
-// 기존 홈페이지 '업무 시스템 ▾' 드롭다운의 모듈 그대로
-const MODULES: { href: string; name: string; desc: string; external?: boolean }[] = [
-  { href: '/minicad/', name: 'MiniCAD', desc: '도면·견적' },
-  { href: '/work/#po', name: '발주서', desc: '직원 포털' },
-  { href: '/work/#daily', name: '공사일보', desc: '직원 포털' },
-  { href: '/work/#invoice', name: '계산서', desc: '직원 포털' },
-  { href: '/pms/', name: '공정표', desc: '공정관리 PMS' },
-  { href: '/daily/', name: '현장 일보', desc: '단독앱' },
-  { href: '/vector/', name: '벡터 변환기', desc: '이미지→SVG' },
-  { href: '/editor/', name: '아티팩트 생성기', desc: '비주얼 에디터' },
-  { href: '/work/', name: '직원 포털 홈', desc: 'WORK' },
-  { href: '/biz/', name: '사업장부', desc: 'BOC BIZ' },
-  { href: '/catalog/usong/', name: '유송타일 도감', desc: '단가 포함 · 직원용' },
-  { href: '/catalog/lx/', name: 'LX Z:IN 도감', desc: '단가 포함 · 직원용' },
-  { href: '/catalog/specbook/', name: '스펙북 발행', desc: '장바구니 → 현장 사양서' },
-];
+// 허브 섹션 — 4개 카테고리로 정리 (2026-08-05 대표 지시)
+type HubItem = { href: string; name: string; desc: string; minRole?: 'admin' };
+type HubSection = { title: string; items: HubItem[] };
 
-const BOC_MODULES: { href: string; name: string; desc: string; minRole?: 'admin' }[] = [
-  { href: '/boc', name: 'BOC 대시보드', desc: '마스터 DB 현황' },
-  { href: '/boc/cost-items', name: '공정 단가', desc: '670건' },
-  { href: '/boc/materials', name: '통합 자재', desc: '5,248건' },
-  { href: '/boc/materials/manage', name: '자재 설정', desc: '추가·CSV 업로드', minRole: 'admin' },
-  { href: '/boc/tiles', name: '타일 SKU', desc: '2,550건' },
-  { href: '/boc/minicad-prices', name: 'MiniCAD 단가 승인', desc: '제안 단가 확정', minRole: 'admin' },
-  { href: '/boc/role-requests', name: '승급 신청 관리', desc: '직원 승인', minRole: 'admin' },
+const SECTIONS: HubSection[] = [
+  {
+    title: '설계 · 견적',
+    items: [
+      { href: '/minicad/', name: 'MiniCAD', desc: '도면·견적' },
+      { href: '/pms/', name: '공정표', desc: '공정관리 PMS' },
+      { href: '/editor/', name: '아티팩트 생성기', desc: '비주얼 에디터' },
+      { href: '/vector/', name: '벡터 변환기', desc: '이미지→SVG' },
+    ],
+  },
+  {
+    title: '자재 · 스펙북',
+    items: [
+      { href: '/catalog/usong/', name: '유송타일 도감', desc: '단가 포함 · 직원용' },
+      { href: '/catalog/lx/', name: 'LX Z:IN 도감', desc: '단가 포함 · 직원용' },
+      { href: '/catalog/specbook/', name: '스펙북 발행', desc: '장바구니 → 현장 사양서' },
+    ],
+  },
+  {
+    title: '직원 포털 · 장부',
+    items: [
+      { href: '/work/#po', name: '발주서', desc: '직원 포털' },
+      { href: '/work/#daily', name: '공사일보', desc: '직원 포털' },
+      { href: '/work/#invoice', name: '계산서', desc: '직원 포털' },
+      { href: '/daily/', name: '현장 일보', desc: '단독앱 · 현금출납' },
+      { href: '/biz/', name: '사업장부', desc: 'BOC BIZ' },
+    ],
+  },
+  {
+    title: 'BOC 마스터 DB',
+    items: [
+      { href: '/boc', name: 'BOC 대시보드', desc: '마스터 DB 현황' },
+      { href: '/boc/cost-items', name: '공정 단가', desc: '670건' },
+      { href: '/boc/materials', name: '통합 자재', desc: '5,248건 · 타일 포함' },
+      { href: '/boc/materials/manage', name: '자재 설정', desc: '추가·CSV 업로드', minRole: 'admin' },
+      { href: '/boc/minicad-prices', name: 'MiniCAD 단가 승인', desc: '제안 단가 확정', minRole: 'admin' },
+      { href: '/boc/role-requests', name: '승급 신청 관리', desc: '직원 승인', minRole: 'admin' },
+    ],
+  },
 ];
 
 export default async function HubPage() {
@@ -87,29 +105,25 @@ export default async function HubPage() {
           </form>
         </div>
 
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-faint">
-          업무 모듈
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {MODULES.map((m) => (
-            <a key={m.href} href={m.href} className={tile}>
-              <p className="font-semibold text-cream">{m.name}</p>
-              <p className="mt-1 text-xs text-muted">{m.desc}</p>
-            </a>
-          ))}
-        </div>
-
-        <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-faint">
-          BOC 마스터 DB
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {BOC_MODULES.filter((m) => !m.minRole || hasRole(profile.role, m.minRole)).map((m) => (
-            <Link key={m.href} href={m.href} className={tile}>
-              <p className="font-semibold text-cream">{m.name}</p>
-              <p className="mt-1 text-xs text-muted">{m.desc}</p>
-            </Link>
-          ))}
-        </div>
+        {SECTIONS.map((section) => {
+          const items = section.items.filter((m) => !m.minRole || hasRole(profile.role, m.minRole));
+          if (items.length === 0) return null;
+          return (
+            <div key={section.title}>
+              <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-faint first:mt-0">
+                {section.title}
+              </h2>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {items.map((m) => (
+                  <a key={m.href} href={m.href} className={tile}>
+                    <p className="font-semibold text-cream">{m.name}</p>
+                    <p className="mt-1 text-xs text-muted">{m.desc}</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </main>
   );
