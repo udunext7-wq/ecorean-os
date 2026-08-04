@@ -5,6 +5,7 @@
 <style id="ecorean-gate-style">html{visibility:hidden}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/ecorean-gate.js"></script>
+<script src="/app-cloud.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1717,6 +1718,70 @@ setTimeout(()=>{
   if(hit)toast(`📅 ${hit.dday===0?'오늘 마감!':'D-'+hit.dday} ${hit.t}`,'캘린더 열기',()=>openCalModal(hit.date));
 },900);
 if(state.settings.pin){pinMode='unlock';pinBuf='';showLock('PIN 입력');}
+</script>
+<script>
+/* ═══ ECOREAN 공용 서버 미러 (app_documents · staff 공유) — 2026-08-05 ═══
+   bocbiz_snap_* 스냅샷을 전 직원 공유 서버에 '추가' 미러링. 기존 저장/자체
+   supabase 동기화(state.settings.cloud)는 건드리지 않는 순수 추가. 세션 없으면 스킵. */
+(function(){
+  if(!window.APP_CLOUD)return;
+  var APP='biz', TITLE='사업장부', PFX='bocbiz_snap_';
+  var rawSet=localStorage.setItem.bind(localStorage);
+  var timers={}, booted=false, pending={};
+  function tsKey(k){return k+':cloudts';}
+  function up(k){
+    if(!APP_CLOUD.ready())return;
+    var v=localStorage.getItem(k); if(v==null)return;
+    var data; try{data=JSON.parse(v);}catch(e){return;}
+    APP_CLOUD.save(APP,k,TITLE,data).then(function(row){
+      if(row&&row.updated_at)rawSet(tsKey(k),row.updated_at);
+    }).catch(function(){});
+  }
+  /* 부팅 화해 전에는 업로드 보류(서버 스냅샷 클로버 방지) */
+  function sched(k){ if(!booted){pending[k]=1;return;} clearTimeout(timers[k]);timers[k]=setTimeout(function(){up(k);},800); }
+  /* setItem 후킹 — 스냅샷 키 저장 시에만 미러 예약 */
+  localStorage.setItem=function(key,val){rawSet(key,val);if(key.indexOf(PFX)===0)sched(key);};
+  /* 서버에 없는(=마커 없는) 로컬 스냅샷을 서버로 최초 이관 */
+  function seedLocal(){
+    try{
+      Object.keys(localStorage).filter(function(k){return k.indexOf(PFX)===0;}).forEach(function(k){
+        if(!localStorage.getItem(tsKey(k)))up(k);
+      });
+    }catch(e){}
+  }
+  function finish(){
+    booted=true;
+    for(var k in pending)up(k); pending={};
+    seedLocal();
+  }
+  /* 부팅: 서버 스냅샷 목록을 받아 로컬에 없거나 오래된 것을 채운다 */
+  function boot(){
+    if(!APP_CLOUD.ready()){booted=true;return;}
+    APP_CLOUD.list(APP).then(function(rows){
+      var need=[];
+      (rows||[]).forEach(function(r){
+        if(!r.doc_key||r.doc_key.indexOf(PFX)!==0)return;
+        var localTs=localStorage.getItem(tsKey(r.doc_key));
+        var hasLocal=localStorage.getItem(r.doc_key)!=null;
+        if(hasLocal&&localTs&&new Date(r.updated_at)<=new Date(localTs))return;
+        need.push(r.doc_key);
+      });
+      if(!need.length){finish();return;}
+      var done=0;
+      need.forEach(function(dk){
+        APP_CLOUD.load(APP,dk).then(function(row){
+          if(row&&row.data){rawSet(dk,JSON.stringify(row.data));rawSet(tsKey(dk),row.updated_at);}
+        }).catch(function(){}).then(function(){
+          if(++done===need.length){
+            if(typeof renderSnapChips==='function')renderSnapChips();
+            finish();
+          }
+        });
+      });
+    }).catch(function(){ finish(); });
+  }
+  setTimeout(boot,1200);
+})();
 </script>
 </body>
 </html>

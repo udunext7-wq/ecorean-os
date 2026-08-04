@@ -5,6 +5,7 @@
 <style id="ecorean-gate-style">html{visibility:hidden}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/ecorean-gate.js"></script>
+<script src="/app-cloud.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BOC 공사일보</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1122,6 +1123,58 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
   autoFillManpower();
   setMode(state.mode||'arch');renderWrite();
   let dt;document.addEventListener('input',()=>{clearTimeout(dt);dt=setTimeout(persist,800);});
+})();
+</script>
+<script>
+/* ═══ ECOREAN 공용 서버 미러 (app_documents · staff 공유) — 2026-08-05 ═══
+   기존 저장(window.storage / boc_daily_storage)은 그대로 두고, APP_CLOUD로
+   전 직원 공유 서버에 '추가' 미러링만 얹는다. 세션 없으면 조용히 스킵.
+   ※ 부팅 화해가 끝나기 전(booted=false)에는 업로드를 보류한다 — 앱이 init에서
+      기본 state를 persist()하는데(autoFillManpower·setMode), 이를 그대로 올리면
+      서버의 최신본을 덮어써 버리기 때문. */
+(function(){
+  if(!window.APP_CLOUD)return;
+  var APP='daily', DOCK='main', TITLE='현장일보', DKEY='boc-daily-state', TSK=DKEY+':cloudts';
+  var rawSet=localStorage.setItem.bind(localStorage);
+  var booted=false, dirty=false, timer=null;
+  function up(){
+    if(!APP_CLOUD.ready())return;
+    var v=localStorage.getItem(DKEY); if(v==null)return;
+    var data; try{data=JSON.parse(v);}catch(e){return;}
+    APP_CLOUD.save(APP,DOCK,TITLE,data).then(function(row){
+      if(row&&row.updated_at)rawSet(TSK,row.updated_at);
+    }).catch(function(){});
+  }
+  function sched(){ if(!booted){dirty=true;return;} clearTimeout(timer);timer=setTimeout(up,800); }
+  /* setItem 후킹 — 데이터 키 저장 시에만 미러 예약(rawSet로 쓰면 재트리거 안 됨) */
+  localStorage.setItem=function(k,val){rawSet(k,val);if(k===DKEY)sched();};
+  /* 부팅: 서버가 로컬보다 최신이면 로컬 갱신 후 앱 재렌더(없으면 1회 가드 리로드) */
+  function boot(){
+    if(!APP_CLOUD.ready()){booted=true;return;}
+    APP_CLOUD.load(APP,DOCK).then(function(row){
+      var pushLocal=false;
+      if(row&&row.data){
+        var localTs=localStorage.getItem(TSK);
+        if(!localTs||new Date(row.updated_at)>new Date(localTs)){
+          rawSet(DKEY,JSON.stringify(row.data));
+          rawSet(TSK,row.updated_at);
+          try{
+            if(typeof state==='object'&&state&&typeof renderWrite==='function'&&typeof setMode==='function'){
+              Object.assign(state,row.data);
+              if(state.schedule&&typeof runCPM==='function')runCPM(state.schedule);
+              if(state.current&&!state.current.cash&&typeof newReport==='function')state.current.cash=newReport(state.current.date).cash;
+              setMode(state.mode||'arch');renderWrite();
+            }else if(!sessionStorage.getItem('__daily_mirror_reloaded')){
+              sessionStorage.setItem('__daily_mirror_reloaded','1');booted=true;location.reload();return;
+            }
+          }catch(e){}
+        }else{ pushLocal=true; } /* 로컬이 최신 → 로컬을 서버로 */
+      }else if(localStorage.getItem(DKEY)!=null){ pushLocal=true; } /* 서버 비어있음 → 최초 이관 */
+      booted=true;
+      if(pushLocal||dirty){ dirty=false; up(); }
+    }).catch(function(){ booted=true; if(dirty){dirty=false;up();} });
+  }
+  setTimeout(boot,1400); /* 앱 init(restore 포함)이 끝난 뒤 비교 */
 })();
 </script>
 </body>

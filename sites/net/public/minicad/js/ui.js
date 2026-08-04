@@ -1456,6 +1456,133 @@ function loadJSON(){
   input.click();
 }
 
+// ===== v5.9+ 서버 저장/불러오기 (공용 클라우드 — 전 직원 공유) =====
+// window.APP_CLOUD(app-cloud.js) 사용. 기존 파일 저장/불러오기(saveJSON/loadJSON)와 병존 — 순수 추가.
+const CLOUD_APP='minicad';
+function _cloudSlug(s){
+  return String(s||'').trim().toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/gi,'-').replace(/^-+|-+$/g,'').slice(0,40)||'plan';
+}
+function _cloudReady(){
+  if(typeof APP_CLOUD==='undefined'||!APP_CLOUD.ready||!APP_CLOUD.ready()){
+    alert('로그인 후 이용 가능합니다. (직원 로그인 필요)');
+    return false;
+  }
+  return true;
+}
+// loadJSON의 STATE 복원 로직 재사용 — 파일 대신 서버 문서 데이터(d)로 STATE를 채운다.
+function applyCloudDoc(d){
+  if(!d||!d.schema||!String(d.schema).startsWith('ECOREAN.FloorPlan')){
+    alert('ECOREAN MiniCAD 도면 데이터가 아닙니다');return false;
+  }
+  STATE.projectName=d.meta.project||'불러온 프로젝트';
+  STATE.ceilingHeight=d.meta.ceilingHeight_mm||2400;
+  if(d.meta.wallThickness){STATE.wallThickness=d.meta.wallThickness;const el=document.getElementById('wall-thickness');if(el)el.value=d.meta.wallThickness;}
+  STATE.vertices=d.vertices||[];
+  STATE.spaces=d.spaces||[];STATE.walls=d.walls||[];
+  STATE.openings=d.openings||[];STATE.furniture=d.furniture||[];
+  STATE.fixtures=d.fixtures||[];STATE.lights=d.lights||[];
+  STATE.electric=d.electric||[];STATE.texts=d.texts||[];
+  STATE.measures=d.measures||[];
+  STATE.circles=d.circles||[];STATE.arcs=d.arcs||[];STATE.hvac=d.hvac||[];
+  STATE.leaders=d.leaders||[];STATE.xlines=d.xlines||[];
+  STATE.curves=d.curves||[];STATE.pillars=d.pillars||[];
+  if(d.meta.aiPromptHints)STATE.aiPromptHints={...STATE.aiPromptHints,...d.meta.aiPromptHints};
+  migrateLoadedState(d.schema);
+  document.getElementById('project-name').value=STATE.projectName;
+  document.getElementById('ceiling-height').value=STATE.ceilingHeight;
+  saveHistory();renderAll();refreshUI();
+  return true;
+}
+// 서버 저장 — doc_key는 STATE.cloudDocKey(없으면 생성) 고정 → 재저장 시 같은 문서 업데이트
+function cloudSaveDrawing(){
+  if(!_cloudReady())return;
+  if(!STATE.cloudDocKey) STATE.cloudDocKey='dwg-'+_cloudSlug(STATE.projectName)+'-'+Date.now();
+  const title=STATE.projectName||'제목 없음';
+  const data=buildJSON();
+  showStatus('서버 저장 중…');
+  APP_CLOUD.save(CLOUD_APP,STATE.cloudDocKey,title,data).then(function(){
+    showStatus('☁ 서버에 저장됨 — '+title);
+  }).catch(function(err){
+    console.error('[cloud save]',err);
+    alert('서버 저장 실패: '+(err&&err.message||err));
+  });
+}
+function _cloudEnsureModal(){
+  let m=document.getElementById('cloud-modal');
+  if(m)return m;
+  m=document.createElement('div');
+  m.id='cloud-modal';
+  m.style.cssText='display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  m.innerHTML='<div style="max-width:560px;width:92%;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;background:#1A1B2E;border:1px solid #3D4466;border-radius:12px;box-shadow:0 8px 50px rgba(0,0,0,0.6);color:#F5F1EB;font-family:\'Inter Tight\',Inter,sans-serif">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #2D3050">'+
+        '<div style="font-size:15px;font-weight:700">☁ 서버 도면 (전 직원 공유)</div>'+
+        '<button id="cloud-modal-close" style="background:#2D3748;color:#9CA3AF;border:none;border-radius:6px;padding:5px 11px;cursor:pointer;font-size:13px">✕</button>'+
+      '</div>'+
+      '<div id="cloud-modal-body" style="overflow-y:auto;padding:14px 18px;font-size:12px"></div>'+
+    '</div>';
+  document.body.appendChild(m);
+  m.addEventListener('click',function(e){if(e.target===m)m.style.display='none';});
+  m.querySelector('#cloud-modal-close').addEventListener('click',function(){m.style.display='none';});
+  return m;
+}
+// 서버 도면 목록 → 모달 표시. 각 항목 [열기][삭제]
+function cloudShowList(){
+  if(!_cloudReady())return;
+  const m=_cloudEnsureModal();
+  const body=m.querySelector('#cloud-modal-body');
+  body.innerHTML='<p style="color:#7B82B5;text-align:center;padding:20px">불러오는 중…</p>';
+  m.style.display='flex';
+  APP_CLOUD.list(CLOUD_APP).then(function(rows){
+    rows=rows||[];
+    if(!rows.length){body.innerHTML='<p style="color:#7B82B5;text-align:center;padding:30px">저장된 서버 도면이 없습니다.<br>도면을 그린 뒤 <b>☁ 서버 저장</b>을 눌러 보세요.</p>';return;}
+    body.innerHTML=rows.map(function(r){
+      const when=r.updated_at?new Date(r.updated_at).toLocaleString('ko-KR'):'';
+      const cur=(STATE.cloudDocKey===r.doc_key);
+      return '<div class="cloud-item" style="display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:8px;background:#0F101A;border:1px solid '+(cur?'#C9A961':'#2D3050')+';border-radius:8px">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(r.title||r.doc_key)+(cur?' <span style="color:#C9A961;font-size:10px">(현재)</span>':'')+'</div>'+
+            '<div style="color:#7B82B5;font-size:10px;margin-top:2px">'+escapeHtml(r.updated_by||'—')+' · '+escapeHtml(when)+'</div>'+
+          '</div>'+
+          '<button class="cloud-open btn sm gold" data-key="'+escapeHtml(r.doc_key)+'">열기</button>'+
+          '<button class="cloud-del btn sm danger" data-key="'+escapeHtml(r.doc_key)+'">삭제</button>'+
+        '</div>';
+    }).join('');
+    body.querySelectorAll('.cloud-open').forEach(function(b){b.addEventListener('click',function(){cloudOpen(b.dataset.key);});});
+    body.querySelectorAll('.cloud-del').forEach(function(b){b.addEventListener('click',function(){cloudDelete(b.dataset.key);});});
+  }).catch(function(err){
+    console.error('[cloud list]',err);
+    body.innerHTML='<p style="color:#E2725B;text-align:center;padding:20px">목록 불러오기 실패: '+escapeHtml(err&&err.message||String(err))+'</p>';
+  });
+}
+function cloudOpen(docKey){
+  if(!_cloudReady())return;
+  showStatus('서버 도면 불러오는 중…');
+  APP_CLOUD.load(CLOUD_APP,docKey).then(function(doc){
+    if(!doc){alert('도면을 찾을 수 없습니다.');return;}
+    if(applyCloudDoc(doc.data)){
+      STATE.cloudDocKey=doc.doc_key;
+      const m=document.getElementById('cloud-modal');if(m)m.style.display='none';
+      showStatus('☁ 불러옴 — '+(doc.title||doc.doc_key));
+    }
+  }).catch(function(err){
+    console.error('[cloud open]',err);
+    alert('불러오기 실패: '+(err&&err.message||err));
+  });
+}
+function cloudDelete(docKey){
+  if(!_cloudReady())return;
+  if(!confirm('이 서버 도면을 삭제할까요? (전 직원에게서 사라집니다)'))return;
+  APP_CLOUD.remove(CLOUD_APP,docKey).then(function(){
+    if(STATE.cloudDocKey===docKey)STATE.cloudDocKey=null;
+    showStatus('서버 도면 삭제됨');
+    cloudShowList();
+  }).catch(function(err){
+    console.error('[cloud delete]',err);
+    alert('삭제 실패: '+(err&&err.message||err));
+  });
+}
+
 // v5.8: 구버전 데이터 → v5.8 스키마 마이그레이션 (v5.7 확장)
 // - layerName 누락 객체 자동 생성
 // - typeIndex 누락 자동 채움
@@ -2351,6 +2478,11 @@ const sideAIBtn=document.getElementById('btn-ai-bundle-side');
 if(sideAIBtn) sideAIBtn.addEventListener('click',exportAIBundle);
 document.getElementById('btn-save').addEventListener('click',saveJSON);
 document.getElementById('btn-load').addEventListener('click',loadJSON);
+// v5.9+ 서버 저장/불러오기 (공용 클라우드)
+(function(){
+  const cs=document.getElementById('btn-cloud-save');if(cs)cs.addEventListener('click',cloudSaveDrawing);
+  const cl=document.getElementById('btn-cloud-list');if(cl)cl.addEventListener('click',cloudShowList);
+})();
 document.getElementById('btn-clear-all').addEventListener('click',()=>{
   if(STATE.spaces.length===0&&STATE.walls.length===0) return;
   if(!confirm('모든 객체를 삭제할까요?')) return;
