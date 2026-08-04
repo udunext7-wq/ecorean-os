@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>유송타일 통합 카탈로그 — ECOREAN SSoT</title>
+<style>
+  :root{--bg:#0f1115;--card:#181b22;--line:#262b35;--txt:#e6e9ef;--mut:#8a93a6;--acc:#4f8cff;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:'Segoe UI',-apple-system,'Malgun Gothic',sans-serif;}
+  header{position:sticky;top:0;z-index:20;background:rgba(15,17,21,.96);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:14px 20px;}
+  .title{font-size:19px;font-weight:700;letter-spacing:.5px}
+  .title small{color:var(--mut);font-weight:400;font-size:13px;margin-left:8px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
+  input,select{background:var(--card);border:1px solid var(--line);color:var(--txt);
+    padding:8px 12px;border-radius:8px;font-size:14px;outline:none}
+  input:focus,select:focus{border-color:var(--acc)}
+  .btn{background:var(--card);border:1px solid var(--line);color:var(--txt);padding:8px 12px;
+    border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--acc)}
+  .btn.on{background:#1f7a3d;border-color:#1f7a3d;color:#fff;font-weight:600}
+  .price{font-size:13px;font-weight:700;color:#ffd479;margin-top:6px;min-height:16px}
+  .price.empty{color:var(--mut);font-weight:400}
+  .priceedit{margin-top:6px;display:flex;gap:4px;align-items:center}
+  .priceedit input{padding:5px 8px;font-size:13px;width:100%}
+  body.editing .card{cursor:default}
+  #search{flex:1;min-width:200px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .tab{padding:6px 12px;border:1px solid var(--line);border-radius:20px;font-size:13px;
+    cursor:pointer;color:var(--mut);user-select:none}
+  .tab.active{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .count{color:var(--mut);font-size:13px;margin-left:auto}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;padding:18px 20px 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    display:flex;flex-direction:column;transition:.15s;cursor:pointer}
+  .card:hover{border-color:var(--acc);transform:translateY(-2px)}
+  .thumb{aspect-ratio:1;background:#0b0d11;width:100%;object-fit:cover;display:block}
+  .noimg{aspect-ratio:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:repeating-linear-gradient(45deg,#13161c,#13161c 10px,#161a21 10px,#161a21 20px);color:#3f4756;gap:6px}
+  .noimg svg{width:34px;height:34px;opacity:.6}
+  .noimg span{font-size:11px;color:#5a6373}
+  .meta{padding:10px 12px}
+  .dz{font-size:14px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .br{font-size:12px;color:var(--mut);margin-top:2px}
+  .sku{font-size:11px;color:var(--acc);font-family:monospace;margin-top:3px;min-height:14px}
+  .szwrap{margin-top:8px}
+  .szwrap select{width:100%;font-size:12px;padding:5px 8px}
+  .badge{display:inline-block;font-size:10px;background:#23304a;color:#9cc0ff;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+  /* lightbox */
+  #lb{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;z-index:50;
+    align-items:center;justify-content:center;flex-direction:column;padding:30px}
+  #lb img{max-width:90vw;max-height:78vh;border-radius:8px}
+  #lbinfo{color:#fff;margin-top:16px;text-align:center;max-width:600px}
+  #lbinfo .d{font-size:20px;font-weight:700}
+  #lbinfo .s{color:#9cc0ff;font-family:monospace;margin-top:6px}
+  #lbinfo .x{color:#aab;margin-top:6px;font-size:14px}
+  #lbclose{position:absolute;top:20px;right:28px;font-size:30px;color:#fff;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">유송타일 통합 카탈로그 <small>ECOREAN SSoT · 전 품목 단일 데이터</small></div>
+  <div class="controls">
+    <input id="search" placeholder="검색: 디자인 / SKU / 브랜드 (예: REK-07, Lumie, 태영)">
+    <select id="brand"><option value="">전체 브랜드</option></select>
+    <select id="sort">
+      <option value="def">기본순</option>
+      <option value="brand">브랜드순</option>
+      <option value="design">디자인순</option>
+      <option value="price">가격순</option>
+    </select>
+    <button id="editBtn" class="btn">✏️ 가격입력</button>
+    <button id="expBtn" class="btn">⬇ 가격 CSV</button>
+    <label class="btn" for="impFile">⬆ CSV가져오기</label>
+    <input id="impFile" type="file" accept=".csv" style="display:none">
+    <span class="count" id="count"></span>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</header>
+<div class="grid" id="grid"></div>
+
+<div id="lb">
+  <span id="lbclose">&times;</span>
+  <img id="lbimg" src="">
+  <div id="lbinfo"></div>
+</div>
+
+<script>
+const SECTIONS=[["all","전체"],["porcelain","포세린"],["polishing","폴리싱"],["mosaic","모자이크"],
+ ["wall","벽타일"],["floor","바닥타일"],["stair","계단"],["stone","석재"],["point","포인트"],
+ ["sanitary","위생도기"],["faucet","수전"],["mirror","거울"],["furniture","가구·악세서리"],["subsidiary","부자재"]];
+let DATA=[], state={sec:"all",brand:"",q:"",sort:"def",editing:false};
+const PKEY='usongtile_prices';
+let PRICES=JSON.parse(localStorage.getItem(PKEY)||'{}');  // id -> price(number)
+function getPrice(e){ return (e.id in PRICES)?PRICES[e.id]:e.price; }
+function setPrice(e,v){
+  v=(''+v).replace(/[^0-9]/g,'');
+  if(v==='') delete PRICES[e.id]; else PRICES[e.id]=parseInt(v,10);
+  localStorage.setItem(PKEY,JSON.stringify(PRICES));
+}
+function fmtPrice(p){ return p==null||p===''?'가격 미입력':('₩'+Number(p).toLocaleString()); }
+
+fetch('catalog.json').then(r=>r.json()).then(d=>{
+  DATA=d;
+  DATA.forEach(e=>BYID[e.id]=e);
+  // tabs
+  const counts={};DATA.forEach(e=>counts[e.section]=(counts[e.section]||0)+1);
+  const tabs=document.getElementById('tabs');
+  SECTIONS.forEach(([k,label])=>{
+    const n=k==="all"?DATA.length:(counts[k]||0);
+    if(k!=="all"&&!n)return;
+    const t=document.createElement('div');t.className='tab'+(k==="all"?' active':'');
+    t.textContent=`${label} ${n}`;t.dataset.sec=k;
+    t.onclick=()=>{state.sec=k;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');render();};
+    tabs.appendChild(t);
+  });
+  // brands
+  const bset=[...new Set(DATA.map(e=>e.brand))].sort((a,b)=>a.localeCompare(b,'ko'));
+  const bsel=document.getElementById('brand');
+  bset.forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;bsel.appendChild(o);});
+  render();
+});
+
+document.getElementById('search').oninput=e=>{state.q=e.target.value.toLowerCase().trim();render();};
+document.getElementById('brand').onchange=e=>{state.brand=e.target.value;render();};
+document.getElementById('sort').onchange=e=>{state.sort=e.target.value;render();};
+
+function match(e){
+  if(state.sec!=="all"&&e.section!==state.sec)return false;
+  if(state.brand&&e.brand!==state.brand)return false;
+  if(state.q){
+    const hay=(e.design+' '+(e.sku||'')+' '+e.brand+' '+(e.codes||[]).join(' ')+' '+(e.name_ko||'')).toLowerCase();
+    if(!hay.includes(state.q))return false;
+  }
+  return true;
+}
+function render(){
+  let list=DATA.filter(match);
+  if(state.sort==="brand")list=[...list].sort((a,b)=>a.brand.localeCompare(b.brand,'ko')||a.design.localeCompare(b.design));
+  if(state.sort==="design")list=[...list].sort((a,b)=>a.design.localeCompare(b.design,'ko'));
+  if(state.sort==="price")list=[...list].sort((a,b)=>{const x=getPrice(a),y=getPrice(b);
+    if(x==null&&y==null)return 0; if(x==null)return 1; if(y==null)return -1; return x-y;});
+  document.getElementById('count').textContent=`${list.length.toLocaleString()} 품목`;
+  const g=document.getElementById('grid');g.innerHTML='';
+  const frag=document.createDocumentFragment();
+  list.slice(0,1500).forEach(e=>frag.appendChild(card(e)));
+  g.appendChild(frag);
+}
+function card(e){
+  const c=document.createElement('div');c.className='card';
+  const img=e.image?`https://gdcfqbdgubgpzusbtftf.supabase.co/storage/v1/object/public/tiles/thumb/${e.image}`:'';
+  const sizes=(e.sizes||[]);
+  const szSel=sizes.length>1?
+    `<div class="szwrap"><select onclick="event.stopPropagation()">${sizes.map(s=>`<option>${s}</option>`).join('')}</select></div>`
+    :(sizes.length?`<div class="sku" style="color:var(--mut)">${sizes[0]}</div>`:'');
+  const p=getPrice(e);
+  const priceBlock=state.editing
+    ? `<div class="priceedit"><input type="text" inputmode="numeric" placeholder="가격(원)" value="${p!=null?p:''}"
+         onclick="event.stopPropagation()"
+         oninput="onPriceInput('${e.id}',this.value)"><span style="color:var(--mut)">원</span></div>`
+    : `<div class="price${p==null?' empty':''}">${fmtPrice(p)}</div>`;
+  const thumb=img
+    ? `<img class="thumb" loading="lazy" src="${img}" alt="${esc(e.design)}">`
+    : `<div class="noimg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span>이미지 없음</span></div>`;
+  c.innerHTML=`${thumb}
+    <div class="meta">
+      <div class="dz">${esc(e.design)}${sizes.length>1?`<span class="badge">${sizes.length}size</span>`:''}</div>
+      <div class="br">${esc(e.brand)} · ${secKo(e.section)}</div>
+      <div class="sku">${e.sku?esc(e.sku):''}</div>
+      ${szSel}
+      ${priceBlock}
+    </div>`;
+  if(!state.editing) c.onclick=()=>openLB(e);
+  return c;
+}
+function openLB(e){
+  const lbi=document.getElementById('lbimg');
+  if(e.image){lbi.style.display='';lbi.src=`https://gdcfqbdgubgpzusbtftf.supabase.co/storage/v1/object/public/tiles/original/${e.image}`;}
+  else{lbi.style.display='none';lbi.src='';}
+  const p=getPrice(e);
+  document.getElementById('lbinfo').innerHTML=
+    `<div class="d">${esc(e.design)}</div>
+     <div class="s">${e.sku?esc(e.sku):''} ${(e.codes||[]).length>1?'· '+e.codes.map(esc).join(' / '):''}</div>
+     <div class="x">${esc(e.brand)} · ${secKo(e.section)} · ${(e.sizes||[]).join(', ')}${e.finish?' · '+e.finish:''}</div>
+     <div class="x" style="color:#ffd479;font-weight:700;font-size:17px">${fmtPrice(p)}</div>
+     ${e.name_ko?`<div class="x">${esc(e.name_ko)}${e.desc?' — '+esc(e.desc):''}</div>`:''}</div>`;
+  document.getElementById('lb').style.display='flex';
+}
+document.getElementById('lbclose').onclick=()=>document.getElementById('lb').style.display='none';
+document.getElementById('lb').onclick=e=>{if(e.target.id==='lb')e.target.style.display='none';};
+let BYID={};
+function onPriceInput(id,val){ const e=BYID[id]; if(e){ setPrice(e,val); } }
+
+document.getElementById('editBtn').onclick=function(){
+  state.editing=!state.editing;
+  this.classList.toggle('on',state.editing);
+  document.body.classList.toggle('editing',state.editing);
+  this.textContent=state.editing?'✅ 입력완료':'✏️ 가격입력';
+  render();
+};
+// CSV export: id,sku,brand,design,section,sizes,price
+document.getElementById('expBtn').onclick=function(){
+  const rows=[['id','sku','brand','design','section','sizes','price']];
+  DATA.forEach(e=>{const p=getPrice(e);
+    rows.push([e.id,e.sku||'',e.brand,e.design,e.section,(e.sizes||[]).join('|'),p==null?'':p]);});
+  const csv='﻿'+rows.map(r=>r.map(c=>`"${(''+c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='usongtile_prices.csv';a.click();
+};
+// CSV import: match by id (preferred) or sku, fill price
+document.getElementById('impFile').onchange=function(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const lines=rd.result.replace(/^﻿/,'').split(/\r?\n/).filter(x=>x.trim());
+    const hdr=parseCSV(lines[0]).map(h=>h.toLowerCase());
+    const iId=hdr.indexOf('id'),iSku=hdr.indexOf('sku'),iP=hdr.indexOf('price');
+    const byId={},bySku={}; DATA.forEach(e=>{byId[e.id]=e; if(e.sku)bySku[e.sku]=e;});
+    let n=0;
+    for(let k=1;k<lines.length;k++){
+      const c=parseCSV(lines[k]); const pv=(c[iP]||'').replace(/[^0-9]/g,'');
+      if(!pv)continue;
+      let e=(iId>=0&&byId[c[iId]])||(iSku>=0&&bySku[c[iSku]]);
+      if(e){ setPrice(e,pv); n++; }
+    }
+    alert(`${n}개 품목 가격 적용됨 (브라우저에 저장).`); render();
+  };
+  rd.readAsText(f,'utf-8'); ev.target.value='';
+};
+function parseCSV(line){
+  const out=[];let cur='',q=false;
+  for(let i=0;i<line.length;i++){const ch=line[i];
+    if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+    else { if(ch==='"')q=true; else if(ch===','){out.push(cur);cur='';} else cur+=ch; }
+  }
+  out.push(cur);return out;
+}
+function secKo(s){const f=SECTIONS.find(x=>x[0]===s);return f?f[1]:s;}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+</script>
+</body>
+</html>

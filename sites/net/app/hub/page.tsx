@@ -20,6 +20,8 @@ const MODULES: { href: string; name: string; desc: string; external?: boolean }[
   { href: '/editor/', name: '아티팩트 생성기', desc: '비주얼 에디터' },
   { href: '/work/', name: '직원 포털 홈', desc: 'WORK' },
   { href: '/biz/', name: '사업장부', desc: 'BOC BIZ' },
+  { href: '/catalog/usong/', name: '유송타일 도감', desc: '단가 포함 · 직원용' },
+  { href: '/catalog/lx/', name: 'LX Z:IN 도감', desc: '단가 포함 · 직원용' },
 ];
 
 const BOC_MODULES: { href: string; name: string; desc: string; minRole?: 'admin' }[] = [
