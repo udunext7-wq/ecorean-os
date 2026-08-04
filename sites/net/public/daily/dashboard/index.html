@@ -5,6 +5,7 @@
 <style id="ecorean-gate-style">html{visibility:hidden}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/ecorean-gate.js"></script>
+<script src="/app-cloud.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ECOREAN 현장 대시보드</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -118,19 +119,15 @@ body{margin:0;font-family:var(--font-sans);background:var(--bg);color:var(--ink)
 </div>
 
 <script>
-/* ═══ 저장소: Supabase 클라우드 읽기 전용 (boc_daily_storage) ═══
-   이 대시보드는 boc_daily_storage 에 쓰지 않는다(읽기 전용). */
+/* ═══ 저장소: app_documents(APP_CLOUD, 세션 인증·staff RLS) 읽기 전용 ═══
+   현장일보 앱과 동일 백엔드. get(key){value} 인터페이스 유지 — 값은 {v:문자열}. */
 (function(){
-  const SB_URL='https://gdcfqbdgubgpzusbtftf.supabase.co/rest/v1/boc_daily_storage';
-  const SB_KEY='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
-  const HDR={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
   window.storage={
     async get(k){
       try{
-        const r=await fetch(SB_URL+'?key=eq.'+encodeURIComponent(k)+'&select=value',{headers:HDR});
-        if(!r.ok)throw new Error(r.status);
-        const rows=await r.json();
-        return rows.length?{key:k,value:rows[0].value}:null;
+        if(!(window.APP_CLOUD&&APP_CLOUD.ready()))return null;
+        const doc=await APP_CLOUD.load('sitedaily',k);
+        return (doc&&doc.data&&typeof doc.data.v==='string')?{key:k,value:doc.data.v}:null;
       }catch(e){return null;}
     }
   };

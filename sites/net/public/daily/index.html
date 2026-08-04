@@ -462,10 +462,11 @@ body{margin:0;font-family:var(--font-sans);background:var(--bg);color:var(--ink)
   const pending={},timers={};
   async function push(k,v,keepalive){
     try{
-      const r=await fetch(SB_URL+'?on_conflict=key',{method:'POST',keepalive:!!keepalive,
-        headers:{...HDR,'Prefer':'resolution=merge-duplicates,return=minimal'},
-        body:JSON.stringify([{key:k,value:v}])});
-      if(!r.ok)throw new Error(r.status);
+      if(!(window.APP_CLOUD&&APP_CLOUD.ready())) throw new Error('no-session');
+      let title=k;
+      if(k.indexOf('boc-daily-state:')===0){try{const s=JSON.parse(v);title=(s.site&&s.site.name)||k;}catch(e){}}
+      else if(k==='boc-daily-sites') title='현장 목록';
+      await APP_CLOUD.save('sitedaily',k,title,{v:v});
       setBadge('☁ 클라우드 저장됨');
     }catch(e){setBadge('☁ 오프라인 — 이 기기에만 저장됨',true);}
   }
@@ -473,16 +474,19 @@ body{margin:0;font-family:var(--font-sans);background:var(--bg);color:var(--ink)
   function flush(){for(const k in pending){const v=pending[k];delete pending[k];clearTimeout(timers[k]);push(k,v,true);}}
   window.addEventListener('pagehide',flush);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush();});
+  // v3: 백엔드를 app_documents(APP_CLOUD, 세션 인증·staff RLS)로 교체.
+  // boc_daily_storage 는 anon 쓰기가 RLS로 막혀 저장 실패 → 로컬만 되던 문제 해결.
+  // 인터페이스(get/set/delete{key,value})는 유지 — 현장별 로직 무변경. 값은 JSON 문자열, data 는 {v:문자열}.
+  const APP='sitedaily';
   window.storage={
     async get(k){
       if(pending[k]!=null)return{key:k,value:pending[k]};
       try{
-        const r=await fetch(SB_URL+'?key=eq.'+encodeURIComponent(k)+'&select=value',{headers:HDR});
-        if(!r.ok)throw new Error(r.status);
-        const rows=await r.json();
-        if(rows.length){lsSet(k,rows[0].value);setBadge('☁ 클라우드에서 불러옴');return{key:k,value:rows[0].value};}
+        if(!(window.APP_CLOUD&&APP_CLOUD.ready())) throw new Error('no-session');
+        const doc=await APP_CLOUD.load(APP,k);
+        if(doc&&doc.data&&typeof doc.data.v==='string'){lsSet(k,doc.data.v);setBadge('☁ 클라우드에서 불러옴');return{key:k,value:doc.data.v};}
         const v=lsGet(k);
-        if(v!=null)queue(k,v); /* 클라우드에 없으면 로컬 데이터를 최초 이관 */
+        if(v!=null)queue(k,v); /* 서버에 없으면 로컬 데이터 최초 이관 */
         return v==null?null:{key:k,value:v};
       }catch(e){
         setBadge('☁ 오프라인 — 이 기기 데이터 사용',true);
@@ -490,7 +494,7 @@ body{margin:0;font-family:var(--font-sans);background:var(--bg);color:var(--ink)
       }
     },
     async set(k,v){lsSet(k,v);queue(k,v);return{key:k,value:v};},
-    async delete(k){lsDel(k);return{key:k,deleted:true};}
+    async delete(k){lsDel(k);try{if(window.APP_CLOUD&&APP_CLOUD.ready())await APP_CLOUD.remove(APP,k);}catch(e){}return{key:k,deleted:true};}
   };
 })();
 
