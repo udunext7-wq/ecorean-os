@@ -853,6 +853,28 @@ async function renderPhotos(){
     </div>`;
   }));
   g.innerHTML=parts.join('');
+  migrateLocalPhotos(); // 서버 URL 없는 옛 사진을 이 기기의 로컬본에서 자동 업로드(공유화)
+}
+/* 배포 이전 첨부되어 URL이 없는(=로컬 IndexedDB에만 있는) 사진을 Storage로 올려 전 직원 공유화.
+   실물이 이 기기에 있을 때만 동작. 다른 기기에선 조용히 스킵. */
+let _photoMigrating=false;
+async function migrateLocalPhotos(){
+  if(_photoMigrating)return;
+  const targets=(state.current.photos||[]).filter(p=>p&&p.id&&!p.url);
+  if(!targets.length)return;
+  _photoMigrating=true;
+  let changed=0;
+  for(const p of targets){
+    try{
+      const rec=await PhotoStore.get(p.id);
+      if(!rec||!(rec.full||rec.thumb))continue; // 이 기기에 실물 없음 → 스킵
+      const url=await uploadPhoto(rec.full||rec.thumb,p.id,'full');
+      const turl=await uploadPhoto(rec.thumb||rec.full,p.id,'thumb');
+      if(url){p.url=url;p.thumbUrl=turl||url;changed++;}
+    }catch(e){}
+  }
+  _photoMigrating=false;
+  if(changed){persist();toast('사진 '+changed+'장 서버 업로드 완료 — 이제 다른 직원도 볼 수 있습니다');renderPhotos();}
 }
 let lbIdx=-1;
 async function openLightbox(i){
