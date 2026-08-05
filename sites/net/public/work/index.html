@@ -164,7 +164,6 @@
         <a href="#inquiry" data-tab="inquiry">📨 상담 문의</a>
         <a href="#staff" data-tab="staff" id="staffTabLink" style="display:none;">👥 직원 관리</a>
         <a href="/minicad/" target="_blank">📐 MiniCAD ↗</a>
-        <a href="/pms/" target="_blank">📋 공정관리 ↗</a>
         <a href="/biz/" target="_blank">💼 사업장부 ↗</a>
         <a href="/editor/" target="_blank">🎨 아티팩트 생성기 ↗</a>
       </nav>
@@ -789,12 +788,20 @@ async function viewSchedule() {
   $('#mainContent').innerHTML = `
     <div class="page-head" style="margin-bottom:10px"><h1>공정표 · 공정관리 PMS</h1>
       <div class="filters">
+        <button class="btn primary" onclick="pmsFullscreen()">⛶ 전체화면</button>
         <a class="btn" href="/pms/" target="_blank" style="text-decoration:none">↗ 새 창</a>
         <button class="btn" onclick="document.getElementById('pmsFrame').contentWindow.location.reload()">↻ 새로고침</button>
       </div></div>
-    <iframe id="pmsFrame" src="/pms/" title="공정관리 PMS"
-      style="width:100%;height:calc(100vh - 140px);min-height:520px;border:1px solid var(--line);border-radius:12px;background:#fff;display:block"></iframe>`;
+    <div style="font-size:12px;color:var(--dim);margin:-6px 0 8px">💡 프로젝트 공정표가 작으면 <b>[⛶ 전체화면]</b>을 누르세요 (ESC로 나가기).</div>
+    <iframe id="pmsFrame" src="/pms/" title="공정관리 PMS" allowfullscreen
+      style="width:100%;height:calc(100vh - 150px);min-height:520px;border:1px solid var(--line);border-radius:12px;background:#fff;display:block"></iframe>`;
 }
+window.pmsFullscreen = function() {
+  const f = document.getElementById('pmsFrame');
+  if (!f) return;
+  const req = f.requestFullscreen || f.webkitRequestFullscreen || f.msRequestFullscreen;
+  if (req) req.call(f); else window.open('/pms/', '_blank');
+};
 window.loadSchedule = async function() {
   const siteId = $('#schSite').value;
   const { data } = await sb.from('work_schedule_items').select('*').eq('site_id', siteId).order('sort_order').order('start_date');
