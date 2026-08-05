@@ -810,6 +810,22 @@ function renderByPhase(){
 
 /* ═══ 사진 (IndexedDB + 2단압축 + 태깅) ═══ */
 function downscale(src,max,q){return new Promise(res=>{const img=new Image();img.onload=()=>{const sc=Math.min(1,max/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);res(cv.toDataURL('image/jpeg',q));};img.src=src;});}
+/* dataURL → Blob (Storage 업로드용) */
+function dataURLtoBlob(dataUrl){const [h,b]=dataUrl.split(',');const mime=(h.match(/:(.*?);/)||[])[1]||'image/jpeg';const bin=atob(b);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return new Blob([arr],{type:mime});}
+/* 사진 1장을 Supabase Storage(daily-photos)에 업로드 → 공개 URL. 실패 시 null */
+async function uploadPhoto(dataUrl,id,kind){
+  try{
+    const sess=window.ECOREAN_AUTH&&window.ECOREAN_AUTH.session;
+    const tok=sess&&sess.access_token; if(!tok)return null;
+    const path=id+'-'+kind+'.jpg';
+    const r=await fetch('https://gdcfqbdgubgpzusbtftf.supabase.co/storage/v1/object/daily-photos/'+path,{
+      method:'POST',
+      headers:{apikey:'sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ',Authorization:'Bearer '+tok,'Content-Type':'image/jpeg','x-upsert':'true'},
+      body:dataURLtoBlob(dataUrl)});
+    if(!r.ok)return null;
+    return 'https://gdcfqbdgubgpzusbtftf.supabase.co/storage/v1/object/public/daily-photos/'+path;
+  }catch(e){return null;}
+}
 async function addPhotos(ev){
   const files=[...ev.target.files];
   for(const f of files){
@@ -817,8 +833,11 @@ async function addPhotos(ev){
     const full=await downscale(dataUrl,1600,0.8);
     const thumb=await downscale(dataUrl,800,0.74);
     const id='ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-    await PhotoStore.put({id,full,thumb});
-    state.current.photos.push({id,tag:'',caption:''});
+    await PhotoStore.put({id,full,thumb}); // 로컬 캐시(오프라인·즉시표시)
+    // 서버 업로드 → URL 저장(전 직원 공유). 실패해도 로컬로 동작.
+    const url=await uploadPhoto(full,id,'full');
+    const thumbUrl=await uploadPhoto(thumb,id,'thumb');
+    state.current.photos.push({id,tag:'',caption:'',url:url||null,thumbUrl:thumbUrl||null});
   }
   ev.target.value='';renderPhotos();persist();
 }
@@ -826,8 +845,8 @@ async function renderPhotos(){
   const g=document.getElementById('photoGrid');
   if(!state.current.photos.length){g.innerHTML='';return;}
   const parts=await Promise.all(state.current.photos.map(async(p,i)=>{
-    const rec=await PhotoStore.get(p.id);
-    const src=rec?rec.thumb:'';
+    let src=p.thumbUrl||p.url||''; // 서버 URL 우선(전 직원 공유)
+    if(!src){const rec=await PhotoStore.get(p.id);src=rec?rec.thumb:'';} // 레거시 로컬 폴백
     return `<div class="photo-cell">
       <div class="photo-thumb" onclick="openLightbox(${i})">${src?`<img src="${src}">`:'<div class="empty" style="padding:12px">사진 없음</div>'}${p.tag?`<div class="tag">${p.tag}</div>`:''}</div>
       <input class="photo-cap" value="${(p.caption||'').replace(/"/g,'&quot;')}" placeholder="사진 제목" oninput="state.current.photos[${i}].caption=this.value;persist()">
@@ -837,8 +856,10 @@ async function renderPhotos(){
 }
 let lbIdx=-1;
 async function openLightbox(i){
-  lbIdx=i;const p=state.current.photos[i];const rec=await PhotoStore.get(p.id);
-  document.getElementById('lbImg').src=rec?rec.full:'';
+  lbIdx=i;const p=state.current.photos[i];
+  let big=p.url||p.thumbUrl||'';
+  if(!big){const rec=await PhotoStore.get(p.id);big=rec?rec.full:'';}
+  document.getElementById('lbImg').src=big;
   const opts=phaseOptions();
   document.getElementById('lbTag').innerHTML=opts.map(o=>`<option value="${o}" ${o===p.tag?'selected':''}>${o||'(태그 없음)'}</option>`).join('');
   document.getElementById('lbCap').value=p.caption||'';
@@ -1131,7 +1152,7 @@ async function exportReportHTML(){
   const r=state.current,s=state.site;
   const esc=v=>(v==null?'':String(v)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const photos=[];let photoMiss=0;
-  for(const p of (r.photos||[])){const rec=await PhotoStore.get(p.id);const src=rec&&(rec.full||rec.thumb);if(src)photos.push({src,cap:p.caption||'',tag:p.tag||''});else photoMiss++;}
+  for(const p of (r.photos||[])){let src=p.url||p.thumbUrl;if(!src){const rec=await PhotoStore.get(p.id);src=rec&&(rec.full||rec.thumb);}if(src)photos.push({src,cap:p.caption||'',tag:p.tag||''});else photoMiss++;}
   const procRows=(r.processes||[]).map(p=>{const c=CI[p.cat]||{n:p.cat};return `<tr><td>${esc(p.nm)}</td><td>${esc(c.n)}</td><td>${p.dur?p.day+'/'+p.dur:'-'}</td><td>${p.progress}%</td><td>${p.direct||0}</td><td>${p.outsourced||0}</td><td>${esc(p.note)}</td></tr>`;}).join('')||'<tr><td colspan=7 class=ce>-</td></tr>';
   const tomorrow=(r.tomorrow||[]).map(t=>esc(t.nm)).join(', ')||'-';
   const mats=(r.materials||[]).map(m=>`${m.received?'☑':'☐'} ${esc(m.nm)} <span class=dim>(${esc(m.phase)})</span>`).join('<br>')||'-';
