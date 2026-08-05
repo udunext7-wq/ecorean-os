@@ -519,24 +519,16 @@ window.printPO = function(id) {
 /* ───── 공사일보 ───── */
 let dailyCache = [];
 async function viewDaily() {
-  const { data } = await sb.from('work_daily_reports').select('*').order('report_date',{ascending:false}).limit(200);
-  dailyCache = data || [];
+  // 공사일보 = 현장 통합 대시보드 전체. 일보 작성은 현장일보로 통일(대시보드 안에서 진입).
   $('#mainContent').innerHTML = `
-    <div class="page-head"><h1>공사일보</h1>
+    <div class="page-head" style="margin-bottom:10px"><h1>공사일보 · 현장 대시보드</h1>
       <div class="filters">
-        <select id="dailySiteFilter" onchange="renderDailyList()">${'<option value="">전체 현장</option>'+sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
-        <button class="btn primary" onclick="dailyForm()">+ 일보 작성</button>
+        <button class="btn primary" onclick="document.getElementById('dailyFrame').contentWindow.location.href='/daily/'">＋ 현장일보 작성</button>
+        <a class="btn" href="/daily/" target="_blank" style="text-decoration:none">↗ 새 창</a>
+        <button class="btn" onclick="document.getElementById('dailyFrame').contentWindow.location.reload()">↻ 새로고침</button>
       </div></div>
-    <div style="background:#12261e;border:1px solid #1f7a3d;border-radius:12px;padding:16px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
-      <div><div style="font-weight:700;color:#7fe0a8">📋 정식 현장일보로 통합되었습니다</div>
-      <div style="font-size:13px;color:#9fb3a8;margin-top:4px">공정·인력·현금출납·자재·검측·안전·사진까지 담는 상세 현장일보를 사용하세요. 전 직원 공유 · 현장별 대시보드 제공.</div></div>
-      <div style="display:flex;gap:8px;flex-shrink:0">
-        <a class="btn primary" href="/daily/" style="text-decoration:none">현장일보 작성 →</a>
-        <a class="btn" href="/daily/dashboard/" style="text-decoration:none">📊 대시보드</a>
-      </div></div>
-    <div style="font-size:12px;color:#8a93a6;margin-bottom:8px">※ 아래는 기존 간단 일보 기록 (보존용)</div>
-    <div id="dailyList"></div>`;
-  renderDailyList();
+    <iframe id="dailyFrame" src="/daily/dashboard/" title="현장 통합 대시보드"
+      style="width:100%;height:calc(100vh - 140px);min-height:520px;border:1px solid var(--line);border-radius:12px;background:#fff;display:block"></iframe>`;
 }
 window.renderDailyList = function() {
   const f = $('#dailySiteFilter')?.value;

@@ -34,9 +34,8 @@ const SECTIONS: HubSection[] = [
     title: '직원 포털 · 장부',
     items: [
       { href: '/work/#po', name: '발주서', desc: '직원 포털' },
-      { href: '/work/#daily', name: '공사일보', desc: '직원 포털' },
+      { href: '/work/#daily', name: '공사일보', desc: '현장 대시보드·일보 작성' },
       { href: '/work/#invoice', name: '계산서', desc: '직원 포털' },
-      { href: '/daily/', name: '현장 일보', desc: '단독앱 · 현금출납' },
       { href: '/biz/', name: '사업장부', desc: 'BOC BIZ' },
     ],
   },
