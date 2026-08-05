@@ -7,6 +7,7 @@
 <meta name="robots" content="noindex">
 <title>ECOREAN WORK — 직원 포털</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/ecorean-gate.js"></script><!-- v3: 게이트 스타일이 없으므로 세션 유틸(ECOREAN_AUTH.write/clear)만 노출 -->
 <style>
   :root {
     --bg: #05070d; --bg2: #0c111c; --bg3: #111827; --line: #1c2536;
@@ -239,6 +240,15 @@ $('#loginForm').addEventListener('submit', async e => {
 $('#logoutBtn').addEventListener('click', async e => { e.preventDefault(); await sb.auth.signOut(); location.reload(); });
 
 sb.auth.onAuthStateChange(async (event, session) => {
+  /* v3 SSO: 로그인·토큰 회전 시 허브 쿠키에 되쓰기 — "로그인 한 번" 유지의 핵심.
+     (supabase-js 가 refresh_token 을 회전시키면 쿠키의 옛 토큰이 폐기되어
+      다른 업무앱 게이트가 갱신에 실패 → 재로그인을 요구하던 문제 차단) */
+  try {
+    if (window.ECOREAN_AUTH) {
+      if (session) ECOREAN_AUTH.write(session);
+      else if (event === 'SIGNED_OUT') ECOREAN_AUTH.clear();
+    }
+  } catch (e) {}
   if (session?.user) await enterApp(session.user);
   else { $('#loginView').style.display = 'flex'; $('#appView').style.display = 'none'; }
 });
