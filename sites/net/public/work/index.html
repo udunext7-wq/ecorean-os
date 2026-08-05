@@ -785,17 +785,15 @@ window.saveStaff = async function(id) {
 const GANTT_COLORS = ['#4ade80','#60a5fa','#fbbf24','#f87171','#c084fc','#34d399','#f472b6','#a3e635','#22d3ee','#fb923c'];
 let schCache = [];
 async function viewSchedule() {
-  await loadSites();
-  const saved = sessionStorage.getItem('schSite');
-  const siteId = saved && sites.some(s=>s.id===saved) ? saved : (sites[0]?.id || '');
+  // 공정표 = 공정관리 PMS 전체. 실제 사용은 PMS로 일원화(전 직원 공유).
   $('#mainContent').innerHTML = `
-    <div class="page-head"><h1>공정표</h1>
+    <div class="page-head" style="margin-bottom:10px"><h1>공정표 · 공정관리 PMS</h1>
       <div class="filters">
-        <select id="schSite" onchange="sessionStorage.setItem('schSite',this.value);loadSchedule()">${sites.map(s=>`<option value="${s.id}" ${s.id===siteId?'selected':''}>${esc(s.name)}</option>`).join('') || '<option value="">현장 없음</option>'}</select>
-        <button class="btn primary" onclick="schForm()">+ 공정 추가</button>
+        <a class="btn" href="/pms/" target="_blank" style="text-decoration:none">↗ 새 창</a>
+        <button class="btn" onclick="document.getElementById('pmsFrame').contentWindow.location.reload()">↻ 새로고침</button>
       </div></div>
-    <div id="ganttArea"></div>`;
-  if (siteId) loadSchedule(); else $('#ganttArea').innerHTML = '<div class="empty">먼저 [현장] 탭에서 현장을 등록하세요.</div>';
+    <iframe id="pmsFrame" src="/pms/" title="공정관리 PMS"
+      style="width:100%;height:calc(100vh - 140px);min-height:520px;border:1px solid var(--line);border-radius:12px;background:#fff;display:block"></iframe>`;
 }
 window.loadSchedule = async function() {
   const siteId = $('#schSite').value;
