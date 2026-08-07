@@ -1263,6 +1263,8 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
   if(!state.checkDone)state.checkDone={};if(!state.checkCustom)state.checkCustom=[];
   autoFillManpower();
   setMode(state.mode||'arch');renderWrite();renderSiteBar();
+  /* 대시보드에서 /daily/?site=<id>&date=<날짜> 로 진입 시 해당 날짜 일보 열기 */
+  try{var qd=new URLSearchParams(location.search).get('date');if(qd&&state.reports&&state.reports[qd])openReport(qd);}catch(e){}
   let dt;document.addEventListener('input',()=>{clearTimeout(dt);dt=setTimeout(persist,800);});
 })();
 </script>
