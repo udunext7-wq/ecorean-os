@@ -254,7 +254,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
 
 async function enterApp(user) {
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  if (!profile || !['staff','admin'].includes(profile.role)) {
+  if (!profile || !['staff','executive','admin','master'].includes(profile.role)) {
     $('#loginErr').textContent = '직원 권한이 없는 계정입니다. 관리자에게 문의하세요.';
     await sb.auth.signOut();
     return;
@@ -262,9 +262,11 @@ async function enterApp(user) {
   me = profile;
   const next = new URLSearchParams(location.search).get('next');
   if (next && /^\/(?!\/)/.test(next)) { location.replace(next); return; }
+  const ROLE_KO = { master:'마스터', admin:'관리자', executive:'임원', staff:'직원' };
   $('#meName').textContent = profile.display_name || user.email;
-  $('#meRole').textContent = profile.role === 'admin' ? '관리자' : '직원';
-  if (profile.role === 'admin') $('#staffTabLink').style.display = 'flex';
+  $('#meRole').textContent = ROLE_KO[profile.role] || '직원';
+  // 직원 관리(권한 부여)는 관리자·마스터만
+  if (profile.role === 'admin' || profile.role === 'master') $('#staffTabLink').style.display = 'flex';
   $('#loginView').style.display = 'none';
   $('#appView').style.display = 'block';
   await loadSites();
@@ -745,9 +747,9 @@ window.saveInq = async function(id) {
 };
 
 /* ───── 직원 관리 (admin 전용) ───── */
-const ROLE_LABEL = { admin:'관리자', staff:'직원', customer:'미승인' };
+const ROLE_LABEL = { master:'마스터', admin:'관리자', executive:'임원', staff:'직원', visitor:'미승인' };
 async function viewStaff() {
-  if (me.role !== 'admin') { location.hash = 'dashboard'; return; }
+  if (me.role !== 'admin' && me.role !== 'master') { location.hash = 'dashboard'; return; }
   const { data: profiles, error } = await sb.from('profiles').select('*').order('created_at');
   if (error) { $('#mainContent').innerHTML = `<div class="empty">불러오기 실패: ${esc(error.message)}</div>`; return; }
   $('#mainContent').innerHTML = `
@@ -759,14 +761,14 @@ async function viewStaff() {
         <td><input id="nm_${p.id}" value="${esc(p.display_name||'')}" style="min-width:110px;"></td>
         <td style="white-space:nowrap;">${(p.created_at||'').slice(0,10)}</td>
         <td><select id="rl_${p.id}" ${p.id===me.id?'disabled title="본인 권한은 변경할 수 없습니다"':''}>
-          ${['admin','staff','customer'].map(r=>`<option value="${r}" ${p.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')}
+          ${['admin','executive','staff','visitor'].map(r=>`<option value="${r}" ${p.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')}
         </select></td>
         <td><button class="btn sm primary" onclick="saveStaff('${p.id}')">저장</button></td>
       </tr>`).join('')}</tbody>
     </table></div>
     <div style="color:var(--dim);font-size:13px;margin-top:14px;line-height:1.8;">
       <b style="color:var(--text);">권한 안내</b><br>
-      · <b>관리자</b> — 모든 업무 + 직원 관리 &nbsp;· <b>직원</b> — 모든 업무 사용 가능 &nbsp;· <b>미승인</b> — 포털 접근 불가<br>
+      · <b>관리자</b> — 모든 업무 + 직원 관리 &nbsp;· <b>임원</b> — 모든 업무 사용(관리 권한 제외) &nbsp;· <b>직원</b> — 모든 업무 사용 &nbsp;· <b>미승인</b> — 포털 접근 불가<br>
       새 직원 추가: Supabase 대시보드 → Authentication → Users → <b>Add user</b>(Auto Confirm 체크)로 계정을 만들면
       이 목록에 "미승인"으로 나타납니다. 여기서 <b>직원</b>으로 바꾸고 저장하면 끝.
     </div>`;

@@ -9,8 +9,9 @@ export type Role =
   | 'visitor'            // 1. 서치 고객
   | 'business_customer'  // 2. 상업고객
   | 'staff'              // 3. 일반 직원
-  | 'admin'              // 4. 관리자
-  | 'master';            // 5. 마스터
+  | 'executive'          // 4. 임원
+  | 'admin'              // 5. 관리자
+  | 'master';            // 6. 마스터
 
 /** DB 테이블 접근 선언 */
 export interface TableAccess {

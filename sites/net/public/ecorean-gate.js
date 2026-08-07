@@ -132,7 +132,7 @@
     }).catch(function () { return { status: 0, role: null }; });
   }
   function finish(res) {
-    if (res.role === 'staff' || res.role === 'admin' || res.role === 'master') pass();
+    if (res.role === 'staff' || res.role === 'executive' || res.role === 'admin' || res.role === 'master') pass();
     else if (res.role) location.replace('/request-role/');
     else deny();
   }

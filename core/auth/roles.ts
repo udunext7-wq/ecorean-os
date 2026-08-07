@@ -7,8 +7,9 @@ export const ROLE_LEVEL: Record<Role, number> = {
   visitor: 1,
   business_customer: 2,
   staff: 3,
-  admin: 4,
-  master: 5,
+  executive: 4,
+  admin: 5,
+  master: 6,
 };
 
 /** userRole이 minRole 이상인가 */

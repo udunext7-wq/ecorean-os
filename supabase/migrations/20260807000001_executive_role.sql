@@ -1,0 +1,12 @@
+-- 임원(executive) 권한 등급 추가 (2026-08-07, 대표 지시) — DB 적용 완료
+-- (apply_migration: executive_role_level_and_constraint / executive_role_admin_thresholds /
+--  executive_exclude_master_funcs 이력 참조)
+--
+-- 서열: master=6 > admin=5 > executive=4 > staff=3 > business_customer=2 > visitor=1
+-- 임원 = 직원보다 상위 등급. 업무 전체 사용 가능(hasRole staff 충족).
+-- 관리자 고유 권한(직원 관리·승급 승인·MiniCAD 단가 승인·자재 마스터 등록)은
+--   admin(5)+ 만 — 기존 role_level>=4/<4 체크를 >=5/<5 로 올려 임원 제외(보수적 기본).
+-- 변경: role_level() 재정의, profiles_role_check에 executive 추가,
+--   admin_read_all_profiles / admin_select_requests 정책 >=5,
+--   decide_role_request / minicad_decide_price / materials_upsert_batch 임계값 5.
+-- 코드: Role 타입·ROLE_LEVEL·gate·work 포털(로그인 허용·라벨·직원관리 드롭다운)에 임원 반영.
