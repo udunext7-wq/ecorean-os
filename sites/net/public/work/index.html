@@ -162,6 +162,7 @@
         <a href="#invoice" data-tab="invoice">🧾 계산서</a>
         <a href="#schedule" data-tab="schedule">📅 공정표</a>
         <a href="#inquiry" data-tab="inquiry">📨 상담 문의</a>
+        <a href="#attendance" data-tab="attendance" id="attendTabLink" style="display:none;">🟢 접속 현황</a>
         <a href="#staff" data-tab="staff" id="staffTabLink" style="display:none;">👥 직원 관리</a>
         <a href="/minicad/" target="_blank">📐 MiniCAD ↗</a>
         <a href="/biz/" target="_blank">💼 사업장부 ↗</a>
@@ -260,13 +261,14 @@ async function enterApp(user) {
     return;
   }
   me = profile;
+  try { sb.rpc('record_presence').then(function(){}, function(){}); } catch (e) {}  /* 접속 기록(자동) — 오늘 들어왔음을 서버에 남김 */
   const next = new URLSearchParams(location.search).get('next');
   if (next && /^\/(?!\/)/.test(next)) { location.replace(next); return; }
   const ROLE_KO = { master:'마스터', admin:'관리자', executive:'임원', staff:'직원' };
   $('#meName').textContent = profile.display_name || user.email;
   $('#meRole').textContent = ROLE_KO[profile.role] || '직원';
   // 직원 관리(권한 부여)는 관리자·마스터만
-  if (profile.role === 'admin' || profile.role === 'master') $('#staffTabLink').style.display = 'flex';
+  if (profile.role === 'admin' || profile.role === 'master') { $('#staffTabLink').style.display = 'flex'; $('#attendTabLink').style.display = 'flex'; }
   $('#loginView').style.display = 'none';
   $('#appView').style.display = 'block';
   await loadSites();
@@ -280,7 +282,7 @@ function route() {
   const tab = (location.hash || '#dashboard').slice(1);
   currentTab = tab;
   document.querySelectorAll('#navTabs a[data-tab]').forEach(a => a.classList.toggle('active', a.dataset.tab === tab));
-  const views = { dashboard: viewDashboard, sites: viewSites, po: viewPO, daily: viewDaily, invoice: viewInvoice, schedule: viewSchedule, staff: viewStaff, inquiry: viewInquiry };
+  const views = { dashboard: viewDashboard, sites: viewSites, po: viewPO, daily: viewDaily, invoice: viewInvoice, schedule: viewSchedule, staff: viewStaff, attendance: viewAttendance, inquiry: viewInquiry };
   (views[tab] || viewDashboard)();
 }
 
@@ -781,6 +783,59 @@ window.saveStaff = async function(id) {
   if (error) return toast('저장 실패: ' + error.message);
   toast('저장되었습니다');
 };
+
+/* ───── 직원 접속 현황 (관리자·마스터) ───── */
+async function viewAttendance() {
+  if (me.role !== 'admin' && me.role !== 'master') { location.hash = 'dashboard'; return; }
+  const DAYS = 14, MS = 86400000, KST = 9*3600*1000;
+  const kstDay = off => new Date(Date.now() + KST - off*MS).toISOString().slice(0,10);
+  const kstToday = kstDay(0), since = kstDay(DAYS-1);
+  const [{ data: profiles, error: pe }, { data: acts, error: ae }, { data: lastRows }] = await Promise.all([
+    sb.from('profiles').select('id,display_name,email,role').in('role',['staff','executive','admin','master']),
+    sb.from('staff_activity').select('user_id,day,last_seen_at,hits').gte('day', since),
+    sb.from('staff_activity').select('user_id,day,last_seen_at').order('day',{ascending:false})
+  ]);
+  if (pe || ae) { $('#mainContent').innerHTML = `<div class="empty">불러오기 실패: ${esc((pe||ae).message)}</div>`; return; }
+  const actMap = {}; (acts||[]).forEach(r => { actMap[r.user_id+'|'+r.day] = r; });
+  const lastByUser = {}; (lastRows||[]).forEach(r => { if (!lastByUser[r.user_id]) lastByUser[r.user_id] = r; });
+  const days = []; for (let i = DAYS-1; i >= 0; i--) days.push(kstDay(i));
+  const ROLE_ORD = { master:4, admin:3, executive:2, staff:1 };
+  const roster = (profiles||[]).sort((a,b)=> (ROLE_ORD[b.role]||0)-(ROLE_ORD[a.role]||0) || (a.display_name||'').localeCompare(b.display_name||''));
+  const hhmm = ts => ts ? new Date(ts).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Seoul'}) : '';
+  const dcell = (uid, d) => {
+    const r = actMap[uid+'|'+d], on = !!r;
+    const tip = d + (on ? ' · ' + hhmm(r.last_seen_at) + ' 접속' : ' · 미접속');
+    return `<span title="${tip}" style="display:inline-block;width:13px;height:13px;border-radius:3px;margin:1px;vertical-align:middle;background:${on?'#22c55e':'#2a2f3a'};"></span>`;
+  };
+  const fmtLast = uid => {
+    const r = lastByUser[uid];
+    if (!r) return '<span style="color:var(--dim)">기록 없음</span>';
+    return `${r.day} ${hhmm(r.last_seen_at)}` + (r.day===kstToday ? ' <b style="color:#22c55e">(오늘)</b>' : '');
+  };
+  const todayCount = roster.filter(p => actMap[p.id+'|'+kstToday]).length;
+  $('#mainContent').innerHTML = `
+    <div class="page-head"><h1>직원 접속 현황</h1>
+      <div style="color:var(--dim);font-size:13px">${kstToday} (KST) 기준 · 오늘 접속 <b style="color:#22c55e">${todayCount}</b> / ${roster.length}명</div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>이름</th><th>권한</th><th>오늘</th><th>마지막 접속</th><th>최근 ${DAYS}일 (왼쪽 → 오늘)</th></tr></thead>
+      <tbody>${roster.map(p=>{
+        const on = !!actMap[p.id+'|'+kstToday];
+        return `<tr>
+          <td>${esc(p.display_name||p.email||'—')}</td>
+          <td>${ROLE_LABEL[p.role]||esc(p.role)}</td>
+          <td>${on?'<span style="color:#22c55e;font-weight:700">● 접속</span>':'<span style="color:var(--dim)">○ 미접속</span>'}</td>
+          <td style="white-space:nowrap">${fmtLast(p.id)}</td>
+          <td style="white-space:nowrap">${days.map(d=>dcell(p.id,d)).join('')}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <div style="color:var(--dim);font-size:12.5px;margin-top:14px;line-height:1.8">
+      <b style="color:var(--text)">보는 법</b><br>
+      · <span style="color:#22c55e">● 접속</span> = 오늘(KST) 업무시스템 허브에 들어온 직원 &nbsp;·&nbsp; <span style="color:var(--dim)">○ 미접속</span> = 아직 안 들어옴<br>
+      · 오른쪽 초록 칸 = 그날 접속함(칸에 마우스를 올리면 날짜·시각 표시). 회색 = 접속 없음.<br>
+      · 기록은 직원이 <b>업무시스템 허브</b>에 들어오는 순간 자동 저장됩니다(출퇴근 체크가 아닌 접속 기록).
+    </div>`;
+}
 
 /* ───── 공정표 ───── */
 const GANTT_COLORS = ['#4ade80','#60a5fa','#fbbf24','#f87171','#c084fc','#34d399','#f472b6','#a3e635','#22d3ee','#fb923c'];
