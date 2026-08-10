@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>평면도 라이브러리 — ECOREAN</title>
+<style id="ecorean-gate-style">html{visibility:hidden}</style>
+<style>
+:root{--gold:#B8965A;--dark:#1A1814;--line:#ddd;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;color:#222;font-size:14px}
+.console{position:sticky;top:0;z-index:50;background:var(--dark);color:#F8F4EE;padding:12px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.console b{letter-spacing:.15em}
+.console select,.console input{background:#2a261f;border:1px solid #4a4438;color:#F8F4EE;padding:8px 10px;border-radius:7px;font-size:13px}
+.console .grow{flex:1;min-width:140px}
+.console button,.console .btn{background:var(--gold);color:#1A1814;border:none;border-radius:7px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:13px;text-decoration:none}
+.console button.ghost,.console .btn.ghost{background:transparent;border:1px solid var(--gold);color:var(--gold)}
+.count{color:#B8965A;font-size:12px;margin:14px 20px 0;max-width:1240px}
+.wrap{max-width:1280px;margin:10px auto 40px;padding:0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.card{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);cursor:pointer;transition:transform .15s, box-shadow .15s}
+.card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,.14)}
+.card .thumb{width:100%;height:180px;object-fit:contain;background:#fafaf7;border-bottom:1px solid #eee;display:block}
+.card .body{padding:12px 14px}
+.card .nm{font-weight:700;font-size:14.5px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .meta{color:#777;font-size:12px;line-height:1.7}
+.badge{display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:20px;margin-top:6px;letter-spacing:.05em}
+.badge.customer{background:#eef4ff;color:#3a6ac2}
+.badge.public{background:#eaf6ec;color:#2c8544}
+.badge.survey{background:#fdf3e4;color:#a4762a}
+.badge.minicad{background:#f3eefc;color:#7c4fc2}
+.empty{padding:90px 20px;text-align:center;color:#999;grid-column:1/-1}
+/* 모달 공통 */
+.overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(10,12,10,.72);backdrop-filter:blur(3px);overflow:auto;padding:24px}
+.overlay.open{display:flex;align-items:flex-start;justify-content:center}
+.modal{background:#fff;border-radius:14px;max-width:640px;width:100%;margin:auto;padding:26px;position:relative}
+.modal h2{font-size:17px;border-left:5px solid var(--gold);padding-left:12px;margin-bottom:18px}
+.modal .x{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;border:0;background:#eee;cursor:pointer;font-size:14px}
+.f{margin-bottom:12px}
+.f label{display:block;font-size:11.5px;color:#8a713f;letter-spacing:.08em;margin-bottom:5px}
+.f input,.f select,.f textarea{width:100%;border:1px solid #ccc;border-radius:7px;padding:9px 11px;font-size:13.5px;font-family:inherit}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.modal .save{width:100%;background:var(--gold);color:#1A1814;border:none;border-radius:8px;padding:12px;font-weight:700;font-size:14.5px;cursor:pointer;margin-top:6px}
+.modal .save:disabled{opacity:.5;cursor:default}
+.hint{font-size:11.5px;color:#999;line-height:1.7;margin-top:10px}
+/* 상세 */
+.dt-img{width:100%;max-height:60vh;object-fit:contain;background:#fafaf7;border:1px solid #eee;border-radius:8px}
+.dt-meta{margin:14px 0;font-size:13px;line-height:2}
+.dt-meta b{color:#8a713f;font-size:11px;letter-spacing:.1em;margin-right:8px}
+.dt-btns{display:flex;gap:10px;flex-wrap:wrap}
+.dt-btns a,.dt-btns button{flex:1;min-width:150px;text-align:center;border-radius:8px;padding:11px 14px;font-weight:700;font-size:13.5px;cursor:pointer;text-decoration:none;border:1px solid var(--gold)}
+.dt-btns .primary{background:var(--gold);color:#1A1814;border:none}
+.dt-btns .ghost{background:transparent;color:#8a713f}
+.dt-btns .danger{background:transparent;border-color:#c0392b;color:#c0392b;flex:0;min-width:auto}
+@media (max-width:700px){ .f2,.f3{grid-template-columns:1fr} .modal{padding:20px 16px} }
+</style>
+</head>
+<body>
+<div class="console">
+  <b>ECOREAN 평면도</b>
+  <input id="q" class="grow" placeholder="단지명·주소 검색">
+  <select id="sido">
+    <option value="">전체 지역</option>
+    <option>서울</option><option>부산</option><option>대구</option><option>인천</option>
+    <option>광주</option><option>대전</option><option>울산</option><option>세종</option>
+    <option>경기</option><option>강원</option><option>충북</option><option>충남</option>
+    <option>전북</option><option>전남</option><option>경북</option><option>경남</option><option>제주</option>
+  </select>
+  <input id="areaType" placeholder="평형/타입 (84, 25평…)" style="width:150px">
+  <select id="rooms">
+    <option value="">방 수</option>
+    <option value="1">1개</option><option value="2">2개</option><option value="3">3개</option>
+    <option value="4">4개</option><option value="5">5개 이상</option>
+  </select>
+  <button id="addBtn" type="button">+ 평면도 등록</button>
+  <a class="btn ghost" href="/hub">허브</a>
+</div>
+
+<div class="count" id="count"></div>
+<div class="wrap"><div class="grid" id="grid"><div class="empty">불러오는 중…</div></div></div>
+
+<!-- 등록 모달 -->
+<div class="overlay" id="upModal">
+  <div class="modal">
+    <button type="button" class="x" data-close="upModal">✕</button>
+    <h2>평면도 등록</h2>
+    <div class="f"><label>도면 이미지 (PNG/JPG/SVG) *</label><input type="file" id="upFile" accept="image/png,image/jpeg,image/svg+xml,image/webp"></div>
+    <div class="f"><label>단지/건물명 *</label><input id="upName" placeholder="예: 래미안 ○○ 3단지, ○○빌라"></div>
+    <div class="f2">
+      <div class="f"><label>시/도</label><select id="upSido">
+        <option value="">선택</option>
+        <option>서울</option><option>부산</option><option>대구</option><option>인천</option>
+        <option>광주</option><option>대전</option><option>울산</option><option>세종</option>
+        <option>경기</option><option>강원</option><option>충북</option><option>충남</option>
+        <option>전북</option><option>전남</option><option>경북</option><option>경남</option><option>제주</option>
+      </select></div>
+      <div class="f"><label>시/군/구</label><input id="upGugun" placeholder="예: 강남구"></div>
+    </div>
+    <div class="f"><label>상세 주소 (선택)</label><input id="upAddr"></div>
+    <div class="f3">
+      <div class="f"><label>평형/타입</label><input id="upType" placeholder="84A, 25평형"></div>
+      <div class="f"><label>전용면적 ㎡</label><input id="upArea" type="number" step="0.01" min="0"></div>
+      <div class="f"><label>방 / 욕실</label><div style="display:flex;gap:6px">
+        <input id="upRooms" type="number" min="0" max="20" placeholder="방">
+        <input id="upBaths" type="number" min="0" max="10" placeholder="욕실">
+      </div></div>
+    </div>
+    <div class="f2">
+      <div class="f"><label>출처 *</label><select id="upSource">
+        <option value="customer">고객 제공 도면</option>
+        <option value="public">공공 자료 (LH·SH·분양공고)</option>
+        <option value="survey">현장 실측</option>
+        <option value="minicad">MiniCAD 작성</option>
+      </select></div>
+      <div class="f"><label>출처 메모</label><input id="upSourceNote" placeholder="고객명·공고명 등"></div>
+    </div>
+    <button type="button" class="save" id="upSave">저장</button>
+    <p class="hint">※ 회사가 정당하게 보유한 도면만 등록하세요 (고객 제공·공공 공개 자료·자체 실측/작성).
+    타 부동산 플랫폼에서 내려받은 이미지는 저작권 문제로 등록 금지.</p>
+  </div>
+</div>
+
+<!-- 상세 모달 -->
+<div class="overlay" id="dtModal">
+  <div class="modal" style="max-width:840px">
+    <button type="button" class="x" data-close="dtModal">✕</button>
+    <h2 id="dtName">평면도</h2>
+    <img class="dt-img" id="dtImg" alt="평면도">
+    <div class="dt-meta" id="dtMeta"></div>
+    <div class="dt-btns">
+      <a class="primary" id="dtCad" target="_blank" rel="noopener">📐 MiniCAD 밑그림으로 열기</a>
+      <button type="button" class="ghost" id="dtCopy">🔗 이미지 URL 복사</button>
+      <a class="ghost" id="dtOrig" target="_blank" rel="noopener">원본 보기</a>
+      <button type="button" class="danger" id="dtDel">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script src="/ecorean-gate.js"></script>
+<script>
+(function(){
+  var REF='gdcfqbdgubgpzusbtftf';
+  var BASE='https://'+REF+'.supabase.co';
+  var API=BASE+'/rest/v1';
+  var STORE=BASE+'/storage/v1';
+  var PUB=STORE+'/object/public/floor-plans/';
+  var ANON='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
+  var SRC_LABEL={customer:'고객 제공',public:'공공 자료',survey:'현장 실측',minicad:'MiniCAD'};
+  var state={rows:[],current:null};
+
+  function token(){var s=window.ECOREAN_AUTH&&window.ECOREAN_AUTH.session;return s&&s.access_token?s.access_token:null;}
+  function hdr(extra){return Object.assign({apikey:ANON,Authorization:'Bearer '+(token()||ANON)},extra||{});}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';';});}
+  function api(p,o){
+    o=o||{};o.headers=hdr(Object.assign({'Content-Type':'application/json'},o.headers||{}));
+    return fetch(API+p,o).then(function(r){
+      if(!r.ok) return r.text().then(function(t){throw new Error(r.status+' '+t.slice(0,140));});
+      return r.text().then(function(t){return t?JSON.parse(t):null;});});
+  }
+  function imgUrl(row){return PUB+row.image_path.split('/').map(encodeURIComponent).join('/');}
+
+  // ── 검색·목록 ──
+  function load(){
+    var f=[];
+    var q=document.getElementById('q').value.trim();
+    if(q){var enc=q.replace(/[%_,()]/g,'');f.push('or=(complex_name.ilike.*'+encodeURIComponent(enc)+'*,address.ilike.*'+encodeURIComponent(enc)+'*)');}
+    var sido=document.getElementById('sido').value;
+    if(sido)f.push('region_sido=eq.'+encodeURIComponent(sido));
+    var at=document.getElementById('areaType').value.trim();
+    if(at)f.push('area_type=ilike.*'+encodeURIComponent(at.replace(/[%_,()]/g,''))+'*');
+    var rooms=document.getElementById('rooms').value;
+    if(rooms)f.push(rooms==='5'?'rooms=gte.5':'rooms=eq.'+rooms);
+    return api('/floor_plans?select=*&order=created_at.desc&limit=200'+(f.length?'&'+f.join('&'):''))
+      .then(function(rows){state.rows=rows||[];render();})
+      .catch(function(e){
+        document.getElementById('grid').innerHTML='<div class="empty">불러오기 실패 — '+esc(e.message)+'<br><span style="font-size:12px">DB 마이그레이션(floor_plans)이 아직 적용되지 않았을 수 있습니다</span></div>';
+      });
+  }
+  function render(){
+    var g=document.getElementById('grid');
+    document.getElementById('count').textContent=state.rows.length?state.rows.length+'건'+(state.rows.length===200?' (최대 200건 표시 — 검색으로 좁혀주세요)':''):'';
+    if(!state.rows.length){g.innerHTML='<div class="empty">평면도가 없습니다 — [+ 평면도 등록]으로 시작하세요</div>';return;}
+    g.innerHTML=state.rows.map(function(r,i){
+      var meta=[[r.region_sido,r.region_gugun].filter(Boolean).join(' '),
+                [r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · '),
+                r.rooms!=null?'방 '+r.rooms+(r.baths!=null?' / 욕실 '+r.baths:''):null].filter(Boolean);
+      return '<div class="card" data-i="'+i+'">'+
+        '<img class="thumb" loading="lazy" src="'+imgUrl(r)+'" alt="'+esc(r.complex_name)+'">'+
+        '<div class="body"><div class="nm">'+esc(r.complex_name)+'</div>'+
+        '<div class="meta">'+meta.map(esc).join('<br>')+'</div>'+
+        '<span class="badge '+esc(r.source)+'">'+(SRC_LABEL[r.source]||r.source)+'</span>'+
+        '</div></div>';
+    }).join('');
+    g.querySelectorAll('.card').forEach(function(c){
+      c.addEventListener('click',function(){openDetail(state.rows[Number(c.dataset.i)]);});
+    });
+  }
+  ['q','areaType'].forEach(function(id){
+    var t;document.getElementById(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(load,350);});
+  });
+  ['sido','rooms'].forEach(function(id){document.getElementById(id).addEventListener('change',load);});
+
+  // ── 모달 공통 ──
+  document.querySelectorAll('[data-close]').forEach(function(b){
+    b.addEventListener('click',function(){document.getElementById(b.dataset.close).classList.remove('open');});
+  });
+  document.querySelectorAll('.overlay').forEach(function(o){
+    o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('open');});
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape')document.querySelectorAll('.overlay.open').forEach(function(o){o.classList.remove('open');});
+  });
+
+  // ── 등록 ──
+  document.getElementById('addBtn').addEventListener('click',function(){
+    document.getElementById('upModal').classList.add('open');
+  });
+  document.getElementById('upSave').addEventListener('click',function(){
+    var btn=this;
+    var file=document.getElementById('upFile').files[0];
+    var name=document.getElementById('upName').value.trim();
+    if(!file){alert('도면 이미지를 선택하세요');return;}
+    if(!name){alert('단지/건물명을 입력하세요');return;}
+    if(file.size>20*1024*1024){alert('20MB 이하 이미지만 등록 가능합니다');return;}
+    btn.disabled=true;btn.textContent='업로드 중…';
+    var ext=(file.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,'')||'png';
+    var path=new Date().getFullYear()+'/'+(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.floor(Math.random()*1e6))+'.'+ext;
+    fetch(STORE+'/object/floor-plans/'+path,{method:'POST',headers:hdr({'Content-Type':file.type||'application/octet-stream'}),body:file})
+      .then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('스토리지 '+r.status+' '+t.slice(0,120));});})
+      .then(function(){
+        var num=function(id){var v=document.getElementById(id).value;return v===''?null:Number(v);};
+        var val=function(id){var v=document.getElementById(id).value.trim();return v||null;};
+        return api('/floor_plans',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({
+          complex_name:name,
+          region_sido:val('upSido'),region_gugun:val('upGugun'),address:val('upAddr'),
+          area_type:val('upType'),exclusive_area_m2:num('upArea'),
+          rooms:num('upRooms'),baths:num('upBaths'),
+          source:document.getElementById('upSource').value,source_note:val('upSourceNote'),
+          image_path:path})});
+      })
+      .then(function(){
+        document.getElementById('upModal').classList.remove('open');
+        ['upFile','upName','upGugun','upAddr','upType','upArea','upRooms','upBaths','upSourceNote'].forEach(function(id){document.getElementById(id).value='';});
+        return load();
+      })
+      .catch(function(e){alert('등록 실패: '+e.message);})
+      .then(function(){btn.disabled=false;btn.textContent='저장';});
+  });
+
+  // ── 상세 ──
+  function openDetail(r){
+    state.current=r;
+    var url=imgUrl(r);
+    document.getElementById('dtName').textContent=r.complex_name;
+    document.getElementById('dtImg').src=url;
+    document.getElementById('dtOrig').href=url;
+    document.getElementById('dtCad').href='/minicad/?bg='+encodeURIComponent(url)+'&bgname='+encodeURIComponent(r.complex_name+(r.area_type?' '+r.area_type:''));
+    var rows=[['지역',[r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' ')],
+              ['평형/타입',[r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · ')],
+              ['구성',r.rooms!=null?'방 '+r.rooms+(r.baths!=null?' / 욕실 '+r.baths:''):''],
+              ['출처',(SRC_LABEL[r.source]||r.source)+(r.source_note?' — '+r.source_note:'')],
+              ['등록일',r.created_at?new Date(r.created_at).toLocaleDateString('ko-KR'):'']];
+    document.getElementById('dtMeta').innerHTML=rows.filter(function(x){return x[1];})
+      .map(function(x){return '<div><b>'+x[0]+'</b>'+esc(x[1])+'</div>';}).join('');
+    document.getElementById('dtModal').classList.add('open');
+  }
+  document.getElementById('dtCopy').addEventListener('click',function(){
+    if(!state.current)return;
+    navigator.clipboard.writeText(imgUrl(state.current)).then(function(){alert('이미지 URL이 복사되었습니다');});
+  });
+  document.getElementById('dtDel').addEventListener('click',function(){
+    var r=state.current;
+    if(!r)return;
+    if(!confirm('「'+r.complex_name+'」 평면도를 삭제할까요? 되돌릴 수 없습니다.'))return;
+    api('/floor_plans?id=eq.'+r.id,{method:'DELETE'})
+      .then(function(){return fetch(STORE+'/object/floor-plans/'+r.image_path,{method:'DELETE',headers:hdr()});})
+      .then(function(){document.getElementById('dtModal').classList.remove('open');return load();})
+      .catch(function(e){alert('삭제 실패: '+e.message);});
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

@@ -3487,3 +3487,20 @@ console.log('L=선/벽 (AutoCAD) / 라이브러리 5개 통합 (1~5) / 공조·�
 console.log('Stage:',stage.width(),'×',stage.height(),' / 모바일:',STATE.isMobile);
 
 }
+
+// 평면도 라이브러리 연동 (2026-08-10) — /catalog/plans/ 에서 [MiniCAD 밑그림으로 열기]
+// ?bg=<이미지 URL> 로 열면 트레이싱용 배경 이미지로 자동 로드 (자사 스토리지만 허용)
+window.addEventListener('load',()=>{
+  let bg,name;
+  try{
+    const p=new URL(location.href).searchParams;
+    bg=p.get('bg');
+    name=p.get('bgname')||'평면도';
+  }catch(e){return;}
+  if(!bg||!bg.startsWith('https://gdcfqbdgubgpzusbtftf.supabase.co/storage/'))return;
+  fetch(bg)
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
+    .then(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}))
+    .then(dataURL=>setBgImage(dataURL,name))
+    .catch(err=>showStatus('평면도 밑그림 로드 실패: '+err.message));
+});

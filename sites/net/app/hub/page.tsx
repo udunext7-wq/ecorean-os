@@ -17,6 +17,7 @@ const SECTIONS: HubSection[] = [
     title: '설계 · 견적',
     items: [
       { href: '/minicad/', name: 'MiniCAD', desc: '도면·견적' },
+      { href: '/catalog/plans/', name: '평면도 라이브러리', desc: '주거 평면도 DB → MiniCAD 밑그림' },
       { href: '/pms/', name: '공정표', desc: '공정관리 PMS' },
       { href: '/editor/', name: '아티팩트 생성기', desc: '비주얼 에디터' },
       { href: '/vector/', name: '벡터 변환기', desc: '이미지→SVG' },
