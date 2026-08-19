@@ -31,3 +31,8 @@ yes/no 확인 없이 바로 실행한다.
 - 버그 체크 결과 보고
 - 테스트 통과 여부 보고
 - git push 자동 실행
+
+## MiniCAD 소스 위치 (D-060, 2026-08-19)
+- MiniCAD 수정은 **반드시 `sites/net/public/minicad/`** 에서 한다 (ecorean.net/minicad/ 실서비스 소스 = 유일한 소스).
+- 루트 `minicad/`·Desktop `MiniCAD-v5.9-Galaxy` 는 폐기됨(`archived/minicad-legacy-split-20260819/`). 사본을 다시 만들지 않는다.
+- 절차·구조·검증·배포: `docs/minicad/README.md`. 변경 시 `index.html` 캐시버스터 `?v=tabletN` 일괄 bump, `?test=1` 통과 후 커밋.

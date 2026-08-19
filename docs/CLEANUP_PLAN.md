@@ -191,7 +191,7 @@ ecorean-os/
 옵션 A(v7) 선택 시:
 - `src/*` → `packages/*` 분산
 - `shell/src/` → `apps/console/services/` 흡수
-- `/minicad/` → `apps/minicad/` 통합
+- ~~`/minicad/` → `apps/minicad/` 통합~~ → **2026-08-19 D-060: 루트 `/minicad/` 폐기, 소스 SSoT = `sites/net/public/minicad/`** (apps/minicad 은 자리표시자)
 - `modules-html/` 단일 HTML 8개 v6 폴더 패턴 적용 여부 결정
 - 회귀 테스트 12 스위트 PASS 필수
 
