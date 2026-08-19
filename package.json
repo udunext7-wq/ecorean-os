@@ -7,7 +7,8 @@
     "dev": "npm run dev --prefix sites/net",
     "build": "npm run build --prefix sites/net",
     "test": "vitest run",
-    "check:contract": "echo 'pack-contract 검사는 .github/workflows 참조'"
+    "check:contract": "echo 'pack-contract 검사는 .github/workflows 참조'",
+    "hooks:install": "git config core.hooksPath scripts/git-hooks"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

@@ -3,11 +3,33 @@
 BOC 프로젝트 (ref `gdcfqbdgubgpzusbtftf`, ap-northeast-2) 의 스키마·시드 원본.
 
 ```
-migrations/   테이블 생성 SQL (순차 번호). MCP apply_migration 과 동일 내용을 파일로도 보관
+migrations/   forward SQL (YYYYMMDDNNNNNN_<name>.sql). MCP apply_migration 과 동일 내용을 파일로도 보관
+rollbacks/    위 파일과 1:1 대응하는 되돌리기 SQL (<같은 이름>.down.sql) — "롤백 규약" 참조
 seeds/        JSON 원본에서 생성한 시드 SQL (직접 수정 금지 — ETL 로 재생성)
 seeds/etl/    JSON → SQL 변환기 (Node). 원본 JSON 은 읽기 전용
 policies/     (미사용 — RLS 는 migrations/…_rls.sql 에 포함)
 ```
+
+## 롤백 규약 (2026-08-19 도입)
+
+**1 forward = 1 rollback.** `migrations/<ts>_<name>.sql` 을 추가하면 같은 커밋에
+`rollbacks/<ts>_<name>.down.sql` 을 함께 넣는다. pre-commit 훅(`scripts/git-hooks/pre-commit` 6번)이
+누락 시 커밋을 **차단**한다. (훅 설치: `npm run hooks:install` — 클론 직후 1회)
+
+| 항목 | 규칙 |
+|---|---|
+| 파일명 | forward 와 **완전히 동일한 이름** + `.down.sql` (훅이 이름으로 짝을 찾음) |
+| 위치 | `supabase/rollbacks/` — `migrations/` 에 두지 않는다 (Supabase CLI 가 forward 로 오인) |
+| 머리말 | 4줄 고정: `ROLLBACK for …` / 되돌리는 내용 / 주의(데이터 유실 여부) / 적용 방법 — `_TEMPLATE.down.sql` 복사 |
+| 본문 순서 | forward 의 **역순** (마지막에 만든 객체부터 제거). 교체형(정책·함수·뷰)은 이전 정의를 그대로 복원 |
+| 데이터 유실 | `drop table` 류는 머리말에 **"데이터 유실"** 명시. 무손실이면 "무손실" |
+| 이력 | apply_migration 으로 올린 경우 마지막 줄에 `delete from supabase_migrations.schema_migrations where version='<원격 version>'` |
+| 적용 | MCP `execute_sql` 로 전체 실행 (트랜잭션 안에서 실행 가능) → 실행 후 `pg_policies`/`pg_tables` 로 확인 |
+| 소급 | 2026-08-19 이전 28건은 소급 작성하지 않는다 (필요해지면 그때 작성) |
+| 우회 | 정말 롤백이 불가능한 변경(데이터 일회성 정리 등)만 `SKIP_ROLLBACK_CHECK=1 git commit …` + 커밋 메시지에 사유 |
+
+왜 이렇게 하나: 운영 DB 에 잘못 올라간 정책/함수를 몇 분 안에 되돌릴 수 있어야 하고,
+"되돌리는 SQL 을 쓸 수 있는가"가 forward 가 제대로 설계됐는지 검증하는 역할을 한다.
 
 규칙: Neo4j ID를 FK로 참조만. 온톨로지 정의 복제 금지. (D-040)
 

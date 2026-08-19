@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# ECOREAN BOC — 헌법 자동 검증 pre-commit hook
+# SMART_AUTO_APPROVAL.md LEVEL 3 기준
+# 설치: git config core.hooksPath scripts/git-hooks   (npm run hooks:install)
+
+echo "=== ECOREAN 헌법 검증 시작 ==="
+
+FAIL=0
+
+# 1. 절대 수치 변경 검증 (22 시공섹션)
+if grep -rn "sections\s*=\s*[0-9][0-9]" --include="*.js" --include="*.cjs" \
+   modules-html/ shell/ 2>/dev/null | grep -v "22\|__tests__\|.min."; then
+  echo "❌ [헌법 위반] 시공섹션 절대 수치 변경 시도 — 차단"
+  FAIL=1
+fi
+
+# 2. graph.json 변경 검증
+if git diff --cached --name-only 2>/dev/null | grep -q "docs/graph.json"; then
+  echo "❌ [헌법 위반] graph.json 변경 시도 — 차단"
+  FAIL=1
+fi
+
+# 3. VAT 이중 계산 검증 (contract 폴더에서 estimate.final 직접 사용)
+if grep -rn "estimate\.final[^A-Za-z]" modules-html/boc-v6/src/contract/ 2>/dev/null | grep -v "__tests__"; then
+  echo "❌ [헌법 위반] estimate.final 직접 사용 (VAT 이중 위험) — 차단"
+  FAIL=1
+fi
+
+# 4. once:true 안티패턴 검증
+if grep -rn "{ once: true }" modules-html/boc-v6/src/ 2>/dev/null | grep -v "__tests__"; then
+  echo "❌ [헌법 위반] once:true 안티패턴 — 차단"
+  FAIL=1
+fi
+
+# 5. XSS 위험 경고 (innerHTML + 사용자 입력)
+XSS_COUNT=$(grep -rn 'innerHTML.*\${.*\(name\|notes\|vendor\|title\|msg\)' modules-html/boc-v6/src/ 2>/dev/null | grep -v "__tests__\|esc(" | wc -l)
+if [ "$XSS_COUNT" -gt 0 ]; then
+  echo "⚠️  [경고] XSS 위험 패턴 ${XSS_COUNT}건 — escapeHtml 적용 권장"
+fi
+
+# 6. Supabase 마이그레이션 롤백 파일 규약 (supabase/README.md "롤백 규약")
+#    supabase/migrations/<ts>_<name>.sql 를 추가/수정하면
+#    supabase/rollbacks/<ts>_<name>.down.sql 이 반드시 존재해야 한다 (스테이징 or 기존 파일).
+#    규약 도입(2026-08-19) 이전 마이그레이션은 소급 적용하지 않는다.
+ROLLBACK_SINCE=20260819000000
+MISSING_RB=""
+for f in $(git diff --cached --name-only --diff-filter=AM 2>/dev/null | grep -E '^supabase/migrations/[0-9]{14}_.*\.sql$'); do
+  base=$(basename "$f" .sql)
+  ts=${base%%_*}
+  [ "$ts" -lt "$ROLLBACK_SINCE" ] 2>/dev/null && continue
+  rb="supabase/rollbacks/${base}.down.sql"
+  if [ ! -f "$rb" ] && ! git diff --cached --name-only 2>/dev/null | grep -qx "$rb"; then
+    MISSING_RB="${MISSING_RB}
+   - ${rb}"
+  fi
+done
+if [ -n "$MISSING_RB" ]; then
+  echo -e "❌ [규약 위반] 마이그레이션 롤백 파일 누락 — 차단${MISSING_RB}"
+  echo "   템플릿: supabase/rollbacks/_TEMPLATE.down.sql  (우회: SKIP_ROLLBACK_CHECK=1 git commit …)"
+  [ "$SKIP_ROLLBACK_CHECK" = "1" ] || FAIL=1
+fi
+
+# 7. async 함수 try/catch 누락 경고
+ASYNC_COUNT=$(git diff --cached 2>/dev/null | grep "^+.*async " | grep -v "__tests__\|try\|catch" | wc -l)
+if [ "$ASYNC_COUNT" -gt 3 ]; then
+  echo "⚠️  [경고] async 함수 ${ASYNC_COUNT}건 추가 — try/catch 확인 필요"
+fi
+
+if [ "$FAIL" -eq 1 ]; then
+  echo ""
+  echo "❌ 헌법 검증 실패 — 커밋 차단됨"
+  echo "   수정 후 다시 시도하거나 대표님 승인 필요"
+  exit 1
+fi
+
+echo "✅ 헌법 검증 통과"
+exit 0

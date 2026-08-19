@@ -40,6 +40,7 @@ Phase 0 (경계 확정 + 규약) 완료 + boc 앱 v0.1 (마스터 DB 조회, 읽
 
 ```bash
 npm install          # 루트에서 1회 (의존성은 루트 package.json 통합 관리)
+npm run hooks:install  # 클론 직후 1회 — 헌법 검증 pre-commit 훅 연결 (scripts/git-hooks)
 npm run dev          # sites/net 개발 서버 (http://localhost:3100)
 npm test             # vitest (헌법 10조: 커밋 전 필수)
 npm run build        # 프로덕션 빌드
