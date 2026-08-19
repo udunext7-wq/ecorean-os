@@ -47,7 +47,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=tablet4">
+<link rel="stylesheet" href="css/style.css?v=tablet5">
 </head>
 <body>
 <div id="loading"><div class="spinner"></div><div class="msg">ECOREAN MiniCAD v5.9 로딩…</div></div>
@@ -73,8 +73,8 @@
     <button class="btn sm" id="btn-ai-bundle" title="AI 생성 번들 다운로드 (PNG평면+JSON+이미지프롬프트+영상프롬프트)">🤖 AI 번들</button>
     <button class="btn sm gold" id="btn-send-estimate" title="도면 물량을 통합견적 OS로 전송 — ECOREAN_통합견적OS_v17이 자동 감지해 견적을 완성합니다">📊 견적OS 전송</button>
     <button class="btn sm" id="btn-dxf-export" title="DXF 내보내기 — AutoCAD R12 호환 (외주 업체 인계용)">↳ DXF</button>
-    <button class="btn sm" id="btn-dxf-import" title="가져오기 — DXF / DWG(가이드) / SVG / PNG / JPG">↑ 가져오기</button>
-    <input type="file" id="dxf-file-input" name="dxf-file-input" aria-label="도면/이미지 파일 선택" accept=".dxf,.dwg,.svg,.png,.jpg,.jpeg" style="display:none">
+    <button class="btn sm" id="btn-dxf-import" title="가져오기 — DXF / DWG / PDF / SVG / PNG / JPG (DWG·PDF 는 2026-08-19 추가)">↑ 가져오기</button>
+    <input type="file" id="dxf-file-input" name="dxf-file-input" aria-label="도면/이미지 파일 선택" accept=".dxf,.dwg,.pdf,.svg,.png,.jpg,.jpeg" style="display:none">
     <button class="btn sm danger" id="btn-clear-all">전체삭제</button>
     <button class="btn gold" id="btn-export">→ 견적</button>
   </div>
@@ -598,15 +598,16 @@
   </div>
 </div>
 
-<script src="js/state.js?v=tablet4"></script>
-<script src="js/data.js?v=tablet4"></script>
-<script src="js/library.js?v=tablet4"></script>
-<script src="js/engine.js?v=tablet4"></script>
-<script src="js/tools.js?v=tablet4"></script>
-<script src="js/ui.js?v=tablet4"></script>
-<script src="js/touch.js?v=tablet4"></script>
-<script src="js/estimate.js?v=tablet4"></script>
-<script src="js/tests.js?v=tablet4"></script>
+<script src="js/state.js?v=tablet5"></script>
+<script src="js/data.js?v=tablet5"></script>
+<script src="js/library.js?v=tablet5"></script>
+<script src="js/engine.js?v=tablet5"></script>
+<script src="js/tools.js?v=tablet5"></script>
+<script src="js/ui.js?v=tablet5"></script>
+<script src="js/touch.js?v=tablet5"></script>
+<script src="js/import-cad.js?v=tablet5"></script>
+<script src="js/estimate.js?v=tablet5"></script>
+<script src="js/tests.js?v=tablet5"></script>
 <script>
 'use strict';
 // ===== v5.9: 저작권 보호 — EULA, 우클릭 차단, 워터마크, 콘솔 경고 =====

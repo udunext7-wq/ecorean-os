@@ -297,6 +297,29 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       for(let i=0;i<40;i++) zoomBy(2);
       assert('줌: zoomBy 연속 확대 → ZOOM_MAX 에서 멈춤',Math.abs(STATE.zoom-ZOOM_MAX)<1e-9);
       STATE.zoom=z0;STATE.offsetX=ox;STATE.offsetY=oy;drawGrid();renderAll();})();
+    // === 2026-08-19: PDF/DWG 가져오기 (js/import-cad.js) — 순수 함수 + ingest 왕복 ===
+    (function(){
+      assert('CAD: import-cad 로드',typeof importPDFFile==='function'&&typeof importDWGFile==='function'&&typeof cadIngestPrims==='function');
+      const m=cadMulM([1,0,0,1,10,20],[0,1,-1,0,0,0]); // 이동 ∘ 회전90
+      const p=cadApplyM(m,1,0);
+      assert('CAD: 행렬 곱/적용 (회전90 후 이동)',Math.abs(p[0]-10)<1e-9&&Math.abs(p[1]-21)<1e-9,JSON.stringify(p));
+      const bp=cadBulgePoints(0,0,2,0,1,6); // 반원
+      assert('CAD: bulge=1 반원 → 중간점 (1,1) 근처 존재',bp.some(q=>Math.abs(q[0]-1)<0.05&&Math.abs(q[1]-1)<0.05)&&Math.abs(bp[bp.length-1][0]-2)<1e-6);
+      const db={header:{INSUNITS:4},tables:{BLOCK_RECORD:{entries:[]}},entities:[
+        {type:'LINE',layer:'T-WALL',startPoint:{x:0,y:0},endPoint:{x:3000,y:0}},
+        {type:'LWPOLYLINE',layer:'T-AREA',flag:1,vertices:[{x:0,y:0},{x:3000,y:0},{x:3000,y:2000},{x:0,y:2000}]},
+        {type:'TEXT',layer:'T-TXT',startPoint:{x:100,y:100},text:'테스트',textHeight:250}]};
+      const prims=cadDwgDbToPrims(db,{});
+      assert('CAD: DWG mm 단위·엔티티 추출',prims.unitFactor===1&&prims.segs.length===5&&prims.texts.length===1);
+      const nW=STATE.walls.length,nS=STATE.spaces.length,nT=STATE.texts.length,nV=STATE.vertices.length;
+      const res=cadIngestPrims(prims,{toMm:(x,y)=>[x+50000,-y+50000],scale:1,mode:'line',closedToSpace:true,layers:null,minLenMm:50,label:'TEST-CAD'});
+      assert('CAD: ingest → 참조선 1 + 공간 1(4각) + 문자 1',res.walls===1&&res.spaces===1&&res.texts===1&&STATE.spaces[STATE.spaces.length-1].polygon.length===4,JSON.stringify(res));
+      assert('CAD: 생성 객체 importedFrom 태그',STATE.walls[STATE.walls.length-1].importedFrom==='TEST-CAD'&&STATE.walls[STATE.walls.length-1].isLine===true);
+      const removed=cadRemoveImported('TEST-CAD');
+      assert('CAD: cadRemoveImported 로 원복',removed===3&&STATE.walls.length===nW&&STATE.spaces.length===nS&&STATE.texts.length===nT);
+      STATE.vertices=STATE.vertices.slice(0,nV);
+      renderAll();
+    })();
     if(patched){
       const ln=new Konva.Line({points:[0,0,10,10],stroke:'#000',strokeWidth:1,hitStrokeWidth:10});
       assert('터치: hitStrokeWidth 10 → 17.5 (×1.75)',Math.abs(ln.hitStrokeWidth()-17.5)<0.01);

@@ -473,8 +473,9 @@ function ensureBgImageNode(){
   if(_bgImageNode&&_bgImageNode._dataURL===STATE.bgImage.dataURL){
     _bgImageNode.x(STATE.offsetX+mmToPx(STATE.bgImage.x_mm||0));
     _bgImageNode.y(STATE.offsetY+mmToPx(STATE.bgImage.y_mm||0));
-    _bgImageNode.scaleX(STATE.bgImage.scale||1);
-    _bgImageNode.scaleY(STATE.bgImage.scale||1);
+    // 2026-08-19 fix: 배경 이미지가 줌을 따라가지 않던 버그 — scale 은 줌 100% 기준 화면px/이미지px, 노드에는 ×zoom
+    _bgImageNode.scaleX((STATE.bgImage.scale||1)*STATE.zoom);
+    _bgImageNode.scaleY((STATE.bgImage.scale||1)*STATE.zoom);
     _bgImageNode.opacity(STATE.bgImage.opacity!=null?STATE.bgImage.opacity:0.5);
     _bgImageNode.listening(!STATE.bgImage.locked);
     return _bgImageNode;
@@ -486,8 +487,8 @@ function ensureBgImageNode(){
     image:img,
     x:STATE.offsetX+mmToPx(STATE.bgImage.x_mm||0),
     y:STATE.offsetY+mmToPx(STATE.bgImage.y_mm||0),
-    scaleX:STATE.bgImage.scale||1,
-    scaleY:STATE.bgImage.scale||1,
+    scaleX:(STATE.bgImage.scale||1)*STATE.zoom,
+    scaleY:(STATE.bgImage.scale||1)*STATE.zoom,
     opacity:STATE.bgImage.opacity!=null?STATE.bgImage.opacity:0.5,
     listening:!STATE.bgImage.locked,
   });
@@ -498,8 +499,8 @@ function ensureBgImageNode(){
     if(STATE.bgImage&&!STATE.bgImage.locked){
       const dx=_bgImageNode.x()-STATE.offsetX;
       const dy=_bgImageNode.y()-STATE.offsetY;
-      STATE.bgImage.x_mm=Math.round(dx*1000/STATE.scale);
-      STATE.bgImage.y_mm=Math.round(dy*1000/STATE.scale);
+      STATE.bgImage.x_mm=Math.round(pxToMm(dx)); // 2026-08-19 fix: 줌 반영
+      STATE.bgImage.y_mm=Math.round(pxToMm(dy));
     }
   });
   return _bgImageNode;

@@ -2201,7 +2201,11 @@ document.getElementById('dxf-file-input').addEventListener('change',e=>{
     reader.onload=ev=>importDXF(ev.target.result);
     reader.readAsText(file,'utf-8');
   } else if(ext==='dwg'){
-    showDWGGuide(file.name);
+    // 2026-08-19: libredwg WASM 직접 가져오기 (import-cad.js). 엔진 로드 실패 시에만 변환 안내
+    if(typeof importDWGFile==='function') importDWGFile(file); else showDWGGuide(file.name);
+  } else if(ext==='pdf'){
+    // 2026-08-19: pdf.js — 밑그림(래스터) / 선 추출(벡터)
+    if(typeof importPDFFile==='function') importPDFFile(file); else alert('PDF 가져오기 모듈이 로드되지 않았습니다 (import-cad.js)');
   } else if(ext==='svg'){
     reader.onload=ev=>importSVG(ev.target.result,file.name);
     reader.readAsText(file,'utf-8');
@@ -2209,7 +2213,7 @@ document.getElementById('dxf-file-input').addEventListener('change',e=>{
     reader.onload=ev=>setBgImage(ev.target.result,file.name);
     reader.readAsDataURL(file);
   } else {
-    alert('지원되지 않는 파일 형식: .'+ext+'\n지원: DXF, DWG(가이드), SVG, PNG, JPG');
+    alert('지원되지 않는 파일 형식: .'+ext+'\n지원: DXF, DWG, PDF, SVG, PNG, JPG');
   }
   e.target.value='';
 });
@@ -2406,7 +2410,7 @@ async function aiAutoScale(apiKey){
       if(!Array.isArray(d.p1)||!Array.isArray(d.p2)||!d.value_mm) return;
       const pxDist=Math.hypot(d.p2[0]-d.p1[0],d.p2[1]-d.p1[1]);
       if(pxDist<1) return;
-      const scale=mmToPx(d.value_mm)/pxDist;
+      const scale=mmToPx(d.value_mm)/pxDist/STATE.zoom; // 2026-08-19: 배경 스케일은 줌 100% 기준 (engine.js ensureBgImageNode 참조)
       ratios.push({scale,value_mm:d.value_mm,pxDist,label:d.label||(d.value_mm+'mm')});
     });
     if(ratios.length===0) throw new Error('유효한 치수가 없음 (좌표 누락)');
