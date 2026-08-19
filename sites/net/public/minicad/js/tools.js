@@ -3027,6 +3027,35 @@ stage.on('mouseup touchend',e=>{
   }
   mouseDownPos=null;
 });
+// 2026-08-19 태블릿: 진행 중인 포인터 제스처 안전 취소 (핀치/손가락 팬 시작, touchcancel, 롱프레스 등에서 호출)
+//  — 박스 선택·드래그 이동·회전·패닝 상태를 초기화하고, 드래그 중이던 객체는 시작 위치로 되돌린다.
+window.cancelPointerGesture=function(){
+  let dirty=false;
+  if(dragMoveState){
+    try{applyDragMove(dragMoveState,0,0);}catch(err){}
+    if(dragMoveState.altCopy){
+      const arr=getArr(dragMoveState.kind);
+      if(arr){
+        if(dragMoveState.kind==='space') STATE.walls=STATE.walls.filter(w=>w.spaceId!==dragMoveState.id);
+        const idx=arr.findIndex(o=>o.id===dragMoveState.id);
+        if(idx>=0) arr.splice(idx,1);
+        if(typeof cleanupOrphanVertices==='function') cleanupOrphanVertices();
+      }
+    }
+    dragMoveState=null;dirty=true;
+  }
+  if(STATE.rotateState){STATE.rotateState=null;dirty=true;}
+  // 박스 선택은 항상 취소, 사각형/원은 드래그 중(isMouseDown)일 때만 취소 (치수 입력 단계는 유지)
+  if(drawState&&(drawState.type==='box'||(isMouseDown&&(drawState.type==='rect'||drawState.type==='circle'||drawState.type==='circlespace')))){
+    drawState=null;dirty=true;
+    if(typeof drawGroup!=='undefined'){drawGroup.destroyChildren();previewLayer.batchDraw();}
+  }
+  const wasPanning=isPanning;
+  mouseDownPos=null;isMouseDown=false;isPanning=false;panStart=null;
+  if(wasPanning) endViewTransform();
+  if(dirty){renderAll();refreshUI();}
+};
+stage.on('touchcancel',()=>{window.cancelPointerGesture();});
 stage.on('dblclick dbltap',e=>{
   if(STATE.selectedTool==='leader'&&leaderDrawState) finishLeader();
   if(STATE.selectedTool==='polygon'&&freePolyState) finishFreePolygon(); // v5.9: 자유 다각형 닫기
@@ -3128,12 +3157,12 @@ function showSpaceCtxMenu(px,py){
       else if(op==='lock-toggle') applyLockToSelection(!allLocked);
     });
   });
-  // 외부 클릭 시 닫기 — mousedown 사용 (click과 충돌 회피)
+  // 외부 클릭 시 닫기 — pointerdown 사용 (click과 충돌 회피, 터치·펜 공용)
   setTimeout(()=>{
     const closeOnOutside=ev=>{
-      if(!menu.contains(ev.target)){hideSpaceCtxMenu();document.removeEventListener('mousedown',closeOnOutside);}
+      if(!menu.contains(ev.target)){hideSpaceCtxMenu();document.removeEventListener('pointerdown',closeOnOutside);}
     };
-    document.addEventListener('mousedown',closeOnOutside);
+    document.addEventListener('pointerdown',closeOnOutside);
   },50);
 }
 function hideSpaceCtxMenu(){
@@ -3231,9 +3260,9 @@ function showShapeConvertMenu(px,py,kind,id){
   }
   setTimeout(()=>{
     const closeOnOutside=ev=>{
-      if(!menu.contains(ev.target)){hideShapeConvertMenu();document.removeEventListener('mousedown',closeOnOutside);}
+      if(!menu.contains(ev.target)){hideShapeConvertMenu();document.removeEventListener('pointerdown',closeOnOutside);}
     };
-    document.addEventListener('mousedown',closeOnOutside);
+    document.addEventListener('pointerdown',closeOnOutside);
   },50);
 }
 function hideShapeConvertMenu(){
@@ -3280,9 +3309,9 @@ function showSelectionCtxMenu(px,py){
   });
   setTimeout(()=>{
     const closeOnOutside=ev=>{
-      if(!menu.contains(ev.target)){hideSelectionCtxMenu();document.removeEventListener('mousedown',closeOnOutside);}
+      if(!menu.contains(ev.target)){hideSelectionCtxMenu();document.removeEventListener('pointerdown',closeOnOutside);}
     };
-    document.addEventListener('mousedown',closeOnOutside);
+    document.addEventListener('pointerdown',closeOnOutside);
   },50);
 }
 function hideSelectionCtxMenu(){

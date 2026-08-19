@@ -231,6 +231,31 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       else localStorage.setItem('ecorean_bridge_plan_v1',_prevBridge);
     }
   }
+  // === 2026-08-19: 태블릿 터치·S펜 레이어 (js/touch.js) ===
+  try{
+    assert('터치: initTouch 정의',typeof initTouch==='function');
+    assert('터치: STATE.touch 초기화',!!(STATE.touch&&typeof STATE.touch.enabled==='boolean'&&'gesture' in STATE.touch));
+    assert('터치: cancelPointerGesture 전역 제공',typeof cancelPointerGesture==='function');
+    assert('터치: 퀵바 DOM 생성 (Esc/Enter/Del/Undo/Redo/Shift/손가락/키보드)',
+      !!document.getElementById('touch-quickbar')&&['tq-esc','tq-enter','tq-del','tq-undo','tq-redo','tq-shift','tq-finger','tq-kbd'].every(id=>!!document.getElementById(id)));
+    assert('터치: 입력모드 배지',!!document.getElementById('input-mode-badge'));
+    const cc=document.getElementById('canvas-container');
+    assert('터치: 캔버스 touch-action:none',!!cc&&getComputedStyle(cc).touchAction==='none');
+    // cancelPointerGesture 는 드래그/박스 상태가 없을 때 부작용 없이 호출 가능해야 함
+    const zBefore=STATE.zoom,nSp=STATE.spaces.length;
+    cancelPointerGesture();
+    assert('터치: cancelPointerGesture 무상태 호출 안전',STATE.zoom===zBefore&&STATE.spaces.length===nSp);
+    // 터치 기기에서만 Konva 히트영역 확대 패치 적용 (마우스 전용 기기는 원본 유지)
+    const patched=!!(Konva.Shape.prototype.__ecoHitPatched);
+    assert('터치: 히트영역 패치 = 터치기기 여부와 일치',patched===!!STATE.touch.enabled);
+    if(patched){
+      const ln=new Konva.Line({points:[0,0,10,10],stroke:'#000',strokeWidth:1,hitStrokeWidth:10});
+      assert('터치: hitStrokeWidth 10 → 17.5 (×1.75)',Math.abs(ln.hitStrokeWidth()-17.5)<0.01);
+      const ln2=new Konva.Line({points:[0,0,10,10],stroke:'#000',strokeWidth:1});
+      assert('터치: 가는 선 auto → 최소 10px',ln2.hitStrokeWidth()===10);
+      ln.destroy();ln2.destroy();
+    }
+  }catch(e){assert('터치: 예외 없음',false,e.message);}
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

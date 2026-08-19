@@ -115,8 +115,11 @@ function _attachLibPopupDrag(popup){
   const handle=popup.querySelector('h4');
   if(!handle) return;
   let startX=0,startY=0,baseLeft=0,baseTop=0,dragging=false;
-  handle.addEventListener('mousedown',e=>{
+  // 2026-08-19: Pointer Events — 마우스·터치·S펜 공용 드래그 (setPointerCapture)
+  let activePtr=null;
+  handle.addEventListener('pointerdown',e=>{
     if(e.target.closest('.lib-popup-close')) return;
+    if(e.button!==undefined&&e.button!==0) return;
     e.preventDefault();
     const parent=popup.offsetParent||popup.parentElement;
     const pr=parent.getBoundingClientRect();
@@ -125,10 +128,11 @@ function _attachLibPopupDrag(popup){
     popup.style.left=baseLeft+'px';popup.style.top=baseTop+'px';
     popup.style.right='auto';popup.style.bottom='auto';
     startX=e.clientX;startY=e.clientY;
-    dragging=true;popup.classList.add('dragging');
+    dragging=true;activePtr=e.pointerId;popup.classList.add('dragging');
+    try{handle.setPointerCapture(e.pointerId);}catch(err){}
   });
-  document.addEventListener('mousemove',e=>{
-    if(!dragging) return;
+  handle.addEventListener('pointermove',e=>{
+    if(!dragging||(activePtr!==null&&e.pointerId!==activePtr)) return;
     const parent=popup.offsetParent||popup.parentElement;
     const pw=parent.clientWidth, ph=parent.clientHeight;
     const w=popup.offsetWidth, h=popup.offsetHeight;
@@ -138,9 +142,14 @@ function _attachLibPopupDrag(popup){
     nt=Math.max(0,Math.min(ph-Math.min(h,ph),nt));
     popup.style.left=nl+'px';popup.style.top=nt+'px';
   });
-  document.addEventListener('mouseup',()=>{
-    if(dragging){dragging=false;popup.classList.remove('dragging');}
-  });
+  const endDrag=e=>{
+    if(!dragging) return;
+    dragging=false;activePtr=null;popup.classList.remove('dragging');
+    try{handle.releasePointerCapture(e.pointerId);}catch(err){}
+  };
+  handle.addEventListener('pointerup',endDrag);
+  handle.addEventListener('pointercancel',endDrag);
+  handle.style.touchAction='none';
 }
 function showLibPopup(tool,lib){
   const titles={furniture:'1 가구',fixture:'2 위생/주방',light:'3 조명',electric:'4 전기',hvac:'5 공조/소방'};
@@ -679,8 +688,8 @@ function applyFinish(kind,obj,surfaceKey,materialCode){
   const [label,dict]=map[surfaceKey]||['마감재',{}];
   showStatus(label+': '+(dict[materialCode]?.name||materialCode));
 }
-// 외부 클릭 시 컨텍스트 메뉴 닫기
-document.addEventListener('mousedown',e=>{
+// 외부 클릭 시 컨텍스트 메뉴 닫기 (pointerdown: 마우스·터치·펜 공용)
+document.addEventListener('pointerdown',e=>{
   const menu=document.getElementById('finish-ctx-menu');
   if(menu&&menu.style.display!=='none'&&!menu.contains(e.target)) menu.style.display='none';
 });
@@ -2610,8 +2619,8 @@ document.getElementById('zoom-fit').addEventListener('click',zoomFit);
   menu.querySelectorAll('.bool-btn').forEach(btn=>{
     btn.addEventListener('click',e=>{e.stopPropagation();applyBoolOp(btn.dataset.op);});
   });
-  // 외부 클릭 시 닫기
-  document.addEventListener('mousedown',e=>{
+  // 외부 클릭 시 닫기 (pointerdown: 마우스·터치·펜 공용)
+  document.addEventListener('pointerdown',e=>{
     if(menu.style.display!=='none'&&!menu.contains(e.target)) hideBoolMenu();
   });
 })();
@@ -3439,43 +3448,7 @@ exitCmdMode=function(){
   document.getElementById('polyclose-fab').classList.add('hidden');
 };
 
-// v5.2: 핀치 줌 + 2손가락 패닝
-let pinchState=null;
-container.addEventListener('touchstart',e=>{
-  if(e.touches.length===2){
-    e.preventDefault();
-    isPanning=false;isMouseDown=false;mouseDownPos=null;
-    const t1=e.touches[0],t2=e.touches[1];
-    const dx=t2.clientX-t1.clientX, dy=t2.clientY-t1.clientY;
-    const dist=Math.sqrt(dx*dx+dy*dy);
-    const cx=(t1.clientX+t2.clientX)/2, cy=(t1.clientY+t2.clientY)/2;
-    const rect=container.getBoundingClientRect();
-    pinchState={dist,cx:cx-rect.left,cy:cy-rect.top,zoom:STATE.zoom,offsetX:STATE.offsetX,offsetY:STATE.offsetY};
-  }
-},{passive:false});
-container.addEventListener('touchmove',e=>{
-  if(e.touches.length===2&&pinchState){
-    e.preventDefault();
-    const t1=e.touches[0],t2=e.touches[1];
-    const dx=t2.clientX-t1.clientX, dy=t2.clientY-t1.clientY;
-    const dist=Math.sqrt(dx*dx+dy*dy);
-    const cx=(t1.clientX+t2.clientX)/2, cy=(t1.clientY+t2.clientY)/2;
-    const rect=container.getBoundingClientRect();
-    const lcx=cx-rect.left, lcy=cy-rect.top;
-    const scale=dist/pinchState.dist;
-    const newZoom=Math.max(0.2,Math.min(5,pinchState.zoom*scale));
-    STATE.offsetX=lcx-(pinchState.cx-pinchState.offsetX)*(newZoom/pinchState.zoom);
-    STATE.offsetY=lcy-(pinchState.cy-pinchState.offsetY)*(newZoom/pinchState.zoom);
-    STATE.offsetX+=(lcx-pinchState.cx);
-    STATE.offsetY+=(lcy-pinchState.cy);
-    STATE.zoom=newZoom;
-    drawGrid();renderAll();
-    document.getElementById('zoom-pct').textContent=Math.round(STATE.zoom*100)+'%';
-  }
-},{passive:false});
-container.addEventListener('touchend',e=>{
-  if(e.touches.length<2) pinchState=null;
-});
+// 2026-08-19: 핀치 줌·2손가락 패닝·S펜/손가락 구분·팜 리젝션 → js/touch.js (initTouch) 로 이관
 
 
 console.log('%c ECOREAN MiniCAD v5.9 ','background:#C9A961;color:#0A0A0A;font-weight:bold;padding:4px 8px;');
