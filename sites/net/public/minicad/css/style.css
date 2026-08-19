@@ -597,7 +597,8 @@ select option:checked{background:var(--surface-3);color:var(--accent-1)}
 /* 터치 퀵바 — 캔버스 우상단 세로 스택 (키보드 없는 기기용) */
 #touch-quickbar{
   position:absolute;top:14px;right:14px;z-index:30;
-  display:flex;flex-direction:column;gap:4px;padding:4px;
+  display:flex;flex-direction:column;flex-wrap:wrap-reverse;gap:4px;padding:4px;
+  max-height:calc(100% - 28px);align-content:flex-end;
   background:linear-gradient(180deg,rgba(255,255,255,0.04) 0%,transparent 50%),var(--surface-3);
   border:1px solid var(--stroke-2);border-radius:var(--r-sm);
   box-shadow:var(--shadow-2),var(--shadow-rim),var(--shadow-top);

@@ -203,6 +203,12 @@ function initTouch(){
       // 펜이 닿으면 진행 중이던 손가락 제스처는 종료, 남은 손가락은 무시
       if(T.gesture) endGesture();
       fingers.forEach(f=>rejected.add(f.id));fingers=[];clearLongPress();
+      // 2026-08-19: 펜도 길게 누르면(0.6s, 12px 이내) 통합 메뉴 — 이전엔 S펜 측면 버튼으로만 가능했음
+      const pt=ct[0];
+      if(pt){
+        lpTouch={id:pt.identifier,x:pt.clientX,y:pt.clientY,touch:pt,pen:true};
+        lpTimer=setTimeout(()=>{if(lpTouch&&lpTouch.pen){const tt=lpTouch.touch;clearLongPress();fireLongPress(tt);}},LONGPRESS_MS);
+      }
       return; // 펜은 Konva(도구)로 그대로 전달
     }
     let added=0,blocked=0;
@@ -243,13 +249,14 @@ function initTouch(){
     let anyFinger=false,anyPen=false;
     ct.forEach(t=>{
       const ty=touchType.get(t.identifier);
-      if(ty==='pen'){anyPen=true;return;}
+      if(lpTouch&&lpTouch.id===t.identifier&&(Math.abs(t.clientX-lpTouch.x)>LONGPRESS_MOVE||Math.abs(t.clientY-lpTouch.y)>LONGPRESS_MOVE)) clearLongPress();
+      if(ty==='pen'){if(!rejected.has(t.identifier)) anyPen=true;return;}
       if(rejected.has(t.identifier)) return;
       const f=fingers.find(x=>x.id===t.identifier);
       if(f){const p=relPos(t);f.x=p.x;f.y=p.y;anyFinger=true;}
       if(lpTouch&&lpTouch.id===t.identifier&&(Math.abs(t.clientX-lpTouch.x)>LONGPRESS_MOVE||Math.abs(t.clientY-lpTouch.y)>LONGPRESS_MOVE)) clearLongPress();
     });
-    if(anyPen) return; // 펜 이동은 도구가 처리
+    if(anyPen) return; // 펜 이동은 도구가 처리 (롱프레스로 소비된 펜 터치는 아래에서 차단)
     if(T.gesture==='pinch'){movePinch();block(e);return;}
     if(T.gesture==='fingerpan'&&fingerPanSt&&fingers.length===1){
       const f=fingers[0];
@@ -267,7 +274,7 @@ function initTouch(){
     ct.forEach(t=>{
       const ef=fingers.find(f=>f.id===t.identifier);if(ef) endedFinger=ef;
       const ty=touchType.get(t.identifier);
-      if(ty==='pen') penEnd=true;
+      if(ty==='pen'&&!rejected.has(t.identifier)) penEnd=true;
       if(!rejected.has(t.identifier)) onlyRejected=false;
       if(lpTouch&&lpTouch.id===t.identifier) clearLongPress();
       fingers=fingers.filter(f=>f.id!==t.identifier);
@@ -331,6 +338,11 @@ function initTouch(){
       if(typeof _refreshShiftOrtho==='function') try{_refreshShiftOrtho();}catch(e){}
       b.classList.toggle('active',!!STATE.shiftPressed);
     }));
+    bar.appendChild(mkBtn('tq-alt','⎇','Alt 고정 1회 — 다음 드래그가 복제 (Alt+드래그)',b=>{
+      STATE.altLatched=!STATE.altLatched;
+      b.classList.toggle('active',!!STATE.altLatched);
+      if(typeof cmdToast==='function') cmdToast(STATE.altLatched?'Alt 고정 — 다음 드래그 = 복제 (드래그 끝나면 해제)':'Alt 고정 해제');
+    }));
     bar.appendChild(mkBtn('tq-finger','☝',"손가락 역할 전환: 이동 ↔ 작도",()=>{
       const cur=fingerPanOn();
       T.fingerPan=!cur;
@@ -357,7 +369,10 @@ function initTouch(){
     if(fb){fb.textContent=fingerPanOn()?'☝⇄':'☝✎';fb.classList.toggle('active',fingerPanOn());}
     const sb=document.getElementById('tq-shift');
     if(sb) sb.classList.toggle('active',!!STATE.shiftPressed);
+    const ab=document.getElementById('tq-alt');
+    if(ab) ab.classList.toggle('active',!!STATE.altLatched);
   }
+  window.refreshTouchQuickBar=refreshQuickBar;
   refreshQuickBar();
   // Shift 키보드 입력과 퀵바 상태 동기화
   document.addEventListener('keyup',e=>{if(e.key==='Shift') refreshQuickBar();},{passive:true});

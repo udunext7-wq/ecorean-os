@@ -2154,7 +2154,7 @@ stage.on('mousedown touchstart',e=>{
       if(id){
         const found=findObjById(id);
         if(found){
-          const isAlt=!!(e.evt&&e.evt.altKey);
+          const isAlt=!!(e.evt&&e.evt.altKey)||!!STATE.altLatched; // 2026-08-19: 퀵바 ⎇ Alt 고정 (태블릿 드래그 복제)
           const isShift=!!(e.evt&&e.evt.shiftKey);
           // v5.9: Shift+객체 클릭 — 박스 선택 토글 (드래그/이동 안 함, click 이벤트가 selectObj 처리)
           if(isShift){return;}
@@ -2197,6 +2197,7 @@ stage.on('mousedown touchstart',e=>{
               STATE.selectedKind=found.kind;STATE.selectedId=copy.id;
               dragMoveState={kind:found.kind,id:copy.id,startMm:rawMm(pos),baseObj:JSON.parse(JSON.stringify(copy)),altCopy:true,
                 contained:found.kind==='space'?_captureContained(copy.id):null};
+              if(STATE.altLatched){STATE.altLatched=false;if(typeof refreshTouchQuickBar==='function') refreshTouchQuickBar();}
             }
           }else{
             // 공간 드래그 시작: 다른 공간과 공유 중인 vertex 분리 (이동 오염 방지)
@@ -3086,6 +3087,8 @@ window.cancelPointerGesture=function(){
   if(dirty){renderAll();refreshUI();}
 };
 stage.on('touchcancel',()=>{window.cancelPointerGesture();});
+// 2026-08-19: 자체 테스트(tests.js 드래그 스냅)가 참조 — initTools 클로저 밖으로 노출
+window.applyDragMove=applyDragMove;
 stage.on('dblclick dbltap',e=>{
   if(STATE.selectedTool==='leader'&&leaderDrawState) finishLeader();
   if(STATE.selectedTool==='polygon'&&freePolyState) finishFreePolygon(); // v5.9: 자유 다각형 닫기
@@ -3620,6 +3623,16 @@ document.addEventListener('keydown',e=>{
       STATE.boxSelection=[];renderAll();
       break;
     case 'delete':case 'backspace':
+      // 2026-08-19: Backspace 는 "글자 지우기" 의도가 대부분 (태블릿 키보드 커버엔 Delete 키가 없음)
+      //  → 태블릿 또는 명령 입력 단계에서는 객체를 지우지 않고 명령창으로 포커스만 이동.
+      //    객체 삭제는 Delete 키 / 퀵바 Del / 길게 누르기 메뉴 "삭제" 로.
+      if(e.key==='Backspace'&&(STATE.cmdMode||(STATE.touch&&STATE.touch.enabled))){
+        e.preventDefault();
+        const ci=document.getElementById('cmd-input');
+        if(ci){ci.focus();try{ci.setSelectionRange(ci.value.length,ci.value.length);}catch(_){}}
+        if(!STATE.cmdMode&&typeof cmdToast==='function') cmdToast('삭제는 Del 버튼 / 길게 누르기 → 삭제');
+        break;
+      }
       if(!deleteBoxSelection()) deleteSelected();
       break;
   }

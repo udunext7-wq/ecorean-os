@@ -252,6 +252,15 @@ function buildSnapUI(){
 
 // ===== UI =====
 function refreshUI(){refreshHeader();refreshSpaceList();refreshDetail();refreshEstimate();refreshJSON();refreshMaterial();}
+// 2026-08-19: 숫자 옵션 필드 파서 — 빈 값/NaN/최소 미만이면 null (호출자가 기존 값 유지)
+function _numField(e,min){
+  const raw=(e&&e.target?e.target.value:'').trim();
+  if(raw==='') return null;
+  const v=parseInt(raw,10);
+  if(!isFinite(v)) return null;
+  if(typeof min==='number'&&v<min) return null;
+  return v;
+}
 // v5.9.4 PERF: 비활성 탭 패널은 지연 갱신 — 매 액션마다 견적표(20ms)·JSON(67ms)을
 // 다시 만들던 것을, 해당 탭을 열 때 1회만 재구성 (상단 KPI 바는 항상 갱신 유지)
 let _jsonDirty=false,_estimateDirty=false;
@@ -401,12 +410,13 @@ function refreshDetail(){
       if(!isDoor) o.sillHeight_mm=def.sill;
       saveHistory();renderAll();refreshUI();
     });
-    document.getElementById('d-w').addEventListener('change',e=>{o.width_mm=parseInt(e.target.value);saveHistory();renderAll();refreshUI();});
-    document.getElementById('d-h').addEventListener('change',e=>{o.height_mm=parseInt(e.target.value);saveHistory();refreshUI();});
-    document.getElementById('d-d').addEventListener('change',e=>{o.depth_mm=parseInt(e.target.value);saveHistory();refreshUI();});
+    // 2026-08-19: 빈 값·NaN 가드 — 백스페이스로 지운 채 포커스가 빠져도 기존 값 유지 (태블릿 키보드)
+    document.getElementById('d-w').addEventListener('change',e=>{const v=_numField(e,10);if(v==null){refreshUI();return;}o.width_mm=v;saveHistory();renderAll();refreshUI();});
+    document.getElementById('d-h').addEventListener('change',e=>{const v=_numField(e,10);if(v==null){refreshUI();return;}o.height_mm=v;saveHistory();refreshUI();});
+    document.getElementById('d-d').addEventListener('change',e=>{const v=_numField(e,10);if(v==null){refreshUI();return;}o.depth_mm=v;saveHistory();refreshUI();});
     if(!isDoor){
       const sf=document.getElementById('d-sill');
-      if(sf) sf.addEventListener('change',e=>{o.sillHeight_mm=parseInt(e.target.value);saveHistory();refreshUI();});
+      if(sf) sf.addEventListener('change',e=>{const v=_numField(e,0);if(v==null){refreshUI();return;}o.sillHeight_mm=v;saveHistory();refreshUI();});
     }
     document.getElementById('d-angle').addEventListener('change',e=>{
       const v=parseFloat(e.target.value);
@@ -2522,7 +2532,7 @@ document.getElementById('canvas-help').addEventListener('click',e=>{
   if(e.target===e.currentTarget) e.currentTarget.classList.remove('visible');
 });
 document.getElementById('snap-unit').addEventListener('change',e=>{STATE.gridSize=parseInt(e.target.value);drawGrid();showStatus('스냅 거리: '+e.target.value+'mm');});
-document.getElementById('ceiling-height').addEventListener('change',e=>{STATE.ceilingHeight=parseInt(e.target.value);refreshUI();});
+document.getElementById('ceiling-height').addEventListener('change',e=>{const v=_numField(e,1000);if(v==null){e.target.value=STATE.ceilingHeight;return;}STATE.ceilingHeight=v;refreshUI();});
 document.getElementById('wall-thickness').addEventListener('change',e=>{
   const v=parseInt(e.target.value);STATE.wallThickness=v;
   document.getElementById('wall-thickness-input').value=v;
@@ -3428,6 +3438,41 @@ function hideQuickChips(){
   const el=document.getElementById('quick-chips');
   el.classList.add('hidden');
   el.innerHTML='';
+}
+
+// 2026-08-19: 옵션 패널 입력 중 refreshUI 가 패널을 통째로 다시 그려 포커스·가상키보드가 날아가던 문제
+//  — 패널 input/select 에 포커스가 있으면 ① 한 틱 미뤄(다음 필드로의 포커스 이동이 끝난 뒤) 다시 그리고
+//    ② 같은 id 의 새 요소로 포커스·캐럿을 복원한다. cmd-input 은 제외(기존 흐름 유지).
+const _origRefreshUI=refreshUI;
+let _refreshUIDeferred=false;
+function _panelFieldFocused(){
+  const ae=document.activeElement;
+  if(!ae||!ae.id||ae.id==='cmd-input') return null;
+  if(!(ae.tagName==='INPUT'||ae.tagName==='SELECT'||ae.tagName==='TEXTAREA')) return null;
+  if(!ae.closest('.panel-right,.panel-left,.lib-popup')) return null;
+  return ae;
+}
+refreshUI=function(){
+  if(_panelFieldFocused()){
+    if(_refreshUIDeferred) return;
+    _refreshUIDeferred=true;
+    setTimeout(()=>{
+      _refreshUIDeferred=false;
+      const before=document.activeElement;
+      _origRefreshUI();
+      // 다시 그리기로 떨어져 나간 요소에 포커스가 있었으면 복원
+      if(before&&before.id&&!document.contains(before)){_restoreFieldFocusTo(before);}
+    },0);
+    return;
+  }
+  _origRefreshUI();
+};
+function _restoreFieldFocusTo(oldEl){
+  const el=document.getElementById(oldEl.id);
+  if(!el) return;
+  let s0=null,e0=null;try{s0=oldEl.selectionStart;e0=oldEl.selectionEnd;}catch(_){}
+  try{el.focus({preventScroll:true});}catch(_){try{el.focus();}catch(__){}}
+  if(s0!=null&&el.setSelectionRange&&/^(text|search|url|tel|password)$/.test(el.type||'text')){try{el.setSelectionRange(s0,e0);}catch(_){}}
 }
 
 // v5.2: cmdMode 변경 시 빠른칩/다각형 FAB 자동 표시 (래퍼)

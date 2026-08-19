@@ -340,6 +340,39 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     }
     STATE.selectedKind=_selK;STATE.selectedId=_selI;STATE.boxSelection=_box;
   }catch(e){hideTouchCtxMenu();assert('터치메뉴: 예외 없음',false,e.message);}
+  // === 2026-08-19: 옵션 필드·Backspace 태블릿 대응 ===
+  try{
+    assert('옵션: _numField 빈 값 → null',_numField({target:{value:''}},10)===null);
+    assert('옵션: _numField "abc" → null',_numField({target:{value:'abc'}},10)===null);
+    assert('옵션: _numField 최소 미만 → null',_numField({target:{value:'5'}},10)===null);
+    assert('옵션: _numField "1200" → 1200',_numField({target:{value:' 1200 '}},10)===1200);
+    // Backspace: 태블릿(터치 기기)에서는 선택 객체를 지우지 않는다
+    if(STATE.spaces.length>0){
+      const n0=STATE.spaces.length;
+      STATE.boxSelection=[];STATE.selectedKind='space';STATE.selectedId=STATE.spaces[0].id;
+      const prevEnabled=STATE.touch.enabled;STATE.touch.enabled=true;
+      document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Backspace',bubbles:true,cancelable:true}));
+      STATE.touch.enabled=prevEnabled;
+      assert('옵션: 터치 기기 Backspace → 객체 삭제 안 함',STATE.spaces.length===n0);
+      assert('옵션: 터치 기기 Backspace → 명령창 포커스',document.activeElement&&document.activeElement.id==='cmd-input');
+      document.getElementById('cmd-input').blur();
+      // 명령 입력 단계(cmdMode)에서도 Backspace 는 삭제 아님 (데스크톱 포함)
+      STATE.cmdMode='rect-w';
+      document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Backspace',bubbles:true,cancelable:true}));
+      STATE.cmdMode=null;document.getElementById('cmd-input').blur();
+      assert('옵션: cmdMode 중 Backspace → 객체 삭제 안 함',STATE.spaces.length===n0);
+      deselect();
+    }else{assert('옵션: Backspace 케이스 (공간 없음 → 스킵)',true);}
+    // refreshUI 포커스 보존: 패널 필드에 포커스가 있으면 한 틱 미뤄 다시 그리고 포커스 복원
+    const ph=document.getElementById('project-name');
+    if(ph){
+      ph.focus();
+      const beforeEl=document.getElementById('project-name');
+      refreshUI(); // 미뤄짐 — 동기 실행 안 됨
+      assert('옵션: 패널 포커스 중 refreshUI 는 지연',document.activeElement===beforeEl);
+      ph.blur();
+    }
+  }catch(e){assert('옵션: 예외 없음',false,e.message);}
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
