@@ -1390,7 +1390,7 @@ function toggle2_5D(){
 // ===== 줌 =====
 function zoomBy(factor){
   const oldZoom=STATE.zoom;
-  const newZoom=Math.max(0.2,Math.min(5,oldZoom*factor));
+  const newZoom=clampZoom(oldZoom*factor);
   if(newZoom===oldZoom) return;
   const cx=stage.width()/2,cy=stage.height()/2;
   STATE.offsetX=cx-(cx-STATE.offsetX)*(newZoom/oldZoom);
@@ -1406,7 +1406,7 @@ function zoomFit(){
   const wMm=maxX-minX,hMm=maxY-minY,padding=120;
   const zw=(stage.width()-padding*2)/((wMm/1000)*STATE.scale);
   const zh=(stage.height()-padding*2)/((hMm/1000)*STATE.scale);
-  STATE.zoom=Math.min(zw,zh,3);
+  STATE.zoom=clampZoom(Math.min(zw,zh,3));
   STATE.offsetX=padding-mmToPx(minX);
   STATE.offsetY=padding-mmToPx(minY);
   drawGrid();renderAll();

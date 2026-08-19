@@ -3064,7 +3064,7 @@ stage.on('wheel',e=>{
   e.evt.preventDefault();
   const oldZoom=STATE.zoom;
   const delta=e.evt.deltaY>0?0.9:1.1;
-  const newZoom=Math.max(0.2,Math.min(5,oldZoom*delta));
+  const newZoom=clampZoom(oldZoom*delta);
   if(newZoom===oldZoom) return;
   beginViewTransform(); /* PERF: 휠 연타 중 레이어 변환만, 멈추면 1회 재구성 */
   const pos=stage.getPointerPosition();

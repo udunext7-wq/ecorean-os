@@ -237,7 +237,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('터치: STATE.touch 초기화',!!(STATE.touch&&typeof STATE.touch.enabled==='boolean'&&'gesture' in STATE.touch));
     assert('터치: cancelPointerGesture 전역 제공',typeof cancelPointerGesture==='function');
     assert('터치: 퀵바 DOM 생성 (Esc/Enter/Del/Undo/Redo/Shift/손가락/키보드)',
-      !!document.getElementById('touch-quickbar')&&['tq-esc','tq-enter','tq-del','tq-undo','tq-redo','tq-shift','tq-finger','tq-kbd'].every(id=>!!document.getElementById(id)));
+      !!document.getElementById('touch-quickbar')&&['tq-zoom-out','tq-zoom-in','tq-zoom-fit','tq-esc','tq-enter','tq-del','tq-undo','tq-redo','tq-shift','tq-finger','tq-kbd'].every(id=>!!document.getElementById(id)));
     assert('터치: 입력모드 배지',!!document.getElementById('input-mode-badge'));
     const cc=document.getElementById('canvas-container');
     assert('터치: 캔버스 touch-action:none',!!cc&&getComputedStyle(cc).touchAction==='none');
@@ -248,6 +248,14 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     // 터치 기기에서만 Konva 히트영역 확대 패치 적용 (마우스 전용 기기는 원본 유지)
     const patched=!!(Konva.Shape.prototype.__ecoHitPatched);
     assert('터치: 히트영역 패치 = 터치기기 여부와 일치',patched===!!STATE.touch.enabled);
+    // 줌 한계 단일화 (핀치·휠·버튼 공용) — 줌아웃 5% 까지
+    assert('줌: clampZoom 한계 5%~800%',typeof clampZoom==='function'&&clampZoom(0.001)===ZOOM_MIN&&clampZoom(999)===ZOOM_MAX&&ZOOM_MIN<=0.05&&clampZoom(1)===1);
+    (function(){const z0=STATE.zoom,ox=STATE.offsetX,oy=STATE.offsetY;
+      for(let i=0;i<40;i++) zoomBy(0.5);
+      assert('줌: zoomBy 연속 축소 → ZOOM_MIN 에서 멈춤',Math.abs(STATE.zoom-ZOOM_MIN)<1e-9);
+      for(let i=0;i<40;i++) zoomBy(2);
+      assert('줌: zoomBy 연속 확대 → ZOOM_MAX 에서 멈춤',Math.abs(STATE.zoom-ZOOM_MAX)<1e-9);
+      STATE.zoom=z0;STATE.offsetX=ox;STATE.offsetY=oy;drawGrid();renderAll();})();
     if(patched){
       const ln=new Konva.Line({points:[0,0,10,10],stroke:'#000',strokeWidth:1,hitStrokeWidth:10});
       assert('터치: hitStrokeWidth 10 → 17.5 (×1.75)',Math.abs(ln.hitStrokeWidth()-17.5)<0.01);

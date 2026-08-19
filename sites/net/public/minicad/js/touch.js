@@ -6,7 +6,8 @@
    ─ 펜 / 손가락 / 마우스 구분 (Pointer Events) + 상태바 입력모드 배지
    ─ 팜 리젝션: 펜 작도 중(또는 직후 0.7s) 손바닥·손가락 터치 무시
    ─ 손가락 모드: "이동" (손가락=팬, 펜=작도) ↔ "작도" (손가락도 그림) — 펜 감지 시 기본 "이동"
-   ─ 2손가락 핀치 줌 + 패닝 (레이어 변환 방식, 제스처 종료 시 1회 재구성)
+   ─ 2손가락 핀치 줌 + 패닝 (레이어 변환 방식, 제스처 종료 시 1회 재구성) — ZOOM_MIN 5% ~ ZOOM_MAX 800%
+   ─ 2손가락 더블탭 = 전체 보기(zoomFit) / 퀵바 ⊖ ⊕ ⊡ 줌 버튼
    ─ 롱프레스(0.6s) = 우클릭 컨텍스트 메뉴
    ─ 터치 기기에서 Konva 히트 영역 확대 (가는 선·핸들 선택 용이)
    ─ 터치 퀵바: Esc · Enter · Del · Undo · Redo · Shift 고정 · 손가락 모드 · 키보드
@@ -120,6 +121,8 @@ function initTouch(){
   const rejected=new Set();    // 팜 리젝션/소비된 터치 id
   let fingers=[];              // 현재 손가락(펜 아님, 미거부) Touch 목록 [{id,x,y}]
   let pinch=null,fingerPanSt=null,lpTimer=null,lpTouch=null;
+  let lastTwoTapAt=0;          // 2손가락 더블탭(전체 보기) 판정용
+  const PINCH_STEP=1.25;       // 퀵바 ⊖ ⊕ 한 번 누를 때 배율
 
   function relPos(t){const r=container.getBoundingClientRect();return{x:t.clientX-r.left,y:t.clientY-r.top};}
   function updateZoomLabel(){const z=document.getElementById('zoom-pct');if(z) z.textContent=Math.round(STATE.zoom*100)+'%';}
@@ -131,7 +134,8 @@ function initTouch(){
     cancelTools();clearLongPress();
     const a=fingers[0],b=fingers[1];
     const dx=b.x-a.x,dy=b.y-a.y;
-    pinch={dist:Math.max(1,Math.hypot(dx,dy)),cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,zoom:STATE.zoom,offsetX:STATE.offsetX,offsetY:STATE.offsetY};
+    pinch={dist:Math.max(1,Math.hypot(dx,dy)),cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,zoom:STATE.zoom,offsetX:STATE.offsetX,offsetY:STATE.offsetY,
+      t0:performance.now(),moved:0};
     fingerPanSt=null;T.gesture='pinch';
     beginViewTransform();
   }
@@ -141,8 +145,10 @@ function initTouch(){
     const dx=b.x-a.x,dy=b.y-a.y;
     const dist=Math.max(1,Math.hypot(dx,dy));
     const cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;
-    const newZoom=Math.max(0.2,Math.min(5,pinch.zoom*(dist/pinch.dist)));
+    // 두 손가락을 벌리면 확대, 오므리면 축소 — 시작 거리 대비 비율 그대로(1:1), 한계는 clampZoom(5%~800%)
+    const newZoom=(typeof clampZoom==='function'?clampZoom:z=>Math.max(0.05,Math.min(8,z)))(pinch.zoom*(dist/pinch.dist));
     const k=newZoom/pinch.zoom;
+    pinch.moved=Math.max(pinch.moved,Math.abs(dist-pinch.dist),Math.hypot(cx-pinch.cx,cy-pinch.cy));
     // 시작 중심점이 같은 월드 좌표에 머물도록 + 중심 이동량만큼 패닝
     STATE.offsetX=pinch.cx-(pinch.cx-pinch.offsetX)*k+(cx-pinch.cx);
     STATE.offsetY=pinch.cy-(pinch.cy-pinch.offsetY)*k+(cy-pinch.cy);
@@ -150,7 +156,17 @@ function initTouch(){
     applyViewTransform();updateZoomLabel();
   }
   function endGesture(){
-    if(T.gesture){T.gesture=null;pinch=null;fingerPanSt=null;endViewTransform();updateZoomLabel();}
+    if(!T.gesture) return;
+    // 2손가락 짧은 탭(이동 거의 없음)을 0.4s 안에 두 번 → 전체 보기
+    if(T.gesture==='pinch'&&pinch&&pinch.moved<10&&(performance.now()-pinch.t0)<250){
+      const now=performance.now();
+      if(now-lastTwoTapAt<400){lastTwoTapAt=0;T.gesture=null;pinch=null;fingerPanSt=null;
+        if(typeof zoomFit==='function'){zoomFit();if(typeof cmdToast==='function') cmdToast('전체 보기');}
+        else endViewTransform();
+        updateZoomLabel();return;}
+      lastTwoTapAt=now;
+    }
+    T.gesture=null;pinch=null;fingerPanSt=null;endViewTransform();updateZoomLabel();
   }
   function fireLongPress(t){
     // 롱프레스 → 우클릭(컨텍스트 메뉴). 진행 중이던 도구 동작은 취소.
@@ -297,6 +313,9 @@ function initTouch(){
   if(!bar){
     const area=container.parentElement||document.querySelector('.canvas-area')||document.body;
     bar=document.createElement('div');bar.id='touch-quickbar';
+    bar.appendChild(mkBtn('tq-zoom-out','⊖','축소 (두 손가락 오므리기)',()=>{if(typeof zoomBy==='function') zoomBy(1/PINCH_STEP);}));
+    bar.appendChild(mkBtn('tq-zoom-in','⊕','확대 (두 손가락 벌리기)',()=>{if(typeof zoomBy==='function') zoomBy(PINCH_STEP);}));
+    bar.appendChild(mkBtn('tq-zoom-fit','⊡','전체 보기 (두 손가락 더블탭)',()=>{if(typeof zoomFit==='function') zoomFit();}));
     bar.appendChild(mkBtn('tq-esc','Esc','취소 / 선택 해제 (Esc)',()=>key('Escape')));
     bar.appendChild(mkBtn('tq-enter','↵','확정 / 다음 단계 (Enter)',()=>{
       const ci=document.getElementById('cmd-input');

@@ -51,6 +51,9 @@ previewLayer.add(labelGroup);previewLayer.add(drawGroup);previewLayer.add(ghostH
 
 // ===== 좌표 + 스냅 + 그리드 + VEF + 히스토리 + 렌더 함수 =====
 // ===== 좌표 + 스냅 =====
+// 2026-08-19: 줌 한계 단일 정의 — 휠·버튼·핀치·명령 모두 clampZoom 사용 (태블릿 줌아웃 강화: 20% → 5%)
+const ZOOM_MIN=0.05,ZOOM_MAX=8;
+function clampZoom(z){return Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,isFinite(z)?z:1));}
 function mmToPx(mm){return(mm/1000)*STATE.scale*STATE.zoom;}
 function pxToMm(px){return Math.round((px/STATE.zoom/STATE.scale)*1000);}
 function snapMm(mm){
@@ -492,7 +495,10 @@ function drawGrid(){
   const sx=STATE.offsetX%gpx,sy=STATE.offsetY%gpx;
   for(let x=sx;x<w;x+=gpx) bgLayer.add(new Konva.Line({points:[x,0,x,h],stroke:minorCol,strokeWidth:minorW}));
   for(let y=sy;y<h;y+=gpx) bgLayer.add(new Konva.Line({points:[0,y,w,y],stroke:minorCol,strokeWidth:minorW}));
-  const mpx=mmToPx(1000);
+  // 1m 대격자 — 줌아웃으로 1m 간격이 30px 미만이면 5m → 10m → 50m 간격으로 승격 (방향 감각 유지)
+  let majorMm=1000;
+  while(mmToPx(majorMm)<=30&&majorMm<50000) majorMm*=(majorMm===1000||majorMm===10000)?5:2;
+  const mpx=mmToPx(majorMm);
   if(mpx>30){
     const smx=STATE.offsetX%mpx,smy=STATE.offsetY%mpx;
     for(let x=smx;x<w;x+=mpx) bgLayer.add(new Konva.Line({points:[x,0,x,h],stroke:majorCol,strokeWidth:majorW}));
