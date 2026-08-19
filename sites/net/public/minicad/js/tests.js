@@ -264,6 +264,41 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       ln.destroy();ln2.destroy();
     }
   }catch(e){assert('터치: 예외 없음',false,e.message);}
+  // === 2026-08-19: 태블릿 통합 컨텍스트 메뉴 (우클릭 기능 대응) ===
+  try{
+    assert('터치메뉴: showTouchCtxMenu 정의',typeof showTouchCtxMenu==='function'&&typeof hideTouchCtxMenu==='function');
+    assert('터치메뉴: 퀵바 ☰ 버튼',!!document.getElementById('tq-menu'));
+    // 선택 없음 → 캔버스 메뉴 (전체보기/격자/직교/실행취소)
+    const _selK=STATE.selectedKind,_selI=STATE.selectedId,_box=STATE.boxSelection.slice();
+    STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];
+    let m=showTouchCtxMenu(200,200,null);
+    const ops=()=>Array.from(document.querySelectorAll('#touch-ctx-menu .tcm-btn')).map(b=>b.dataset.op);
+    assert('터치메뉴: 빈 캔버스 — 전체보기·격자·직교·실행취소',['fit','grid','ortho','undo','redo'].every(o=>ops().includes(o)));
+    hideTouchCtxMenu();
+    assert('터치메뉴: 닫기',!document.getElementById('touch-ctx-menu'));
+    // 공간 1개 선택 → 마감재·잠금·회전·복제·삭제 (Ctrl+우클릭 없이 마감재 도달)
+    const _sp={id:'tcm_test_sp',name:'T',type:'room',vertexIds:[],locked:false};
+    if(STATE.spaces.length>0){
+      const sp=STATE.spaces[0];
+      STATE.selectedKind='space';STATE.selectedId=sp.id;STATE.boxSelection=[];
+      showTouchCtxMenu(200,200,null);
+      assert('터치메뉴: 공간 1개 — 마감재·잠금·회전·복제·삭제',['finish','lock','rotate','dup','del'].every(o=>ops().includes(o)));
+      hideTouchCtxMenu();
+    }else{
+      assert('터치메뉴: 공간 1개 케이스 (공간 없음 → 스킵)',true);
+    }
+    // 공간 2개 박스 선택 → Boolean
+    if(STATE.spaces.length>=2){
+      STATE.boxSelection=[{kind:'space',id:STATE.spaces[0].id},{kind:'space',id:STATE.spaces[1].id}];
+      STATE.selectedKind='space';STATE.selectedId=STATE.spaces[0].id;
+      showTouchCtxMenu(200,200,null);
+      assert('터치메뉴: 공간 2개 — 병합·빼기·교집합',['merge','sub-ab','sub-ba','intersect'].every(o=>ops().includes(o)));
+      hideTouchCtxMenu();
+    }else{
+      assert('터치메뉴: 공간 2개 Boolean 케이스 (공간 부족 → 스킵)',true);
+    }
+    STATE.selectedKind=_selK;STATE.selectedId=_selI;STATE.boxSelection=_box;
+  }catch(e){hideTouchCtxMenu();assert('터치메뉴: 예외 없음',false,e.message);}
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

@@ -175,6 +175,7 @@ function initTouch(){
     fingers=fingers.filter(f=>f.id!==t.identifier);
     if(T.gesture) endGesture();
     const ev=new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:t.clientX,clientY:t.clientY,button:2,buttons:2});
+    ev.__ecoTouch=true; // tools.js contextmenu 핸들러가 태블릿 통합 메뉴로 분기
     container.dispatchEvent(ev);
     if(navigator.vibrate) try{navigator.vibrate(12);}catch(e){}
   }
@@ -338,6 +339,11 @@ function initTouch(){
       if(T.lastType==='touch'&&badge){badge.textContent=T.fingerPan?'손가락(이동)':'손가락(작도)';}
       refreshQuickBar();
     }));
+    bar.appendChild(mkBtn('tq-menu','☰','메뉴 — 우클릭 기능 (마감재·Boolean·잠금·회전·복제·삭제)',b=>{
+      if(document.getElementById('touch-ctx-menu')){hideTouchCtxMenu();return;}
+      const r=b.getBoundingClientRect();
+      if(typeof showTouchCtxMenu==='function') showTouchCtxMenu(r.left-260,r.top,null);
+    }));
     bar.appendChild(mkBtn('tq-kbd','⌨','명령창 열기 (숫자 입력)',()=>{
       const ci=document.getElementById('cmd-input');
       if(ci){ci.focus();try{ci.setSelectionRange(ci.value.length,ci.value.length);}catch(e){}}
@@ -363,3 +369,137 @@ function initTouch(){
 
   console.log('[touch] 터치·S펜 레이어 준비 — coarse:',coarse,'/ anyHover:',anyHover,'/ touchDevice:',isTouchDevice);
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// 태블릿 통합 컨텍스트 메뉴 (2026-08-19) — 데스크톱 "우클릭" 기능 전부를 한 메뉴로
+//   호출: 롱프레스(0.6s) / S펜 측면 버튼 / 마우스 우클릭(터치 입력 직후) → tools.js contextmenu 핸들러
+//   데스크톱 대응표
+//     Ctrl+우클릭 (벽·공간 마감재)      → 🎨 마감재 설정
+//     우클릭 (공간 2+)  Boolean          → ⊕ 병합 / A−B / B−A / ∩ 교집합
+//     우클릭 (원·곡선)  변환·색상·텍스트  → ⟳ 변환·색상 메뉴 열기
+//     우클릭 (선택)     🔒 잠금           → 🔒 잠금 / 해제
+//     키보드 R / Delete / Ctrl+Z / Alt+드래그 → ↻ 회전 / 🗑 삭제 / ↶ 실행취소 / ⧉ 복제
+//     빈 캔버스: ⤢ 전체보기 / ▦ 격자 / ⟂ 직교 / ↶ 실행취소 / ✕ 도구 취소
+// ─────────────────────────────────────────────────────────────────────────
+function hideTouchCtxMenu(){const m=document.getElementById('touch-ctx-menu');if(m) m.remove();}
+window.hideTouchCtxMenu=hideTouchCtxMenu;
+window.showTouchCtxMenu=function(px,py,hitFound){
+  hideTouchCtxMenu();
+  if(typeof hideSpaceCtxMenu==='function') hideSpaceCtxMenu();
+  if(typeof hideSelectionCtxMenu==='function') hideSelectionCtxMenu();
+  if(typeof hideShapeConvertMenu==='function') hideShapeConvertMenu();
+  const KIND_NAMES={space:'공간',wall:'벽',opening:'창문/도어',furniture:'가구',fixtures:'위생/주방',lights:'조명',electric:'전기',hvac:'공조/소방',
+    texts:'텍스트',measures:'치수',circles:'원',arcs:'호',curves:'곡선',leaders:'지시선',xlines:'안내선',pillars:'기둥'};
+  const items=(STATE.boxSelection&&STATE.boxSelection.length>0)
+    ? STATE.boxSelection.slice()
+    : (STATE.selectedKind&&STATE.selectedId?[{kind:STATE.selectedKind,id:STATE.selectedId}]:[]);
+  const objs=items.map(it=>{const arr=getArr(it.kind);const o=arr?arr.find(x=>x.id===it.id):null;return o?{kind:it.kind,id:it.id,obj:o}:null;}).filter(Boolean);
+  const spaceIds=objs.filter(o=>o.kind==='space').map(o=>o.id);
+  const single=objs.length===1?objs[0]:null;
+  const allLocked=objs.length>0&&objs.every(o=>!!o.obj.locked);
+  const kindCount={};objs.forEach(o=>{kindCount[o.kind]=(kindCount[o.kind]||0)+1;});
+  const kindStr=Object.entries(kindCount).map(([k,n])=>(KIND_NAMES[k]||k)+' '+n).join(' · ');
+
+  const rows=[]; // {label,icon,op,cls}
+  const sep=()=>rows.push({sep:true});
+  if(objs.length===0){
+    rows.push({head:'캔버스'});
+    rows.push({icon:'⤢',label:'전체보기',op:'fit'});
+    rows.push({icon:'▦',label:(STATE.showGrid?'격자 끄기':'격자 켜기'),op:'grid'});
+    rows.push({icon:'⟂',label:'직교 '+((STATE.snap&&STATE.snap.ortho)?'끄기':'켜기')+' (F8)',op:'ortho'});
+    sep();
+    rows.push({icon:'↶',label:'실행 취소',op:'undo'});
+    rows.push({icon:'↷',label:'다시 실행',op:'redo'});
+    if(STATE.selectedTool!=='select') rows.push({icon:'✕',label:'도구 취소 → 선택',op:'esc'});
+  }else{
+    rows.push({head:'선택 — '+kindStr});
+    if(single&&(single.kind==='wall'||single.kind==='space')) rows.push({icon:'🎨',label:'마감재 설정 (바닥·벽·천장)',op:'finish',cls:'accent'});
+    if(spaceIds.length>=2){
+      const A=(objs.find(o=>o.id===spaceIds[0])||{}).obj,B=(objs.find(o=>o.id===spaceIds[1])||{}).obj;
+      const nA=(A&&A.name)||'A',nB=(B&&B.name)||'B';
+      rows.push({icon:'⊕',label:'공간 병합 ('+spaceIds.length+'개, 공유 변 기준)',op:'merge',cls:'blue'});
+      if(spaceIds.length===2){
+        rows.push({icon:'−',label:nA+' − '+nB+' (빼기)',op:'sub-ab',cls:'green'});
+        rows.push({icon:'−',label:nB+' − '+nA+' (빼기)',op:'sub-ba',cls:'green'});
+        rows.push({icon:'∩',label:'교집합',op:'intersect',cls:'brown'});
+      }
+    }
+    if(single&&(single.kind==='circles'||single.kind==='curves')) rows.push({icon:'⟳',label:(single.kind==='circles'?'원':'곡선')+' 변환·색상·텍스트…',op:'convert'});
+    sep();
+    rows.push({icon:'🔒',label:allLocked?'잠금 해제':'잠금 (이동·편집 차단)',op:'lock'});
+    rows.push({icon:'↻',label:single&&single.kind==='space'?'회전 (각도 입력)':'회전 (R)',op:'rotate'});
+    if(single) rows.push({icon:'⧉',label:'복제 (300mm 옆에)',op:'dup'});
+    rows.push({icon:'🗑',label:'삭제',op:'del',cls:'danger'});
+    sep();
+    rows.push({icon:'◻',label:'선택 해제 (Esc)',op:'esc'});
+  }
+
+  const menu=document.createElement('div');
+  menu.id='touch-ctx-menu';
+  let html='';
+  rows.forEach(r=>{
+    if(r.sep){html+='<div class="tcm-sep"></div>';return;}
+    if(r.head){html+='<div class="tcm-head">'+escapeHtml(r.head)+'</div>';return;}
+    html+='<button type="button" class="tcm-btn'+(r.cls?' tcm-'+r.cls:'')+'" data-op="'+r.op+'"><span class="tcm-ic">'+r.icon+'</span><span>'+escapeHtml(r.label)+'</span></button>';
+  });
+  html+='<button type="button" class="tcm-btn tcm-cancel" data-op="cancel">닫기</button>';
+  menu.innerHTML=html;
+  document.body.appendChild(menu);
+  // 위치: 누른 지점 기준, 화면 밖이면 안쪽으로 (손가락에 가리지 않게 살짝 오른쪽·위)
+  const W=menu.offsetWidth,H=menu.offsetHeight;
+  let left=px+12,top=py-16;
+  if(left+W>window.innerWidth-8) left=Math.max(8,px-W-12);
+  if(top+H>window.innerHeight-8) top=Math.max(8,window.innerHeight-H-8);
+  if(top<8) top=8;
+  menu.style.left=left+'px';menu.style.top=top+'px';
+
+  function run(op){
+    hideTouchCtxMenu();
+    const key=k=>{document.body.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true,cancelable:true}));};
+    switch(op){
+      case 'fit': if(typeof zoomFit==='function') zoomFit(); break;
+      case 'grid': if(typeof toggleGrid==='function') toggleGrid(); break;
+      case 'ortho': if(typeof toggleOrtho==='function') toggleOrtho(); break;
+      case 'undo': if(typeof undo==='function') undo(); break;
+      case 'redo': if(typeof redo==='function') redo(); break;
+      case 'esc': key('Escape'); break;
+      case 'finish': if(single&&typeof showFinishMenu==='function') showFinishMenu(single.kind,single.obj,px,py); break;
+      case 'merge': if(typeof mergeAdjacentSpaces==='function') mergeAdjacentSpaces(); break;
+      case 'sub-ab': if(typeof subtractSelectedSpaces==='function') subtractSelectedSpaces(spaceIds[0],spaceIds[1]); break;
+      case 'sub-ba': if(typeof subtractSelectedSpaces==='function') subtractSelectedSpaces(spaceIds[1],spaceIds[0]); break;
+      case 'intersect': if(typeof intersectSelectedSpaces==='function') intersectSelectedSpaces(spaceIds[0],spaceIds[1]); break;
+      case 'convert': if(single&&typeof showShapeConvertMenu==='function') showShapeConvertMenu(px,py,single.kind,single.id); break;
+      case 'lock': if(typeof applyLockToSelection==='function') applyLockToSelection(!allLocked); break;
+      case 'rotate': if(typeof rotateSelected==='function') rotateSelected(); break;
+      case 'dup':
+        if(single&&typeof altCopyObj==='function'){
+          if(single.obj.locked){if(typeof cmdToast==='function') cmdToast('잠긴 객체는 복제할 수 없습니다');break;}
+          const copy=altCopyObj(single.kind,single.obj);
+          if(copy){
+            STATE.boxSelection=[];STATE.selectedKind=single.kind;STATE.selectedId=copy.id;
+            if(typeof _nudgeSelected==='function') _nudgeSelected(300,300);
+            if(typeof saveHistory==='function') saveHistory();
+            if(typeof renderAll==='function') renderAll();
+            if(typeof refreshUI==='function') refreshUI();
+            if(typeof cmdToast==='function') cmdToast('복제됨 — 드래그해서 위치 조정');
+          }
+        }
+        break;
+      case 'del': key('Delete'); break;
+      default: break;
+    }
+  }
+  menu.querySelectorAll('.tcm-btn').forEach(b=>{
+    b.addEventListener('pointerdown',ev=>ev.stopPropagation());
+    b.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();run(b.dataset.op);});
+  });
+  setTimeout(()=>{
+    const closeOnOutside=ev=>{
+      if(!menu.contains(ev.target)){hideTouchCtxMenu();document.removeEventListener('pointerdown',closeOnOutside,true);}
+    };
+    document.addEventListener('pointerdown',closeOnOutside,true);
+    const onKey=ev=>{if(ev.key==='Escape'){hideTouchCtxMenu();document.removeEventListener('keydown',onKey,true);}};
+    document.addEventListener('keydown',onKey,true);
+  },50);
+  return menu;
+};

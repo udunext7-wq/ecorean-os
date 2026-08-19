@@ -2179,7 +2179,7 @@ stage.on('mousedown touchstart',e=>{
                 contained:b.kind==='space'?_captureContained(b.id):null,
               };
             }).filter(Boolean);
-            dragMoveState={kind:'multi',items:items,startMm:getMm(pos)};
+            dragMoveState={kind:'multi',items:items,startMm:rawMm(pos)};
             renderAll();refreshUI();
             return; // 단일 드래그 분기 스킵
           }
@@ -2195,7 +2195,7 @@ stage.on('mousedown touchstart',e=>{
             const copy=altCopyObj(found.kind,found.obj);
             if(copy){
               STATE.selectedKind=found.kind;STATE.selectedId=copy.id;
-              dragMoveState={kind:found.kind,id:copy.id,startMm:getMm(pos),baseObj:JSON.parse(JSON.stringify(copy)),altCopy:true,
+              dragMoveState={kind:found.kind,id:copy.id,startMm:rawMm(pos),baseObj:JSON.parse(JSON.stringify(copy)),altCopy:true,
                 contained:found.kind==='space'?_captureContained(copy.id):null};
             }
           }else{
@@ -2220,7 +2220,7 @@ stage.on('mousedown touchstart',e=>{
                 return vid;
               });
             }
-            dragMoveState={kind:found.kind,id:found.id,startMm:getMm(pos),baseObj:JSON.parse(JSON.stringify(found.obj)),
+            dragMoveState={kind:found.kind,id:found.id,startMm:rawMm(pos),baseObj:JSON.parse(JSON.stringify(found.obj)),
               contained:found.kind==='space'?_captureContained(found.id):null};
           }
           renderAll();refreshUI();
@@ -2294,7 +2294,8 @@ function _refreshShiftOrtho(){
   const mm=getMm(cur);
   // 드래그 이동 중
   if(dragMoveState&&isMouseDown){
-    const dx2=mm.x-dragMoveState.startMm.x, dy2=mm.y-dragMoveState.startMm.y;
+    const rmm=rawMm(cur);
+    const dx2=rmm.x-dragMoveState.startMm.x, dy2=rmm.y-dragMoveState.startMm.y;
     applyDragMove(dragMoveState,dx2,dy2);
     renderAll();
   }
@@ -2460,50 +2461,76 @@ function applyDragMove(state,dx,dy){
   if(!obj) return;
   if(obj.locked) return; // v5.9: 잠금된 객체는 드래그 안 됨
   const base=state.baseObj;
-  let sx=Math.round(dx), sy=Math.round(dy);
+  // 2026-08-19: delta 는 순수 커서 기준(rawMm) → 그리드 스냅은 여기서 1회 적용
+  let sx=snapMm(dx), sy=snapMm(dy);
   // Shift 직교: F8 OFF+Shift 또는 F8 ON+Shift 미누름 시 수평/수직 이동만 허용
   const orthoActive=(STATE.snap.ortho&&!STATE.shiftPressed)||(!STATE.snap.ortho&&STATE.shiftPressed);
   if(orthoActive){
     if(Math.abs(sx)>=Math.abs(sy)) sy=0; else sx=0;
   }
 
-  // v5.8: 공간 드래그 — 한 점이라도 다른 공간 변에 가까우면 그 점 기준으로 전체 이동량 보정
-  // v5.9: + 변-변 자석 스냅 (평행 + 가까운 변끼리 자동 정렬)
-  if(state.kind==='space' && base.polygon && !STATE.ctrlPressed){
-    let bestSnapDx=0, bestSnapDy=0, bestSnapD=Infinity;
-    base.polygon.forEach(p=>{
-      const moved={x:p.x+sx, y:p.y+sy};
-      const snap=snapPointToSpaceEdges(moved, obj.id);
-      if(snap.snapped && snap.distance<bestSnapD){
-        bestSnapD=snap.distance;
-        bestSnapDx=snap.pt.x-moved.x;
-        bestSnapDy=snap.pt.y-moved.y;
-      }
-    });
-    // v5.9: 점-점 자석 스냅 — 드래그된 폴리곤의 각 vertex vs 다른 공간 vertex
-    const pointThreshold=300;
-    let bestPointD=Infinity, bestPointDx=0, bestPointDy=0;
+  // 2026-08-19: 공간 드래그 스냅 전면 개편 (태블릿 "연결" 불안정 해소)
+  //  ① 반경: 화면 px 기준(snapRadiusMm) — 줌아웃·손가락일수록 mm 반경 확대 (기존 200/300mm 고정)
+  //  ② 축 분리: X 정렬 후보 / Y 정렬 후보를 따로 골라 합성 → 변-변 맞닿음(flush) + 모서리 연결이 자연스럽게 성립
+  //  ③ 우선순위: 모서리-모서리(0) > 점-변(1) > 같은 축 꼭짓점 정렬(2)
+  //  ④ 히스테리시스: 한 번 붙으면 해제 반경(1.8배)을 벗어나기 전까지 유지 — 손가락 떨림에 붙었다 떨어졌다 하지 않음
+  //  ⑤ 비축정렬(사선) 변은 기존 투영 스냅으로 폴백
+  //  ⑥ STATE.dragSnapGuides 로 정렬 가이드 표시 (drawSnapMarker)
+  STATE.dragSnapGuides=null;
+  if(state.kind==='space' && base.polygon && !STATE.ctrlPressed && STATE.snap.endpoint){
+    const r=snapRadiusMm(200), rel=r*1.8;
     const movedPoly=base.polygon.map(p=>({x:p.x+sx,y:p.y+sy}));
-    movedPoly.forEach(p=>{
-      STATE.spaces.forEach(s=>{
-        if(s.id===obj.id) return;
-        s.polygon.forEach(other=>{
-          const d=Math.hypot(other.x-p.x,other.y-p.y);
-          if(d<pointThreshold&&d<bestPointD){
-            bestPointD=d;
-            bestPointDx=other.x-p.x;
-            bestPointDy=other.y-p.y;
-          }
+    const candX=[],candY=[]; // {d,delta,vi,target,pri}
+    STATE.spaces.forEach(s=>{
+      if(s.id===obj.id||!s.polygon||s.polygon.length<2) return;
+      const n=s.polygon.length;
+      movedPoly.forEach((p,vi)=>{
+        // 점-점 (같은 축 정렬; 다른 축도 r 안이면 모서리-모서리 = 최우선)
+        s.polygon.forEach(o=>{
+          const ddx=o.x-p.x, ddy=o.y-p.y, ax=Math.abs(ddx), ay=Math.abs(ddy);
+          if(ax<=rel) candX.push({d:ax,delta:ddx,vi,target:o.x,pri:ay<=r?0:2});
+          if(ay<=rel) candY.push({d:ay,delta:ddy,vi,target:o.y,pri:ax<=r?0:2});
         });
+        // 점-변 (축정렬 변: 변의 범위 ±r 안에 들어온 꼭짓점만)
+        for(let i=0;i<n;i++){
+          const a=s.polygon[i], b=s.polygon[(i+1)%n];
+          if(Math.abs(a.x-b.x)<=1){ // 수직 변 → X 정렬
+            if(p.y>=Math.min(a.y,b.y)-r&&p.y<=Math.max(a.y,b.y)+r){const ddx=a.x-p.x; if(Math.abs(ddx)<=rel) candX.push({d:Math.abs(ddx),delta:ddx,vi,target:a.x,pri:1});}
+          }else if(Math.abs(a.y-b.y)<=1){ // 수평 변 → Y 정렬
+            if(p.x>=Math.min(a.x,b.x)-r&&p.x<=Math.max(a.x,b.x)+r){const ddy=a.y-p.y; if(Math.abs(ddy)<=rel) candY.push({d:Math.abs(ddy),delta:ddy,vi,target:a.y,pri:1});}
+          }
+        }
       });
     });
-    // 점-점 / 점-변(기존) 중 가장 가까운 쪽 적용 (변-변 스냅은 제거됨)
-    const candidates=[
-      {d:bestPointD,dx:bestPointDx,dy:bestPointDy},
-      {d:bestSnapD,dx:bestSnapDx,dy:bestSnapDy},
-    ].filter(c=>c.d<Infinity).sort((a,b)=>a.d-b.d);
-    if(candidates.length>0){
-      sx+=candidates[0].dx; sy+=candidates[0].dy;
+    const lock=state.snapLock||{};
+    function pickAxis(cands,lk,coordOf){
+      let best=null;
+      cands.forEach(c=>{if(c.d>r) return; if(!best||c.pri<best.pri||(c.pri===best.pri&&c.d<best.d)) best=c;});
+      if(lk){
+        const dd=lk.target-coordOf(lk.vi);
+        // 잠금 유지: 해제 반경 안이고, 훨씬 가까운(0.4r) 다른 타깃이 없을 때
+        if(Math.abs(dd)<=rel&&!(best&&best.target!==lk.target&&best.d<r*0.4)) return {delta:dd,vi:lk.vi,target:lk.target,pri:lk.pri};
+      }
+      return best;
+    }
+    const px=pickAxis(candX,lock.x,vi=>movedPoly[vi].x);
+    const py=pickAxis(candY,lock.y,vi=>movedPoly[vi].y);
+    if(px){sx+=px.delta;}
+    if(py){sy+=py.delta;}
+    state.snapLock={x:px?{vi:px.vi,target:px.target,pri:px.pri}:null,y:py?{vi:py.vi,target:py.target,pri:py.pri}:null};
+    if(px||py){
+      const guides=[];
+      if(px) guides.push({axis:'x',mm:px.target,pt:{x:px.target,y:base.polygon[px.vi].y+sy}});
+      if(py) guides.push({axis:'y',mm:py.target,pt:{x:base.polygon[py.vi].x+sx,y:py.target}});
+      STATE.dragSnapGuides=guides;
+    }else{
+      // ⑤ 사선 변 폴백: 꼭짓점 → 다른 공간 변 투영 (가장 가까운 것 1개)
+      let bestD=Infinity,bdx=0,bdy=0,bpt=null;
+      movedPoly.forEach(p=>{
+        const sn=snapPointToSpaceEdges(p,obj.id,r);
+        if(sn.snapped&&sn.distance<bestD){bestD=sn.distance;bdx=sn.pt.x-p.x;bdy=sn.pt.y-p.y;bpt=sn.pt;}
+      });
+      if(bpt){sx+=bdx;sy+=bdy;STATE.dragSnapGuides=[{axis:'pt',mm:0,pt:bpt}];}
     }
   }
   // v5.8: 라이브러리/기타 객체 드래그 — 끝점·중심 스냅 (snapToEndpoint 활용)
@@ -2512,7 +2539,7 @@ function applyDragMove(state,dx,dy){
     const snap=snapToEndpoint(moved);
     if(snap.snapped){
       const sd=Math.sqrt((snap.pt.x-moved.x)**2+(snap.pt.y-moved.y)**2);
-      if(sd<150){sx+=snap.pt.x-moved.x; sy+=snap.pt.y-moved.y;}
+      if(sd<snapRadiusMm(150)){sx+=snap.pt.x-moved.x; sy+=snap.pt.y-moved.y;}
     }
   }
 
@@ -2684,7 +2711,9 @@ stage.on('mousemove touchmove',e=>{
   // arc 도구의 미리보기는 wall/line처럼 처리됨 (drawState type='arc'로 저장됨)
   else if(STATE.selectedTool==='select'&&isMouseDown&&dragMoveState){
     // v5.4: 선택된 객체 드래그 이동
-    const dx=mm.x-dragMoveState.startMm.x, dy=mm.y-dragMoveState.startMm.y;
+    // 2026-08-19: 커서 스냅(getMm)이 아닌 순수 좌표로 delta 계산 — 커서가 주변 꼭짓점에 붙어 객체가 튀던 문제 해소
+    const rmm=rawMm(pos);
+    const dx=rmm.x-dragMoveState.startMm.x, dy=rmm.y-dragMoveState.startMm.y;
     applyDragMove(dragMoveState,dx,dy);
     // PERF: 단일 배치객체(가구·위생·조명·전기·공조)는 Konva 노드만 직접 이동 (재구성 생략)
     const _libKinds={fixtures:1,furniture:1,lights:1,electric:1,hvac:1};
@@ -2918,6 +2947,7 @@ stage.on('mouseup touchend',e=>{
     }
     dragMoveState=null;
     mouseDownPos=null;
+    STATE.dragSnapGuides=null;drawSnapMarker(); // 2026-08-19: 정렬 가이드 제거
     return;
   }
   if(STATE.selectedTool==='rect'){
@@ -3042,7 +3072,7 @@ window.cancelPointerGesture=function(){
         if(typeof cleanupOrphanVertices==='function') cleanupOrphanVertices();
       }
     }
-    dragMoveState=null;dirty=true;
+    dragMoveState=null;dirty=true;STATE.dragSnapGuides=null;
   }
   if(STATE.rotateState){STATE.rotateState=null;dirty=true;}
   // 박스 선택은 항상 취소, 사각형/원은 드래그 중(isMouseDown)일 때만 취소 (치수 입력 단계는 유지)
@@ -3076,24 +3106,48 @@ stage.on('wheel',e=>{
   _zoomSettleTimer=setTimeout(()=>endViewTransform(),140);
   document.getElementById('zoom-pct').textContent=Math.round(STATE.zoom*100)+'%';
 });
+let _lastCtxMenuAt=0;
 container.addEventListener('contextmenu',e=>{
   e.preventDefault();
   e.stopPropagation();
-  // Ctrl+우클릭: 공간·벽 자재 설정 메뉴
+  // 2026-08-19: 롱프레스(합성)와 브라우저 네이티브 contextmenu 가 연달아 오면 한 번만 처리
+  const _now=performance.now();
+  if(_now-_lastCtxMenuAt<400) return;
+  _lastCtxMenuAt=_now;
+  // 2026-08-19: 작도 중 우클릭(롱프레스) = 완료 — 도움말(Enter/더블클릭/우클릭) 과 일치
+  if(STATE.selectedTool==='leader'&&leaderDrawState){finishLeader();return;}
+  if(STATE.selectedTool==='polygon'&&freePolyState){finishFreePolygon();return;}
+  // 히트 테스트 (Ctrl 자재 메뉴·자동 선택·태블릿 통합 메뉴 공용)
+  const rect=container.getBoundingClientRect();
+  const hit=stage.getIntersection({x:e.clientX-rect.left,y:e.clientY-rect.top});
+  let hitFound=null;
+  if(hit){
+    let node=hit,id=null;
+    while(node&&node!==stage){if(node.id&&node.id()){id=node.id();break;}node=node.getParent();}
+    if(id) hitFound=findObjById(id);
+  }
+  // Ctrl+우클릭: 공간·벽 자재 설정 메뉴 (데스크톱)
   if(e.ctrlKey){
-    const rect=container.getBoundingClientRect();
-    const hit=stage.getIntersection({x:e.clientX-rect.left,y:e.clientY-rect.top});
-    if(hit){
-      let node=hit,id=null;
-      while(node&&node!==stage){if(node.id&&node.id()){id=node.id();break;}node=node.getParent();}
-      if(id){
-        const found=findObjById(id);
-        if(found&&(found.kind==='wall'||found.kind==='space')){
-          showFinishMenu(found.kind,found.obj,e.clientX,e.clientY);
-          return;
-        }
-      }
+    if(hitFound&&(hitFound.kind==='wall'||hitFound.kind==='space')){
+      showFinishMenu(hitFound.kind,hitFound.obj,e.clientX,e.clientY);
     }
+    return;
+  }
+  // 2026-08-19: 태블릿(롱프레스·S펜 버튼) 또는 선택이 비어 있을 때 — 누른 객체를 먼저 선택
+  const fromTouch=e.__ecoTouch===true||!!(STATE.touch&&STATE.touch.lastType&&STATE.touch.lastType!=='mouse');
+  const hasSel=!!((STATE.boxSelection&&STATE.boxSelection.length)||(STATE.selectedKind&&STATE.selectedId));
+  if(hitFound&&STATE.selectedTool==='select'){
+    const inSel=(STATE.selectedKind===hitFound.kind&&STATE.selectedId===hitFound.id)||
+                (STATE.boxSelection||[]).some(b=>b.kind===hitFound.kind&&b.id===hitFound.id);
+    if(!inSel&&(fromTouch||!hasSel)){
+      const _sh=STATE.shiftPressed;STATE.shiftPressed=false;
+      selectObj(hitFound.kind,hitFound.id);
+      STATE.shiftPressed=_sh;
+    }
+  }
+  // 태블릿: 우클릭 기능 전부를 한 메뉴로 (Ctrl 불필요) — js/touch.js
+  if(fromTouch&&typeof showTouchCtxMenu==='function'){
+    showTouchCtxMenu(e.clientX,e.clientY,hitFound);
     return;
   }
   // 박스에 공간 2개 이상 선택돼 있으면 Boolean + 잠금 메뉴 표시

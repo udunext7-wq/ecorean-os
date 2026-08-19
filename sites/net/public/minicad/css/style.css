@@ -639,3 +639,37 @@ body.pointer-coarse .panel-left,body.pointer-coarse .panel-right{-webkit-overflo
 }
 /* S펜 모드: 캔버스 커서 십자선 유지 */
 body.input-pen #canvas-container{cursor:crosshair}
+
+/* 태블릿 통합 컨텍스트 메뉴 (롱프레스 / S펜 버튼 / 퀵바 ☰) */
+#touch-ctx-menu{
+  position:fixed;z-index:9999;min-width:240px;max-width:min(320px,92vw);max-height:calc(100vh - 16px);overflow-y:auto;
+  display:flex;flex-direction:column;gap:3px;padding:8px;
+  background:linear-gradient(180deg,rgba(255,255,255,0.05) 0%,transparent 50%),var(--bg-elev,#1A1B2E);
+  border:1px solid var(--stroke-2);border-radius:var(--r-md);
+  box-shadow:0 10px 40px rgba(0,0,0,0.6),var(--shadow-rim);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;
+  font-family:var(--font-display);
+}
+#touch-ctx-menu .tcm-head{font-size:10px;color:var(--ink-3);font-weight:600;letter-spacing:.08em;padding:4px 8px 2px;text-transform:uppercase}
+#touch-ctx-menu .tcm-sep{height:1px;background:var(--stroke-1);margin:3px 2px}
+.tcm-btn{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  min-height:44px;padding:8px 12px;border-radius:var(--r-xs);border:1px solid transparent;
+  background:var(--surface-2);color:var(--ink-1);font-size:14px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:background .12s var(--ease-out);
+}
+.tcm-btn .tcm-ic{width:22px;text-align:center;font-size:15px;flex:0 0 auto;color:var(--accent-2-soft)}
+.tcm-btn:active{background:var(--surface-4)}
+.tcm-btn.tcm-accent{background:linear-gradient(135deg,var(--accent-1) 0%,var(--accent-1-deep) 100%);color:var(--on-accent)}
+.tcm-btn.tcm-accent .tcm-ic{color:var(--on-accent)}
+.tcm-btn.tcm-blue{background:#2B6CB0;color:#fff}.tcm-btn.tcm-blue .tcm-ic{color:#fff}
+.tcm-btn.tcm-green{background:#276749;color:#fff}.tcm-btn.tcm-green .tcm-ic{color:#fff}
+.tcm-btn.tcm-brown{background:#744210;color:#fff}.tcm-btn.tcm-brown .tcm-ic{color:#fff}
+.tcm-btn.tcm-danger{color:var(--critical)}.tcm-btn.tcm-danger .tcm-ic{color:var(--critical)}
+.tcm-btn.tcm-cancel{justify-content:center;min-height:38px;font-size:12px;color:var(--ink-3);background:transparent;margin-top:2px}
+/* 기존 우클릭 메뉴들도 터치 기기에서는 탭 타깃 확대 */
+body.pointer-coarse #space-ctx-menu button,body.pointer-coarse #selection-ctx-menu button,
+body.pointer-coarse #shape-convert-menu button,body.pointer-coarse #bool-menu button{min-height:42px;font-size:13px!important;padding:9px 14px!important}
+body.pointer-coarse #finish-ctx-menu button{min-height:40px;font-size:13px!important}
+body.pointer-coarse #shape-convert-menu .shape-color-swatch{width:32px!important;height:32px!important}
