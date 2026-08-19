@@ -3,12 +3,13 @@ import { describe, it, expect } from 'vitest';
 import { ROLE_LEVEL, hasRole, canAccessZone, netRedirectTarget } from '../roles';
 
 describe('ROLE_LEVEL (D-021 서열)', () => {
-  it('visitor(1) < business_customer(2) < staff(3) < admin(4) < master(5)', () => {
+  it('visitor(1) < business_customer(2) < staff(3) < executive(4) < admin(5) < master(6)', () => {
     expect(ROLE_LEVEL.visitor).toBe(1);
     expect(ROLE_LEVEL.business_customer).toBe(2);
     expect(ROLE_LEVEL.staff).toBe(3);
-    expect(ROLE_LEVEL.admin).toBe(4);
-    expect(ROLE_LEVEL.master).toBe(5);
+    expect(ROLE_LEVEL.executive).toBe(4);
+    expect(ROLE_LEVEL.admin).toBe(5);
+    expect(ROLE_LEVEL.master).toBe(6);
   });
 });
 
@@ -19,6 +20,7 @@ describe('hasRole', () => {
   it('상위 역할은 하위 요구를 충족', () => {
     expect(hasRole('master', 'staff')).toBe(true);
     expect(hasRole('admin', 'staff')).toBe(true);
+    expect(hasRole('executive', 'staff')).toBe(true);
   });
   it('하위 역할은 상위 요구를 충족하지 못함', () => {
     expect(hasRole('staff', 'admin')).toBe(false);
@@ -33,6 +35,7 @@ describe('hasRole', () => {
 describe('canAccessZone (D-020 / D-021)', () => {
   it('net은 staff 이상만', () => {
     expect(canAccessZone('staff', 'net')).toBe(true);
+    expect(canAccessZone('executive', 'net')).toBe(true);
     expect(canAccessZone('admin', 'net')).toBe(true);
     expect(canAccessZone('master', 'net')).toBe(true);
     expect(canAccessZone('business_customer', 'net')).toBe(false);
