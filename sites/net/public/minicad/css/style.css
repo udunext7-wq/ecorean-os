@@ -674,3 +674,58 @@ body.pointer-coarse #space-ctx-menu button,body.pointer-coarse #selection-ctx-me
 body.pointer-coarse #shape-convert-menu button,body.pointer-coarse #bool-menu button{min-height:42px;font-size:13px!important;padding:9px 14px!important}
 body.pointer-coarse #finish-ctx-menu button{min-height:40px;font-size:13px!important}
 body.pointer-coarse #shape-convert-menu .shape-color-swatch{width:32px!important;height:32px!important}
+
+/* ============================================================
+   2026-08-19 반응형 레이아웃 — 서랍(drawer) 모드 (태블릿·모바일: 도면창 전체 폭)
+   body.layout-drawer : 좌/우 패널을 화면 밖으로 접음, .main 은 캔버스 1열
+   body.drawer-left-open / drawer-right-open : 해당 서랍 펼침 (캔버스 위에 떠 있음, 캔버스는 계속 조작 가능)
+   body.layout-phone : 폰(<700px) — 서랍 폭 88vw + 백드롭(탭하면 닫힘)
+   ============================================================ */
+:root{--drawer-top:88px;--drawer-bottom:42px;--drawer-w:340px}
+.drawer-btn{display:none}
+.drawer-close{display:none}
+#drawer-backdrop{display:none}
+body.layout-drawer .main{grid-template-columns:1fr;gap:0;padding:6px}
+body.layout-drawer .panel-left,body.layout-drawer .panel-right{
+  position:fixed;top:var(--drawer-top);bottom:var(--drawer-bottom);z-index:70;
+  width:min(88vw,var(--drawer-w));margin:6px 0;
+  transition:transform .22s var(--ease-out),box-shadow .22s;will-change:transform;
+  box-shadow:0 12px 48px rgba(0,0,0,0.55),var(--shadow-rim);
+}
+body.layout-drawer .panel-left{left:6px;transform:translateX(calc(-100% - 14px))}
+body.layout-drawer .panel-right{right:6px;transform:translateX(calc(100% + 14px))}
+body.layout-drawer.drawer-left-open .panel-left{transform:none}
+body.layout-drawer.drawer-right-open .panel-right{transform:none}
+body.layout-drawer .drawer-close{
+  display:flex;align-items:center;justify-content:center;position:absolute;top:6px;right:6px;z-index:5;
+  width:34px;height:34px;border-radius:var(--r-xs);border:1px solid var(--stroke-2);
+  background:var(--surface-3);color:var(--ink-2);font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+body.layout-drawer .panel-left{padding-top:44px}
+body.layout-drawer .panel-right > .panel-tabs{padding-right:44px}
+/* 명령바 양끝 서랍 버튼 */
+body.layout-drawer .drawer-btn{
+  display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;position:relative;
+  height:32px;padding:0 10px;border-radius:var(--r-pill);border:1px solid var(--stroke-2);
+  background:var(--surface-2);color:var(--ink-1);font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.05em;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s var(--ease-out);
+}
+body.layout-drawer .drawer-btn .db-ic{font-size:15px;line-height:1;color:var(--accent-1)}
+body.layout-drawer .drawer-btn.active{background:linear-gradient(135deg,var(--accent-1) 0%,var(--accent-1-deep) 100%);color:var(--on-accent);border-color:var(--accent-1-deep)}
+body.layout-drawer .drawer-btn.active .db-ic{color:var(--on-accent)}
+.db-badge{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--critical);border:2px solid var(--bg-1);display:none}
+.db-badge.on{display:block}
+body.layout-drawer .cmd-hint{max-width:220px}
+/* 폰: 백드롭 + 넓은 서랍 + 힌트 숨김 + 상단바 가로 스크롤 */
+body.layout-phone #drawer-backdrop.on{display:block;position:fixed;inset:0;z-index:65;background:rgba(0,0,0,0.45)}
+body.layout-phone .panel-left,body.layout-phone .panel-right{width:88vw}
+body.layout-phone .cmd-hint{display:none}
+body.layout-phone .drawer-btn .db-tx{display:none}
+body.layout-drawer .topbar{gap:10px;padding:0 10px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+body.layout-drawer .topbar::-webkit-scrollbar{display:none}
+body.layout-drawer .topbar-mid,body.layout-drawer .topbar-actions{flex:0 0 auto}
+body.layout-drawer .kpi-bar{overflow-x:auto;scrollbar-width:none}
+body.layout-drawer .kpi-bar::-webkit-scrollbar{display:none}
+body.layout-phone .brand-sub{display:none}
+/* 서랍 모드에서 캔버스 모서리 여백 축소 */
+body.layout-drawer .canvas-area{border-radius:var(--r-sm)}

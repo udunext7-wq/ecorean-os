@@ -396,6 +396,30 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       ph.blur();
     }
   }catch(e){assert('옵션: 예외 없음',false,e.message);}
+  // === 2026-08-19: 반응형 레이아웃(서랍 모드) ===
+  try{
+    assert('레이아웃: initLayout/STATE.layout',typeof initLayout==='function'&&!!STATE.layout&&['auto','focus','split'].includes(STATE.layout.mode));
+    assert('레이아웃: 명령바 서랍 버튼·배지·백드롭 DOM',!!document.getElementById('drawer-btn-left')&&!!document.getElementById('drawer-btn-right')&&!!document.getElementById('drawer-backdrop')&&!!document.getElementById('drawer-badge-right'));
+    assert('레이아웃: 상단 ◧ 레이아웃 버튼',!!document.getElementById('btn-layout'));
+    const m0=STATE.layout.mode;
+    setLayoutMode('focus');
+    assert('레이아웃: focus → body.layout-drawer',document.body.classList.contains('layout-drawer')&&STATE.layout.drawer===true);
+    const caW=document.querySelector('.canvas-area').getBoundingClientRect().width;
+    assert('레이아웃: 서랍 모드 캔버스 폭 ≥ 창 폭 - 40',caW>=window.innerWidth-40,'canvas '+caW+' / win '+window.innerWidth);
+    const prEl=document.querySelector('.panel-right');
+    prEl.style.transition='none'; // 테스트: 전환 애니메이션 없이 즉시 위치 확인
+    toggleDrawer('right',true);
+    assert('레이아웃: 속성 서랍 열림',document.body.classList.contains('drawer-right-open')&&STATE.layout.rightOpen);
+    void prEl.offsetWidth;
+    const pr=prEl.getBoundingClientRect();
+    prEl.style.transition='';
+    assert('레이아웃: 열린 서랍이 화면 안에 있음',pr.right<=window.innerWidth+1&&pr.left>=0,'left='+pr.left+' right='+pr.right);
+    toggleDrawer('right',false);
+    assert('레이아웃: 속성 서랍 닫힘',!document.body.classList.contains('drawer-right-open'));
+    setLayoutMode('split');
+    assert('레이아웃: split → 서랍 해제',!document.body.classList.contains('layout-drawer'));
+    setLayoutMode(m0);
+  }catch(e){assert('레이아웃: 예외 없음',false,e.message);}
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
