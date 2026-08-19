@@ -56,6 +56,15 @@ const ZOOM_MIN=0.05,ZOOM_MAX=8;
 function clampZoom(z){return Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,isFinite(z)?z:1));}
 function mmToPx(mm){return(mm/1000)*STATE.scale*STATE.zoom;}
 function pxToMm(px){return Math.round((px/STATE.zoom/STATE.scale)*1000);}
+// 2026-08-19: 스냅 없는 순수 커서 좌표 (객체 드래그용 — 커서 자체가 주변 꼭짓점에 붙어 튀는 현상 방지)
+function rawMm(pos){return{x:pxToMm(pos.x-STATE.offsetX),y:pxToMm(pos.y-STATE.offsetY)};}
+// 2026-08-19: 스냅 반경을 "화면 px" 기준으로 환산 — 줌아웃하면 mm 반경이 커지고, 손가락은 마우스보다 넓게
+const SNAP_PX={mouse:14,pen:18,touch:28};
+function snapRadiusMm(minMm){
+  const t=(STATE.touch&&STATE.touch.lastType)||'mouse';
+  const px=SNAP_PX[t]||SNAP_PX.mouse;
+  return Math.max(minMm||50,Math.min(1500,pxToMm(px)));
+}
 function snapMm(mm){
   // v5.9: Ctrl 누르면 그리드 스냅도 OFF (자유 입력)
   if(STATE.ctrlPressed) return Math.round(mm);
@@ -74,7 +83,7 @@ function snapToEndpoint(mm){
   // v5.9: Ctrl 누르면 자석 스냅 OFF
   if(STATE.ctrlPressed) return {pt:mm,snapped:false};
   if(!STATE.snap.endpoint) return {pt:mm,snapped:false};
-  const threshold=300;
+  const threshold=Math.max(300,snapRadiusMm()); // 2026-08-19: 터치·줌아웃 시 반경 확대 (마우스 100%에선 기존 300mm 유지)
   let nearest=null,minD=threshold;
   // 공간 폴리곤 점
   STATE.spaces.forEach(s=>s.polygon.forEach(p=>{
@@ -311,10 +320,11 @@ function snapToEndpoint(mm){
 
 // v5.8: 공간 변(edge) 스냅 — 점을 다른 공간 폴리곤 변에 투영해서 가장 가까운 점 찾기
 // 공간 드래그 시 사용. excludeId = 자기 자신 공간은 제외
-function snapPointToSpaceEdges(mm,excludeId){
+function snapPointToSpaceEdges(mm,excludeId,thresholdMm){
   if(!STATE.snap.endpoint) return {pt:mm,snapped:false};
   // v5.9 fix: 그리드 스냅 활성+gridSize 1mm이면 threshold가 2mm가 되어 기능이 사실상 죽던 버그 — 최소 200mm 보장
-  const threshold=Math.max(200,STATE.snap.grid?STATE.gridSize*2:0); // mm (v5.8 스펙: 200mm 이내 흡착)
+  // 2026-08-19: 호출자가 반경(mm)을 넘기면 그 값 사용 (드래그 스냅은 화면 px 기준 반경)
+  const threshold=thresholdMm||Math.max(200,STATE.snap.grid?STATE.gridSize*2:0); // mm (v5.8 스펙: 200mm 이내 흡착)
   let best=null,minD=threshold;
   STATE.spaces.forEach(s=>{
     if(s.id===excludeId) return;
@@ -343,6 +353,10 @@ function getMm(pos){
 // v5.2: 스냅 마커 별도 그룹 (라벨 그룹과 분리)
 // v5.9: 마우스 호버 시 스냅 마커 자동 갱신 — 도구 선택 + 자석 활성 시 항상 표시
 function updateSnapMarker(pos){
+  // 2026-08-19: 객체 드래그 중엔 커서 글로우 대신 드래그 정렬 가이드만 표시
+  if(typeof dragMoveState!=='undefined'&&dragMoveState&&typeof isMouseDown!=='undefined'&&isMouseDown){
+    STATE.snapMarker=null;STATE.snapCursor=null;drawSnapMarker();return;
+  }
   if(pos&&STATE.snap.endpoint&&!STATE.ctrlPressed){
     const mm={x:pxToMm(pos.x-STATE.offsetX),y:pxToMm(pos.y-STATE.offsetY)};
     const r=snapToEndpoint(mm);
@@ -359,8 +373,23 @@ function updateSnapMarker(pos){
   }
   drawSnapMarker();
 }
+// 2026-08-19: 공간 드래그 정렬 가이드 — 붙은 축에 화면 끝까지 점선 + 붙은 꼭짓점 점
+function drawDragSnapGuides(){
+  const g=STATE.dragSnapGuides; if(!g||!g.length) return;
+  const w=stage.width(),h=stage.height(),col='#5BC9F5';
+  g.forEach(gd=>{
+    if(gd.axis==='x'){const x=STATE.offsetX+mmToPx(gd.mm);
+      snapGroup.add(new Konva.Line({points:[x,0,x,h],stroke:col,strokeWidth:1,dash:[6,4],opacity:0.9,listening:false}));}
+    else if(gd.axis==='y'){const y=STATE.offsetY+mmToPx(gd.mm);
+      snapGroup.add(new Konva.Line({points:[0,y,w,y],stroke:col,strokeWidth:1,dash:[6,4],opacity:0.9,listening:false}));}
+    if(gd.pt){const x=STATE.offsetX+mmToPx(gd.pt.x),y=STATE.offsetY+mmToPx(gd.pt.y);
+      snapGroup.add(new Konva.Circle({x,y,radius:STATE.isMobile?7:5,fill:col,stroke:'#000',strokeWidth:1,opacity:0.95,listening:false,
+        shadowColor:col,shadowBlur:8,shadowOpacity:0.9}));}
+  });
+}
 function drawSnapMarker(){
   snapGroup.destroyChildren();
+  drawDragSnapGuides();
   if(!STATE.snapMarker){previewLayer.batchDraw();return;}
   const x=STATE.offsetX+mmToPx(STATE.snapMarker.x);
   const y=STATE.offsetY+mmToPx(STATE.snapMarker.y);

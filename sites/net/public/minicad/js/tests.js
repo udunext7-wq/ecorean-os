@@ -70,7 +70,48 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   assert('snapPointToSpaceEdges x=0',sn1.pt.x===0);
   const sn2=snapPointToSpaceEdges({x:2500,y:2500},null);
   assert('snapPointToSpaceEdges 중앙없음',sn2.snapped===false);
+  // 2026-08-19: 반경 파라미터 — 넘긴 반경(mm)으로 동작
+  assert('snapPointToSpaceEdges 반경 파라미터 2600 → 중앙도 흡착',snapPointToSpaceEdges({x:2500,y:2500},null,2600).snapped===true);
+  assert('snapPointToSpaceEdges 반경 파라미터 100 → 150mm 미흡착',snapPointToSpaceEdges({x:150,y:2500},null,100).snapped===false);
   STATE.spaces=orig7;
+  // 7b. 2026-08-19: 공간 드래그 스냅 개편 — rawMm / snapRadiusMm / 축분리 스냅 / 히스테리시스 / 가이드
+  (function(){
+    const z0=STATE.zoom,ox=STATE.offsetX,oy=STATE.offsetY,sp0=STATE.spaces.slice(),tch=STATE.touch,ctrl0=STATE.ctrlPressed,snapEp=STATE.snap.endpoint;
+    STATE.zoom=1;STATE.offsetX=0;STATE.offsetY=0;STATE.ctrlPressed=false;STATE.snap.endpoint=true;
+    // rawMm: 스냅 없이 px→mm (80px/m @ zoom1)
+    const r1=rawMm({x:80,y:160});
+    assert('rawMm: px→mm 순수 변환',r1.x===1000&&r1.y===2000);
+    // snapRadiusMm: 마우스 14px=175mm → 최소 200 적용 / 터치 28px=350mm / 줌아웃 0.2 터치 → 1750→상한 1500
+    STATE.touch={lastType:'mouse'};
+    assert('snapRadiusMm 마우스 zoom1 = max(200,175)=200',snapRadiusMm(200)===200);
+    STATE.touch={lastType:'touch'};
+    assert('snapRadiusMm 터치 zoom1 = 350',snapRadiusMm(200)===350);
+    STATE.zoom=0.2;
+    assert('snapRadiusMm 터치 zoom0.2 상한 1500',snapRadiusMm(200)===1500);
+    STATE.zoom=1;STATE.touch={lastType:'mouse'};
+    // 축분리 스냅: A(0..4000) 고정, B(5000..8000 @ y 120) 를 왼쪽으로 드래그 → x는 A 오른변(4000)에 flush, y는 A 윗변(0)에 정렬
+    const A={id:'tA',polygon:[{x:0,y:0},{x:4000,y:0},{x:4000,y:3000},{x:0,y:3000}]};
+    const B={id:'tB',polygon:[{x:5000,y:120},{x:8000,y:120},{x:8000,y:2000},{x:5000,y:2000}]};
+    STATE.spaces=[A,B];
+    const st={kind:'space',id:'tB',startMm:{x:0,y:0},baseObj:JSON.parse(JSON.stringify(B))};
+    applyDragMove(st,-850,0); // 5000-850=4150 → 4000 과 150mm 차 (반경 200 안) → flush
+    assert('드래그 스냅: 변-변 flush (x→4000)',B.polygon[0].x===4000,'x='+B.polygon[0].x);
+    assert('드래그 스냅: 축분리 y 정렬 (y→0)',B.polygon[0].y===0,'y='+B.polygon[0].y);
+    assert('드래그 스냅: 가이드 x·y 2개',Array.isArray(STATE.dragSnapGuides)&&STATE.dragSnapGuides.length===2);
+    assert('드래그 스냅: snapLock 기록',!!(st.snapLock&&st.snapLock.x&&st.snapLock.x.target===4000));
+    // 히스테리시스: 반경(200) 밖이지만 해제반경(360) 안으로 이동 → 붙은 상태 유지
+    applyDragMove(st,-1290,0); // raw 3710 → 4000 과 290 차: 신규 흡착은 불가(>200)지만 잠금 유지(<360)
+    assert('드래그 스냅: 히스테리시스 유지 (290mm)',B.polygon[0].x===4000,'x='+B.polygon[0].x);
+    applyDragMove(st,-1400,0); // raw 3600 → 400 차: 해제
+    assert('드래그 스냅: 해제반경 밖 → 떨어짐',B.polygon[0].x===3600,'x='+B.polygon[0].x);
+    // Ctrl 누르면 스냅 OFF
+    STATE.ctrlPressed=true;applyDragMove(st,-850,0);
+    assert('드래그 스냅: Ctrl 시 OFF',B.polygon[0].x===4150&&!STATE.dragSnapGuides);
+    STATE.ctrlPressed=false;
+    // 복원
+    STATE.spaces=sp0;STATE.touch=tch;STATE.ctrlPressed=ctrl0;STATE.snap.endpoint=snapEp;STATE.dragSnapGuides=null;
+    STATE.zoom=z0;STATE.offsetX=ox;STATE.offsetY=oy;drawGrid();renderAll();
+  })();
   // 8. splitWallsAtIntersections
   const orig8=STATE.walls.slice();
   STATE.walls=[
