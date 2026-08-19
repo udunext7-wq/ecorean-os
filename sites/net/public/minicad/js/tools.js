@@ -2118,7 +2118,17 @@ function initTools(){
 // ===== 마우스 =====
 let mouseDownPos=null,isMouseDown=false,isPanning=false,panStart=null;
 let dragMoveState=null; // v5.4: {kind,id,startMm,baseObj}
+// 2026-08-19 태블릿: 터치 직후 브라우저가 합성하는 호환 마우스 이벤트(mousedown/mousemove/mouseup)는 무시
+//  (한 번 탭이 touchend + mouseup 두 번으로 들어와 안내선이 탭 즉시 생성되던 문제)
+let _lastTouchEvtAt=0;
+function _isCompatMouse(e){
+  const t=(e&&e.evt&&e.evt.type)||'';
+  if(t.indexOf('touch')===0){_lastTouchEvtAt=performance.now();return false;}
+  return t.indexOf('mouse')===0&&(performance.now()-_lastTouchEvtAt)<700;
+}
+function _isTouchEvt(e){return !!(e&&e.evt&&e.evt.type&&e.evt.type.indexOf('touch')===0);}
 stage.on('mousedown touchstart',e=>{
+  if(_isCompatMouse(e)) return;
   const pos=stage.getPointerPosition();if(!pos) return;
   // v5.9: 우클릭은 mousedown 처리 스킵 (contextmenu 핸들러가 처리하도록)
   if(e.evt&&e.evt.button===2) return;
@@ -2676,6 +2686,7 @@ function updateLibPlacementPreview(pos){
 }
 
 stage.on('mousemove touchmove',e=>{
+  if(_isCompatMouse(e)) return;
   const pos=stage.getPointerPosition();if(!pos) return;
   const mm=getMm(pos);
   document.getElementById('cursor-pos').textContent=mm.x+','+mm.y;
@@ -2877,6 +2888,7 @@ stage.on('mousemove touchmove',e=>{
   updateSnapMarker(pos);
 });
 stage.on('mouseup touchend',e=>{
+  if(_isCompatMouse(e)) return;
   const _wasPanning=isPanning;
   isMouseDown=false;isPanning=false;panStart=null;
   /* PERF: 팬 종료 — 레이어 변환을 실좌표 재구성으로 확정 (1회) */
@@ -2991,17 +3003,21 @@ stage.on('mouseup touchend',e=>{
     }
   }
   else if(STATE.selectedTool==='xline'){
-    if(!isClick) return;
+    // 2026-08-19 태블릿: ① 탭 = 기준점 → ② 회전(펜 호버·마우스 이동, 또는 손가락 드래그) → ③ 탭 = 생성(손가락 드래그면 떼는 순간 생성)
+    //  한 번 탭에 두 번 반응(호환 마우스 이벤트)하던 문제는 _isCompatMouse 로 차단
     const mm=getMm(pos);
     if(drawState&&drawState.type==='xline'){
-      // 두 번째 클릭 = 방향점 → 무한 안내선 생성
+      const touchDragConfirm=!isClick&&_isTouchEvt(e)&&dragDist>=5; // 손가락으로 돌려서 떼기 = 확정
+      if(!isClick&&!touchDragConfirm) return;
       const end=applyOrtho(drawState.start,mm);
+      if(Math.hypot(end.x-drawState.start.x,end.y-drawState.start.y)<1){cmdToast('방향점이 기준점과 같습니다 — 돌려서 다른 곳을 탭하세요');return;}
       addXline(drawState.start.x,drawState.start.y,end.x,end.y);
       drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
-      cmdToast('안내선 추가됨 — 다음 기준점 클릭 / Esc 종료');
+      cmdToast('안내선 추가됨 — 다음 기준점 탭 / Esc 종료');
     }else{
+      if(!isClick) return;
       drawState={type:'xline',start:mm,current:mm};
-      cmdToast('무한 안내선 — 방향점 클릭 / Shift=수평·수직 / Esc=종료');
+      cmdToast('무한 안내선 — 돌려서 방향점 탭 (손가락: 드래그로 돌려 떼기) / Shift=수평·수직 / Esc=종료');
     }
   }
   else if(STATE.selectedTool==='circlespace'){

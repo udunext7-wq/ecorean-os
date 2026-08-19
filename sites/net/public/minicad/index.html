@@ -47,7 +47,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=tablet5">
+<link rel="stylesheet" href="css/style.css?v=tablet6">
 </head>
 <body>
 <div id="loading"><div class="spinner"></div><div class="msg">ECOREAN MiniCAD v5.9 로딩…</div></div>
@@ -61,6 +61,7 @@
     <button class="btn sm" id="btn-grid" title="그리드">⊞ Grid</button>
     <button class="btn sm" id="btn-dim" title="치수 표시">📐 치수</button>
     <button class="btn sm" id="btn-2_5d" title="2.5D 영업 모드 (기본 OFF, 인쇄·JSON 강제 OFF)">◐ 2.5D</button>
+    <button class="btn sm" id="btn-layout" title="레이아웃 전환 — 자동 / 도면 집중(패널 서랍) / 분할 고정">◧ 레이아웃</button>
   </div>
   <div class="topbar-actions">
     <button class="btn sm icon-only" id="btn-theme" title="테마 전환 — Lime(다크) ↔ Architect(라이트)" aria-label="테마 전환">🌙</button>
@@ -530,6 +531,7 @@
         <div class="sc-row"><kbd>태블릿: 길게 누르기(손가락·S펜) / S펜 버튼 / 퀵바 ☰</kbd><span>통합 메뉴 — 마감재·Boolean·변환·잠금·회전·복제·삭제 (누른 객체 자동 선택)</span></div>
         <div class="sc-row"><kbd>태블릿: Backspace</kbd><span>객체 삭제 안 함 → 명령창 글자 지우기. 삭제는 Del 버튼 / 메뉴 "삭제"</span></div>
         <div class="sc-row"><kbd>태블릿: 퀵바 ⎇</kbd><span>Alt 고정 1회 — 다음 드래그가 복제 (Alt+드래그 대응)</span></div>
+        <div class="sc-row"><kbd>태블릿·모바일: 명령바 [◧ 도구] [속성 ◨] / 가장자리 스와이프</kbd><span>패널 서랍 열기·닫기 — 도면창이 전체 폭 사용. 상단 [◧ 레이아웃] 으로 자동/도면 집중/분할 전환</span></div>
         <div class="sc-cat sc-alt" style="margin-top:12px">Alt</div>
         <div class="sc-row"><kbd>Alt (선택 도구)</kbd><span>커서 → 복사 모양</span></div>
         <div class="sc-row"><kbd>Alt + 드래그</kbd><span>객체 복제 + 이동</span></div>
@@ -598,16 +600,17 @@
   </div>
 </div>
 
-<script src="js/state.js?v=tablet5"></script>
-<script src="js/data.js?v=tablet5"></script>
-<script src="js/library.js?v=tablet5"></script>
-<script src="js/engine.js?v=tablet5"></script>
-<script src="js/tools.js?v=tablet5"></script>
-<script src="js/ui.js?v=tablet5"></script>
-<script src="js/touch.js?v=tablet5"></script>
-<script src="js/import-cad.js?v=tablet5"></script>
-<script src="js/estimate.js?v=tablet5"></script>
-<script src="js/tests.js?v=tablet5"></script>
+<script src="js/state.js?v=tablet6"></script>
+<script src="js/data.js?v=tablet6"></script>
+<script src="js/library.js?v=tablet6"></script>
+<script src="js/engine.js?v=tablet6"></script>
+<script src="js/tools.js?v=tablet6"></script>
+<script src="js/ui.js?v=tablet6"></script>
+<script src="js/layout.js?v=tablet6"></script>
+<script src="js/touch.js?v=tablet6"></script>
+<script src="js/import-cad.js?v=tablet6"></script>
+<script src="js/estimate.js?v=tablet6"></script>
+<script src="js/tests.js?v=tablet6"></script>
 <script>
 'use strict';
 // ===== v5.9: 저작권 보호 — EULA, 우클릭 차단, 워터마크, 콘솔 경고 =====
@@ -692,6 +695,7 @@ function initApp(){
     initKonva();
     initTools();
     initUI();
+    if(typeof initLayout==='function') initLayout(); // 2026-08-19: 반응형 레이아웃(서랍 모드) — touch 보다 먼저
     if(typeof initTouch==='function') initTouch(); // 2026-08-19: 태블릿 터치·S펜 레이어
   }catch(e){
     console.error('[ECOREAN] 오류:',e);

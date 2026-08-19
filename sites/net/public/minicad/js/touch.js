@@ -209,6 +209,9 @@ function initTouch(){
         lpTouch={id:pt.identifier,x:pt.clientX,y:pt.clientY,touch:pt,pen:true};
         lpTimer=setTimeout(()=>{if(lpTouch&&lpTouch.pen){const tt=lpTouch.touch;clearLongPress();fireLongPress(tt);}},LONGPRESS_MS);
       }
+      // 2026-08-19: 빈 캔버스 탭 시 Konva 가 preventDefault 하지 않아 브라우저가 호환 mousedown/mouseup 을 추가 발생시킴
+      //  → 안내선 등 클릭-클릭 도구가 한 번 탭에 두 번 반응하던 원인. 여기서 차단(Konva 는 touch 이벤트로 정상 동작)
+      if(e.cancelable) e.preventDefault();
       return; // 펜은 Konva(도구)로 그대로 전달
     }
     let added=0,blocked=0;
@@ -241,7 +244,8 @@ function initTouch(){
       beginViewTransform();
       block(e);return;
     }
-    // 손가락 작도 모드: Konva 로 통과
+    // 손가락 작도 모드: Konva 로 통과 (호환 마우스 이벤트만 차단)
+    if(e.cancelable) e.preventDefault();
   },{capture:true,passive:false});
 
   container.addEventListener('touchmove',e=>{
@@ -356,6 +360,9 @@ function initTouch(){
       const r=b.getBoundingClientRect();
       if(typeof showTouchCtxMenu==='function') showTouchCtxMenu(r.left-260,r.top,null);
     }));
+    bar.appendChild(mkBtn('tq-layout','◧','레이아웃 전환 — 자동 / 도면 집중(패널 서랍) / 분할 고정',()=>{
+      if(typeof cycleLayoutMode==='function') cycleLayoutMode();
+    }));
     bar.appendChild(mkBtn('tq-kbd','⌨','명령창 열기 (숫자 입력)',()=>{
       const ci=document.getElementById('cmd-input');
       if(ci){ci.focus();try{ci.setSelectionRange(ci.value.length,ci.value.length);}catch(e){}}
@@ -371,6 +378,8 @@ function initTouch(){
     if(sb) sb.classList.toggle('active',!!STATE.shiftPressed);
     const ab=document.getElementById('tq-alt');
     if(ab) ab.classList.toggle('active',!!STATE.altLatched);
+    const lb=document.getElementById('tq-layout');
+    if(lb&&STATE.layout) lb.classList.toggle('active',STATE.layout.mode==='focus');
   }
   window.refreshTouchQuickBar=refreshQuickBar;
   refreshQuickBar();
