@@ -9,6 +9,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ECOREAN Visual Editor</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&family=Bodoni+Moda:wght@400;700&family=Manrope:wght@400;500&family=Italiana&family=Outfit:wght@400;500&family=Marcellus&family=Cinzel:wght@400;600&family=Lato:wght@400;700&family=Libre+Caslon+Text:wght@400;700&family=Source+Sans+3:wght@400;500&family=Crimson+Pro:wght@400;700&family=Work+Sans:wght@400;500&family=Fraunces:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500&family=Lora:wght@400;700&family=Karla:wght@400;500&family=Tenor+Sans&family=Roboto:wght@400;500&family=Cormorant+Infant:wght@400;600&family=Poppins:wght@400;500&family=Cardo:wght@400;700&family=Nunito:wght@400;600&family=Spectral:wght@400;700&family=Mulish:wght@400;500&family=Mate&family=Public+Sans:wght@400;500&family=Montserrat:wght@400;500;600&family=Raleway:wght@400;500&family=Cormorant:wght@400;600&family=Syne:wght@400;700&family=Space+Grotesk:wght@400;500&family=EB+Garamond:wght@400;500&family=Archivo:wght@400;500&display=swap" rel="stylesheet">
+<!-- 2026-08-23: 한글 웹폰트 14종 — media=print 지연 로드(첫 페인트 비차단), 시스템 폰트(맑은고딕·굴림·돋움·바탕)는 로드 불필요 -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;600&family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Nanum+Pen+Script&family=Gowun+Dodum&family=Gowun+Batang&family=Gothic+A1:wght@400;500;700&family=IBM+Plex+Sans+KR:wght@400;500&family=Hahmlet:wght@400;600&family=Song+Myung&family=Do+Hyeon&family=Jua&family=Black+Han+Sans&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;600&family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Nanum+Pen+Script&family=Gowun+Dodum&family=Gowun+Batang&family=Gothic+A1:wght@400;500;700&family=IBM+Plex+Sans+KR:wght@400;500&family=Hahmlet:wght@400;600&family=Song+Myung&family=Do+Hyeon&family=Jua&family=Black+Han+Sans&display=swap" rel="stylesheet"></noscript>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -371,10 +374,27 @@ const FONTS={
   magazine:{h:'Spectral',b:'Mulish',nm:'Magazine'},
   professional:{h:'Mate',b:'Public Sans',nm:'Professional'},
   bold:{h:'Syne',b:'Space Grotesk',nm:'Bold Modern'},
-  garamond:{h:'EB Garamond',b:'Archivo',nm:'Garamond'}
+  garamond:{h:'EB Garamond',b:'Archivo',nm:'Garamond'},
+  // ── 2026-08-23: 한글 (시스템 4 + 웹폰트 10) — h/b 값은 `'${f.h}',serif` 형태로 삽입되므로 "A','B" 로 폴백 체인 구성
+  malgun:{h:"Malgun Gothic','맑은 고딕','Apple SD Gothic Neo",b:"Malgun Gothic','맑은 고딕','Apple SD Gothic Neo",nm:'맑은 고딕'},
+  gulim:{h:"Gulim','굴림','Apple SD Gothic Neo",b:"Gulim','굴림','Apple SD Gothic Neo",nm:'굴림'},
+  dotum:{h:"Dotum','돋움','Apple SD Gothic Neo",b:"Dotum','돋움','Apple SD Gothic Neo",nm:'돋움'},
+  batang:{h:"Batang','바탕','AppleMyungjo",b:"Batang','바탕','AppleMyungjo",nm:'바탕'},
+  notokr:{h:'Noto Serif KR',b:'Noto Sans KR',nm:'노토 명조·산스'},
+  nanum:{h:'Nanum Myeongjo',b:'Nanum Gothic',nm:'나눔 명조·고딕'},
+  gowun:{h:'Gowun Batang',b:'Gowun Dodum',nm:'고운 바탕·돋움'},
+  hahmlet:{h:'Hahmlet',b:'IBM Plex Sans KR',nm:'함렛·플렉스KR'},
+  songmyung:{h:'Song Myung',b:'Gothic A1',nm:'송명·고딕A1'},
+  gothica1:{h:'Gothic A1',b:'Gothic A1',nm:'고딕 A1'},
+  handwrite:{h:'Nanum Pen Script',b:'Noto Sans KR',nm:'나눔 손글씨'},
+  impactkr:{h:'Black Han Sans',b:'Gothic A1',nm:'블랙한산스'},
+  jua:{h:'Jua',b:'Gothic A1',nm:'주아'},
+  dohyeon:{h:'Do Hyeon',b:'Noto Sans KR',nm:'도현'}
 };
 
-const FONT_LIST=['Cormorant Garamond','Cormorant Infant','Cormorant','Playfair Display','Bodoni Moda','Italiana','Marcellus','Cinzel','Libre Caslon Text','Crimson Pro','Fraunces','Lora','Tenor Sans','Cardo','Spectral','Mate','EB Garamond','Syne','DM Sans','Inter','Manrope','Outfit','Lato','Source Sans 3','Work Sans','Plus Jakarta Sans','Karla','Roboto','Poppins','Nunito','Mulish','Public Sans','Montserrat','Raleway','Space Grotesk','Archivo'];
+// 2026-08-23: 한글 시스템 폰트 CSS 스택 (표시명 → font-family 값)
+const FONT_CSS={'맑은 고딕':"'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo'",'굴림':"'Gulim','굴림','Apple SD Gothic Neo'",'돋움':"'Dotum','돋움','Apple SD Gothic Neo'",'바탕':"'Batang','바탕','AppleMyungjo'",'궁서':"'Gungsuh','궁서','AppleMyungjo'"};
+const FONT_LIST=['맑은 고딕','굴림','돋움','바탕','궁서','Noto Sans KR','Noto Serif KR','Nanum Gothic','Nanum Myeongjo','Nanum Pen Script','Gowun Dodum','Gowun Batang','Gothic A1','IBM Plex Sans KR','Hahmlet','Song Myung','Do Hyeon','Jua','Black Han Sans','Cormorant Garamond','Cormorant Infant','Cormorant','Playfair Display','Bodoni Moda','Italiana','Marcellus','Cinzel','Libre Caslon Text','Crimson Pro','Fraunces','Lora','Tenor Sans','Cardo','Spectral','Mate','EB Garamond','Syne','DM Sans','Inter','Manrope','Outfit','Lato','Source Sans 3','Work Sans','Plus Jakarta Sans','Karla','Roboto','Poppins','Nunito','Mulish','Public Sans','Montserrat','Raleway','Space Grotesk','Archivo'];
 
 const BTN_STYLES={
   'liquid-gold':{nm:'Liquid Gold'},
@@ -503,10 +523,21 @@ const COMP_TPL={
   'code-block':{type:'code-block',props:{lang:'JavaScript',code:'const ecorean = new SystemOS()'}},
   'map-embed':{type:'map-embed',props:{src:'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3162!2d126.9779!3d37.5665!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1',title:'ECOREAN 본사'}},
   'divider-fancy':{type:'divider-fancy',props:{style:'dots',label:'',color:'accent'}},
-  'section-dark':{type:'section-dark',props:{overline:'WHY ECOREAN',title:'시스템이 사람을 대신합니다',desc:'ECOREAN은 인력 의존을 줄이고, 반복 가능한 운영 시스템을 통해 비즈니스의 지속적 성장을 지원합니다.',btn:'더 알아보기'}}
+  'section-dark':{type:'section-dark',props:{overline:'WHY ECOREAN',title:'시스템이 사람을 대신합니다',desc:'ECOREAN은 인력 의존을 줄이고, 반복 가능한 운영 시스템을 통해 비즈니스의 지속적 성장을 지원합니다.',btn:'더 알아보기'}},
+  // ── 2026-08-23: 인테리어 포트폴리오 전용 (img* 속성은 우측 패널에서 업로드) ──
+  'pf-cover':{type:'pf-cover',props:{img1:'',overline:'PORTFOLIO · NO.01',title:'평택 고덕 84㎡<br>전체 리모델링',subtitle:'미니멀 웜톤 — 거실 확장 · 주방 리페어 · 전실 마감',loc:'경기 평택시 고덕동',area:'84㎡ (25평)',period:'4주',style:'모던 내추럴'}},
+  'pf-before-after':{type:'pf-before-after',props:{title:'거실 — 시공 전후',img1:'',img2:'',cap1:'BEFORE',cap2:'AFTER',desc:'확장 공사와 간접조명 시공으로 개방감을 확보했습니다.'}},
+  'pf-gallery':{type:'pf-gallery',props:{title:'시공 갤러리',cols:'3',img1:'',cap1:'거실',img2:'',cap2:'주방',img3:'',cap3:'안방',img4:'',cap4:'욕실',img5:'',cap5:'현관',img6:'',cap6:'발코니'}},
+  'pf-specs':{type:'pf-specs',props:{title:'시공 개요',l1:'공간 유형',v1:'아파트 · 방 3 / 욕실 2',l2:'전용 면적',v2:'84㎡ (25평)',l3:'공사 기간',v3:'2026.06.01 – 06.28 (4주)',l4:'총 예산',v4:'₩ 4,800만',l5:'시공 범위',v5:'전체 리모델링 (철거 포함)',l6:'디자인 컨셉',v6:'모던 내추럴 · 웜 화이트'}},
+  'pf-materials':{type:'pf-materials',props:{title:'자재 · 마감재',s1:'#E8E2D6',m1:'벽면 도장',b1:'벤자민무어 OC-23',s2:'#B29B7E',m2:'마루',b2:'구정 강마루 브러시골드',s3:'#D8D5CE',m3:'주방 상판',b3:'칸스톤 스노우클라우드',s4:'#9AA2A8',m4:'욕실 타일',b4:'유송타일 600각 무광',s5:'#C9A961',m5:'하드웨어',b5:'무광 골드 손잡이',s6:'#3E3A34',m6:'포인트 가구',b6:'월넛 무늬목 제작장'}},
+  'pf-process':{type:'pf-process',props:{title:'시공 과정',t1:'철거',d1:'기존 마감재 철거 · 폐기물 반출',t2:'설비 · 전기',d2:'배관 이설 · 조명 배선',t3:'목공',d3:'단 낮춤 천장 · 간접등 박스',t4:'도장 · 타일',d4:'친환경 도장 · 욕실 방수',t5:'마감 · 청소',d5:'필름 · 실리콘 · 입주 청소'}},
+  'pf-zones':{type:'pf-zones',props:{title:'공간별 포인트',img1:'',t1:'거실',d1:'확장 + 우물천장 간접조명',img2:'',t2:'주방',d2:'ㄷ자 배치 · 키큰장 수납',img3:'',t3:'안방',d3:'헤드월 포인트 벽지',img4:'',t4:'욕실',d4:'조적 파티션 · 무광 타일'}},
+  'pf-review':{type:'pf-review',props:{score:'5',quote:'견적부터 마감까지 약속한 일정 그대로였습니다. 하자 보수도 이틀 만에 처리해 주셨어요.',name:'김○○ 고객님',loc:'평택 고덕 · 84㎡ 전체 리모델링'}},
+  'pf-contact':{type:'pf-contact',props:{overline:'FREE ESTIMATE',title:'우리 집도 이렇게 바뀔 수 있습니다',desc:'현장 실측 후 확정 견적을 드립니다 — 추가 비용 없는 정찰 시공',phone:'010-0000-0000',btn:'카카오톡 상담',btn2:'견적 요청'}}
 };
 
 const COMP_GROUPS={
+  '★ 인테리어 포트폴리오':[['pf-template','✦ 원클릭 템플릿','wand'],['pf-cover','프로젝트 커버','home-star'],['pf-before-after','비포·애프터','arrows-left-right'],['pf-gallery','갤러리','photo'],['pf-specs','시공 개요','clipboard-list'],['pf-materials','자재 보드','color-swatch'],['pf-process','시공 과정','timeline-event'],['pf-zones','공간별 포인트','layout-grid'],['pf-review','고객 후기','star'],['pf-contact','견적 문의','phone']],
   '레이아웃':[['nav','네비','menu-2'],['footer','푸터','layout-bottombar'],['divider','구분선','minus'],['spacer','여백','arrows-vertical'],['two-col','2단','columns-2'],['three-col','3단','columns-3'],['hero-split','히어로2','layout-distribute-horizontal']],
   '텍스트':[['h1','H1','h-1'],['h2','H2','h-2'],['h3','H3','h-3'],['p','본문','paragraph'],['overline','오버라인','text-size'],['quote','인용구','quote']],
   '미디어':[['image','이미지','photo'],['video','비디오','video']],
@@ -552,7 +583,29 @@ const S={
 };
 
 function newId(){return 'el-'+(S.nextId++);}
-function clone(o){return JSON.parse(JSON.stringify(o));}
+function clone(o){try{return structuredClone(o);}catch(e){return JSON.parse(JSON.stringify(o));}}
+
+// ── 2026-08-23 성능: 고빈도 입력 경로 ──
+// renderCanvasLive: 슬라이더·타이핑 등 input 이벤트 폭주를 프레임당 1회로 병합
+let _rafCv=false;
+function renderCanvasLive(){if(_rafCv)return;_rafCv=true;requestAnimationFrame(()=>{_rafCv=false;renderCanvas();});}
+// renderSelectedElLive: 선택 요소의 속성 편집은 그 요소 DOM 만 교체 (전체 캔버스 innerHTML 재구성 금지)
+let _rafEl=false;
+function renderSelectedElLive(){if(_rafEl)return;_rafEl=true;requestAnimationFrame(()=>{_rafEl=false;renderSelectedElNow();});}
+function renderSelectedElNow(){
+  if(S.freeMode){renderCanvas();return;} // 자유 배치는 눈금자·minHeight 재계산 필요 → 전체 렌더
+  const el=activePage().elements.find(e=>e.id===S.selectedId);
+  const div=el&&document.querySelector('#canvas .bld-el[data-id="'+el.id+'"]');
+  if(!el||!div){renderCanvas();return;}
+  const gw=el.gw||12;
+  div.innerHTML=elHTML(el)+`<div class="el-ctrl">
+<button data-act="up"><i class="ti ti-arrow-up"></i></button>
+<button data-act="down"><i class="ti ti-arrow-down"></i></button>
+<button data-act="dup"><i class="ti ti-copy"></i></button>
+<button data-act="del"><i class="ti ti-trash"></i></button></div><div class="gw-badge">${gw}/12</div><div class="rsz l" data-rsz="l"></div><div class="rsz r" data-rsz="r"></div>`;
+  applyFx(div,el);
+  div.style.gridColumn=`span ${gw}`;
+}
 
 function pushHist(){
   S.history=S.history.slice(0,S.historyIdx+1);
@@ -1066,6 +1119,16 @@ function elHTMLCore(el){
 
     case 'section-dark':return `<section style="padding:80px 40px;background:${c.accent2}22;border-top:1px solid ${c.accent}1f;border-bottom:1px solid ${c.accent}1f;${cs}"><div style="max-width:640px;margin:0 auto;text-align:center"><span style="display:inline-block;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:${c.accent};margin-bottom:18px;padding-bottom:6px;border-bottom:1px solid ${c.accent}40">${p.overline}</span><h2 style="font-family:'${f.h}',serif;font-size:clamp(28px,4vw,44px);line-height:1.15;font-weight:400;margin:0 0 18px;color:${c.text}">${p.title}</h2><p style="font-size:16px;color:${c.muted};line-height:1.75;margin:0 0 32px">${p.desc}</p><button style="${buttonStyle(S.btnStyle,c)}">${p.btn}</button></div></section>`;
 
+    // ── 2026-08-23: 인테리어 포트폴리오 ──
+    case 'pf-cover':return `<section style="position:relative;min-height:520px;border-radius:${r}px;overflow:hidden;display:flex;align-items:flex-end;${p.img1?`background:url('${p.img1}') center/cover no-repeat`:`background:linear-gradient(135deg,${c.accent2}55 0%,${c.n1}66 45%,${c.bg} 100%)`};${cs}"><div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,${c.bg}e6 92%)"></div><div style="position:relative;padding:56px 50px 44px;width:100%">${p.img1?'':`<div style=\"position:absolute;top:-330px;left:50px;font-size:11px;letter-spacing:2px;color:${c.muted}88\">이미지를 우측 패널(img1)에서 업로드하세요</div>`}<span style="font-size:11px;letter-spacing:4px;color:${c.accent};text-transform:uppercase">${p.overline}</span><h1 style="font-family:'${f.h}',serif;font-size:clamp(32px,5vw,58px);font-weight:400;margin:14px 0 10px;color:${c.text};line-height:1.12">${p.title}</h1><p style="font-size:14px;color:${c.muted};margin:0 0 24px;letter-spacing:0.3px">${p.subtitle}</p><div style="display:flex;gap:34px;flex-wrap:wrap;border-top:1px solid ${c.text}1c;padding-top:18px">${[['위치',p.loc],['면적',p.area],['공사 기간',p.period],['스타일',p.style]].map(([l,v])=>`<div><div style="font-size:9px;letter-spacing:2px;color:${c.muted};text-transform:uppercase;margin-bottom:5px">${l}</div><div style="font-family:'${f.h}',serif;font-size:16px;color:${c.text}">${v}</div></div>`).join('')}</div></div></section>`;
+    case 'pf-before-after':return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" data-grid-cols="2">${[[p.img1,p.cap1,c.muted],[p.img2,p.cap2,c.accent]].map(([im,cap,col])=>`<figure style="margin:0;position:relative;border-radius:${r}px;overflow:hidden;border:1px solid ${c.accent}1f">${im?`<img src="${im}" alt="${cap}" style="width:100%;height:320px;object-fit:cover;display:block">`:`<div style="height:320px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,${c.n1}33,${c.bg});color:${c.muted}66;font-size:12px;letter-spacing:2px">이미지 업로드</div>`}<figcaption style="position:absolute;top:14px;left:14px;background:${c.bg}dd;color:${col};font-size:10px;letter-spacing:3px;padding:5px 12px;border-radius:3px;border:1px solid ${col}55">${cap}</figcaption></figure>`).join('')}</div><p style="font-size:13px;color:${c.muted};margin:14px 0 0;line-height:1.7">${p.desc}</p></section>`;
+    case 'pf-gallery':{const n=Math.max(2,Math.min(8,parseInt(p.cols||'3')*2));const cols=Math.max(2,Math.min(4,parseInt(p.cols||'3')));return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:12px" data-grid-cols="${cols}">${Array.from({length:n},(_,ix)=>{const i=ix+1,im=p['img'+i],cap=p['cap'+i]||'';return `<figure style="margin:0;border-radius:${Math.max(r-6,4)}px;overflow:hidden;border:1px solid ${c.accent}18;background:${c.n1}22">${im?`<img src="${im}" alt="${cap}" style="width:100%;height:210px;object-fit:cover;display:block">`:`<div style="height:210px;display:flex;align-items:center;justify-content:center;color:${c.muted}55;font-size:11px;letter-spacing:2px">img${i}</div>`}${cap?`<figcaption style="padding:9px 12px;font-size:11px;color:${c.muted};letter-spacing:1px;border-top:1px solid ${c.accent}12">${cap}</figcaption>`:''}</figure>`;}).join('')}</div></section>`;}
+    case 'pf-specs':return `<section style="padding:40px;${cs}"><div style="max-width:760px;margin:0 auto;padding:36px 40px;border:1px solid ${c.accent}28;border-radius:${r}px;background:rgba(255,255,255,0.03)"><h3 style="font-family:'${f.h}',serif;font-size:24px;font-weight:400;margin:0 0 24px;color:${c.text};text-align:center;letter-spacing:1px">${p.title}</h3>${[1,2,3,4,5,6].map(i=>`<div style="display:flex;align-items:baseline;gap:14px;padding:10px 0;border-bottom:1px ${i===6?'solid transparent':'dashed '+c.text+'14'}"><span style="font-size:11px;letter-spacing:2px;color:${c.accent};text-transform:uppercase;width:110px;flex-shrink:0">${p['l'+i]}</span><span style="flex:1;border-bottom:1px dotted ${c.text}1a;transform:translateY(-4px)"></span><span style="font-size:14px;color:${c.text}">${p['v'+i]}</span></div>`).join('')}</div></section>`;
+    case 'pf-materials':return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" data-grid-cols="3">${[1,2,3,4,5,6].map(i=>`<div style="display:flex;gap:14px;align-items:center;padding:16px;border-radius:${Math.max(r-6,4)}px;border:1px solid ${c.accent}1a;background:rgba(255,255,255,0.03)"><span style="width:44px;height:44px;border-radius:50%;flex-shrink:0;background:${p['s'+i]};border:1px solid ${c.text}22;box-shadow:inset 0 0 0 3px ${c.bg}55"></span><div style="min-width:0"><div style="font-size:13px;color:${c.text};margin-bottom:3px">${p['m'+i]}</div><div style="font-size:11px;color:${c.muted};letter-spacing:0.5px">${p['b'+i]}</div></div></div>`).join('')}</div></section>`;
+    case 'pf-process':return `<section style="padding:46px 40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 30px;color:${c.text};text-align:center">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative" data-grid-cols="5"><div style="position:absolute;top:19px;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,${c.accent}55,${c.accent}55,transparent)"></div>${[1,2,3,4,5].map(i=>`<div style="text-align:center;position:relative;padding:0 8px"><div style="width:38px;height:38px;margin:0 auto 12px;border-radius:50%;background:${c.bg};border:1px solid ${c.accent}66;display:flex;align-items:center;justify-content:center;font-family:'${f.h}',serif;font-size:14px;color:${c.accent};position:relative;z-index:1">${'0'+i}</div><div style="font-size:13px;color:${c.text};margin-bottom:5px;letter-spacing:0.5px">${p['t'+i]}</div><div style="font-size:11px;color:${c.muted};line-height:1.6">${p['d'+i]}</div></div>`).join('')}</div></section>`;
+    case 'pf-zones':return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" data-grid-cols="4">${[1,2,3,4].map(i=>{const im=p['img'+i];return `<div style="border-radius:${Math.max(r-6,4)}px;overflow:hidden;border:1px solid ${c.accent}1a;background:rgba(255,255,255,0.03)">${im?`<img src="${im}" alt="${p['t'+i]}" style="width:100%;height:150px;object-fit:cover;display:block">`:`<div style="height:150px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,${c.n1}30,${c.bg});color:${c.muted}55;font-size:11px;letter-spacing:2px">img${i}</div>`}<div style="padding:14px 16px"><div style="font-family:'${f.h}',serif;font-size:16px;color:${c.accent};margin-bottom:4px">${p['t'+i]}</div><div style="font-size:12px;color:${c.muted};line-height:1.55">${p['d'+i]}</div></div></div>`;}).join('')}</div></section>`;
+    case 'pf-review':{const sc=Math.max(0,Math.min(5,parseInt(p.score||'5')));return `<section style="padding:40px;${cs}"><div style="max-width:680px;margin:0 auto;text-align:center;padding:40px 36px;border-radius:${r}px;border:1px solid ${c.accent}22;background:rgba(255,255,255,0.03)"><div style="font-size:16px;letter-spacing:6px;color:${c.accent};margin-bottom:18px">${'★'.repeat(sc)}<span style="color:${c.text}22">${'★'.repeat(5-sc)}</span></div><p style="font-family:'${f.h}',serif;font-size:19px;line-height:1.75;color:${c.text};margin:0 0 22px;font-weight:400">“${p.quote}”</p><div style="font-size:12px;color:${c.text};letter-spacing:1px;margin-bottom:3px">${p.name}</div><div style="font-size:11px;color:${c.muted};letter-spacing:0.5px">${p.loc}</div></div></section>`;}
+    case 'pf-contact':return `<section style="margin:30px 40px;padding:52px 44px;border-radius:${r}px;background:linear-gradient(135deg,${c.accent2}30,${c.n1}22);border:1px solid ${c.accent}30;text-align:center;${cs}"><span style="font-size:11px;letter-spacing:4px;color:${c.accent};text-transform:uppercase">${p.overline}</span><h2 style="font-family:'${f.h}',serif;font-size:clamp(24px,3.6vw,38px);font-weight:400;margin:14px 0 10px;color:${c.text}">${p.title}</h2><p style="font-size:14px;color:${c.muted};margin:0 0 8px">${p.desc}</p><div style="font-family:'${f.h}',serif;font-size:30px;color:${c.accent};letter-spacing:2px;margin:18px 0 24px">${p.phone}</div><div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><button style="${buttonStyle(S.btnStyle,c)}">${p.btn}</button><button style="${buttonStyle('outline',c)}">${p.btn2}</button></div></section>`;
   }
   return '';
 }
@@ -1355,7 +1418,16 @@ function renderLeft(){
 <div class="panel-title">${gn} <small style="color:#d4af3788">${items.length}종</small></div>
 <div class="comp-grid">${items.map(([k,nm,ic])=>`<div class="comp-item" data-comp="${k}"><i class="ti ti-${ic}"></i>${nm}</div>`).join('')}</div>`).join('');
     el.querySelectorAll('.comp-item').forEach(it=>it.addEventListener('click',()=>{
-      if(it.dataset.comp==='image'){const ip=setupImageUpload();ip.click();} else addComp(it.dataset.comp);
+      if(it.dataset.comp==='image'){const ip=setupImageUpload();ip.click();}
+      else if(it.dataset.comp==='pf-template'){ // 2026-08-23: 포트폴리오 한 페이지 원클릭 구성
+        ['pf-cover','pf-specs','pf-before-after','pf-gallery','pf-zones','pf-materials','pf-process','pf-review','pf-contact'].forEach(k=>{
+          const tpl=COMP_TPL[k];if(!tpl)return;
+          const el=clone(tpl);el.id=newId();el.style={};el.effects={};
+          activePage().elements.push(el);
+        });
+        S.selectedId=null;pushHist();renderAll();
+      }
+      else addComp(it.dataset.comp);
     }));
   }else if(S.leftTab==='theme'){
     el.innerHTML=`
@@ -1478,17 +1550,17 @@ function bindEffectEvents(){
   });
   const rd=document.getElementById('gr-radius');
   if(rd){
-    rd.addEventListener('input',e=>{S.radius=parseInt(e.target.value);e.target.nextElementSibling.textContent=S.radius+'px';renderCanvas();});
+    rd.addEventListener('input',e=>{S.radius=parseInt(e.target.value);e.target.nextElementSibling.textContent=S.radius+'px';renderCanvasLive();});
     rd.addEventListener('change',()=>pushHist());
   }
   const gb=document.getElementById('gl-blur');
   if(gb){
-    gb.addEventListener('input',e=>{S.glassBlur=parseInt(e.target.value);e.target.nextElementSibling.textContent=S.glassBlur+'px';renderCanvas();});
+    gb.addEventListener('input',e=>{S.glassBlur=parseInt(e.target.value);e.target.nextElementSibling.textContent=S.glassBlur+'px';renderCanvasLive();});
     gb.addEventListener('change',()=>pushHist());
   }
   const go=document.getElementById('gl-op');
   if(go){
-    go.addEventListener('input',e=>{S.glassOpacity=parseInt(e.target.value)/100;e.target.nextElementSibling.textContent=parseInt(e.target.value)+'%';renderCanvas();});
+    go.addEventListener('input',e=>{S.glassOpacity=parseInt(e.target.value)/100;e.target.nextElementSibling.textContent=parseInt(e.target.value)+'%';renderCanvasLive();});
     go.addEventListener('change',()=>pushHist());
   }
 }
@@ -1574,6 +1646,10 @@ ${it._objUrl?`<button class="btn btn-sm" id="vid-file-clear" style="width:100%;j
       Object.entries(it.props).forEach(([k,v])=>{
         if(k==='src'&&it.type==='image') return; // handled in style tab
         if(['url','videoType','title','desc','fileName'].includes(k)) return; // handled above
+        if(/^img[0-9]*$/.test(k)){ // 2026-08-23: 포트폴리오 이미지 슬롯 — 업로드 UI
+          html+=`<div class="row"><span class="lbl">${k}</span><button class="btn btn-sm" data-imgprop="${k}"><i class="ti ti-upload"></i> ${v?'교체':'업로드'}</button>${v?`<button class="btn btn-sm" data-imgclear="${k}" title="이미지 제거"><i class="ti ti-x"></i></button>`:''}</div>`;
+          return;
+        }
         const isMulti=typeof v==='string'&&(v.length>40||v.includes('<br>'));
         if(isMulti){
           html+=`<div style="margin-bottom:7px"><div class="row"><span class="lbl">${k}</span></div><textarea class="text-area" data-prop="${k}" rows="2">${v}</textarea></div>`;
@@ -1624,7 +1700,7 @@ ${it.styleEx.gradText?`<div class="color-row"><span class="clr-label">색1</span
 <div class="row"><span class="lbl">최소높이</span><input class="text-input" data-sty="minHeight" placeholder="300px" value="${it.style.minHeight||''}"></div>
 
 <div class="panel-title">폰트</div>
-<div class="row"><span class="lbl">폰트</span><select class="text-input" data-sty="fontFamily"><option value="">기본 (글로벌)</option>${FONT_LIST.map(fn=>`<option value="'${fn}', sans-serif" ${it.style.fontFamily===`'${fn}', sans-serif`?'selected':''}>${fn}</option>`).join('')}</select></div>
+<div class="row"><span class="lbl">폰트</span><select class="text-input" data-sty="fontFamily"><option value="">기본 (글로벌)</option>${FONT_LIST.map(fn=>{const v=(FONT_CSS[fn]||`'${fn}'`)+', sans-serif';return `<option value="${v.replace(/"/g,'&quot;')}" ${it.style.fontFamily===v?'selected':''}>${fn}</option>`;}).join('')}</select></div>
 <div class="slider-row"><span class="slr-label">크기</span><input type="range" min="8" max="140" value="${parseInt(it.style.fontSize)||16}" data-sty-sl="fontSize" data-unit="px"><span class="slider-val">${it.style.fontSize||'기본'}</span></div>
 <div class="row"><span class="lbl">두께</span><select class="text-input" data-sty="fontWeight"><option value="">기본</option>${[100,200,300,400,500,600,700,800,900].map(w=>`<option value="${w}" ${parseInt(it.style.fontWeight)===w?'selected':''}>${w}</option>`).join('')}</select></div>
 <div class="slider-row"><span class="slr-label">자간</span><input type="range" min="-5" max="20" step="0.5" value="${parseFloat(it.style.letterSpacing)||0}" data-sty-sl="letterSpacing" data-unit="px"><span class="slider-val">${it.style.letterSpacing||'0px'}</span></div>
@@ -1719,8 +1795,23 @@ function bindRightEvents(it){
   }
   document.querySelectorAll('[data-gwp]').forEach(b=>b.addEventListener('click',()=>{it.gw=parseInt(b.dataset.gwp);pushHist();renderRight();renderCanvas();}));
   // Props
+  // 2026-08-23: 이미지 슬롯 업로드/제거 (포트폴리오 컴포넌트)
+  document.querySelectorAll('[data-imgprop]').forEach(b=>b.addEventListener('click',()=>{
+    let fi=document.getElementById('pf-img-input');
+    if(!fi){fi=document.createElement('input');fi.type='file';fi.accept='image/*';fi.id='pf-img-input';fi.style.display='none';document.body.appendChild(fi);}
+    fi.onchange=ev=>{
+      const file=ev.target.files[0];if(!file)return;
+      const rd=new FileReader();
+      rd.onload=rv=>{it.props[b.dataset.imgprop]=rv.target.result;pushHist();renderRight();renderSelectedElNow();};
+      rd.readAsDataURL(file);fi.value='';
+    };
+    fi.click();
+  }));
+  document.querySelectorAll('[data-imgclear]').forEach(b=>b.addEventListener('click',()=>{
+    it.props[b.dataset.imgclear]='';pushHist();renderRight();renderSelectedElNow();
+  }));
   document.querySelectorAll('[data-prop]').forEach(inp=>{
-    inp.addEventListener('input',e=>{it.props[e.target.dataset.prop]=e.target.value;renderCanvas();});
+    inp.addEventListener('input',e=>{it.props[e.target.dataset.prop]=e.target.value;renderSelectedElLive();});
     inp.addEventListener('change',()=>pushHist());
   });
   // Style
@@ -1729,7 +1820,7 @@ function bindRightEvents(it){
       const v=e.target.value;
       if(v)it.style[e.target.dataset.sty]=v;
       else delete it.style[e.target.dataset.sty];
-      renderCanvas();
+      renderSelectedElLive();
     });
     inp.addEventListener('change',()=>pushHist());
   });
@@ -1756,7 +1847,7 @@ function bindRightEvents(it){
       it.effects[e.target.dataset.glasscustom]=v;
       // 색상 피커 ↔ hex 입력 동기화
       document.querySelectorAll(`[data-glasscustom="${e.target.dataset.glasscustom}"]`).forEach(o=>{if(o!==e.target)o.value=v;});
-      renderCanvas();
+      renderSelectedElLive();
     });
     p.addEventListener('change',()=>pushHist());
   });
@@ -1950,7 +2041,7 @@ function bindRightEvents(it){
     inp.addEventListener('input',e=>{
       it.props[e.target.dataset.prop]=e.target.value;
       if(e.target.nextElementSibling)e.target.nextElementSibling.textContent=e.target.value+'px';
-      renderCanvas();
+      renderSelectedElLive();
     });
     inp.addEventListener('change',()=>pushHist());
   });
@@ -2128,6 +2219,7 @@ function buildExport(){
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ECOREAN</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&family=Bodoni+Moda:wght@400;700&family=Manrope:wght@400;500&family=Italiana&family=Outfit:wght@400;500&family=Marcellus&family=Cinzel:wght@400;600&family=Lato:wght@400;700&family=Libre+Caslon+Text:wght@400;700&family=Source+Sans+3:wght@400;500&family=Crimson+Pro:wght@400;700&family=Work+Sans:wght@400;500&family=Fraunces:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500&family=Lora:wght@400;700&family=Karla:wght@400;500&family=Tenor+Sans&family=Roboto:wght@400;500&family=Cormorant+Infant:wght@400;600&family=Poppins:wght@400;500&family=Cardo:wght@400;700&family=Nunito:wght@400;600&family=Spectral:wght@400;700&family=Mulish:wght@400;500&family=Mate&family=Public+Sans:wght@400;500&family=Montserrat:wght@400;500;600&family=Raleway:wght@400;500&family=Cormorant:wght@400;600&family=Syne:wght@400;700&family=Space+Grotesk:wght@400;500&family=EB+Garamond:wght@400;500&family=Archivo:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;600&family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Nanum+Pen+Script&family=Gowun+Dodum&family=Gowun+Batang&family=Gothic+A1:wght@400;500;700&family=IBM+Plex+Sans+KR:wght@400;500&family=Hahmlet:wght@400;600&family=Song+Myung&family=Do+Hyeon&family=Jua&family=Black+Han+Sans&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:${c.bg};color:${c.text};font-family:'${f.b}',sans-serif;line-height:1.6;overflow-x:hidden;min-height:100vh;position:relative}
