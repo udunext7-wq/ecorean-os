@@ -498,7 +498,7 @@ const COMP_TPL={
   activity:{type:'activity',props:{title:'최근 활동',a1:'신규 견적 요청|2분 전',a2:'프로젝트 완료|14분 전',a3:'결제 처리|1시간 전',a4:'고객 가입|2시간 전'}},
   table:{type:'table',props:{title:'최근 견적 요청',col1:'프로젝트',col2:'거래처',col3:'금액',col4:'상태',r1:'강남 사옥|BOC Partners|₩42M|진행',r2:'판교 R&D센터|ECOREAN Direct|₩118M|검토',r3:'송파 카페|외부 의뢰|₩28M|진행',r4:'여의도 오피스|BOC Partners|₩76M|완료'}},
   // 이미지/미디어
-  image:{type:'image',props:{src:'',alt:'Image',caption:'',height:'300'}},
+  image:{type:'image',props:{src:'',alt:'Image',caption:'',height:'300',align:'center',imgw:'100'}},
   video:{type:'video',props:{url:'',videoType:'url',title:'Video Title',desc:'YouTube / Vimeo URL 또는 MP4 파일 업로드'}},
   // 레이아웃
   'two-col':{type:'two-col',props:{left:'왼쪽 제목',ldesc:'왼쪽 설명 텍스트입니다.',right:'오른쪽 제목',rdesc:'오른쪽 설명 텍스트입니다.'}},
@@ -1060,9 +1060,12 @@ function elHTMLCore(el){
         return `<tr><td style="padding:14px 12px;font-size:13px;border-bottom:1px solid ${c.text}08;color:${c.text}">${cells[0]}</td><td style="padding:14px 12px;font-size:13px;border-bottom:1px solid ${c.text}08;color:${c.text}">${cells[1]}</td><td style="padding:14px 12px;font-size:13px;border-bottom:1px solid ${c.text}08;color:${c.text}">${cells[2]}</td><td style="padding:14px 12px;font-size:13px;border-bottom:1px solid ${c.text}08"><span style="display:inline-block;padding:4px 10px;border-radius:50px;font-size:10px;letter-spacing:1px;text-transform:uppercase;${bd}">${sv}</span></td></tr>`;
       }).join('');
       return `<div style="margin:14px 40px;padding:24px;border-radius:${r}px;background:rgba(255,255,255,0.04);border:1px solid ${c.accent}1f;box-shadow:${shadowCss(S.shadowDefault,c)};${cs}"><h3 style="font-family:'${f.h}',serif;font-size:18px;font-weight:400;margin-bottom:18px;color:${c.text}">${p.title}</h3><table style="width:100%;border-collapse:collapse"><tr><th style="text-align:left;font-size:10px;color:${c.muted};letter-spacing:1.5px;text-transform:uppercase;padding:10px 12px 14px;font-weight:500;border-bottom:1px solid ${c.text}10">${p.col1}</th><th style="text-align:left;font-size:10px;color:${c.muted};letter-spacing:1.5px;text-transform:uppercase;padding:10px 12px 14px;font-weight:500;border-bottom:1px solid ${c.text}10">${p.col2}</th><th style="text-align:left;font-size:10px;color:${c.muted};letter-spacing:1.5px;text-transform:uppercase;padding:10px 12px 14px;font-weight:500;border-bottom:1px solid ${c.text}10">${p.col3}</th><th style="text-align:left;font-size:10px;color:${c.muted};letter-spacing:1.5px;text-transform:uppercase;padding:10px 12px 14px;font-weight:500;border-bottom:1px solid ${c.text}10">${p.col4}</th></tr>${rows}</table></div>`;
-    }    case 'image':{ const imgR=p.src?`<img src="${p.src}" alt="${p.alt}" style="width:100%;height:${p.height||300}px;object-fit:cover;border-radius:${r}px;display:block">`:
+    }    case 'image':{ // 2026-08-23: 정렬(좌/중/우) + 폭(%) — 래퍼는 항상 100%, 안쪽 블록만 정렬·축소
+      const iw=Math.max(20,Math.min(100,parseInt(p.imgw)||100));
+      const ai=(p.align==='left')?'flex-start':(p.align==='right')?'flex-end':'center';
+      const imgR=p.src?`<img src="${p.src}" alt="${p.alt}" style="width:100%;height:${p.height||300}px;object-fit:cover;border-radius:${r}px;display:block">`:
       `<div style="height:${p.height||300}px;background:${c.accent2}22;border:2px dashed ${c.accent}44;border-radius:${r}px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;cursor:pointer" onclick="document.getElementById('img-file-input')&&document.getElementById('img-file-input').click()"><i class="ti ti-photo" style="font-size:36px;color:${c.accent}44"></i><span style="font-size:12px;color:${c.muted}">클릭하여 이미지 업로드</span></div>`;
-      return `<div style="margin:10px 40px;${cs}">${imgR}${p.caption?`<p style="text-align:center;font-size:12px;color:${c.muted};margin-top:8px">${p.caption}</p>`:''}</div>`; }
+      return `<div style="margin:10px 40px;display:flex;flex-direction:column;align-items:${ai};${cs}"><div style="width:${iw}%">${imgR}${p.caption?`<p style="text-align:center;font-size:12px;color:${c.muted};margin-top:8px">${p.caption}</p>`:''}</div></div>`; }
     case 'video':{
       const vUrl=p.url||'';
       const vType=p.videoType||'url';
@@ -1696,9 +1699,19 @@ ${it._objUrl?`<button class="btn btn-sm" id="vid-file-clear" style="width:100%;j
 <div class="panel-title">표시 설정</div>
 <div class="row"><span class="lbl">제목</span><input class="text-input" data-prop="title" value="${(it.props.title||'').replace(/"/g,'&quot;')}"></div>`;
     } else {
+      // 2026-08-23: 이미지 전용 컨트롤 — 정렬(좌/중/우)·폭·높이·교체
+      if(it.type==='image'){
+        const alignBtns=[['left','⯇ 좌측'],['center','● 중앙'],['right','우측 ⯈']].map(([v,l])=>
+          `<button class="preset-btn ${(it.props.align||'center')===v?'on':''}" data-imgalign="${v}">${l}</button>`).join('');
+        html+=`<div class="panel-title">이미지 배치</div>
+<div class="preset-row">${alignBtns}</div>
+<div class="slider-row"><span class="slr-label">폭</span><input type="range" min="20" max="100" value="${parseInt(it.props.imgw)||100}" data-prop="imgw"><span class="slider-val">${parseInt(it.props.imgw)||100}%</span></div>
+<div class="slider-row"><span class="slr-label">높이</span><input type="range" min="120" max="900" step="10" value="${parseInt(it.props.height)||300}" data-prop="height"><span class="slider-val">${parseInt(it.props.height)||300}px</span></div>
+<div class="row"><span class="lbl">사진</span><button class="btn btn-sm" data-imgprop="src"><i class="ti ti-upload"></i> ${it.props.src?'교체':'업로드'}</button>${it.props.src?`<button class="btn btn-sm" data-imgclear="src" title="이미지 제거"><i class="ti ti-x"></i></button>`:''}</div>`;
+      }
       // Normal props
       Object.entries(it.props).forEach(([k,v])=>{
-        if(k==='src'&&it.type==='image') return; // handled in style tab
+        if(it.type==='image'&&['src','align','imgw','height'].includes(k)) return; // 위 전용 UI 에서 처리
         if(['url','videoType','title','desc','fileName'].includes(k)) return; // handled above
         if(/^img[0-9]*$/.test(k)){ // 2026-08-23: 포트폴리오 이미지 슬롯 — 업로드 UI
           html+=`<div class="row"><span class="lbl">${k}</span><button class="btn btn-sm" data-imgprop="${k}"><i class="ti ti-upload"></i> ${v?'교체':'업로드'}</button>${v?`<button class="btn btn-sm" data-imgclear="${k}" title="이미지 제거"><i class="ti ti-x"></i></button>`:''}</div>`;
@@ -1849,6 +1862,10 @@ function bindRightEvents(it){
   }
   document.querySelectorAll('[data-gwp]').forEach(b=>b.addEventListener('click',()=>{it.gw=parseInt(b.dataset.gwp);pushHist();renderRight();renderCanvas();}));
   // Props
+  // 2026-08-23: 이미지 정렬 (좌/중/우)
+  document.querySelectorAll('[data-imgalign]').forEach(b=>b.addEventListener('click',()=>{
+    it.props.align=b.dataset.imgalign;pushHist();renderRight();renderSelectedElNow();
+  }));
   // 2026-08-23: 이미지 슬롯 업로드/제거 (포트폴리오 컴포넌트)
   document.querySelectorAll('[data-imgprop]').forEach(b=>b.addEventListener('click',()=>{
     let fi=document.getElementById('pf-img-input');
@@ -2093,7 +2110,7 @@ function bindRightEvents(it){
   document.querySelectorAll('input[type=range][data-prop]').forEach(inp=>{
     inp.addEventListener('input',e=>{
       it.props[e.target.dataset.prop]=e.target.value;
-      if(e.target.nextElementSibling)e.target.nextElementSibling.textContent=e.target.value+'px';
+      if(e.target.nextElementSibling)e.target.nextElementSibling.textContent=e.target.value+(e.target.dataset.prop==='imgw'?'%':'px');
       renderSelectedElLive();
     });
     inp.addEventListener('change',()=>pushHist());
@@ -2598,27 +2615,28 @@ function bindDragDrop(){
     const startY=e.clientY,start=parseInt(el.props[prop])||def;
     S.selectedId=el.id;
     div.draggable=false;
-    try{h.setPointerCapture(e.pointerId);}catch(err){}
-    const badge=div.querySelector('.gw-badge');
+    // 2026-08-23 fix: 드래그 중 재렌더가 핸들 DOM 을 파괴 → 캡처·리스너는 살아남는 래퍼(div)에 건다
+    try{div.setPointerCapture(e.pointerId);}catch(err){}
     function onMove(ev){
       const v=Math.max(min,Math.min(max,Math.round(start+(ev.clientY-startY))));
       if(''+v!==''+el.props[prop]){
         el.props[prop]=''+v;
-        if(badge){badge.style.display='block';badge.textContent=v+'px';}
         renderSelectedElLive();
+        requestAnimationFrame(()=>{const bg=div.querySelector('.gw-badge');if(bg){bg.style.display='block';bg.textContent=v+'px';}});
       }
+      if(ev.cancelable)ev.preventDefault();
     }
     function onUp(ev){
-      h.removeEventListener('pointermove',onMove);
-      h.removeEventListener('pointerup',onUp);
-      h.removeEventListener('pointercancel',onUp);
-      try{h.releasePointerCapture(ev.pointerId);}catch(err){}
+      div.removeEventListener('pointermove',onMove);
+      div.removeEventListener('pointerup',onUp);
+      div.removeEventListener('pointercancel',onUp);
+      try{div.releasePointerCapture(ev.pointerId);}catch(err){}
       div.draggable=true;
       pushHist();renderAll();
     }
-    h.addEventListener('pointermove',onMove);
-    h.addEventListener('pointerup',onUp);
-    h.addEventListener('pointercancel',onUp);
+    div.addEventListener('pointermove',onMove);
+    div.addEventListener('pointerup',onUp);
+    div.addEventListener('pointercancel',onUp);
   });
 })();
 
