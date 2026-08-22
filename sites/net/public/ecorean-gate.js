@@ -98,6 +98,7 @@
       if (!ns.expires_at && ns.expires_in) ns.expires_at = Math.floor(Date.now() / 1000) + ns.expires_in;
       if (!ns.user && sess.user) ns.user = sess.user;
       writeSession(ns);
+      if (window.ECOREAN_AUTH) window.ECOREAN_AUTH.session = ns; /* 2026-08-23: 페이지를 오래 열어둔 앱(app-cloud)이 새 토큰을 쓰도록 메모리 세션도 교체 */
       return ns;
     }).catch(function () { return null; });
   }
@@ -111,7 +112,9 @@
   }
 
   var session = parseSession(rawSession());
-  window.ECOREAN_AUTH = { session: session, write: writeSession, clear: clearSession, refresh: refreshSession };
+  window.ECOREAN_AUTH = { session: session, write: writeSession, clear: clearSession, refresh: refreshSession,
+    /* 2026-08-23: 필요 시 갱신해서 유효 세션 반환 — app-cloud 가 저장 직전에 호출 */
+    fresh: function () { return ensureFresh(window.ECOREAN_AUTH.session).then(function (s) { if (s) window.ECOREAN_AUTH.session = s; return s; }); } };
 
   var gateStyle = document.getElementById('ecorean-gate-style');
   if (!gateStyle) return; // 게이트 없는 페이지(/work/ 등)에서는 세션 유틸 노출만

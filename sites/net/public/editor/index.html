@@ -129,6 +129,9 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
 .rsz{position:absolute;top:0;bottom:0;width:12px;cursor:col-resize;z-index:1002;display:none;align-items:center;justify-content:center}
 .bld-el.selected .rsz{display:flex}
 .rsz.l{left:-6px}.rsz.r{right:-6px}
+.rsz{touch-action:none}
+.rsz.b{top:auto;left:30%;right:30%;bottom:-7px;width:auto;height:14px;cursor:ns-resize}
+.rsz.b::after{width:60%;max-width:90px;min-width:28px;height:4px;max-height:none;min-height:0}
 .rsz::after{content:'';width:4px;height:60%;max-height:80px;min-height:24px;background:#d4af37;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,0.6)}
 .gw-badge{position:absolute;top:-21px;left:62px;background:#1c1d24;border:1px solid #d4af37;color:#d4af37;font-size:9px;padding:2px 7px;border-radius:3px;z-index:1001;display:none;font-family:'DM Sans',sans-serif;letter-spacing:0.5px;pointer-events:none}
 .bld-el.selected .gw-badge{display:block}
@@ -536,6 +539,8 @@ const COMP_TPL={
   'pf-contact':{type:'pf-contact',props:{overline:'FREE ESTIMATE',title:'우리 집도 이렇게 바뀔 수 있습니다',desc:'현장 실측 후 확정 견적을 드립니다 — 추가 비용 없는 정찰 시공',phone:'010-0000-0000',btn:'카카오톡 상담',btn2:'견적 요청'}}
 };
 
+// 2026-08-23: 하단 드래그로 높이 조절 가능한 타입 → [프로퍼티, 최소, 최대, 기본]
+const HEIGHT_PROP={image:['height',120,900,300],'pf-cover':['h',300,900,520],'pf-before-after':['h',160,700,320],'pf-gallery':['h',120,500,210],'pf-zones':['h',100,420,150]};
 const COMP_GROUPS={
   '★ 인테리어 포트폴리오':[['pf-template','✦ 원클릭 템플릿','wand'],['pf-cover','프로젝트 커버','home-star'],['pf-before-after','비포·애프터','arrows-left-right'],['pf-gallery','갤러리','photo'],['pf-specs','시공 개요','clipboard-list'],['pf-materials','자재 보드','color-swatch'],['pf-process','시공 과정','timeline-event'],['pf-zones','공간별 포인트','layout-grid'],['pf-review','고객 후기','star'],['pf-contact','견적 문의','phone']],
   '레이아웃':[['nav','네비','menu-2'],['footer','푸터','layout-bottombar'],['divider','구분선','minus'],['spacer','여백','arrows-vertical'],['two-col','2단','columns-2'],['three-col','3단','columns-3'],['hero-split','히어로2','layout-distribute-horizontal']],
@@ -549,6 +554,55 @@ const COMP_GROUPS={
 // ========== 상태 ==========
 // Stores base64 video data keyed by element id (not in history to save memory)
 const videoDataMap=new Map();
+
+// ── 2026-08-23 저장 안정화 ──
+// (A) 업로드 이미지 자동 압축: 4~8MB 원본이 그대로 base64 로 들어가 localStorage(5MB 한도)와
+//     서버 저장 페이로드를 터뜨리던 근본 원인. 긴 변 1600px + JPEG 0.85 로 통상 1/10 크기.
+function compressImage(file,cb){
+  const isPng=/png$/i.test(file.type);
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1600;
+      let w=img.naturalWidth,h=img.naturalHeight;
+      const scale=Math.min(1,MAX/Math.max(w,h));
+      // 작고(<400KB) 축소도 불필요하면 원본 유지
+      if(scale>=1&&file.size<400*1024){cb(ev.target.result);return;}
+      w=Math.round(w*scale);h=Math.round(h*scale);
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      const ctx=cv.getContext('2d');ctx.drawImage(img,0,0,w,h);
+      let out;
+      if(isPng){
+        // 투명 픽셀이 있으면 PNG 유지, 아니면 JPEG
+        const d=ctx.getImageData(0,0,Math.min(w,64),Math.min(h,64)).data;
+        let alpha=false;for(let i=3;i<d.length;i+=16){if(d[i]<250){alpha=true;break;}}
+        out=alpha?cv.toDataURL('image/png'):cv.toDataURL('image/jpeg',0.85);
+      }else out=cv.toDataURL('image/jpeg',0.85);
+      // 압축이 오히려 커지면 원본 사용
+      cb(out.length<ev.target.result.length?out:ev.target.result);
+    };
+    img.onerror=()=>cb(ev.target.result);
+    img.src=ev.target.result;
+  };
+  rd.readAsDataURL(file);
+}
+// (B) IndexedDB 문서 저장소: localStorage 5MB 한도 때문에 이미지 포함 문서가 소리 없이
+//     저장 실패하던 문제 해결 (수백 MB 까지 안전). localStorage 는 소형 설정 미러로만.
+const IDB={
+  open(){return new Promise((res,rej)=>{const r=indexedDB.open('ecorean-editor',1);
+    r.onupgradeneeded=()=>{r.result.createObjectStore('docs');};
+    r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},
+  set(key,val){return this.open().then(db=>new Promise((res,rej)=>{
+    const tx=db.transaction('docs','readwrite');tx.objectStore('docs').put(val,key);
+    tx.oncomplete=()=>{db.close();res();};tx.onerror=()=>{db.close();rej(tx.error);};}));},
+  get(key){return this.open().then(db=>new Promise((res,rej)=>{
+    const tx=db.transaction('docs','readonly');const q=tx.objectStore('docs').get(key);
+    q.onsuccess=()=>{db.close();res(q.result);};q.onerror=()=>{db.close();rej(q.error);};}));},
+};
+function currentDocState(){
+  return {colors:S.colors,themeName:S.themeName,font:S.font,bg:S.bg,radius:S.radius,btnStyle:S.btnStyle,glassBlur:S.glassBlur,glassOpacity:S.glassOpacity,shadowDefault:S.shadowDefault,gridGap:S.gridGap,cursor:S.cursor,cursorOpts:S.cursorOpts,freeMode:S.freeMode,pages:S.pages,activePage:S.activePage,savedAt:Date.now()};
+}
 // Stores File objects for ZIP export of large videos
 const videoFileMap=new Map();
 // Clipboard for copy/paste
@@ -602,7 +656,7 @@ function renderSelectedElNow(){
 <button data-act="up"><i class="ti ti-arrow-up"></i></button>
 <button data-act="down"><i class="ti ti-arrow-down"></i></button>
 <button data-act="dup"><i class="ti ti-copy"></i></button>
-<button data-act="del"><i class="ti ti-trash"></i></button></div><div class="gw-badge">${gw}/12</div><div class="rsz l" data-rsz="l"></div><div class="rsz r" data-rsz="r"></div>`;
+<button data-act="del"><i class="ti ti-trash"></i></button></div><div class="gw-badge">${gw}/12</div><div class="rsz l" data-rsz="l"></div><div class="rsz r" data-rsz="r"></div>${HEIGHT_PROP[el.type]?'<div class="rsz b" data-rsz="b" title="상하 크기 조절"></div>':''}`;
   applyFx(div,el);
   div.style.gridColumn=`span ${gw}`;
 }
@@ -1120,13 +1174,13 @@ function elHTMLCore(el){
     case 'section-dark':return `<section style="padding:80px 40px;background:${c.accent2}22;border-top:1px solid ${c.accent}1f;border-bottom:1px solid ${c.accent}1f;${cs}"><div style="max-width:640px;margin:0 auto;text-align:center"><span style="display:inline-block;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:${c.accent};margin-bottom:18px;padding-bottom:6px;border-bottom:1px solid ${c.accent}40">${p.overline}</span><h2 style="font-family:'${f.h}',serif;font-size:clamp(28px,4vw,44px);line-height:1.15;font-weight:400;margin:0 0 18px;color:${c.text}">${p.title}</h2><p style="font-size:16px;color:${c.muted};line-height:1.75;margin:0 0 32px">${p.desc}</p><button style="${buttonStyle(S.btnStyle,c)}">${p.btn}</button></div></section>`;
 
     // ── 2026-08-23: 인테리어 포트폴리오 ──
-    case 'pf-cover':return `<section style="position:relative;min-height:520px;border-radius:${r}px;overflow:hidden;display:flex;align-items:flex-end;${p.img1?`background:url('${p.img1}') center/cover no-repeat`:`background:linear-gradient(135deg,${c.accent2}55 0%,${c.n1}66 45%,${c.bg} 100%)`};${cs}"><div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,${c.bg}e6 92%)"></div><div style="position:relative;padding:56px 50px 44px;width:100%">${p.img1?'':`<div style=\"position:absolute;top:-330px;left:50px;font-size:11px;letter-spacing:2px;color:${c.muted}88\">이미지를 우측 패널(img1)에서 업로드하세요</div>`}<span style="font-size:11px;letter-spacing:4px;color:${c.accent};text-transform:uppercase">${p.overline}</span><h1 style="font-family:'${f.h}',serif;font-size:clamp(32px,5vw,58px);font-weight:400;margin:14px 0 10px;color:${c.text};line-height:1.12">${p.title}</h1><p style="font-size:14px;color:${c.muted};margin:0 0 24px;letter-spacing:0.3px">${p.subtitle}</p><div style="display:flex;gap:34px;flex-wrap:wrap;border-top:1px solid ${c.text}1c;padding-top:18px">${[['위치',p.loc],['면적',p.area],['공사 기간',p.period],['스타일',p.style]].map(([l,v])=>`<div><div style="font-size:9px;letter-spacing:2px;color:${c.muted};text-transform:uppercase;margin-bottom:5px">${l}</div><div style="font-family:'${f.h}',serif;font-size:16px;color:${c.text}">${v}</div></div>`).join('')}</div></div></section>`;
-    case 'pf-before-after':return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" data-grid-cols="2">${[[p.img1,p.cap1,c.muted],[p.img2,p.cap2,c.accent]].map(([im,cap,col])=>`<figure style="margin:0;position:relative;border-radius:${r}px;overflow:hidden;border:1px solid ${c.accent}1f">${im?`<img src="${im}" alt="${cap}" style="width:100%;height:320px;object-fit:cover;display:block">`:`<div style="height:320px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,${c.n1}33,${c.bg});color:${c.muted}66;font-size:12px;letter-spacing:2px">이미지 업로드</div>`}<figcaption style="position:absolute;top:14px;left:14px;background:${c.bg}dd;color:${col};font-size:10px;letter-spacing:3px;padding:5px 12px;border-radius:3px;border:1px solid ${col}55">${cap}</figcaption></figure>`).join('')}</div><p style="font-size:13px;color:${c.muted};margin:14px 0 0;line-height:1.7">${p.desc}</p></section>`;
-    case 'pf-gallery':{const n=Math.max(2,Math.min(8,parseInt(p.cols||'3')*2));const cols=Math.max(2,Math.min(4,parseInt(p.cols||'3')));return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:12px" data-grid-cols="${cols}">${Array.from({length:n},(_,ix)=>{const i=ix+1,im=p['img'+i],cap=p['cap'+i]||'';return `<figure style="margin:0;border-radius:${Math.max(r-6,4)}px;overflow:hidden;border:1px solid ${c.accent}18;background:${c.n1}22">${im?`<img src="${im}" alt="${cap}" style="width:100%;height:210px;object-fit:cover;display:block">`:`<div style="height:210px;display:flex;align-items:center;justify-content:center;color:${c.muted}55;font-size:11px;letter-spacing:2px">img${i}</div>`}${cap?`<figcaption style="padding:9px 12px;font-size:11px;color:${c.muted};letter-spacing:1px;border-top:1px solid ${c.accent}12">${cap}</figcaption>`:''}</figure>`;}).join('')}</div></section>`;}
+    case 'pf-cover':return `<section style="position:relative;min-height:${parseInt(p.h)||520}px;border-radius:${r}px;overflow:hidden;display:flex;align-items:flex-end;${p.img1?`background:url('${p.img1}') center/cover no-repeat`:`background:linear-gradient(135deg,${c.accent2}55 0%,${c.n1}66 45%,${c.bg} 100%)`};${cs}"><div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,${c.bg}e6 92%)"></div><div style="position:relative;padding:56px 50px 44px;width:100%">${p.img1?'':`<div style=\"position:absolute;top:-330px;left:50px;font-size:11px;letter-spacing:2px;color:${c.muted}88\">이미지를 우측 패널(img1)에서 업로드하세요</div>`}<span style="font-size:11px;letter-spacing:4px;color:${c.accent};text-transform:uppercase">${p.overline}</span><h1 style="font-family:'${f.h}',serif;font-size:clamp(32px,5vw,58px);font-weight:400;margin:14px 0 10px;color:${c.text};line-height:1.12">${p.title}</h1><p style="font-size:14px;color:${c.muted};margin:0 0 24px;letter-spacing:0.3px">${p.subtitle}</p><div style="display:flex;gap:34px;flex-wrap:wrap;border-top:1px solid ${c.text}1c;padding-top:18px">${[['위치',p.loc],['면적',p.area],['공사 기간',p.period],['스타일',p.style]].map(([l,v])=>`<div><div style="font-size:9px;letter-spacing:2px;color:${c.muted};text-transform:uppercase;margin-bottom:5px">${l}</div><div style="font-family:'${f.h}',serif;font-size:16px;color:${c.text}">${v}</div></div>`).join('')}</div></div></section>`;
+    case 'pf-before-after':return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" data-grid-cols="2">${[[p.img1,p.cap1,c.muted],[p.img2,p.cap2,c.accent]].map(([im,cap,col])=>`<figure style="margin:0;position:relative;border-radius:${r}px;overflow:hidden;border:1px solid ${c.accent}1f">${im?`<img src="${im}" alt="${cap}" style="width:100%;height:${parseInt(p.h)||320}px;object-fit:cover;display:block">`:`<div style="height:${parseInt(p.h)||320}px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,${c.n1}33,${c.bg});color:${c.muted}66;font-size:12px;letter-spacing:2px">이미지 업로드</div>`}<figcaption style="position:absolute;top:14px;left:14px;background:${c.bg}dd;color:${col};font-size:10px;letter-spacing:3px;padding:5px 12px;border-radius:3px;border:1px solid ${col}55">${cap}</figcaption></figure>`).join('')}</div><p style="font-size:13px;color:${c.muted};margin:14px 0 0;line-height:1.7">${p.desc}</p></section>`;
+    case 'pf-gallery':{const n=Math.max(2,Math.min(8,parseInt(p.cols||'3')*2));const cols=Math.max(2,Math.min(4,parseInt(p.cols||'3')));return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:12px" data-grid-cols="${cols}">${Array.from({length:n},(_,ix)=>{const i=ix+1,im=p['img'+i],cap=p['cap'+i]||'';return `<figure style="margin:0;border-radius:${Math.max(r-6,4)}px;overflow:hidden;border:1px solid ${c.accent}18;background:${c.n1}22">${im?`<img src="${im}" alt="${cap}" style="width:100%;height:${parseInt(p.h)||210}px;object-fit:cover;display:block">`:`<div style="height:${parseInt(p.h)||210}px;display:flex;align-items:center;justify-content:center;color:${c.muted}55;font-size:11px;letter-spacing:2px">img${i}</div>`}${cap?`<figcaption style="padding:9px 12px;font-size:11px;color:${c.muted};letter-spacing:1px;border-top:1px solid ${c.accent}12">${cap}</figcaption>`:''}</figure>`;}).join('')}</div></section>`;}
     case 'pf-specs':return `<section style="padding:40px;${cs}"><div style="max-width:760px;margin:0 auto;padding:36px 40px;border:1px solid ${c.accent}28;border-radius:${r}px;background:rgba(255,255,255,0.03)"><h3 style="font-family:'${f.h}',serif;font-size:24px;font-weight:400;margin:0 0 24px;color:${c.text};text-align:center;letter-spacing:1px">${p.title}</h3>${[1,2,3,4,5,6].map(i=>`<div style="display:flex;align-items:baseline;gap:14px;padding:10px 0;border-bottom:1px ${i===6?'solid transparent':'dashed '+c.text+'14'}"><span style="font-size:11px;letter-spacing:2px;color:${c.accent};text-transform:uppercase;width:110px;flex-shrink:0">${p['l'+i]}</span><span style="flex:1;border-bottom:1px dotted ${c.text}1a;transform:translateY(-4px)"></span><span style="font-size:14px;color:${c.text}">${p['v'+i]}</span></div>`).join('')}</div></section>`;
     case 'pf-materials':return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" data-grid-cols="3">${[1,2,3,4,5,6].map(i=>`<div style="display:flex;gap:14px;align-items:center;padding:16px;border-radius:${Math.max(r-6,4)}px;border:1px solid ${c.accent}1a;background:rgba(255,255,255,0.03)"><span style="width:44px;height:44px;border-radius:50%;flex-shrink:0;background:${p['s'+i]};border:1px solid ${c.text}22;box-shadow:inset 0 0 0 3px ${c.bg}55"></span><div style="min-width:0"><div style="font-size:13px;color:${c.text};margin-bottom:3px">${p['m'+i]}</div><div style="font-size:11px;color:${c.muted};letter-spacing:0.5px">${p['b'+i]}</div></div></div>`).join('')}</div></section>`;
     case 'pf-process':return `<section style="padding:46px 40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 30px;color:${c.text};text-align:center">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative" data-grid-cols="5"><div style="position:absolute;top:19px;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,${c.accent}55,${c.accent}55,transparent)"></div>${[1,2,3,4,5].map(i=>`<div style="text-align:center;position:relative;padding:0 8px"><div style="width:38px;height:38px;margin:0 auto 12px;border-radius:50%;background:${c.bg};border:1px solid ${c.accent}66;display:flex;align-items:center;justify-content:center;font-family:'${f.h}',serif;font-size:14px;color:${c.accent};position:relative;z-index:1">${'0'+i}</div><div style="font-size:13px;color:${c.text};margin-bottom:5px;letter-spacing:0.5px">${p['t'+i]}</div><div style="font-size:11px;color:${c.muted};line-height:1.6">${p['d'+i]}</div></div>`).join('')}</div></section>`;
-    case 'pf-zones':return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" data-grid-cols="4">${[1,2,3,4].map(i=>{const im=p['img'+i];return `<div style="border-radius:${Math.max(r-6,4)}px;overflow:hidden;border:1px solid ${c.accent}1a;background:rgba(255,255,255,0.03)">${im?`<img src="${im}" alt="${p['t'+i]}" style="width:100%;height:150px;object-fit:cover;display:block">`:`<div style="height:150px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,${c.n1}30,${c.bg});color:${c.muted}55;font-size:11px;letter-spacing:2px">img${i}</div>`}<div style="padding:14px 16px"><div style="font-family:'${f.h}',serif;font-size:16px;color:${c.accent};margin-bottom:4px">${p['t'+i]}</div><div style="font-size:12px;color:${c.muted};line-height:1.55">${p['d'+i]}</div></div></div>`;}).join('')}</div></section>`;
+    case 'pf-zones':return `<section style="padding:40px;${cs}"><h3 style="font-family:'${f.h}',serif;font-size:26px;font-weight:400;margin:0 0 20px;color:${c.text}">${p.title}</h3><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" data-grid-cols="4">${[1,2,3,4].map(i=>{const im=p['img'+i];return `<div style="border-radius:${Math.max(r-6,4)}px;overflow:hidden;border:1px solid ${c.accent}1a;background:rgba(255,255,255,0.03)">${im?`<img src="${im}" alt="${p['t'+i]}" style="width:100%;height:${parseInt(p.h)||150}px;object-fit:cover;display:block">`:`<div style="height:${parseInt(p.h)||150}px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,${c.n1}30,${c.bg});color:${c.muted}55;font-size:11px;letter-spacing:2px">img${i}</div>`}<div style="padding:14px 16px"><div style="font-family:'${f.h}',serif;font-size:16px;color:${c.accent};margin-bottom:4px">${p['t'+i]}</div><div style="font-size:12px;color:${c.muted};line-height:1.55">${p['d'+i]}</div></div></div>`;}).join('')}</div></section>`;
     case 'pf-review':{const sc=Math.max(0,Math.min(5,parseInt(p.score||'5')));return `<section style="padding:40px;${cs}"><div style="max-width:680px;margin:0 auto;text-align:center;padding:40px 36px;border-radius:${r}px;border:1px solid ${c.accent}22;background:rgba(255,255,255,0.03)"><div style="font-size:16px;letter-spacing:6px;color:${c.accent};margin-bottom:18px">${'★'.repeat(sc)}<span style="color:${c.text}22">${'★'.repeat(5-sc)}</span></div><p style="font-family:'${f.h}',serif;font-size:19px;line-height:1.75;color:${c.text};margin:0 0 22px;font-weight:400">“${p.quote}”</p><div style="font-size:12px;color:${c.text};letter-spacing:1px;margin-bottom:3px">${p.name}</div><div style="font-size:11px;color:${c.muted};letter-spacing:0.5px">${p.loc}</div></div></section>`;}
     case 'pf-contact':return `<section style="margin:30px 40px;padding:52px 44px;border-radius:${r}px;background:linear-gradient(135deg,${c.accent2}30,${c.n1}22);border:1px solid ${c.accent}30;text-align:center;${cs}"><span style="font-size:11px;letter-spacing:4px;color:${c.accent};text-transform:uppercase">${p.overline}</span><h2 style="font-family:'${f.h}',serif;font-size:clamp(24px,3.6vw,38px);font-weight:400;margin:14px 0 10px;color:${c.text}">${p.title}</h2><p style="font-size:14px;color:${c.muted};margin:0 0 8px">${p.desc}</p><div style="font-family:'${f.h}',serif;font-size:30px;color:${c.accent};letter-spacing:2px;margin:18px 0 24px">${p.phone}</div><div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><button style="${buttonStyle(S.btnStyle,c)}">${p.btn}</button><button style="${buttonStyle('outline',c)}">${p.btn2}</button></div></section>`;
   }
@@ -1185,7 +1239,7 @@ function renderCanvas(){
 <button data-act="up"><i class="ti ti-arrow-up"></i></button>
 <button data-act="down"><i class="ti ti-arrow-down"></i></button>
 <button data-act="dup"><i class="ti ti-copy"></i></button>
-<button data-act="del"><i class="ti ti-trash"></i></button></div><div class="gw-badge">${gw}/12</div><div class="rsz l" data-rsz="l"></div><div class="rsz r" data-rsz="r"></div>`;
+<button data-act="del"><i class="ti ti-trash"></i></button></div><div class="gw-badge">${gw}/12</div><div class="rsz l" data-rsz="l"></div><div class="rsz r" data-rsz="r"></div>${HEIGHT_PROP[el.type]?'<div class="rsz b" data-rsz="b" title="상하 크기 조절"></div>':''}`;
     applyFx(div,el);
     if(S.freeMode){
       const fr=el.free||{x:20,y:20};
@@ -1801,9 +1855,8 @@ function bindRightEvents(it){
     if(!fi){fi=document.createElement('input');fi.type='file';fi.accept='image/*';fi.id='pf-img-input';fi.style.display='none';document.body.appendChild(fi);}
     fi.onchange=ev=>{
       const file=ev.target.files[0];if(!file)return;
-      const rd=new FileReader();
-      rd.onload=rv=>{it.props[b.dataset.imgprop]=rv.target.result;pushHist();renderRight();renderSelectedElNow();};
-      rd.readAsDataURL(file);fi.value='';
+      compressImage(file,b64=>{it.props[b.dataset.imgprop]=b64;pushHist();renderRight();renderSelectedElNow();});
+      fi.value='';
     };
     fi.click();
   }));
@@ -2058,13 +2111,11 @@ function bindRightEvents(it){
     }
     fInput.onchange=ev=>{
       const file=ev.target.files[0];if(!file)return;
-      const reader=new FileReader();
-      reader.onload=rv=>{
-        it.bgImage=rv.target.result;
+      compressImage(file,b64=>{ // 2026-08-23: 자동 압축 (저장 안정화)
+        it.bgImage=b64;
         if(it.bgImageOpacity===undefined)it.bgImageOpacity=0.6;
         pushHist();renderRight();renderCanvas();
-      };
-      reader.readAsDataURL(file);
+      });
       fInput.value='';
     };
     fInput.click();
@@ -2319,6 +2370,7 @@ function setupGridResize(){
     const div=handle.closest('.bld-el');if(!div)return;
     const el=activePage().elements.find(x=>x.id===div.dataset.id);if(!el)return;
     const side=handle.dataset.rsz;
+    if(side==='b')return;           // 하단(높이) 핸들은 pointer 전용 핸들러가 처리
     div.draggable=false;            // 리사이즈 중 네이티브 드래그 방지
     const colW=canvas.getBoundingClientRect().width/12;
     function onMove(ev){
@@ -2533,6 +2585,43 @@ function bindDragDrop(){
   });
 }
 
+// 2026-08-23: 하단 핸들 — 이미지·포트폴리오 높이를 위아래 드래그로 조절 (마우스·터치·S펜)
+(function(){
+  const canvas=document.getElementById('canvas');
+  canvas.addEventListener('pointerdown',e=>{
+    const h=e.target.closest&&e.target.closest('.rsz.b');if(!h)return;
+    e.preventDefault();e.stopPropagation();
+    const div=h.closest('.bld-el');if(!div)return;
+    const el=activePage().elements.find(x=>x.id===div.dataset.id);if(!el)return;
+    const cfg=HEIGHT_PROP[el.type];if(!cfg)return;
+    const [prop,min,max,def]=cfg;
+    const startY=e.clientY,start=parseInt(el.props[prop])||def;
+    S.selectedId=el.id;
+    div.draggable=false;
+    try{h.setPointerCapture(e.pointerId);}catch(err){}
+    const badge=div.querySelector('.gw-badge');
+    function onMove(ev){
+      const v=Math.max(min,Math.min(max,Math.round(start+(ev.clientY-startY))));
+      if(''+v!==''+el.props[prop]){
+        el.props[prop]=''+v;
+        if(badge){badge.style.display='block';badge.textContent=v+'px';}
+        renderSelectedElLive();
+      }
+    }
+    function onUp(ev){
+      h.removeEventListener('pointermove',onMove);
+      h.removeEventListener('pointerup',onUp);
+      h.removeEventListener('pointercancel',onUp);
+      try{h.releasePointerCapture(ev.pointerId);}catch(err){}
+      div.draggable=true;
+      pushHist();renderAll();
+    }
+    h.addEventListener('pointermove',onMove);
+    h.addEventListener('pointerup',onUp);
+    h.addEventListener('pointercancel',onUp);
+  });
+})();
+
 // ========== 이미지 업로드 (B) ==========
 function setupImageUpload(){
   let inp=document.getElementById('img-file-input');
@@ -2543,15 +2632,11 @@ function setupImageUpload(){
   }
   inp.onchange=e=>{
     const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      const b64=ev.target.result;
-      // Add image component
+    compressImage(file,b64=>{ // 2026-08-23: 자동 압축 (저장 안정화)
       const el={id:newId(),type:'image',props:{src:b64,alt:'Image',caption:''},style:{},effects:{}};
       activePage().elements.push(el);S.selectedId=el.id;
       pushHist();renderAll();
-    };
-    reader.readAsDataURL(file);
+    });
     inp.value='';
   };
   return inp;
@@ -2611,19 +2696,39 @@ document.getElementById('btn-reset').addEventListener('click',()=>{
     S.pages=[{id:newId(),name:'Page 1',elements:[]}];S.activePage=0;S.elements=[];S.selectedId=null;pushHist();renderPageTabs();renderAll();
   }
 });
+// 2026-08-23: 로컬 저장을 IndexedDB 로 이전 — localStorage 5MB 한도로 이미지 포함 문서가
+// QuotaExceededError 로 조용히 실패하던 문제 해결. localStorage 는 구버전 호환 미러(작을 때만).
 document.getElementById('btn-save').addEventListener('click',()=>{
-  localStorage.setItem('ecorean-editor-v4',JSON.stringify({colors:S.colors,themeName:S.themeName,font:S.font,bg:S.bg,radius:S.radius,btnStyle:S.btnStyle,glassBlur:S.glassBlur,glassOpacity:S.glassOpacity,shadowDefault:S.shadowDefault,gridGap:S.gridGap,cursor:S.cursor,cursorOpts:S.cursorOpts,freeMode:S.freeMode,pages:S.pages,activePage:S.activePage}));
-  const sb=document.getElementById('btn-save');sb.innerHTML='<i class="ti ti-check"></i> 저장됨';
-  setTimeout(()=>{sb.innerHTML='<i class="ti ti-device-floppy"></i> 저장';},1500);
+  const st=currentDocState();
+  const sb=document.getElementById('btn-save');
+  IDB.set('local',st).then(()=>{
+    try{const j=JSON.stringify(st);if(j.length<4.5e6)localStorage.setItem('ecorean-editor-v4',j);else localStorage.removeItem('ecorean-editor-v4');}catch(e){}
+    sb.innerHTML='<i class="ti ti-check"></i> 저장됨';
+    setTimeout(()=>{sb.innerHTML='<i class="ti ti-device-floppy"></i> 저장';},1500);
+  }).catch(err=>{
+    alert('로컬 저장 실패: '+(err&&err.message||err)+'\n(시크릿 모드에서는 저장이 제한될 수 있습니다)');
+  });
 });
 document.getElementById('btn-load').addEventListener('click',()=>{
-  const saved=localStorage.getItem('ecorean-editor-v4');
-  if(!saved)return alert('저장된 작업이 없습니다');
-  try{
-    const d=JSON.parse(saved);Object.assign(S,d);S.selectedId=null;S.activePage=d.activePage||0;
-    pushHist();renderLeft();renderAll();
-  }catch(e){alert('불러오기 실패');}
+  IDB.get('local').catch(()=>null).then(d=>{
+    if(!d){const saved=localStorage.getItem('ecorean-editor-v4');if(!saved)return alert('저장된 작업이 없습니다');try{d=JSON.parse(saved);}catch(e){return alert('불러오기 실패');}}
+    // 자동 백업이 더 최신이면 안내
+    IDB.get('autosave').catch(()=>null).then(a=>{
+      if(a&&(!d.savedAt||a.savedAt>d.savedAt)&&confirm('마지막 [저장]보다 최신 자동 백업이 있습니다.\n자동 백업을 불러올까요? (취소 = 수동 저장본)')) d=a;
+      Object.assign(S,d);S.selectedId=null;S.activePage=d.activePage||0;
+      pushHist();renderLeft();renderAll();
+    });
+  });
 });
+// 자동 백업: 45초마다 변경 감지 시 IndexedDB 'autosave' + 탭 이탈 시 즉시
+let _lastAutoIdx=-1;
+function autoBackup(){
+  if(S.historyIdx===_lastAutoIdx)return;
+  _lastAutoIdx=S.historyIdx;
+  IDB.set('autosave',currentDocState()).catch(()=>{});
+}
+setInterval(autoBackup,45000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autoBackup();});
 
 /* ── 서버 문서 (app_documents 기반, 문서별 분리·전 직원 공유) 2026-08-05 ── */
 (function(){
@@ -2645,7 +2750,11 @@ document.getElementById('btn-load').addEventListener('click',()=>{
       S.cloudDocKey='doc-'+Date.now()+'-'+Math.floor(Math.random()*1e4);
     }
     try{
-      await APP_CLOUD.save('editor',S.cloudDocKey,S.cloudDocTitle||'제목없음',snapshot());
+      const snap=snapshot();
+      const bytes=JSON.stringify(snap).length;
+      if(bytes>7e6&&!confirm('문서가 큽니다 ('+(bytes/1048576).toFixed(1)+'MB). 이미지가 많으면 저장이 실패할 수 있습니다.\n계속할까요?'))return;
+      IDB.set('backup-before-cloud',currentDocState()).catch(()=>{}); // 서버 저장 직전 로컬 백업
+      await APP_CLOUD.save('editor',S.cloudDocKey,S.cloudDocTitle||'제목없음',snap);
       const b=document.getElementById('btn-cloud-doc');const o=b.innerHTML;
       b.innerHTML='<i class="ti ti-check"></i> 서버 저장됨';setTimeout(()=>{b.innerHTML=o;},1500);
     }catch(e){alert('서버 저장 실패: '+e.message);}
