@@ -46,9 +46,16 @@ function updateOrthoFAB(){
 
 // ===== 도구 =====
 function setTool(tool){
+  const _prevTool=STATE.selectedTool;
   STATE.selectedTool=tool;
   document.querySelectorAll('.tool-btn').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));
   drawState=null;STATE.measureFirst=null;polyState=null;leaderDrawState=null;
+  // 2026-08-23: 옵셋 — 도구 선택 즉시 거리 입력 (탭에서 캔버스를 먼저 탭할 필요 없음, 매회 입력 원칙)
+  if(tool==='offset'&&_prevTool!=='offset'){
+    if(typeof offsetState!=='undefined') offsetState=null;
+    enterCmdMode('offset-d',{},'옵셋 거리(mm):','거리 입력 후 Enter → 객체 클릭 → 방향 클릭'+(STATE._lastOffsetDist?' (Enter만=이전 '+STATE._lastOffsetDist+'mm)':''));
+    if(STATE._lastOffsetDist&&typeof _prefillCmdInput==='function') _prefillCmdInput(STATE._lastOffsetDist);
+  }
   if(typeof freePolyState!=='undefined'){freePolyState=null;document.getElementById('polyclose-fab')?.classList.add('hidden');} // v5.9
   drawGroup.destroyChildren();previewLayer.batchDraw();
   container.className='tool-'+tool;

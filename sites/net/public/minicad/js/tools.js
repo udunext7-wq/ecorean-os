@@ -1172,6 +1172,27 @@ function circleCircleIntersection(x1,y1,r1,x2,y2,r2){
 // v5.3: 브레이크 — 선분을 클릭점에서 분할
 // v5.4: 벽 클릭 → 자동 치수선 생성 (벽 양 끝점 기준)
 // v5.9: Offset — 같은 타입 복사(선→선, 벽→벽), 연속 사용
+// 2026-08-23: 공간의 공유 vertex 분리 — sp 의 vertexIds 중 (keepIds 세트 밖의) 다른 공간·타 소속 벽과
+//  공유된 것을 복제해 sp 와 sp 소속 벽만 새 vertex 를 쓰게 한다. 이웃이 함께 끌려오지 않게 하는 핵심.
+function _detachSharedSpaceVerts(sp,keepIds){
+  sp.vertexIds=sp.vertexIds.map(vid=>{
+    const shared=STATE.spaces.some(s=>s.id!==sp.id&&!(keepIds&&keepIds.has(s.id))&&s.vertexIds&&s.vertexIds.includes(vid))
+               ||STATE.walls.some(w=>w.spaceId!==sp.id&&!(keepIds&&w.spaceId&&keepIds.has(w.spaceId))&&(w.v1Id===vid||w.v2Id===vid));
+    if(!shared) return vid;
+    const v=STATE.vertices.find(x=>x.id===vid);
+    if(!v) return vid;
+    const nv={id:makeId('v'),x:v.x,y:v.y};
+    STATE.vertices.push(nv);
+    STATE.walls.forEach(w=>{
+      if(w.spaceId!==sp.id) return;
+      if(w.v1Id===vid) w.v1Id=nv.id;
+      if(w.v2Id===vid) w.v2Id=nv.id;
+    });
+    return nv.id;
+  });
+}
+window._detachSharedSpaceVerts=_detachSharedSpaceVerts;
+
 let offsetState=null; // {distance, target?}
 function handleOffsetClick(pos){
   const mm=getMm(pos);
@@ -2190,6 +2211,13 @@ stage.on('mousedown touchstart',e=>{
               return;
             }
             STATE.selectedKind=found.kind;STATE.selectedId=found.id;
+            // 2026-08-23: 다중 드래그도 공유 vertex 분리 (선택 세트 밖 공간·벽과의 공유만) — 대표 지시 9번 보강
+            const _keep=new Set(STATE.boxSelection.filter(b=>b.kind==='space').map(b=>b.id));
+            STATE.boxSelection.forEach(b=>{
+              if(b.kind!=='space') return;
+              const sp=STATE.spaces.find(x=>x.id===b.id);
+              if(sp&&sp.vertexIds) _detachSharedSpaceVerts(sp,_keep);
+            });
             const items=STATE.boxSelection.map(b=>{
               const arr=getArr(b.kind);
               const obj=arr?arr.find(o=>o.id===b.id):null;
@@ -2230,29 +2258,8 @@ stage.on('mousedown touchstart',e=>{
               if(STATE.altLatched){STATE.altLatched=false;if(typeof refreshTouchQuickBar==='function') refreshTouchQuickBar();}
             }
           }else{
-            // 공간 드래그 시작: 다른 공간과 공유 중인 vertex 분리 (이동 오염 방지)
-            // vertexIds 뿐 아니라 이 공간의 walls.v1Id/v2Id도 함께 교체해야 벽이 늘어나지 않음
-            if(found.kind==='space'&&found.obj.vertexIds){
-              found.obj.vertexIds=found.obj.vertexIds.map(vid=>{
-                // 2026-08-22: 다른 공간뿐 아니라 이 공간 소속이 아닌 벽(자유벽·이웃 벽)과의 공유도 분리 (대표 지시 9번)
-                const isShared=STATE.spaces.some(s=>s.id!==found.obj.id&&s.vertexIds&&s.vertexIds.includes(vid))
-                             ||STATE.walls.some(w=>w.spaceId!==found.obj.id&&(w.v1Id===vid||w.v2Id===vid));
-                if(isShared){
-                  const v=STATE.vertices.find(v=>v.id===vid);
-                  if(v){
-                    const nv={id:makeId('v'),x:v.x,y:v.y};
-                    STATE.vertices.push(nv);
-                    STATE.walls.forEach(w=>{
-                      if(w.spaceId!==found.obj.id) return;
-                      if(w.v1Id===vid) w.v1Id=nv.id;
-                      if(w.v2Id===vid) w.v2Id=nv.id;
-                    });
-                    return nv.id;
-                  }
-                }
-                return vid;
-              });
-            }
+            // 공간 드래그 시작: 공유 vertex 분리 (이동 오염 방지) — 2026-08-23 헬퍼로 추출, 다중 드래그와 공용
+            if(found.kind==='space'&&found.obj.vertexIds) _detachSharedSpaceVerts(found.obj,null);
             dragMoveState={kind:found.kind,id:found.id,startMm:rawMm(pos),baseObj:JSON.parse(JSON.stringify(found.obj)),
               contained:found.kind==='space'?_captureContained(found.id):null};
           }

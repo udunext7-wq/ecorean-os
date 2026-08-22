@@ -47,7 +47,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=tablet7">
+<link rel="stylesheet" href="css/style.css?v=tablet8">
 </head>
 <body>
 <div id="loading"><div class="spinner"></div><div class="msg">ECOREAN MiniCAD v5.9 로딩…</div></div>
@@ -600,17 +600,17 @@
   </div>
 </div>
 
-<script src="js/state.js?v=tablet7"></script>
-<script src="js/data.js?v=tablet7"></script>
-<script src="js/library.js?v=tablet7"></script>
-<script src="js/engine.js?v=tablet7"></script>
-<script src="js/tools.js?v=tablet7"></script>
-<script src="js/ui.js?v=tablet7"></script>
-<script src="js/layout.js?v=tablet7"></script>
-<script src="js/touch.js?v=tablet7"></script>
-<script src="js/import-cad.js?v=tablet7"></script>
-<script src="js/estimate.js?v=tablet7"></script>
-<script src="js/tests.js?v=tablet7"></script>
+<script src="js/state.js?v=tablet8"></script>
+<script src="js/data.js?v=tablet8"></script>
+<script src="js/library.js?v=tablet8"></script>
+<script src="js/engine.js?v=tablet8"></script>
+<script src="js/tools.js?v=tablet8"></script>
+<script src="js/ui.js?v=tablet8"></script>
+<script src="js/layout.js?v=tablet8"></script>
+<script src="js/touch.js?v=tablet8"></script>
+<script src="js/import-cad.js?v=tablet8"></script>
+<script src="js/estimate.js?v=tablet8"></script>
+<script src="js/tests.js?v=tablet8"></script>
 <script>
 'use strict';
 // ===== v5.9: 저작권 보호 — EULA, 우클릭 차단, 워터마크, 콘솔 경고 =====
@@ -656,7 +656,11 @@ document.addEventListener('dragstart',e=>{
 // EULA 모달 — localStorage에 동의 기록 있으면 스킵
 function _showEulaIfNeeded(){
   const KEY='ecorean_eula_accepted_v5_9';
-  const accepted=localStorage.getItem(KEY);
+  // 2026-08-23: 태블릿(시크릿 모드·storage 차단)에서 localStorage 예외 → 동의해도 모달이 안 닫히고
+  //  매번 다시 뜨던 문제 — storage 접근 전부 try/catch + cookie 폴백, 닫기는 저장과 무관하게 즉시.
+  let accepted=null;
+  try{accepted=localStorage.getItem(KEY);}catch(e){}
+  if(!accepted){try{if(document.cookie.indexOf('eco_eula=1')>=0)accepted='1';}catch(e){}}
   if(accepted){return true;}
   const modal=document.getElementById('eula-modal');
   if(!modal) return true;
@@ -664,8 +668,9 @@ function _showEulaIfNeeded(){
   // 2026-08-22: 태블릿에서 click 미발화 대비 — click+pointerup 이중 바인딩 (350ms 중복 제거)
   const _eulaBind=(el,fn)=>{let last=0;const h=()=>{const n=Date.now();if(n-last<350)return;last=n;fn();};el.addEventListener('click',h);el.addEventListener('pointerup',e=>{if(e.pointerType&&e.pointerType!=='mouse')h();});};
   _eulaBind(document.getElementById('eula-accept'),()=>{
-    localStorage.setItem(KEY,JSON.stringify({at:new Date().toISOString(),v:LICENSE_INFO.version}));
-    modal.style.display='none';
+    modal.style.display='none'; // 저장 성공 여부와 무관하게 즉시 닫기
+    try{localStorage.setItem(KEY,JSON.stringify({at:new Date().toISOString(),v:LICENSE_INFO.version}));}catch(e){}
+    try{document.cookie='eco_eula=1; max-age=31536000; path=/; SameSite=Lax';}catch(e){}
   });
   _eulaBind(document.getElementById('eula-decline'),()=>{
     modal.innerHTML='<div style="background:#1A1B2E;color:#F5F1EB;padding:40px;border-radius:12px;font-family:Inter Tight;text-align:center;max-width:420px"><div style="font-size:48px;margin-bottom:12px">🔒</div><h2 style="margin:0 0 8px 0">사용 거부됨</h2><p style="color:#9CA3AF;margin:0 0 16px 0;font-size:13px">약관에 동의하지 않으셨습니다. 본 소프트웨어를 사용할 수 없습니다.</p><p style="font-size:11px;color:#7B82B5">탭을 닫아 주십시오.</p></div>';

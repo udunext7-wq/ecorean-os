@@ -242,7 +242,8 @@ function initTouch(){
       // 손가락 = 화면 이동 (짧은 탭은 touchend 에서 선택으로 처리)
       cancelTools();
       const f=fingers[0];
-      fingerPanSt={x:f.x,y:f.y};T.gesture='fingerpan';
+      // 2026-08-23: 팬 데드존 — 12px 이상 움직여야 화면 이동 시작 (롱프레스 0.6s 대기 중 도면이 밀리던 문제)
+      fingerPanSt={x:f.x,y:f.y,x0:f.x,y0:f.y,armed:false};T.gesture='fingerpan';
       beginViewTransform();
       block(e);return;
     }
@@ -266,8 +267,13 @@ function initTouch(){
     if(T.gesture==='pinch'){movePinch();block(e);return;}
     if(T.gesture==='fingerpan'&&fingerPanSt&&fingers.length===1){
       const f=fingers[0];
+      if(!fingerPanSt.armed){
+        // 데드존 안: 화면 안 움직임 (롱프레스가 뜨면 도면 그대로)
+        if(Math.hypot(f.x-(fingerPanSt.x0??fingerPanSt.x),f.y-(fingerPanSt.y0??fingerPanSt.y))<12){block(e);return;}
+        fingerPanSt.armed=true;fingerPanSt.x=f.x;fingerPanSt.y=f.y;
+      }
       STATE.offsetX+=f.x-fingerPanSt.x;STATE.offsetY+=f.y-fingerPanSt.y;
-      fingerPanSt={x:f.x,y:f.y};
+      fingerPanSt.x=f.x;fingerPanSt.y=f.y;
       applyViewTransform();block(e);return;
     }
     // 거부된 터치만 포함된 move 는 차단
@@ -298,7 +304,7 @@ function initTouch(){
     if(T.gesture){
       // 제스처 중이던 손가락이 떨어짐 — 남은 손가락 수에 따라 전환/종료
       if(T.gesture==='pinch'&&fingers.length>=2){startPinch();}
-      else if(fingers.length===1&&fingerPanOn()){T.gesture='fingerpan';pinch=null;fingerPanSt={x:fingers[0].x,y:fingers[0].y};}
+      else if(fingers.length===1&&fingerPanOn()){T.gesture='fingerpan';pinch=null;fingerPanSt={x:fingers[0].x,y:fingers[0].y,armed:true};}
       else endGesture();
       block(e);return;
     }

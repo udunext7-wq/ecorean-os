@@ -465,6 +465,34 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       STATE.selectedKind=k0;STATE.selectedId=i0;refreshDetail();
     }else assert('배치9: 벽자재 일괄 케이스 (공간 없음 스킵)',true);
   }catch(e){if(typeof hideTextModal==='function')hideTextModal();assert('배치9: 예외 없음',false,e.message);}
+  // === 2026-08-23: 배치9 보강 (재검토) ===
+  try{
+    // [1] EULA — storage 예외에도 동의 즉시 닫힘 + cookie 폴백
+    let _k='ecorean_eula_accepted_v5_9',_origSet=Storage.prototype.setItem,_origGet=Storage.prototype.getItem;
+    try{localStorage.removeItem(_k);}catch(e){}
+    document.cookie='eco_eula=; max-age=0; path=/';
+    Storage.prototype.setItem=function(){throw new Error('storage blocked');};
+    Storage.prototype.getItem=function(){throw new Error('storage blocked');};
+    _showEulaIfNeeded();
+    const em=document.getElementById('eula-modal');
+    assert('보강: EULA 재표시(스토리지 차단)',em&&em.style.display==='flex');
+    document.getElementById('eula-accept').click();
+    assert('보강: 동의 시 storage 예외에도 즉시 닫힘',em.style.display==='none');
+    Storage.prototype.setItem=_origSet;Storage.prototype.getItem=_origGet;
+    assert('보강: cookie 폴백 기록',document.cookie.indexOf('eco_eula=1')>=0);
+    try{localStorage.setItem(_k,'{"t":1}');}catch(e){}
+    // [2] 옵셋 — 도구 선택 즉시 거리 입력 모드
+    const _t0=STATE.selectedTool;
+    setTool('select');setTool('offset');
+    assert('보강: 옵셋 선택 즉시 offset-d',STATE.cmdMode==='offset-d');
+    document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    setTool(_t0||'select');
+    // [9] 공유 vertex 분리 헬퍼 전역
+    assert('보강: _detachSharedSpaceVerts 전역',typeof window._detachSharedSpaceVerts==='function');
+  }catch(e){
+    try{Storage.prototype.setItem=Storage.prototype.setItem;}catch(_){ }
+    assert('보강: 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
