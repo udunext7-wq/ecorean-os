@@ -420,6 +420,51 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('레이아웃: split → 서랍 해제',!document.body.classList.contains('layout-drawer'));
     setLayoutMode(m0);
   }catch(e){assert('레이아웃: 예외 없음',false,e.message);}
+  // === 2026-08-22: 태블릿 오동작 9건 배치 (대표 지시) ===
+  try{
+    // [3·6] 클로저 함수 전역 노출
+    assert('배치9: 잠금·불린·복제·탭선택 전역 노출',
+      ['applyLockToSelection','lockAllObjects','subtractSelectedSpaces','intersectSelectedSpaces','findObjById','altCopyObj','_nudgeSelected','showSelectionCtxMenu'].every(k=>typeof window[k]==='function'));
+    // [3] 잠금 플래그 설정/해제
+    if(STATE.spaces.length>0){
+      const sp=STATE.spaces[0];
+      const k0=STATE.selectedKind,i0=STATE.selectedId,b0=STATE.boxSelection.slice();
+      STATE.selectedKind='space';STATE.selectedId=sp.id;STATE.boxSelection=[];
+      window.applyLockToSelection(true);
+      assert('배치9: 잠금 locked=true',sp.locked===true);
+      window.applyLockToSelection(false);
+      assert('배치9: 잠금 해제',sp.locked===false);
+      STATE.selectedKind=k0;STATE.selectedId=i0;STATE.boxSelection=b0;
+    }else assert('배치9: 잠금 케이스 (공간 없음 스킵)',true);
+    // [4] 서버 도면 meta 누락 → 현재 스펙 유지
+    const pn0=STATE.projectName,ch0=STATE.ceilingHeight,gs0=STATE.gridSize;
+    const KEYS=['vertices','spaces','walls','openings','furniture','fixtures','lights','electric','texts','measures','circles','arcs','hvac','leaders','xlines','curves','pillars'];
+    const snap={};KEYS.forEach(k=>snap[k]=STATE[k]);
+    applyCloudDoc({schema:'ECOREAN.FloorPlan.v5.9',meta:{}});
+    assert('배치9: 서버 로드 meta 빈값 → 프로젝트명·천장고·격자 유지',STATE.projectName===pn0&&STATE.ceilingHeight===ch0&&STATE.gridSize===gs0);
+    KEYS.forEach(k=>STATE[k]=snap[k]);
+    renderAll();refreshUI();
+    // [1] 도움말 — alert 대신 모달, 열고 닫기
+    assert('배치9: 텍스트 모달 함수',typeof _showTextModal==='function'&&typeof hideTextModal==='function');
+    showCmdHelp();
+    const tm=document.getElementById('text-modal-overlay');
+    assert('배치9: ? 도움말 모달 표시',!!tm&&tm.style.display==='flex');
+    hideTextModal();
+    assert('배치9: ? 도움말 모달 닫힘',tm.style.display==='none');
+    document.getElementById('btn-help').click();
+    assert('배치9: 단축키 모달 열림',document.getElementById('canvas-help').classList.contains('visible'));
+    document.getElementById('shortcut-close').click();
+    assert('배치9: 단축키 모달 ✕ 닫힘',!document.getElementById('canvas-help').classList.contains('visible'));
+    // [2] 옵셋 프리필 함수
+    assert('배치9: 옵셋 프리필 함수',typeof _prefillCmdInput==='function');
+    // [10] 공간 패널 벽자재 일괄 셀렉트 존재 (공간 선택 시)
+    if(STATE.spaces.length>0){
+      const k0=STATE.selectedKind,i0=STATE.selectedId;
+      STATE.selectedKind='space';STATE.selectedId=STATE.spaces[0].id;refreshDetail();
+      assert('배치9: 공간 패널 벽자재 일괄 셀렉트',!!document.getElementById('d-wallall'));
+      STATE.selectedKind=k0;STATE.selectedId=i0;refreshDetail();
+    }else assert('배치9: 벽자재 일괄 케이스 (공간 없음 스킵)',true);
+  }catch(e){if(typeof hideTextModal==='function')hideTextModal();assert('배치9: 예외 없음',false,e.message);}
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

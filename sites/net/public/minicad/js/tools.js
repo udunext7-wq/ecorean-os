@@ -1176,7 +1176,8 @@ let offsetState=null; // {distance, target?}
 function handleOffsetClick(pos){
   const mm=getMm(pos);
   if(!offsetState?.distance){
-    enterCmdMode('offset-d',{},'옵셋 거리(mm):','거리 Enter → 객체 클릭 → 방향 클릭');
+    enterCmdMode('offset-d',{},'옵셋 거리(mm):','거리 Enter → 객체 클릭 → 방향 클릭'+(STATE._lastOffsetDist?' (Enter만=이전 '+STATE._lastOffsetDist+'mm)':''));
+    if(STATE._lastOffsetDist) _prefillCmdInput(STATE._lastOffsetDist);
     return;
   }
   // 1단계: 객체 선택 (벽/선/원 중 가장 가까운 것)
@@ -1268,9 +1269,19 @@ function handleOffsetClick(pos){
     addXline(xl.x1+ox, xl.y1+oy, xl.x2+ox, xl.y2+oy);
     cmdToast('안내선 옵셋 '+dist+'mm — 다음 객체 클릭 (Esc=종료)');
   }
-  // 연속 사용: target만 초기화, distance·tool 유지
-  offsetState.target=null;
+  // 2026-08-22: 대표 지시 2번 — 옵셋은 매회 거리부터 다시 입력 (직전 값이 프리필되어 Enter만 치면 재사용)
+  STATE._lastOffsetDist=dist;
+  offsetState=null;
   drawGroup.destroyChildren();previewLayer.batchDraw();
+  enterCmdMode('offset-d',{},'옵셋 거리(mm):','거리 입력 후 Enter → 객체 클릭 → 방향 클릭 (Enter만=이전 '+dist+'mm)');
+  _prefillCmdInput(dist);
+}
+// 명령창 프리필 — enterCmdMode 의 0ms 클리어 이후에 값 주입
+function _prefillCmdInput(v){
+  setTimeout(()=>{
+    const inp=document.getElementById('cmd-input');
+    if(inp&&STATE.cmdMode==='offset-d'){inp.value=String(v);try{inp.select();}catch(e){}}
+  },25);
 }
 
 // v5.6: Mirror — 박스선택 또는 단일선택 객체를 기준선 대칭 복제
@@ -2193,6 +2204,15 @@ stage.on('mousedown touchstart',e=>{
             renderAll();refreshUI();
             return; // 단일 드래그 분기 스킵
           }
+          // 2026-08-22: 터치·펜 — 처음 누른 객체는 "선택만" 하고 이동하지 않는다 (대표 지시 8번)
+          //  이동하려면 이미 선택된 객체를 다시 눌러 드래그. 오터치로 선·버텍스가 밀리는 문제 방지.
+          const viaTouchSel=STATE.touch&&STATE.touch.enabled&&STATE.touch.lastType!=='mouse';
+          const wasSelected=STATE.selectedKind===found.kind&&STATE.selectedId===found.id;
+          if(viaTouchSel&&!wasSelected&&!isAlt){
+            STATE.selectedKind=found.kind;STATE.selectedId=found.id;STATE.boxSelection=[];
+            renderAll();refreshUI();
+            return;
+          }
           STATE.selectedKind=found.kind;STATE.selectedId=found.id;
           STATE.boxSelection=[];
           // v5.9: 잠금된 객체는 드래그 시작 안 함 (선택만 됨)
@@ -2214,7 +2234,9 @@ stage.on('mousedown touchstart',e=>{
             // vertexIds 뿐 아니라 이 공간의 walls.v1Id/v2Id도 함께 교체해야 벽이 늘어나지 않음
             if(found.kind==='space'&&found.obj.vertexIds){
               found.obj.vertexIds=found.obj.vertexIds.map(vid=>{
-                const isShared=STATE.spaces.some(s=>s.id!==found.obj.id&&s.vertexIds&&s.vertexIds.includes(vid));
+                // 2026-08-22: 다른 공간뿐 아니라 이 공간 소속이 아닌 벽(자유벽·이웃 벽)과의 공유도 분리 (대표 지시 9번)
+                const isShared=STATE.spaces.some(s=>s.id!==found.obj.id&&s.vertexIds&&s.vertexIds.includes(vid))
+                             ||STATE.walls.some(w=>w.spaceId!==found.obj.id&&(w.v1Id===vid||w.v2Id===vid));
                 if(isShared){
                   const v=STATE.vertices.find(v=>v.id===vid);
                   if(v){
@@ -2304,7 +2326,7 @@ function _refreshShiftOrtho(){
   if(!cur) return;
   const mm=getMm(cur);
   // 드래그 이동 중
-  if(dragMoveState&&isMouseDown){
+  if(dragMoveState&&isMouseDown&&dragMoveState.moved){
     const rmm=rawMm(cur);
     const dx2=rmm.x-dragMoveState.startMm.x, dy2=rmm.y-dragMoveState.startMm.y;
     applyDragMove(dragMoveState,dx2,dy2);
@@ -2723,6 +2745,14 @@ stage.on('mousemove touchmove',e=>{
   // arc 도구의 미리보기는 wall/line처럼 처리됨 (drawState type='arc'로 저장됨)
   else if(STATE.selectedTool==='select'&&isMouseDown&&dragMoveState){
     // v5.4: 선택된 객체 드래그 이동
+    // 2026-08-22: 드래그 데드존 — 터치·펜 12px / 마우스 3px 이상 움직여야 이동 시작 (대표 지시 7번)
+    //  롱프레스(0.6s) 대기나 손떨림으로 객체가 밀려 치수가 변하던 문제 방지. 데드존 안에서 롱프레스가 뜨면 객체는 그대로.
+    if(!dragMoveState.moved){
+      const _viaTouch=STATE.touch&&STATE.touch.lastType&&STATE.touch.lastType!=='mouse';
+      const _dz=_viaTouch?12:3;
+      if(mouseDownPos&&Math.hypot(pos.x-mouseDownPos.x,pos.y-mouseDownPos.y)<_dz) return;
+      dragMoveState.moved=true;
+    }
     // 2026-08-19: 커서 스냅(getMm)이 아닌 순수 좌표로 delta 계산 — 커서가 주변 꼭짓점에 붙어 객체가 튀던 문제 해소
     const rmm=rawMm(pos);
     const dx=rmm.x-dragMoveState.startMm.x, dy=rmm.y-dragMoveState.startMm.y;
@@ -3105,6 +3135,19 @@ window.cancelPointerGesture=function(){
 stage.on('touchcancel',()=>{window.cancelPointerGesture();});
 // 2026-08-19: 자체 테스트(tests.js 드래그 스냅)가 참조 — initTools 클로저 밖으로 노출
 window.applyDragMove=applyDragMove;
+// 2026-08-22: 태블릿 통합 메뉴(touch.js)가 참조 — 이전엔 클로저에 갇혀 있어
+//  잠금·차집합·교집합·복제·탭선택이 typeof 가드에 걸려 조용히 실패했다 (대표 지시 3·6번 근본 원인)
+window.applyLockToSelection=applyLockToSelection;
+window.lockAllObjects=lockAllObjects;
+window.subtractSelectedSpaces=subtractSelectedSpaces;
+window.intersectSelectedSpaces=intersectSelectedSpaces;
+window.showSpaceCtxMenu=showSpaceCtxMenu;window.hideSpaceCtxMenu=hideSpaceCtxMenu;
+window.showShapeConvertMenu=showShapeConvertMenu;window.hideShapeConvertMenu=hideShapeConvertMenu;
+window.showSelectionCtxMenu=showSelectionCtxMenu;window.hideSelectionCtxMenu=hideSelectionCtxMenu;
+window.findObjById=findObjById;
+window.altCopyObj=altCopyObj;
+window._nudgeSelected=_nudgeSelected;
+window._captureContained=_captureContained;
 stage.on('dblclick dbltap',e=>{
   if(STATE.selectedTool==='leader'&&leaderDrawState) finishLeader();
   if(STATE.selectedTool==='polygon'&&freePolyState) finishFreePolygon(); // v5.9: 자유 다각형 닫기
@@ -3540,6 +3583,8 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     hideBoolMenu();
     if(typeof hideLibPopup==='function') hideLibPopup();
+    document.getElementById('canvas-help')?.classList.remove('visible'); // 2026-08-22: 단축키 모달
+    if(typeof hideTextModal==='function') hideTextModal();               // 2026-08-22: ? 도움말 모달
     if(_scaleCalActive){_scaleCalActive=false;_scaleCalP1=null;showStatus('스케일 보정 취소');}
   }
   // 입력창에 포커스가 있으면 단축키 가로채지 않음 (명령어 입력 우선)

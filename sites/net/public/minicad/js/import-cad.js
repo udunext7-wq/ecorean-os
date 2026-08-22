@@ -60,10 +60,12 @@ function cadBulgePoints(x1,y1,x2,y2,bulge,segPerQuarter){
   const mx=(x1+x2)/2,my=(y1+y2)/2;
   const h=Math.sqrt(Math.max(0,r*r-d*d/4))*(bulge>0?1:-1);
   const nx=-(y2-y1)/d,ny=(x2-x1)/d;
-  const cx=mx+nx*h,cy=my+ny*h;
+  // 2026-08-22 fix: DXF 표준 — 양의 bulge 호는 진행 방향 왼쪽으로 볼록 (apex = mid + left·b·d/2).
+  //  중심은 mid − left·h, 호 진행은 a0 − θ 방향. (이전: 부호 반대 → 호가 거울상으로 렌더링)
+  const cx=mx-nx*h,cy=my-ny*h;
   const a0=Math.atan2(y1-cy,x1-cx);
   const n=Math.max(2,Math.ceil(Math.abs(theta)/(Math.PI/2)*(segPerQuarter||6)));
-  const pts=[];for(let i=1;i<=n;i++){const a=a0+theta*i/n;pts.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);}
+  const pts=[];for(let i=1;i<=n;i++){const a=a0-theta*i/n;pts.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);}
   return pts;
 }
 

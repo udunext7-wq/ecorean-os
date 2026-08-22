@@ -56,6 +56,8 @@ function initTouch(){
     };
     Konva.Shape.prototype.__ecoHitPatched=true;
   }
+  // 2026-08-22: 대표 지시 8번 — 터치 기기에서 draggable 핸들(버텍스·회전 등)은 8px 이상 움직여야 드래그 시작
+  if(isTouchDevice&&window.Konva){Konva.dragDistance=Math.max(Konva.dragDistance||0,8);}
 
   // ── 1. 입력모드 배지 (상태바)
   let badge=document.getElementById('input-mode-badge');

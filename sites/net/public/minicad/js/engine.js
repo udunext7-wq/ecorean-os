@@ -2328,6 +2328,25 @@ function renderSpaceHandles(){
       handle.opacity(1);handle.radius(8);
       handle.fill('#FFFFFF');
       handle.shadowColor('#D4FF3D');handle.shadowBlur(28);handle.shadowOpacity(1);
+      // 2026-08-22: 대표 지시 9번 — 공간 꼭짓점이 다른 공간·타 소속 벽과 공유돼 있으면 분리 후 이동
+      //  (이전: 공유 vertex 를 그대로 이동 → 이웃 공간 모서리가 함께 끌려옴)
+      if(STATE.selectedKind==='space'){
+        const sp=STATE.spaces.find(s=>s.id===STATE.selectedId);
+        if(sp&&sp.vertexIds&&sp.vertexIds.includes(vid)){
+          const shared=STATE.spaces.some(s=>s.id!==sp.id&&s.vertexIds&&s.vertexIds.includes(vid))
+                     ||STATE.walls.some(w=>w.spaceId!==sp.id&&(w.v1Id===vid||w.v2Id===vid));
+          if(shared){
+            const v0=getVertex(vid);
+            if(v0){
+              const nv={id:makeId('v'),x:v0.x,y:v0.y};
+              STATE.vertices.push(nv);
+              sp.vertexIds=sp.vertexIds.map(x=>x===vid?nv.id:x);
+              STATE.walls.forEach(w=>{if(w.spaceId===sp.id){if(w.v1Id===vid)w.v1Id=nv.id;if(w.v2Id===vid)w.v2Id=nv.id;}});
+              vid=nv.id;
+            }
+          }
+        }
+      }
       // 직교 기준점 = vertex 원래 mm 좌표
       const vNow=getVertex(vid);
       _spaceHandleStartMm=vNow?{x:vNow.x,y:vNow.y}:null;

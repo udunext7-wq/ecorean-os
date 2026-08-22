@@ -320,8 +320,16 @@ function refreshDetail(){
       '<select id="d-floor">'+
       Object.entries(FLOOR_MATERIALS).map(([k,m])=>'<option value="'+k+'"'+(k===s.floorMaterial?' selected':'')+'>'+m.name+'</option>').join('')+
       '</select></div>'+
-      '<div class="field"><label class="field-label">벽자재</label>'+
-      '<span style="font-size:11px;color:var(--text-tertiary)">벽 선택 → 개별 설정</span>'+
+      '<div class="field"><label class="field-label">벽자재 (일괄)</label>'+
+      (function(){ // 2026-08-22: 대표 지시 10번 — 공간의 모든 벽에 일괄 적용 (개별 설정은 벽 선택)
+        const spWalls=STATE.walls.filter(w=>w.spaceId===s.id&&!w.isLine);
+        const set=[...new Set(spWalls.map(w=>w.finishMaterial||''))];
+        const common=set.length===1?set[0]:null;
+        return '<select id="d-wallall" title="이 공간의 모든 벽에 일괄 적용 — 개별 설정은 벽을 직접 선택">'+
+          '<option value=""'+(common===''||common===null?' selected':'')+'>'+(common===null?'(혼합/개별)':'미정')+'</option>'+
+          Object.entries(WALL_MATERIALS).map(([k,m])=>'<option value="'+k+'"'+(k===common?' selected':'')+'>'+m.name+'</option>').join('')+
+        '</select>';
+      })()+
       '</div></div>'+
       '<div class="field-row"><div class="field"><label class="field-label">자재 등급</label>'+
       '<select id="d-grade"><option value="STANDARD"'+(s.materialGrade==='STANDARD'?' selected':'')+'>표준</option>'+
@@ -351,6 +359,15 @@ function refreshDetail(){
     });
     document.getElementById('d-ch').addEventListener('change',e=>{s.ceilingHeight_mm=e.target.value?parseInt(e.target.value):null;refreshUI();});
     document.getElementById('d-floor').addEventListener('change',e=>{s.floorMaterial=e.target.value;saveHistory();refreshUI();showStatus('바닥재: '+FLOOR_MATERIALS[e.target.value].name);});
+    // 2026-08-22: 벽자재 일괄 (대표 지시 10번)
+    const _wAll=document.getElementById('d-wallall');
+    if(_wAll) _wAll.addEventListener('change',e=>{
+      const v=e.target.value; if(!v) return;
+      let n=0;
+      STATE.walls.forEach(w=>{if(w.spaceId===s.id&&!w.isLine){w.finishMaterial=v;n++;}});
+      saveHistory();renderAll();refreshUI();
+      showStatus('벽자재 일괄: '+(WALL_MATERIALS[v]?.name||v)+' — '+n+'개 벽');
+    });
     document.getElementById('d-grade').addEventListener('change',e=>{s.materialGrade=e.target.value;refreshUI();});
     document.getElementById('d-diff').addEventListener('change',e=>{s.difficulty=e.target.value;refreshUI();});
     document.getElementById('d-del').addEventListener('click',deleteSelected);
@@ -450,12 +467,23 @@ function refreshDetail(){
       '<option value=""'+(w.finishMaterial?'':' selected')+'>미정</option>'+
       Object.entries(WALL_MATERIALS).map(([k,m])=>'<option value="'+k+'"'+(k===w.finishMaterial?' selected':'')+'>'+m.name+'</option>').join('')+
       '</select></div>'+
+      '<button class="btn sm" id="d-wmat-all" style="width:100%;margin:2px 0 8px" title="현재 선택한 마감재를 도면의 모든 벽에 적용">⇊ 이 자재를 모든 벽에 적용</button>'+
       '<div class="field"><label class="field-label">개별 높이 (mm)</label>'+
       '<input type="number" id="d-wh" value="'+(w.height_mm||'')+'" placeholder="공간 천장고 따름" step="50"></div>'+
       '<div class="field"><label class="field-label">두께 (mm)</label>'+
       '<input type="number" id="d-wthick" value="'+(w.thickness||100)+'" step="10"></div>'+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
+    // 2026-08-22: 전체 벽 일괄 적용 (대표 지시 10번)
+    document.getElementById('d-wmat-all').addEventListener('click',()=>{
+      const v=w.finishMaterial;
+      if(!v){cmdToast('먼저 이 벽의 마감재를 선택하세요');return;}
+      const total=STATE.walls.filter(x=>!x.isLine).length;
+      if(!confirm('도면의 모든 벽 '+total+'개에 "'+(WALL_MATERIALS[v]?.name||v)+'" 적용?'))return;
+      let n=0;STATE.walls.forEach(x=>{if(!x.isLine){x.finishMaterial=v;n++;}});
+      saveHistory();renderAll();refreshUI();
+      showStatus('전체 벽 마감재: '+(WALL_MATERIALS[v]?.name||v)+' — '+n+'개');
+    });
     document.getElementById('d-wmat').addEventListener('change',e=>{w.finishMaterial=e.target.value||null;saveHistory();refreshUI();showStatus('벽 마감재: '+(WALL_MATERIALS[e.target.value]?.name||'미정'));});
     document.getElementById('d-wh').addEventListener('change',e=>{w.height_mm=e.target.value?parseInt(e.target.value):null;saveHistory();refreshUI();});
     document.getElementById('d-wthick').addEventListener('change',e=>{w.thickness=parseInt(e.target.value)||100;saveHistory();renderAll();refreshUI();});
@@ -1086,6 +1114,7 @@ function buildJSON(){
       unit:'mm',
       ceilingHeight_mm:STATE.ceilingHeight,
       wallThickness:STATE.wallThickness,
+      gridSize:STATE.gridSize, // 2026-08-22: 저장 당시 스냅 격자 스펙 왕복
       drawnAt:new Date().toISOString(),
       tool:'ECOREAN MiniCAD v5.9', // v5.9 fix: 버전 표기 불일치 수정
       coordOrigin:{x:0,y:0,units:'mm',rotation_deg:0,yAxis:'down',note:'화면 좌표계 — +y는 남쪽(아래). placement의 north는 -y 방향'}, // v5.9: 외부 파서의 남북 반전 오해석 방지
@@ -1443,8 +1472,10 @@ function loadJSON(){
       try{
         const d=JSON.parse(ev.target.result);
         if(!d.schema||!d.schema.startsWith('ECOREAN.FloorPlan')){alert('ECOREAN MiniCAD 파일이 아닙니다');return;}
-        STATE.projectName=d.meta.project||'불러온 프로젝트';
-        STATE.ceilingHeight=d.meta.ceilingHeight_mm||2400;
+        // 2026-08-22: 대표 지시 4번 — 저장 당시 스펙을 그대로 적용, meta 에 없는 값은 현재 값 유지 (기본값으로 초기화 금지)
+        STATE.projectName=(d.meta&&d.meta.project)||STATE.projectName;
+        STATE.ceilingHeight=(d.meta&&d.meta.ceilingHeight_mm)||STATE.ceilingHeight;
+        if(d.meta&&d.meta.gridSize){STATE.gridSize=d.meta.gridSize;const g=document.getElementById('snap-unit');if(g)g.value=String(d.meta.gridSize);}
         if(d.meta.wallThickness) {STATE.wallThickness=d.meta.wallThickness;const el=document.getElementById('wall-thickness');if(el) el.value=d.meta.wallThickness;}
         STATE.vertices=d.vertices||[];
         STATE.spaces=d.spaces||[];STATE.walls=d.walls||[];
@@ -1494,9 +1525,11 @@ function applyCloudDoc(d){
   if(!d||!d.schema||!String(d.schema).startsWith('ECOREAN.FloorPlan')){
     alert('ECOREAN MiniCAD 도면 데이터가 아닙니다');return false;
   }
-  STATE.projectName=d.meta.project||'불러온 프로젝트';
-  STATE.ceilingHeight=d.meta.ceilingHeight_mm||2400;
-  if(d.meta.wallThickness){STATE.wallThickness=d.meta.wallThickness;const el=document.getElementById('wall-thickness');if(el)el.value=d.meta.wallThickness;}
+  // 2026-08-22: 대표 지시 4번 — 저장 당시 스펙 유지, meta 누락 값은 현재 값 유지
+  STATE.projectName=(d.meta&&d.meta.project)||STATE.projectName;
+  STATE.ceilingHeight=(d.meta&&d.meta.ceilingHeight_mm)||STATE.ceilingHeight;
+  if(d.meta&&d.meta.gridSize){STATE.gridSize=d.meta.gridSize;const g=document.getElementById('snap-unit');if(g)g.value=String(d.meta.gridSize);}
+  if(d.meta&&d.meta.wallThickness){STATE.wallThickness=d.meta.wallThickness;const el=document.getElementById('wall-thickness');if(el)el.value=d.meta.wallThickness;}
   STATE.vertices=d.vertices||[];
   STATE.spaces=d.spaces||[];STATE.walls=d.walls||[];
   STATE.openings=d.openings||[];STATE.furniture=d.furniture||[];
@@ -1506,7 +1539,7 @@ function applyCloudDoc(d){
   STATE.circles=d.circles||[];STATE.arcs=d.arcs||[];STATE.hvac=d.hvac||[];
   STATE.leaders=d.leaders||[];STATE.xlines=d.xlines||[];
   STATE.curves=d.curves||[];STATE.pillars=d.pillars||[];
-  if(d.meta.aiPromptHints)STATE.aiPromptHints={...STATE.aiPromptHints,...d.meta.aiPromptHints};
+  if(d.meta&&d.meta.aiPromptHints)STATE.aiPromptHints={...STATE.aiPromptHints,...d.meta.aiPromptHints};
   migrateLoadedState(d.schema);
   document.getElementById('project-name').value=STATE.projectName;
   document.getElementById('ceiling-height').value=STATE.ceilingHeight;
@@ -2526,15 +2559,45 @@ document.getElementById('btn-copy-json').addEventListener('click',()=>{
   copyToClipboard(JSON.stringify(buildJSONProfile(_prof?_prof.value:'full'),null,2));
 });
 document.getElementById('json-profile')?.addEventListener('change',()=>refreshJSON()); // v5.9
-document.getElementById('btn-help').addEventListener('click',()=>{
+// 2026-08-22: 대표 지시 1번 — 태블릿에서 click 이 씹혀 모달이 안 닫히던 문제.
+//  click + pointerup(터치·펜) 이중 바인딩, 350ms 중복 제거로 두 이벤트가 다 와도 한 번만 실행.
+function _tapBind(el,fn){
+  if(!el) return;
+  let last=0;
+  const h=e=>{const n=performance.now();if(n-last<350)return;last=n;fn(e);};
+  el.addEventListener('click',h);
+  el.addEventListener('pointerup',e=>{if(e.pointerType&&e.pointerType!=='mouse')h(e);});
+}
+_tapBind(document.getElementById('btn-help'),()=>{
   document.getElementById('canvas-help').classList.toggle('visible');
 });
-document.getElementById('shortcut-close').addEventListener('click',()=>{
+_tapBind(document.getElementById('shortcut-close'),()=>{
   document.getElementById('canvas-help').classList.remove('visible');
 });
-document.getElementById('canvas-help').addEventListener('click',e=>{
-  if(e.target===e.currentTarget) e.currentTarget.classList.remove('visible');
+_tapBind(document.getElementById('canvas-help'),e=>{
+  if(e.target===document.getElementById('canvas-help')) e.target.classList.remove('visible');
 });
+// 2026-08-22: alert() 대체 텍스트 모달 — 태블릿(전체화면/DeX)에서 alert 가 막히거나 재출현하던 문제 회피
+function _showTextModal(title,text){
+  let ov=document.getElementById('text-modal-overlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='text-modal-overlay';
+    ov.style.cssText='display:none;position:fixed;inset:0;z-index:10060;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)';
+    ov.innerHTML='<div style="max-width:560px;width:92%;max-height:82vh;display:flex;flex-direction:column;background:#14151F;border:1px solid #3D4466;border-radius:12px;overflow:hidden">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 8px 10px 16px;border-bottom:1px solid #2D3050"><b id="text-modal-title" style="font-size:14px;color:#F5F1EB"></b>'
+      +'<button type="button" id="text-modal-close" style="min-width:44px;min-height:44px;background:none;border:none;color:#9CA3AF;font-size:18px;cursor:pointer">✕</button></div>'
+      +'<pre id="text-modal-body" style="margin:0;padding:14px 18px;overflow:auto;white-space:pre-wrap;font-family:\'JetBrains Mono\',monospace;font-size:11.5px;line-height:1.55;color:#D8D4C8"></pre></div>';
+    document.body.appendChild(ov);
+    const close=()=>{ov.style.display='none';};
+    _tapBind(document.getElementById('text-modal-close'),close);
+    _tapBind(ov,e=>{if(e.target===ov)close();});
+  }
+  document.getElementById('text-modal-title').textContent=title;
+  document.getElementById('text-modal-body').textContent=text;
+  ov.style.display='flex';
+}
+function hideTextModal(){const ov=document.getElementById('text-modal-overlay');if(ov)ov.style.display='none';}
 document.getElementById('snap-unit').addEventListener('change',e=>{STATE.gridSize=parseInt(e.target.value);drawGrid();showStatus('스냅 거리: '+e.target.value+'mm');});
 document.getElementById('ceiling-height').addEventListener('change',e=>{const v=_numField(e,1000);if(v==null){e.target.value=STATE.ceilingHeight;return;}STATE.ceilingHeight=v;refreshUI();});
 document.getElementById('wall-thickness').addEventListener('change',e=>{
@@ -3256,7 +3319,7 @@ function duplicateSelectedAt(dx,dy){
 }
 
 function showCmdHelp(){
-  alert(`ECOREAN MiniCAD v5.1 — AutoCAD 스타일 단계별 입력
+  _showTextModal('❔ 명령어 도움말',`ECOREAN MiniCAD v5.1 — AutoCAD 스타일 단계별 입력
 
 [새 워크플로우 v5.1 — 클릭 후 명령창 자동 활성]
 

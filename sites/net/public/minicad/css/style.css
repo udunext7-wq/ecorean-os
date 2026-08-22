@@ -729,3 +729,7 @@ body.layout-drawer .kpi-bar::-webkit-scrollbar{display:none}
 body.layout-phone .brand-sub{display:none}
 /* 서랍 모드에서 캔버스 모서리 여백 축소 */
 body.layout-drawer .canvas-area{border-radius:var(--r-sm)}
+
+/* 2026-08-22: 태블릿 — 모달 닫기 탭 타깃 확대 */
+body.pointer-coarse .sc-close{min-width:44px;min-height:44px;font-size:18px}
+body.pointer-coarse .cmd-help-btn{min-width:40px;min-height:36px}
