@@ -467,20 +467,23 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){if(typeof hideTextModal==='function')hideTextModal();assert('배치9: 예외 없음',false,e.message);}
   // === 2026-08-23: 배치9 보강 (재검토) ===
   try{
-    // [1] EULA — storage 예외에도 동의 즉시 닫힘 + cookie 폴백
-    let _k='ecorean_eula_accepted_v5_9',_origSet=Storage.prototype.setItem,_origGet=Storage.prototype.getItem;
-    try{localStorage.removeItem(_k);}catch(e){}
-    document.cookie='eco_eula=; max-age=0; path=/';
-    Storage.prototype.setItem=function(){throw new Error('storage blocked');};
-    Storage.prototype.getItem=function(){throw new Error('storage blocked');};
-    _showEulaIfNeeded();
+    // [1] EULA — 시작 시 항상 표시 + storage 예외에도 동의 즉시 닫힘 + 푸터 재열람 후에도 동의 동작
+    let _origSet=Storage.prototype.setItem;
     const em=document.getElementById('eula-modal');
-    assert('보강: EULA 재표시(스토리지 차단)',em&&em.style.display==='flex');
+    _showEulaIfNeeded();
+    assert('보강: EULA 시작 시 항상 표시',em&&em.style.display==='flex');
+    Storage.prototype.setItem=function(){throw new Error('storage blocked');};
     document.getElementById('eula-accept').click();
+    Storage.prototype.setItem=_origSet;
     assert('보강: 동의 시 storage 예외에도 즉시 닫힘',em.style.display==='none');
-    Storage.prototype.setItem=_origSet;Storage.prototype.getItem=_origGet;
-    assert('보강: cookie 폴백 기록',document.cookie.indexOf('eco_eula=1')>=0);
-    try{localStorage.setItem(_k,'{"t":1}');}catch(e){}
+    assert('보강: cookie 동의 이력 기록',document.cookie.indexOf('eco_eula=1')>=0);
+    // 푸터 "All Rights Reserved" 재열람 → 동의로 닫힘 (이전: 무반응 버그)
+    document.getElementById('copyright-link').click();
+    assert('보강: 푸터 링크로 약관 재표시',em.style.display==='flex');
+    // _eulaBind 중복제거(350ms)를 지나도록 대기 후 동의
+    const _tw=performance.now();while(performance.now()-_tw<380){}
+    document.getElementById('eula-accept').click();
+    assert('보강: 재열람 후 동의 → 닫힘',em.style.display==='none');
     // [2] 옵셋 — 도구 선택 즉시 거리 입력 모드
     const _t0=STATE.selectedTool;
     setTool('select');setTool('offset');

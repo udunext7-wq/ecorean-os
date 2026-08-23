@@ -47,7 +47,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=tablet8">
+<link rel="stylesheet" href="css/style.css?v=tablet9">
 </head>
 <body>
 <div id="loading"><div class="spinner"></div><div class="msg">ECOREAN MiniCAD v5.9 로딩…</div></div>
@@ -600,17 +600,17 @@
   </div>
 </div>
 
-<script src="js/state.js?v=tablet8"></script>
-<script src="js/data.js?v=tablet8"></script>
-<script src="js/library.js?v=tablet8"></script>
-<script src="js/engine.js?v=tablet8"></script>
-<script src="js/tools.js?v=tablet8"></script>
-<script src="js/ui.js?v=tablet8"></script>
-<script src="js/layout.js?v=tablet8"></script>
-<script src="js/touch.js?v=tablet8"></script>
-<script src="js/import-cad.js?v=tablet8"></script>
-<script src="js/estimate.js?v=tablet8"></script>
-<script src="js/tests.js?v=tablet8"></script>
+<script src="js/state.js?v=tablet9"></script>
+<script src="js/data.js?v=tablet9"></script>
+<script src="js/library.js?v=tablet9"></script>
+<script src="js/engine.js?v=tablet9"></script>
+<script src="js/tools.js?v=tablet9"></script>
+<script src="js/ui.js?v=tablet9"></script>
+<script src="js/layout.js?v=tablet9"></script>
+<script src="js/touch.js?v=tablet9"></script>
+<script src="js/import-cad.js?v=tablet9"></script>
+<script src="js/estimate.js?v=tablet9"></script>
+<script src="js/tests.js?v=tablet9"></script>
 <script>
 'use strict';
 // ===== v5.9: 저작권 보호 — EULA, 우클릭 차단, 워터마크, 콘솔 경고 =====
@@ -654,21 +654,17 @@ document.addEventListener('dragstart',e=>{
   if(e.target.tagName==='IMG'||e.target.tagName==='CANVAS') e.preventDefault();
 });
 // EULA 모달 — localStorage에 동의 기록 있으면 스킵
-function _showEulaIfNeeded(){
-  const KEY='ecorean_eula_accepted_v5_9';
-  // 2026-08-23: 태블릿(시크릿 모드·storage 차단)에서 localStorage 예외 → 동의해도 모달이 안 닫히고
-  //  매번 다시 뜨던 문제 — storage 접근 전부 try/catch + cookie 폴백, 닫기는 저장과 무관하게 즉시.
-  let accepted=null;
-  try{accepted=localStorage.getItem(KEY);}catch(e){}
-  if(!accepted){try{if(document.cookie.indexOf('eco_eula=1')>=0)accepted='1';}catch(e){}}
-  if(accepted){return true;}
+function _bindEulaButtons(){
+  // 2026-08-23 fix: 버튼 바인딩을 표시 여부와 분리 — 이전엔 동의 기록이 있으면 _showEulaIfNeeded 가
+  //  바인딩 전에 return → 푸터 "All Rights Reserved" 로 다시 연 모달에서 "동의하고 계속"이 무반응이었다.
   const modal=document.getElementById('eula-modal');
-  if(!modal) return true;
-  modal.style.display='flex';
-  // 2026-08-22: 태블릿에서 click 미발화 대비 — click+pointerup 이중 바인딩 (350ms 중복 제거)
-  const _eulaBind=(el,fn)=>{let last=0;const h=()=>{const n=Date.now();if(n-last<350)return;last=n;fn();};el.addEventListener('click',h);el.addEventListener('pointerup',e=>{if(e.pointerType&&e.pointerType!=='mouse')h();});};
+  if(!modal||modal.dataset.bound) return;
+  modal.dataset.bound='1';
+  const KEY='ecorean_eula_accepted_v5_9';
+  // 태블릿에서 click 미발화 대비 — click+pointerup 이중 바인딩 (350ms 중복 제거)
+  const _eulaBind=(el,fn)=>{if(!el)return;let last=0;const h=()=>{const n=Date.now();if(n-last<350)return;last=n;fn();};el.addEventListener('click',h);el.addEventListener('pointerup',e=>{if(e.pointerType&&e.pointerType!=='mouse')h();});};
   _eulaBind(document.getElementById('eula-accept'),()=>{
-    modal.style.display='none'; // 저장 성공 여부와 무관하게 즉시 닫기
+    modal.style.display='none'; // 저장 성공 여부와 무관하게 즉시 닫기 (storage 차단 대비)
     try{localStorage.setItem(KEY,JSON.stringify({at:new Date().toISOString(),v:LICENSE_INFO.version}));}catch(e){}
     try{document.cookie='eco_eula=1; max-age=31536000; path=/; SameSite=Lax';}catch(e){}
   });
@@ -678,16 +674,31 @@ function _showEulaIfNeeded(){
     const c=document.getElementById('canvas-container');
     if(c){c.style.pointerEvents='none';c.style.opacity='0.15';c.style.filter='blur(3px)';}
   });
+}
+function _showEulaIfNeeded(){
+  // 2026-08-23 대표 지시: 사용약관 화면은 앱 시작 시 맨 처음에 항상 표시.
+  //  (동의 기록은 localStorage/cookie 에 이력으로만 남기고, 표시 스킵에는 쓰지 않는다)
+  const modal=document.getElementById('eula-modal');
+  if(!modal) return true;
+  _bindEulaButtons();
+  modal.style.display='flex';
   return false;
 }
 // 푸터 © 링크 → EULA 다시 열기
 document.addEventListener('DOMContentLoaded',()=>{
   const lnk=document.getElementById('copyright-link');
-  if(lnk) lnk.addEventListener('click',e=>{
-    e.preventDefault();
+  const openEula=e=>{
+    if(e) e.preventDefault();
+    _bindEulaButtons(); // 2026-08-23: 재열람 시에도 버튼 동작 보장
     const modal=document.getElementById('eula-modal');
     if(modal) modal.style.display='flex';
-  });
+  };
+  if(lnk){
+    let last=0;
+    const h=e=>{const n=Date.now();if(n-last<350)return;last=n;openEula(e);};
+    lnk.addEventListener('click',h);
+    lnk.addEventListener('pointerup',e=>{if(e.pointerType&&e.pointerType!=='mouse')h(e);});
+  }
 });
 
 window.addEventListener('load',()=>setTimeout(initApp,50));
