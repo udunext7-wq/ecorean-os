@@ -636,7 +636,23 @@ const S={
   rightTab:'props'
 };
 
-function newId(){return 'el-'+(S.nextId++);}
+// 2026-08-23 fix: 저장본을 불러오면 S.nextId 가 1 로 리셋된 채 남아 새 요소가 기존 el-1, el-2… 와
+// 같은 id 를 재사용 → "레이어 중복"(같이 선택·같이 삭제)의 원인. 존재 검사 + 로드 시 정규화로 해결.
+function _idExists(id){return (S.pages||[]).some(p=>(p.elements||[]).some(e=>e&&e.id===id));}
+function newId(){let id;do{id='el-'+(S.nextId++);}while(_idExists(id));return id;}
+// 로드된 문서 정규화: 카운터를 최대 id+1 로 올리고, 중복 id 는 새 id 로 재부여 (첫 요소만 유지)
+function normalizeIds(){
+  let mx=0;
+  (S.pages||[]).forEach(p=>(p.elements||[]).forEach(e=>{const m=/^el-(\d+)$/.exec(e&&e.id||'');if(m)mx=Math.max(mx,parseInt(m[1],10));}));
+  if(!(S.nextId>mx))S.nextId=mx+1;
+  const seen=new Set();let fixed=0;
+  (S.pages||[]).forEach(p=>(p.elements||[]).forEach(e=>{
+    if(!e)return;
+    if(!e.id||seen.has(e.id)){e.id=newId();fixed++;}
+    seen.add(e.id);
+  }));
+  return fixed;
+}
 function clone(o){try{return structuredClone(o);}catch(e){return JSON.parse(JSON.stringify(o));}}
 
 // ── 2026-08-23 성능: 고빈도 입력 경로 ──
@@ -673,6 +689,7 @@ function undo(){
   S.historyIdx--;
   const h=clone(S.history[S.historyIdx]);
   Object.assign(S,h);
+  normalizeIds(); // 2026-08-23: 과거 스냅샷에 중복 id 가 있어도 복원 시 정리
   S.selectedId=null;
   renderAll();
 }
@@ -681,6 +698,7 @@ function redo(){
   S.historyIdx++;
   const h=clone(S.history[S.historyIdx]);
   Object.assign(S,h);
+  normalizeIds();
   S.selectedId=null;
   renderAll();
 }
@@ -2734,6 +2752,7 @@ document.getElementById('btn-load').addEventListener('click',()=>{
     IDB.get('autosave').catch(()=>null).then(a=>{
       if(a&&(!d.savedAt||a.savedAt>d.savedAt)&&confirm('마지막 [저장]보다 최신 자동 백업이 있습니다.\n자동 백업을 불러올까요? (취소 = 수동 저장본)')) d=a;
       Object.assign(S,d);S.selectedId=null;S.activePage=d.activePage||0;
+      const fx=normalizeIds();if(fx)console.warn('[normalizeIds] 중복 레이어 id '+fx+'건 수리');
       pushHist();renderLeft();renderAll();
     });
   });
@@ -2797,6 +2816,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
         const doc=await APP_CLOUD.load('editor',b.dataset.open);
         if(!doc){alert('문서를 찾을 수 없습니다');return;}
         Object.assign(S,doc.data);S.selectedId=null;S.activePage=doc.data.activePage||0;
+        const fx=normalizeIds();if(fx)console.warn('[normalizeIds] 서버 문서 중복 레이어 id '+fx+'건 수리');
         S.cloudDocKey=doc.doc_key;S.cloudDocTitle=doc.title;
         pushHist();renderLeft();renderPageTabs();renderAll();m.remove();
       }catch(e){alert('열기 실패: '+e.message);}
