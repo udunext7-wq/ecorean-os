@@ -39,6 +39,8 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragging = useRef<{ x: number; rot0: number; moved: boolean } | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const dragEndAt = useRef(0);
+  const prevFront = useRef<number | null>(null);
   rotRef.current = rot;
 
   // 바람(휘익) 사운드 — 파일 없이 노이즈 + 밴드패스 스윕으로 합성
@@ -105,6 +107,19 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
 
   const front = mod(Math.round(-rot / step), n);
 
+  // 창이 한 칸 넘어갈 때마다 바람소리 1회 (드래그로 여러 칸 지나면 칸마다)
+  useEffect(() => {
+    if (prevFront.current === null) {
+      prevFront.current = front;
+      return;
+    }
+    if (prevFront.current !== front) {
+      prevFront.current = front;
+      playWhoosh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [front]);
+
   function snapTo(i: number) {
     const r = rotRef.current;
     const delta = mod(-i * step - r + 180, 360) - 180;
@@ -117,26 +132,35 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
       /* no-op */
     }
     window.setTimeout(() => setAnimAll(false), ANIM_MS);
-    // 도착 연출: 묵직한 바람소리 (확대는 depth 기반으로 연속·안정 처리)
-    if (Math.abs(delta) > 1) playWhoosh();
   }
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    // 여기서 pointer capture 를 걸면 카드 안 링크 클릭이 가로채져 안 열린다 —
+    // 실제 드래그가 시작된 순간(onPointerMove)에만 capture 한다.
     dragging.current = { x: e.clientX, rot0: rotRef.current, moved: false };
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
   }
   // 시차 틸트 없음 — 드래그 외에는 무대가 완전히 정지 (안정감 유지, 대표 지시)
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
     const d = dragging.current;
     if (!d) return;
     const dx = e.clientX - d.x;
-    if (Math.abs(dx) > 6) d.moved = true;
+    if (!d.moved && Math.abs(dx) > 6) {
+      d.moved = true;
+      try {
+        (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+      } catch {
+        /* no-op */
+      }
+    }
     if (d.moved) setRot(d.rot0 + dx * 0.22);
   }
   function onPointerUp() {
     const d = dragging.current;
     dragging.current = null;
-    if (d?.moved) snapTo(mod(Math.round(-rotRef.current / step), n));
+    if (d?.moved) {
+      dragEndAt.current = Date.now();
+      snapTo(mod(Math.round(-rotRef.current / step), n));
+    }
   }
   function onLeave() {
     onPointerUp();
@@ -169,6 +193,13 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
         onPointerCancel={wide ? onPointerUp : undefined}
         onPointerLeave={wide ? onLeave : undefined}
         onKeyDown={onKeyDown}
+        onClickCapture={(e) => {
+          // 드래그 직후의 클릭은 오조작 — 링크·카드 이동 모두 무시
+          if (Date.now() - dragEndAt.current < 250) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
       >
         <div className="hubc-spot" aria-hidden />
         <div className="hubc-glowpool" aria-hidden />
