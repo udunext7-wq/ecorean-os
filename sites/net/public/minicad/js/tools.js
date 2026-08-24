@@ -1349,6 +1349,7 @@ function handleMirrorClick(pos){
       if(!obj) return;
       const copy=JSON.parse(JSON.stringify(obj));
       copy.id=makeId(t.kind.charAt(0));
+      copy.locked=false; // 2026-08-24: 사본은 잠금 해제로 생성 — 잠금은 원본 보호 목적, 사본은 편집 대상 (대표 지시)
       mirrorObject(copy,mirrorState.p1,mirrorState.p2);
       const arrName={wall:'walls',space:'spaces',opening:'openings',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac'}[t.kind];
       if(arrName) STATE[arrName].push(copy);
@@ -2289,6 +2290,7 @@ function altCopyObj(kind,obj){
   if(!arr) return null;
   const raw=JSON.parse(JSON.stringify(obj));
   raw.id=makeId(kind.charAt(0));
+  raw.locked=false; // 2026-08-24: 사본은 잠금 해제로 생성 (잠긴 사본이 원본 위에 고정되던 버그 수정)
   if('v1Id' in raw){
     // 벽: 독립 버텍스 생성
     const nv1={id:makeId('v'),x:Math.round(obj.x1),y:Math.round(obj.y1)};
@@ -2310,6 +2312,7 @@ function altCopyObj(kind,obj){
     STATE.walls.filter(w=>w.spaceId===obj.id).forEach(w=>{
       const wraw=JSON.parse(JSON.stringify(w));
       wraw.id=makeId('w'); wraw.spaceId=raw.id;
+      wraw.locked=false; // 2026-08-24: 사본 벽도 잠금 해제
       if(vidMap[w.v1Id]){wraw.v1Id=vidMap[w.v1Id];}else{const nv={id:makeId('v'),x:Math.round(w.x1),y:Math.round(w.y1)};STATE.vertices.push(nv);wraw.v1Id=nv.id;}
       if(vidMap[w.v2Id]){wraw.v2Id=vidMap[w.v2Id];}else{const nv={id:makeId('v'),x:Math.round(w.x2),y:Math.round(w.y2)};STATE.vertices.push(nv);wraw.v2Id=nv.id;}
       reinstallVEF(wraw);

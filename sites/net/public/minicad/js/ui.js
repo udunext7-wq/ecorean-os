@@ -1373,6 +1373,7 @@ function duplicateSelected(){
     const obj=arr.find(x=>x.id===t.id); if(!obj) return;
     const copy=JSON.parse(JSON.stringify(obj));
     copy.id=makeId(t.kind.charAt(0));
+    copy.locked=false; // 2026-08-24: 사본은 잠금 해제로 생성 — 잠금은 원본 보호 목적 (대표 지시)
     if('x' in copy){copy.x+=500;copy.y+=500;}
     // VEF: 새 버텍스 생성 후 getter 재설치
     if('v1Id' in copy){
@@ -3322,6 +3323,7 @@ function duplicateSelectedAt(dx,dy){
     const obj=arr.find(x=>x.id===t.id); if(!obj) return;
     const copy=JSON.parse(JSON.stringify(obj));
     copy.id=makeId(t.kind.charAt(0));
+    copy.locked=false; // 2026-08-24: 사본은 잠금 해제로 생성 — 잠금은 원본 보호 목적 (대표 지시)
     if('x' in copy){copy.x+=dx;copy.y+=dy;}
     if('v1Id' in copy){
       copy.v1Id=ensureVertex(copy.x1+dx,copy.y1+dy).id;

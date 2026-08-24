@@ -545,6 +545,29 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     const v0x=getVertex(svIds[0]).x,v0y=getVertex(svIds[0]).y;
     rotateSpaceByAngle(lsp.id,45);
     assert('잠금: rotateSpaceByAngle 차단',getVertex(svIds[0]).x===v0x&&getVertex(svIds[0]).y===v0y);
+    // [L9] 복제 — 사본은 잠금 해제로 생성 + 이동 가능, 원본 불변 (2026-08-24 대표 지시)
+    STATE.boxSelection=[];STATE.selectedKind='wall';STATE.selectedId=lw.id;
+    duplicateSelected();
+    const dup=STATE.walls[STATE.walls.length-1];
+    assert('잠금: 복제 사본 잠금 해제',dup&&dup.id!==lw.id&&!dup.locked);
+    moveVertex(dup.v1Id,OFF+50000,OFF+50000);
+    assert('잠금: 복제 사본 이동 가능',getVertex(dup.v1Id).x===OFF+50000);
+    assert('잠금: 복제 후 원본 불변',getVertex(lw.v1Id).x===OFF&&getVertex(lw.v1Id).y===OFF);
+    // [L10] Alt+드래그 복사 — 사본 잠금 해제 (잠긴 사본이 원본 위에 고정되던 버그)
+    const altc=altCopyObj('wall',lw);
+    assert('잠금: Alt복사 사본 잠금 해제',altc&&!altc.locked);
+    moveVertex(altc.v1Id,OFF+60000,OFF+60000);
+    assert('잠금: Alt복사 사본 이동 가능',getVertex(altc.v1Id).x===OFF+60000);
+    // [L11] 미러 — 사본 잠금 해제 + 원본 불변 (handleMirrorClick 실제 흐름)
+    STATE.boxSelection=[];STATE.selectedKind='wall';STATE.selectedId=lw.id;
+    mirrorState={phase:'pickLine2',p1:{x:OFF+1000,y:OFF-1000}};
+    const mirrorCntBefore=STATE.walls.length;
+    const px={x:STATE.offsetX+mmToPx(OFF+1000),y:STATE.offsetY+mmToPx(OFF+1000)};
+    handleMirrorClick(px);
+    const mc=STATE.walls[STATE.walls.length-1];
+    assert('잠금: 미러 사본 생성',STATE.walls.length===mirrorCntBefore+1);
+    assert('잠금: 미러 사본 잠금 해제',mc&&mc.id!==lw.id&&!mc.locked);
+    assert('잠금: 미러 후 원본 불변',getVertex(lw.v1Id).x===OFF&&lw.v1Id===lv1.id);
     // 복원
     STATE.vertices=_bak.vertices;STATE.walls=_bak.walls;STATE.spaces=_bak.spaces;
     STATE.selectedKind=_bak.selectedKind;STATE.selectedId=_bak.selectedId;STATE.boxSelection=_bak.boxSelection;
