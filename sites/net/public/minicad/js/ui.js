@@ -962,6 +962,16 @@ const SEMANTIC_MAP={
   boiler_ctrl:{tag:'boiler_control',kw:'boiler control panel'},
   // ===== HVAC_FIRE_LIB (15종) =====
   ac_ceiling:{tag:'system_ac',kw:'ceiling cassette air conditioning unit'},
+  // 2026-08-24: 에어컨 계열·공조 확충 9종
+  ac_4way:{tag:'system_ac',kw:'4-way ceiling cassette air conditioner'},
+  ac_2way:{tag:'system_ac',kw:'2-way ceiling cassette air conditioner'},
+  ac_1way:{tag:'system_ac',kw:'1-way ceiling cassette air conditioner'},
+  ac_wall:{tag:'system_ac',kw:'wall-mounted split air conditioner'},
+  ac_stand:{tag:'system_ac',kw:'floor standing air conditioner tower'},
+  ac_duct:{tag:'system_ac',kw:'concealed ceiling duct air conditioner'},
+  ac_outdoor:{tag:'system_ac',kw:'air conditioner outdoor condenser unit'},
+  erv:{tag:'ventilation',kw:'energy recovery ventilator unit, ceiling concealed'},
+  boiler_unit:{tag:'boiler',kw:'gas boiler unit'},
   diffuser:{tag:'ac_diffuser',kw:'ceiling air diffuser'},
   vent_fan:{tag:'ventilation',kw:'ceiling exhaust ventilation fan'},
   hood:{tag:'kitchen',kw:'kitchen range hood'},

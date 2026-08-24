@@ -758,6 +758,14 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('가구2: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-24: 공조 확충 (에어컨 계열 7 + ERV + 보일러) ===
+  (function(){
+    const HK=['ac_4way','ac_2way','ac_1way','ac_wall','ac_stand','ac_duct','ac_outdoor','erv','boiler_unit'];
+    assert('공조: 9종 등록+도형',HK.every(k=>HVAC_FIRE_LIB[k]&&Array.isArray(HVAC_FIRE_LIB[k].shape)&&HVAC_FIRE_LIB[k].shape.length>=3&&HVAC_FIRE_LIB[k].size>0),
+      HK.filter(k=>!HVAC_FIRE_LIB[k]).join(','));
+    assert('공조: 매립형(덕트·ERV) 점선 표기',HVAC_FIRE_LIB.ac_duct.shape.some(c=>c.dash)&&HVAC_FIRE_LIB.erv.shape.some(c=>c.dash));
+    assert('공조: semanticOf ac_4way',semanticOf('ac_4way').tag==='system_ac');
+  })();
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
