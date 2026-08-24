@@ -242,3 +242,158 @@
   filter: grayscale(0.4) brightness(0.7);
   box-shadow: none;
 }
+
+/* ── 업무 허브 오비탈 셀렉터 (2026-08-24 대표 지시) ─────────────────
+   인트로 링 오마주: 중앙 코어 + 공전하는 섹션 노드. 호버 시 정지. */
+.hub-scene {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, #14110c 0%, #0f0e0c 45%, #0a0908 100%);
+}
+.hub-scene > .auth-aurora { opacity: 0.28; }
+.hub-scene > .auth-grid { opacity: 0.035; }
+
+.hub-orbit-wrap {
+  position: relative;
+  width: 320px;
+  height: 320px;
+  margin: 0 auto;
+  --r: 138px;
+}
+@media (min-width: 640px) {
+  .hub-orbit-wrap {
+    width: 420px;
+    height: 420px;
+    --r: 182px;
+  }
+}
+.hub-orbit-ring {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  border: 1px dashed rgba(214, 184, 126, 0.28);
+  pointer-events: none;
+}
+.hub-orbit-ring-inner {
+  inset: 84px;
+  border: 1px solid rgba(214, 184, 126, 0.1);
+}
+.hub-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+.hub-core-star {
+  color: #d6b87e;
+  font-size: 18px;
+  text-shadow: 0 0 16px rgba(214, 184, 126, 0.7);
+  animation: hub-core-pulse 4s ease-in-out infinite;
+}
+@keyframes hub-core-pulse {
+  50% { text-shadow: 0 0 28px rgba(214, 184, 126, 1); opacity: 0.85; }
+}
+.hub-core-name {
+  font-size: 17px;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  background: linear-gradient(180deg, #efe3c8, #b8965a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hub-core-sub {
+  font-size: 9px;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  color: #736c5f;
+}
+
+.hub-orbit {
+  position: absolute;
+  inset: 0;
+  animation: hub-spin 48s linear infinite;
+}
+@keyframes hub-spin {
+  to { transform: rotate(360deg); }
+}
+.hub-node {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: rotate(var(--a, 0deg)) translateX(var(--r));
+}
+.hub-node-anti {
+  transform: rotate(calc(var(--a, 0deg) * -1));
+}
+.hub-node-btn {
+  translate: -50% -50%;
+  animation: hub-spin-rev 48s linear infinite;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  padding: 7px 14px;
+  border-radius: 99px;
+  border: 1px solid rgba(214, 184, 126, 0.22);
+  background: linear-gradient(160deg, rgba(26, 24, 20, 0.9), rgba(16, 14, 11, 0.85));
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.8);
+  color: #f0eae0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+@keyframes hub-spin-rev {
+  to { transform: rotate(-360deg); }
+}
+.hub-orbit-wrap:hover .hub-orbit,
+.hub-orbit-wrap:hover .hub-node-btn,
+.hub-orbit-wrap:focus-within .hub-orbit,
+.hub-orbit-wrap:focus-within .hub-node-btn {
+  animation-play-state: paused;
+}
+.hub-node-btn:hover {
+  border-color: rgba(214, 184, 126, 0.55);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.85), 0 0 24px -10px rgba(184, 150, 90, 0.6);
+}
+.hub-node-btn.is-selected {
+  border-color: rgba(214, 184, 126, 0.75);
+  box-shadow:
+    0 10px 30px -12px rgba(0, 0, 0, 0.85),
+    0 0 30px -8px rgba(184, 150, 90, 0.75),
+    inset 0 0 14px -8px rgba(214, 184, 126, 0.5);
+}
+.hub-node-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d6b87e;
+  box-shadow: 0 0 10px rgba(214, 184, 126, 0.9);
+}
+.hub-node-count {
+  font-size: 10.5px;
+  color: #736c5f;
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-panel {
+  animation: hub-panel-in 0.28s ease;
+  position: relative;
+}
+@keyframes hub-panel-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-orbit,
+  .hub-node-btn,
+  .hub-core-star { animation: none; }
+  .hub-panel { animation: none; }
+}

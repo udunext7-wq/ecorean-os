@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { getSessionProfile } from '@/core/auth/session';
 import { hasRole, netRedirectTarget } from '@/core/auth/roles';
 import { Badge, Button, Card } from '@/core/ui';
-import { HubTree, type TreeSection } from './HubTree';
+import { HubOrbit, type TreeSection } from './HubOrbit';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,9 +104,11 @@ export default async function HubPage() {
   })).filter((s) => s.items.length > 0);
 
   return (
-    <main className="min-h-screen bg-ink p-6">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex items-center justify-between">
+    <main className="hub-scene min-h-screen p-6">
+      <div className="auth-aurora" aria-hidden />
+      <div className="auth-grid" aria-hidden />
+      <div className="relative mx-auto max-w-3xl">
+        <div className="mb-2 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-cream">ECOREAN 업무 허브</h1>
             <p className="mt-0.5 text-sm text-muted">
@@ -128,7 +130,7 @@ export default async function HubPage() {
           </div>
         </div>
 
-        <HubTree sections={treeSections} />
+        <HubOrbit sections={treeSections} />
       </div>
     </main>
   );
