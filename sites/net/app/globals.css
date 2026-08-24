@@ -245,25 +245,41 @@
 
 /* ── 업무 허브 v7: 5장 펼쳐 세운 3D 팬 스프레드 (2026-08-25 대표 지시) ──
    딥 미드나이트 × 스틸 글레이셔 × 샴페인 골드. 회전 없음 — 원근·시차·호버 팝만. */
-/* 배경 = 인트로(ACCESS PORTAL) 화면 그대로: #02060E + 시안 드리프트 그리드 + 비네트 */
+/* 배경 = 우주 (딥스페이스 성운 + 별밭 + 비네트, 2026-08-25 대표 지시) */
 .hubc-scene {
   position: relative;
   overflow: hidden;
-  background: #02060e;
+  background:
+    radial-gradient(ellipse 90% 70% at 72% 16%, rgba(38, 60, 130, 0.3), transparent 62%),
+    radial-gradient(ellipse 70% 55% at 14% 80%, rgba(88, 52, 140, 0.18), transparent 60%),
+    radial-gradient(ellipse 55% 42% at 45% 48%, rgba(0, 90, 120, 0.1), transparent 65%),
+    #010309;
 }
 .hubc-scene::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(0, 234, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 234, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  animation: hubc-grid-drift 40s linear infinite;
   pointer-events: none;
+  background-image:
+    radial-gradient(1.4px 1.4px at 22px 34px, rgba(255, 255, 255, 0.95), transparent 55%),
+    radial-gradient(1px 1px at 118px 76px, rgba(205, 228, 255, 0.85), transparent 55%),
+    radial-gradient(1.6px 1.6px at 210px 150px, rgba(255, 244, 220, 0.9), transparent 55%),
+    radial-gradient(1px 1px at 68px 195px, rgba(180, 210, 255, 0.7), transparent 55%),
+    radial-gradient(1.2px 1.2px at 160px 244px, rgba(255, 255, 255, 0.8), transparent 55%),
+    radial-gradient(0.8px 0.8px at 252px 60px, rgba(150, 190, 235, 0.65), transparent 55%),
+    radial-gradient(1px 1px at 322px 302px, rgba(230, 240, 255, 0.75), transparent 55%),
+    radial-gradient(1.2px 1.2px at 382px 122px, rgba(255, 235, 200, 0.7), transparent 55%),
+    radial-gradient(0.9px 0.9px at 44px 330px, rgba(200, 220, 255, 0.6), transparent 55%),
+    radial-gradient(1px 1px at 300px 210px, rgba(255, 255, 255, 0.55), transparent 55%);
+  background-size: 420px 420px;
+  animation: hubc-stars-drift 260s linear infinite, hubc-twinkle 7s ease-in-out infinite alternate;
 }
-@keyframes hubc-grid-drift {
-  to { background-position: 60px 60px; }
+@keyframes hubc-stars-drift {
+  to { background-position: 420px 60px; }
+}
+@keyframes hubc-twinkle {
+  from { opacity: 0.72; }
+  to { opacity: 1; }
 }
 .hubc-scene::after {
   content: '';
@@ -388,7 +404,7 @@
   flex-direction: column;
   border-radius: 14px;
   padding: 18px 16px 12px;
-  background: linear-gradient(168deg, rgba(13, 20, 30, 0.95), rgba(6, 10, 17, 0.93));
+  background: linear-gradient(168deg, rgba(13, 20, 30, 0.48), rgba(6, 10, 17, 0.46));
   border: 1px solid rgba(155, 201, 216, 0.18);
   backdrop-filter: blur(10px);
   box-shadow:
@@ -494,7 +510,8 @@
   font-size: 9px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(148, 170, 184, 0.66);
+  color: rgba(0, 234, 255, 0.78);
+  text-shadow: 0 0 8px rgba(0, 234, 255, 0.4);
 }
 .hubc-card-body {
   flex: 1;
@@ -571,10 +588,11 @@
 .hubc-card-foot {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(155, 201, 216, 0.1);
+  border-top: 1px solid rgba(0, 234, 255, 0.14);
   font-size: 8.5px;
   letter-spacing: 0.3em;
-  color: rgba(155, 201, 216, 0.42);
+  color: rgba(0, 234, 255, 0.72);
+  text-shadow: 0 0 8px rgba(0, 234, 255, 0.38);
   text-align: center;
 }
 .hubc-ghost-body {
