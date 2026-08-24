@@ -354,7 +354,38 @@ function refreshDetail(){
         '<button class="btn sm'+(s.waterproofApplied===true?' active':'')+'" id="wp-yes" style="flex:1'+(s.waterproofApplied===true?';background:rgba(91,160,212,0.25);border-color:#5BA0D4;color:#5BA0D4':'')+'" >✓ 적용</button>'+
         '<button class="btn sm'+(s.waterproofApplied===false?' active':'')+'" id="wp-no"  style="flex:1'+(s.waterproofApplied===false?';background:rgba(226,114,91,0.2);border-color:#E2725B;color:#E2725B' :'')+'" >✗ 미적용</button>'+
         '<button class="btn sm'+(s.waterproofApplied==null?' active':'')+'"  id="wp-null" style="flex:1'+(s.waterproofApplied==null ?';background:rgba(201,169,97,0.15);border-color:var(--gold);color:var(--gold)':'')+'" >? 미결정</button>'+
-        '</div></div>' : '');
+        '</div></div>' : '')+
+      // 2026-08-24: 계단실 타입 — 공간 자동 맞춤 계단 옵션 (대표 지시)
+      (s.type==='STAIRS'?(function(){
+        const st=s.stair||{};
+        const info=typeof spaceStairInfo==='function'?spaceStairInfo(s):null;
+        if(!info) return '<div class="warn warning" style="margin-top:8px">⚠ 공간이 너무 작아 계단 표시 불가 (한 변 600mm 이상 필요)</div>';
+        const isTurn=info.type!=='I';
+        const fh=Math.round(st.floorHeight_mm||2800);
+        const riser=Math.round(fh/info.N);
+        const rw=riser<160||riser>200;
+        const rot=(((Math.round((st.rot||0)/90)*90)%360)+360)%360;
+        const tsel=(v,l)=>'<option value="'+v+'"'+((st.type==='L'||st.type==='U'?st.type:'I')===v?' selected':'')+'>'+l+'</option>';
+        return '<div style="margin-top:10px;padding:8px;background:rgba(142,123,92,0.10);border:1px solid rgba(142,123,92,0.4);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#C9A961">계단 설정 — 공간 크기 자동 맞춤</div>'+
+        '<div class="field"><label class="field-label">유형</label><select id="stx-type">'+tsel('I','직선')+tsel('L','ㄱ자 (꺾임)')+tsel('U','U턴 (되돌음)')+'</select></div>'+
+        '<div class="field-row">'+
+        '<div class="field"><label class="field-label">단수 (자동 '+info.N+')</label><input type="number" id="stx-count" value="'+(st.stepCount||'')+'" placeholder="'+info.N+'" step="1" min="2"></div>'+
+        (isTurn?'<div class="field"><label class="field-label">꺾임 전 단수 (자동 '+info.N1+')</label><input type="number" id="stx-split" value="'+(st.splitCount||'')+'" placeholder="'+info.N1+'" step="1" min="1"></div>'
+               :'<div class="field"><label class="field-label">층높이 (mm)</label><input type="number" id="stx-fh" value="'+fh+'" step="50" min="1000"></div>')+
+        '</div>'+
+        (isTurn?'<div class="field-row">'+
+        '<div class="field"><label class="field-label">'+(info.type==='U'?'참 깊이':'플라이트 폭')+' (자동 '+Math.round(info.type==='U'?info.L0:info.W)+')</label><input type="number" id="stx-w" value="'+(st.width_mm||'')+'" placeholder="'+Math.round(info.type==='U'?info.L0:info.W)+'" step="50" min="300"></div>'+
+        '<div class="field"><label class="field-label">층높이 (mm)</label><input type="number" id="stx-fh" value="'+fh+'" step="50" min="1000"></div>'+
+        '</div>':'')+
+        '<div class="hint">디딤판 '+(info.type==='I'?Math.round(info.T):Math.round(info.T1)+' / '+Math.round(info.T2))+'mm (자동) · 챌판 <b style="color:'+(rw?'#E2725B':'#7BA05B')+'">'+riser+'mm</b>'+(rw?' ⚠ 권장 160~200':' ✓ 적정')+'</div>'+
+        '<div style="display:flex;gap:4px;margin-top:4px">'+
+        '<button type="button" class="btn sm" id="stx-updn" style="flex:1">'+((st.upDir||'up')==='down'?'DN ↓':'UP ↑')+'</button>'+
+        '<button type="button" class="btn sm" id="stx-brk" style="flex:1'+(st.showBreak!==false?';background:rgba(201,169,97,0.18);border-color:var(--gold);color:var(--gold)':'')+'">절단선</button>'+
+        '<button type="button" class="btn sm" id="stx-rot" style="flex:1">↻ '+rot+'°</button>'+
+        '<button type="button" class="btn sm" id="stx-mir" style="flex:1'+(st.mirror?';background:rgba(201,169,97,0.18);border-color:var(--gold);color:var(--gold)':'')+'">↔ 미러</button>'+
+        '</div></div>';
+      })():'');
     document.getElementById('d-name').addEventListener('change',e=>{s.name=e.target.value;renderAll();refreshUI();});
     document.getElementById('d-type').addEventListener('change',e=>{
       s.type=e.target.value;
@@ -383,6 +414,27 @@ function refreshDetail(){
       document.getElementById('wp-yes').addEventListener('click',()=>setWP(true));
       document.getElementById('wp-no').addEventListener('click',()=>setWP(false));
       document.getElementById('wp-null').addEventListener('click',()=>setWP(null));
+    }
+    // 2026-08-24: 계단 설정 리스너 (계단실 타입)
+    if(s.type==='STAIRS'){
+      const st=s.stair||(s.stair={});
+      const upd=()=>{saveHistory();renderAll();refreshUI();};
+      const q=id=>document.getElementById(id);
+      const numOrAuto=(e,min,key)=>{ // 빈값 = 자동 복귀
+        const raw=(e.target.value||'').trim();
+        if(raw===''){delete st[key];upd();return;}
+        const v=parseInt(raw,10);
+        if(isFinite(v)&&v>=min){st[key]=v;upd();}else refreshUI();
+      };
+      if(q('stx-type')) q('stx-type').addEventListener('change',e=>{st.type=e.target.value;upd();});
+      if(q('stx-count')) q('stx-count').addEventListener('change',e=>numOrAuto(e,2,'stepCount'));
+      if(q('stx-split')) q('stx-split').addEventListener('change',e=>numOrAuto(e,1,'splitCount'));
+      if(q('stx-w')) q('stx-w').addEventListener('change',e=>numOrAuto(e,300,'width_mm'));
+      if(q('stx-fh')) q('stx-fh').addEventListener('change',e=>{const v=parseInt(e.target.value,10);if(isFinite(v)&&v>=1000){st.floorHeight_mm=v;upd();}else refreshUI();});
+      if(q('stx-updn')) q('stx-updn').addEventListener('click',()=>{st.upDir=(st.upDir||'up')==='up'?'down':'up';upd();});
+      if(q('stx-brk')) q('stx-brk').addEventListener('click',()=>{st.showBreak=st.showBreak===false?true:false;upd();});
+      if(q('stx-rot')) q('stx-rot').addEventListener('click',()=>{st.rot=(((st.rot||0)+90))%360;upd();});
+      if(q('stx-mir')) q('stx-mir').addEventListener('click',()=>{st.mirror=!st.mirror;upd();});
     }
     stats.style.display='block';warn.style.display='block';
     document.getElementById('cell-floor').textContent=spArea(s).toFixed(2);

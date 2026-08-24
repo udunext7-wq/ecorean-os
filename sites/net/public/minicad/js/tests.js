@@ -637,6 +637,38 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('계단 U턴: DN 라벨',shpU.some(c=>c.type==='text'&&c.text==='DN'));
     const pU=stairParams({type:'stairs_u',stepCount:12,splitCount:6,stairWidth_mm:1200,treadDepth_mm:280});
     assert('계단 U턴: 외곽 2W',pU.bw===2400&&pU.bh===6*280+1200,pU.bw+'×'+pU.bh);
+    // [S9] 2026-08-24: 계단실 공간 연동 — 공간 크기 자동 맞춤 (대표 지시)
+    const mkSq=(x,y,w,h)=>polygonToVertexIds([{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}]);
+    const spI=makeSpaceVEF(mkSq(OFF2+50000,OFF2,1200,4200),{name:'계단실I',type:'STAIRS',typeIndex:97,layerName:'A-AREA-STR-97'});
+    STATE.spaces.push(spI);
+    const infoI=spaceStairInfo(spI);
+    assert('계단실: 직선 자동 단수 15',infoI&&infoI.type==='I'&&infoI.N===15,infoI&&infoI.N);
+    const shpI=buildSpaceStairShape(spI);
+    const trI=shpI.filter(c=>c.type==='line'&&c.y1===c.y2&&Math.abs((c.x2-c.x1)-1200)<1).length;
+    assert('계단실: 직선 디딤판 14',trI===14,'treads '+trI);
+    // [S10] U턴 — 옵션 변경 반영
+    spI.stair={type:'U',stepCount:20,splitCount:10};
+    const infoU=spaceStairInfo(spI);
+    assert('계단실: U턴 전환',infoU.type==='U'&&infoU.N===20&&infoU.N1===10,JSON.stringify([infoU.type,infoU.N,infoU.N1]));
+    // [S11] 회전 90° — 디딤판이 세로로
+    spI.stair={rot:90};
+    const shpR=buildSpaceStairShape(spI);
+    const infoR=spaceStairInfo(spI);
+    // 회전 90°: 진행축이 X(1200)로, 디딤판은 Y축 4200mm 전체 폭으로 매핑
+    const trR=shpR.filter(c=>c.type==='line'&&c.x1===c.x2&&Math.abs(Math.abs(c.y2-c.y1)-4200)<1).length;
+    assert('계단실: 회전 90° 디딤판 세로',infoR.N>=2&&trR===infoR.N-1,'treads '+trR+'/'+infoR.N);
+    // [S12] renderSpaces 오버레이 생성
+    spI.stair={};
+    renderSpaces();
+    let hasOverlay=false;
+    groups.spaces.getChildren().forEach(c=>{if(c.name&&c.name()==='space-stairs')hasOverlay=true;});
+    assert('계단실: renderSpaces 계단 오버레이',hasOverlay);
+    // [S13] ㄱ자 — 참·플라이트 배분
+    spI.stair={type:'L'};
+    const infoL=spaceStairInfo(spI); // bbox 1200×4200 → W=min/2=600, LA=3600, LB=600
+    assert('계단실: ㄱ자 자동 폭',infoL.type==='L'&&infoL.W===600&&infoL.LA===3600&&infoL.LB===600,JSON.stringify([infoL.W,infoL.LA,infoL.LB]));
+    STATE.spaces=STATE.spaces.filter(x=>x.id!==spI.id);
+    STATE.walls=STATE.walls.filter(w=>w.spaceId!==spI.id);
     // [S8] 배치 렌더 (renderRect 경유)
     STATE.furniture.push({id:makeId('f'),type:'stairs_l',x:OFF2+30000,y:OFF2,angle:0},
                          {id:makeId('f'),type:'stairs_u',x:OFF2+40000,y:OFF2,angle:0});

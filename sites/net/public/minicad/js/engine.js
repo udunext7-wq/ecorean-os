@@ -938,6 +938,20 @@ function renderSpaces(){
     poly.on('click tap',e=>{if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('space',s.id);});
     groups.spaces.add(poly);
 
+    // 2026-08-24: 계단실(STAIRS) 타입 — 공간 크기에 자동 맞춘 계단 도식 (대표 지시)
+    if(s.type==='STAIRS'){
+      const stairShp=buildSpaceStairShape(s);
+      if(stairShp){
+        const bb=_polyBBoxMm(s.polygon);
+        const sg=new Konva.Group({
+          x:STATE.offsetX+mmToPx((bb.minX+bb.maxX)/2),
+          y:STATE.offsetY+mmToPx((bb.minY+bb.maxY)/2),
+          listening:false,name:'space-stairs',opacity:s.locked?0.30:0.9});
+        drawShape(stairShp).forEach(n=>{n.listening(false);sg.add(n);});
+        groups.spaces.add(sg);
+      }
+    }
+
     // 원형공간 리사이즈 핸들 (선택 시만 표시 — 잠금 시 숨김)
     if(sel&&!s.locked&&s._circleMeta){
       const{cx,cy,r}=s._circleMeta;
@@ -1832,6 +1846,118 @@ function darkenHex(hex,frac){
   return '#'+tr.toString(16).padStart(2,'0')+tg.toString(16).padStart(2,'0')+tb.toString(16).padStart(2,'0');
 }
 
+// 2026-08-24: 계단실(STAIRS) 공간 연동 계단 — 공간 bbox에 자동 맞춤 (대표 지시)
+// s.stair = {type:'I'|'L'|'U', stepCount?, splitCount?, width_mm?, floorHeight_mm?, upDir?, showBreak?, rot?, mirror?}
+// 미지정 값은 전부 자동: 단수=길이/280, 꺾임 배분=플라이트 길이 비례, 폭/참=공간 절반
+function _polyBBoxMm(poly){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  poly.forEach(p=>{if(p.x<minX)minX=p.x;if(p.x>maxX)maxX=p.x;if(p.y<minY)minY=p.y;if(p.y>maxY)maxY=p.y;});
+  return {minX,minY,maxX,maxY,w:maxX-minX,h:maxY-minY};
+}
+function spaceStairInfo(s){
+  if(!s||!s.polygon||s.polygon.length<3) return null;
+  const bb=_polyBBoxMm(s.polygon);
+  if(bb.w<600||bb.h<600) return null;
+  const st=s.stair||{};
+  const rot=(((Math.round((st.rot||0)/90)*90)%360)+360)%360;
+  const swap=(rot===90||rot===270);
+  const lw=swap?bb.h:bb.w, lh=swap?bb.w:bb.h;
+  const type=(st.type==='L'||st.type==='U')?st.type:'I';
+  if(type==='I'){
+    const N=Math.max(2,Math.round(st.stepCount||lh/280));
+    return {bb,rot,lw,lh,type,N,T:lh/N,W:lw};
+  }
+  if(type==='L'){
+    const W=Math.max(300,Math.min(Math.round(st.width_mm||Math.min(lw,lh)*0.5),Math.min(lw,lh)-300));
+    const LA=lh-W,LB=lw-W;
+    const N=Math.max(2,Math.round(st.stepCount||(LA+LB)/280));
+    const N1=Math.max(1,Math.min(N-1,Math.round(st.splitCount||N*LA/(LA+LB))));
+    const N2=N-N1;
+    return {bb,rot,lw,lh,type,W,LA,LB,N,N1,N2,T1:LA/N1,T2:LB/N2};
+  }
+  const W=lw/2;
+  const L0=Math.max(300,Math.min(Math.round(st.width_mm||lw/2),Math.round(lh*0.5)));
+  const LF=lh-L0;
+  const N=Math.max(2,Math.round(st.stepCount||2*LF/280));
+  const N1=Math.max(1,Math.min(N-1,Math.round(st.splitCount||N/2)));
+  const N2=N-N1;
+  return {bb,rot,lw,lh,type,W,L0,LF,N,N1,N2,T1:LF/N1,T2:LF/N2};
+}
+// 도식 명령 회전(90° 단위)·미러 변환 — 텍스트는 위치만 이동 (글자는 항상 정방향)
+function _xformShape(shp,rot,mir){
+  const r=(((rot||0)%360)+360)%360;
+  if(r===0&&!mir) return shp;
+  const t=(x,y)=>{
+    if(mir) x=-x;
+    if(r===90) return {x:-y,y:x};
+    if(r===180) return {x:-x,y:-y};
+    if(r===270) return {x:y,y:-x};
+    return {x,y};
+  };
+  return shp.map(c=>{
+    if(c.type==='rect'){
+      const p1=t(c.x,c.y),p2=t(c.x+c.w,c.y+c.h);
+      return {...c,x:Math.min(p1.x,p2.x),y:Math.min(p1.y,p2.y),w:Math.abs(p2.x-p1.x),h:Math.abs(p2.y-p1.y)};
+    }
+    if(c.type==='line'){const p1=t(c.x1,c.y1),p2=t(c.x2,c.y2);return {...c,x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y};}
+    if(c.type==='circle'){const p=t(c.cx,c.cy);return {...c,cx:p.x,cy:p.y};}
+    if(c.type==='text'){const p=t(c.x,c.y);return {...c,x:p.x,y:p.y};}
+    return c;
+  });
+}
+function buildSpaceStairShape(s){
+  const P=spaceStairInfo(s);
+  if(!P) return null;
+  const st=s.stair||{};
+  const up=(st.upDir||'up')!=='down';
+  const brk=st.showBreak!==false;
+  const S='#0A0A0A';
+  const {lw,lh,type}=P;
+  const x0=-lw/2,y0=-lh/2;
+  const shp=[];
+  const seg=(x1,y1,x2,y2,sw,dash)=>shp.push({type:'line',x1,y1,x2,y2,stroke:S,sw:sw||16,dash});
+  const AW=Math.min(1500,type==='U'?P.W:lw);
+  const circle=(cx,cy)=>shp.push({type:'circle',cx,cy,r:Math.min(70,AW*0.07),stroke:S,sw:20});
+  const head=(x,y,dx,dy)=>{const ah=Math.min(160,AW*0.14),px=-dy,py=dx;
+    seg(x,y,x-dx*ah+px*ah*0.45,y-dy*ah+py*ah*0.45,20);
+    seg(x,y,x-dx*ah-px*ah*0.45,y-dy*ah-py*ah*0.45,20);};
+  const label=(x,y)=>shp.push({type:'text',x,y,text:up?'UP':'DN',fontSize:Math.min(240,Math.max(120,AW*0.2)),fill:S});
+  if(type==='I'){
+    const {N,T}=P;
+    const brkY=y0+lh*0.38;
+    for(let i=1;i<N;i++){const y=y0+i*T;seg(x0,y,x0+lw,y,16,(brk&&y<brkY)?[120,90]:undefined);}
+    if(brk){seg(x0,brkY+T*0.8,x0+lw,brkY-T*0.6,30);seg(x0,brkY+T*1.4,x0+lw,brkY,18);}
+    const sy=up?y0+lh-T*0.6:y0+T*0.6, ey=up?y0+T*0.9:y0+lh-T*0.9;
+    circle(0,sy);seg(0,sy,0,ey,20);head(0,ey,0,up?-1:1);
+    label(AW*0.10,sy-(up?T*1.1:0));
+  }else if(type==='L'){
+    const {W,LA,LB,N1,N2,T1,T2}=P;
+    // 참(좌상)·플라이트 경계선
+    seg(x0,y0+W,x0+W,y0+W,18);
+    seg(x0+W,y0,x0+W,y0+W,18);
+    seg(x0+W,y0+W,x0+W,y0+lh,18);
+    seg(x0+W,y0+W,x0+lw,y0+W,18);
+    for(let i=1;i<N1;i++) seg(x0,y0+W+i*T1,x0+W,y0+W+i*T1);
+    const bX=x0+W+LB*0.60;
+    for(let i=1;i<N2;i++){const x=x0+W+i*T2;seg(x,y0,x,y0+W,16,(brk&&x>bX)?[120,90]:undefined);}
+    if(brk){seg(bX-T2*0.6,y0,bX+T2*0.8,y0+W,30);seg(bX,y0,bX+T2*1.4,y0+W,18);}
+    const ax=x0+W/2,sy=y0+W+LA-T1*0.6,my=y0+W/2,ex=x0+W+LB-T2*0.9;
+    if(up){circle(ax,sy);seg(ax,sy,ax,my,20);seg(ax,my,ex,my,20);head(ex,my,1,0);label(ax+AW*0.10,sy-T1*1.1);}
+    else{circle(ex,my);seg(ex,my,ax,my,20);seg(ax,my,ax,sy,20);head(ax,sy,0,1);label(ex-AW*0.55,my-T2*1.4);}
+  }else{
+    const {W,L0,LF,N1,N2,T1,T2}=P;
+    seg(x0,y0+L0,x0+lw,y0+L0,18);
+    seg(x0+W-15,y0+L0,x0+W-15,y0+lh,13);seg(x0+W+15,y0+L0,x0+W+15,y0+lh,13);
+    for(let i=1;i<N1;i++) seg(x0,y0+L0+i*T1,x0+W,y0+L0+i*T1);
+    const bY=y0+L0+LF*0.55;
+    for(let i=1;i<N2;i++){const y=y0+L0+i*T2;seg(x0+W,y,x0+lw,y,16,(brk&&y>bY)?[120,90]:undefined);}
+    if(brk){seg(x0+W,bY+T2*0.8,x0+lw,bY-T2*0.6,30);seg(x0+W,bY+T2*1.4,x0+lw,bY,18);}
+    const lx=x0+W/2,rx=x0+W*1.5,sy=y0+L0+LF-T1*0.6,ey=y0+L0+LF-T2*0.9,my=y0+L0/2;
+    if(up){circle(lx,sy);seg(lx,sy,lx,my,20);seg(lx,my,rx,my,20);seg(rx,my,rx,ey,20);head(rx,ey,0,1);label(lx+AW*0.10,sy-T1*1.1);}
+    else{circle(rx,ey);seg(rx,ey,rx,my,20);seg(rx,my,lx,my,20);seg(lx,my,lx,sy,20);head(lx,sy,0,1);label(rx+AW*0.10,ey-T2*1.1);}
+  }
+  return _xformShape(shp,P.rot,!!st.mirror);
+}
 // 2026-08-24: 계단 파라메트릭 평면 도식 (대표 지시) — 직선/ㄱ자/U턴 3유형
 // 옵션: stairWidth_mm(폭), treadDepth_mm(디딤판), stepCount(단수), splitCount(꺾임 전 단수, ㄱ자/U턴),
 //       upDir('up'|'down'), showBreak(절단선). 참(landing)은 ㄱ자=W×W, U턴=2W×W 자동.
