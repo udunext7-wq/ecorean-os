@@ -637,6 +637,21 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('도어·계단: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-24: 트렌드 라이브러리 추가 (가구 13·조명 6) ===
+  (function(){
+    const newFurn=['island','sofa_modular','sofa_curved','lounge_chair','side_table','console','home_bar','massage_chair','styler','desk_motion','beanbag','cat_tower','system_hanger'];
+    const newLight=['line_t5','magnet_track','cove','spot_cyl','table_lamp','pendant_cluster'];
+    const okF=newFurn.every(k=>FURNITURE_LIB[k]&&Array.isArray(FURNITURE_LIB[k].shape)&&FURNITURE_LIB[k].shape.length>=3&&FURNITURE_LIB[k].w>0);
+    const okL=newLight.every(k=>LIGHT_LIB[k]&&Array.isArray(LIGHT_LIB[k].shape)&&LIGHT_LIB[k].shape.length>=3&&LIGHT_LIB[k].size>0);
+    assert('트렌드: 가구 13종 등록+도형',okF,newFurn.filter(k=>!FURNITURE_LIB[k]).join(','));
+    assert('트렌드: 조명 6종 등록+도형',okL,newLight.filter(k=>!LIGHT_LIB[k]).join(','));
+    // 도형 명령 유효성 (drawShape가 아는 타입만 사용)
+    const okTypes=new Set(['rect','circle','line','arc','text']);
+    const bad=[];
+    newFurn.forEach(k=>FURNITURE_LIB[k].shape.forEach(c=>{if(!okTypes.has(c.type))bad.push(k+':'+c.type);}));
+    newLight.forEach(k=>LIGHT_LIB[k].shape.forEach(c=>{if(!okTypes.has(c.type))bad.push(k+':'+c.type);}));
+    assert('트렌드: 도형 타입 유효',bad.length===0,bad.join(','));
+  })();
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
