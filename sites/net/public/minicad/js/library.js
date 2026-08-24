@@ -535,6 +535,9 @@ const LIGHT_LIB={
   ceiling:{name:'천장 조명',nameEn:'ceiling light',size:400,c:'#D4B872',shape:[
     {type:'circle',cx:0,cy:0,r:200,fill:'#D4B872',stroke:'#A88248',sw:8},
     {type:'circle',cx:0,cy:0,r:160,fill:'#F5E5B8',stroke:'#D4B872',sw:3},
+    {type:'circle',cx:0,cy:0,r:105,fill:'#FFF3D0',stroke:'#E8D294',sw:2},
+    {type:'line',x1:-200,y1:0,x2:200,y2:0,stroke:'#A88248',sw:3},
+    {type:'line',x1:0,y1:-200,x2:0,y2:200,stroke:'#A88248',sw:3},
   ]},
   downlight:{name:'다운라이트',nameEn:'recessed downlight',size:150,c:'#D4B872',shape:[
     {type:'circle',cx:0,cy:0,r:75,fill:'#D4B872',stroke:'#A88248',sw:5},
@@ -542,8 +545,10 @@ const LIGHT_LIB={
   ]},
   pendant:{name:'펜던트',nameEn:'pendant light',size:300,c:'#D4B872',shape:[
     {type:'circle',cx:0,cy:0,r:150,fill:'#D4B872',stroke:'#A88248',sw:8},
-    {type:'circle',cx:0,cy:0,r:120,fill:'#F5E5B8',stroke:'#D4B872',sw:3},
+    {type:'circle',cx:0,cy:0,r:118,fill:'#F5E5B8',stroke:'#D4B872',sw:3},
+    {type:'circle',cx:0,cy:0,r:66,fill:'#FFF3D0',stroke:'#E8D294',sw:2},
     {type:'circle',cx:0,cy:0,r:25,fill:'#3E3E3E',stroke:'#1A1A1A',sw:2},
+    {type:'arc',cx:0,cy:0,r:180,start:230,end:310,stroke:'#D4B872',sw:3},
   ]},
   chandelier:{name:'샹들리에',nameEn:'chandelier',size:600,c:'#D4B872',shape:[
     {type:'circle',cx:0,cy:0,r:300,fill:'transparent',stroke:'#D4B872',sw:5},
@@ -562,8 +567,10 @@ const LIGHT_LIB={
     {type:'rect',x:-80,y:-30,w:160,h:60,fill:'#F5E5B8',stroke:'#D4B872',sw:2,r:5},
   ]},
   floor_lamp:{name:'스탠드',nameEn:'floor lamp',size:400,c:'#D4B872',shape:[
-    {type:'circle',cx:0,cy:0,r:200,fill:'#D4B872',stroke:'#A88248',sw:6},
+    {type:'circle',cx:0,cy:0,r:200,fill:'#D4B87233',stroke:'#A88248',sw:6},
+    {type:'circle',cx:0,cy:0,r:135,fill:'#F5E5B8',stroke:'#D4B872',sw:4},
     {type:'circle',cx:0,cy:0,r:30,fill:'#3E3E3E',stroke:'#1A1A1A',sw:3},
+    {type:'line',x1:0,y1:30,x2:150,y2:170,stroke:'#5A5A5A',sw:5},
   ]},
   track:{name:'트랙라이트',nameEn:'track light',size:300,c:'#D4B872',shape:[
     {type:'rect',x:-150,y:-25,w:300,h:50,fill:'#5A5A5A',stroke:'#1A1A1A',sw:5,r:5},
@@ -612,6 +619,63 @@ const LIGHT_LIB={
     {type:'circle',cx:-140,cy:-90,r:95,fill:'#F5E5B8',stroke:'#D4B872',sw:5},
     {type:'circle',cx:170,cy:-40,r:70,fill:'#F5E5B8',stroke:'#D4B872',sw:5},
     {type:'circle',cx:30,cy:150,r:80,fill:'#F5E5B8',stroke:'#D4B872',sw:5},
+  ]},
+  // ===== 2026-08-25: 조명 확충 8종 (대표 지시) =====
+  edge_flat_600:{name:'엣지 평판등 600',nameEn:'LED flat panel 600',size:600,c:'#D4B872',shape:[
+    {type:'rect',x:-300,y:-300,w:600,h:600,fill:'#FFF8E0',stroke:'#D4B872',sw:8,r:10},
+    {type:'rect',x:-260,y:-260,w:520,h:520,fill:'#FFFDF2',stroke:'#F0E3B4',sw:3,r:6},
+    {type:'line',x1:-260,y1:-260,x2:260,y2:260,stroke:'#F0E3B4',sw:2},
+    {type:'line',x1:-260,y1:260,x2:260,y2:-260,stroke:'#F0E3B4',sw:2},
+  ]},
+  kitchen_flat:{name:'주방 평판등 1250',nameEn:'kitchen LED flat panel 1250',size:1250,c:'#D4B872',shape:[
+    {type:'rect',x:-625,y:-160,w:1250,h:320,fill:'#FFF8E0',stroke:'#D4B872',sw:8,r:10},
+    {type:'rect',x:-585,y:-120,w:1170,h:240,fill:'#FFFDF2',stroke:'#F0E3B4',sw:3,r:6},
+    {type:'line',x1:0,y1:-120,x2:0,y2:120,stroke:'#F0E3B4',sw:3},
+  ]},
+  sensor_light:{name:'센서등 (현관)',nameEn:'motion sensor light',size:250,c:'#D4B872',shape:[
+    {type:'circle',cx:0,cy:0,r:125,fill:'#F5E5B8',stroke:'#D4B872',sw:6},
+    {type:'circle',cx:0,cy:0,r:88,fill:'#FFF3D0',stroke:'#E8D294',sw:3},
+    {type:'circle',cx:62,cy:-62,r:26,fill:'#7BA05B',stroke:'#4E6B3A',sw:3},
+    {type:'arc',cx:62,cy:-62,r:50,start:300,end:420,stroke:'#7BA05B',sw:3},
+  ]},
+  bath_light:{name:'방습등 (욕실)',nameEn:'moisture-proof bath light',size:350,c:'#5BA0D4',shape:[
+    {type:'circle',cx:0,cy:0,r:175,fill:'#EDF6FA',stroke:'#5BA0D4',sw:7},
+    {type:'circle',cx:0,cy:0,r:128,fill:'#FFFDF2',stroke:'#9CC4DE',sw:3},
+    {type:'arc',cx:0,cy:0,r:152,start:200,end:250,stroke:'#5BA0D4',sw:4},
+    {type:'arc',cx:0,cy:0,r:152,start:290,end:340,stroke:'#5BA0D4',sw:4},
+    {type:'arc',cx:0,cy:0,r:152,start:20,end:70,stroke:'#5BA0D4',sw:4},
+    {type:'arc',cx:0,cy:0,r:152,start:110,end:160,stroke:'#5BA0D4',sw:4},
+  ]},
+  pendant_linear:{name:'리니어 펜던트 1200',nameEn:'linear pendant bar 1200',size:1200,c:'#D4B872',shape:[
+    {type:'rect',x:-600,y:-70,w:1200,h:140,fill:'#2E2E2E',stroke:'#101010',sw:6,r:70},
+    {type:'rect',x:-540,y:-28,w:1080,h:56,fill:'#FFF3D0',stroke:'#D4B872',sw:3,r:28},
+    {type:'circle',cx:-380,cy:0,r:10,fill:'#5A5A5A',stroke:'#2E2E2E',sw:2},
+    {type:'circle',cx:380,cy:0,r:10,fill:'#5A5A5A',stroke:'#2E2E2E',sw:2},
+  ]},
+  ceiling_fan:{name:'실링팬 조명',nameEn:'ceiling fan with light',size:1200,c:'#8A9194',shape:[
+    {type:'circle',cx:0,cy:0,r:130,fill:'#F5E5B8',stroke:'#D4B872',sw:6},
+    {type:'circle',cx:0,cy:0,r:52,fill:'#5A5A5A',stroke:'#2E2E2E',sw:3},
+    {type:'rect',x:120,y:-90,w:480,h:180,fill:'#A9948F55',stroke:'#6E5D46',sw:6,r:90},
+    {type:'rect',x:-600,y:-90,w:480,h:180,fill:'#A9948F55',stroke:'#6E5D46',sw:6,r:90},
+    {type:'rect',x:-90,y:120,w:180,h:480,fill:'#A9948F55',stroke:'#6E5D46',sw:6,r:90},
+    {type:'rect',x:-90,y:-600,w:180,h:480,fill:'#A9948F55',stroke:'#6E5D46',sw:6,r:90},
+    {type:'arc',cx:0,cy:0,r:600,start:20,end:70,stroke:'#8A9194',sw:3},
+  ]},
+  step_light:{name:'발목등 (계단·복도)',nameEn:'step light',size:200,c:'#D4B872',shape:[
+    {type:'rect',x:-100,y:-60,w:200,h:120,fill:'#F5E5B8',stroke:'#D4B872',sw:5,r:14},
+    {type:'rect',x:-70,y:-18,w:140,h:36,fill:'#FFF3D0',stroke:'#E8D294',sw:2,r:18},
+    {type:'line',x1:-60,y1:60,x2:-90,y2:100,stroke:'#D4B872',sw:3},
+    {type:'line',x1:0,y1:60,x2:0,y2:105,stroke:'#D4B872',sw:3},
+    {type:'line',x1:60,y1:60,x2:90,y2:100,stroke:'#D4B872',sw:3},
+  ]},
+  spot_bar_3:{name:'스포트바 3구 (직부)',nameEn:'3-head spot bar',size:600,c:'#D4B872',shape:[
+    {type:'rect',x:-300,y:-30,w:600,h:60,fill:'#2E2E2E',stroke:'#101010',sw:5,r:30},
+    {type:'circle',cx:-190,cy:0,r:58,fill:'#3E3E3E',stroke:'#141414',sw:4},
+    {type:'circle',cx:-190,cy:0,r:34,fill:'#FFF3D0',stroke:'#D4B872',sw:3},
+    {type:'circle',cx:0,cy:0,r:58,fill:'#3E3E3E',stroke:'#141414',sw:4},
+    {type:'circle',cx:0,cy:0,r:34,fill:'#FFF3D0',stroke:'#D4B872',sw:3},
+    {type:'circle',cx:190,cy:0,r:58,fill:'#3E3E3E',stroke:'#141414',sw:4},
+    {type:'circle',cx:190,cy:0,r:34,fill:'#FFF3D0',stroke:'#D4B872',sw:3},
   ]},
 };
 

@@ -836,6 +836,14 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       FIXTURE_LIB.toilet.shape.length+'/'+FIXTURE_LIB.shower.shape.length);
     assert('위생: semanticOf floor_drain',semanticOf('floor_drain').tag==='sanitary');
   })();
+  // === 2026-08-25: 조명 업그레이드 (신규 8종 + 기존 3종 정밀화) ===
+  (function(){
+    const LK=['edge_flat_600','kitchen_flat','sensor_light','bath_light','pendant_linear','ceiling_fan','step_light','spot_bar_3'];
+    assert('조명: 8종 등록+도형',LK.every(k=>LIGHT_LIB[k]&&Array.isArray(LIGHT_LIB[k].shape)&&LIGHT_LIB[k].shape.length>=3&&LIGHT_LIB[k].size>0),
+      LK.filter(k=>!LIGHT_LIB[k]).join(','));
+    assert('조명: 기존 정밀화(천장 5+·펜던트 5+)',LIGHT_LIB.ceiling.shape.length>=5&&LIGHT_LIB.pendant.shape.length>=5);
+    assert('조명: semanticOf edge_flat_600',semanticOf('edge_flat_600').tag==='ceiling_light');
+  })();
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

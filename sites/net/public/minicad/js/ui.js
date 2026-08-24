@@ -957,6 +957,15 @@ const SEMANTIC_MAP={
   spot_cyl:{tag:'ceiling_light',kw:'surface-mounted cylinder spotlight'},
   table_lamp:{tag:'floor_lamp',kw:'table lamp, mood light'},
   pendant_cluster:{tag:'pendant',kw:'cluster pendant with three staggered globes'},
+  // 2026-08-25: 조명 확충 8종
+  edge_flat_600:{tag:'ceiling_light',kw:'slim LED edge-lit flat panel 600mm square'},
+  kitchen_flat:{tag:'ceiling_light',kw:'kitchen LED flat panel light, rectangular'},
+  sensor_light:{tag:'ceiling_light',kw:'entrance motion sensor ceiling light'},
+  bath_light:{tag:'ceiling_light',kw:'moisture-proof bathroom ceiling light'},
+  pendant_linear:{tag:'pendant',kw:'linear pendant bar over dining table'},
+  ceiling_fan:{tag:'ceiling_light',kw:'ceiling fan with integrated light'},
+  step_light:{tag:'wall_light',kw:'recessed step light for stairs and corridor'},
+  spot_bar_3:{tag:'track_light',kw:'surface-mounted 3-head spot bar'},
   // ===== ELECTRIC_LIB (11종) =====
   outlet_w:{tag:'outlet',kw:'2-gang wall outlet'},
   outlet_w4:{tag:'outlet',kw:'4-gang wall outlet'},
