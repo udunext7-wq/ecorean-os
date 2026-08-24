@@ -496,6 +496,62 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     try{Storage.prototype.setItem=Storage.prototype.setItem;}catch(_){ }
     assert('보강: 예외 없음',false,e.message);
   }
+  // === 2026-08-24: 잠금(lock) 강화 회귀 테스트 — 잠긴 객체는 버텍스 신설·이동·삭제 절대 불가 (대표 지시) ===
+  try{
+    const OFF=700000; // 기존 도형과 겹치지 않는 원격 좌표
+    const _bak={vertices:STATE.vertices.slice(),walls:STATE.walls.slice(),spaces:STATE.spaces.slice(),
+      selectedKind:STATE.selectedKind,selectedId:STATE.selectedId,boxSelection:STATE.boxSelection.slice()};
+    // [L1] moveVertex — 잠긴 벽의 버텍스는 이동 불가
+    const lv1=ensureVertex(OFF,OFF),lv2=ensureVertex(OFF+2000,OFF);
+    const lw=makeWallVEF(lv1.id,lv2.id,{});lw.locked=true;STATE.walls.push(lw);
+    moveVertex(lv1.id,OFF+500,OFF+500);
+    assert('잠금: moveVertex 차단',lv1.x===OFF&&lv1.y===OFF,'이동됨: '+lv1.x+','+lv1.y);
+    // [L2] moveVertex — 해제 시 정상 이동
+    lw.locked=false;
+    moveVertex(lv1.id,OFF+500,OFF+500);
+    assert('잠금: 해제 후 moveVertex 정상',lv1.x===OFF+500&&lv1.y===OFF+500);
+    moveVertex(lv1.id,OFF,OFF);lw.locked=true;
+    // [L3] ensureVertex — 잠긴 객체의 버텍스는 재사용(용접) 안 함
+    const nv=ensureVertex(OFF+10,OFF+10,60);
+    assert('잠금: ensureVertex 재사용 금지',nv.id!==lv1.id,'잠긴 버텍스 재사용됨');
+    // [L4] splitWallsAtIntersections — 잠긴 벽은 분할·버텍스 신설 안 됨
+    const xv1=ensureVertex(OFF+1000,OFF-1000),xv2=ensureVertex(OFF+1000,OFF+1000);
+    const xw=makeWallVEF(xv1.id,xv2.id,{});STATE.walls.push(xw); // 잠긴 벽 lw 를 가로지르는 새 벽
+    const wallCntBefore=STATE.walls.length;
+    splitWallsAtIntersections();
+    const lwStill=STATE.walls.find(w=>w.id===lw.id);
+    assert('잠금: 교차 분할 금지 (벽 유지)',!!lwStill&&STATE.walls.length===wallCntBefore,
+      '벽 수 '+wallCntBefore+'→'+STATE.walls.length);
+    assert('잠금: 교차 분할 금지 (끝점 유지)',!!lwStill&&lwStill.v1Id===lv1.id&&lwStill.v2Id===lv2.id);
+    // [L5] deleteSelected — 잠긴 벽 삭제 불가
+    STATE.boxSelection=[];STATE.selectedKind='wall';STATE.selectedId=lw.id;
+    deleteSelected();
+    assert('잠금: deleteSelected 차단',STATE.walls.some(w=>w.id===lw.id),'잠긴 벽이 삭제됨');
+    // [L6] deleteBoxSelection — 잠긴 벽 삭제 불가
+    STATE.selectedKind=null;STATE.selectedId=null;
+    STATE.boxSelection=[{kind:'wall',id:lw.id}];
+    deleteBoxSelection();
+    assert('잠금: deleteBoxSelection 차단',STATE.walls.some(w=>w.id===lw.id),'잠긴 벽이 삭제됨');
+    // [L7] addLine — 잠긴 공간은 분할되지 않는다 (참조선만 추가)
+    const sq=[{x:OFF+10000,y:OFF},{x:OFF+13000,y:OFF},{x:OFF+13000,y:OFF+3000},{x:OFF+10000,y:OFF+3000}];
+    const svIds=sq.map(pt=>ensureVertex(pt.x,pt.y).id);
+    const lsp=makeSpaceVEF(svIds,{name:'잠금테스트',type:'ROOM',typeIndex:99,layerName:'A-AREA-ROOM-99'});
+    lsp.locked=true;STATE.spaces.push(lsp);
+    const spCntBefore=STATE.spaces.length;
+    addLine(OFF+11500,OFF-500,OFF+11500,OFF+3500); // 공간을 세로로 가로지르는 선
+    assert('잠금: addLine 공간 분할 금지',STATE.spaces.length===spCntBefore&&STATE.spaces.some(x=>x.id===lsp.id),
+      '공간 수 '+spCntBefore+'→'+STATE.spaces.length);
+    // [L8] rotateSpaceByAngle — 잠긴 공간 회전 불가
+    const v0x=getVertex(svIds[0]).x,v0y=getVertex(svIds[0]).y;
+    rotateSpaceByAngle(lsp.id,45);
+    assert('잠금: rotateSpaceByAngle 차단',getVertex(svIds[0]).x===v0x&&getVertex(svIds[0]).y===v0y);
+    // 복원
+    STATE.vertices=_bak.vertices;STATE.walls=_bak.walls;STATE.spaces=_bak.spaces;
+    STATE.selectedKind=_bak.selectedKind;STATE.selectedId=_bak.selectedId;STATE.boxSelection=_bak.boxSelection;
+    renderAll();
+  }catch(e){
+    assert('잠금: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

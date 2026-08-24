@@ -338,6 +338,7 @@ function addLine(x1,y1,x2,y2){
   // 1) 단일 선분으로 공간 가로지르면 분할 (기존 동작)
   const toRemove=[],toAdd=[];
   STATE.spaces.forEach(s=>{
+    if(s.locked) return; // 2026-08-24: 잠긴 공간은 분할 금지
     const result=splitPolygonByLine(s.polygon,a,b);
     if(!result) return;
     toRemove.push(s.id);
@@ -374,7 +375,8 @@ function addLine(x1,y1,x2,y2){
     return;
   }
   // 2) v5.9: 다중 선분 폴리라인 분할 시도 — 새 선이 기존 isLine과 연결되어 공간을 가로지르면
-  const plResult=tryPolylineSplit(a,b);
+  let plResult=tryPolylineSplit(a,b);
+  if(plResult&&plResult.space&&plResult.space.locked){plResult=null;cmdToast('잠금된 공간 — 분할 대신 참조선 추가');} // 2026-08-24
   if(plResult){
     const {space,parts,consumedWallIds}=plResult;
     const srcWallMat=STATE.walls.find(w=>w.spaceId===space.id&&!w.isLine)?.finishMaterial||null;
@@ -426,9 +428,11 @@ function splitWallsAtIntersections(){
     outer: for(let i=0;i<STATE.walls.length;i++){
       const a=STATE.walls[i];
       if(a.wallType==='bearing') continue; // v5.9: 내력벽 격리 — 자동 분할 대상에서 제외
+      if(a.locked) continue; // 2026-08-24: 잠긴 벽은 분할·버텍스 신설 금지 (대표 지시)
       for(let j=i+1;j<STATE.walls.length;j++){
         const b=STATE.walls[j];
         if(b.wallType==='bearing') continue; // v5.9: 내력벽은 다른 벽도 분할 안 시킴
+        if(b.locked) continue; // 2026-08-24: 잠긴 벽은 분할·버텍스 신설 금지
         const ip=segIntersection(
           {x:a.x1,y:a.y1},{x:a.x2,y:a.y2},
           {x:b.x1,y:b.y1},{x:b.x2,y:b.y2});
@@ -944,6 +948,14 @@ function finishBoxSelection(){
 function deleteBoxSelection(){
   if(STATE.boxSelection.length===0) return false;
   const groups2={wall:'walls',space:'spaces',opening:'openings',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac',leaders:'leaders',xlines:'xlines',curves:'curves',pillars:'pillars'};
+  // 2026-08-24: 잠금 강화 — 잠긴 객체는 삭제 대상에서 제외 (대표 지시)
+  const _lockedSkip=STATE.boxSelection.filter(b=>{
+    const arr=STATE[groups2[b.kind]];const o=arr&&arr.find(x=>x.id===b.id);return o&&o.locked;
+  }).length;
+  STATE.boxSelection=STATE.boxSelection.filter(b=>{
+    const arr=STATE[groups2[b.kind]];const o=arr&&arr.find(x=>x.id===b.id);return !(o&&o.locked);
+  });
+  if(STATE.boxSelection.length===0){cmdToast('잠금된 객체 — 삭제 불가 ('+_lockedSkip+'개)');return true;}
   STATE.boxSelection.forEach(b=>{
     const arrName=groups2[b.kind];
     if(!arrName) return;
@@ -963,7 +975,7 @@ function deleteBoxSelection(){
   const n=STATE.boxSelection.length;
   STATE.boxSelection=[];
   saveHistory();renderAll();refreshUI();
-  cmdToast(n+'개 삭제');
+  cmdToast(n+'개 삭제'+(_lockedSkip?' (잠금 '+_lockedSkip+'개 제외)':''));
   return true;
 }
 
@@ -1021,6 +1033,7 @@ function handleTrim(pos){
     if(dr<minD){minD=dr;target=c;kind='circle';extra=null;}
   });
   if(!target){cmdToast('자를 객체 가까이 클릭 (벽/사각공간 변/원)');return;}
+  if(target.locked){cmdToast('잠금된 객체 — 트림 불가');return;} // 2026-08-24
 
   // ====== 벽 트림 (기존 v5.3 로직) ======
   if(kind==='wall'){
@@ -1882,6 +1895,7 @@ function mergeAdjacentSpaces(){
     ? STATE.boxSelection.filter(b=>b.kind==='space').map(b=>b.id)
     : (STATE.selectedKind==='space'&&STATE.selectedId?[STATE.selectedId]:[]);
   if(ids.length<2){cmdToast('공간 두 개 이상 선택 필요');return;}
+  if(ids.some(id=>{const sp=STATE.spaces.find(s=>s.id===id);return sp&&sp.locked;})){cmdToast('잠금된 공간 포함 — 병합 불가');return;} // 2026-08-24
   const TOL=60;
   // 두 폴리곤에서 평행 + 겹치는 변 찾기 (변 길이 차이 / 분할 모두 허용)
   function findSharedEdge(A,B){
@@ -3524,6 +3538,7 @@ function subtractSelectedSpaces(targetId,cutterId){
   let target=STATE.spaces.find(s=>s.id===targetId);
   let cutter=STATE.spaces.find(s=>s.id===cutterId);
   if(!target||!cutter){cmdToast('공간 찾을 수 없음');return;}
+  if(target.locked||cutter.locked){cmdToast('잠금된 공간 포함 — 차집합 불가');return;} // 2026-08-24
   // 포함 여부 양방향 검사 — 클릭 순서 무관하게 더 큰 공간이 외곽이 되도록
   const cutterInTarget=cutter.polygon.every(p=>ptInPoly(p,target.polygon));
   const targetInCutter=target.polygon.every(p=>ptInPoly(p,cutter.polygon));
@@ -3557,6 +3572,7 @@ function intersectSelectedSpaces(aId,bId){
   const A=STATE.spaces.find(s=>s.id===aId);
   const B=STATE.spaces.find(s=>s.id===bId);
   if(!A||!B){cmdToast('공간 찾을 수 없음');return;}
+  if(A.locked||B.locked){cmdToast('잠금된 공간 포함 — 교집합 불가');return;} // 2026-08-24
   const inter=suthHodg(A.polygon,B.polygon);
   if(!inter||inter.length<3){cmdToast('겹침 없음 — 교집합 불가');return;}
   const poly=simplifySpacePoly(inter.map(p=>({x:Math.round(p.x),y:Math.round(p.y)})));

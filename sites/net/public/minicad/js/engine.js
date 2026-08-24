@@ -585,6 +585,8 @@ function isClockwise(pts){
 function rotateSpaceByAngle(spaceId,angleDeg){
   const sp=STATE.spaces.find(s=>s.id===spaceId);
   if(!sp) return;
+  // 2026-08-24: 잠금 강화 — 잠긴 공간은 회전 불가
+  if(sp.locked){if(typeof cmdToast==='function')cmdToast('잠금된 공간 — 회전 불가');return;}
   const poly=sp.polygon.slice(); // vertex 회전 전 스냅샷 (내부 판정용)
   if(poly.length<2) return;
   // 중심점 (centroid — 회전 후에도 동일 위치 유지)
@@ -700,7 +702,8 @@ function getVertex(id){return STATE.vertices.find(v=>v.id===id);}
 function ensureVertex(x,y,tol=60){
   x=Math.round(x);y=Math.round(y);
   // v5.9: bearing vertex(내력벽 전용)는 일반벽 그래프에 재사용 안 됨
-  const found=STATE.vertices.find(v=>v.kind!=='bearing'&&Math.hypot(v.x-x,v.y-y)<tol);
+  // 2026-08-24: 잠긴 객체의 버텍스는 재사용 안 함 — 새 벽/공간이 잠긴 도형과 용접되는 것 방지
+  const found=STATE.vertices.find(v=>v.kind!=='bearing'&&!isVertexLocked(v.id)&&Math.hypot(v.x-x,v.y-y)<tol);
   if(found) return found;
   const v={id:makeId('v'),x,y};
   STATE.vertices.push(v);
@@ -715,7 +718,13 @@ function ensureBearingVertex(x,y,tol=30){
   STATE.vertices.push(v);
   return v;
 }
-function moveVertex(id,x,y){const v=getVertex(id);if(v){v.x=Math.round(x);v.y=Math.round(y);}}
+// 2026-08-24: 잠금 강화 — 잠긴 벽/공간이 참조하는 버텍스는 어떤 경로로도 이동 금지 (대표 지시)
+function isVertexLocked(vid){
+  if(!vid) return false;
+  return STATE.walls.some(w=>w.locked&&(w.v1Id===vid||w.v2Id===vid))
+      ||STATE.spaces.some(s=>s.locked&&s.vertexIds&&s.vertexIds.includes(vid));
+}
+function moveVertex(id,x,y){if(isVertexLocked(id))return;const v=getVertex(id);if(v){v.x=Math.round(x);v.y=Math.round(y);}}
 function verticesOfObj(obj){
   if(obj.vertexIds) return obj.vertexIds.map(getVertex).filter(Boolean);
   if(obj.v1Id) return [getVertex(obj.v1Id),getVertex(obj.v2Id)].filter(Boolean);
@@ -2346,6 +2355,15 @@ function renderSpaceHandles(){
             }
           }
         }
+      }
+      // 2026-08-24: 잠금 강화 — 잠긴 객체와 공유된 꼭짓점은 드래그 자체를 차단 (따라 움직임 방지)
+      if(isVertexLocked(vid)){
+        _spaceHandleDragging=false;
+        handle.stopDrag();
+        handle.opacity(0.3);handle.radius(5);handle.fill('#D4FF3D');handle.shadowBlur(12);
+        if(typeof cmdToast==='function')cmdToast('잠금된 객체와 연결된 꼭짓점 — 이동 불가');
+        groups.spaceHandles.batchDraw();
+        return;
       }
       // 직교 기준점 = vertex 원래 mm 좌표
       const vNow=getVertex(vid);

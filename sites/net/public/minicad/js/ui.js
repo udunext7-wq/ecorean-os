@@ -1346,6 +1346,8 @@ function getSelectedTargets(){
 function rotateSelected(){
   // 공간 선택 시: 점·선·면·벽·치수 포함 전체 회전 — 각도 입력 모드
   if(STATE.selectedKind==='space'&&STATE.selectedId){
+    const _sp=STATE.spaces.find(s=>s.id===STATE.selectedId);
+    if(_sp&&_sp.locked){showStatus('잠금된 공간 — 회전 불가');return;} // 2026-08-24
     enterCmdMode('rotate-space',{spaceId:STATE.selectedId},'회전각(°):','각도 입력 (예: 45, -90, 180) — Enter / ↻ 핸들 드래그도 가능');
     return;
   }
@@ -1356,6 +1358,7 @@ function rotateSelected(){
     const arr=getArr(t.kind); if(!arr) return;
     const obj=arr.find(x=>x.id===t.id);
     if(!obj||!('angle' in obj)) return;
+    if(obj.locked) return; // 2026-08-24: 잠긴 객체 회전 금지
     obj.angle=((obj.angle||0)+90)%360; n++;
   });
   if(n===0) return;
@@ -1391,9 +1394,21 @@ function duplicateSelected(){
   if(targets.length>1){STATE.boxSelection=newSel;STATE.selectedKind=null;STATE.selectedId=null;}
   saveHistory();renderAll();refreshUI();showStatus('복제됨 ('+targets.length+'개)');
 }
+// 2026-08-24: 잠금 강화 — kind/id 로 실제 객체 조회 (잠금 검사용)
+function _findObjByKindId(kind,id){
+  if(kind==='space') return STATE.spaces.find(x=>x.id===id);
+  if(kind==='wall') return STATE.walls.find(x=>x.id===id);
+  if(kind==='opening') return STATE.openings.find(x=>x.id===id);
+  const arr=getArr(kind);
+  return arr?arr.find(x=>x.id===id):null;
+}
 function deleteSelected(){
-  const targets=getSelectedTargets();
+  let targets=getSelectedTargets();
   if(targets.length===0) return;
+  // 2026-08-24: 잠금 강화 — 잠긴 객체는 삭제 대상에서 제외 (대표 지시)
+  const lockedCnt=targets.filter(t=>{const o=_findObjByKindId(t.kind,t.id);return o&&o.locked;}).length;
+  targets=targets.filter(t=>{const o=_findObjByKindId(t.kind,t.id);return !(o&&o.locked);});
+  if(targets.length===0){showStatus('잠금된 객체 — 삭제 불가 ('+lockedCnt+'개)');return;}
   targets.forEach(t=>{
     if(t.kind==='space'){
       STATE.spaces=STATE.spaces.filter(x=>x.id!==t.id);
@@ -1419,7 +1434,7 @@ function deleteSelected(){
     if(STATE.videoSequenceOrder.length===0) STATE.videoSequenceOrder=null;
   }
   cleanupOrphanVertices();
-  saveHistory();renderAll();refreshUI();showStatus('삭제 ('+targets.length+'개)');
+  saveHistory();renderAll();refreshUI();showStatus('삭제 ('+targets.length+'개)'+(lockedCnt?' — 잠금 '+lockedCnt+'개 제외':''));
 }
 
 // ===== 토글 =====
@@ -3250,9 +3265,11 @@ function moveSelectedBy(dx,dy){
   const targets=getSelectedTargets();
   if(targets.length===0){cmdToast('객체 선택 필요');return;}
   let n=0;
+  let lockedCnt=0;
   targets.forEach(t=>{
     const arr=getArr(t.kind); if(!arr) return;
     const obj=arr.find(x=>x.id===t.id); if(!obj) return;
+    if(obj.locked){lockedCnt++;return;} // 2026-08-24: 잠긴 객체는 이동 명령 무시
     if('x' in obj){obj.x+=dx;obj.y+=dy;}
     if('v1Id' in obj){
       moveVertex(obj.v1Id,obj.x1+dx,obj.y1+dy);
@@ -3261,15 +3278,16 @@ function moveSelectedBy(dx,dy){
       obj.x1+=dx;obj.y1+=dy;obj.x2+=dx;obj.y2+=dy;
     }
     if('vertexIds' in obj){
-      obj.vertexIds.forEach(vid=>{const v=getVertex(vid);if(v){v.x=Math.round(v.x+dx);v.y=Math.round(v.y+dy);}});
+      // 2026-08-24: 직접 좌표 수정 → moveVertex 경유 (잠긴 이웃과 공유된 버텍스 중앙 가드 적용)
+      obj.vertexIds.forEach(vid=>{const v=getVertex(vid);if(v)moveVertex(vid,v.x+dx,v.y+dy);});
     } else if(obj.polygon){
       obj.polygon=obj.polygon.map(p=>({x:p.x+dx,y:p.y+dy}));
     }
     n++;
   });
-  if(n===0) return;
+  if(n===0){if(lockedCnt)cmdToast('잠금된 객체 — 이동 불가');return;}
   saveHistory();renderAll();refreshUI();
-  cmdToast('이동: '+dx+','+dy+'mm ('+n+'개)');
+  cmdToast('이동: '+dx+','+dy+'mm ('+n+'개)'+(lockedCnt?' — 잠금 '+lockedCnt+'개 제외':''));
 }
 
 function rotateSelectedBy(angle){
@@ -3287,6 +3305,7 @@ function rotateSelectedBy(angle){
     const arr=getArr(t.kind); if(!arr) return;
     const obj=arr.find(x=>x.id===t.id); if(!obj) return;
     if(!('angle' in obj)) return;
+    if(obj.locked) return; // 2026-08-24: 잠긴 객체 회전 금지
     obj.angle=((obj.angle||0)+angle)%360; n++;
   });
   if(n===0){cmdToast('회전 가능 객체 없음');return;}
