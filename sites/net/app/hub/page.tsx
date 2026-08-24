@@ -1,20 +1,32 @@
-// /hub — 업무시스템 허브. 로그인 창 안에서 열리며, 기존 홈페이지 드롭다운에 있던
-// 모듈들을 그대로 라우팅한다 (+ 새 BOC). 접근: staff 이상 (D-021).
+// /hub — 직원 포털 홈. 모든 업무 모듈을 토글 트리로 진입한다 (대표 지시 2026-08-24).
+// 접근: staff 이상 (D-021). 섹션 열림 상태는 브라우저에 저장.
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionProfile } from '@/core/auth/session';
 import { hasRole, netRedirectTarget } from '@/core/auth/roles';
 import { Badge, Button, Card } from '@/core/ui';
+import { HubTree, type TreeSection } from './HubTree';
 
 export const dynamic = 'force-dynamic';
 
-// 허브 섹션 — 4개 카테고리로 정리 (2026-08-05 대표 지시)
+// 포털 섹션 — 일상 업무(포털·장부)를 최상단에 (2026-08-24 대표 지시로 트리 개편)
 type HubItem = { href: string; name: string; desc: string; minRole?: 'admin' };
-type HubSection = { title: string; items: HubItem[] };
+type HubSection = { title: string; desc: string; items: HubItem[] };
 
 const SECTIONS: HubSection[] = [
   {
+    title: '직원 포털 · 장부',
+    desc: '발주 · 일보 · 계산서 — 매일 쓰는 업무',
+    items: [
+      { href: '/work/#po', name: '발주서', desc: '직원 포털' },
+      { href: '/work/#daily', name: '공사일보', desc: '현장 대시보드·일보 작성' },
+      { href: '/work/#invoice', name: '계산서', desc: '직원 포털' },
+      { href: '/biz/', name: '사업장부', desc: 'BOC BIZ' },
+    ],
+  },
+  {
     title: '설계 · 견적',
+    desc: '도면에서 견적까지',
     items: [
       { href: '/minicad/', name: 'MiniCAD', desc: '도면·견적' },
       { href: '/catalog/plans/', name: '평면도 라이브러리', desc: '주거 평면도 DB → MiniCAD 밑그림' },
@@ -25,6 +37,7 @@ const SECTIONS: HubSection[] = [
   },
   {
     title: '자재 · 스펙북',
+    desc: '도감 열람과 사양서 발행',
     items: [
       { href: '/catalog/usong/', name: '유송타일 도감', desc: '단가 포함 · 직원용' },
       { href: '/catalog/lx/', name: 'LX Z:IN 도감', desc: '단가 포함 · 직원용' },
@@ -32,16 +45,8 @@ const SECTIONS: HubSection[] = [
     ],
   },
   {
-    title: '직원 포털 · 장부',
-    items: [
-      { href: '/work/#po', name: '발주서', desc: '직원 포털' },
-      { href: '/work/#daily', name: '공사일보', desc: '현장 대시보드·일보 작성' },
-      { href: '/work/#invoice', name: '계산서', desc: '직원 포털' },
-      { href: '/biz/', name: '사업장부', desc: 'BOC BIZ' },
-    ],
-  },
-  {
     title: 'BOC 마스터 DB',
+    desc: '단가·자재 기준 데이터와 관리',
     items: [
       { href: '/boc', name: 'BOC 대시보드', desc: '마스터 DB 현황' },
       { href: '/boc/cost-items', name: '공정 단가', desc: '670건' },
@@ -86,15 +91,21 @@ export default async function HubPage() {
     );
   }
 
-  const tile =
-    'block rounded-xl border border-stroke bg-panel p-4 shadow-sm transition hover:border-brand-500 hover:shadow-md';
+  // 역할 필터 후 트리 데이터로 변환 (admin 항목은 하위 가지로 구분)
+  const treeSections: TreeSection[] = SECTIONS.map((section) => ({
+    title: section.title,
+    desc: section.desc,
+    items: section.items
+      .filter((m) => !m.minRole || hasRole(profile.role, m.minRole))
+      .map((m) => ({ href: m.href, name: m.name, desc: m.desc, admin: m.minRole === 'admin' })),
+  })).filter((s) => s.items.length > 0);
 
   return (
     <main className="min-h-screen bg-ink p-6">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-cream">ECOREAN 업무시스템</h1>
+            <h1 className="text-xl font-bold text-cream">ECOREAN 직원 포털</h1>
             <p className="mt-0.5 text-sm text-muted">
               {profile.email} <Badge tone="info">{profile.role}</Badge>
             </p>
@@ -114,25 +125,7 @@ export default async function HubPage() {
           </div>
         </div>
 
-        {SECTIONS.map((section) => {
-          const items = section.items.filter((m) => !m.minRole || hasRole(profile.role, m.minRole));
-          if (items.length === 0) return null;
-          return (
-            <div key={section.title}>
-              <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-faint first:mt-0">
-                {section.title}
-              </h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                {items.map((m) => (
-                  <a key={m.href} href={m.href} className={tile}>
-                    <p className="font-semibold text-cream">{m.name}</p>
-                    <p className="mt-1 text-xs text-muted">{m.desc}</p>
-                  </a>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        <HubTree sections={treeSections} />
       </div>
     </main>
   );
