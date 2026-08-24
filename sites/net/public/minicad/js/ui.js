@@ -11,13 +11,13 @@ function setLibCategory(toolName){
     document.querySelectorAll('.libcat-btn').forEach(b=>b.classList.remove('active'));
     return;
   }
-  const lib={furniture:FURNITURE_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB}[toolName];
+  const lib={furniture:FURNITURE_LIB,furniture2:FIXFURN_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB}[toolName];
   document.querySelectorAll('.libcat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===toolName));
   if(lib){
     showLibPopup(toolName,lib);
     popup.dataset.tool=toolName;
   }
-  cmdToast({furniture:'1 가구',fixture:'2 위생/주방',light:'3 조명',electric:'4 전기',hvac:'5 공조/소방'}[toolName]||toolName);
+  cmdToast({furniture:'1 가구',furniture2:'6 가구2 (픽스)',fixture:'2 위생/주방',light:'3 조명',electric:'4 전기',hvac:'5 공조/소방'}[toolName]||toolName);
 }
 function rebuildLibPanel(toolName){
   // v5.9: 인라인 패널 비활성 — 팝업으로 이전됨. 카테고리 탭 강조만 동기화.
@@ -60,7 +60,7 @@ function setTool(tool){
   drawGroup.destroyChildren();previewLayer.batchDraw();
   container.className='tool-'+tool;
   document.querySelectorAll('.libcat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===tool));
-  const libTools={furniture:FURNITURE_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB};
+  const libTools={furniture:FURNITURE_LIB,furniture2:FIXFURN_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB};
   if(libTools[tool]) rebuildLibPanel(tool);
   else{const p=document.getElementById('lib-panel');if(p)p.innerHTML='';STATE.selectedLib=null;}
   showStatus('도구: '+tool);
@@ -159,7 +159,7 @@ function _attachLibPopupDrag(popup){
   handle.style.touchAction='none';
 }
 function showLibPopup(tool,lib){
-  const titles={furniture:'1 가구',fixture:'2 위생/주방',light:'3 조명',electric:'4 전기',hvac:'5 공조/소방'};
+  const titles={furniture:'1 가구',furniture2:'6 가구2 — 픽스(빌트인)',fixture:'2 위생/주방',light:'3 조명',electric:'4 전기',hvac:'5 공조/소방'};
   const popup=document.getElementById('lib-popup');
   document.getElementById('lib-popup-title').textContent=titles[tool]||'라이브러리';
   // 닫기 버튼 (없으면 1회 생성)
@@ -172,7 +172,11 @@ function showLibPopup(tool,lib){
   _attachLibPopupDrag(popup);
   const grid=document.getElementById('lib-popup-grid');
   grid.innerHTML='';
-  const kindMap={furniture:'furniture',fixture:'fixtures',light:'lights',electric:'electric',hvac:'hvac'};
+  const kindMap={furniture:'furniture',furniture2:'furniture',fixture:'fixtures',light:'lights',electric:'electric',hvac:'hvac'};
+  // 2026-08-24: 픽스가구는 '6 가구2' 전용 — '1 가구' 팝업에서는 제외 (FURNITURE_LIB 병합분 숨김)
+  if(tool==='furniture'&&typeof FIXFURN_LIB!=='undefined'){
+    lib=Object.fromEntries(Object.entries(lib).filter(([k])=>!FIXFURN_LIB[k]));
+  }
   // 2026-08-24 v6.0: 최근 사용 (도구별 최대 6개, localStorage)
   let _recent=[];
   try{_recent=JSON.parse(localStorage.getItem('minicad.recent.'+tool)||'[]');}catch(_){_recent=[];}
@@ -926,6 +930,24 @@ const SEMANTIC_MAP={
   floor_lamp:{tag:'floor_lamp',kw:'floor standing lamp'},
   track:{tag:'track_light',kw:'ceiling track lighting'},
   fluorescent:{tag:'ceiling_light',kw:'fluorescent ceiling strip light'},
+  // 2026-08-24: 가구2 — 픽스(빌트인) 17종
+  base_600:{tag:'kitchen_cabinet',kw:'kitchen base cabinet 600mm'},
+  base_900:{tag:'kitchen_cabinet',kw:'kitchen base cabinet 900mm, double door'},
+  base_sink_900:{tag:'kitchen_cabinet',kw:'kitchen sink base cabinet with stainless bowl'},
+  base_cook_600:{tag:'kitchen_cabinet',kw:'cooktop base cabinet with 4-burner hob'},
+  base_drawer_600:{tag:'kitchen_cabinet',kw:'kitchen drawer base cabinet, 3 drawers'},
+  wall_600:{tag:'kitchen_cabinet',kw:'kitchen wall cabinet 600mm, upper'},
+  wall_900:{tag:'kitchen_cabinet',kw:'kitchen wall cabinet 900mm, upper'},
+  corner_base_900:{tag:'kitchen_cabinet',kw:'kitchen corner base cabinet, L-shaped'},
+  corner_wall_600:{tag:'kitchen_cabinet',kw:'kitchen corner wall cabinet, upper'},
+  tall_600:{tag:'kitchen_cabinet',kw:'tall pantry cabinet, full height'},
+  fridge_cab_900:{tag:'kitchen_cabinet',kw:'refrigerator housing cabinet'},
+  island_1500:{tag:'kitchen_island',kw:'kitchen island cabinet unit 1500mm'},
+  wardrobe_fix_1200:{tag:'builtin_cabinet',kw:'built-in wardrobe, floor to ceiling'},
+  shoe_cab_1200:{tag:'builtin_cabinet',kw:'entry shoe cabinet, built-in'},
+  tv_lowcab_2400:{tag:'builtin_cabinet',kw:'living room TV low cabinet, built-in'},
+  bath_vanity_900:{tag:'builtin_cabinet',kw:'bathroom vanity cabinet with basin'},
+  laundry_cab_700:{tag:'builtin_cabinet',kw:'laundry appliance cabinet'},
   // 2026-08-24: 트렌드 조명 6종
   line_t5:{tag:'ceiling_light',kw:'slim LED line light bar'},
   magnet_track:{tag:'track_light',kw:'recessed magnetic track with spot and linear modules'},
@@ -1073,6 +1095,7 @@ function buildJSON(){
       flipped:!!o.flipped,
       nameKo:def.name||o.type,
       nameEn:def.nameEn||sm.kw||o.type,
+      estModule:def.est||null, // 2026-08-24: 픽스가구 견적 모듈 코드 (견적 OS 소비용)
       semanticTag:sm.tag,
       promptKeyword:def.nameEn||sm.kw,
       placement:placementOf(o,sp),

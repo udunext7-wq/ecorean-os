@@ -2640,7 +2640,7 @@ function applyDragMove(state,dx,dy){
 // v5.9: 라이브러리 객체 배치 미리보기 (고스트 + 벽까지 거리)
 function updateLibPlacementPreview(pos){
   const tool=STATE.selectedTool;
-  const libMap={furniture:FURNITURE_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB};
+  const libMap={furniture:FURNITURE_LIB,furniture2:FIXFURN_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB};
   const lib=libMap[tool];
   if(!lib||!STATE.selectedLib||isMouseDown){
     if(_libPreviewActive){drawGroup.destroyChildren();previewLayer.batchDraw();_libPreviewActive=false;}
@@ -3111,6 +3111,7 @@ stage.on('mouseup touchend',e=>{
     else if(STATE.selectedTool==='door') addOpening(pos,'DOOR');
     else if(STATE.selectedTool==='window') addOpening(pos,'WINDOW');
     else if(STATE.selectedTool==='furniture'&&STATE.selectedLib) addLibObject(pos,'furniture',STATE.selectedLib);
+    else if(STATE.selectedTool==='furniture2'&&STATE.selectedLib) addLibObject(pos,'furniture',STATE.selectedLib); // 2026-08-24: 가구2(픽스) — kind 는 furniture 공용
     else if(STATE.selectedTool==='fixture'&&STATE.selectedLib) addLibObject(pos,'fixtures',STATE.selectedLib);
     else if(STATE.selectedTool==='light'&&STATE.selectedLib) addLibObject(pos,'lights',STATE.selectedLib);
     else if(STATE.selectedTool==='electric'&&STATE.selectedLib) addLibObject(pos,'electric',STATE.selectedLib);
@@ -3645,7 +3646,7 @@ document.addEventListener('keydown',e=>{
     return; // 기타 Ctrl+키는 도구 단축키로 안 흐르게
   }
   // v5.9: 고스트 회전/미러 (라이브러리 배치 모드 한정)
-  const isLibMode=['furniture','fixture','light','electric','hvac'].includes(STATE.selectedTool)&&STATE.selectedLib;
+  const isLibMode=['furniture','furniture2','fixture','light','electric','hvac'].includes(STATE.selectedTool)&&STATE.selectedLib;
   if(isLibMode&&!STATE.selectedKind){
     if(e.key.toLowerCase()==='r'){
       e.preventDefault();
@@ -3692,6 +3693,7 @@ document.addEventListener('keydown',e=>{
     case '3':setTool('light');setLibCategory('light');break;
     case '4':setTool('electric');setLibCategory('electric');break;
     case '5':setTool('hvac');setLibCategory('hvac');break;
+    case '6':setTool('furniture2');setLibCategory('furniture2');break; // 2026-08-24: 가구2 (픽스)
     case 'enter':
       e.preventDefault();
       if(STATE.selectedTool==='leader'&&leaderDrawState) finishLeader();

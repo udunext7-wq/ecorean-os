@@ -241,6 +241,135 @@ const FURNITURE_LIB={
   ]},
 };
 
+// ===== 2026-08-24: 가구2 — 픽스(빌트인) 가구 라이브러리 (대표 지시) =====
+// 견적 OS 연동: 각 모듈에 est={code,cat,unit} — JSON export 시 estModule 로 승계 (단가 없음, 헌법 준수)
+// 평면 도식 관례: 밑장=실선+도어라인, 상부장=점선 외곽, 코너=대각선, 키큰장=X, 개수대/쿡탑=심볼
+const FIXFURN_LIB={
+  // --- 싱크대(주방) 모듈 ---
+  base_600:{name:'밑장 600',nameEn:'base cabinet 600',w:600,h:600,c:'#A98F68',est:{code:'KB-600',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-300,y:-300,w:600,h:600,fill:'#A98F68',stroke:'#3E332A',sw:16,r:8},
+    {type:'rect',x:-260,y:-260,w:520,h:520,fill:'#BCA27A',stroke:'#6E5D46',sw:5,r:6},
+    {type:'line',x1:-260,y1:220,x2:260,y2:220,stroke:'#3E332A',sw:8},
+    {type:'circle',cx:0,cy:262,r:16,fill:'#3E332A',stroke:'#1A1A1A',sw:2},
+  ]},
+  base_900:{name:'밑장 900',nameEn:'base cabinet 900',w:900,h:600,c:'#A98F68',est:{code:'KB-900',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-450,y:-300,w:900,h:600,fill:'#A98F68',stroke:'#3E332A',sw:16,r:8},
+    {type:'rect',x:-410,y:-260,w:820,h:520,fill:'#BCA27A',stroke:'#6E5D46',sw:5,r:6},
+    {type:'line',x1:0,y1:-260,x2:0,y2:260,stroke:'#6E5D46',sw:5},
+    {type:'line',x1:-410,y1:220,x2:410,y2:220,stroke:'#3E332A',sw:8},
+    {type:'circle',cx:-100,cy:262,r:16,fill:'#3E332A',stroke:'#1A1A1A',sw:2},
+    {type:'circle',cx:100,cy:262,r:16,fill:'#3E332A',stroke:'#1A1A1A',sw:2},
+  ]},
+  base_sink_900:{name:'개수대 밑장 900',nameEn:'sink base 900',w:900,h:600,c:'#A98F68',est:{code:'KB-SINK-900',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-450,y:-300,w:900,h:600,fill:'#A98F68',stroke:'#3E332A',sw:16,r:8},
+    {type:'rect',x:-350,y:-210,w:700,h:420,fill:'#C3C7C7',stroke:'#5F6668',sw:10,r:60},
+    {type:'rect',x:-300,y:-160,w:600,h:320,fill:'#DADEDE',stroke:'#8A9194',sw:5,r:44},
+    {type:'circle',cx:0,cy:-248,r:26,fill:'#8A9194',stroke:'#5F6668',sw:4},
+    {type:'circle',cx:0,cy:40,r:20,fill:'#8A9194',stroke:'#5F6668',sw:3},
+  ]},
+  base_cook_600:{name:'쿡탑 밑장 600',nameEn:'cooktop base 600',w:600,h:600,c:'#A98F68',est:{code:'KB-COOK-600',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-300,y:-300,w:600,h:600,fill:'#A98F68',stroke:'#3E332A',sw:16,r:8},
+    {type:'rect',x:-260,y:-260,w:520,h:520,fill:'#2E2E2E',stroke:'#141414',sw:8,r:14},
+    {type:'circle',cx:-120,cy:-120,r:85,fill:'transparent',stroke:'#8A8A8A',sw:8},
+    {type:'circle',cx:120,cy:-120,r:85,fill:'transparent',stroke:'#8A8A8A',sw:8},
+    {type:'circle',cx:-120,cy:120,r:85,fill:'transparent',stroke:'#8A8A8A',sw:8},
+    {type:'circle',cx:120,cy:120,r:85,fill:'transparent',stroke:'#8A8A8A',sw:8},
+  ]},
+  base_drawer_600:{name:'서랍 밑장 600',nameEn:'drawer base 600',w:600,h:600,c:'#A98F68',est:{code:'KB-DRW-600',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-300,y:-300,w:600,h:600,fill:'#A98F68',stroke:'#3E332A',sw:16,r:8},
+    {type:'rect',x:-260,y:-260,w:520,h:520,fill:'#BCA27A',stroke:'#6E5D46',sw:5,r:6},
+    {type:'line',x1:-260,y1:-90,x2:260,y2:-90,stroke:'#6E5D46',sw:6},
+    {type:'line',x1:-260,y1:90,x2:260,y2:90,stroke:'#6E5D46',sw:6},
+    {type:'line',x1:-70,y1:-175,x2:70,y2:-175,stroke:'#3E332A',sw:10},
+    {type:'line',x1:-70,y1:0,x2:70,y2:0,stroke:'#3E332A',sw:10},
+    {type:'line',x1:-70,y1:175,x2:70,y2:175,stroke:'#3E332A',sw:10},
+  ]},
+  wall_600:{name:'상부장(벽장) 600',nameEn:'wall cabinet 600',w:600,h:350,c:'#B89B6A',est:{code:'KW-600',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-300,y:-175,w:600,h:350,fill:'#B89B6A22',stroke:'#8F7752',sw:12,dash:[70,45],r:6},
+    {type:'rect',x:-255,y:-130,w:510,h:260,fill:'transparent',stroke:'#8F7752',sw:5,dash:[40,30],r:4},
+    {type:'line',x1:0,y1:-130,x2:0,y2:130,stroke:'#8F7752',sw:5,dash:[40,30]},
+  ]},
+  wall_900:{name:'상부장(벽장) 900',nameEn:'wall cabinet 900',w:900,h:350,c:'#B89B6A',est:{code:'KW-900',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-450,y:-175,w:900,h:350,fill:'#B89B6A22',stroke:'#8F7752',sw:12,dash:[70,45],r:6},
+    {type:'rect',x:-405,y:-130,w:810,h:260,fill:'transparent',stroke:'#8F7752',sw:5,dash:[40,30],r:4},
+    {type:'line',x1:-150,y1:-130,x2:-150,y2:130,stroke:'#8F7752',sw:5,dash:[40,30]},
+    {type:'line',x1:150,y1:-130,x2:150,y2:130,stroke:'#8F7752',sw:5,dash:[40,30]},
+  ]},
+  corner_base_900:{name:'코너 밑장 900',nameEn:'corner base 900',w:900,h:900,c:'#A98F68',est:{code:'KB-CNR-900',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-450,y:-450,w:900,h:900,fill:'#A98F68',stroke:'#3E332A',sw:16,r:8},
+    {type:'rect',x:-410,y:-410,w:820,h:820,fill:'#BCA27A',stroke:'#6E5D46',sw:5,r:6},
+    {type:'line',x1:-410,y1:-410,x2:410,y2:410,stroke:'#3E332A',sw:8},
+    {type:'line',x1:-410,y1:410,x2:120,y2:410,stroke:'#3E332A',sw:8},
+    {type:'line',x1:410,y1:-410,x2:410,y2:120,stroke:'#3E332A',sw:8},
+    {type:'circle',cx:190,cy:190,r:16,fill:'#3E332A',stroke:'#1A1A1A',sw:2},
+  ]},
+  corner_wall_600:{name:'코너 상부장 600',nameEn:'corner wall cabinet 600',w:600,h:600,c:'#B89B6A',est:{code:'KW-CNR-600',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-300,y:-300,w:600,h:600,fill:'#B89B6A22',stroke:'#8F7752',sw:12,dash:[70,45],r:6},
+    {type:'line',x1:-300,y1:-300,x2:300,y2:300,stroke:'#8F7752',sw:6,dash:[50,35]},
+  ]},
+  tall_600:{name:'키큰장 600',nameEn:'tall cabinet 600',w:600,h:600,c:'#8F7752',est:{code:'KT-600',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-300,y:-300,w:600,h:600,fill:'#8F7752',stroke:'#3E332A',sw:16,r:8},
+    {type:'rect',x:-260,y:-260,w:520,h:520,fill:'#A98F68',stroke:'#6E5D46',sw:5,r:6},
+    {type:'line',x1:-260,y1:-260,x2:260,y2:260,stroke:'#3E332A',sw:7},
+    {type:'line',x1:-260,y1:260,x2:260,y2:-260,stroke:'#3E332A',sw:7},
+  ]},
+  fridge_cab_900:{name:'냉장고장 900',nameEn:'fridge housing 900',w:900,h:700,c:'#8F7752',est:{code:'KT-REF-900',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-450,y:-350,w:900,h:700,fill:'#8F7752',stroke:'#3E332A',sw:16,r:8},
+    {type:'rect',x:-390,y:-290,w:780,h:580,fill:'#D9DCDC',stroke:'#8A9194',sw:8,r:10},
+    {type:'line',x1:0,y1:-290,x2:0,y2:290,stroke:'#8A9194',sw:6},
+    {type:'line',x1:-40,y1:-140,x2:-40,y2:140,stroke:'#8A9194',sw:8},
+    {type:'line',x1:40,y1:-140,x2:40,y2:140,stroke:'#8A9194',sw:8},
+  ]},
+  island_1500:{name:'아일랜드장 1500',nameEn:'island unit 1500',w:1500,h:900,c:'#8A8073',est:{code:'KI-1500',cat:'KITCHEN',unit:'EA'},shape:[
+    {type:'rect',x:-750,y:-450,w:1500,h:900,fill:'#8A8073',stroke:'#38322A',sw:18,r:24},
+    {type:'rect',x:-710,y:-410,w:1420,h:820,fill:'#A99C89',stroke:'#6B6152',sw:6,r:18},
+    {type:'line',x1:-710,y1:190,x2:710,y2:190,stroke:'#6B6152',sw:6,dash:[55,40]},
+    {type:'line',x1:-260,y1:-410,x2:-260,y2:190,stroke:'#6B6152',sw:5},
+    {type:'line',x1:260,y1:-410,x2:260,y2:190,stroke:'#6B6152',sw:5},
+    {type:'circle',cx:0,cy:-110,r:16,fill:'#38322A',stroke:'#1A1A1A',sw:2},
+  ]},
+  // --- 빌트인(픽스) 가구 ---
+  wardrobe_fix_1200:{name:'붙박이장 1200',nameEn:'built-in wardrobe 1200',w:1200,h:600,c:'#7A6A50',est:{code:'BF-WD-1200',cat:'BUILTIN',unit:'EA'},shape:[
+    {type:'rect',x:-600,y:-300,w:1200,h:600,fill:'#7A6A50',stroke:'#332B1E',sw:16,r:8},
+    {type:'rect',x:-560,y:-260,w:1120,h:520,fill:'#94805F',stroke:'#5C4F3A',sw:5,r:6},
+    {type:'line',x1:-200,y1:-260,x2:-200,y2:260,stroke:'#5C4F3A',sw:5},
+    {type:'line',x1:200,y1:-260,x2:200,y2:260,stroke:'#5C4F3A',sw:5},
+    {type:'line',x1:-560,y1:-140,x2:560,y2:-140,stroke:'#332B1E',sw:6},
+    {type:'line',x1:-480,y1:-140,x2:-480,y2:90,stroke:'#5C4F3A',sw:4},
+    {type:'line',x1:-380,y1:-140,x2:-380,y2:120,stroke:'#5C4F3A',sw:4},
+    {type:'line',x1:-280,y1:-140,x2:-280,y2:80,stroke:'#5C4F3A',sw:4},
+  ]},
+  shoe_cab_1200:{name:'신발장 1200',nameEn:'shoe cabinet 1200',w:1200,h:350,c:'#7A6A50',est:{code:'BF-SHOE-1200',cat:'BUILTIN',unit:'EA'},shape:[
+    {type:'rect',x:-600,y:-175,w:1200,h:350,fill:'#7A6A50',stroke:'#332B1E',sw:14,r:8},
+    {type:'rect',x:-560,y:-135,w:1120,h:270,fill:'#94805F',stroke:'#5C4F3A',sw:5,r:6},
+    {type:'line',x1:-280,y1:-135,x2:-280,y2:135,stroke:'#5C4F3A',sw:5},
+    {type:'line',x1:0,y1:-135,x2:0,y2:135,stroke:'#5C4F3A',sw:5},
+    {type:'line',x1:280,y1:-135,x2:280,y2:135,stroke:'#5C4F3A',sw:5},
+  ]},
+  tv_lowcab_2400:{name:'거실장(TV) 2400',nameEn:'TV low cabinet 2400',w:2400,h:450,c:'#6B5B3E',est:{code:'BF-TV-2400',cat:'BUILTIN',unit:'EA'},shape:[
+    {type:'rect',x:-1200,y:-225,w:2400,h:450,fill:'#6B5B3E',stroke:'#2E2614',sw:16,r:10},
+    {type:'rect',x:-1160,y:-185,w:2320,h:370,fill:'#8A7A55',stroke:'#5D4225',sw:5,r:8},
+    {type:'line',x1:-580,y1:-185,x2:-580,y2:185,stroke:'#5D4225',sw:5},
+    {type:'line',x1:0,y1:-185,x2:0,y2:185,stroke:'#5D4225',sw:5},
+    {type:'line',x1:580,y1:-185,x2:580,y2:185,stroke:'#5D4225',sw:5},
+    {type:'rect',x:-450,y:-245,w:900,h:70,fill:'#2E2E2E',stroke:'#141414',sw:4,r:8},
+  ]},
+  bath_vanity_900:{name:'욕실 하부장 900',nameEn:'bath vanity 900',w:900,h:550,c:'#8A8073',est:{code:'BF-VAN-900',cat:'BUILTIN',unit:'EA'},shape:[
+    {type:'rect',x:-450,y:-275,w:900,h:550,fill:'#8A8073',stroke:'#38322A',sw:14,r:10},
+    {type:'rect',x:-410,y:-235,w:820,h:470,fill:'#A99C89',stroke:'#6B6152',sw:5,r:8},
+    {type:'circle',cx:0,cy:-20,r:170,fill:'#DADEDE',stroke:'#8A9194',sw:8},
+    {type:'circle',cx:0,cy:-215,r:22,fill:'#8A9194',stroke:'#5F6668',sw:3},
+  ]},
+  laundry_cab_700:{name:'세탁장 700',nameEn:'laundry cabinet 700',w:700,h:700,c:'#8A8073',est:{code:'BF-LND-700',cat:'BUILTIN',unit:'EA'},shape:[
+    {type:'rect',x:-350,y:-350,w:700,h:700,fill:'#8A8073',stroke:'#38322A',sw:14,r:10},
+    {type:'rect',x:-310,y:-310,w:620,h:620,fill:'#D9DCDC',stroke:'#8A9194',sw:6,r:8},
+    {type:'circle',cx:0,cy:0,r:210,fill:'transparent',stroke:'#8A9194',sw:10},
+    {type:'circle',cx:0,cy:0,r:130,fill:'transparent',stroke:'#B0B6B8',sw:6},
+  ]},
+};
+// 렌더·JSON·시맨틱 파이프라인 공용화 — 배치 객체 kind 는 'furniture' 그대로 사용
+Object.assign(FURNITURE_LIB,FIXFURN_LIB);
+
 const FIXTURE_LIB={
   // ===== 욕실 =====
   toilet:{name:'양변기',nameEn:'toilet',w:400,h:700,c:'#FFFFFF',shape:[

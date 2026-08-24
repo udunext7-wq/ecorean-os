@@ -729,6 +729,35 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('v6: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-24: 가구2 (픽스가구) — 견적 OS 연동 회귀 ===
+  try{
+    const FIX_KEYS=['base_600','base_900','base_sink_900','base_cook_600','base_drawer_600','wall_600','wall_900','corner_base_900','corner_wall_600','tall_600','fridge_cab_900','island_1500','wardrobe_fix_1200','shoe_cab_1200','tv_lowcab_2400','bath_vanity_900','laundry_cab_700'];
+    // [F1] 등록 + 도형 + FURNITURE_LIB 병합 (렌더/JSON 공용)
+    const okReg=FIX_KEYS.every(k=>FIXFURN_LIB[k]&&FURNITURE_LIB[k]&&Array.isArray(FIXFURN_LIB[k].shape)&&FIXFURN_LIB[k].shape.length>=2);
+    assert('가구2: 17종 등록+병합',okReg&&FIX_KEYS.length===Object.keys(FIXFURN_LIB).length,
+      FIX_KEYS.filter(k=>!FIXFURN_LIB[k]).join(','));
+    // [F2] 견적 메타 — est.code 전원 보유 + 중복 없음 (견적 OS 소비 기준)
+    const codes=FIX_KEYS.map(k=>FIXFURN_LIB[k].est&&FIXFURN_LIB[k].est.code).filter(Boolean);
+    assert('가구2: est.code 전원+유일',codes.length===FIX_KEYS.length&&new Set(codes).size===codes.length);
+    assert('가구2: est.cat 분류',FIX_KEYS.every(k=>['KITCHEN','BUILTIN'].includes(FIXFURN_LIB[k].est.cat)));
+    // [F3] 상부장 = 점선 표기 관례
+    assert('가구2: 상부장 점선 도식',FIXFURN_LIB.wall_600.shape.some(c=>c.dash)&&FIXFURN_LIB.corner_wall_600.shape.some(c=>c.dash));
+    // [F4] JSON export — estModule 승계
+    const _bakF=STATE.furniture.slice();
+    const fx={id:makeId('f'),type:'base_sink_900',x:1200000,y:1200000,angle:0};
+    STATE.furniture.push(fx);
+    const jj=buildJSON();
+    const je=jj.furniture.find(o=>o.id===fx.id);
+    assert('가구2: JSON estModule 승계',!!je&&je.estModule&&je.estModule.code==='KB-SINK-900'&&je.nameEn==='sink base 900',je&&JSON.stringify(je.estModule));
+    // [F5] 렌더 정상 (renderRect 경유)
+    renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
+    let fxG=null;groups.furniture.getChildren().forEach(c=>{if(c.id&&c.id()===fx.id)fxG=c;});
+    assert('가구2: 배치 렌더 정상',!!fxG&&fxG.getChildren().length>=3);
+    STATE.furniture=_bakF;
+    renderAll();
+  }catch(e){
+    assert('가구2: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
