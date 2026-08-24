@@ -826,6 +826,16 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('기호: 극축소 라벨 생략',lblLow2===0,'n='+lblLow2);
     STATE.electric=_bakE2;STATE.zoom=_z2;renderAll();
   })();
+  // === 2026-08-24: 위생기구 업그레이드 (신규 8종 + 기존 4종 도식 정밀화) ===
+  (function(){
+    const SK=['sink_counter_1200','sink_vessel','sink_double_1500','bathtub_free','shower_slide','urinal','utility_sink','floor_drain'];
+    assert('위생: 8종 등록+도형',SK.every(k=>FIXTURE_LIB[k]&&Array.isArray(FIXTURE_LIB[k].shape)&&FIXTURE_LIB[k].shape.length>=3&&FIXTURE_LIB[k].w>0),
+      SK.filter(k=>!FIXTURE_LIB[k]).join(','));
+    // 기존 4종 정밀화 — 요소 수 증가 확인
+    assert('위생: 도식 정밀화(양변기 7+·샤워 10+)',FIXTURE_LIB.toilet.shape.length>=7&&FIXTURE_LIB.shower.shape.length>=10,
+      FIXTURE_LIB.toilet.shape.length+'/'+FIXTURE_LIB.shower.shape.length);
+    assert('위생: semanticOf floor_drain',semanticOf('floor_drain').tag==='sanitary');
+  })();
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

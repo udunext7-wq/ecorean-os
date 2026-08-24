@@ -2066,6 +2066,7 @@ function renderRect(arr,group,lib,kind){
     group.add(g);
     // 2026-08-24: 소형 점형 기호(감지기·스프링클러 등)는 이름 라벨 고정 표시
     if(kind==='hvac'&&(def.size||0)<=600) addSymbolLabel(group,x,y,def);
+    if(kind==='fixtures'&&Math.max(def.w||0,def.h||0)<=300) addSymbolLabel(group,x,y,def); // 2026-08-24: 바닥 배수구 등 소형 위생
   });
 }
 
