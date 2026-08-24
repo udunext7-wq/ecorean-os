@@ -447,20 +447,6 @@ td.org{color:var(--org)}
   box-shadow:0 8px 28px rgba(201,168,76,.45)}
 .login-btn:active{transform:translateY(0)}
 .login-err{font-size:11px;color:var(--red);margin-top:10px;min-height:16px;opacity:.9}
-/* 로딩 화면 스타일 */
-#cyber-loading{position:relative;z-index:1}
-.cyber-card{
-  background:linear-gradient(160deg,rgba(20,28,44,.96) 0%,rgba(10,16,26,.98) 100%);
-  border:1px solid rgba(201,168,76,.2);border-radius:20px;
-  padding:36px 36px 28px;width:360px;
-  box-shadow:0 24px 48px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04),
-    inset 0 1px 0 rgba(255,255,255,.06);
-  position:relative;overflow:hidden}
-.cyber-card::before{
-  content:'';position:absolute;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(201,168,76,.6),transparent);
-  animation:scanLine 2.5s linear infinite;top:0}
-
 /* 단가관리 잠금 */
 .lock-overlay{position:absolute;inset:0;background:rgba(7,7,7,.96);
   display:flex;align-items:center;justify-content:center;border-radius:16px;z-index:10}
@@ -857,53 +843,6 @@ td.org{color:var(--org)}
         onkeydown="if(event.key==='Enter')doLogin()">
       <button class="login-btn" onclick="doLogin()">로그인</button>
       <div class="login-err" id="lg-err"></div>
-    </div>
-    <!-- 고급 로딩 카드 -->
-    <div id="cyber-loading" style="display:none">
-      <div class="cyber-card">
-        <!-- 로고 + 타이틀 -->
-        <div style="text-align:center;margin-bottom:24px">
-          <div class="login-logo" style="margin:0 auto 14px">EC</div>
-          <div style="font-size:18px;font-weight:900;
-            background:linear-gradient(90deg,var(--t1),var(--gl),var(--t1));
-            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-            background-clip:text;background-size:200%;margin-bottom:4px">
-            ECOREAN
-          </div>
-          <div style="font-size:8px;letter-spacing:4px;color:rgba(201,168,76,.4);text-transform:uppercase">Professional Estimating OS</div>
-        </div>
-        <!-- 현재 단계 텍스트 -->
-        <div id="cyber-text" style="font-family:monospace;font-size:10px;color:var(--g);
-          letter-spacing:1.5px;text-align:center;min-height:14px;margin-bottom:18px;
-          text-shadow:0 0 10px var(--g);opacity:.85"></div>
-        <!-- 메인 게이지 -->
-        <div style="margin-bottom:10px;position:relative">
-          <!-- 배경 트랙 -->
-          <div style="height:6px;background:rgba(255,255,255,.04);border-radius:100px;
-            overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.4)">
-            <!-- 메인 바 -->
-            <div id="cyber-bar" style="height:100%;width:0%;border-radius:100px;
-              background:linear-gradient(90deg,#8B6914,var(--g),var(--gl),var(--g));
-              background-size:200% 100%;
-              box-shadow:0 0 14px var(--g),0 0 28px rgba(201,168,76,.25);
-              transition:width .1s cubic-bezier(.4,0,.2,1);
-              animation:barShimmer 2s linear infinite"></div>
-          </div>
-          <!-- 진행율 -->
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px">
-            <div style="font-family:monospace;font-size:8px;color:rgba(201,168,76,.3);letter-spacing:.8px">SYSTEM BOOT</div>
-            <div id="cyber-pct" style="font-family:monospace;font-size:12px;font-weight:900;
-              color:var(--g);letter-spacing:1px;text-shadow:0 0 8px var(--g)">0%</div>
-          </div>
-        </div>
-        <!-- 단계별 세그먼트 바 -->
-        <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin-bottom:16px" id="seg-bar"></div>
-        <!-- 로그 -->
-        <div id="cyber-log" style="font-family:monospace;font-size:8px;
-          color:rgba(201,168,76,.35);line-height:1.9;min-height:80px;
-          border-top:1px solid rgba(201,168,76,.08);padding-top:10px;
-          max-height:100px;overflow:hidden"></div>
-      </div>
     </div>
   </div>
 </div>
@@ -5254,11 +5193,11 @@ function doLogin(){
   const pw=$('lg-pw').value;
   const err=$('lg-err');
   if(id===_ADMIN_ID&&pw===_ADMIN_PW){
-    /* 로그인 성공 → 사이버 로딩 시작 */
-    $('login-form-box').style.display='none';
-    const cl=$('cyber-loading');cl.style.display='block';
+    /* 로그인 성공 → 바로 진입 (로딩 연출 제거) */
     playSound('success');
-    runCyberLoading();
+    const ls=$('login-screen');
+    if(ls){ls.style.opacity='0';ls.style.transition='opacity .35s ease';
+      setTimeout(()=>{ls.style.display='none';},350);}
   }else{
     if(err)err.textContent='아이디 또는 비밀번호가 틀렸습니다.';
     playSound('delete');
@@ -5268,68 +5207,6 @@ function doLogin(){
     if(box){box.style.animation='none';box.offsetHeight;
       box.style.animation='shake .3s ease';}
   }
-}
-
-function runCyberLoading(){
-  const bar=$('cyber-bar');
-  const pct=$('cyber-pct');
-  const txt=$('cyber-text');
-  const log=$('cyber-log');
-  const seg=$('seg-bar');
-  /* 세그먼트 초기화 (8개) */
-  if(seg){seg.innerHTML=Array(8).fill(0).map((_,i)=>
-    `<div id="seg-${i}" style="height:3px;background:rgba(201,168,76,.1);border-radius:2px;transition:background .2s"></div>`
-  ).join('');}
-  const lines=[
-    {p:8,  t:'USER AUTH VERIFIED',     ko:'사용자 인증 완료'},
-    {p:18, t:'LOADING PRICE DATABASE', ko:'단가 DB 로드 중...'},
-    {p:30, t:'CALCULATING MODULES',    ko:'모듈 초기화 중...'},
-    {p:45, t:'SPACE ENGINE READY',     ko:'공간 계산 엔진 준비'},
-    {p:58, t:'LOADING SCHEDULE DATA',  ko:'공정 데이터 로드'},
-    {p:72, t:'RENDERING INTERFACE',    ko:'인터페이스 렌더링'},
-    {p:88, t:'APPLYING SETTINGS',      ko:'설정 적용 중...'},
-    {p:100,t:'SYSTEM READY',           ko:'시스템 준비 완료 ✓'},
-  ];
-  let cur=0;let li=0;
-  const step=()=>{
-    if(cur>=100){
-      /* 세그먼트 전부 켜기 */
-      for(let i=0;i<8;i++){
-        const s=$(`seg-${i}`);
-        if(s)s.style.background='var(--g)';
-      }
-      setTimeout(()=>{
-        const ls=$('login-screen');
-        if(ls){ls.style.opacity='0';ls.style.transition='opacity .35s ease';
-          setTimeout(()=>{ls.style.display='none';},350);}
-        playSound('success');
-      },250);
-      return;
-    }
-    cur=Math.min(100,cur+(Math.random()*8+7));  /* 진행 속도 상향 — 부팅 3초→0.7초 */
-    if(bar) bar.style.width=cur+'%';
-    if(pct) pct.textContent=Math.floor(cur)+'%';
-    /* 세그먼트 바 업데이트 */
-    const segIdx=Math.floor(cur/100*8);
-    for(let i=0;i<8;i++){
-      const s=$(`seg-${i}`);
-      if(!s)continue;
-      if(i<segIdx) s.style.background='var(--g)';
-      else if(i===segIdx) s.style.background='rgba(201,168,76,.4)';
-    }
-    /* 로그 라인 체크 */
-    while(li<lines.length&&lines[li].p<=cur){
-      if(log){
-        const d=new Date();
-        const ts=`[${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}]`;
-        log.innerHTML+=`<div>▶ ${lines[li].ko} <span style="color:rgba(201,168,76,.25)">${ts}</span></div>`;
-      }
-      if(txt)txt.textContent=lines[li].t;
-      li++;
-    }
-    setTimeout(step, 28+Math.random()*20);
-  };
-  step();
 }
 
 /* ══════════ SAVE / LOAD ══════════ */
