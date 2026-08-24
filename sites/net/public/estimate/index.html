@@ -480,6 +480,11 @@ td.org{color:var(--org)}
   padding:8px 4px;
   /* 프레임 자체를 3D 구 형태로 */
   border-radius:50% 50% 50% 50% / 40% 40% 60% 60%;
+  cursor:pointer;transition:all .22s;position:relative;overflow:hidden}
+/* 풍선 비주얼(배경·테두리·그림자) — 80% 투명. 글씨는 아래 .style-name 이 불투명 유지 */
+.style-btn::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  opacity:.2;transition:all .22s;
   border:1.5px solid rgba(255,255,255,.08);
   background:
     radial-gradient(ellipse at 38% 32%, rgba(255,255,255,.22) 0%, transparent 55%),
@@ -489,24 +494,24 @@ td.org{color:var(--org)}
     0 8px 24px rgba(0,0,0,.5),
     0 2px 6px rgba(0,0,0,.4),
     inset 0 2px 6px rgba(255,255,255,.12),
-    inset 0 -3px 8px rgba(0,0,0,.3);
-  cursor:pointer;transition:all .22s;position:relative;overflow:hidden}
-.style-btn:hover{
-  transform:translateY(-4px) scale(1.04);
+    inset 0 -3px 8px rgba(0,0,0,.3)}
+.style-btn:hover{transform:translateY(-4px) scale(1.04)}
+.style-btn:hover::before{
   box-shadow:0 16px 36px rgba(0,0,0,.55),0 0 20px color-mix(in srgb,var(--sb-color,#555) 50%,transparent),
     inset 0 2px 8px rgba(255,255,255,.18),inset 0 -3px 8px rgba(0,0,0,.3)}
-.style-btn.on{
+.style-btn.on::before{
   border-color:rgba(201,168,76,.7);
   box-shadow:0 8px 28px rgba(0,0,0,.5),0 0 28px rgba(201,168,76,.4),
     0 0 8px var(--g),inset 0 2px 8px rgba(255,255,255,.18),inset 0 -3px 8px rgba(0,0,0,.3)}
+.style-btn.on .style-name{color:var(--g)}
 .style-btn::after{
   content:'';position:absolute;top:12%;left:22%;width:30%;height:16%;
   background:radial-gradient(ellipse,rgba(255,255,255,.4) 0%,transparent 80%);
-  border-radius:50%;pointer-events:none}
+  border-radius:50%;pointer-events:none;opacity:.2}
 .style-circle{display:none}
-.style-name{font-size:9px;font-weight:700;color:rgba(255,255,255,.95);text-align:center;
+.style-name{position:relative;font-size:18px;font-weight:700;color:rgba(255,255,255,.95);text-align:center;
   line-height:1.3;word-break:keep-all;width:100%;text-shadow:0 1px 3px rgba(0,0,0,.5)}
-.style-grade{font-size:7.5px;color:rgba(255,255,255,.55);text-align:center;
+.style-grade{position:relative;font-size:15px;color:rgba(255,255,255,.55);text-align:center;
   text-shadow:0 1px 2px rgba(0,0,0,.5)}
 .style-sub{display:none}
 .gantt-wrap{background:var(--s2);border-radius:12px;overflow:hidden;border:1px solid var(--gbr)}
