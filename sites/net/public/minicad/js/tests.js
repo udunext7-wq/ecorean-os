@@ -599,44 +599,6 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('도어: 포켓 호 없음',cntCls(gpk,'Arc')===0);
     assert('도어: 포켓 수납부+패널',cntCls(gpk,'Rect')>=3,'Rect '+cntCls(gpk,'Rect'));
     assert('도어: 3연동 패널 3짝+',cntCls(gfd,'Rect')>=4,'Rect '+cntCls(gfd,'Rect'));
-    // [S1] 계단 도식: 디딤판 수 = 단수-1, 옵션 반영
-    const shp12=buildStairShape({stepCount:12,stairWidth_mm:1200,treadDepth_mm:280});
-    const treads=shp12.filter(c=>c.type==='line'&&c.y1===c.y2&&Math.abs((c.x2-c.x1)-1200)<1);
-    assert('계단: 디딤판 11개 (12단)',treads.length===11,'treads '+treads.length);
-    assert('계단: 외곽+시작원+UP라벨',shp12.some(c=>c.type==='rect')&&shp12.some(c=>c.type==='circle')&&shp12.some(c=>c.type==='text'&&c.text==='UP'));
-    // [S2] 절단선 OFF → 점선 디딤판·대각 절단선 없음
-    const shpNB=buildStairShape({stepCount:12,showBreak:false});
-    assert('계단: 절단선 OFF',!shpNB.some(c=>c.type==='line'&&c.dash)&&shpNB.filter(c=>c.type==='line'&&c.y1!==c.y2&&c.x1!==0&&c.x2!==0).length===0);
-    // [S3] DN 방향 라벨
-    const shpDN=buildStairShape({upDir:'down'});
-    assert('계단: DN 라벨',shpDN.some(c=>c.type==='text'&&c.text==='DN'));
-    // [S4] 라이브러리 배치 렌더 (renderRect 경유) — 예외 없이 그룹 생성
-    const stObj={id:makeId('f'),type:'stairs',x:OFF2,y:OFF2+20000,angle:0,stepCount:10,stairWidth_mm:1000,treadDepth_mm:300};
-    STATE.furniture.push(stObj);
-    renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
-    const gst=findG(groups.furniture,stObj.id);
-    assert('계단: 배치 렌더 정상',!!gst&&cntCls(gst,'Line')>=9,'Line '+cntCls(gst,'Line'));
-    // [S5] SEMANTIC_MAP 연동 (CT1/CT2 외 직접 확인)
-    assert('계단: semanticOf stairs',semanticOf('stairs').tag==='stairs');
-    // [S6] 2026-08-24: ㄱ자 — 참+플라이트 2 (rect 3), 디딤판 (N1-1)+(N2-1), 외곽 = W+N2·T × N1·T+W
-    const pL=stairParams({type:'stairs_l',stepCount:12,splitCount:6,stairWidth_mm:1200,treadDepth_mm:280});
-    assert('계단 ㄱ자: 외곽 계산',pL.bw===1200+6*280&&pL.bh===6*280+1200,pL.bw+'×'+pL.bh);
-    const shpL=buildStairShape({type:'stairs_l',stepCount:12,splitCount:6,stairWidth_mm:1200,treadDepth_mm:280});
-    const rectsL=shpL.filter(c=>c.type==='rect').length;
-    const hTreadL=shpL.filter(c=>c.type==='line'&&c.y1===c.y2&&Math.abs((c.x2-c.x1)-1200)<1).length;
-    const vTreadL=shpL.filter(c=>c.type==='line'&&c.x1===c.x2&&Math.abs((c.y2-c.y1)-1200)<1).length;
-    assert('계단 ㄱ자: 참+플라이트 rect 3',rectsL===3,'rect '+rectsL);
-    assert('계단 ㄱ자: 디딤판 5+5',hTreadL===5&&vTreadL===5,hTreadL+'/'+vTreadL);
-    assert('계단 ㄱ자: UP 라벨',shpL.some(c=>c.type==='text'&&c.text==='UP'));
-    // [S7] U턴 — rect 3(참+플라이트2) + 중앙 분리선, DN 방향
-    const shpU=buildStairShape({type:'stairs_u',stepCount:12,splitCount:6,stairWidth_mm:1200,treadDepth_mm:280,upDir:'down'});
-    const rectsU=shpU.filter(c=>c.type==='rect').length;
-    const hTreadU=shpU.filter(c=>c.type==='line'&&c.y1===c.y2&&Math.abs((c.x2-c.x1)-1200)<1).length;
-    assert('계단 U턴: rect 3',rectsU===3,'rect '+rectsU);
-    assert('계단 U턴: 좌우 디딤판 10',hTreadU===10,'treads '+hTreadU);
-    assert('계단 U턴: DN 라벨',shpU.some(c=>c.type==='text'&&c.text==='DN'));
-    const pU=stairParams({type:'stairs_u',stepCount:12,splitCount:6,stairWidth_mm:1200,treadDepth_mm:280});
-    assert('계단 U턴: 외곽 2W',pU.bw===2400&&pU.bh===6*280+1200,pU.bw+'×'+pU.bh);
     // [S9] 2026-08-24: 계단실 공간 연동 — 공간 크기 자동 맞춤 (대표 지시)
     const mkSq=(x,y,w,h)=>polygonToVertexIds([{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}]);
     const spI=makeSpaceVEF(mkSq(OFF2+50000,OFF2,1200,4200),{name:'계단실I',type:'STAIRS',typeIndex:97,layerName:'A-AREA-STR-97'});
@@ -669,11 +631,6 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('계단실: ㄱ자 자동 폭',infoL.type==='L'&&infoL.W===600&&infoL.LA===3600&&infoL.LB===600,JSON.stringify([infoL.W,infoL.LA,infoL.LB]));
     STATE.spaces=STATE.spaces.filter(x=>x.id!==spI.id);
     STATE.walls=STATE.walls.filter(w=>w.spaceId!==spI.id);
-    // [S8] 배치 렌더 (renderRect 경유)
-    STATE.furniture.push({id:makeId('f'),type:'stairs_l',x:OFF2+30000,y:OFF2,angle:0},
-                         {id:makeId('f'),type:'stairs_u',x:OFF2+40000,y:OFF2,angle:0});
-    renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
-    assert('계단 ㄱ자/U턴: 배치 렌더 정상',true);
     // 복원
     STATE.openings=_bakO.openings;STATE.furniture=_bakO.furniture;
     renderAll();

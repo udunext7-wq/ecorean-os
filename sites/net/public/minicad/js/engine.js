@@ -1958,110 +1958,13 @@ function buildSpaceStairShape(s){
   }
   return _xformShape(shp,P.rot,!!st.mirror);
 }
-// 2026-08-24: 계단 파라메트릭 평면 도식 (대표 지시) — 직선/ㄱ자/U턴 3유형
-// 옵션: stairWidth_mm(폭), treadDepth_mm(디딤판), stepCount(단수), splitCount(꺾임 전 단수, ㄱ자/U턴),
-//       upDir('up'|'down'), showBreak(절단선). 참(landing)은 ㄱ자=W×W, U턴=2W×W 자동.
-function stairParams(o){
-  const W=Math.max(300,Math.round(o.stairWidth_mm||1200));
-  const N=Math.max(2,Math.round(o.stepCount||16));
-  const T=Math.max(150,Math.round(o.treadDepth_mm||280));
-  const type=o.type==='stairs_l'?'L':o.type==='stairs_u'?'U':'I';
-  const N1=type==='I'?N:Math.max(1,Math.min(N-1,Math.round(o.splitCount||Math.ceil(N/2))));
-  const N2=N-N1;
-  let bw,bh;
-  if(type==='L'){bw=W+N2*T;bh=N1*T+W;}
-  else if(type==='U'){bw=2*W;bh=Math.max(N1,N2)*T+W;}
-  else{bw=W;bh=N*T;}
-  return {W,N,T,type,N1,N2,bw,bh};
-}
-function buildStairShape(o){
-  const {W,N,T,type,N1,N2,bw,bh}=stairParams(o);
-  const up=(o.upDir||'up')!=='down';
-  const brk=o.showBreak!==false;
-  const S='#0A0A0A',F='#8E7B5C22';
-  const shp=[];
-  const x0=-bw/2,y0=-bh/2;
-  const rect=(x,y,w,h)=>shp.push({type:'rect',x,y,w,h,fill:F,stroke:S,sw:25});
-  const seg=(x1,y1,x2,y2,sw,dash)=>shp.push({type:'line',x1,y1,x2,y2,stroke:S,sw:sw||18,dash});
-  const circle=(cx,cy)=>shp.push({type:'circle',cx,cy,r:Math.min(70,W*0.07),stroke:S,sw:22});
-  const head=(x,y,dx,dy)=>{ // 화살촉 — (x,y) 끝점, (dx,dy) 진행 단위방향
-    const ah=Math.min(160,W*0.14),px=-dy,py=dx;
-    seg(x,y,x-dx*ah+px*ah*0.45,y-dy*ah+py*ah*0.45,22);
-    seg(x,y,x-dx*ah-px*ah*0.45,y-dy*ah-py*ah*0.45,22);
-  };
-  const label=(x,y)=>shp.push({type:'text',x,y,text:up?'UP':'DN',fontSize:Math.min(240,W*0.24),fill:S});
-  if(type==='I'){
-    // ===== 직선 =====
-    const L=N*T;
-    rect(x0,y0,W,L);
-    const brkY=y0+L*0.38;
-    for(let i=1;i<N;i++){const y=y0+i*T;seg(x0,y,x0+W,y,18,(brk&&y<brkY)?[120,90]:undefined);}
-    if(brk){
-      seg(x0-W*0.06,brkY+T*0.8,x0+W*1.06,brkY-T*0.6,35);
-      seg(x0-W*0.06,brkY+T*1.4,x0+W*1.06,brkY,20);
-    }
-    const sy=up?y0+L-T*0.6:y0+T*0.6, ey=up?y0+T*0.9:y0+L-T*0.9;
-    circle(0,sy);seg(0,sy,0,ey,22);head(0,ey,0,up?-1:1);
-    label(W*0.10,sy-(up?T*1.1:0));
-  }else if(type==='L'){
-    // ===== ㄱ자 — 하부(세로) 올라가 좌상 참에서 우측(가로)으로 꺾임. 좌우 반전은 미러(↔) 사용 =====
-    const LA=N1*T,LB=N2*T;
-    rect(x0,y0,W,W);          // 참 (모서리)
-    rect(x0,y0+W,W,LA);       // 하부 플라이트
-    rect(x0+W,y0,LB,W);       // 상부 플라이트
-    for(let i=1;i<N1;i++) seg(x0,y0+W+i*T,x0+W,y0+W+i*T);
-    const bX=x0+W+LB*0.60;    // 절단선 — 상부 플라이트 진행 60% 지점
-    for(let i=1;i<N2;i++){const x=x0+W+i*T;seg(x,y0,x,y0+W,18,(brk&&x>bX)?[120,90]:undefined);}
-    if(brk){
-      seg(bX-T*0.6,y0-W*0.06,bX+T*0.8,y0+W*1.06,35);
-      seg(bX,y0-W*0.06,bX+T*1.4,y0+W*1.06,20);
-    }
-    const ax=x0+W/2, sy=y0+W+LA-T*0.6, my=y0+W/2, ex=x0+W+LB-T*0.9;
-    if(up){
-      circle(ax,sy);seg(ax,sy,ax,my,22);seg(ax,my,ex,my,22);head(ex,my,1,0);
-      label(ax+W*0.10,sy-T*1.1);
-    }else{
-      circle(ex,my);seg(ex,my,ax,my,22);seg(ax,my,ax,sy,22);head(ax,sy,0,1);
-      label(ex-W*0.55,my-T*1.4);
-    }
-  }else{
-    // ===== U턴 — 좌 플라이트 올라가 상단 참에서 180° 회전, 우 플라이트로 계속 =====
-    const L1=N1*T,L2=N2*T,maxL=Math.max(L1,L2);
-    rect(x0,y0,2*W,W);        // 참 (상단, 2W 폭)
-    rect(x0,y0+W,W,L1);       // 좌(첫) 플라이트
-    rect(x0+W,y0+W,W,L2);     // 우(둘째) 플라이트
-    for(let i=1;i<N1;i++) seg(x0,y0+W+i*T,x0+W,y0+W+i*T);
-    const bY=y0+W+L2*0.55;    // 절단선 — 둘째 플라이트 진행 55% 지점
-    for(let i=1;i<N2;i++){const y=y0+W+i*T;seg(x0+W,y,x0+2*W,y,18,(brk&&y>bY)?[120,90]:undefined);}
-    if(brk){
-      seg(x0+W-W*0.06,bY+T*0.8,x0+2*W+W*0.06,bY-T*0.6,35);
-      seg(x0+W-W*0.06,bY+T*1.4,x0+2*W+W*0.06,bY,20);
-    }
-    // 중앙 분리 이중선 (난간/계단벽)
-    seg(x0+W-15,y0+W,x0+W-15,y0+W+maxL,14);
-    seg(x0+W+15,y0+W,x0+W+15,y0+W+maxL,14);
-    const lx=x0+W/2, rx=x0+W*1.5, sy=y0+W+L1-T*0.6, ey=y0+W+L2-T*0.9, my=y0+W/2;
-    if(up){
-      circle(lx,sy);seg(lx,sy,lx,my,22);seg(lx,my,rx,my,22);seg(rx,my,rx,ey,22);head(rx,ey,0,1);
-      label(lx+W*0.10,sy-T*1.1);
-    }else{
-      circle(rx,ey);seg(rx,ey,rx,my,22);seg(rx,my,lx,my,22);seg(lx,my,lx,sy,22);head(lx,sy,0,1);
-      label(rx+W*0.10,ey-T*1.1);
-    }
-  }
-  return shp;
-}
 function renderRect(arr,group,lib,kind){
   group.destroyChildren();
   arr.forEach(o=>{
     const def=lib[o.type];
     if(!def) return;
-    // 2026-08-24: 계단은 인스턴스 옵션 기반 파라메트릭 도식 (def.shape 대신 동적 생성)
-    const isStairs=(kind==='furniture'&&(o.type==='stairs'||o.type==='stairs_l'||o.type==='stairs_u'));
-    const shapeDef=isStairs?buildStairShape(o):def.shape;
-    const _sp=isStairs?stairParams(o):null;
-    const defW=isStairs?_sp.bw:def.w;
-    const defH=isStairs?_sp.bh:def.h;
+    const shapeDef=def.shape;
+    const defW=def.w, defH=def.h;
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const sel=STATE.selectedKind===kind&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind===kind&&b.id===o.id);
     // v5.7: flipped(미러) 좌우반전 — 그룹 scaleX(-1)로 처리, 단 텍스트 노드는 별도 보정

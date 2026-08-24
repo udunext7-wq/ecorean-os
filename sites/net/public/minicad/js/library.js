@@ -141,10 +141,6 @@ const FURNITURE_LIB={
     {type:'rect',x:-380,y:-300,w:760,h:1100,fill:'#1A1A1A',stroke:'#000',sw:3,r:8},
     {type:'rect',x:-380,y:-870,w:760,h:200,fill:'#5A5A5A',stroke:'#1A1A1A',sw:5,r:8},
   ]},
-  // 2026-08-24: 계단 (직선) — shape 없음: renderRect가 인스턴스 옵션(폭·디딤판·단수·방향·절단선)으로 동적 도식 생성
-  stairs:{name:'계단 (직선)',nameEn:'',w:1200,h:4480,c:'#8E7B5C'},
-  stairs_l:{name:'계단 (ㄱ자)',nameEn:'',w:3440,h:3440,c:'#8E7B5C'},
-  stairs_u:{name:'계단 (U턴)',nameEn:'',w:2400,h:3440,c:'#8E7B5C'},
 };
 
 const FIXTURE_LIB={
