@@ -766,6 +766,17 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('공조: 매립형(덕트·ERV) 점선 표기',HVAC_FIRE_LIB.ac_duct.shape.some(c=>c.dash)&&HVAC_FIRE_LIB.erv.shape.some(c=>c.dash));
     assert('공조: semanticOf ac_4way',semanticOf('ac_4way').tag==='system_ac');
   })();
+  // === 2026-08-24: 전기 확충 (스위치 4~6구·3로·디머·분전반·특수 콘센트·월패드·초인종) ===
+  (function(){
+    const EK=['switch_4','switch_5','switch_6','switch_3way','dimmer','dist_panel','outlet_220','outlet_wp','outlet_usb','wallpad','doorbell'];
+    assert('전기: 11종 등록+도형',EK.every(k=>ELECTRIC_LIB[k]&&Array.isArray(ELECTRIC_LIB[k].shape)&&ELECTRIC_LIB[k].shape.length>=2&&ELECTRIC_LIB[k].size>0),
+      EK.filter(k=>!ELECTRIC_LIB[k]).join(','));
+    // 스위치 구 수 = 버튼 rect 수 (외곽 1 제외)
+    const btnCnt=k=>ELECTRIC_LIB[k].shape.filter(c=>c.type==='rect').length-1;
+    assert('전기: 스위치 4/5/6구 버튼 수',btnCnt('switch_4')===4&&btnCnt('switch_5')===5&&btnCnt('switch_6')===6,
+      btnCnt('switch_4')+'/'+btnCnt('switch_5')+'/'+btnCnt('switch_6'));
+    assert('전기: semanticOf dist_panel',semanticOf('dist_panel').tag==='panelboard');
+  })();
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
