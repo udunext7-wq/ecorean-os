@@ -35,11 +35,51 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   const [rot, setRot] = useState(0);
   const [wide, setWide] = useState(true);
   const [animAll, setAnimAll] = useState(false);
+  const [arrive, setArrive] = useState(false);
   const raf = useRef(0);
   const rotRef = useRef(0);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragging = useRef<{ x: number; rot0: number; moved: boolean } | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const arriveTimers = useRef<number[]>([]);
   rotRef.current = rot;
+
+  // 바람(휘익) 사운드 — 파일 없이 노이즈 + 밴드패스 스윕으로 합성
+  function playWhoosh() {
+    try {
+      const Ctx =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') void ctx.resume();
+      const dur = 0.7;
+      const t0 = ctx.currentTime;
+      const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.Q.value = 0.9;
+      filter.frequency.setValueAtTime(240, t0);
+      filter.frequency.exponentialRampToValueAtTime(1500, t0 + dur * 0.5);
+      filter.frequency.exponentialRampToValueAtTime(300, t0 + dur);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.11, t0 + dur * 0.32);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(t0);
+      src.stop(t0 + dur);
+    } catch {
+      /* 사운드는 장식 — 실패해도 무시 */
+    }
+  }
 
   useEffect(() => {
     function measure() {
@@ -78,6 +118,16 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
       /* no-op */
     }
     window.setTimeout(() => setAnimAll(false), ANIM_MS);
+    // 도착 연출: 바람소리 + 중앙 카드가 살짝 커졌다 자리잡음
+    if (Math.abs(delta) > 1) {
+      playWhoosh();
+      arriveTimers.current.forEach((t) => window.clearTimeout(t));
+      setArrive(false);
+      arriveTimers.current = [
+        window.setTimeout(() => setArrive(true), 480),
+        window.setTimeout(() => setArrive(false), 1500),
+      ];
+    }
   }
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
@@ -179,7 +229,11 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
                   if (!dragging.current?.moved) snapTo(i);
                 }}
               >
-                <div className={`hubf-card ${slot.kind === 'ghost' ? 'is-ghost' : ''}`}>
+                <div
+                  className={`hubf-card ${slot.kind === 'ghost' ? 'is-ghost' : ''} ${
+                    arrive && isFront ? 'is-arrive' : ''
+                  }`}
+                >
                   <span className="hubc-tick hubc-tick-tl" aria-hidden />
                   <span className="hubc-tick hubc-tick-tr" aria-hidden />
                   <span className="hubc-tick hubc-tick-bl" aria-hidden />

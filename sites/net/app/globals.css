@@ -245,38 +245,39 @@
 
 /* ── 업무 허브 v7: 5장 펼쳐 세운 3D 팬 스프레드 (2026-08-25 대표 지시) ──
    딥 미드나이트 × 스틸 글레이셔 × 샴페인 골드. 회전 없음 — 원근·시차·호버 팝만. */
+/* 배경 = 인트로(ACCESS PORTAL) 화면 그대로: #02060E + 시안 드리프트 그리드 + 비네트 */
 .hubc-scene {
   position: relative;
   overflow: hidden;
-  background: radial-gradient(120% 100% at 50% 0%, #071019 0%, #04070c 55%, #020409 100%);
+  background: #02060e;
 }
 .hubc-scene::before {
   content: '';
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(155, 201, 216, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(155, 201, 216, 0.028) 1px, transparent 1px);
-  background-size: 64px 64px;
-  animation: hubc-grid-drift 46s linear infinite;
+    linear-gradient(rgba(0, 234, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 234, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: hubc-grid-drift 40s linear infinite;
   pointer-events: none;
 }
 @keyframes hubc-grid-drift {
-  to { background-position: 64px 64px; }
+  to { background-position: 60px 60px; }
 }
 .hubc-scene::after {
   content: '';
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse 72% 72% at 50% 46%, transparent 32%, rgba(0, 0, 0, 0.72) 100%);
+  background: radial-gradient(ellipse 70% 70% at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.75) 100%);
   pointer-events: none;
 }
 .hubc-bk {
   position: fixed;
   width: 26px;
   height: 26px;
-  border: 1px solid rgba(232, 208, 165, 0.42);
-  filter: drop-shadow(0 0 4px rgba(232, 208, 165, 0.3));
+  border: 1px solid rgba(245, 220, 176, 0.5);
+  filter: drop-shadow(0 0 4px rgba(245, 220, 176, 0.35));
   z-index: 3;
   pointer-events: none;
 }
@@ -402,6 +403,18 @@
     0 0 52px -20px rgba(155, 201, 216, 0.28),
     0 0 44px -20px rgba(214, 190, 145, 0.32),
     inset 0 1px 0 rgba(240, 234, 224, 0.08);
+}
+/* 중앙 도착 팝 — 바람소리와 함께 살짝 커졌다 자리잡는 이펙트 */
+.hubf-card.is-arrive {
+  animation: hubf-arrive 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes hubf-arrive {
+  0% { transform: none; }
+  35% { transform: scale(1.06) translateZ(36px); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hubf-card.is-arrive { animation: none; }
 }
 .hubf-cardw.is-front:hover .hubf-card {
   transform: translateZ(46px) translateY(-8px);
