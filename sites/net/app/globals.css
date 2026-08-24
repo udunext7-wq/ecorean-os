@@ -68,6 +68,13 @@
   width: 180px;
   background: linear-gradient(90deg, transparent, rgba(214, 184, 126, 0.8), transparent);
 }
+.auth-logo {
+  display: block;
+  margin: 0 auto;
+  height: auto;
+  filter: drop-shadow(0 0 22px rgba(214, 184, 126, 0.28));
+  user-select: none;
+}
 
 /* ── v2: 홀로그램·3D 입체 (2026-08-24 대표 지시) ── */
 .auth-stage {
@@ -328,6 +335,13 @@
       0 0 16px rgba(240, 222, 185, 0.85),
       0 0 48px rgba(214, 190, 145, 0.5);
   }
+}
+.hubc-logo {
+  display: block;
+  margin: 0 auto;
+  height: auto;
+  filter: drop-shadow(0 0 26px rgba(214, 190, 145, 0.3));
+  user-select: none;
 }
 .hubc-sub {
   margin: 6px 0 0;

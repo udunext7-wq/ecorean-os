@@ -3,9 +3,8 @@
 // 인증 화면 공통 셸 v2 — 홀로그램·3D 입체 연출 (대표 지시 2026-08-24)
 // 마우스 추적 3D 틸트 + 홀로 광택(시안·골드·바이올렛) + 궤도 링. 터치·모션 최소화 환경은 자동 비활성.
 import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
-import { Cinzel, JetBrains_Mono } from 'next/font/google';
+import { JetBrains_Mono } from 'next/font/google';
 
-const cinzel = Cinzel({ subsets: ['latin'], weight: ['400', '500'], display: 'swap' });
 const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['300', '400'], display: 'swap' });
 
 export function AuthShell({ children }: { children: ReactNode }) {
@@ -55,9 +54,17 @@ export function AuthShell({ children }: { children: ReactNode }) {
       >
         <div className="auth-ring" aria-hidden />
         <div className="auth-tilt">
-          <header className="auth-float mb-7 text-center">
-            <p className={`${mono.className} auth-eyebrow`}>Build Operation Center</p>
-            <p className={`${cinzel.className} auth-wordmark`}>ECOREAN</p>
+          <header className="auth-float mb-6 text-center">
+            {/* 공식 로고 (크로마키 + 다크배경용 변환) — 대표 지시 2026-08-25 */}
+            <img
+              src="/brand/ecorean-logo-dark.png"
+              alt="ECOREAN"
+              width={168}
+              height={168}
+              draggable={false}
+              className="auth-logo"
+            />
+            <p className={`${mono.className} auth-eyebrow mt-1`}>Build Operation Center</p>
             <div className="auth-hairline" aria-hidden />
           </header>
           <div className="auth-frame">

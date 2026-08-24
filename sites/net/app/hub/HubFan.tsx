@@ -4,9 +4,8 @@
 // 5장이 모두 정면을 향해 서 있고(글씨 항상 가독), 크기 3단계: 중앙 > 안쪽 한 쌍 > 바깥 한 쌍.
 // 마우스로 잡고 좌우로 돌리면 회전, 놓으면 가장 가까운 카드가 중앙에 스냅. 자동 회전 없음.
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { Cinzel, JetBrains_Mono, Noto_Sans_KR } from 'next/font/google';
+import { JetBrains_Mono, Noto_Sans_KR } from 'next/font/google';
 
-const cinzel = Cinzel({ subsets: ['latin'], weight: ['400'], display: 'swap' });
 const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['300', '400'], display: 'swap' });
 const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300', '400', '500', '700'], display: 'swap' });
 
@@ -178,7 +177,15 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     <div className={`hubc ${noto.className}`}>
       <header className="hubc-head">
         <div className="hubc-hairline" aria-hidden />
-        <p className={`${cinzel.className} hubc-brand`}>ECOREAN</p>
+        {/* 공식 로고 (크로마키 + 다크배경용 변환) — 대표 지시 2026-08-25 */}
+        <img
+          src="/brand/ecorean-logo-dark.png"
+          alt="ECOREAN"
+          width={176}
+          height={176}
+          draggable={false}
+          className="hubc-logo"
+        />
         <p className={`${mono.className} hubc-sub`}>WORK HUB · OPERATION DECK</p>
       </header>
 
