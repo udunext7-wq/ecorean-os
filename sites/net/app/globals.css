@@ -461,34 +461,40 @@
 .hubc-tick-br { bottom: 6px; right: 6px; border-bottom-width: 1px; border-right-width: 1px; }
 .hubc-card-head {
   border-bottom: 1px solid rgba(155, 201, 216, 0.13);
-  padding-bottom: 10px;
+  padding-bottom: 12px;
   margin-bottom: 10px;
 }
 .hubc-card-no {
   display: block;
-  font-size: 9.5px;
-  letter-spacing: 0.42em;
-  color: rgba(155, 201, 216, 0.65);
+  font-size: 9px;
+  letter-spacing: 0.46em;
+  color: rgba(214, 190, 145, 0.6);
 }
 .hubc-card-title {
   display: block;
-  margin-top: 4px;
-  font-size: 18px;
+  margin-top: 6px;
+  font-size: 20px;
   font-weight: 700;
-  color: #ecf2f5;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+  background: linear-gradient(180deg, #f6fafc 0%, #dbe7ec 55%, #a9bfca 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
-.hubf-slot:hover .hubc-card-title,
-.hubf-slot:focus-within .hubc-card-title {
-  color: #f0deb9;
-  text-shadow: 0 0 14px rgba(214, 190, 145, 0.3);
+.hubf-cardw.is-front .hubc-card-title {
+  background: linear-gradient(180deg, #f7ecd4 0%, #f0deb9 50%, #c8ab7c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 12px rgba(214, 190, 145, 0.25));
 }
 .hubc-card-desc {
   display: block;
-  margin-top: 3px;
-  font-size: 9.5px;
-  letter-spacing: 0.12em;
-  color: rgba(148, 170, 184, 0.72);
+  margin-top: 4px;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(148, 170, 184, 0.66);
 }
 .hubc-card-body {
   flex: 1;
@@ -512,28 +518,55 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 2px 8px;
-  padding: 7px 9px;
+  padding: 7.5px 10px;
   border-radius: 7px;
   border: 1px solid transparent;
   text-decoration: none;
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.hubc-item::after {
+  content: '›';
+  margin-left: auto;
+  font-size: 13px;
+  line-height: 1;
+  color: rgba(155, 201, 216, 0.75);
+  opacity: 0;
+  transform: translateX(-5px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.hubc-item:hover::after {
+  opacity: 1;
+  transform: translateX(0);
 }
 .hubc-item:hover {
   background: rgba(155, 201, 216, 0.06);
   border-color: rgba(155, 201, 216, 0.28);
   box-shadow: 0 0 16px -8px rgba(155, 201, 216, 0.45);
 }
-.hubc-item-name { color: #e6edf2; font-size: 13px; font-weight: 600; }
-.hubc-item-desc { color: rgba(148, 170, 184, 0.68); font-size: 10.5px; }
+.hubc-item-name {
+  color: #ebf1f5;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.008em;
+}
+.hubc-item:hover .hubc-item-name { color: #ffffff; }
+.hubc-item-desc {
+  color: rgba(148, 170, 184, 0.62);
+  font-size: 10.5px;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+}
 .hubc-item.is-admin .hubc-item-name { color: #e8d0a5; }
+.hubc-item.is-admin:hover .hubc-item-name { color: #f5e7c8; }
+.hubc-item.is-admin::after { margin-left: 8px; color: rgba(214, 190, 145, 0.75); }
 .hubc-item-tag {
   margin-left: auto;
-  font-size: 8px;
-  letter-spacing: 0.25em;
-  color: #d9bf90;
-  border: 1px solid rgba(217, 191, 144, 0.35);
-  padding: 1px 5px;
-  border-radius: 3px;
+  font-size: 7.5px;
+  letter-spacing: 0.3em;
+  color: rgba(217, 191, 144, 0.85);
+  border: 1px solid rgba(217, 191, 144, 0.3);
+  padding: 1.5px 6px;
+  border-radius: 99px;
 }
 .hubc-card-foot {
   margin-top: 8px;
