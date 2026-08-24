@@ -325,12 +325,54 @@
 /* ── 3D 무대 ── */
 .hubc-viewport {
   position: relative;
-  height: 470px;
-  perspective: 1250px;
-  perspective-origin: 50% 34%;
+  height: 500px;
+  perspective: 1150px;
+  perspective-origin: 50% 30%;
   touch-action: pan-y;
   cursor: grab;
   outline: none;
+}
+/* 상단 스포트라이트 빔 */
+.hubc-spot {
+  position: absolute;
+  left: 50%;
+  top: -50px;
+  width: 620px;
+  height: 460px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: radial-gradient(50% 92% at 50% 0%, rgba(222, 236, 243, 0.1), rgba(222, 236, 243, 0.028) 46%, transparent 72%);
+  filter: blur(6px);
+}
+/* 정면 카드 아래 글로우 풀 */
+.hubc-glowpool {
+  position: absolute;
+  left: 50%;
+  top: 74%;
+  width: 460px;
+  height: 140px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(214, 190, 145, 0.16), rgba(155, 201, 216, 0.07) 55%, transparent 78%);
+  filter: blur(16px);
+}
+/* 부유 입자 */
+.hubc-mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(222, 236, 243, 0.5);
+  box-shadow: 0 0 6px rgba(222, 236, 243, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  animation: hubc-mote 14s linear infinite;
+}
+@keyframes hubc-mote {
+  0% { opacity: 0; transform: translateY(24px); }
+  12% { opacity: 0.5; }
+  80% { opacity: 0.3; }
+  100% { opacity: 0; transform: translateY(-150px); }
 }
 .hubc-viewport:active { cursor: grabbing; }
 .hubc-ring3d {
@@ -390,15 +432,29 @@
     inset 0 1px 0 rgba(240, 234, 224, 0.08);
 }
 .hubc-card:not(.is-front) a { pointer-events: none; }
+/* 회전 위치를 따라 이동하는 측면광 + 스캔라인 (--lx·--lit 은 JS 인라인) */
 .hubc-card::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
+  opacity: calc(0.35 + var(--lit, 0.5) * 0.65);
   background:
-    linear-gradient(115deg, transparent 38%, rgba(155, 201, 216, 0.05) 48%, rgba(232, 208, 165, 0.06) 54%, transparent 64%),
+    linear-gradient(115deg, transparent 34%, rgba(155, 201, 216, 0.07) 46%, rgba(232, 208, 165, 0.09) 53%, transparent 66%),
     repeating-linear-gradient(0deg, rgba(200, 226, 236, 0.016) 0 1px, transparent 1px 3px);
+  background-size: 240% 100%, auto;
+  background-position: var(--lx, 50%) 50%, 0 0;
+}
+/* 상단 림라이트 — 스포트라이트를 받는 윗모서리 하이라이트 */
+.hubc-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: calc(var(--lit, 0.5));
+  background: linear-gradient(180deg, rgba(238, 244, 248, 0.1), transparent 16%);
 }
 .hubc-tick {
   position: absolute;
@@ -412,6 +468,38 @@
 .hubc-tick-tr { top: 6px; right: 6px; border-top-width: 1px; border-right-width: 1px; }
 .hubc-tick-bl { bottom: 6px; left: 6px; border-bottom-width: 1px; border-left-width: 1px; }
 .hubc-tick-br { bottom: 6px; right: 6px; border-bottom-width: 1px; border-right-width: 1px; }
+
+/* 예비(공란) 슬롯 — 와이어프레임 고스트 카드 */
+.hubc-card.is-ghost {
+  background: rgba(9, 14, 22, 0.34);
+  border: 1px dashed rgba(155, 201, 216, 0.22);
+  box-shadow: none;
+  backdrop-filter: blur(4px);
+  -webkit-box-reflect: none;
+  align-items: center;
+  justify-content: center;
+}
+.hubc-card.is-ghost::before,
+.hubc-card.is-ghost::after { display: none; }
+.hubc-card.is-ghost .hubc-tick { border-color: rgba(155, 201, 216, 0.25); filter: none; }
+.hubc-ghost-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.hubc-ghost-label {
+  font-size: 12px;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  color: rgba(155, 201, 216, 0.45);
+}
+.hubc-ghost-desc {
+  font-size: 10.5px;
+  color: rgba(148, 170, 184, 0.45);
+}
+.hubc-dot.is-ghost { border-style: dashed; opacity: 0.6; }
 
 .hubc-card-head {
   border-bottom: 1px solid rgba(155, 201, 216, 0.13);

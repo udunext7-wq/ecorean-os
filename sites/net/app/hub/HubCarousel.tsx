@@ -1,8 +1,8 @@
 'use client';
 
-// 업무 허브 v4 — 4장 전체가 보이는 3D 빌보드 카루셀 (대표 지시 2026-08-24)
-// 카드 4장이 원형 궤도를 돌며 항상 정면을 향한다(빌보드). 대기 시 연속 회전 쇼케이스,
-// 드래그·화살표·점·키보드로 제어. 깊이에 따라 크기·밝기·높이가 달라져 입체감을 만든다.
+// 업무 허브 v5 — 5슬롯 3D 빌보드 카루셀 + 카드 드로우 연출 (대표 지시 2026-08-24)
+// 5개 슬롯(섹션 4 + 예비 1)이 원궤도를 공전. 정면에 가까워진 카드는 덱에서 뽑히듯
+// 앞으로 튀어나오며 스포트라이트를 받는다. 조명: 상단 빔·바닥 글로우 풀·림라이트·부유 입자.
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Cinzel, JetBrains_Mono } from 'next/font/google';
 
@@ -12,18 +12,30 @@ const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['300', '400'], displa
 export type TreeItem = { href: string; name: string; desc: string; admin?: boolean };
 export type TreeSection = { title: string; desc: string; items: TreeItem[] };
 
+type Slot = { kind: 'section'; sec: TreeSection } | { kind: 'ghost' };
+
 const SEL_KEY = 'ecorean.hubCarousel.section';
-const IDLE_DEG_PER_SEC = 9; // 대기 회전 속도
+const IDLE_DEG_PER_SEC = 8;
+const MOTES = [
+  { left: '12%', top: '58%', delay: '0s', dur: '13s' },
+  { left: '24%', top: '72%', delay: '3s', dur: '16s' },
+  { left: '41%', top: '64%', delay: '7s', dur: '12s' },
+  { left: '58%', top: '76%', delay: '1.5s', dur: '15s' },
+  { left: '72%', top: '60%', delay: '5s', dur: '14s' },
+  { left: '86%', top: '70%', delay: '9s', dur: '17s' },
+  { left: '33%', top: '82%', delay: '11s', dur: '13s' },
+];
 
 function mod(a: number, b: number) {
   return ((a % b) + b) % b;
 }
 
 export function HubCarousel({ sections }: { sections: TreeSection[] }) {
-  const n = sections.length;
+  const slots: Slot[] = [...sections.map((sec) => ({ kind: 'section' as const, sec })), { kind: 'ghost' }];
+  const n = slots.length;
   const step = 360 / n;
   const [rot, setRot] = useState(0);
-  const [radius, setRadius] = useState(340);
+  const [radius, setRadius] = useState(330);
   const [snapping, setSnapping] = useState(false);
   const idle = useRef(true);
   const paused = useRef(false);
@@ -32,17 +44,15 @@ export function HubCarousel({ sections }: { sections: TreeSection[] }) {
   const dragging = useRef<{ x: number; rot0: number; moved: boolean } | null>(null);
   rotRef.current = rot;
 
-  // 반응형 반경
   useEffect(() => {
     function measure() {
-      setRadius(window.innerWidth < 640 ? 205 : 340);
+      setRadius(window.innerWidth < 640 ? 200 : 330);
     }
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  // 저장된 섹션 복원 → 대기 회전 없이 그 카드가 정면
   useEffect(() => {
     try {
       const saved = localStorage.getItem(SEL_KEY);
@@ -57,7 +67,7 @@ export function HubCarousel({ sections }: { sections: TreeSection[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 대기 연속 회전 (모션 최소화 환경 제외, 호버 시 일시정지)
+  // 대기 연속 회전 — 모션 최소화 환경 제외, 호버·드래그 시 정지
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       idle.current = false;
@@ -77,6 +87,7 @@ export function HubCarousel({ sections }: { sections: TreeSection[] }) {
   }, []);
 
   const nearest = mod(Math.round(-rot / step), n);
+  const nearestSlot = slots[nearest];
 
   function snapTo(i: number) {
     idle.current = false;
@@ -84,12 +95,13 @@ export function HubCarousel({ sections }: { sections: TreeSection[] }) {
     const delta = mod(-i * step - r + 180, 360) - 180;
     setSnapping(true);
     setRot(r + delta);
+    const slot = slots[mod(i, n)];
     try {
-      localStorage.setItem(SEL_KEY, sections[mod(i, n)].title);
+      localStorage.setItem(SEL_KEY, slot.kind === 'section' ? slot.sec.title : '__reserved');
     } catch {
       /* no-op */
     }
-    window.setTimeout(() => setSnapping(false), 750);
+    window.setTimeout(() => setSnapping(false), 800);
   }
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
@@ -142,26 +154,42 @@ export function HubCarousel({ sections }: { sections: TreeSection[] }) {
         }}
         onKeyDown={onKeyDown}
       >
+        <div className="hubc-spot" aria-hidden />
         <div className="hubc-floor" aria-hidden />
+        <div className="hubc-glowpool" aria-hidden />
+        {MOTES.map((m, i) => (
+          <span
+            key={i}
+            className="hubc-mote"
+            aria-hidden
+            style={{ left: m.left, top: m.top, animationDelay: m.delay, animationDuration: m.dur }}
+          />
+        ))}
         <div className="hubc-ring3d">
-          {sections.map((sec, i) => {
+          {slots.map((slot, i) => {
             const theta = ((i * step + rot) * Math.PI) / 180;
             const depth = (Math.cos(theta) + 1) / 2; // 1 = 정면, 0 = 뒤
+            // 카드 드로우: 정면 근접(depth>0.86)부터 덱에서 뽑히듯 전방·상승
+            const pop = Math.max(0, (depth - 0.86) / 0.14);
             const x = Math.sin(theta) * radius;
-            const z = (Math.cos(theta) - 1) * radius;
-            const y = (1 - depth) * -34;
-            const scale = 0.58 + 0.42 * depth;
+            const z = (Math.cos(theta) - 1) * radius + pop * 84;
+            const y = (1 - depth) * -46 - pop * 22;
+            const scale = 0.52 + 0.48 * depth + pop * 0.05;
+            const lit = depth;
+            const lx = 50 - Math.sin(theta) * 45; // 정면 광원 기준 측면광 이동
             const isFront = i === nearest;
-            const staffItems = sec.items.filter((it) => !it.admin);
-            const adminItems = sec.items.filter((it) => it.admin);
             return (
               <div
-                key={sec.title}
-                className={`hubc-card ${isFront ? 'is-front' : ''} ${snapping ? 'is-snap' : ''}`}
+                key={i}
+                className={`hubc-card ${slot.kind === 'ghost' ? 'is-ghost' : ''} ${
+                  isFront ? 'is-front' : ''
+                } ${snapping ? 'is-snap' : ''}`}
                 style={{
                   transform: `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) scale(${scale.toFixed(3)})`,
-                  opacity: 0.55 + 0.45 * depth,
-                  filter: `brightness(${(0.55 + 0.45 * depth).toFixed(3)}) saturate(${(0.8 + 0.2 * depth).toFixed(3)})`,
+                  opacity: 0.42 + 0.58 * depth,
+                  filter: `brightness(${(0.5 + 0.5 * depth + pop * 0.08).toFixed(3)}) saturate(${(0.8 + 0.2 * depth).toFixed(3)})`,
+                  ['--lit' as string]: lit.toFixed(3),
+                  ['--lx' as string]: `${lx.toFixed(1)}%`,
                 }}
                 role="option"
                 aria-selected={isFront}
@@ -173,37 +201,57 @@ export function HubCarousel({ sections }: { sections: TreeSection[] }) {
                 <span className="hubc-tick hubc-tick-tr" aria-hidden />
                 <span className="hubc-tick hubc-tick-bl" aria-hidden />
                 <span className="hubc-tick hubc-tick-br" aria-hidden />
-                <div className="hubc-card-head">
-                  <span className={`${mono.className} hubc-card-no`}>
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span className="hubc-card-title">{sec.title}</span>
-                  <span className={`${mono.className} hubc-card-desc`}>{sec.desc}</span>
-                </div>
-                <div className="hubc-card-body">
-                  <ul className="hubc-list">
-                    {staffItems.map((item) => (
-                      <li key={item.href}>
-                        <a href={item.href} className="hubc-item" tabIndex={isFront ? 0 : -1}>
-                          <span className="hubc-item-name">{item.name}</span>
-                          <span className="hubc-item-desc">{item.desc}</span>
-                        </a>
-                      </li>
-                    ))}
-                    {adminItems.map((item) => (
-                      <li key={item.href}>
-                        <a href={item.href} className="hubc-item is-admin" tabIndex={isFront ? 0 : -1}>
-                          <span className="hubc-item-name">{item.name}</span>
-                          <span className="hubc-item-desc">{item.desc}</span>
-                          <span className={`${mono.className} hubc-item-tag`}>ADMIN</span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className={`${mono.className} hubc-card-foot`}>
-                  {sec.items.length} MODULES · AUTHORIZED
-                </div>
+                {slot.kind === 'ghost' ? (
+                  <div className="hubc-ghost-body">
+                    <span className={`${mono.className} hubc-card-no`}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className={`${mono.className} hubc-ghost-label`}>RESERVED</span>
+                    <span className="hubc-ghost-desc">확장 슬롯 · 대기 중</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="hubc-card-head">
+                      <span className={`${mono.className} hubc-card-no`}>
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span className="hubc-card-title">{slot.sec.title}</span>
+                      <span className={`${mono.className} hubc-card-desc`}>{slot.sec.desc}</span>
+                    </div>
+                    <div className="hubc-card-body">
+                      <ul className="hubc-list">
+                        {slot.sec.items
+                          .filter((it) => !it.admin)
+                          .map((item) => (
+                            <li key={item.href}>
+                              <a href={item.href} className="hubc-item" tabIndex={isFront ? 0 : -1}>
+                                <span className="hubc-item-name">{item.name}</span>
+                                <span className="hubc-item-desc">{item.desc}</span>
+                              </a>
+                            </li>
+                          ))}
+                        {slot.sec.items
+                          .filter((it) => it.admin)
+                          .map((item) => (
+                            <li key={item.href}>
+                              <a
+                                href={item.href}
+                                className="hubc-item is-admin"
+                                tabIndex={isFront ? 0 : -1}
+                              >
+                                <span className="hubc-item-name">{item.name}</span>
+                                <span className="hubc-item-desc">{item.desc}</span>
+                                <span className={`${mono.className} hubc-item-tag`}>ADMIN</span>
+                              </a>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                    <div className={`${mono.className} hubc-card-foot`}>
+                      {slot.sec.items.length} MODULES · AUTHORIZED
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
@@ -219,17 +267,19 @@ export function HubCarousel({ sections }: { sections: TreeSection[] }) {
             SECTOR {String(nearest + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}
           </span>
           <div className="hubc-dots" aria-hidden>
-            {sections.map((s, i) => (
+            {slots.map((slot, i) => (
               <button
-                key={s.title}
+                key={i}
                 type="button"
                 tabIndex={-1}
-                className={`hubc-dot ${i === nearest ? 'is-on' : ''}`}
+                className={`hubc-dot ${slot.kind === 'ghost' ? 'is-ghost' : ''} ${i === nearest ? 'is-on' : ''}`}
                 onClick={() => snapTo(i)}
               />
             ))}
           </div>
-          <span className="hubc-status-title">{sections[nearest].title}</span>
+          <span className="hubc-status-title">
+            {nearestSlot.kind === 'section' ? nearestSlot.sec.title : '예비 슬롯'}
+          </span>
         </div>
         <button type="button" className="hubc-arrow" onClick={() => snapTo(nearest + 1)} aria-label="다음 섹션">
           ▶
