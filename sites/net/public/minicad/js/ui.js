@@ -1588,10 +1588,10 @@ function zoomBy(factor){
   STATE.offsetY=cy-(cy-STATE.offsetY)*(newZoom/oldZoom);
   STATE.zoom=newZoom;
   drawGrid();renderAll();
-  document.getElementById('zoom-pct').textContent=Math.round(STATE.zoom*100)+'%';
+  document.getElementById('zoom-pct').textContent=Math.round(STATE.zoom*100)+'% · 1/'+Math.max(1,Math.round(100/STATE.zoom));
 }
 function zoomFit(){
-  if(STATE.spaces.length===0){STATE.zoom=1;STATE.offsetX=200;STATE.offsetY=100;drawGrid();renderAll();document.getElementById('zoom-pct').textContent='100%';return;}
+  if(STATE.spaces.length===0){STATE.zoom=1;STATE.offsetX=200;STATE.offsetY=100;drawGrid();renderAll();document.getElementById('zoom-pct').textContent='100% · 1/100';return;}
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   STATE.spaces.forEach(s=>s.polygon.forEach(p=>{minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);}));
   const wMm=maxX-minX,hMm=maxY-minY,padding=120;
@@ -1601,7 +1601,7 @@ function zoomFit(){
   STATE.offsetX=padding-mmToPx(minX);
   STATE.offsetY=padding-mmToPx(minY);
   drawGrid();renderAll();
-  document.getElementById('zoom-pct').textContent=Math.round(STATE.zoom*100)+'%';
+  document.getElementById('zoom-pct').textContent=Math.round(STATE.zoom*100)+'% · 1/'+Math.max(1,Math.round(100/STATE.zoom));
 }
 
 // ===== 저장/불러오기 =====
@@ -2068,7 +2068,7 @@ function buildPrintTitleBlock(){
     '<table class="tb-main">'+
     '<tr><th colspan="4">ECOREAN — 평면 계획 도면</th></tr>'+
     '<tr><td class="k">PROJECT</td><td colspan="3">'+escapeHtml(STATE.projectName)+'</td></tr>'+
-    '<tr><td class="k">DATE</td><td>'+dstr+'</td><td class="k">SCALE</td><td>N.T.S (mm 실측 기입)</td></tr>'+
+    '<tr><td class="k">DATE</td><td>'+dstr+'</td><td class="k">SCALE</td><td>1/100 기준 (Zoom 100% · mm 실측 기입)</td></tr>'+
     '<tr><td class="k">바닥면적</td><td>'+floor+'㎡ ('+py+'py)</td><td class="k">문 / 창</td><td>'+doorN+' / '+winN+'</td></tr>'+
     '<tr><td class="k">기준 천장고</td><td>'+STATE.ceilingHeight+'mm</td><td class="k">TOOL</td><td>ECOREAN MiniCAD v6.0</td></tr>'+
     '</table>'+

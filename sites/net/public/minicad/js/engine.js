@@ -1973,6 +1973,17 @@ function symbolBoostFactor(kind,def){
   if(basePx>=MINPX||basePx<=0) return 1;
   return Math.min(MINPX/basePx,5); // 최대 5배 (과대 확대 방지)
 }
+// 2026-08-24: 점형 기호 글씨 라벨 — 기호는 실척 그대로, 이름만 고정 px 크기로 항상 판독 (대표 지시)
+function addSymbolLabel(group,xPx,yPx,def){
+  if(STATE.zoom<0.3) return; // 극축소 시 겹침 방지
+  const halfPx=mmToPx((def.size||Math.max(def.w||0,def.h||0)||200))/2;
+  group.add(new Konva.Text({
+    x:xPx-60,y:yPx+halfPx+3,width:120,align:'center',
+    text:def.name,fontSize:9.5,fontFamily:'Inter',fontStyle:'600',
+    fill:def.c||'#9aa0b5',listening:false,
+    shadowColor:'#000000',shadowBlur:2,shadowOpacity:0.7,
+  }));
+}
 function renderRect(arr,group,lib,kind){
   group.destroyChildren();
   arr.forEach(o=>{
@@ -2053,6 +2064,8 @@ function renderRect(arr,group,lib,kind){
     // v5.9: 잠금 시각효과 — 반투명만
     if(o.locked) g.opacity(0.30);
     group.add(g);
+    // 2026-08-24: 소형 점형 기호(감지기·스프링클러 등)는 이름 라벨 고정 표시
+    if(kind==='hvac'&&(def.size||0)<=600) addSymbolLabel(group,x,y,def);
   });
 }
 
@@ -2079,6 +2092,7 @@ function renderLights(){
       if(sel) g.add(new Konva.Circle({radius:r+4,stroke:'#E2725B',strokeWidth:2,dash:[3,3]}));
     }
     g.on('click tap',e=>{if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('lights',o.id);});
+    if((def.size||0)<=400) addSymbolLabel(groups.lights,x,y,def); // 2026-08-24: 소형 조명 라벨
     if(o.locked) g.opacity(0.30);
     groups.lights.add(g);
   });
@@ -2090,8 +2104,9 @@ function renderElectric(){
     if(!def) return;
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const sel=STATE.selectedKind==='electric'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='electric'&&b.id===o.id);
-    const _boost=symbolBoostFactor('electric',def); // v6.1: 점형 기호 비축척 보정
+    const _boost=symbolBoostFactor('electric',def); // v6.1: 비축척 확대 — 기본 OFF ('sym' 명령으로만)
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:_boost,scaleY:_boost,id:o.id});
+    addSymbolLabel(groups.electric,x,y,def); // 2026-08-24: 이름 라벨 고정 표시 (대표 지시 — 글씨로 판독)
     if(def.shape){
       drawShape(def.shape).forEach(n=>g.add(n));
       if(sel){

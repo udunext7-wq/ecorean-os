@@ -77,6 +77,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   // 7b. 2026-08-19: 공간 드래그 스냅 개편 — rawMm / snapRadiusMm / 축분리 스냅 / 히스테리시스 / 가이드
   (function(){
     const z0=STATE.zoom,ox=STATE.offsetX,oy=STATE.offsetY,sp0=STATE.spaces.slice(),tch=STATE.touch,ctrl0=STATE.ctrlPressed,snapEp=STATE.snap.endpoint;
+    const sc0=STATE.scale; STATE.scale=80; // 2026-08-24: 본 블록 수치는 scale=80 기준 검증 (기본 축척은 1/100=37.8)
     STATE.zoom=1;STATE.offsetX=0;STATE.offsetY=0;STATE.ctrlPressed=false;STATE.snap.endpoint=true;
     // rawMm: 스냅 없이 px→mm (80px/m @ zoom1)
     const r1=rawMm({x:80,y:160});
@@ -110,6 +111,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     STATE.ctrlPressed=false;
     // 복원
     STATE.spaces=sp0;STATE.touch=tch;STATE.ctrlPressed=ctrl0;STATE.snap.endpoint=snapEp;STATE.dragSnapGuides=null;
+    STATE.scale=sc0;
     STATE.zoom=z0;STATE.offsetX=ox;STATE.offsetY=oy;drawGrid();renderAll();
   })();
   // 8. splitWallsAtIntersections
@@ -799,6 +801,30 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('기호확대: 렌더 그룹 스케일 적용',!!swG&&swG.scaleY()>1,swG&&swG.scaleY().toFixed(2));
     STATE.electric=_bakE;STATE.zoom=_z;STATE.symbolBoost=_sb;
     renderAll();
+  })();
+  // === 2026-08-24: 축척 1/100 + 기호 실척 유지 + 글씨 라벨 (대표 지시 정정) ===
+  (function(){
+    assert('축척: 기준 1/100 (37.8px/m)',Math.abs(STATE.scale-37.8)<0.001,'scale='+STATE.scale);
+    // 기호 확대 기본 OFF (실척)
+    const _sb2=STATE.symbolBoost;STATE.symbolBoost=false;
+    assert('기호: 기본 실척 (확대 OFF)',symbolBoostFactor('electric',ELECTRIC_LIB.switch_1)===1);
+    STATE.symbolBoost=_sb2;
+    // 전기 기호 라벨 — 고정 px 글씨
+    const _bakE2=STATE.electric.slice(),_z2=STATE.zoom;STATE.zoom=1;
+    const sw2={id:makeId('e'),type:'switch_6',x:1400000,y:1400000,angle:0};
+    STATE.electric.push(sw2);
+    renderElectric();
+    let lblFound=false;
+    groups.electric.getChildren().forEach(n=>{
+      if(n.getClassName&&n.getClassName()==='Text'&&n.text&&n.text().indexOf('스위치(6구)')>=0) lblFound=true;
+    });
+    assert('기호: 이름 라벨 고정 표시',lblFound);
+    // 극축소 시 라벨 생략 (겹침 방지)
+    STATE.zoom=0.2;renderElectric();
+    let lblLow2=0;
+    groups.electric.getChildren().forEach(n=>{if(n.getClassName&&n.getClassName()==='Text')lblLow2++;});
+    assert('기호: 극축소 라벨 생략',lblLow2===0,'n='+lblLow2);
+    STATE.electric=_bakE2;STATE.zoom=_z2;renderAll();
   })();
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
