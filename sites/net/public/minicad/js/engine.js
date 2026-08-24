@@ -1961,6 +1961,18 @@ function buildSpaceStairShape(s){
   }
   return _xformShape(shp,P.rot,!!st.mirror);
 }
+// 2026-08-24 v6.1: 점형 기호 비축척 보정 (대표 지시 — 기호가 너무 작아 안 보임)
+// 실무 CAD 관례: 전기·감지기·점형 조명 기호는 Not-to-Scale. 화면 최소 크기(px) 보장, 실좌표·데이터 불변.
+function symbolBoostFactor(kind,def){
+  if(STATE.symbolBoost===false) return 1;
+  if(!(kind==='electric'||kind==='hvac'||kind==='lights')) return 1;
+  const baseMm=def.size||Math.max(def.w||0,def.h||0);
+  if(!baseMm) return 1;
+  const basePx=mmToPx(baseMm);
+  const MINPX=34;
+  if(basePx>=MINPX||basePx<=0) return 1;
+  return Math.min(MINPX/basePx,5); // 최대 5배 (과대 확대 방지)
+}
 function renderRect(arr,group,lib,kind){
   group.destroyChildren();
   arr.forEach(o=>{
@@ -1972,7 +1984,8 @@ function renderRect(arr,group,lib,kind){
     const sel=STATE.selectedKind===kind&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind===kind&&b.id===o.id);
     // v5.7: flipped(미러) 좌우반전 — 그룹 scaleX(-1)로 처리, 단 텍스트 노드는 별도 보정
     const sx=o.flipped?-1:1;
-    const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:sx,scaleY:1,id:o.id});
+    const _boost=symbolBoostFactor(kind,def); // v6.1: 점형 기호 비축척 보정
+    const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:sx*_boost,scaleY:_boost,id:o.id});
     // v5.7: 2.5D ON 시 그림자 — 객체 외곽 사각형을 어두운 색으로 약간 옵셋
     if(STATE.plus2D){
       const w=mmToPx(defW),h=mmToPx(defH);
@@ -2050,7 +2063,8 @@ function renderLights(){
     if(!def) return;
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const sel=STATE.selectedKind==='lights'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='lights'&&b.id===o.id);
-    const g=new Konva.Group({x,y,rotation:o.angle||0,id:o.id});
+    const _boost=symbolBoostFactor('lights',def); // v6.1: 점형 기호 비축척 보정
+    const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:_boost,scaleY:_boost,id:o.id});
     if(def.shape){
       drawShape(def.shape).forEach(n=>g.add(n));
       if(sel){
@@ -2076,7 +2090,8 @@ function renderElectric(){
     if(!def) return;
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const sel=STATE.selectedKind==='electric'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='electric'&&b.id===o.id);
-    const g=new Konva.Group({x,y,rotation:o.angle||0,id:o.id});
+    const _boost=symbolBoostFactor('electric',def); // v6.1: 점형 기호 비축척 보정
+    const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:_boost,scaleY:_boost,id:o.id});
     if(def.shape){
       drawShape(def.shape).forEach(n=>g.add(n));
       if(sel){

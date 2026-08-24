@@ -2105,6 +2105,7 @@ function _paletteCommands(){
     {label:'🧲 그리드 표시 토글',kw:'grid 그리드',run:toggleGrid},
     {label:'📐 치수 표시 토글',kw:'dimension 치수 표시',run:toggleDim},
     {label:'◐ 2.5D 영업 모드 토글',kw:'2.5d 영업',run:toggle2_5D},
+    {label:'🔣 기호 확대 표시 토글 (전기·감지기 비축척)',kw:'symbol sym 기호 확대 비축척',run:()=>{STATE.symbolBoost=STATE.symbolBoost===false?true:false;renderAll();cmdToast('기호 확대 표시 '+(STATE.symbolBoost!==false?'ON':'OFF'));}},
     {label:'🛠 도구 — 선택',kw:'tool select 선택 v',run:()=>setTool('select')},
     {label:'🛠 도구 — 벽',kw:'tool wall 벽 b',run:()=>setTool('wall')},
     {label:'🛠 도구 — 선 (참조선/분할)',kw:'tool line 선 l',run:()=>setTool('line')},
@@ -3294,6 +3295,7 @@ function processCommand(rawCmd){
   if(/^(da|dimall)$/i.test(c)){dimAllSpaces();return;}
   if(/^(af|autofurnish|자동배치)$/i.test(c)){autoFurnish();return;}
   if(/^(k|palette|팔레트)$/i.test(c)){openCmdPalette();return;}
+  if(/^(sym|기호)$/i.test(c)){STATE.symbolBoost=STATE.symbolBoost===false?true:false;renderAll();cmdToast('기호 확대 표시 '+(STATE.symbolBoost!==false?'ON (비축척)':'OFF (실척)'));return;}
   const alM=c.match(/^al\s+(l|r|t|b|ch|cv)$/i);
   if(alM){alignSelection({l:'left',r:'right',t:'top',b:'bottom',ch:'centerh',cv:'centerv'}[alM[1].toLowerCase()]);return;}
   const dsM=c.match(/^dist\s+(h|v)$/i);

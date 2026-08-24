@@ -777,6 +777,29 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       btnCnt('switch_4')+'/'+btnCnt('switch_5')+'/'+btnCnt('switch_6'));
     assert('전기: semanticOf dist_panel',semanticOf('dist_panel').tag==='panelboard');
   })();
+  // === 2026-08-24 v6.1: 점형 기호 비축척 보정 회귀 ===
+  (function(){
+    const _z=STATE.zoom,_sb=STATE.symbolBoost;
+    STATE.zoom=1;STATE.symbolBoost=true;
+    // 스위치(220mm)는 확대, 2way AC(1200mm)는 확대 안 함, 가구는 대상 아님
+    const fSw=symbolBoostFactor('electric',ELECTRIC_LIB.switch_1);
+    const fAc=symbolBoostFactor('hvac',HVAC_FIRE_LIB.ac_2way);
+    const fFn=symbolBoostFactor('furniture',FURNITURE_LIB.sofa3);
+    assert('기호확대: 스위치 확대(>1)·상한 5',fSw>1&&fSw<=5,'f='+fSw.toFixed(2));
+    assert('기호확대: 대형(2way)·가구 미적용',fAc===1&&fFn===1,fAc+'/'+fFn);
+    STATE.symbolBoost=false;
+    assert('기호확대: OFF 시 실척',symbolBoostFactor('electric',ELECTRIC_LIB.switch_1)===1);
+    // 렌더 그룹 스케일 반영
+    STATE.symbolBoost=true;
+    const _bakE=STATE.electric.slice();
+    const sw={id:makeId('e'),type:'switch_6',x:1300000,y:1300000,angle:0};
+    STATE.electric.push(sw);
+    renderRect(STATE.electric,groups.electric,ELECTRIC_LIB,'electric');
+    let swG=null;groups.electric.getChildren().forEach(c=>{if(c.id&&c.id()===sw.id)swG=c;});
+    assert('기호확대: 렌더 그룹 스케일 적용',!!swG&&swG.scaleY()>1,swG&&swG.scaleY().toFixed(2));
+    STATE.electric=_bakE;STATE.zoom=_z;STATE.symbolBoost=_sb;
+    renderAll();
+  })();
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

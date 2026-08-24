@@ -3,6 +3,7 @@
 const STATE={
   scale:80,gridSize:1,ceilingHeight:2400,wallThickness:50,bearingWallThickness:200,projectName:'신규 인테리어',
   // v5.9: 배경 이미지 (PNG/JPG/SVG 트레이싱용) — null이면 비활성
+  symbolBoost:true, // 2026-08-24 v6.1: 점형 기호(전기·감지기·조명) 비축척 확대 표시 — 'sym' 명령으로 토글
   bgImage:null, // {filename, dataURL, x_mm, y_mm, scale, opacity, locked, naturalWidth, naturalHeight}
   // v5.9: 벽 정렬 (interior=내벽 / center=중심 / exterior=외벽). 시작 시 중심선
   wallAlignment:'center',
