@@ -7,7 +7,7 @@
   ],
   "routes": [
     { "src": "/", "dest": "/sites/net/intro.html" },
-    { "src": "/home/?", "dest": "/sites/net/home.html" },
+    { "src": "/home(/.*)?", "status": 308, "headers": { "Location": "/" } },
     { "src": "/materials", "status": 308, "headers": { "Location": "/materials/" } },
     { "src": "/materials/?", "dest": "/sites/net/materials/index.html" },
     {

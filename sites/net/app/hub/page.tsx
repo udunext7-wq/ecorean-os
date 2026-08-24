@@ -30,6 +30,8 @@ const SECTIONS: HubSection[] = [
     items: [
       { href: '/minicad/', name: 'MiniCAD', desc: '도면·견적' },
       { href: '/catalog/plans/', name: '평면도 라이브러리', desc: '주거 평면도 DB → MiniCAD 밑그림' },
+      { href: '/estimate/', name: '자동 견적', desc: '통합견적 OS · MiniCAD 도면 연동' },
+      { href: '/estform/', name: '견적서 양식', desc: '주거·상업 반자동' },
       { href: '/pms/', name: '공정표', desc: '공정관리 PMS' },
       { href: '/editor/', name: '아티팩트 생성기', desc: '비주얼 에디터' },
       { href: '/vector/', name: '벡터 변환기', desc: '이미지→SVG' },
@@ -42,6 +44,7 @@ const SECTIONS: HubSection[] = [
       { href: '/catalog/usong/', name: '유송타일 도감', desc: '단가 포함 · 직원용' },
       { href: '/catalog/lx/', name: 'LX Z:IN 도감', desc: '단가 포함 · 직원용' },
       { href: '/catalog/specbook/', name: '스펙북 발행', desc: '장바구니 → 현장 사양서' },
+      { href: '/materials/', name: '자재 라이브러리', desc: '자재 열람' },
     ],
   },
   {
@@ -105,7 +108,7 @@ export default async function HubPage() {
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-cream">ECOREAN 직원 포털</h1>
+            <h1 className="text-xl font-bold text-cream">ECOREAN 업무 허브</h1>
             <p className="mt-0.5 text-sm text-muted">
               {profile.email} <Badge tone="info">{profile.role}</Badge>
             </p>

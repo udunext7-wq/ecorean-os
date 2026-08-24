@@ -1921,10 +1921,10 @@ body.warping .letterbox { height: 9vh; transition: height 2.6s cubic-bezier(0.4,
 // ============================================================
 const PASSWORD = "203703";
 
-// ⭐ v5.1: ACCESS GRANTED 후 실제 이동할 목적지.
-//   기본값 = 같은 폴더의 메인 페이지. ?next=URL 쿼리로 덮어쓰기 가능.
+// ⭐ v5.2: ACCESS GRANTED 후 실제 이동할 목적지.
+//   직원 전용 개편(2026-08-24): 기본값 = 로그인 → 업무 허브. ?next=URL 쿼리로 덮어쓰기 가능.
 const REDIRECT_URL = new URLSearchParams(location.search).get('next')
-  || '/home/';
+  || '/login';
 const REDIRECT_DELAY_MS = 5500;
 
 let scene, camera, renderer, composer, bloomPass;
