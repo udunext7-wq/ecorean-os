@@ -112,16 +112,7 @@ export default async function HubPage() {
       <div className="hubc-bk bl" aria-hidden />
       <div className="hubc-bk br" aria-hidden />
       <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="mb-3 flex items-center justify-between gap-3 text-sm">
-          {/* 공식 로고 — 좌측 상단 소형 (대표 지시 2026-08-25) */}
-          <img
-            src="/brand/ecorean-logo-dark.png"
-            alt="ECOREAN 로고"
-            width={64}
-            height={64}
-            draggable={false}
-            className="hubc-logo-sm"
-          />
+        <div className="mb-3 flex items-center justify-end gap-3 text-sm">
           <div className="flex items-center gap-3">
           <span className="text-muted">
             {profile.email} <Badge tone="info">{profile.role}</Badge>
