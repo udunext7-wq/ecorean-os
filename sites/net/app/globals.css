@@ -313,6 +313,9 @@
   background: linear-gradient(90deg, transparent, rgba(232, 208, 165, 0.3) 22%, rgba(240, 222, 185, 0.9) 50%, rgba(232, 208, 165, 0.3) 78%, transparent);
   box-shadow: 0 0 8px rgba(232, 208, 165, 0.4);
 }
+.hubc-hairline-btm {
+  margin: 16px auto 0;
+}
 .hubc-brand {
   margin: 0;
   font-size: clamp(24px, 4.6vw, 36px);

@@ -180,6 +180,7 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
         <div className="hubc-hairline" aria-hidden />
         <p className={`${cinzel.className} hubc-brand`}>ECOREAN</p>
         <p className={`${mono.className} hubc-sub`}>WORK HUB · OPERATION DECK</p>
+        <div className="hubc-hairline hubc-hairline-btm" aria-hidden />
       </header>
 
       <div
