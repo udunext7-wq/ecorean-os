@@ -325,9 +325,9 @@
 /* ── 3D 무대 ── */
 .hubc-viewport {
   position: relative;
-  height: 500px;
-  perspective: 1150px;
-  perspective-origin: 50% 30%;
+  height: 560px;
+  perspective: 1200px;
+  perspective-origin: 50% 16%;
   touch-action: pan-y;
   cursor: grab;
   outline: none;
@@ -383,7 +383,7 @@
 .hubc-floor {
   position: absolute;
   left: 50%;
-  top: 78%;
+  top: 68%;
   width: 900px;
   height: 900px;
   margin: -450px 0 0 -450px;
@@ -417,10 +417,11 @@
     0 34px 70px -28px rgba(0, 0, 0, 0.9),
     inset 0 1px 0 rgba(220, 236, 242, 0.06);
   cursor: pointer;
-  -webkit-box-reflect: below 16px linear-gradient(transparent 72%, rgba(0, 0, 0, 0.3));
+  will-change: transform, opacity, filter;
 }
-.hubc-card.is-snap {
-  transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.75s ease, filter 0.75s ease;
+/* 뽑힘·복귀·스냅 전환 시에만 부드럽게 (대기 회전 중엔 프레임 단위 직접 갱신) */
+.hubc-card.is-morph {
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.9s ease, filter 0.9s ease;
 }
 .hubc-card.is-front {
   cursor: default;
@@ -469,15 +470,88 @@
 .hubc-tick-bl { bottom: 6px; left: 6px; border-bottom-width: 1px; border-left-width: 1px; }
 .hubc-tick-br { bottom: 6px; right: 6px; border-bottom-width: 1px; border-right-width: 1px; }
 
+/* ── 카드 앞면/뒷면 — 뽑히면 앞면, 원탁 위에선 뒷면 문양 ── */
+.hubc-face {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  opacity: 0;
+  transition: opacity 0.45s ease 0.25s;
+  pointer-events: none;
+}
+.hubc-card.is-front .hubc-face {
+  opacity: 1;
+  pointer-events: auto;
+}
+.hubc-back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: inherit;
+  opacity: 1;
+  transition: opacity 0.35s ease;
+  background:
+    repeating-linear-gradient(45deg, rgba(155, 201, 216, 0.03) 0 2px, transparent 2px 14px),
+    radial-gradient(60% 45% at 50% 50%, rgba(155, 201, 216, 0.06), transparent 75%);
+  pointer-events: none;
+}
+.hubc-card.is-front .hubc-back { opacity: 0; }
+.hubc-back-no {
+  font-size: 15px;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  color: rgba(155, 201, 216, 0.7);
+}
+.hubc-back-emblem {
+  width: 74px;
+  height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(214, 190, 145, 0.4);
+  border-radius: 50%;
+  color: #e8d0a5;
+  font-size: 22px;
+  text-shadow: 0 0 14px rgba(232, 208, 165, 0.7);
+  box-shadow:
+    0 0 22px -8px rgba(214, 190, 145, 0.5),
+    inset 0 0 18px -8px rgba(214, 190, 145, 0.35);
+}
+.hubc-back-title {
+  font-size: 21px;
+  font-weight: 700;
+  color: #ecf2f5;
+  letter-spacing: 0.04em;
+}
+.hubc-back-brand {
+  font-size: 9px;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  color: rgba(214, 190, 145, 0.55);
+}
+
 /* 예비(공란) 슬롯 — 와이어프레임 고스트 카드 */
 .hubc-card.is-ghost {
   background: rgba(9, 14, 22, 0.34);
   border: 1px dashed rgba(155, 201, 216, 0.22);
   box-shadow: none;
   backdrop-filter: blur(4px);
-  -webkit-box-reflect: none;
+}
+.hubc-card.is-ghost .hubc-face {
   align-items: center;
   justify-content: center;
+}
+.hubc-card.is-ghost .hubc-back-emblem {
+  border-style: dashed;
+  border-color: rgba(155, 201, 216, 0.3);
+  color: rgba(155, 201, 216, 0.5);
+  text-shadow: none;
+  box-shadow: none;
 }
 .hubc-card.is-ghost::before,
 .hubc-card.is-ghost::after { display: none; }
