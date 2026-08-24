@@ -49,6 +49,7 @@ const SECTIONS: HubSection[] = [
       { href: '/boc/materials/manage', name: '자재 설정', desc: '추가·CSV 업로드', minRole: 'admin' },
       { href: '/boc/minicad-prices', name: 'MiniCAD 단가 승인', desc: '제안 단가 확정', minRole: 'admin' },
       { href: '/boc/role-requests', name: '승급 신청 관리', desc: '직원 승인', minRole: 'admin' },
+      { href: '/boc/users', name: '회원 관리', desc: '임시 비밀번호 발급', minRole: 'admin' },
     ],
   },
 ];
