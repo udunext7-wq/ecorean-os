@@ -1,6 +1,7 @@
 'use client';
 
 // 회원가입 — 가입 즉시 역할은 visitor(최소 권한). 이후 승급 신청 → admin 승인 시 staff.
+// 비밀번호 확인·표시 추가 — 오타로 다른 비밀번호가 저장되는 사고 방지 (대표 지시 2026-08-24)
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -12,6 +13,8 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needConfirm, setNeedConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,16 +25,20 @@ export default function SignupPage() {
       setError('비밀번호는 6자 이상이어야 합니다.');
       return;
     }
+    if (password !== password2) {
+      setError('비밀번호가 서로 일치하지 않습니다. 다시 확인해 주세요.');
+      return;
+    }
     setLoading(true);
     setError(null);
     const supabase = createBrowserSupabase();
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: email.trim(),
       password,
       options: {
-        data: { full_name: name },
-        // 확인 메일 링크가 업무시스템 로그인으로 돌아오도록 (Supabase URL 허용목록 등록 필요)
-        emailRedirectTo: `${window.location.origin}/login`,
+        data: { full_name: name.trim() },
+        // 확인 링크 → /auth/confirm 에서 세션 교환 후 승급 신청으로 (Supabase URL 허용목록 등록 필요)
+        emailRedirectTo: `${window.location.origin}/auth/confirm?next=/request-role`,
       },
     });
     setLoading(false);
@@ -102,7 +109,7 @@ export default function SignupPage() {
             autoComplete="email"
           />
           <Input
-            type="password"
+            type={showPw ? 'text' : 'password'}
             required
             placeholder="비밀번호 (6자 이상)"
             value={password}
@@ -110,6 +117,24 @@ export default function SignupPage() {
             className="w-full"
             autoComplete="new-password"
           />
+          <Input
+            type={showPw ? 'text' : 'password'}
+            required
+            placeholder="비밀번호 확인"
+            value={password2}
+            onChange={(e) => setPassword2(e.target.value)}
+            className="w-full"
+            autoComplete="new-password"
+          />
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={showPw}
+              onChange={(e) => setShowPw(e.target.checked)}
+              className="h-4 w-4 accent-[#B8965A]"
+            />
+            비밀번호 표시
+          </label>
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? '가입 중…' : '가입하기'}

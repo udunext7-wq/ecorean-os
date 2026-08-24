@@ -98,11 +98,19 @@ export default async function HubPage() {
               {profile.email} <Badge tone="info">{profile.role}</Badge>
             </p>
           </div>
-          <form action="/auth/signout" method="post">
-            <Button type="submit" variant="secondary">
-              로그아웃
-            </Button>
-          </form>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/update-password"
+              className="rounded-md border border-stroke bg-panel px-4 py-2 text-sm font-medium text-cream transition-colors hover:bg-panel2"
+            >
+              비밀번호 변경
+            </Link>
+            <form action="/auth/signout" method="post">
+              <Button type="submit" variant="secondary">
+                로그아웃
+              </Button>
+            </form>
+          </div>
         </div>
 
         {SECTIONS.map((section) => {
