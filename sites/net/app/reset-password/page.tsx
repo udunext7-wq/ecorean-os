@@ -4,7 +4,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { createBrowserSupabase } from '@/core/db/browser';
-import { Button, Card, Input } from '@/core/ui';
+import { Button, Input } from '@/core/ui';
+import { AuthShell } from '../_auth/AuthShell';
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('');
@@ -47,8 +48,8 @@ export default function ResetPasswordPage() {
 
   if (sent) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-sm text-center">
+      <AuthShell>
+        <div className="text-center">
           <h1 className="text-lg font-semibold text-cream">재설정 메일을 보냈습니다</h1>
           <p className="mt-2 text-sm text-muted">
             {email} 이 가입된 이메일이라면 비밀번호 재설정 메일이 도착합니다.
@@ -61,15 +62,14 @@ export default function ResetPasswordPage() {
           <Link href="/login" className="mt-4 inline-block text-sm font-medium text-brand-600 hover:underline">
             로그인으로 이동
           </Link>
-        </Card>
-      </main>
+        </div>
+      </AuthShell>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="text-lg font-semibold text-cream">비밀번호 찾기</h1>
+    <AuthShell>
+      <h1 className="text-lg font-semibold text-cream">비밀번호 찾기</h1>
         <p className="mt-1 text-sm text-muted">
           가입한 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다.
         </p>
@@ -95,7 +95,6 @@ export default function ResetPasswordPage() {
             로그인
           </Link>
         </p>
-      </Card>
-    </main>
+    </AuthShell>
   );
 }

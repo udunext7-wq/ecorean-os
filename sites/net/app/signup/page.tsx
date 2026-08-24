@@ -6,7 +6,8 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/core/db/browser';
-import { Button, Card, Input } from '@/core/ui';
+import { Button, Input } from '@/core/ui';
+import { AuthShell } from '../_auth/AuthShell';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -67,8 +68,8 @@ export default function SignupPage() {
 
   if (needConfirm) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-sm text-center">
+      <AuthShell>
+        <div className="text-center">
           <h1 className="text-lg font-semibold text-cream">확인 메일을 보냈습니다</h1>
           <p className="mt-2 text-sm text-muted">
             {email} 로 보낸 메일의 링크를 눌러 가입을 완료한 뒤,
@@ -78,15 +79,14 @@ export default function SignupPage() {
           <Link href="/login" className="mt-4 inline-block text-sm font-medium text-brand-600 hover:underline">
             로그인으로 이동
           </Link>
-        </Card>
-      </main>
+        </div>
+      </AuthShell>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="text-lg font-semibold text-cream">회원가입</h1>
+    <AuthShell>
+      <h1 className="text-lg font-semibold text-cream">회원가입</h1>
         <p className="mt-1 text-sm text-muted">
           가입 후 승급 신청을 하면 관리자 승인 뒤 업무시스템을 사용할 수 있습니다.
         </p>
@@ -146,7 +146,6 @@ export default function SignupPage() {
             로그인
           </Link>
         </p>
-      </Card>
-    </main>
+    </AuthShell>
   );
 }

@@ -5,7 +5,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { createBrowserSupabase } from '@/core/db/browser';
-import { Badge, Button, Card, Input } from '@/core/ui';
+import { Badge, Button, Input } from '@/core/ui';
+import { AuthShell } from '../_auth/AuthShell';
 import { hasRole } from '@/core/auth/roles';
 import type { Role } from '@/shared/types/pack';
 
@@ -75,9 +76,8 @@ export default function RequestRolePage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="text-lg font-semibold text-cream">승급 신청</h1>
+    <AuthShell>
+      <h1 className="text-lg font-semibold text-cream">승급 신청</h1>
 
         {state === 'loading' ? (
           <p className="mt-4 text-sm text-faint">확인 중…</p>
@@ -139,7 +139,6 @@ export default function RequestRolePage() {
             </form>
           </>
         ) : null}
-      </Card>
-    </main>
+    </AuthShell>
   );
 }

@@ -1,3 +1,138 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── 인증 화면 연출 (고급·미래, 2026-08-24 대표 지시) ─────────────────
+   AuthShell(_auth/AuthShell.tsx) 전용. 골드 오로라 + 미세 그리드 + 유리 카드. */
+.auth-scene {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, #14110c 0%, #0f0e0c 45%, #0a0908 100%);
+}
+.auth-aurora {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  filter: blur(90px);
+  opacity: 0.5;
+  background:
+    radial-gradient(38% 30% at 20% 25%, rgba(184, 150, 90, 0.32), transparent 70%),
+    radial-gradient(30% 26% at 78% 18%, rgba(214, 184, 126, 0.16), transparent 70%),
+    radial-gradient(42% 34% at 62% 82%, rgba(120, 96, 58, 0.22), transparent 70%);
+  animation: auth-drift 26s ease-in-out infinite alternate;
+}
+.auth-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image:
+    linear-gradient(rgba(214, 184, 126, 0.7) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(214, 184, 126, 0.7) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 45%, #000 30%, transparent 75%);
+}
+@keyframes auth-drift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to { transform: translate3d(2%, 3%, 0) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-aurora { animation: none; }
+}
+
+.auth-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: #8d8371;
+}
+.auth-wordmark {
+  margin: 6px 0 0;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  background: linear-gradient(180deg, #efe3c8 0%, #d6b87e 55%, #a98b54 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.auth-hairline {
+  margin: 14px auto 0;
+  height: 1px;
+  width: 180px;
+  background: linear-gradient(90deg, transparent, rgba(214, 184, 126, 0.8), transparent);
+}
+
+.auth-card {
+  position: relative;
+  border-radius: 16px;
+  padding: 28px 26px;
+  background: linear-gradient(160deg, rgba(26, 24, 20, 0.92), rgba(18, 16, 13, 0.88));
+  border: 1px solid rgba(214, 184, 126, 0.16);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 24px 60px -24px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(240, 234, 224, 0.05);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+.auth-card:focus-within {
+  border-color: rgba(214, 184, 126, 0.38);
+  box-shadow:
+    0 24px 70px -22px rgba(0, 0, 0, 0.85),
+    0 0 44px -18px rgba(184, 150, 90, 0.5),
+    inset 0 1px 0 rgba(240, 234, 224, 0.06);
+}
+.auth-tick {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 0 solid rgba(214, 184, 126, 0.55);
+  pointer-events: none;
+}
+.auth-tick-tl { top: -1px; left: -1px; border-top-width: 1px; border-left-width: 1px; border-top-left-radius: 16px; }
+.auth-tick-tr { top: -1px; right: -1px; border-top-width: 1px; border-right-width: 1px; border-top-right-radius: 16px; }
+.auth-tick-bl { bottom: -1px; left: -1px; border-bottom-width: 1px; border-left-width: 1px; border-bottom-left-radius: 16px; }
+.auth-tick-br { bottom: -1px; right: -1px; border-bottom-width: 1px; border-right-width: 1px; border-bottom-right-radius: 16px; }
+
+.auth-foot {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: #5c564b;
+}
+
+/* 카드 내부 입력·버튼 — 골드 포커스 글로우 */
+.auth-card input[type='email'],
+.auth-card input[type='password'],
+.auth-card input[type='text'] {
+  background: rgba(12, 11, 9, 0.65);
+  border-color: rgba(214, 184, 126, 0.14);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.auth-card input[type='email']:focus,
+.auth-card input[type='password']:focus,
+.auth-card input[type='text']:focus {
+  border-color: rgba(214, 184, 126, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(214, 184, 126, 0.35),
+    0 0 18px -6px rgba(184, 150, 90, 0.45);
+}
+.auth-card button[type='submit'] {
+  background: linear-gradient(180deg, #d6b87e, #b8965a);
+  box-shadow: 0 10px 24px -12px rgba(184, 150, 90, 0.55);
+  transition: filter 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.auth-card button[type='submit']:hover:not(:disabled) {
+  filter: brightness(1.07);
+  box-shadow: 0 14px 30px -12px rgba(184, 150, 90, 0.7);
+}
+.auth-card button[type='submit']:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.auth-card button[type='submit']:disabled {
+  filter: grayscale(0.4) brightness(0.7);
+  box-shadow: none;
+}

@@ -6,7 +6,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/core/db/browser';
-import { Button, Card, Input } from '@/core/ui';
+import { Button, Input } from '@/core/ui';
+import { AuthShell } from '../_auth/AuthShell';
 
 const SAVED_EMAIL_KEY = 'ecorean.savedEmail';
 
@@ -97,10 +98,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="text-lg font-semibold text-cream">업무시스템 로그인</h1>
-        <p className="mt-1 text-sm text-muted">ECOREAN 내부 운영 — 직원 계정으로 로그인하세요.</p>
+    <AuthShell>
+      <h1 className="text-lg font-semibold text-cream">업무시스템 로그인</h1>
+      <p className="mt-1 text-sm text-muted">직원 계정으로 로그인하세요.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-3">
           <Input
             type="email"
@@ -166,7 +166,6 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
-      </Card>
-    </main>
+    </AuthShell>
   );
 }

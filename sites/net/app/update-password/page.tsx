@@ -5,7 +5,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/core/db/browser';
-import { Button, Card, Input } from '@/core/ui';
+import { Button, Input } from '@/core/ui';
+import { AuthShell } from '../_auth/AuthShell';
 
 type SessionState = 'checking' | 'ready' | 'none';
 
@@ -96,16 +97,16 @@ export default function UpdatePasswordPage() {
 
   if (sessionState === 'checking') {
     return (
-      <main className="flex min-h-screen items-center justify-center p-4">
-        <p className="text-sm text-muted">확인 중…</p>
-      </main>
+      <AuthShell>
+        <p className="text-center text-sm text-muted">확인 중…</p>
+      </AuthShell>
     );
   }
 
   if (sessionState === 'none') {
     return (
-      <main className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-sm text-center">
+      <AuthShell>
+        <div className="text-center">
           <h1 className="text-lg font-semibold text-cream">링크가 유효하지 않습니다</h1>
           <p className="mt-2 text-sm text-muted">
             {linkError ?? '재설정 링크가 만료되었거나, 메일을 요청한 브라우저와 다른 곳에서 열렸습니다.'}
@@ -120,15 +121,15 @@ export default function UpdatePasswordPage() {
               로그인으로 이동
             </Link>
           </div>
-        </Card>
-      </main>
+        </div>
+      </AuthShell>
     );
   }
 
   if (done) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-sm text-center">
+      <AuthShell>
+        <div className="text-center">
           <h1 className="text-lg font-semibold text-cream">비밀번호가 변경되었습니다</h1>
           <p className="mt-2 text-sm text-muted">새 비밀번호로 계속 이용하실 수 있습니다.</p>
           <Button
@@ -140,15 +141,14 @@ export default function UpdatePasswordPage() {
           >
             업무 허브로 이동
           </Button>
-        </Card>
-      </main>
+        </div>
+      </AuthShell>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="text-lg font-semibold text-cream">새 비밀번호 설정</h1>
+    <AuthShell>
+      <h1 className="text-lg font-semibold text-cream">새 비밀번호 설정</h1>
         <p className="mt-1 text-sm text-muted">사용할 새 비밀번호를 입력해 주세요.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-3">
           <Input
@@ -183,7 +183,6 @@ export default function UpdatePasswordPage() {
             {loading ? '변경 중…' : '비밀번호 변경'}
           </Button>
         </form>
-      </Card>
-    </main>
+    </AuthShell>
   );
 }
