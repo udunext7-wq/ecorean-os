@@ -415,51 +415,6 @@ const FIXTURE_LIB={
     {type:'arc',cx:-450,cy:-450,r:850,start:0,end:90,fill:'transparent',stroke:'#5BA0D4',sw:5,dash:[10,5]},
   ]},
   // ===== 주방 =====
-  sink_k:{name:'싱크대',nameEn:'kitchen sink',w:800,h:600,c:'#A8A8A8',shape:[
-    {type:'rect',x:-400,y:-300,w:800,h:600,fill:'#A8A8A8',stroke:'#5A5A5A',sw:10,r:10},
-    {type:'rect',x:-350,y:-250,w:700,h:500,fill:'#3E3E3E',stroke:'#1A1A1A',sw:5,r:8},
-    {type:'rect',x:-330,y:-230,w:660,h:460,fill:'transparent',stroke:'#5A5A5A',sw:3,r:5},
-    {type:'circle',cx:0,cy:0,r:25,fill:'#1A1A1A'},
-  ]},
-  sink_k_double:{name:'싱크대 2조',nameEn:'double-bowl kitchen sink',w:1200,h:600,c:'#A8A8A8',shape:[
-    {type:'rect',x:-600,y:-300,w:1200,h:600,fill:'#A8A8A8',stroke:'#5A5A5A',sw:10,r:10},
-    {type:'rect',x:-560,y:-250,w:520,h:500,fill:'#3E3E3E',stroke:'#1A1A1A',sw:5,r:8},
-    {type:'rect',x:40,y:-250,w:520,h:500,fill:'#3E3E3E',stroke:'#1A1A1A',sw:5,r:8},
-    {type:'circle',cx:-300,cy:0,r:25,fill:'#1A1A1A'},
-    {type:'circle',cx:300,cy:0,r:25,fill:'#1A1A1A'},
-  ]},
-  stove:{name:'가스레인지',nameEn:'gas stove (gas range)',w:600,h:600,c:'#3E3E3E',shape:[
-    {type:'rect',x:-300,y:-300,w:600,h:600,fill:'#1A1A1A',stroke:'#5A5A5A',sw:10,r:8},
-    {type:'circle',cx:-150,cy:-150,r:80,fill:'transparent',stroke:'#A8A8A8',sw:6},
-    {type:'circle',cx:-150,cy:-150,r:25,fill:'#5A5A5A',stroke:'#A8A8A8',sw:3},
-    {type:'circle',cx:150,cy:-150,r:80,fill:'transparent',stroke:'#A8A8A8',sw:6},
-    {type:'circle',cx:150,cy:-150,r:25,fill:'#5A5A5A',stroke:'#A8A8A8',sw:3},
-    {type:'circle',cx:-150,cy:150,r:80,fill:'transparent',stroke:'#A8A8A8',sw:6},
-    {type:'circle',cx:-150,cy:150,r:25,fill:'#5A5A5A',stroke:'#A8A8A8',sw:3},
-    {type:'circle',cx:150,cy:150,r:80,fill:'transparent',stroke:'#A8A8A8',sw:6},
-    {type:'circle',cx:150,cy:150,r:25,fill:'#5A5A5A',stroke:'#A8A8A8',sw:3},
-  ]},
-  induction:{name:'인덕션',nameEn:'induction cooktop',w:600,h:520,c:'#1A1A1A',shape:[
-    {type:'rect',x:-300,y:-260,w:600,h:520,fill:'#1A1A1A',stroke:'#3E3E3E',sw:10,r:5},
-    {type:'circle',cx:-150,cy:-130,r:70,fill:'transparent',stroke:'#5BA0D4',sw:4},
-    {type:'circle',cx:150,cy:-130,r:70,fill:'transparent',stroke:'#5BA0D4',sw:4},
-    {type:'circle',cx:-150,cy:130,r:70,fill:'transparent',stroke:'#5BA0D4',sw:4},
-    {type:'circle',cx:150,cy:130,r:70,fill:'transparent',stroke:'#5BA0D4',sw:4},
-  ]},
-  oven:{name:'오븐',nameEn:'oven',w:600,h:550,c:'#3E3E3E',shape:[
-    {type:'rect',x:-300,y:-275,w:600,h:550,fill:'#3E3E3E',stroke:'#1A1A1A',sw:12,r:8},
-    {type:'rect',x:-260,y:-235,w:520,h:380,fill:'#1A1A1A',stroke:'#5A5A5A',sw:5,r:5},
-    {type:'rect',x:-260,y:170,w:520,h:60,fill:'#5A5A5A',stroke:'#1A1A1A',sw:3,r:3},
-    {type:'circle',cx:-200,cy:200,r:12,fill:'#A8A8A8'},
-    {type:'circle',cx:-130,cy:200,r:12,fill:'#A8A8A8'},
-    {type:'circle',cx:130,cy:200,r:12,fill:'#A8A8A8'},
-    {type:'circle',cx:200,cy:200,r:12,fill:'#A8A8A8'},
-  ]},
-  microwave:{name:'전자레인지',nameEn:'microwave oven',w:550,h:400,c:'#3E3E3E',shape:[
-    {type:'rect',x:-275,y:-200,w:550,h:400,fill:'#3E3E3E',stroke:'#1A1A1A',sw:10,r:5},
-    {type:'rect',x:-240,y:-170,w:380,h:340,fill:'#1A1A1A',stroke:'#5A5A5A',sw:4,r:5},
-    {type:'rect',x:160,y:-170,w:80,h:340,fill:'#2A2A2A',stroke:'#5A5A5A',sw:3,r:3},
-  ]},
   fridge:{name:'냉장고',nameEn:'refrigerator',w:800,h:700,c:'#FFFFFF',shape:[
     {type:'rect',x:-400,y:-350,w:800,h:700,fill:'#F5F1EB',stroke:'#A8A8A8',sw:18,r:10},
     {type:'line',x1:-400,y1:-50,x2:400,y2:-50,stroke:'#A8A8A8',sw:5},
@@ -473,11 +428,6 @@ const FIXTURE_LIB={
     {type:'line',x1:0,y1:-375,x2:0,y2:375,stroke:'#A8A8A8',sw:5},
     {type:'rect',x:-30,y:-300,w:30,h:200,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
     {type:'rect',x:0,y:-300,w:30,h:200,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
-  ]},
-  dishwasher:{name:'식기세척기',nameEn:'dishwasher',w:600,h:600,c:'#A8A8A8',shape:[
-    {type:'rect',x:-300,y:-300,w:600,h:600,fill:'#A8A8A8',stroke:'#5A5A5A',sw:12,r:5},
-    {type:'rect',x:-260,y:-260,w:520,h:520,fill:'transparent',stroke:'#5A5A5A',sw:3,r:5},
-    {type:'rect',x:-180,y:-280,w:360,h:30,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:3},
   ]},
   // ===== 세탁/유틸리티 =====
   washer:{name:'세탁기',nameEn:'washing machine',w:700,h:700,c:'#FFFFFF',shape:[

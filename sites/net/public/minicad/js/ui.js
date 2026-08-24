@@ -910,15 +910,8 @@ const SEMANTIC_MAP={
   bathtub_corner:{tag:'sanitary',kw:'corner bathtub'},
   shower:{tag:'sanitary',kw:'shower enclosure with glass door'},
   shower_corner:{tag:'sanitary',kw:'corner shower enclosure with glass'},
-  sink_k:{tag:'kitchen',kw:'single-bowl stainless steel kitchen sink'},
-  sink_k_double:{tag:'kitchen',kw:'double-bowl stainless steel kitchen sink'},
-  stove:{tag:'kitchen',kw:'4-burner gas stove'},
-  induction:{tag:'kitchen',kw:'4-zone induction cooktop'},
-  oven:{tag:'kitchen',kw:'built-in oven'},
-  microwave:{tag:'kitchen',kw:'countertop microwave oven'},
   fridge:{tag:'kitchen',kw:'tall refrigerator'},
   fridge_2door:{tag:'kitchen',kw:'side-by-side double-door refrigerator'},
-  dishwasher:{tag:'kitchen',kw:'built-in dishwasher'},
   washer:{tag:'laundry',kw:'front-load washing machine'},
   dryer:{tag:'laundry',kw:'clothes dryer'},
   // ===== LIGHT_LIB (8종) =====
@@ -1938,7 +1931,7 @@ function distributeSelection(axis){
 const AUTO_FURNISH_SETS={
   LIVING:[['furniture','sofa3',0.5,0.82,0],['furniture','rug',0.5,0.55,0],['furniture','coffee',0.5,0.55,0],['furniture','tv_stand',0.5,0.10,180],['furniture','plant',0.92,0.88,0]],
   ROOM:[['furniture','bed_d',0.5,0.32,0],['furniture','wardrobe',0.16,0.86,180],['furniture','nightstand',0.84,0.14,0]],
-  KITCHEN:[['fixtures','sink_k',0.28,0.12,180],['fixtures','induction',0.60,0.12,180],['fixtures','fridge',0.88,0.16,180]],
+  KITCHEN:[['furniture','base_sink_900',0.28,0.12,180],['furniture','base_cook_600',0.58,0.12,180],['furniture','fridge_cab_900',0.86,0.14,180]], // 2026-08-24: 위생 카테고리 싱크대 용품 제거 → 가구2 픽스 모듈 사용
   BATHROOM:[['fixtures','toilet',0.18,0.14,180],['fixtures','sink_b',0.58,0.10,180],['fixtures','shower',0.85,0.82,0]],
   DINING:[['furniture','dining4',0.5,0.5,0],['lights','pendant_cluster',0.5,0.42,0]],
   STUDY:[['furniture','desk',0.5,0.14,180],['furniture','office_chair',0.5,0.42,0],['furniture','bookshelf',0.10,0.60,90]],
