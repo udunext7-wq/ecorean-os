@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { getSessionProfile } from '@/core/auth/session';
 import { hasRole, netRedirectTarget } from '@/core/auth/roles';
 import { Badge, Button, Card } from '@/core/ui';
-import { HubCarousel, type TreeSection } from './HubCarousel';
+import { HubFan, type TreeSection } from './HubFan';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,7 +109,7 @@ export default async function HubPage() {
       <div className="hubc-bk tr" aria-hidden />
       <div className="hubc-bk bl" aria-hidden />
       <div className="hubc-bk br" aria-hidden />
-      <div className="relative z-10 mx-auto max-w-4xl">
+      <div className="relative z-10 mx-auto max-w-6xl">
         <div className="mb-3 flex items-center justify-end gap-3 text-sm">
           <span className="text-muted">
             {profile.email} <Badge tone="info">{profile.role}</Badge>
@@ -131,7 +131,7 @@ export default async function HubPage() {
           </form>
         </div>
 
-        <HubCarousel sections={treeSections} />
+        <HubFan sections={treeSections} />
       </div>
     </main>
   );
