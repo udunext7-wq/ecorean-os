@@ -618,6 +618,30 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('계단: 배치 렌더 정상',!!gst&&cntCls(gst,'Line')>=9,'Line '+cntCls(gst,'Line'));
     // [S5] SEMANTIC_MAP 연동 (CT1/CT2 외 직접 확인)
     assert('계단: semanticOf stairs',semanticOf('stairs').tag==='stairs');
+    // [S6] 2026-08-24: ㄱ자 — 참+플라이트 2 (rect 3), 디딤판 (N1-1)+(N2-1), 외곽 = W+N2·T × N1·T+W
+    const pL=stairParams({type:'stairs_l',stepCount:12,splitCount:6,stairWidth_mm:1200,treadDepth_mm:280});
+    assert('계단 ㄱ자: 외곽 계산',pL.bw===1200+6*280&&pL.bh===6*280+1200,pL.bw+'×'+pL.bh);
+    const shpL=buildStairShape({type:'stairs_l',stepCount:12,splitCount:6,stairWidth_mm:1200,treadDepth_mm:280});
+    const rectsL=shpL.filter(c=>c.type==='rect').length;
+    const hTreadL=shpL.filter(c=>c.type==='line'&&c.y1===c.y2&&Math.abs((c.x2-c.x1)-1200)<1).length;
+    const vTreadL=shpL.filter(c=>c.type==='line'&&c.x1===c.x2&&Math.abs((c.y2-c.y1)-1200)<1).length;
+    assert('계단 ㄱ자: 참+플라이트 rect 3',rectsL===3,'rect '+rectsL);
+    assert('계단 ㄱ자: 디딤판 5+5',hTreadL===5&&vTreadL===5,hTreadL+'/'+vTreadL);
+    assert('계단 ㄱ자: UP 라벨',shpL.some(c=>c.type==='text'&&c.text==='UP'));
+    // [S7] U턴 — rect 3(참+플라이트2) + 중앙 분리선, DN 방향
+    const shpU=buildStairShape({type:'stairs_u',stepCount:12,splitCount:6,stairWidth_mm:1200,treadDepth_mm:280,upDir:'down'});
+    const rectsU=shpU.filter(c=>c.type==='rect').length;
+    const hTreadU=shpU.filter(c=>c.type==='line'&&c.y1===c.y2&&Math.abs((c.x2-c.x1)-1200)<1).length;
+    assert('계단 U턴: rect 3',rectsU===3,'rect '+rectsU);
+    assert('계단 U턴: 좌우 디딤판 10',hTreadU===10,'treads '+hTreadU);
+    assert('계단 U턴: DN 라벨',shpU.some(c=>c.type==='text'&&c.text==='DN'));
+    const pU=stairParams({type:'stairs_u',stepCount:12,splitCount:6,stairWidth_mm:1200,treadDepth_mm:280});
+    assert('계단 U턴: 외곽 2W',pU.bw===2400&&pU.bh===6*280+1200,pU.bw+'×'+pU.bh);
+    // [S8] 배치 렌더 (renderRect 경유)
+    STATE.furniture.push({id:makeId('f'),type:'stairs_l',x:OFF2+30000,y:OFF2,angle:0},
+                         {id:makeId('f'),type:'stairs_u',x:OFF2+40000,y:OFF2,angle:0});
+    renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
+    assert('계단 ㄱ자/U턴: 배치 렌더 정상',true);
     // 복원
     STATE.openings=_bakO.openings;STATE.furniture=_bakO.furniture;
     renderAll();
