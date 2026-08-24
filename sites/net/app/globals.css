@@ -355,11 +355,10 @@
   border-color: rgba(148, 170, 184, 0.3);
   color: rgba(148, 170, 184, 0.6);
 }
-.hubc-logo {
+.hubc-logo-sm {
   display: block;
-  margin: 0 auto;
   height: auto;
-  filter: drop-shadow(0 0 26px rgba(214, 190, 145, 0.3));
+  filter: drop-shadow(0 0 14px rgba(214, 190, 145, 0.3));
   user-select: none;
 }
 .hubc-sub {
