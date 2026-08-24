@@ -243,40 +243,40 @@
   box-shadow: none;
 }
 
-/* ── 업무 허브 v3: 3D 홀로그램 카루셀 (인트로 ACCESS PORTAL 언어, 2026-08-24 대표 지시) ──
-   #02060E 딥블루 블랙 × 네온 시안(#00EAFF) × 샴페인 골드(#F5DCB0). */
+/* ── 업무 허브 v4: 4장 전체가 보이는 3D 빌보드 카루셀 (2026-08-24 대표 지시) ──
+   세련된 팔레트: 딥 미드나이트 #04070C × 스틸 글레이셔(저채도 청록) × 샴페인 골드. */
 .hubc-scene {
   position: relative;
   overflow: hidden;
-  background: #02060e;
+  background: radial-gradient(120% 100% at 50% 0%, #071019 0%, #04070c 55%, #020409 100%);
 }
 .hubc-scene::before {
   content: '';
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(0, 234, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 234, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  animation: hubc-grid-drift 40s linear infinite;
+    linear-gradient(rgba(155, 201, 216, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(155, 201, 216, 0.028) 1px, transparent 1px);
+  background-size: 64px 64px;
+  animation: hubc-grid-drift 46s linear infinite;
   pointer-events: none;
 }
 @keyframes hubc-grid-drift {
-  to { background-position: 60px 60px; }
+  to { background-position: 64px 64px; }
 }
 .hubc-scene::after {
   content: '';
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse 70% 70% at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.75) 100%);
+  background: radial-gradient(ellipse 72% 72% at 50% 46%, transparent 32%, rgba(0, 0, 0, 0.72) 100%);
   pointer-events: none;
 }
 .hubc-bk {
   position: fixed;
   width: 26px;
   height: 26px;
-  border: 1px solid rgba(245, 220, 176, 0.5);
-  filter: drop-shadow(0 0 4px rgba(245, 220, 176, 0.35));
+  border: 1px solid rgba(232, 208, 165, 0.42);
+  filter: drop-shadow(0 0 4px rgba(232, 208, 165, 0.3));
   z-index: 3;
   pointer-events: none;
 }
@@ -286,101 +286,108 @@
 .hubc-bk.br { bottom: 22px; right: 22px; border-left: none; border-top: none; }
 
 .hubc { position: relative; z-index: 2; }
-.hubc-head { text-align: center; margin: 2px 0 6px; }
+.hubc-head { text-align: center; margin: 0 0 4px; }
 .hubc-hairline {
   height: 1px;
-  width: min(460px, 80%);
-  margin: 0 auto 16px;
-  background: linear-gradient(90deg, transparent, rgba(232, 201, 155, 0.35) 20%, #f5dcb0 50%, rgba(232, 201, 155, 0.35) 80%, transparent);
-  box-shadow: 0 0 10px rgba(232, 201, 155, 0.55);
+  width: min(440px, 78%);
+  margin: 0 auto 15px;
+  background: linear-gradient(90deg, transparent, rgba(232, 208, 165, 0.3) 22%, rgba(240, 222, 185, 0.9) 50%, rgba(232, 208, 165, 0.3) 78%, transparent);
+  box-shadow: 0 0 8px rgba(232, 208, 165, 0.4);
 }
 .hubc-brand {
   margin: 0;
-  font-size: clamp(26px, 5vw, 40px);
+  font-size: clamp(24px, 4.6vw, 36px);
   letter-spacing: 0.5em;
   text-indent: 0.5em;
-  color: #f5dcb0;
+  color: #f0deb9;
   text-shadow:
-    0 0 14px rgba(245, 220, 176, 0.85),
-    0 0 36px rgba(232, 201, 155, 0.5),
-    0 0 80px rgba(232, 201, 155, 0.3);
-  animation: hubc-brand-pulse 3s ease-in-out infinite;
+    0 0 12px rgba(240, 222, 185, 0.6),
+    0 0 34px rgba(214, 190, 145, 0.35);
+  animation: hubc-brand-pulse 4s ease-in-out infinite;
 }
 @keyframes hubc-brand-pulse {
   50% {
     text-shadow:
-      0 0 20px rgba(245, 220, 176, 1),
-      0 0 52px rgba(232, 201, 155, 0.7),
-      0 0 110px rgba(232, 201, 155, 0.45);
+      0 0 16px rgba(240, 222, 185, 0.85),
+      0 0 48px rgba(214, 190, 145, 0.5);
   }
 }
 .hubc-sub {
-  margin: 7px 0 0;
-  font-size: 10px;
-  letter-spacing: 0.5em;
-  text-indent: 0.5em;
+  margin: 6px 0 0;
+  font-size: 9.5px;
+  letter-spacing: 0.52em;
+  text-indent: 0.52em;
   text-transform: uppercase;
-  color: rgba(0, 234, 255, 0.8);
-  text-shadow: 0 0 8px rgba(0, 234, 255, 0.45);
+  color: rgba(155, 201, 216, 0.72);
+  text-shadow: 0 0 8px rgba(155, 201, 216, 0.3);
 }
 
-/* ── 3D 카루셀 ── */
+/* ── 3D 무대 ── */
 .hubc-viewport {
-  --hubc-r: 290px;
   position: relative;
-  height: 476px;
-  perspective: 1500px;
+  height: 470px;
+  perspective: 1250px;
+  perspective-origin: 50% 34%;
   touch-action: pan-y;
   cursor: grab;
   outline: none;
 }
 .hubc-viewport:active { cursor: grabbing; }
-@media (min-width: 640px) {
-  .hubc-viewport { --hubc-r: 336px; }
-}
-.hubc-ring {
+.hubc-ring3d {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.hubc-ring.is-dragging { transition: none; }
+.hubc-floor {
+  position: absolute;
+  left: 50%;
+  top: 78%;
+  width: 900px;
+  height: 900px;
+  margin: -450px 0 0 -450px;
+  border-radius: 50%;
+  transform: rotateX(80deg);
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side, rgba(155, 201, 216, 0.08), transparent 62%),
+    repeating-radial-gradient(closest-side, rgba(155, 201, 216, 0.1) 0 1px, transparent 1px 56px);
+  -webkit-mask: radial-gradient(closest-side, #000 30%, transparent 72%);
+  mask: radial-gradient(closest-side, #000 30%, transparent 72%);
+  opacity: 0.55;
+}
 
+/* ── 카드 (빌보드 — transform 은 JS 인라인) ── */
 .hubc-card {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 288px;
-  height: 424px;
-  margin: -212px 0 0 -144px;
-  transform: rotateY(var(--a, 0deg)) translateZ(var(--hubc-r));
-  backface-visibility: hidden;
+  width: 286px;
+  height: 408px;
+  margin: -204px 0 0 -143px;
   display: flex;
   flex-direction: column;
   border-radius: 14px;
   padding: 18px 18px 12px;
-  background: linear-gradient(165deg, rgba(7, 14, 26, 0.94), rgba(3, 8, 16, 0.9));
-  border: 1px solid rgba(0, 234, 255, 0.22);
+  background: linear-gradient(168deg, rgba(13, 20, 30, 0.94), rgba(6, 10, 17, 0.92));
+  border: 1px solid rgba(155, 201, 216, 0.18);
   backdrop-filter: blur(10px);
   box-shadow:
-    0 30px 70px -30px rgba(0, 0, 0, 0.9),
-    0 0 40px -18px rgba(0, 234, 255, 0.25),
-    inset 0 0 30px -18px rgba(0, 234, 255, 0.2);
-  filter: brightness(0.42) saturate(0.7);
-  opacity: 0.85;
+    0 34px 70px -28px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(220, 236, 242, 0.06);
   cursor: pointer;
-  transition: filter 0.5s ease, opacity 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+  -webkit-box-reflect: below 16px linear-gradient(transparent 72%, rgba(0, 0, 0, 0.3));
+}
+.hubc-card.is-snap {
+  transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.75s ease, filter 0.75s ease;
 }
 .hubc-card.is-front {
-  filter: none;
-  opacity: 1;
   cursor: default;
-  border-color: rgba(245, 220, 176, 0.5);
+  border-color: rgba(232, 208, 165, 0.45);
   box-shadow:
-    0 34px 80px -30px rgba(0, 0, 0, 0.95),
-    0 0 60px -20px rgba(0, 234, 255, 0.35),
-    0 0 50px -22px rgba(232, 201, 155, 0.45),
-    inset 0 0 34px -20px rgba(0, 234, 255, 0.25);
+    0 38px 80px -28px rgba(0, 0, 0, 0.95),
+    0 0 54px -20px rgba(155, 201, 216, 0.3),
+    0 0 46px -20px rgba(214, 190, 145, 0.35),
+    inset 0 1px 0 rgba(240, 234, 224, 0.08);
 }
 .hubc-card:not(.is-front) a { pointer-events: none; }
 .hubc-card::before {
@@ -389,14 +396,16 @@
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(0, 234, 255, 0.022) 0 1px, transparent 1px 3px);
+  background:
+    linear-gradient(115deg, transparent 38%, rgba(155, 201, 216, 0.05) 48%, rgba(232, 208, 165, 0.06) 54%, transparent 64%),
+    repeating-linear-gradient(0deg, rgba(200, 226, 236, 0.016) 0 1px, transparent 1px 3px);
 }
 .hubc-tick {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border: 0 solid rgba(0, 234, 255, 0.6);
-  filter: drop-shadow(0 0 4px rgba(0, 234, 255, 0.4));
+  width: 13px;
+  height: 13px;
+  border: 0 solid rgba(155, 201, 216, 0.5);
+  filter: drop-shadow(0 0 3px rgba(155, 201, 216, 0.3));
   pointer-events: none;
 }
 .hubc-tick-tl { top: 6px; left: 6px; border-top-width: 1px; border-left-width: 1px; }
@@ -405,31 +414,34 @@
 .hubc-tick-br { bottom: 6px; right: 6px; border-bottom-width: 1px; border-right-width: 1px; }
 
 .hubc-card-head {
-  border-bottom: 1px solid rgba(0, 234, 255, 0.15);
+  border-bottom: 1px solid rgba(155, 201, 216, 0.13);
   padding-bottom: 10px;
   margin-bottom: 10px;
 }
 .hubc-card-no {
   display: block;
-  font-size: 10px;
-  letter-spacing: 0.4em;
-  color: rgba(0, 234, 255, 0.75);
-  text-shadow: 0 0 8px rgba(0, 234, 255, 0.4);
+  font-size: 9.5px;
+  letter-spacing: 0.42em;
+  color: rgba(155, 201, 216, 0.65);
 }
 .hubc-card-title {
   display: block;
   margin-top: 4px;
-  font-size: 19px;
+  font-size: 18.5px;
   font-weight: 700;
-  color: #f5dcb0;
-  text-shadow: 0 0 14px rgba(232, 201, 155, 0.35);
+  color: #ecf2f5;
+  letter-spacing: 0.01em;
+}
+.hubc-card.is-front .hubc-card-title {
+  color: #f0deb9;
+  text-shadow: 0 0 14px rgba(214, 190, 145, 0.3);
 }
 .hubc-card-desc {
   display: block;
   margin-top: 3px;
   font-size: 9.5px;
-  letter-spacing: 0.14em;
-  color: rgba(150, 180, 196, 0.75);
+  letter-spacing: 0.12em;
+  color: rgba(148, 170, 184, 0.72);
 }
 .hubc-card-body {
   flex: 1;
@@ -437,7 +449,7 @@
   margin-right: -8px;
   padding-right: 8px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 234, 255, 0.3) transparent;
+  scrollbar-color: rgba(155, 201, 216, 0.25) transparent;
 }
 .hubc-list {
   list-style: none;
@@ -459,29 +471,29 @@
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .hubc-item:hover {
-  background: rgba(0, 234, 255, 0.07);
-  border-color: rgba(0, 234, 255, 0.3);
-  box-shadow: 0 0 18px -8px rgba(0, 234, 255, 0.5);
+  background: rgba(155, 201, 216, 0.06);
+  border-color: rgba(155, 201, 216, 0.28);
+  box-shadow: 0 0 16px -8px rgba(155, 201, 216, 0.45);
 }
-.hubc-item-name { color: #eaf3f5; font-size: 13.5px; font-weight: 600; }
-.hubc-item-desc { color: rgba(150, 180, 196, 0.7); font-size: 11px; }
-.hubc-item.is-admin .hubc-item-name { color: #f5dcb0; }
+.hubc-item-name { color: #e6edf2; font-size: 13.5px; font-weight: 600; }
+.hubc-item-desc { color: rgba(148, 170, 184, 0.68); font-size: 11px; }
+.hubc-item.is-admin .hubc-item-name { color: #e8d0a5; }
 .hubc-item-tag {
   margin-left: auto;
   font-size: 8px;
   letter-spacing: 0.25em;
-  color: #e8c99b;
-  border: 1px solid rgba(232, 201, 155, 0.4);
+  color: #d9bf90;
+  border: 1px solid rgba(217, 191, 144, 0.35);
   padding: 1px 5px;
   border-radius: 3px;
 }
 .hubc-card-foot {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(0, 234, 255, 0.12);
+  border-top: 1px solid rgba(155, 201, 216, 0.1);
   font-size: 8.5px;
   letter-spacing: 0.3em;
-  color: rgba(0, 234, 255, 0.5);
+  color: rgba(155, 201, 216, 0.42);
   text-align: center;
 }
 
@@ -491,23 +503,23 @@
   align-items: center;
   justify-content: center;
   gap: 22px;
-  margin-top: 4px;
+  margin-top: 26px;
 }
 .hubc-arrow {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: transparent;
-  border: 1px solid rgba(0, 234, 255, 0.35);
-  color: rgba(0, 234, 255, 0.85);
-  text-shadow: 0 0 8px rgba(0, 234, 255, 0.5);
-  font-size: 11px;
+  background: rgba(155, 201, 216, 0.04);
+  border: 1px solid rgba(155, 201, 216, 0.28);
+  color: rgba(200, 228, 238, 0.85);
+  font-size: 10px;
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .hubc-arrow:hover {
-  background: rgba(0, 234, 255, 0.1);
-  box-shadow: 0 0 20px -6px rgba(0, 234, 255, 0.6);
+  background: rgba(155, 201, 216, 0.1);
+  border-color: rgba(155, 201, 216, 0.55);
+  box-shadow: 0 0 18px -6px rgba(155, 201, 216, 0.5);
 }
 .hubc-status {
   display: flex;
@@ -518,30 +530,28 @@
 }
 .hubc-sector {
   font-size: 9px;
-  letter-spacing: 0.4em;
-  color: rgba(0, 234, 255, 0.75);
-  text-shadow: 0 0 8px rgba(0, 234, 255, 0.4);
+  letter-spacing: 0.42em;
+  color: rgba(155, 201, 216, 0.65);
 }
 .hubc-dots { display: flex; gap: 8px; }
 .hubc-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  border: 1px solid rgba(232, 201, 155, 0.5);
+  border: 1px solid rgba(232, 208, 165, 0.45);
   background: transparent;
   padding: 0;
   cursor: pointer;
   transition: background 0.25s ease, box-shadow 0.25s ease;
 }
 .hubc-dot.is-on {
-  background: #f5dcb0;
-  box-shadow: 0 0 10px rgba(245, 220, 176, 0.8);
+  background: #f0deb9;
+  box-shadow: 0 0 9px rgba(240, 222, 185, 0.7);
 }
-.hubc-status-title { font-size: 12.5px; color: #f5dcb0; letter-spacing: 0.06em; }
+.hubc-status-title { font-size: 12.5px; color: #f0deb9; letter-spacing: 0.06em; }
 
 @media (prefers-reduced-motion: reduce) {
   .hubc-scene::before,
   .hubc-brand { animation: none; }
-  .hubc-ring { transition: none; }
+  .hubc-card.is-snap { transition: none; }
 }
-
