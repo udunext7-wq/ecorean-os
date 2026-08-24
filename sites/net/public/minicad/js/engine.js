@@ -853,6 +853,8 @@ function saveHistory(){
   STATE.history.push(snap);
   if(STATE.history.length>50) STATE.history.shift();
   STATE.historyIdx=STATE.history.length-1;
+  // 2026-08-24 v6.0: 변경 시 자동 저장 (ui.js, 2초 디바운스)
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
 }
 function undo(){
   if(STATE.historyIdx<=0){showStatus('실행취소 불가');return;}
@@ -1778,7 +1780,8 @@ function renderOpenings(){
     }
     g.on('click tap',e=>{if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('opening',o.id);});
     groups.openings.add(g);
-    // 라벨에 W×H 표시
+    // 라벨에 W×H 표시 — 2026-08-24 v6.0: LOD (45% 미만 축소 시 생략)
+    if(STATE.zoom<0.45) return;
     const subTypeName=isDoor?(DOOR_TYPES[o.subType]||{name:'문'}).name:(WINDOW_TYPES[o.subType]||{name:'창'}).name;
     labelOpeningsGroup.add(new Konva.Text({
       x:x-40,y:y+12,width:80,align:'center',
@@ -1991,7 +1994,8 @@ function renderRect(arr,group,lib,kind){
       }
       nodes.forEach(n=>g.add(n));
       // v5.9: 영문 이름 라벨 — 객체 중앙. 흰 글자 + 검정 외곽선으로 모든 배경에서 가독성 확보
-      if(def.nameEn){
+      // 2026-08-24 v6.0: LOD — 45% 미만 축소 시 라벨 생략 (대형 도면 렌더 부하·글자 뭉침 방지)
+      if(def.nameEn&&STATE.zoom>=0.45){
         const w=mmToPx(defW),h=mmToPx(defH);
         const minDim=Math.min(w,h);
         const fontSize=Math.max(10,Math.min(18,minDim*0.14));

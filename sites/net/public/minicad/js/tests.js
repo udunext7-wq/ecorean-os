@@ -652,6 +652,83 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     newLight.forEach(k=>LIGHT_LIB[k].shape.forEach(c=>{if(!okTypes.has(c.type))bad.push(k+':'+c.type);}));
     assert('트렌드: 도형 타입 유효',bad.length===0,bad.join(','));
   })();
+  // === 2026-08-24 v6.0 업그레이드 회귀 (자동치수·정렬·배분·자동배치·자동저장·표제란·팔레트·LOD) ===
+  try{
+    const OFF3=1100000;
+    const _bak3={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),measures:STATE.measures.slice(),
+      furniture:STATE.furniture.slice(),fixtures:STATE.fixtures.slice(),lights:STATE.lights.slice(),
+      boxSelection:STATE.boxSelection.slice(),selectedKind:STATE.selectedKind,selectedId:STATE.selectedId,zoom:STATE.zoom};
+    // [V1] 전체 자동 치수 — 사각 공간 1개 → 4변 치수, 재실행 → 제거
+    const sq3=polygonToVertexIds([{x:OFF3,y:OFF3},{x:OFF3+3000,y:OFF3},{x:OFF3+3000,y:OFF3+3000},{x:OFF3,y:OFF3+3000}]);
+    const spV=makeSpaceVEF(sq3,{name:'V6검증',type:'ROOM',typeIndex:96,layerName:'A-AREA-ROOM-96'});
+    STATE.spaces.push(spV);
+    const mBefore=STATE.measures.length;
+    dimAllSpaces();
+    const autoN=STATE.measures.filter(m=>m._auto).length;
+    assert('v6: 전체 자동 치수 4변',autoN===4&&STATE.measures.length===mBefore+4,'auto '+autoN);
+    dimAllSpaces();
+    assert('v6: 자동 치수 토글 제거',STATE.measures.filter(m=>m._auto).length===0);
+    // [V2] 정렬 — side_table 2개 top 정렬
+    const st1={id:makeId('f'),type:'side_table',x:OFF3+10000,y:OFF3,angle:0};
+    const st2={id:makeId('f'),type:'side_table',x:OFF3+12000,y:OFF3+800,angle:0};
+    STATE.furniture.push(st1,st2);
+    STATE.selectedKind=null;STATE.selectedId=null;
+    STATE.boxSelection=[{kind:'furniture',id:st1.id},{kind:'furniture',id:st2.id}];
+    alignSelection('top');
+    assert('v6: 정렬(top) y 일치',st1.y===st2.y,st1.y+'/'+st2.y);
+    // [V3] 균등 배분 — 3개 가로
+    const st3={id:makeId('f'),type:'side_table',x:OFF3+12500,y:OFF3,angle:0};
+    STATE.furniture.push(st3);
+    st1.x=OFF3+10000;st2.x=OFF3+10400;st3.x=OFF3+14000;
+    STATE.boxSelection=[{kind:'furniture',id:st1.id},{kind:'furniture',id:st2.id},{kind:'furniture',id:st3.id}];
+    distributeSelection('h');
+    const gap1=st2.x-st1.x,gap2=st3.x-st2.x;
+    assert('v6: 균등 배분 간격 동일',Math.abs(gap1-gap2)<=2,gap1+'/'+gap2);
+    // [V4] AI 자동 배치 — ROOM 4000×4000
+    const sq4=polygonToVertexIds([{x:OFF3+20000,y:OFF3},{x:OFF3+24000,y:OFF3},{x:OFF3+24000,y:OFF3+4000},{x:OFF3+20000,y:OFF3+4000}]);
+    const spAF=makeSpaceVEF(sq4,{name:'침실검증',type:'ROOM',typeIndex:95,layerName:'A-AREA-ROOM-95'});
+    STATE.spaces.push(spAF);
+    STATE.boxSelection=[];
+    const fBefore=STATE.furniture.length;
+    autoFurnish(spAF.id);
+    const added=STATE.furniture.slice(fBefore);
+    const inBox=added.every(o=>o.x>=OFF3+20000&&o.x<=OFF3+24000&&o.y>=OFF3&&o.y<=OFF3+4000);
+    assert('v6: 자동 배치 침실 3개+내부',added.length===3&&inBox,'added '+added.length);
+    assert('v6: 자동 배치 spaceId 연결',added.every(o=>o.spaceId===spAF.id));
+    // [V5] 자동 저장
+    assert('v6: 자동 저장 기록',_autosaveNow()===true&&!!localStorage.getItem('minicad.autosave'));
+    const savedAS=JSON.parse(localStorage.getItem('minicad.autosave'));
+    assert('v6: 자동 저장 데이터 유효',savedAS&&savedAS.data&&Array.isArray(savedAS.data.spaces)&&typeof applyLoadedData==='function');
+    // [V6] 인쇄 표제란
+    const tb=buildPrintTitleBlock();
+    assert('v6: 표제란 구성',tb.indexOf('ECOREAN')>=0&&tb.indexOf('PROJECT')>=0&&tb.indexOf('공간 면적표')>=0&&tb.indexOf('범 례')>=0);
+    // [V7] 명령 팔레트
+    const pc=_paletteCommands();
+    assert('v6: 팔레트 명령 30+',pc.length>=30&&pc.every(x=>x.label&&typeof x.run==='function'),'n='+pc.length);
+    openCmdPalette();
+    const hasPal=!!document.getElementById('cmd-palette');
+    closeCmdPalette();
+    assert('v6: 팔레트 열림/닫힘',hasPal&&!document.getElementById('cmd-palette'));
+    // [V8] 라벨 LOD — 45% 미만 축소 시 가구 영문 라벨 생략
+    STATE.zoom=0.3;
+    renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
+    let lblLow=0;
+    groups.furniture.getChildren().forEach(g=>{g.getChildren(nd=>nd.getClassName()==='Text').forEach(t=>{if(/sofa|table/i.test(t.text()))lblLow++;});});
+    STATE.zoom=1;
+    renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
+    let lblHi=0;
+    groups.furniture.getChildren().forEach(g=>{g.getChildren(nd=>nd.getClassName()==='Text').forEach(t=>{if(/sofa|table/i.test(t.text()))lblHi++;});});
+    assert('v6: 라벨 LOD (0.3 생략 / 1.0 표시)',lblLow===0&&lblHi>0,lblLow+'/'+lblHi);
+    // 복원
+    STATE.spaces=_bak3.spaces;STATE.walls=_bak3.walls;STATE.measures=_bak3.measures;
+    STATE.furniture=_bak3.furniture;STATE.fixtures=_bak3.fixtures;STATE.lights=_bak3.lights;
+    STATE.boxSelection=_bak3.boxSelection;STATE.selectedKind=_bak3.selectedKind;STATE.selectedId=_bak3.selectedId;
+    STATE.zoom=_bak3.zoom;
+    try{localStorage.removeItem('minicad.autosave');}catch(_){ }
+    renderAll();
+  }catch(e){
+    assert('v6: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
