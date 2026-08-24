@@ -502,6 +502,28 @@ function refreshDetail(){
     const arr=getArr(STATE.selectedKind);
     const obj=arr?arr.find(x=>x.id===STATE.selectedId):null;
     const hasAngle=obj&&'angle' in obj;
+    // 2026-08-24: 계단 전용 옵션 패널 — 폭·디딤판·단수·층높이(챌판 자동계산)·방향·절단선 (대표 지시)
+    const isStairs=STATE.selectedKind==='furniture'&&obj&&obj.type==='stairs';
+    let stairsHtml='';
+    if(isStairs){
+      const sw=Math.round(obj.stairWidth_mm||1200), td=Math.round(obj.treadDepth_mm||280);
+      const sc=Math.round(obj.stepCount||16), fh=Math.round(obj.floorHeight_mm||2800);
+      const riser=Math.round(fh/sc);
+      const riserWarn=riser<160||riser>200;
+      stairsHtml=
+        '<div class="field-row-3">'+
+        '<div class="field"><label class="field-label">폭 W (mm)</label><input type="number" id="st-w" value="'+sw+'" step="50" min="300"></div>'+
+        '<div class="field"><label class="field-label">디딤판 (mm)</label><input type="number" id="st-tread" value="'+td+'" step="10" min="150"></div>'+
+        '<div class="field"><label class="field-label">단수 (개)</label><input type="number" id="st-count" value="'+sc+'" step="1" min="2"></div>'+
+        '</div>'+
+        '<div class="field"><label class="field-label">층높이 (mm) — 챌판 계산용</label><input type="number" id="st-floorh" value="'+fh+'" step="50" min="1000"></div>'+
+        '<div class="hint">총 길이 <b>'+(sc*td)+'mm</b> · 챌판 <b style="color:'+(riserWarn?'#E2725B':'#7BA05B')+'">'+riser+'mm</b>'+(riserWarn?' ⚠ 권장 160~200mm':' ✓ 적정')+'</div>'+
+        '<div class="field"><label class="field-label">진행 방향 / 절단선</label>'+
+        '<div style="display:flex;gap:4px">'+
+        '<button type="button" class="btn sm" id="st-updn" style="flex:1">'+((obj.upDir||'up')==='down'?'DN ↓ (하행)':'UP ↑ (상행)')+'</button>'+
+        '<button type="button" class="btn sm" id="st-break" style="flex:1'+(obj.showBreak!==false?';background:rgba(201,169,97,0.18);border-color:var(--gold);color:var(--gold)':'')+'">절단선 '+(obj.showBreak!==false?'ON':'OFF')+'</button>'+
+        '</div></div>';
+    }
     let extraHtml='';
     if(hasAngle){
       extraHtml=
@@ -513,8 +535,8 @@ function refreshDetail(){
         '<button class="btn sm" id="d-rot-180" style="flex:1">180°</button>'+
         '</div>';
     }
-    dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      extraHtml+
+    dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+(isStairs?'계단':kn[STATE.selectedKind])+'</strong></p>'+
+      stairsHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -525,6 +547,15 @@ function refreshDetail(){
       document.getElementById('d-rot-90').addEventListener('click',()=>{obj.angle=((obj.angle||0)+90)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-m90').addEventListener('click',()=>{obj.angle=((obj.angle||0)-90+360)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-180').addEventListener('click',()=>{obj.angle=((obj.angle||0)+180)%360;saveHistory();renderAll();refreshUI();});
+    }
+    if(isStairs){
+      const upd=()=>{saveHistory();renderAll();refreshUI();};
+      document.getElementById('st-w').addEventListener('change',e=>{const v=_numField(e,300);if(v==null){refreshUI();return;}obj.stairWidth_mm=v;upd();});
+      document.getElementById('st-tread').addEventListener('change',e=>{const v=_numField(e,150);if(v==null){refreshUI();return;}obj.treadDepth_mm=v;upd();});
+      document.getElementById('st-count').addEventListener('change',e=>{const v=_numField(e,2);if(v==null){refreshUI();return;}obj.stepCount=v;upd();});
+      document.getElementById('st-floorh').addEventListener('change',e=>{const v=_numField(e,1000);if(v==null){refreshUI();return;}obj.floorHeight_mm=v;upd();});
+      document.getElementById('st-updn').addEventListener('click',()=>{obj.upDir=(obj.upDir||'up')==='up'?'down':'up';upd();});
+      document.getElementById('st-break').addEventListener('click',()=>{obj.showBreak=obj.showBreak===false?true:false;upd();});
     }
     document.getElementById('d-dup').addEventListener('click',duplicateSelected);
     document.getElementById('d-del').addEventListener('click',deleteSelected);
@@ -812,6 +843,7 @@ const SEMANTIC_MAP={
   chair:{tag:'chair',kw:'dining chair'},
   bar_stool:{tag:'chair',kw:'bar stool'},
   treadmill:{tag:'exercise',kw:'treadmill, fitness equipment'},
+  stairs:{tag:'stairs',kw:'straight staircase with treads and up arrow, plan view'},
   // ===== FIXTURE_LIB (20종) =====
   toilet:{tag:'sanitary',kw:'modern wall-hung toilet'},
   toilet_round:{tag:'sanitary',kw:'round-bowl toilet'},

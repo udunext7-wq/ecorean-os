@@ -575,6 +575,55 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('잠금: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-24: 도어 도식·계단 파라메트릭 회귀 테스트 (대표 지시) ===
+  try{
+    const OFF2=900000;
+    const _bakO={openings:STATE.openings.slice(),furniture:STATE.furniture.slice()};
+    const findG=(grp,id)=>{let f=null;grp.getChildren().forEach(c=>{if(c.id&&c.id()===id)f=c;});return f;};
+    const cntCls=(g,cls)=>g?g.getChildren(n=>n.getClassName()===cls).length:0;
+    // [D1] 여닫이(swing): 90° 호(Arc) 존재
+    const dsw={id:makeId('o'),type:'DOOR',subType:'swing',x:OFF2,y:OFF2,width_mm:900,height_mm:2100,depth_mm:200,angle:0,spaceId:null};
+    // [D2] 슬라이딩: Arc 없음 + 패널(Rect) 2짝 이상
+    const dsl={id:makeId('o'),type:'DOOR',subType:'sliding',x:OFF2+5000,y:OFF2,width_mm:1500,height_mm:2100,depth_mm:200,angle:0,spaceId:null};
+    // [D3] 포켓: Arc 없음 + 점선 수납부
+    const dpk={id:makeId('o'),type:'DOOR',subType:'pocket',x:OFF2+10000,y:OFF2,width_mm:900,height_mm:2100,depth_mm:200,angle:0,spaceId:null};
+    // [D4] 3연동(folding): 패널 3짝
+    const dfd={id:makeId('o'),type:'DOOR',subType:'folding',x:OFF2+15000,y:OFF2,width_mm:2400,height_mm:2100,depth_mm:200,angle:0,spaceId:null};
+    STATE.openings.push(dsw,dsl,dpk,dfd);
+    renderOpenings();
+    const gsw=findG(groups.openings,dsw.id),gsl=findG(groups.openings,dsl.id);
+    const gpk=findG(groups.openings,dpk.id),gfd=findG(groups.openings,dfd.id);
+    assert('도어: 여닫이 호(Arc) 표기',cntCls(gsw,'Arc')===1);
+    assert('도어: 슬라이딩 호 없음',cntCls(gsl,'Arc')===0);
+    assert('도어: 슬라이딩 패널 2짝+',cntCls(gsl,'Rect')>=3,'Rect '+cntCls(gsl,'Rect'));
+    assert('도어: 포켓 호 없음',cntCls(gpk,'Arc')===0);
+    assert('도어: 포켓 수납부+패널',cntCls(gpk,'Rect')>=3,'Rect '+cntCls(gpk,'Rect'));
+    assert('도어: 3연동 패널 3짝+',cntCls(gfd,'Rect')>=4,'Rect '+cntCls(gfd,'Rect'));
+    // [S1] 계단 도식: 디딤판 수 = 단수-1, 옵션 반영
+    const shp12=buildStairShape({stepCount:12,stairWidth_mm:1200,treadDepth_mm:280});
+    const treads=shp12.filter(c=>c.type==='line'&&c.y1===c.y2&&Math.abs((c.x2-c.x1)-1200)<1);
+    assert('계단: 디딤판 11개 (12단)',treads.length===11,'treads '+treads.length);
+    assert('계단: 외곽+시작원+UP라벨',shp12.some(c=>c.type==='rect')&&shp12.some(c=>c.type==='circle')&&shp12.some(c=>c.type==='text'&&c.text==='UP'));
+    // [S2] 절단선 OFF → 점선 디딤판·대각 절단선 없음
+    const shpNB=buildStairShape({stepCount:12,showBreak:false});
+    assert('계단: 절단선 OFF',!shpNB.some(c=>c.type==='line'&&c.dash)&&shpNB.filter(c=>c.type==='line'&&c.y1!==c.y2&&c.x1!==0&&c.x2!==0).length===0);
+    // [S3] DN 방향 라벨
+    const shpDN=buildStairShape({upDir:'down'});
+    assert('계단: DN 라벨',shpDN.some(c=>c.type==='text'&&c.text==='DN'));
+    // [S4] 라이브러리 배치 렌더 (renderRect 경유) — 예외 없이 그룹 생성
+    const stObj={id:makeId('f'),type:'stairs',x:OFF2,y:OFF2+20000,angle:0,stepCount:10,stairWidth_mm:1000,treadDepth_mm:300};
+    STATE.furniture.push(stObj);
+    renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
+    const gst=findG(groups.furniture,stObj.id);
+    assert('계단: 배치 렌더 정상',!!gst&&cntCls(gst,'Line')>=9,'Line '+cntCls(gst,'Line'));
+    // [S5] SEMANTIC_MAP 연동 (CT1/CT2 외 직접 확인)
+    assert('계단: semanticOf stairs',semanticOf('stairs').tag==='stairs');
+    // 복원
+    STATE.openings=_bakO.openings;STATE.furniture=_bakO.furniture;
+    renderAll();
+  }catch(e){
+    assert('도어·계단: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

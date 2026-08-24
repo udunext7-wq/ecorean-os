@@ -1670,9 +1670,44 @@ function renderOpenings(){
         g.add(new Konva.Line({points:[-w/2,-dPx/2,w/2,-dPx/2],stroke:'#0A0A0A',strokeWidth:1.2,opacity:0.6}));
         g.add(new Konva.Line({points:[-w/2,dPx/2,w/2,dPx/2],stroke:'#0A0A0A',strokeWidth:1.2,opacity:0.6}));
       }
-      g.add(new Konva.Arc({x:-w/2,y:0,innerRadius:0,outerRadius:w,angle:90,rotation:0,
-        stroke:color,strokeWidth:1,fillEnabled:false,dash:[4,3]}));
-      g.add(new Konva.Line({points:[-w/2,0,-w/2,w],stroke:color,strokeWidth:2}));
+      // 2026-08-24: 도어 종류별 평면 도식 (대표 지시) — 슬라이딩 계열은 여닫이 호 대신 패널 표기
+      const st=o.subType||'swing';
+      if(st==='sliding'||st==='folding'||st==='pocket'){
+        const panelT=Math.max(3,dPx*0.30);           // 패널 시각 두께
+        const jamb=Math.max(2,Math.min(dPx*0.18,6));
+        const iL=-w/2+jamb, iR=w/2-jamb, iW=iR-iL;
+        const arrow=(x1,x2,y)=>{ // 슬라이드 방향 화살표 (x1→x2)
+          const dir=x2>x1?1:-1, ah=Math.max(4,panelT*0.9);
+          g.add(new Konva.Line({points:[x1,y,x2,y],stroke:color,strokeWidth:1.3,listening:false}));
+          g.add(new Konva.Line({points:[x2-dir*ah,y-ah*0.7,x2,y,x2-dir*ah,y+ah*0.7],stroke:color,strokeWidth:1.3,listening:false}));
+        };
+        const panel=(x0,len,yc)=>g.add(new Konva.Rect({x:x0,y:yc-panelT/2,width:len,height:panelT,
+          fill:'#F5F1EB',stroke:'#0A0A0A',strokeWidth:1.4,listening:false}));
+        if(st==='pocket'){
+          // 포켓도어: 벽 속 수납부(점선) + 개구부 절반을 덮은 패널 + 수납 방향 화살표
+          const pw=iW*0.55;
+          g.add(new Konva.Rect({x:iL-pw,y:-panelT/2,width:pw,height:panelT,
+            stroke:'#0A0A0A',strokeWidth:1.2,dash:[5,3],fillEnabled:false,listening:false}));
+          panel(iL,iW*0.55,0);
+          arrow(iL+iW*0.5,iL+iW*0.08,-dPx*0.85);
+        }else{
+          // 슬라이딩(미서기 2짝) / 3연동(3짝): 짝들을 위아래로 어긋나게 + 물림(오버랩)
+          const n=st==='sliding'?2:3;
+          const seg=iW/n, ov=iW*0.07;
+          for(let i=0;i<n;i++){
+            const x0=iL+i*seg-(i>0?ov:0);
+            const len=seg+ov*((i>0?1:0)+(i<n-1?1:0));
+            panel(x0,len,(i-(n-1)/2)*panelT*1.15);
+          }
+          arrow(iL+seg*0.85,iL+seg*0.10,-dPx*0.85);
+          arrow(iR-seg*0.85,iR-seg*0.10,dPx*0.85);
+        }
+      }else{
+        // 여닫이(swing/entry): 90° 개폐 호 + 문짝
+        g.add(new Konva.Arc({x:-w/2,y:0,innerRadius:0,outerRadius:w,angle:90,rotation:0,
+          stroke:color,strokeWidth:1,fillEnabled:false,dash:[4,3]}));
+        g.add(new Konva.Line({points:[-w/2,0,-w/2,w],stroke:color,strokeWidth:2}));
+      }
     }else{
       // v5.9: KS F 1501 표준 창 표기 — 미닫이창 Z자 이중 표시
       // 외창(상단 1/4 y)이 좌→중앙오버랩, 내창(하단 1/4 y)이 중앙오버랩→우 (Z 형태)
@@ -1797,11 +1832,54 @@ function darkenHex(hex,frac){
   return '#'+tr.toString(16).padStart(2,'0')+tg.toString(16).padStart(2,'0')+tb.toString(16).padStart(2,'0');
 }
 
+// 2026-08-24: 계단 파라메트릭 평면 도식 (대표 지시) — 디딤판·절단선·상행(UP)/하행(DN) 화살표
+// 옵션: stairWidth_mm(폭), treadDepth_mm(디딤판 깊이), stepCount(단수), upDir('up'|'down'), showBreak(절단선)
+function buildStairShape(o){
+  const W=Math.max(300,Math.round(o.stairWidth_mm||1200));
+  const N=Math.max(2,Math.round(o.stepCount||16));
+  const T=Math.max(150,Math.round(o.treadDepth_mm||280));
+  const L=N*T;
+  const up=(o.upDir||'up')!=='down';
+  const brk=o.showBreak!==false;
+  const x0=-W/2,y0=-L/2;
+  const shp=[];
+  // 외곽 (도면 위쪽 = 계단 상부)
+  shp.push({type:'rect',x:x0,y:y0,w:W,h:L,fill:'#8E7B5C22',stroke:'#0A0A0A',sw:25});
+  // 절단선 위치 — 상부 38% 지점 (평면 표기 관례: 절단 위 구간은 점선)
+  const brkY=y0+L*0.38;
+  for(let i=1;i<N;i++){
+    const y=y0+i*T;
+    const cut=brk&&y<brkY;
+    shp.push({type:'line',x1:x0,y1:y,x2:x0+W,y2:y,stroke:'#0A0A0A',sw:18,dash:cut?[120,90]:undefined});
+  }
+  if(brk){
+    // 절단선: 대각 이중선 (지그재그 표기)
+    shp.push({type:'line',x1:x0-W*0.06,y1:brkY+T*0.8,x2:x0+W*1.06,y2:brkY-T*0.6,stroke:'#0A0A0A',sw:35});
+    shp.push({type:'line',x1:x0-W*0.06,y1:brkY+T*1.4,x2:x0+W*1.06,y2:brkY,stroke:'#0A0A0A',sw:20});
+  }
+  // 진행 화살표: 시작점 원 → 중심선 → 화살촉 (UP=아래에서 위로)
+  const startY=up?y0+L-T*0.6:y0+T*0.6;
+  const endY=up?y0+T*0.9:y0+L-T*0.9;
+  const ah=Math.min(160,W*0.14);
+  shp.push({type:'circle',cx:0,cy:startY,r:Math.min(70,W*0.07),stroke:'#0A0A0A',sw:22});
+  shp.push({type:'line',x1:0,y1:startY,x2:0,y2:endY,stroke:'#0A0A0A',sw:22});
+  const back=up?1:-1;
+  shp.push({type:'line',x1:0,y1:endY,x2:-ah*0.45,y2:endY+back*ah,stroke:'#0A0A0A',sw:22});
+  shp.push({type:'line',x1:0,y1:endY,x2:ah*0.45,y2:endY+back*ah,stroke:'#0A0A0A',sw:22});
+  // 라벨
+  shp.push({type:'text',x:W*0.10,y:startY-(up?T*1.1:0),text:up?'UP':'DN',fontSize:Math.min(240,W*0.24),fill:'#0A0A0A'});
+  return shp;
+}
 function renderRect(arr,group,lib,kind){
   group.destroyChildren();
   arr.forEach(o=>{
     const def=lib[o.type];
     if(!def) return;
+    // 2026-08-24: 계단은 인스턴스 옵션 기반 파라메트릭 도식 (def.shape 대신 동적 생성)
+    const isStairs=(kind==='furniture'&&o.type==='stairs');
+    const shapeDef=isStairs?buildStairShape(o):def.shape;
+    const defW=isStairs?Math.max(300,Math.round(o.stairWidth_mm||1200)):def.w;
+    const defH=isStairs?Math.max(2,Math.round(o.stepCount||16))*Math.max(150,Math.round(o.treadDepth_mm||280)):def.h;
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const sel=STATE.selectedKind===kind&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind===kind&&b.id===o.id);
     // v5.7: flipped(미러) 좌우반전 — 그룹 scaleX(-1)로 처리, 단 텍스트 노드는 별도 보정
@@ -1809,14 +1887,14 @@ function renderRect(arr,group,lib,kind){
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:sx,scaleY:1,id:o.id});
     // v5.7: 2.5D ON 시 그림자 — 객체 외곽 사각형을 어두운 색으로 약간 옵셋
     if(STATE.plus2D){
-      const w=mmToPx(def.w),h=mmToPx(def.h);
+      const w=mmToPx(defW),h=mmToPx(defH);
       const sd=mmToPx(80); // 80mm 옵셋 (px 환산)
       g.add(new Konva.Rect({x:-w/2+sd,y:-h/2+sd,width:w,height:h,
         fill:'#000',opacity:0.18,listening:false,cornerRadius:4}));
     }
-    if(def.shape){
+    if(shapeDef){
       // v5.5: 정교한 도형 (shape 정의 기반)
-      const nodes=drawShape(def.shape);
+      const nodes=drawShape(shapeDef);
       // v5.7: flipped 시 텍스트만 다시 좌우반전(부모 -1, 자식 -1 = 정방향)
       if(o.flipped){
         nodes.forEach(n=>{
@@ -1829,7 +1907,7 @@ function renderRect(arr,group,lib,kind){
       nodes.forEach(n=>g.add(n));
       // v5.9: 영문 이름 라벨 — 객체 중앙. 흰 글자 + 검정 외곽선으로 모든 배경에서 가독성 확보
       if(def.nameEn){
-        const w=mmToPx(def.w),h=mmToPx(def.h);
+        const w=mmToPx(defW),h=mmToPx(defH);
         const minDim=Math.min(w,h);
         const fontSize=Math.max(10,Math.min(18,minDim*0.14));
         const txt=new Konva.Text({
@@ -1855,14 +1933,14 @@ function renderRect(arr,group,lib,kind){
       }
       if(sel){
         // 선택 시 골드 외곽 박스 (mm 좌표 기준)
-        const w=mmToPx(def.w),h=mmToPx(def.h);
+        const w=mmToPx(defW),h=mmToPx(defH);
         g.add(new Konva.Rect({x:-w/2-3,y:-h/2-3,width:w+6,height:h+6,
           stroke:'#E2725B',strokeWidth:2.5,dash:[6,4],fill:'transparent',
           shadowColor:'#E2725B',shadowBlur:8,shadowOpacity:0.6}));
       }
     }else{
       // 폴백: 기존 단순 사각형
-      const w=mmToPx(def.w),h=mmToPx(def.h);
+      const w=mmToPx(defW),h=mmToPx(defH);
       g.add(new Konva.Rect({x:-w/2,y:-h/2,width:w,height:h,fill:def.c+'CC',
         stroke:sel?'#E2725B':'#0A0A0A',strokeWidth:sel?2.5:1,cornerRadius:2}));
       g.add(new Konva.Text({x:-w/2,y:-h/2,width:w,height:h,text:def.name,
