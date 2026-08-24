@@ -1,9 +1,9 @@
 'use client';
 
-// 업무 허브 v7 — 5장 펼쳐 세운 3D 팬 스프레드 (대표 지시 2026-08-25)
-// 회전 없음. 카드 5장(섹션 4 + 예비 1)이 완만한 호를 그리며 서 있고,
-// 마우스 시차 + 호버 시 카드가 정면으로 일어서며 앞으로 나오는 3D 효과만 준다.
-import { useRef, type PointerEvent } from 'react';
+// 업무 허브 v8 — 잡고 돌리는 3단 깊이 팬 카루셀 (대표 지시 2026-08-25)
+// 5장이 모두 정면을 향해 서 있고(글씨 항상 가독), 크기 3단계: 중앙 > 안쪽 한 쌍 > 바깥 한 쌍.
+// 마우스로 잡고 좌우로 돌리면 회전, 놓으면 가장 가까운 카드가 중앙에 스냅. 자동 회전 없음.
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Cinzel, JetBrains_Mono } from 'next/font/google';
 
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['400'], display: 'swap' });
@@ -14,19 +14,85 @@ export type TreeSection = { title: string; desc: string; items: TreeItem[] };
 
 type Slot = { kind: 'section'; sec: TreeSection } | { kind: 'ghost' };
 
-// 중앙(2번)에 첫 섹션(일상 업무), 안쪽 → 바깥쪽 순으로 배치
-const POS_ORDER = [2, 1, 3, 0, 4];
+const SEL_KEY = 'ecorean.hubFan.section';
+const ANIM_MS = 750;
+
+function mod(a: number, b: number) {
+  return ((a % b) + b) % b;
+}
 
 export function HubFan({ sections }: { sections: TreeSection[] }) {
-  const stageRef = useRef<HTMLDivElement | null>(null);
+  // 배치: 중앙(0)·우안쪽(1)·우바깥(2)·좌바깥(3)·좌안쪽(4)
+  const slots: Slot[] = [
+    sections[0] ? { kind: 'section', sec: sections[0] } : { kind: 'ghost' },
+    sections[1] ? { kind: 'section', sec: sections[1] } : { kind: 'ghost' },
+    sections[2] ? { kind: 'section', sec: sections[2] } : { kind: 'ghost' },
+    { kind: 'ghost' },
+    sections[3] ? { kind: 'section', sec: sections[3] } : { kind: 'ghost' },
+  ];
+  const n = slots.length;
+  const step = 360 / n;
+  const [rot, setRot] = useState(0);
+  const [wide, setWide] = useState(true);
+  const [animAll, setAnimAll] = useState(false);
   const raf = useRef(0);
+  const rotRef = useRef(0);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const dragging = useRef<{ x: number; rot0: number; moved: boolean } | null>(null);
+  rotRef.current = rot;
 
-  const slots: Slot[] = Array.from({ length: 5 }, () => ({ kind: 'ghost' as const }));
-  sections.slice(0, 5).forEach((sec, k) => {
-    slots[POS_ORDER[k]] = { kind: 'section', sec };
-  });
+  useEffect(() => {
+    function measure() {
+      setWide(window.innerWidth >= 1024);
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      cancelAnimationFrame(raf.current);
+    };
+  }, []);
 
-  function onMove(e: PointerEvent<HTMLDivElement>) {
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SEL_KEY);
+      const i = slots.findIndex((s) => s.kind === 'section' && s.sec.title === saved);
+      if (i >= 0) setRot(-i * step);
+    } catch {
+      /* no-op */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const front = mod(Math.round(-rot / step), n);
+
+  function snapTo(i: number) {
+    const r = rotRef.current;
+    const delta = mod(-i * step - r + 180, 360) - 180;
+    setAnimAll(true);
+    setRot(r + delta);
+    const slot = slots[mod(i, n)];
+    try {
+      localStorage.setItem(SEL_KEY, slot.kind === 'section' ? slot.sec.title : '__reserved');
+    } catch {
+      /* no-op */
+    }
+    window.setTimeout(() => setAnimAll(false), ANIM_MS);
+  }
+
+  function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    dragging.current = { x: e.clientX, rot0: rotRef.current, moved: false };
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+  }
+  function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    const d = dragging.current;
+    if (d) {
+      const dx = e.clientX - d.x;
+      if (Math.abs(dx) > 6) d.moved = true;
+      if (d.moved) setRot(d.rot0 + dx * 0.22);
+      return;
+    }
+    // 드래그 아닐 때는 무대 시차 틸트
     if (e.pointerType !== 'mouse') return;
     const el = stageRef.current;
     if (!el) return;
@@ -35,17 +101,30 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     const y = (e.clientY - r.top) / r.height;
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
-      el.style.setProperty('--prx', `${((x - 0.5) * 6).toFixed(2)}deg`);
-      el.style.setProperty('--pry', `${((y - 0.5) * -4).toFixed(2)}deg`);
+      el.style.setProperty('--prx', `${((x - 0.5) * 5).toFixed(2)}deg`);
+      el.style.setProperty('--pry', `${((y - 0.5) * -3.5).toFixed(2)}deg`);
     });
   }
-  function onLeave() {
-    cancelAnimationFrame(raf.current);
-    const el = stageRef.current;
-    if (!el) return;
-    el.style.setProperty('--prx', '0deg');
-    el.style.setProperty('--pry', '0deg');
+  function onPointerUp() {
+    const d = dragging.current;
+    dragging.current = null;
+    if (d?.moved) snapTo(mod(Math.round(-rotRef.current / step), n));
   }
+  function onLeave() {
+    onPointerUp();
+    const el = stageRef.current;
+    if (el) {
+      el.style.setProperty('--prx', '0deg');
+      el.style.setProperty('--pry', '0deg');
+    }
+  }
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === 'ArrowRight') snapTo(front + 1);
+    if (e.key === 'ArrowLeft') snapTo(front - 1);
+  }
+
+  const RX = 470; // 좌우 펼침 반경 (간격)
+  const RZ = 270; // 깊이 반경 (입체감)
 
   return (
     <div className="hubc">
@@ -55,67 +134,107 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
         <p className={`${mono.className} hubc-sub`}>WORK HUB · OPERATION DECK</p>
       </header>
 
-      <div ref={stageRef} className="hubf-stage" onPointerMove={onMove} onPointerLeave={onLeave}>
+      <div
+        ref={stageRef}
+        className="hubf-stage"
+        role="listbox"
+        aria-label="업무 섹션"
+        tabIndex={0}
+        onPointerDown={wide ? onPointerDown : undefined}
+        onPointerMove={wide ? onPointerMove : undefined}
+        onPointerUp={wide ? onPointerUp : undefined}
+        onPointerCancel={wide ? onPointerUp : undefined}
+        onPointerLeave={wide ? onLeave : undefined}
+        onKeyDown={onKeyDown}
+      >
         <div className="hubc-spot" aria-hidden />
         <div className="hubc-glowpool" aria-hidden />
         <div className="hubf-fan">
-          {slots.map((slot, i) => (
-            <div key={i} className={`hubf-slot hubf-s${i}`}>
-              <div className={`hubf-card ${slot.kind === 'ghost' ? 'is-ghost' : ''}`}>
-                <span className="hubc-tick hubc-tick-tl" aria-hidden />
-                <span className="hubc-tick hubc-tick-tr" aria-hidden />
-                <span className="hubc-tick hubc-tick-bl" aria-hidden />
-                <span className="hubc-tick hubc-tick-br" aria-hidden />
-                {slot.kind === 'ghost' ? (
-                  <div className="hubc-ghost-body">
-                    <span className={`${mono.className} hubc-card-no`}>
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <span className={`${mono.className} hubc-ghost-label`}>RESERVED</span>
-                    <span className="hubc-ghost-desc">확장 슬롯 · 대기 중</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="hubc-card-head">
+          {slots.map((slot, i) => {
+            const theta = ((i * step + rot) * Math.PI) / 180;
+            const depth = (Math.cos(theta) + 1) / 2; // 1 정면, 0.65 안쪽, 0.1 바깥
+            const x = Math.sin(theta) * RX;
+            const y = (1 - depth) * -44;
+            const z = (Math.cos(theta) - 1) * RZ;
+            const scale = 0.5 + 0.5 * depth; // 중앙 1.0 > 안쪽 0.83 > 바깥 0.55
+            const isFront = i === front;
+            return (
+              <div
+                key={i}
+                className={`hubf-cardw ${isFront ? 'is-front' : ''} ${animAll ? 'is-anim' : ''}`}
+                style={
+                  wide
+                    ? {
+                        transform: `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) scale(${scale.toFixed(3)})`,
+                        opacity: 0.72 + 0.28 * depth,
+                        filter: `brightness(${(0.68 + 0.32 * depth).toFixed(3)})`,
+                      }
+                    : undefined
+                }
+                role="option"
+                aria-selected={isFront}
+                onClick={(e) => {
+                  if (!wide || isFront) return;
+                  if ((e.target as HTMLElement).closest('a')) return;
+                  if (!dragging.current?.moved) snapTo(i);
+                }}
+              >
+                <div className={`hubf-card ${slot.kind === 'ghost' ? 'is-ghost' : ''}`}>
+                  <span className="hubc-tick hubc-tick-tl" aria-hidden />
+                  <span className="hubc-tick hubc-tick-tr" aria-hidden />
+                  <span className="hubc-tick hubc-tick-bl" aria-hidden />
+                  <span className="hubc-tick hubc-tick-br" aria-hidden />
+                  {slot.kind === 'ghost' ? (
+                    <div className="hubc-ghost-body">
                       <span className={`${mono.className} hubc-card-no`}>
                         {String(i + 1).padStart(2, '0')}
                       </span>
-                      <span className="hubc-card-title">{slot.sec.title}</span>
-                      <span className={`${mono.className} hubc-card-desc`}>{slot.sec.desc}</span>
+                      <span className={`${mono.className} hubc-ghost-label`}>RESERVED</span>
+                      <span className="hubc-ghost-desc">확장 슬롯 · 대기 중</span>
                     </div>
-                    <div className="hubc-card-body">
-                      <ul className="hubc-list">
-                        {slot.sec.items
-                          .filter((it) => !it.admin)
-                          .map((item) => (
-                            <li key={item.href}>
-                              <a href={item.href} className="hubc-item">
-                                <span className="hubc-item-name">{item.name}</span>
-                                <span className="hubc-item-desc">{item.desc}</span>
-                              </a>
-                            </li>
-                          ))}
-                        {slot.sec.items
-                          .filter((it) => it.admin)
-                          .map((item) => (
-                            <li key={item.href}>
-                              <a href={item.href} className="hubc-item is-admin">
-                                <span className="hubc-item-name">{item.name}</span>
-                                <span className="hubc-item-desc">{item.desc}</span>
-                                <span className={`${mono.className} hubc-item-tag`}>ADMIN</span>
-                              </a>
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                    <div className={`${mono.className} hubc-card-foot`}>
-                      {slot.sec.items.length} MODULES · AUTHORIZED
-                    </div>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <div className="hubc-card-head">
+                        <span className={`${mono.className} hubc-card-no`}>
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <span className="hubc-card-title">{slot.sec.title}</span>
+                        <span className={`${mono.className} hubc-card-desc`}>{slot.sec.desc}</span>
+                      </div>
+                      <div className="hubc-card-body">
+                        <ul className="hubc-list">
+                          {slot.sec.items
+                            .filter((it) => !it.admin)
+                            .map((item) => (
+                              <li key={item.href}>
+                                <a href={item.href} className="hubc-item" draggable={false}>
+                                  <span className="hubc-item-name">{item.name}</span>
+                                  <span className="hubc-item-desc">{item.desc}</span>
+                                </a>
+                              </li>
+                            ))}
+                          {slot.sec.items
+                            .filter((it) => it.admin)
+                            .map((item) => (
+                              <li key={item.href}>
+                                <a href={item.href} className="hubc-item is-admin" draggable={false}>
+                                  <span className="hubc-item-name">{item.name}</span>
+                                  <span className="hubc-item-desc">{item.desc}</span>
+                                  <span className={`${mono.className} hubc-item-tag`}>ADMIN</span>
+                                </a>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                      <div className={`${mono.className} hubc-card-foot`}>
+                        {slot.sec.items.length} MODULES · AUTHORIZED
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
