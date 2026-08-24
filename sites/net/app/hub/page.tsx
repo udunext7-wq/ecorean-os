@@ -6,6 +6,7 @@ import { getSessionProfile } from '@/core/auth/session';
 import { hasRole, netRedirectTarget } from '@/core/auth/roles';
 import { Badge, Button, Card } from '@/core/ui';
 import { HubFan, type TreeSection } from './HubFan';
+import { HubBgm } from './HubBgm';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,6 +115,7 @@ export default async function HubPage() {
           <span className="text-muted">
             {profile.email} <Badge tone="info">{profile.role}</Badge>
           </span>
+          <HubBgm />
           <Link
             href="/update-password"
             className="rounded-full border border-[#00EAFF]/25 px-4 py-1.5 text-xs font-medium text-[#9fd9e4] transition-colors hover:border-[#00EAFF]/60 hover:text-[#dff8fd]"

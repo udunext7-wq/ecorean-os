@@ -336,6 +336,25 @@
       0 0 48px rgba(214, 190, 145, 0.5);
   }
 }
+.hubc-bgm {
+  border: 1px solid rgba(0, 234, 255, 0.28);
+  background: transparent;
+  color: rgba(0, 234, 255, 0.8);
+  border-radius: 99px;
+  padding: 5px 14px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+.hubc-bgm:hover {
+  background: rgba(0, 234, 255, 0.08);
+  box-shadow: 0 0 16px -6px rgba(0, 234, 255, 0.5);
+}
+.hubc-bgm[aria-pressed='false'] {
+  border-color: rgba(148, 170, 184, 0.3);
+  color: rgba(148, 170, 184, 0.6);
+}
 .hubc-logo {
   display: block;
   margin: 0 auto;
