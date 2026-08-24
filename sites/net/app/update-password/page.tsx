@@ -19,14 +19,45 @@ export default function UpdatePasswordPage() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 복구 링크의 세션 처리(#access_token / PASSWORD_RECOVERY)가 비동기라 초기 확인 + 이벤트 구독 병행
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // 복구 링크 착지 처리 — ?code(PKCE)·#access_token(암시적) 두 형태 모두 세션으로 교환.
+  // 비동기라 초기 확인 + 이벤트 구독 병행. 만료 링크는 해시의 error_code 로 판별.
   useEffect(() => {
     const supabase = createBrowserSupabase();
     let cancelled = false;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled) setSessionState(data.session ? 'ready' : 'none');
-    });
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (hashParams.get('error_code') === 'otp_expired') {
+      setLinkError('재설정 링크가 만료되었습니다 (유효시간 1시간). 메일을 다시 요청해 주세요.');
+      setSessionState('none');
+      return undefined;
+    }
+
+    const code = new URLSearchParams(window.location.search).get('code');
+
+    async function establish() {
+      // detectSessionInUrl 이 자동 처리하지만, 실패 대비 code 는 명시적으로도 교환
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        if (!cancelled) setSessionState('ready');
+        return;
+      }
+      if (code) {
+        const { data: ex, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!cancelled && ex?.session && !error) {
+          setSessionState('ready');
+          return;
+        }
+        if (!cancelled && error) {
+          // 메일을 요청한 브라우저와 다른 곳에서 열면 PKCE 교환 불가
+          setLinkError('링크가 만료되었거나, 메일을 요청한 브라우저와 다른 곳에서 열렸습니다.');
+        }
+      }
+      if (!cancelled) setSessionState((s) => (s === 'ready' ? s : 'none'));
+    }
+    establish();
+
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY' || session) setSessionState('ready');
     });
@@ -77,9 +108,9 @@ export default function UpdatePasswordPage() {
         <Card className="w-full max-w-sm text-center">
           <h1 className="text-lg font-semibold text-cream">링크가 유효하지 않습니다</h1>
           <p className="mt-2 text-sm text-muted">
-            재설정 링크가 만료되었거나, 메일을 요청한 브라우저와 다른 곳에서 열렸습니다.
+            {linkError ?? '재설정 링크가 만료되었거나, 메일을 요청한 브라우저와 다른 곳에서 열렸습니다.'}
             <br />
-            재설정 메일을 다시 요청해 주세요.
+            재설정 메일을 다시 요청하거나, 관리자(대표)에게 임시 비밀번호 발급을 요청하세요.
           </p>
           <div className="mt-4 space-y-1 text-sm">
             <Link href="/reset-password" className="block font-medium text-brand-600 hover:underline">

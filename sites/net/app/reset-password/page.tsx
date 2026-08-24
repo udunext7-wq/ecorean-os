@@ -26,15 +26,18 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setError(null);
     const supabase = createBrowserSupabase();
+    // 링크가 /update-password 로 직접 착지 — code(PKCE)·해시 토큰 두 형태 모두 그 화면에서 처리
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/auth/confirm?next=/update-password`,
+      redirectTo: `${window.location.origin}/update-password`,
     });
     setLoading(false);
     if (error) {
       setError(
-        /rate limit|security purposes/i.test(error.message)
-          ? '요청이 많아 잠시 제한되었습니다. 1분 후 다시 시도해 주세요.'
-          : `발송 실패: ${error.message}`,
+        /rate limit/i.test(error.message)
+          ? '메일 발송량이 일시 제한되었습니다. 급하신 경우 관리자(대표)에게 임시 비밀번호 발급을 요청하세요. (1시간 후 재시도 가능)'
+          : /security purposes/i.test(error.message)
+            ? '잠시 후 다시 시도해 주세요. (연속 요청은 60초 간격 제한)'
+            : `발송 실패: ${error.message}`,
       );
       return;
     }

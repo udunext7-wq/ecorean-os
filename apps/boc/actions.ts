@@ -71,3 +71,29 @@ export async function decideMinicadPrice(formData: FormData): Promise<void> {
   if (error) throw new Error(`결정 실패: ${error.message}`);
   revalidatePath('/boc/minicad-prices');
 }
+
+// 임시 비밀번호 즉시 발급 — DB의 admin_reset_password(security definer, admin+ 검증)가 권한 검증.
+// 배경: Supabase 기본 SMTP 시간당 2건 제한으로 재설정 메일이 바로 안 감 (대표 지시 2026-08-24)
+const RESET_ERROR_MSG: Record<string, string> = {
+  NOT_AUTHORIZED: '관리자(admin) 이상만 발급할 수 있습니다',
+  PASSWORD_TOO_SHORT: '비밀번호는 6자 이상이어야 합니다',
+  USER_NOT_FOUND: '해당 이메일의 회원이 없습니다',
+  NEEDS_HIGHER_APPROVER: '동급 이상 관리자의 비밀번호는 변경할 수 없습니다 (상위 관리자 필요)',
+};
+
+export async function resetUserPassword(
+  targetEmail: string,
+  newPassword: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!targetEmail.trim()) return { ok: false, error: '이메일이 없습니다' };
+  const supabase = createServerSupabase();
+  const { error } = await supabase.rpc('admin_reset_password', {
+    target_email: targetEmail.trim(),
+    new_password: newPassword,
+  });
+  if (error) {
+    const code = Object.keys(RESET_ERROR_MSG).find((k) => error.message.includes(k));
+    return { ok: false, error: code ? RESET_ERROR_MSG[code] : `발급 실패: ${error.message}` };
+  }
+  return { ok: true };
+}

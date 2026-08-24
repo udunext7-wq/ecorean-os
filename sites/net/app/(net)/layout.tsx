@@ -14,6 +14,7 @@ const MENU: { href: string; label: string; minRole?: 'admin' }[] = [
   { href: '/boc/tiles', label: '타일 SKU' },
   { href: '/boc/minicad-prices', label: 'MiniCAD 단가 승인', minRole: 'admin' },
   { href: '/boc/role-requests', label: '승급 신청 관리', minRole: 'admin' },
+  { href: '/boc/users', label: '회원 관리', minRole: 'admin' },
 ];
 
 export default async function NetLayout({ children }: { children: ReactNode }) {
