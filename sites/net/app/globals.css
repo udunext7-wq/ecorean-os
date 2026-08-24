@@ -264,7 +264,7 @@
   z-index: 0;
   pointer-events: none;
   background: url('/brand/hub-bg.jpg') center 42% / cover no-repeat;
-  filter: brightness(0.55) saturate(0.95);
+  filter: brightness(0.38) saturate(0.95);
   will-change: transform;
   animation: hubc-bg-drift 55s ease-in-out infinite alternate;
 }
@@ -362,8 +362,8 @@
   letter-spacing: 0.52em;
   text-indent: 0.52em;
   text-transform: uppercase;
-  color: rgba(155, 201, 216, 0.72);
-  text-shadow: 0 0 8px rgba(155, 201, 216, 0.3);
+  color: rgba(0, 234, 255, 0.85);
+  text-shadow: 0 0 10px rgba(0, 234, 255, 0.45);
 }
 
 /* ── 무대 조명 ── */
@@ -520,16 +520,16 @@
   font-weight: 700;
   letter-spacing: -0.012em;
   line-height: 1.25;
-  background: linear-gradient(180deg, #f6fafc 0%, #dbe7ec 55%, #a9bfca 100%);
+  background: linear-gradient(180deg, #8fd8ff 0%, #3fb2ff 55%, #1f7fd6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 .hubf-cardw.is-front .hubc-card-title {
-  background: linear-gradient(180deg, #f7ecd4 0%, #f0deb9 50%, #c8ab7c 100%);
+  background: linear-gradient(180deg, #aee4ff 0%, #4dbcff 50%, #2a8fe8 100%);
   -webkit-background-clip: text;
   background-clip: text;
-  filter: drop-shadow(0 0 12px rgba(214, 190, 145, 0.25));
+  filter: drop-shadow(0 0 12px rgba(63, 178, 255, 0.35));
 }
 .hubc-card-desc {
   display: block;
