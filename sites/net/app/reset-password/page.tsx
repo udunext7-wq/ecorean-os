@@ -26,9 +26,10 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setError(null);
     const supabase = createBrowserSupabase();
-    // 링크가 /update-password 로 직접 착지 — code(PKCE)·해시 토큰 두 형태 모두 그 화면에서 처리
+    // 반드시 /auth/confirm 경유 — Supabase 허용목록에 등록된 경로만 통과한다.
+    // (/update-password 직접 지정 시 허용목록 미등록으로 홈으로 떨어짐 — 2026-08-24 실측)
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/update-password`,
+      redirectTo: `${window.location.origin}/auth/confirm?next=/update-password`,
     });
     setLoading(false);
     if (error) {

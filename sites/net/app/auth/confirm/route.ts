@@ -24,9 +24,13 @@ export async function GET(request: NextRequest) {
   } else if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(new URL(next, url.origin));
+  } else {
+    // 쿼리 파라미터 없음 = 토큰이 해시(#)로 왔을 수 있음 — 해시는 서버에 안 보이지만
+    // 리다이렉트 시 브라우저가 그대로 가져가므로, 해시를 처리하는 next 화면으로 보낸다
+    return NextResponse.redirect(new URL(next, url.origin));
   }
 
-  // 만료·재사용·다른 브라우저에서 열기 등 — 흐름별 재요청 화면으로
+  // 검증 실패 (만료·재사용·다른 브라우저에서 열기 등) — 흐름별 재요청 화면으로
   const fallback = type === 'signup' ? '/login?error=link' : '/reset-password?error=link';
   return NextResponse.redirect(new URL(fallback, url.origin));
 }
