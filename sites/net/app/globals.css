@@ -404,18 +404,6 @@
     0 0 44px -20px rgba(214, 190, 145, 0.32),
     inset 0 1px 0 rgba(240, 234, 224, 0.08);
 }
-/* 중앙 도착 팝 — 바람소리와 함께 살짝 커졌다 자리잡는 이펙트 */
-.hubf-card.is-arrive {
-  animation: hubf-arrive 0.85s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@keyframes hubf-arrive {
-  0% { transform: none; }
-  35% { transform: scale(1.06) translateZ(36px); }
-  100% { transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hubf-card.is-arrive { animation: none; }
-}
 .hubf-cardw.is-front:hover .hubf-card {
   transform: translateZ(46px) translateY(-8px);
   box-shadow:

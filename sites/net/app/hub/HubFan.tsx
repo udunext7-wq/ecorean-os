@@ -35,13 +35,10 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   const [rot, setRot] = useState(0);
   const [wide, setWide] = useState(true);
   const [animAll, setAnimAll] = useState(false);
-  const [arrive, setArrive] = useState(false);
-  const raf = useRef(0);
   const rotRef = useRef(0);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragging = useRef<{ x: number; rot0: number; moved: boolean } | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const arriveTimers = useRef<number[]>([]);
   rotRef.current = rot;
 
   // 바람(휘익) 사운드 — 파일 없이 노이즈 + 밴드패스 스윕으로 합성
@@ -54,25 +51,30 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
       if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
       const ctx = audioCtxRef.current;
       if (ctx.state === 'suspended') void ctx.resume();
-      const dur = 0.7;
+      // 묵직한 저역 바람: 저주파 밴드 스윕 + 로우패스로 고역을 걷어낸다
+      const dur = 1.05;
       const t0 = ctx.currentTime;
       const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
       const data = buf.getChannelData(0);
       for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.Q.value = 0.9;
-      filter.frequency.setValueAtTime(240, t0);
-      filter.frequency.exponentialRampToValueAtTime(1500, t0 + dur * 0.5);
-      filter.frequency.exponentialRampToValueAtTime(300, t0 + dur);
+      const band = ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.Q.value = 0.6;
+      band.frequency.setValueAtTime(90, t0);
+      band.frequency.exponentialRampToValueAtTime(420, t0 + dur * 0.45);
+      band.frequency.exponentialRampToValueAtTime(80, t0 + dur);
+      const low = ctx.createBiquadFilter();
+      low.type = 'lowpass';
+      low.frequency.value = 650;
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(0.11, t0 + dur * 0.32);
+      gain.gain.exponentialRampToValueAtTime(0.17, t0 + dur * 0.3);
       gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      src.connect(filter);
-      filter.connect(gain);
+      src.connect(band);
+      band.connect(low);
+      low.connect(gain);
       gain.connect(ctx.destination);
       src.start(t0);
       src.stop(t0 + dur);
@@ -87,10 +89,7 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     }
     measure();
     window.addEventListener('resize', measure);
-    return () => {
-      window.removeEventListener('resize', measure);
-      cancelAnimationFrame(raf.current);
-    };
+    return () => window.removeEventListener('resize', measure);
   }, []);
 
   useEffect(() => {
@@ -118,42 +117,21 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
       /* no-op */
     }
     window.setTimeout(() => setAnimAll(false), ANIM_MS);
-    // 도착 연출: 바람소리 + 중앙 카드가 살짝 커졌다 자리잡음
-    if (Math.abs(delta) > 1) {
-      playWhoosh();
-      arriveTimers.current.forEach((t) => window.clearTimeout(t));
-      setArrive(false);
-      arriveTimers.current = [
-        window.setTimeout(() => setArrive(true), 480),
-        window.setTimeout(() => setArrive(false), 1500),
-      ];
-    }
+    // 도착 연출: 묵직한 바람소리 (확대는 depth 기반으로 연속·안정 처리)
+    if (Math.abs(delta) > 1) playWhoosh();
   }
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     dragging.current = { x: e.clientX, rot0: rotRef.current, moved: false };
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
   }
+  // 시차 틸트 없음 — 드래그 외에는 무대가 완전히 정지 (안정감 유지, 대표 지시)
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
     const d = dragging.current;
-    if (d) {
-      const dx = e.clientX - d.x;
-      if (Math.abs(dx) > 6) d.moved = true;
-      if (d.moved) setRot(d.rot0 + dx * 0.22);
-      return;
-    }
-    // 드래그 아닐 때는 무대 시차 틸트
-    if (e.pointerType !== 'mouse') return;
-    const el = stageRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width;
-    const y = (e.clientY - r.top) / r.height;
-    cancelAnimationFrame(raf.current);
-    raf.current = requestAnimationFrame(() => {
-      el.style.setProperty('--prx', `${((x - 0.5) * 5).toFixed(2)}deg`);
-      el.style.setProperty('--pry', `${((y - 0.5) * -3.5).toFixed(2)}deg`);
-    });
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    if (Math.abs(dx) > 6) d.moved = true;
+    if (d.moved) setRot(d.rot0 + dx * 0.22);
   }
   function onPointerUp() {
     const d = dragging.current;
@@ -162,11 +140,6 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   }
   function onLeave() {
     onPointerUp();
-    const el = stageRef.current;
-    if (el) {
-      el.style.setProperty('--prx', '0deg');
-      el.style.setProperty('--pry', '0deg');
-    }
   }
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key === 'ArrowRight') snapTo(front + 1);
@@ -206,7 +179,9 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
             const x = Math.sin(theta) * RX;
             const y = (1 - depth) * -44;
             const z = (Math.cos(theta) - 1) * RZ;
-            const scale = 0.5 + 0.5 * depth; // 중앙 1.0 > 안쪽 0.83 > 바깥 0.55
+            // 중앙 근접 시 연속 확대(최대 +12%) — 단계 점프 없이 안정적으로 커진 채 유지
+            const centerBoost = Math.max(0, (depth - 0.8) / 0.2) * 0.12;
+            const scale = 0.5 + 0.5 * depth + centerBoost; // 중앙 1.12 > 안쪽 0.83 > 바깥 0.55
             const isFront = i === front;
             return (
               <div
@@ -229,11 +204,7 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
                   if (!dragging.current?.moved) snapTo(i);
                 }}
               >
-                <div
-                  className={`hubf-card ${slot.kind === 'ghost' ? 'is-ghost' : ''} ${
-                    arrive && isFront ? 'is-arrive' : ''
-                  }`}
-                >
+                <div className={`hubf-card ${slot.kind === 'ghost' ? 'is-ghost' : ''}`}>
                   <span className="hubc-tick hubc-tick-tl" aria-hidden />
                   <span className="hubc-tick hubc-tick-tr" aria-hidden />
                   <span className="hubc-tick hubc-tick-bl" aria-hidden />
