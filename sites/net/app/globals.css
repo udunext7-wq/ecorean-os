@@ -406,6 +406,7 @@
 .hubf-fan {
   position: relative;
   height: 520px;
+  margin-top: 15vh; /* 창 전체를 화면비 15% 아래로 (대표 지시 2026-08-25) */
   transform-style: preserve-3d;
   transform: rotateX(var(--pry)) rotateY(var(--prx));
   transition: transform 0.3s ease-out;
@@ -520,16 +521,16 @@
   font-weight: 700;
   letter-spacing: -0.012em;
   line-height: 1.25;
-  background: linear-gradient(180deg, #8fd8ff 0%, #3fb2ff 55%, #1f7fd6 100%);
+  background: linear-gradient(180deg, #f6fafc 0%, #dbe7ec 55%, #a9bfca 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 .hubf-cardw.is-front .hubc-card-title {
-  background: linear-gradient(180deg, #aee4ff 0%, #4dbcff 50%, #2a8fe8 100%);
+  background: linear-gradient(180deg, #f7ecd4 0%, #f0deb9 50%, #c8ab7c 100%);
   -webkit-background-clip: text;
   background-clip: text;
-  filter: drop-shadow(0 0 12px rgba(63, 178, 255, 0.35));
+  filter: drop-shadow(0 0 12px rgba(214, 190, 145, 0.25));
 }
 .hubc-card-desc {
   display: block;
@@ -645,6 +646,7 @@
   .hubf-stage { cursor: default; perspective: none; }
   .hubf-fan {
     height: auto;
+    margin-top: 0;
     transform: none;
     display: flex;
     gap: 14px;
