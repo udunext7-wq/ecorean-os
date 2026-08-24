@@ -831,22 +831,6 @@ td.org{color:var(--org)}
 <body>
 
 <!-- ══ LOGIN SCREEN ══ -->
-<div id="login-screen">
-  <div class="login-wrap">
-    <div class="login-box" id="login-form-box">
-      <div class="login-logo">EC</div>
-      <div class="login-title">ECO<em>REAN</em></div>
-      <div class="login-sub">Professional Estimating OS</div>
-      <input class="login-fi" id="lg-id" type="text" placeholder="아이디" autocomplete="username"
-        onkeydown="if(event.key==='Enter')document.getElementById('lg-pw').focus()">
-      <input class="login-fi" id="lg-pw" type="password" placeholder="비밀번호" autocomplete="current-password"
-        onkeydown="if(event.key==='Enter')doLogin()">
-      <button class="login-btn" onclick="doLogin()">로그인</button>
-      <div class="login-err" id="lg-err"></div>
-    </div>
-  </div>
-</div>
-
 <!-- ══ MODALS ══ -->
 <div class="mo" id="mo-proj">
   <div class="mbox">
@@ -5076,9 +5060,6 @@ function changeRatePw(){
   setTimeout(()=>{if(msg)msg.textContent='';},3000);
 }
 
-const _ADMIN_ID='ECOREAN', _ADMIN_PW_DEFAULT='0801';
-let _ADMIN_PW=localStorage.getItem('ecorean_apw')||_ADMIN_PW_DEFAULT;
-
 /* ══════════ 효과음 시스템 (Web Audio API) ══════════ */
 let _ac = null;
 function getAC(){
@@ -5185,28 +5166,6 @@ function playSound(type){
       o.start();o.stop(ac.currentTime+0.25);
     }
   }catch(e){}
-}
-
-/* ══════════ 로그인 + 사이버 로딩 ══════════ */
-function doLogin(){
-  const id=$('lg-id').value.trim();
-  const pw=$('lg-pw').value;
-  const err=$('lg-err');
-  if(id===_ADMIN_ID&&pw===_ADMIN_PW){
-    /* 로그인 성공 → 바로 진입 (로딩 연출 제거) */
-    playSound('success');
-    const ls=$('login-screen');
-    if(ls){ls.style.opacity='0';ls.style.transition='opacity .35s ease';
-      setTimeout(()=>{ls.style.display='none';},350);}
-  }else{
-    if(err)err.textContent='아이디 또는 비밀번호가 틀렸습니다.';
-    playSound('delete');
-    const pw2=$('lg-pw');if(pw2){pw2.value='';pw2.focus();}
-    /* 에러 흔들림 */
-    const box=$('login-form-box');
-    if(box){box.style.animation='none';box.offsetHeight;
-      box.style.animation='shake .3s ease';}
-  }
 }
 
 /* ══════════ SAVE / LOAD ══════════ */
@@ -6826,8 +6785,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   /* 저장된 비밀번호 불러오기 */
   const savedRpw=localStorage.getItem('ecorean_rpw');
   if(savedRpw)_RATE_PW=savedRpw;
-  /* 로그인 포커스 */
-  const lgid=$('lg-id');if(lgid)lgid.focus();
   applyDBOverrides();  /* 저장된 단가 수정 복원 (loadCur/calc 이전에) */
   loadCur();initUI();
   /* MiniCAD 브리지 감지 (부팅 + 탭 복귀 시) */
