@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { getSessionProfile } from '@/core/auth/session';
 import { hasRole, netRedirectTarget } from '@/core/auth/roles';
 import { Badge, Button, Card } from '@/core/ui';
-import { HubOrbit, type TreeSection } from './HubOrbit';
+import { HubCarousel, type TreeSection } from './HubCarousel';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,33 +104,34 @@ export default async function HubPage() {
   })).filter((s) => s.items.length > 0);
 
   return (
-    <main className="hub-scene min-h-screen p-6">
-      <div className="auth-aurora" aria-hidden />
-      <div className="auth-grid" aria-hidden />
-      <div className="relative mx-auto max-w-3xl">
-        <div className="mb-2 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-cream">ECOREAN 업무 허브</h1>
-            <p className="mt-0.5 text-sm text-muted">
-              {profile.email} <Badge tone="info">{profile.role}</Badge>
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/update-password"
-              className="rounded-md border border-stroke bg-panel px-4 py-2 text-sm font-medium text-cream transition-colors hover:bg-panel2"
+    <main className="hubc-scene min-h-screen p-6">
+      <div className="hubc-bk tl" aria-hidden />
+      <div className="hubc-bk tr" aria-hidden />
+      <div className="hubc-bk bl" aria-hidden />
+      <div className="hubc-bk br" aria-hidden />
+      <div className="relative z-10 mx-auto max-w-4xl">
+        <div className="mb-3 flex items-center justify-end gap-3 text-sm">
+          <span className="text-muted">
+            {profile.email} <Badge tone="info">{profile.role}</Badge>
+          </span>
+          <Link
+            href="/update-password"
+            className="rounded-full border border-[#00EAFF]/25 px-4 py-1.5 text-xs font-medium text-[#9fd9e4] transition-colors hover:border-[#00EAFF]/60 hover:text-[#dff8fd]"
+          >
+            비밀번호 변경
+          </Link>
+          <form action="/auth/signout" method="post">
+            <Button
+              type="submit"
+              variant="secondary"
+              className="rounded-full border-[#E8C99B]/30 bg-transparent px-4 py-1.5 text-xs text-[#e8c99b] hover:bg-[#E8C99B]/10"
             >
-              비밀번호 변경
-            </Link>
-            <form action="/auth/signout" method="post">
-              <Button type="submit" variant="secondary">
-                로그아웃
-              </Button>
-            </form>
-          </div>
+              로그아웃
+            </Button>
+          </form>
         </div>
 
-        <HubOrbit sections={treeSections} />
+        <HubCarousel sections={treeSections} />
       </div>
     </main>
   );
