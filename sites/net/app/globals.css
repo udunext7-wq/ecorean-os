@@ -252,47 +252,41 @@
 
 /* ── 업무 허브 v7: 5장 펼쳐 세운 3D 팬 스프레드 (2026-08-25 대표 지시) ──
    딥 미드나이트 × 스틸 글레이셔 × 샴페인 골드. 회전 없음 — 원근·시차·호버 팝만. */
-/* 배경 = 우주 (딥스페이스 성운 + 별밭 + 비네트, 2026-08-25 대표 지시) */
+/* 배경 = 홀로그램 데이터 글로브 이미지 + 켄번즈 입체 애니메이션 (2026-08-25 대표 지시) */
 .hubc-scene {
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse 90% 70% at 72% 16%, rgba(38, 60, 130, 0.3), transparent 62%),
-    radial-gradient(ellipse 70% 55% at 14% 80%, rgba(88, 52, 140, 0.18), transparent 60%),
-    radial-gradient(ellipse 55% 42% at 45% 48%, rgba(0, 90, 120, 0.1), transparent 65%),
-    #010309;
+  background: #010309;
 }
+.hubc-bgimg {
+  position: fixed;
+  inset: -6%;
+  z-index: 0;
+  pointer-events: none;
+  background: url('/brand/hub-bg.jpg') center 42% / cover no-repeat;
+  will-change: transform;
+  animation: hubc-bg-drift 55s ease-in-out infinite alternate;
+}
+@keyframes hubc-bg-drift {
+  0% { transform: scale(1) translate3d(0, 0, 0); }
+  50% { transform: scale(1.06) translate3d(-1.2%, -0.8%, 0); }
+  100% { transform: scale(1.1) translate3d(1%, 0.6%, 0); }
+}
+/* 이미지 위 가독 오버레이 — 중앙은 살리고 가장자리·전체를 살짝 눌러준다 */
 .hubc-scene::before {
   content: '';
   position: fixed;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
-  background-image:
-    radial-gradient(1.4px 1.4px at 22px 34px, rgba(255, 255, 255, 0.95), transparent 55%),
-    radial-gradient(1px 1px at 118px 76px, rgba(205, 228, 255, 0.85), transparent 55%),
-    radial-gradient(1.6px 1.6px at 210px 150px, rgba(255, 244, 220, 0.9), transparent 55%),
-    radial-gradient(1px 1px at 68px 195px, rgba(180, 210, 255, 0.7), transparent 55%),
-    radial-gradient(1.2px 1.2px at 160px 244px, rgba(255, 255, 255, 0.8), transparent 55%),
-    radial-gradient(0.8px 0.8px at 252px 60px, rgba(150, 190, 235, 0.65), transparent 55%),
-    radial-gradient(1px 1px at 322px 302px, rgba(230, 240, 255, 0.75), transparent 55%),
-    radial-gradient(1.2px 1.2px at 382px 122px, rgba(255, 235, 200, 0.7), transparent 55%),
-    radial-gradient(0.9px 0.9px at 44px 330px, rgba(200, 220, 255, 0.6), transparent 55%),
-    radial-gradient(1px 1px at 300px 210px, rgba(255, 255, 255, 0.55), transparent 55%);
-  background-size: 420px 420px;
-  animation: hubc-stars-drift 260s linear infinite, hubc-twinkle 7s ease-in-out infinite alternate;
-}
-@keyframes hubc-stars-drift {
-  to { background-position: 420px 60px; }
-}
-@keyframes hubc-twinkle {
-  from { opacity: 0.72; }
-  to { opacity: 1; }
+  background: radial-gradient(ellipse 85% 80% at 50% 42%, rgba(1, 3, 9, 0.28), rgba(1, 3, 9, 0.62) 88%);
 }
 .hubc-scene::after {
   content: '';
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse 70% 70% at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.75) 100%);
+  z-index: 1;
+  background: radial-gradient(ellipse 70% 70% at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.72) 100%);
   pointer-events: none;
 }
 .hubc-bk {
@@ -666,7 +660,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hubc-scene::before,
+  .hubc-bgimg,
   .hubc-brand { animation: none; }
   .hubf-fan { transition: none; }
   .hubf-card { transition: none; }

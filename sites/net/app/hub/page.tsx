@@ -106,6 +106,7 @@ export default async function HubPage() {
 
   return (
     <main className="hubc-scene min-h-screen p-6">
+      <div className="hubc-bgimg" aria-hidden />
       <div className="hubc-bk tl" aria-hidden />
       <div className="hubc-bk tr" aria-hidden />
       <div className="hubc-bk bl" aria-hidden />
