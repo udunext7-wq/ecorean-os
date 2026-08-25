@@ -235,9 +235,13 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     }
     markerLayer.clearLayers();
     var pts=[];
+    var seen={}; // 같은 단지 복수 평형(동일 좌표) — 마커를 살짝 비켜 배치
     state.rows.forEach(function(r){
       if(r.lat==null||r.lng==null)return;
-      var m=L.marker([r.lat,r.lng]).addTo(markerLayer);
+      var key=r.lat+','+r.lng;
+      var n=seen[key]||0;seen[key]=n+1;
+      var lat=r.lat+(n?0.0006*n:0), lng=r.lng+(n?0.0006*n:0);
+      var m=L.marker([lat,lng]).addTo(markerLayer);
       m.bindPopup('<b>'+esc(r.complex_name)+'</b> '+esc(r.area_type||'')+'<br>'+
         esc([r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' '))+'<br>'+
         '<a href="#" class="mk-open" style="font-weight:700;color:#8a713f">평면도 보기 →</a>');
