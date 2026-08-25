@@ -644,25 +644,17 @@
   color: rgba(148, 170, 184, 0.45);
 }
 
-/* 좁은 화면 — 3D 대신 가로 스크롤 카드 행 */
+/* 반응형 — 태블릿·모바일에서도 데스크톱과 동일한 3D 구도 (반경은 JS 가 화면폭 비례 축소) */
 @media (max-width: 1023px) {
-  .hubf-stage { cursor: default; perspective: none; }
-  .hubf-fan {
-    height: auto;
-    margin-top: 0;
-    transform: none;
-    display: flex;
-    gap: 14px;
-    overflow-x: auto;
-    padding: 6px 4px 20px;
-    scrollbar-width: thin;
-  }
-  .hubf-cardw {
-    position: static;
-    flex: 0 0 auto;
-  }
-  .hubf-cardw:hover .hubf-card { transform: none; }
-  .hubf-card { width: 250px; height: 430px; }
+  .hubf-stage { perspective: 1000px; }
+  .hubf-fan { height: 480px; margin-top: 10vh; }
+}
+@media (max-width: 639px) {
+  .hubf-stage { perspective: 860px; }
+  .hubf-fan { height: 440px; margin-top: 6vh; }
+  .hubf-card { width: 244px; height: 414px; padding: 15px 13px 10px; }
+  .hubc-card-title { font-size: 18px; }
+  .hubc-brand { letter-spacing: 0.34em; text-indent: 0.34em; }
 }
 
 @media (prefers-reduced-motion: reduce) {

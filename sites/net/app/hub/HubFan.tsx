@@ -34,7 +34,7 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   const n = slots.length;
   const step = 360 / n;
   const [rot, setRot] = useState(0);
-  const [wide, setWide] = useState(true);
+  const [vw, setVw] = useState(1280);
   const [animAll, setAnimAll] = useState(false);
   const rotRef = useRef(0);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -88,7 +88,7 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
 
   useEffect(() => {
     function measure() {
-      setWide(window.innerWidth >= 1024);
+      setVw(window.innerWidth);
     }
     measure();
     window.addEventListener('resize', measure);
@@ -171,8 +171,9 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     if (e.key === 'ArrowLeft') snapTo(front - 1);
   }
 
-  const RX = 470; // 좌우 펼침 반경 (간격)
-  const RZ = 270; // 깊이 반경 (입체감)
+  // 반응형 무대 — 화면 폭에 비례해 같은 3D 구도를 축소 (모바일·탭 동일 경험, 대표 지시 2026-08-25)
+  const RX = Math.min(470, Math.max(148, vw * 0.36)); // 좌우 펼침 반경
+  const RZ = RX * 0.575; // 깊이 반경
 
   return (
     <div className={`hubc ${noto.className}`}>
@@ -189,11 +190,11 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
         role="listbox"
         aria-label="업무 섹션"
         tabIndex={0}
-        onPointerDown={wide ? onPointerDown : undefined}
-        onPointerMove={wide ? onPointerMove : undefined}
-        onPointerUp={wide ? onPointerUp : undefined}
-        onPointerCancel={wide ? onPointerUp : undefined}
-        onPointerLeave={wide ? onLeave : undefined}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={onLeave}
         onKeyDown={onKeyDown}
         onClickCapture={(e) => {
           // 드래그 직후의 클릭은 오조작 — 링크·카드 이동 모두 무시
@@ -220,19 +221,15 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
               <div
                 key={i}
                 className={`hubf-cardw ${isFront ? 'is-front' : ''} ${animAll ? 'is-anim' : ''}`}
-                style={
-                  wide
-                    ? {
-                        transform: `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) scale(${scale.toFixed(3)})`,
-                        opacity: 0.72 + 0.28 * depth,
-                        filter: `brightness(${(0.68 + 0.32 * depth).toFixed(3)})`,
-                      }
-                    : undefined
-                }
+                style={{
+                  transform: `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) scale(${scale.toFixed(3)})`,
+                  opacity: 0.72 + 0.28 * depth,
+                  filter: `brightness(${(0.68 + 0.32 * depth).toFixed(3)})`,
+                }}
                 role="option"
                 aria-selected={isFront}
                 onClick={(e) => {
-                  if (!wide || isFront) return;
+                  if (isFront) return;
                   if ((e.target as HTMLElement).closest('a')) return;
                   if (!dragging.current?.moved) snapTo(i);
                 }}

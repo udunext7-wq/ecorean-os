@@ -112,8 +112,8 @@ export default async function HubPage() {
       <div className="hubc-bk bl" aria-hidden />
       <div className="hubc-bk br" aria-hidden />
       <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="mb-3 flex items-center justify-end gap-3 text-sm">
-          <div className="flex items-center gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-3 text-sm">
+          <div className="flex flex-wrap items-center justify-end gap-3">
           <span className="text-muted">
             {profile.email} <Badge tone="info">{profile.role}</Badge>
           </span>
