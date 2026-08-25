@@ -33,6 +33,10 @@
 <text x="424" y="555" font-size="11" text-anchor="middle" fill="#8a8272" font-weight="700">발코니 (확장 가능)</text>
 <rect x="46" y="41.4" width="756" height="476" fill="none" stroke="#26221b" stroke-width="5"/>
 <g id="openings">
+<line x1="572.4" y1="41.4" x2="572.4" y2="304.59999999999997" stroke="#f6f2e8" stroke-width="5"/>
+<line x1="572.4" y1="41.4" x2="572.4" y2="304.59999999999997" stroke="#c4bca8" stroke-width="1" stroke-dasharray="5 4"/>
+<line x1="382" y1="304.59999999999997" x2="550" y2="304.59999999999997" stroke="#f6f2e8" stroke-width="5"/>
+<line x1="382" y1="304.59999999999997" x2="550" y2="304.59999999999997" stroke="#c4bca8" stroke-width="1" stroke-dasharray="5 4"/>
 <rect x="580.8" y="37.9" width="56" height="7" fill="#fdfcf6"/>
 <path d="M 580.8 41.4 L 580.8 97.4 A 56 56 0 0 0 636.8 41.4" fill="none" stroke="#3a352c" stroke-width="1.6"/>
 <rect x="221.7" y="147.8" width="7" height="50.4" fill="#fdfcf6"/>

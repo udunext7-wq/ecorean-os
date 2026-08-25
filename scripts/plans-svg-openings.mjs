@@ -29,6 +29,12 @@ for (const file of readdirSync(IMG).filter(f => /^(std|cx)-.*.svg$/.test(f))) {
   const r1 = v => Math.round(v * 10) / 10;
 
   let g = `<g id="openings">\n`;
+  // 개방 경계 (벽 없음) — 실선 벽 표기를 지우고 가는 점선 구분선으로 (2026-08-26 대표 지시: 없는 벽 금지)
+  for (const ob of json.openBoundaries || []) {
+    const x1 = PADL + ob.x1 * S, y1 = PADT + ob.y1 * S, x2 = PADL + ob.x2 * S, y2 = PADT + ob.y2 * S;
+    g += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#f6f2e8" stroke-width="5"/>\n`;
+    g += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#c4bca8" stroke-width="1" stroke-dasharray="5 4"/>\n`;
+  }
   for (const o of openings) {
     const X = r1(PADL + o.x * S), Y = r1(PADT + o.y * S), w = r1(o.width_mm * S);
     const c = centroid(o.spaceId) || { x: o.x, y: o.y - 1 };

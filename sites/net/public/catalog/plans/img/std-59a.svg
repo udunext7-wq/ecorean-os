@@ -29,6 +29,14 @@
 <text x="323.2" y="415" font-size="11" text-anchor="middle" fill="#8a8272" font-weight="700">발코니 (확장 가능)</text>
 <rect x="46" y="41.4" width="554.4" height="336" fill="none" stroke="#26221b" stroke-width="5"/>
 <g id="openings">
+<line x1="281.20000000000005" y1="41.4" x2="281.20000000000005" y2="192.60000000000002" stroke="#f6f2e8" stroke-width="5"/>
+<line x1="281.20000000000005" y1="41.4" x2="281.20000000000005" y2="192.60000000000002" stroke="#c4bca8" stroke-width="1" stroke-dasharray="5 4"/>
+<line x1="197.20000000000002" y1="192.60000000000002" x2="281.20000000000005" y2="192.60000000000002" stroke="#f6f2e8" stroke-width="5"/>
+<line x1="197.20000000000002" y1="192.60000000000002" x2="281.20000000000005" y2="192.60000000000002" stroke="#c4bca8" stroke-width="1" stroke-dasharray="5 4"/>
+<line x1="281.20000000000005" y1="192.60000000000002" x2="415.6" y2="192.60000000000002" stroke="#f6f2e8" stroke-width="5"/>
+<line x1="281.20000000000005" y1="192.60000000000002" x2="415.6" y2="192.60000000000002" stroke="#c4bca8" stroke-width="1" stroke-dasharray="5 4"/>
+<line x1="197.20000000000002" y1="192.60000000000002" x2="415.6" y2="192.60000000000002" stroke="#f6f2e8" stroke-width="5"/>
+<line x1="197.20000000000002" y1="192.60000000000002" x2="415.6" y2="192.60000000000002" stroke="#c4bca8" stroke-width="1" stroke-dasharray="5 4"/>
 <rect x="211.2" y="37.9" width="56" height="7" fill="#fdfcf6"/>
 <path d="M 211.2 41.4 L 211.2 97.4 A 56 56 0 0 0 267.2 41.4" fill="none" stroke="#3a352c" stroke-width="1.6"/>
 <rect x="193.7" y="91.8" width="7" height="50.4" fill="#fdfcf6"/>

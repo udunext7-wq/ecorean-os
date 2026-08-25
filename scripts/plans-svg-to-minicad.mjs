@@ -199,7 +199,22 @@ for (const file of readdirSync(IMG).filter(f => /^(std|cx)-.*.svg$/.test(f))) {
 
   // ── ① 겹침 차감: 작은 방 우선(원형 유지), 큰 방에서 겹침 영역 제거 ──
   let cutCount = 0;
-  const spaces = [], walls = [];
+  const spaces = [], walls = [], openBoundaries = [];
+  // 2026-08-26 대표 지시: 없는 벽을 만들지 말 것 — 개방 동선 공간(거실·주방·식당·복도·현관·원룸)
+  //  사이 경계는 실제 벽이 없다 → 벽 생성 제외, openBoundaries 로 기록(SVG 점선 구분선용)
+  const OPENFLOW = new Set(['LIVING', 'KITCHEN', 'DINING', 'CORRIDOR', 'ENTRANCE']);
+  const isOpenRoom = rr => OPENFLOW.has(rr.type) || rr.name === '원룸';
+  const roomAt = p => rooms.filter(o => p.x > o.x1 && p.x < o.x2 && p.y > o.y1 && p.y < o.y2)
+    .sort((a2, b2) => rectArea(a2) - rectArea(b2))[0] || null; // 겹침 시 작은 방(차감 우선권) 채택
+  const ptInLoop = (p, loop) => {
+    let inside = false;
+    for (let ii = 0, jj = loop.length - 1; ii < loop.length; jj = ii++) {
+      const a2 = loop[ii], b2 = loop[jj];
+      if ((a2.y > p.y) !== (b2.y > p.y) && p.x < (b2.x - a2.x) * (p.y - a2.y) / (b2.y - a2.y) + a2.x) inside = !inside;
+    }
+    return inside;
+  };
+  const obSeen = new Set();
   for (const r of rooms) {
     const cutters = rooms.filter(o => o !== r && rectArea(o) < rectArea(r)
       && Math.min(r.x2, o.x2) - Math.max(r.x1, o.x1) > 0 && Math.min(r.y2, o.y2) - Math.max(r.y1, o.y1) > 0);
@@ -213,11 +228,44 @@ for (const file of readdirSync(IMG).filter(f => /^(std|cx)-.*.svg$/.test(f))) {
     const sp = { id: r.id, name: r.name, type: r.type, polygon };
     if (holes.length) sp.holes = holes;
     spaces.push(sp);
+    const inSpace = p => ptInLoop(p, polygon) && !holes.some(h => ptInLoop(p, h));
     const allLoops = [polygon, ...holes];
     let wk = 0;
     for (const loop of allLoops) loop.forEach((a, k) => {
       const b = loop[(k + 1) % loop.length];
-      walls.push({ id: `w-${r.id}-${wk++}`, x1: a.x, y1: a.y, x2: b.x, y2: b.y, spaceId: r.id, thickness: 50 });
+      const horiz = a.y === b.y;
+      const lo = Math.min(horiz ? a.x : a.y, horiz ? b.x : b.y);
+      const hi = Math.max(horiz ? a.x : a.y, horiz ? b.x : b.y);
+      if (hi - lo < 1) return;
+      // 변을 이웃 방 경계 좌표로 분할 → 구간별로 건너편 방을 조사해 벽/개방 판정
+      const cuts = new Set([lo, hi]);
+      for (const o of rooms) {
+        for (const c of horiz ? [o.x1, o.x2] : [o.y1, o.y2]) if (c > lo && c < hi) cuts.add(c);
+      }
+      const pts = [...cuts].sort((x2, y2) => x2 - y2);
+      let run = null; // {open, from}
+      const flush = to => {
+        if (!run) return;
+        const seg = horiz ? { x1: run.from, y1: a.y, x2: to, y2: a.y } : { x1: a.x, y1: run.from, x2: a.x, y2: to };
+        if (run.open) {
+          const key = [Math.min(seg.x1, seg.x2), Math.min(seg.y1, seg.y2), Math.max(seg.x1, seg.x2), Math.max(seg.y1, seg.y2)].join(',');
+          if (!obSeen.has(key)) { obSeen.add(key); openBoundaries.push(seg); }
+        } else {
+          walls.push({ id: `w-${r.id}-${wk++}`, ...seg, spaceId: r.id, thickness: 50 });
+        }
+        run = null;
+      };
+      for (let s2 = 0; s2 < pts.length - 1; s2++) {
+        const m = (pts[s2] + pts[s2 + 1]) / 2;
+        const pA = horiz ? { x: m, y: a.y - 60 } : { x: a.x - 60, y: m };
+        const pB = horiz ? { x: m, y: a.y + 60 } : { x: a.x + 60, y: m };
+        const outP = inSpace(pA) ? pB : pA; // 공간 바깥쪽(건너편) 프로브
+        const nb = roomAt(outP);
+        const open = !!(nb && nb !== r && isOpenRoom(r) && isOpenRoom(nb));
+        if (run && run.open !== open) flush(pts[s2]);
+        if (!run) run = { open, from: pts[s2] };
+      }
+      flush(pts[pts.length - 1]);
     });
   }
 
@@ -326,9 +374,11 @@ for (const file of readdirSync(IMG).filter(f => /^(std|cx)-.*.svg$/.test(f))) {
       source_svg: `/catalog/plans/img/${file}`,
     },
     spaces, walls, openings,
+    // 개방 경계 (벽 없음 — 공간 구분선): MiniCAD 는 무시, SVG 데코레이터가 점선으로 표기
+    openBoundaries,
   };
   writeFileSync(join(OUT, `${slug}.json`), JSON.stringify(json, null, 1));
   totalPlans++; totalSpaces += spaces.length; totalOpenings += openings.length;
-  console.log(`✅ ${slug}: 공간 ${spaces.length} · 벽 ${walls.length} · 문 ${od} · 창 ${ownd} · 차감 ${cutCount}건 · 합계 ${areaSum.toFixed(1)}㎡ (${title})`);
+  console.log(`✅ ${slug}: 공간 ${spaces.length} · 벽 ${walls.length} · 개방경계 ${openBoundaries.length} · 문 ${od} · 창 ${ownd} · 차감 ${cutCount}건 · 합계 ${areaSum.toFixed(1)}㎡ (${title})`);
 }
 console.log(`\n${totalPlans}/10 변환 완료 — 공간 ${totalSpaces} · 개구부 ${totalOpenings}`);

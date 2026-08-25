@@ -239,9 +239,9 @@
   },
   {
    "id": "w-sp-cx-hangaram-84-01-2",
-   "x1": 3300,
+   "x1": 0,
    "y1": 4200,
-   "x2": 0,
+   "x2": 3300,
    "y2": 4200,
    "spaceId": "sp-cx-hangaram-84-01",
    "thickness": 50
@@ -249,9 +249,9 @@
   {
    "id": "w-sp-cx-hangaram-84-01-3",
    "x1": 0,
-   "y1": 4200,
+   "y1": 0,
    "x2": 0,
-   "y2": 0,
+   "y2": 4200,
    "spaceId": "sp-cx-hangaram-84-01",
    "thickness": 50
   },
@@ -275,9 +275,9 @@
   },
   {
    "id": "w-sp-cx-hangaram-84-02-2",
-   "x1": 8700,
+   "x1": 3300,
    "y1": 4200,
-   "x2": 3300,
+   "x2": 4200,
    "y2": 4200,
    "spaceId": "sp-cx-hangaram-84-02",
    "thickness": 50
@@ -285,9 +285,9 @@
   {
    "id": "w-sp-cx-hangaram-84-02-3",
    "x1": 3300,
-   "y1": 4200,
+   "y1": 0,
    "x2": 3300,
-   "y2": 0,
+   "y2": 4200,
    "spaceId": "sp-cx-hangaram-84-02",
    "thickness": 50
   },
@@ -311,9 +311,9 @@
   },
   {
    "id": "w-sp-cx-hangaram-84-03-2",
-   "x1": 12000,
+   "x1": 8700,
    "y1": 4200,
-   "x2": 8700,
+   "x2": 12000,
    "y2": 4200,
    "spaceId": "sp-cx-hangaram-84-03",
    "thickness": 50
@@ -321,9 +321,9 @@
   {
    "id": "w-sp-cx-hangaram-84-03-3",
    "x1": 8700,
-   "y1": 4200,
+   "y1": 0,
    "x2": 8700,
-   "y2": 0,
+   "y2": 4200,
    "spaceId": "sp-cx-hangaram-84-03",
    "thickness": 50
   },
@@ -347,9 +347,9 @@
   },
   {
    "id": "w-sp-cx-hangaram-84-04-2",
-   "x1": 4200,
+   "x1": 0,
    "y1": 8300,
-   "x2": 0,
+   "x2": 4200,
    "y2": 8300,
    "spaceId": "sp-cx-hangaram-84-04",
    "thickness": 50
@@ -357,25 +357,25 @@
   {
    "id": "w-sp-cx-hangaram-84-04-3",
    "x1": 0,
-   "y1": 8300,
+   "y1": 4200,
    "x2": 0,
-   "y2": 4200,
+   "y2": 8300,
    "spaceId": "sp-cx-hangaram-84-04",
    "thickness": 50
   },
   {
    "id": "w-sp-cx-hangaram-84-05-0",
-   "x1": 4200,
-   "y1": 4200,
+   "x1": 8400,
+   "y1": 6200,
    "x2": 8400,
-   "y2": 4200,
+   "y2": 8300,
    "spaceId": "sp-cx-hangaram-84-05",
    "thickness": 50
   },
   {
    "id": "w-sp-cx-hangaram-84-05-1",
-   "x1": 8400,
-   "y1": 4200,
+   "x1": 4200,
+   "y1": 8300,
    "x2": 8400,
    "y2": 8300,
    "spaceId": "sp-cx-hangaram-84-05",
@@ -383,25 +383,16 @@
   },
   {
    "id": "w-sp-cx-hangaram-84-05-2",
-   "x1": 8400,
-   "y1": 8300,
+   "x1": 4200,
+   "y1": 4200,
    "x2": 4200,
    "y2": 8300,
    "spaceId": "sp-cx-hangaram-84-05",
    "thickness": 50
   },
   {
-   "id": "w-sp-cx-hangaram-84-05-3",
-   "x1": 4200,
-   "y1": 8300,
-   "x2": 4200,
-   "y2": 4200,
-   "spaceId": "sp-cx-hangaram-84-05",
-   "thickness": 50
-  },
-  {
    "id": "w-sp-cx-hangaram-84-06-0",
-   "x1": 8400,
+   "x1": 8700,
    "y1": 4200,
    "x2": 12000,
    "y2": 4200,
@@ -419,19 +410,10 @@
   },
   {
    "id": "w-sp-cx-hangaram-84-06-2",
-   "x1": 12000,
-   "y1": 6200,
-   "x2": 8400,
-   "y2": 6200,
-   "spaceId": "sp-cx-hangaram-84-06",
-   "thickness": 50
-  },
-  {
-   "id": "w-sp-cx-hangaram-84-06-3",
    "x1": 8400,
    "y1": 6200,
-   "x2": 8400,
-   "y2": 4200,
+   "x2": 12000,
+   "y2": 6200,
    "spaceId": "sp-cx-hangaram-84-06",
    "thickness": 50
   },
@@ -455,9 +437,9 @@
   },
   {
    "id": "w-sp-cx-hangaram-84-07-2",
-   "x1": 10200,
+   "x1": 8400,
    "y1": 8300,
-   "x2": 8400,
+   "x2": 10200,
    "y2": 8300,
    "spaceId": "sp-cx-hangaram-84-07",
    "thickness": 50
@@ -465,9 +447,9 @@
   {
    "id": "w-sp-cx-hangaram-84-07-3",
    "x1": 8400,
-   "y1": 8300,
+   "y1": 6200,
    "x2": 8400,
-   "y2": 6200,
+   "y2": 8300,
    "spaceId": "sp-cx-hangaram-84-07",
    "thickness": 50
   },
@@ -491,9 +473,9 @@
   },
   {
    "id": "w-sp-cx-hangaram-84-08-2",
-   "x1": 12000,
+   "x1": 10200,
    "y1": 8300,
-   "x2": 10200,
+   "x2": 12000,
    "y2": 8300,
    "spaceId": "sp-cx-hangaram-84-08",
    "thickness": 50
@@ -501,9 +483,9 @@
   {
    "id": "w-sp-cx-hangaram-84-08-3",
    "x1": 10200,
-   "y1": 8300,
+   "y1": 6200,
    "x2": 10200,
-   "y2": 6200,
+   "y2": 8300,
    "spaceId": "sp-cx-hangaram-84-08",
    "thickness": 50
   },
@@ -527,9 +509,9 @@
   },
   {
    "id": "w-sp-cx-hangaram-84-09-2",
-   "x1": 12000,
+   "x1": 0,
    "y1": 9500,
-   "x2": 0,
+   "x2": 12000,
    "y2": 9500,
    "spaceId": "sp-cx-hangaram-84-09",
    "thickness": 50
@@ -537,9 +519,9 @@
   {
    "id": "w-sp-cx-hangaram-84-09-3",
    "x1": 0,
-   "y1": 9500,
+   "y1": 8300,
    "x2": 0,
-   "y2": 8300,
+   "y2": 9500,
    "spaceId": "sp-cx-hangaram-84-09",
    "thickness": 50
   }
@@ -724,6 +706,32 @@
    "sillHeight_mm": 900,
    "angle": 0,
    "subtractMode": "single"
+  }
+ ],
+ "openBoundaries": [
+  {
+   "x1": 4200,
+   "y1": 4200,
+   "x2": 8700,
+   "y2": 4200
+  },
+  {
+   "x1": 4200,
+   "y1": 4200,
+   "x2": 8400,
+   "y2": 4200
+  },
+  {
+   "x1": 8400,
+   "y1": 4200,
+   "x2": 8400,
+   "y2": 6200
+  },
+  {
+   "x1": 8400,
+   "y1": 4200,
+   "x2": 8700,
+   "y2": 4200
   }
  ]
 }

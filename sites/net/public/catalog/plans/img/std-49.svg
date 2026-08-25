@@ -16,6 +16,8 @@
 <text x="384.79999999999995" y="378.6" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">현관</text>
 <rect x="46" y="41.4" width="392" height="392" fill="none" stroke="#26221b" stroke-width="5"/>
 <g id="openings">
+<line x1="331.6" y1="315.8" x2="438" y2="315.8" stroke="#f6f2e8" stroke-width="5"/>
+<line x1="331.6" y1="315.8" x2="438" y2="315.8" stroke="#c4bca8" stroke-width="1" stroke-dasharray="5 4"/>
 <rect x="434.5" y="346.6" width="7" height="56" fill="#fdfcf6"/>
 <path d="M 438 346.6 L 382 346.6 A 56 56 0 0 0 438 402.6" fill="none" stroke="#3a352c" stroke-width="1.6"/>
 <rect x="227.3" y="117" width="7" height="50.4" fill="#fdfcf6"/>
