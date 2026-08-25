@@ -15,6 +15,31 @@
 <rect x="331.59999999999997" y="315.8" width="106.39999999999999" height="117.60000000000001" fill="#f3f0ea" stroke="#3a352c" stroke-width="2"/>
 <text x="384.79999999999995" y="378.6" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">현관</text>
 <rect x="46" y="41.4" width="392" height="392" fill="none" stroke="#26221b" stroke-width="5"/>
+<g id="openings">
+<rect x="434.5" y="346.6" width="7" height="56" fill="#fdfcf6"/>
+<path d="M 438 346.6 L 382 346.6 A 56 56 0 0 0 438 402.6" fill="none" stroke="#3a352c" stroke-width="1.6"/>
+<rect x="227.3" y="117" width="7" height="50.4" fill="#fdfcf6"/>
+<path d="M 230.8 117 L 180.4 117 A 50.4 50.4 0 0 0 230.8 167.4" fill="none" stroke="#3a352c" stroke-width="1.2"/>
+<rect x="227.3" y="254.2" width="7" height="50.4" fill="#fdfcf6"/>
+<path d="M 230.8 254.2 L 180.4 254.2 A 50.4 50.4 0 0 0 230.8 304.6" fill="none" stroke="#3a352c" stroke-width="1.2"/>
+<rect x="328.1" y="349.4" width="7" height="50.4" fill="#fdfcf6"/>
+<path d="M 331.6 349.4 L 281.2 349.4 A 50.4 50.4 0 0 0 331.6 399.8" fill="none" stroke="#3a352c" stroke-width="1.2"/>
+<rect x="42.5" y="91.8" width="7" height="100.8" fill="#fdfcf6"/>
+<line x1="44.2" y1="91.8" x2="44.2" y2="192.6" stroke="#3a352c" stroke-width="1"/>
+<line x1="47.8" y1="91.8" x2="47.8" y2="192.6" stroke="#3a352c" stroke-width="1"/>
+<line x1="42" y1="91.8" x2="50" y2="91.8" stroke="#3a352c" stroke-width="1.4"/>
+<line x1="42" y1="192.6" x2="50" y2="192.6" stroke="#3a352c" stroke-width="1.4"/>
+<rect x="42.5" y="287.8" width="7" height="100.8" fill="#fdfcf6"/>
+<line x1="44.2" y1="287.8" x2="44.2" y2="388.6" stroke="#3a352c" stroke-width="1"/>
+<line x1="47.8" y1="287.8" x2="47.8" y2="388.6" stroke="#3a352c" stroke-width="1"/>
+<line x1="42" y1="287.8" x2="50" y2="287.8" stroke="#3a352c" stroke-width="1.4"/>
+<line x1="42" y1="388.6" x2="50" y2="388.6" stroke="#3a352c" stroke-width="1.4"/>
+<rect x="434.5" y="77.8" width="7" height="201.6" fill="#fdfcf6"/>
+<line x1="436.2" y1="77.8" x2="436.2" y2="279.4" stroke="#3a352c" stroke-width="1"/>
+<line x1="439.8" y1="77.8" x2="439.8" y2="279.4" stroke="#3a352c" stroke-width="1"/>
+<line x1="434" y1="77.8" x2="442" y2="77.8" stroke="#3a352c" stroke-width="1.4"/>
+<line x1="434" y1="279.4" x2="442" y2="279.4" stroke="#3a352c" stroke-width="1.4"/>
+</g>
 <line x1="46" y1="25.4" x2="438" y2="25.4" stroke="#B8965A" stroke-width="1"/>
 <line x1="46" y1="20.4" x2="46" y2="30.4" stroke="#B8965A" stroke-width="1"/>
 <line x1="438" y1="20.4" x2="438" y2="30.4" stroke="#B8965A" stroke-width="1"/>

@@ -1,0 +1,100 @@
+[
+ {
+  "slug": "std-16",
+  "title": "표준 미니 원룸 16㎡ (도시형 생활주택)",
+  "exclusive_area_m2": 16.2,
+  "rooms": 1,
+  "baths": 1
+ },
+ {
+  "slug": "std-29",
+  "title": "표준 1.5룸 29㎡ (오피스텔형)",
+  "exclusive_area_m2": 29.2,
+  "rooms": 2,
+  "baths": 1
+ },
+ {
+  "slug": "std-33",
+  "title": "표준 투룸 33㎡ (빌라형)",
+  "exclusive_area_m2": 33,
+  "rooms": 2,
+  "baths": 1
+ },
+ {
+  "slug": "std-39",
+  "title": "표준 투룸 39㎡ (복도식 구축)",
+  "exclusive_area_m2": 38.9,
+  "rooms": 2,
+  "baths": 1
+ },
+ {
+  "slug": "std-46",
+  "title": "표준 투룸 46㎡ (계단식 구축)",
+  "exclusive_area_m2": 46,
+  "rooms": 2,
+  "baths": 1
+ },
+ {
+  "slug": "std-51",
+  "title": "표준 쓰리룸 51㎡ (소형 3룸)",
+  "exclusive_area_m2": 51.2,
+  "rooms": 3,
+  "baths": 1
+ },
+ {
+  "slug": "std-59c",
+  "title": "표준 59㎡ C타입 (타워형)",
+  "exclusive_area_m2": 58.8,
+  "rooms": 2,
+  "baths": 2
+ },
+ {
+  "slug": "std-74a",
+  "title": "표준 74㎡ A타입 (3베이 판상형)",
+  "exclusive_area_m2": 74.5,
+  "rooms": 3,
+  "baths": 2
+ },
+ {
+  "slug": "std-74b",
+  "title": "표준 74㎡ B타입 (타워형)",
+  "exclusive_area_m2": 74.9,
+  "rooms": 2,
+  "baths": 2
+ },
+ {
+  "slug": "std-99",
+  "title": "표준 99㎡ (구축 판상형)",
+  "exclusive_area_m2": 99.6,
+  "rooms": 3,
+  "baths": 1
+ },
+ {
+  "slug": "std-125",
+  "title": "표준 125㎡ (방4 판상형)",
+  "exclusive_area_m2": 125.4,
+  "rooms": 4,
+  "baths": 2
+ },
+ {
+  "slug": "std-135",
+  "title": "표준 135㎡ (방4 대형)",
+  "exclusive_area_m2": 135.2,
+  "rooms": 4,
+  "baths": 2
+ },
+ {
+  "slug": "std-145",
+  "title": "표준 145㎡ (방4 광폭)",
+  "exclusive_area_m2": 145.4,
+  "rooms": 4,
+  "baths": 2
+ },
+ {
+  "slug": "std-163",
+  "title": "표준 163㎡ (펜트하우스형)",
+  "exclusive_area_m2": 163.5,
+  "rooms": 4,
+  "baths": 2
+ }
+]
