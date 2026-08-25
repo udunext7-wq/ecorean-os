@@ -31,13 +31,12 @@ function mod(a: number, b: number) {
 
 export function HubFan({ sections }: { sections: TreeSection[] }) {
   // 배치: 중앙(0)·우안쪽(1)·우바깥(2)·좌바깥(3)·좌안쪽(4)
-  const slots: Slot[] = [
-    sections[0] ? { kind: 'section', sec: sections[0] } : { kind: 'ghost' },
-    sections[1] ? { kind: 'section', sec: sections[1] } : { kind: 'ghost' },
-    sections[2] ? { kind: 'section', sec: sections[2] } : { kind: 'ghost' },
-    { kind: 'ghost' },
-    sections[3] ? { kind: 'section', sec: sections[3] } : { kind: 'ghost' },
-  ];
+  // 총 8슬롯 — 섹션 4 + 예비(RESERVED) 4 (2026-08-25 대표 지시: 예비 3개 추가)
+  const TOTAL_SLOTS = 8;
+  const slots: Slot[] = sections
+    .slice(0, TOTAL_SLOTS)
+    .map((sec) => ({ kind: 'section' as const, sec }));
+  while (slots.length < TOTAL_SLOTS) slots.push({ kind: 'ghost' });
   const n = slots.length;
   const step = 360 / n;
   const [rot, setRot] = useState(0);
@@ -157,8 +156,8 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     h.stop(t0 + opts.dur);
   }
 
-  // 효과음 샘플 캐시 — 호버(심장박동)·클릭(모던 클릭) 실제 샘플 (대표 지시 2026-08-25)
-  const HEART_SFX = '/audio/sfx-heartbeat.mp3';
+  // 효과음 샘플 캐시 — 호버(Paper Flip 1)·클릭(모던 클릭) 실제 샘플 (대표 지시 2026-08-25)
+  const HOVER_SFX = '/audio/sfx-hover.wav';
   const CLICK_SFX = '/audio/sfx-click.wav';
   const sfxBufs = useRef<Record<string, AudioBuffer | undefined>>({});
   const sfxLoading = useRef<Record<string, boolean>>({});
@@ -181,7 +180,7 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   useEffect(() => {
     const ctx = ensureCtx();
     if (ctx) {
-      loadSfx(ctx, HEART_SFX);
+      loadSfx(ctx, HOVER_SFX);
       loadSfx(ctx, CLICK_SFX);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,13 +209,13 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     }
   }
 
-  // 모듈 줄 호버 — 심장박동
+  // 모듈 줄 호버 — 종이 넘기는 소리 (Paper Flip 1)
   const lastBlip = useRef(0);
   function playBlip() {
     const now = performance.now();
-    if (now - lastBlip.current < 280) return; // 연타 방지
+    if (now - lastBlip.current < 200) return; // 연타 방지
     lastBlip.current = now;
-    if (!playSample(HEART_SFX, 0.5)) {
+    if (!playSample(HOVER_SFX, 0.45)) {
       const ctx = ensureCtx();
       if (ctx) playThud(ctx, { f0: 210, f1: 140, dur: 0.22, gain: 0.05, harm: 0.25 });
     }
