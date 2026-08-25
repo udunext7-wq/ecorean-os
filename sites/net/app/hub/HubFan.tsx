@@ -423,13 +423,15 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
             // 중앙 근접 시 연속 확대(최대 +12%) — 단계 점프 없이 안정적으로 커진 채 유지
             const centerBoost = Math.max(0, (depth - 0.8) / 0.2) * 0.12;
             const scale = 0.5 + 0.5 * depth + centerBoost; // 중앙 1.12 > 안쪽 0.83 > 바깥 0.55
+            // 은은한 꺾임(최대 16°) — 회전 시 유리 박스의 옆면이 자연스럽게 드러난다 (대표 지시 2026-08-25)
+            const ry = -Math.sin(theta) * 16;
             const isFront = i === front;
             return (
               <div
                 key={i}
                 className={`hubf-cardw ${isFront ? 'is-front' : ''}`}
                 style={{
-                  transform: `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) scale(${scale.toFixed(3)})`,
+                  transform: `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) rotateY(${ry.toFixed(1)}deg) scale(${scale.toFixed(3)})`,
                   opacity: 0.72 + 0.28 * depth,
                   filter: `brightness(${(0.68 + 0.32 * depth).toFixed(3)})`,
                 }}
@@ -441,6 +443,15 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
                   if (!dragging.current?.moved) snapTo(i);
                 }}
               >
+                {slot.kind !== 'ghost' ? (
+                  <div className="hubf-slab" aria-hidden>
+                    <div className="hubf-slab-back" />
+                    <div className="hubf-side hubf-side-t" />
+                    <div className="hubf-side hubf-side-b" />
+                    <div className="hubf-side hubf-side-l" />
+                    <div className="hubf-side hubf-side-r" />
+                  </div>
+                ) : null}
                 <div className={`hubf-card ${slot.kind === 'ghost' ? 'is-ghost' : ''}`}>
                   <span className="hubc-tick hubc-tick-tl" aria-hidden />
                   <span className="hubc-tick hubc-tick-tr" aria-hidden />
