@@ -136,10 +136,9 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
 .gw-badge{position:absolute;top:-21px;left:62px;background:#1c1d24;border:1px solid #d4af37;color:#d4af37;font-size:9px;padding:2px 7px;border-radius:3px;z-index:1001;display:none;font-family:'DM Sans',sans-serif;letter-spacing:0.5px;pointer-events:none}
 .bld-el.selected .gw-badge{display:block}
 
-/* FREE LAYOUT (자유 배치 + 줄자 + 자석 스냅) */
-#canvas.free-on{display:block!important}
-.free-on .bld-el{position:absolute!important;cursor:move}
-.free-on .rsz,.free-on .gw-badge{display:none!important}
+/* FREE LAYOUT (자유 배치 + 줄자 + 자석 스냅) — 요소별(el.layout==='free') 적용 */
+.bld-el.free{position:absolute!important;cursor:move;z-index:5}
+.bld-el.free .rsz,.bld-el.free .gw-badge{display:none!important}
 #free-guides{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:9990}
 .fg-line{position:absolute}
 .fg-vline{width:1px;top:0;bottom:0;background:#d4af37;box-shadow:0 0 4px #d4af37aa}
@@ -601,7 +600,7 @@ const IDB={
     q.onsuccess=()=>{db.close();res(q.result);};q.onerror=()=>{db.close();rej(q.error);};}));},
 };
 function currentDocState(){
-  return {colors:S.colors,themeName:S.themeName,font:S.font,bg:S.bg,radius:S.radius,btnStyle:S.btnStyle,glassBlur:S.glassBlur,glassOpacity:S.glassOpacity,shadowDefault:S.shadowDefault,gridGap:S.gridGap,cursor:S.cursor,cursorOpts:S.cursorOpts,freeMode:S.freeMode,pages:S.pages,activePage:S.activePage,savedAt:Date.now()};
+  return {colors:S.colors,themeName:S.themeName,font:S.font,bg:S.bg,radius:S.radius,btnStyle:S.btnStyle,glassBlur:S.glassBlur,glassOpacity:S.glassOpacity,shadowDefault:S.shadowDefault,gridGap:S.gridGap,cursor:S.cursor,cursorOpts:S.cursorOpts,pages:S.pages,activePage:S.activePage,savedAt:Date.now()};
 }
 // Stores File objects for ZIP export of large videos
 const videoFileMap=new Map();
@@ -623,7 +622,6 @@ const S={
   gridGap:14,
   cursor:'none',
   cursorOpts:{color:'',sense:50,size:100,intensity:100,trail:16},
-  freeMode:false,
   pages:[{id:'p1',name:'Page 1',elements:[]}],
   activePage:0,
   elements:[],  // legacy compat
@@ -651,6 +649,11 @@ function normalizeIds(){
     if(!e.id||seen.has(e.id)){e.id=newId();fixed++;}
     seen.add(e.id);
   }));
+  // 2026-08-25: 배치 모드 전역→컴포넌트 이관. 구버전 freeMode 문서는 전 요소를 자유 배치로 변환.
+  if(S.freeMode){
+    (S.pages||[]).forEach(p=>(p.elements||[]).forEach(e=>{if(e){e.layout='free';if(!e.free)e.free={x:24,y:24,w:480};}}));
+    S.freeMode=false;
+  }
   return fixed;
 }
 function clone(o){try{return structuredClone(o);}catch(e){return JSON.parse(JSON.stringify(o));}}
@@ -663,8 +666,8 @@ function renderCanvasLive(){if(_rafCv)return;_rafCv=true;requestAnimationFrame((
 let _rafEl=false;
 function renderSelectedElLive(){if(_rafEl)return;_rafEl=true;requestAnimationFrame(()=>{_rafEl=false;renderSelectedElNow();});}
 function renderSelectedElNow(){
-  if(S.freeMode){renderCanvas();return;} // 자유 배치는 눈금자·minHeight 재계산 필요 → 전체 렌더
   const el=activePage().elements.find(e=>e.id===S.selectedId);
+  if(el&&el.layout==='free'){renderCanvas();return;} // 자유 배치 요소는 눈금자·minHeight 재계산 필요 → 전체 렌더
   const div=el&&document.querySelector('#canvas .bld-el[data-id="'+el.id+'"]');
   if(!el||!div){renderCanvas();return;}
   const gw=el.gw||12;
@@ -679,7 +682,7 @@ function renderSelectedElNow(){
 
 function pushHist(){
   S.history=S.history.slice(0,S.historyIdx+1);
-  S.history.push(clone({colors:S.colors,themeName:S.themeName,font:S.font,bg:S.bg,radius:S.radius,btnStyle:S.btnStyle,glassBlur:S.glassBlur,glassOpacity:S.glassOpacity,shadowDefault:S.shadowDefault,gridGap:S.gridGap,cursor:S.cursor,cursorOpts:S.cursorOpts,freeMode:S.freeMode,elements:S.elements,pages:S.pages,activePage:S.activePage}));
+  S.history.push(clone({colors:S.colors,themeName:S.themeName,font:S.font,bg:S.bg,radius:S.radius,btnStyle:S.btnStyle,glassBlur:S.glassBlur,glassOpacity:S.glassOpacity,shadowDefault:S.shadowDefault,gridGap:S.gridGap,cursor:S.cursor,cursorOpts:S.cursorOpts,elements:S.elements,pages:S.pages,activePage:S.activePage}));
   S.historyIdx++;
   if(S.history.length>50){S.history.shift();S.historyIdx--;}
 }
@@ -1241,11 +1244,10 @@ function renderCanvas(){
   canvas.style.fontFamily=`'${f.b}',sans-serif`;
   document.getElementById('canvas-frame').style.background=c.bg;
   renderBackground();
-  const gridOn=els.length>0&&!S.freeMode;
+  const anyFree=els.some(e=>e&&e.layout==='free');
+  const gridOn=els.length>0;
   canvas.classList.toggle('grid-on',gridOn);
-  canvas.classList.toggle('free-on',!!S.freeMode);
   if(gridOn){canvas.style.columnGap=(S.gridGap||14)+'px';canvas.style.rowGap='0';}
-  if(S.freeMode)ensureFreePositions();
   canvas.innerHTML='';
   els.forEach(el=>{
     const div=document.createElement('div');
@@ -1262,10 +1264,10 @@ function renderCanvas(){
 <button data-act="dup"><i class="ti ti-copy"></i></button>
 <button data-act="del"><i class="ti ti-trash"></i></button></div><div class="gw-badge">${gw}/12</div><div class="rsz l" data-rsz="l"></div><div class="rsz r" data-rsz="r"></div>${HEIGHT_PROP[el.type]?'<div class="rsz b" data-rsz="b" title="상하 크기 조절"></div>':''}`;
     applyFx(div,el);
-    if(S.freeMode){
-      const fr=el.free||{x:20,y:20};
+    if(el.layout==='free'){
+      const fr=el.free||(el.free={x:24,y:24});
+      div.classList.add('free');
       div.draggable=false;
-      div.style.position='absolute';
       div.style.left=(fr.x||0)+'px';
       div.style.top=(fr.y||0)+'px';
       if(fr.w)div.style.width=fr.w+'px';
@@ -1274,9 +1276,9 @@ function renderCanvas(){
     }
     canvas.appendChild(div);
   });
-  if(S.freeMode){
+  if(anyFree){
     let maxB=760;
-    canvas.querySelectorAll('.bld-el').forEach(d=>{maxB=Math.max(maxB,d.offsetTop+d.offsetHeight+80);});
+    canvas.querySelectorAll('.bld-el.free').forEach(d=>{maxB=Math.max(maxB,d.offsetTop+d.offsetHeight+80);});
     canvas.style.minHeight=maxB+'px';
     renderRulers();ensureFreeOverlay();
   }else{
@@ -1518,13 +1520,6 @@ ${['bg','text','muted','accent','accent2','border'].map(k=>`<div class="color-ro
     bindThemeEvents();
   }else if(S.leftTab==='effect'){
     el.innerHTML=`
-<div class="panel-title">배치 모드</div>
-<div class="preset-row">
-  <button class="preset-btn ${!S.freeMode?'on':''}" data-layout="grid">▦ 그리드 12칸</button>
-  <button class="preset-btn ${S.freeMode?'on':''}" data-layout="free">✥ 자유 배치</button>
-</div>
-<div style="font-size:9px;color:#666;padding:3px 0 2px;line-height:1.5">자유 배치: 드래그해 어디든 배치. 줄자(요소 폭·높이 구간 표시)·자석 스냅(정렬+동일 간격)·인접 간격 거리 측정 적용. <b style="color:#888">Alt</b>=스냅 일시해제, <b style="color:#888">방향키</b>=1px·<b style="color:#888">Shift+방향키</b>=10px 이동.</div>
-
 <div class="panel-title">배경 효과</div>
 <div class="style-grid">${Object.entries(BG_STYLES).map(([k,b])=>`<div class="style-sw ${S.bg===k?'on':''}" data-bg="${k}">${b.nm}</div>`).join('')}</div>
 
@@ -1586,12 +1581,6 @@ function bindThemeEvents(){
 }
 
 function bindEffectEvents(){
-  document.querySelectorAll('[data-layout]').forEach(b=>b.addEventListener('click',()=>{
-    const free=b.dataset.layout==='free';
-    if(free===!!S.freeMode)return;
-    if(free)ensureFreePositions();   // 그리드 위치를 캡처해 자유배치로 보존
-    S.freeMode=free;pushHist();renderLeft();renderAll();
-  }));
   document.querySelectorAll('[data-bg]').forEach(sw=>sw.addEventListener('click',()=>{
     S.bg=sw.dataset.bg;pushHist();renderLeft();renderAll();
   }));
@@ -1747,7 +1736,17 @@ ${it._objUrl?`<button class="btn btn-sm" id="vid-file-clear" style="width:100%;j
   }else if(S.rightTab==='style'){
     it.style=it.style||{};it.styleEx=it.styleEx||{};it.shadow=it.shadow||{};
     html+=`
-<div class="panel-title">레이아웃 <small>그리드 12칸</small></div>
+<div class="panel-title">배치 모드 <small>이 요소만</small></div>
+<div class="preset-row">
+  <button class="preset-btn ${it.layout!=='free'?'on':''}" data-elmode="grid">▦ 그리드 12칸</button>
+  <button class="preset-btn ${it.layout==='free'?'on':''}" data-elmode="free">✥ 자유 배치</button>
+</div>
+${it.layout==='free'?`
+<div class="row"><span class="lbl">X</span><input class="text-input" type="number" min="0" data-freepos="x" value="${(it.free&&it.free.x)||0}"></div>
+<div class="row"><span class="lbl">Y</span><input class="text-input" type="number" min="0" data-freepos="y" value="${(it.free&&it.free.y)||0}"></div>
+<div class="row"><span class="lbl">폭 px</span><input class="text-input" type="number" min="40" data-freepos="w" value="${(it.free&&it.free.w)||''}" placeholder="자동"></div>
+<div style="font-size:9px;color:#666;padding:3px 0 2px;line-height:1.5">이 요소만 캔버스 위 어디든 드래그 배치. 줄자·자석 스냅(정렬+동일 간격)·간격 측정 적용. <b style="color:#888">Alt</b>=스냅 일시해제, <b style="color:#888">방향키</b>=1px·<b style="color:#888">Shift+방향키</b>=10px. 그리드로 되돌려도 자유 배치 좌표는 보존됩니다.</div>
+`:`
 <div class="slider-row"><span class="slr-label">컬럼 폭</span><input type="range" min="1" max="12" value="${it.gw||12}" data-gw><span class="slider-val">${it.gw||12}/12</span></div>
 <div class="preset-row">
   <button class="preset-btn ${(it.gw||12)===12?'on':''}" data-gwp="12">전체</button>
@@ -1758,6 +1757,7 @@ ${it._objUrl?`<button class="btn btn-sm" id="vid-file-clear" style="width:100%;j
   <button class="preset-btn ${it.gw===9?'on':''}" data-gwp="9">3/4</button>
 </div>
 <div style="font-size:9px;color:#666;padding:3px 0 2px;line-height:1.5">캔버스에서 선택 요소의 좌·우 모서리 핸들을 드래그해도 폭이 조절됩니다. 위치(순서)는 요소를 드래그해 변경.</div>
+`}
 
 <div class="panel-title">색상</div>
 <div class="color-row"><span class="clr-label">배경색</span><input type="color" class="color-picker" data-sty="backgroundColor" value="${it.style.backgroundColor||S.colors.bg}"><input type="text" class="hex-input" style="width:62px" placeholder="#000" data-sty-hex="backgroundColor" value="${it.style.backgroundColor||''}"><button class="btn-sm btn" data-clr-clear="backgroundColor" title="초기화">×</button></div>
@@ -1873,6 +1873,22 @@ ${it.effects.glow?`<div class="color-row"><span class="clr-label">색상</span><
 }
 
 function bindRightEvents(it){
+  // 배치 모드 (요소별 그리드/자유 전환) — 그리드 복귀 시에도 el.free 좌표는 보존해 재전환 시 복원
+  document.querySelectorAll('[data-elmode]').forEach(b=>b.addEventListener('click',()=>{
+    const free=b.dataset.elmode==='free';
+    if(free===(it.layout==='free'))return;
+    if(free&&!it.free)captureFreePos(it);  // 첫 전환만 현재 렌더 위치 캡처
+    it.layout=free?'free':'grid';
+    pushHist();renderRight();renderCanvas();
+  }));
+  // 자유 배치 좌표 직접 입력 (X/Y/폭)
+  document.querySelectorAll('[data-freepos]').forEach(inp=>inp.addEventListener('change',e=>{
+    it.free=it.free||{x:24,y:24};
+    const k=e.target.dataset.freepos,v=parseInt(e.target.value);
+    if(k==='w'){if(isNaN(v)||v<40)delete it.free.w;else it.free.w=v;}
+    else it.free[k]=isNaN(v)?0:Math.max(0,v);
+    pushHist();renderCanvas();
+  }));
   // Layout (grid column width)
   const gwSl=document.querySelector('[data-gw]');
   if(gwSl){
@@ -2190,10 +2206,9 @@ function renderAll(){
 function addComp(type){
   const tpl=COMP_TPL[type];if(!tpl)return;
   const el=clone(tpl);el.id=newId();el.style={};el.effects={};
-  if(S.freeMode){const n=activePage().elements.length;el.free={x:30+(n%6)*24,y:30+(n%6)*24,w:480};}
   activePage().elements.push(el);S.selectedId=el.id;
   pushHist();renderAll();
-  if(!S.freeMode)setTimeout(()=>{const c=document.getElementById('canvas-wrap');c.scrollTop=c.scrollHeight;},50);
+  setTimeout(()=>{const c=document.getElementById('canvas-wrap');c.scrollTop=c.scrollHeight;},50);
 }
 
 function delEl(id){
@@ -2224,12 +2239,12 @@ function moveEl(id,dir){
 function buildExport(){
   const c=S.colors,f=FONTS[S.font];
   let body='';
-  // 자유 배치: 절대 위치 컨테이너 폭/높이 계산 (현재 캔버스 기준)
-  const freeMode=!!S.freeMode;
+  // 자유 배치 요소 혼합: 절대 위치 컨테이너 폭/높이 계산 (현재 캔버스 기준)
+  const anyFree=activePage().elements.some(e=>e&&e.layout==='free');
   let freeW=1200,freeMaxB=760;
-  if(freeMode){
+  if(anyFree){
     const cv=document.getElementById('canvas');if(cv)freeW=cv.clientWidth;
-    activePage().elements.forEach(el=>{if(el.free){const d=cv&&cv.querySelector('.bld-el[data-id="'+el.id+'"]');const hh=d?d.offsetHeight:300;freeMaxB=Math.max(freeMaxB,(el.free.y||0)+hh+40);}});
+    activePage().elements.forEach(el=>{if(el.layout==='free'&&el.free){const d=cv&&cv.querySelector('.bld-el[data-id="'+el.id+'"]');const hh=d?d.offsetHeight:300;freeMaxB=Math.max(freeMaxB,(el.free.y||0)+hh+40);}});
   }
   window._needsZip=false;
   window._zipVideos=[];
@@ -2271,10 +2286,10 @@ function buildExport(){
     if(el.bgImage){
       elHtml=`<div style="position:relative;overflow:hidden;isolation:isolate"><div style="${bgOverlayStyle(el)}"></div><div style="position:relative;z-index:1">${elHtml}</div></div>`;
     }
-    if(freeMode){
-      // 자유 배치: 절대 위치 래핑
+    if(el.layout==='free'){
+      // 자유 배치 요소: 절대 위치 래핑 (그리드 흐름 위 오버레이)
       const fr=el.free||{x:0,y:0};
-      elHtml=`<div style="position:absolute;left:${fr.x||0}px;top:${fr.y||0}px;${fr.w?'width:'+fr.w+'px;':''}">${elHtml}</div>`;
+      elHtml=`<div style="position:absolute;left:${fr.x||0}px;top:${fr.y||0}px;${fr.w?'width:'+fr.w+'px;':''}z-index:3">${elHtml}</div>`;
     }else{
       // 그리드 셀 래핑 (컬럼 폭). gw=12 는 전체 폭 → 기존 세로 스택과 동일.
       const gw=el.gw||12;
@@ -2329,7 +2344,8 @@ h1,h2,h3,h4{font-family:'${f.h}',serif;font-weight:400;letter-spacing:-.02em}
 <body>
 ${bgHtml}
 <div class="page">
-${freeMode?`<div style="position:relative;width:${freeW}px;max-width:100%;min-height:${freeMaxB}px;margin:0 auto">`:`<div class="grid">`}
+<div class="grid" style="position:relative${anyFree?`;width:${freeW}px;max-width:100%;min-height:${freeMaxB}px;margin:0 auto`:''}">
+
 ${body}
 </div>
 </div>
@@ -2427,17 +2443,12 @@ function setupGridResize(){
 
 // ========== 자유 배치 모드 (드래그 + 줄자 + 자석 스냅) ==========
 const SNAP_PX=7;
-// 그리드→자유 전환 시 현재 렌더된 위치를 el.free 로 캡처 (레이아웃 보존)
-function ensureFreePositions(){
+// 그리드→자유 전환 시 현재 렌더된 위치를 el.free 로 캡처 (레이아웃 보존, 요소 단위)
+function captureFreePos(el){
   const canvas=document.getElementById('canvas');
-  const cr=canvas.getBoundingClientRect();
-  activePage().elements.forEach(el=>{
-    if(!el.free){
-      const d=canvas.querySelector('.bld-el[data-id="'+el.id+'"]');
-      if(d){const r=d.getBoundingClientRect();el.free={x:Math.round(r.left-cr.left+canvas.scrollLeft),y:Math.round(r.top-cr.top+canvas.scrollTop),w:Math.round(r.width)};}
-      else el.free={x:24,y:24,w:420};
-    }
-  });
+  const d=canvas&&canvas.querySelector('.bld-el[data-id="'+el.id+'"]');
+  if(d)el.free={x:Math.max(0,d.offsetLeft),y:Math.max(0,d.offsetTop),w:Math.round(d.offsetWidth)};
+  else el.free={x:24,y:24,w:420};
 }
 function ensureFreeOverlay(){const canvas=document.getElementById('canvas');let o=document.getElementById('free-guides');if(!o){o=document.createElement('div');o.id='free-guides';canvas.appendChild(o);}return o;}
 function clearFreeOverlay(){const o=document.getElementById('free-guides');if(o)o.innerHTML='';}
@@ -2554,10 +2565,10 @@ function drawFreeOverlay(x,y,w,h,snap,others,CW){
 function setupFreeDrag(){
   const canvas=document.getElementById('canvas');
   canvas.addEventListener('mousedown',e=>{
-    if(!S.freeMode)return;
     if(e.target.closest('.el-ctrl')||e.target.closest('.rsz'))return;
     const div=e.target.closest('.bld-el');if(!div)return;
     const el=activePage().elements.find(x=>x.id===div.dataset.id);if(!el)return;
+    if(el.layout!=='free')return;   // 자유 배치 요소만 드래그 이동
     if(!el.free)el.free={x:div.offsetLeft,y:div.offsetTop,w:div.offsetWidth};
     e.preventDefault();
     S.selectedId=el.id;
@@ -2565,7 +2576,8 @@ function setupFreeDrag(){
     div.classList.add('selected');
     const startMx=e.clientX,startMy=e.clientY,ox=el.free.x,oy=el.free.y;
     const w=div.offsetWidth,h=div.offsetHeight,CW=canvas.clientWidth;
-    const others=activePage().elements.filter(x=>x.id!==el.id&&x.free).map(x=>{const d2=canvas.querySelector('.bld-el[data-id="'+x.id+'"]');return {x:x.free.x,y:x.free.y,w:d2?d2.offsetWidth:(x.free.w||0),h:d2?d2.offsetHeight:0};});
+    // 스냅/간격 기준: 그리드·자유 구분 없이 다른 모든 요소의 렌더 위치
+    const others=[...canvas.querySelectorAll('.bld-el')].filter(d2=>d2!==div).map(d2=>({x:d2.offsetLeft,y:d2.offsetTop,w:d2.offsetWidth,h:d2.offsetHeight}));
     function onMove(ev){
       let nx=ox+(ev.clientX-startMx),ny=oy+(ev.clientY-startMy);
       const snap=snapPosition(nx,ny,w,h,others,CW,ev.altKey);
@@ -2584,6 +2596,7 @@ let dragSrcId=null;
 function bindDragDrop(){
   const canvas=document.getElementById('canvas');
   canvas.querySelectorAll('.bld-el').forEach(div=>{
+    if(div.classList.contains('free'))return;  // 자유 배치 요소는 순서(그리드 흐름) 개념 없음
     div.addEventListener('dragstart',e=>{
       dragSrcId=div.dataset.id;
       div.classList.add('dragging');
@@ -2689,7 +2702,6 @@ function _mcInsertPlanImage(png,title,areaM2){
   if(!png){alert('이 도면에는 PNG 스냅샷이 없습니다. 미니캐드에서 다시 전송해주세요.');return;}
   const cap=(title||'평면도')+(areaM2?(' · '+areaM2+'㎡'):'')+' — ECOREAN MiniCAD';
   const el={id:newId(),type:'image',props:{src:png,alt:title||'MiniCAD 평면도',caption:cap,height:'420',align:'center',imgw:'100'},style:{},effects:{}};
-  if(S.freeMode){const n=activePage().elements.length;el.free={x:30+(n%6)*24,y:30+(n%6)*24,w:560};}
   activePage().elements.push(el);S.selectedId=el.id;
   pushHist();renderAll();
 }
@@ -2848,7 +2860,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
   function snapshot(){
     return {colors:S.colors,themeName:S.themeName,font:S.font,bg:S.bg,radius:S.radius,btnStyle:S.btnStyle,
       glassBlur:S.glassBlur,glassOpacity:S.glassOpacity,shadowDefault:S.shadowDefault,gridGap:S.gridGap,
-      cursor:S.cursor,cursorOpts:S.cursorOpts,freeMode:S.freeMode,pages:S.pages,activePage:S.activePage};
+      cursor:S.cursor,cursorOpts:S.cursorOpts,pages:S.pages,activePage:S.activePage};
   }
   function ready(){
     if(window.APP_CLOUD&&APP_CLOUD.ready())return true;
@@ -2988,9 +3000,10 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&S.selectedId){S.selectedId=null;renderAll();}
   if(noInput&&S.selectedId){
     const arrows=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
-    if(S.freeMode&&arrows.includes(e.key)){   // 자유배치: 방향키 1px / Shift 10px 미세 이동
+    const selEl=activePage().elements.find(x=>x.id===S.selectedId);
+    if(selEl&&selEl.layout==='free'&&arrows.includes(e.key)){   // 자유배치 요소: 방향키 1px / Shift 10px 미세 이동
       e.preventDefault();
-      const el=activePage().elements.find(x=>x.id===S.selectedId);if(!el)return;
+      const el=selEl;
       if(!el.free)el.free={x:0,y:0,w:480};
       const step=e.shiftKey?10:1;
       if(e.key==='ArrowUp')el.free.y=Math.max(0,(el.free.y||0)-step);
