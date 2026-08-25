@@ -133,6 +133,14 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     <h2 id="dtName">평면도</h2>
     <img class="dt-img" id="dtImg" alt="평면도">
     <div class="dt-meta" id="dtMeta"></div>
+    <!-- 파싱 미리보기 — MiniCAD 생성 구조를 JSON 에서 직접 렌더 (내부 검수용) -->
+    <div id="dtParseWrap" style="display:none;margin:0 0 14px">
+      <div style="font-size:11px;color:#8a713f;letter-spacing:.08em;margin-bottom:6px">
+        🔍 파싱 미리보기 (MiniCAD 생성 구조 · 내부 검수용 — 배포 금지)
+        <span style="color:#bbb;margin-left:8px">■ 벽 &nbsp;┈ 개방 경계 &nbsp;<span style="color:#c8862a">▮ 문</span> &nbsp;<span style="color:#4a7fb5">▮ 창</span></span>
+      </div>
+      <div id="dtParse" style="background:#fbfaf6;border:1px solid #eee;border-radius:8px;padding:8px;text-align:center"></div>
+    </div>
     <div class="dt-btns">
       <a class="primary" id="dtCad" target="_blank" rel="noopener">📐 MiniCAD로 열기 (공간 자동 생성)</a>
       <a class="ghost" id="dtBg" target="_blank" rel="noopener">🖼 밑그림으로만 열기</a>
@@ -311,6 +319,43 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       .then(function(){btn.disabled=false;btn.textContent='저장';});
   });
 
+  // ── 파싱 미리보기: MiniCAD JSON(공간·벽·개방경계·문·창)을 소형 SVG 로 렌더 (내부 검수용) ──
+  function renderParsePreview(d){
+    var xs=[],ys=[];
+    (d.spaces||[]).forEach(function(s){s.polygon.forEach(function(p){xs.push(p.x);ys.push(p.y);});});
+    if(!xs.length)return '';
+    var pad=400;
+    var minX=Math.min.apply(null,xs)-pad, maxX=Math.max.apply(null,xs)+pad;
+    var minY=Math.min.apply(null,ys)-pad, maxY=Math.max.apply(null,ys)+pad;
+    var W=maxX-minX, H=maxY-minY;
+    var FILLS={ROOM:'#fdfcf6',LIVING:'#fbf6ec',KITCHEN:'#e9f1f5',BATHROOM:'#e9f1f5',ENTRANCE:'#f3f0ea',CORRIDOR:'#f3f0ea',DRESSING:'#f6f1e8',PANTRY:'#f6f1e8',UTILITY:'#e9f1f5',BALCONY:'#f3f0e8'};
+    var b='<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+minX+' '+minY+' '+W+' '+H+'" style="max-width:100%;max-height:260px" font-family=\'Malgun Gothic,sans-serif\'>';
+    (d.spaces||[]).forEach(function(s){
+      var pts=s.polygon.map(function(p){return p.x+','+p.y;}).join(' ');
+      b+='<polygon points="'+pts+'" fill="'+(FILLS[s.type]||'#fdfcf6')+'" stroke="#e2dccc" stroke-width="20"/>';
+      (s.holes||[]).forEach(function(h){
+        b+='<polygon points="'+h.map(function(p){return p.x+','+p.y;}).join(' ')+'" fill="#fbfaf6" stroke="#e2dccc" stroke-width="20"/>';
+      });
+      var cx=0,cy=0;s.polygon.forEach(function(p){cx+=p.x;cy+=p.y;});cx/=s.polygon.length;cy/=s.polygon.length;
+      b+='<text x="'+cx+'" y="'+cy+'" font-size="300" text-anchor="middle" fill="#6b6355">'+esc(s.name)+'</text>';
+    });
+    (d.walls||[]).forEach(function(w){
+      b+='<line x1="'+w.x1+'" y1="'+w.y1+'" x2="'+w.x2+'" y2="'+w.y2+'" stroke="#2a251d" stroke-width="70" stroke-linecap="square"/>';
+    });
+    (d.openBoundaries||[]).forEach(function(o){
+      b+='<line x1="'+o.x1+'" y1="'+o.y1+'" x2="'+o.x2+'" y2="'+o.y2+'" stroke="#b9b19e" stroke-width="25" stroke-dasharray="140 110"/>';
+    });
+    (d.openings||[]).forEach(function(o){
+      var horiz=o.angle%180===0, half=o.width_mm/2;
+      var x1=horiz?o.x-half:o.x, y1=horiz?o.y:o.y-half;
+      var x2=horiz?o.x+half:o.x, y2=horiz?o.y:o.y+half;
+      var col=o.type==='DOOR'?'#c8862a':'#4a7fb5';
+      b+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#fbfaf6" stroke-width="90"/>';
+      b+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+col+'" stroke-width="55"/>';
+    });
+    return b+'</svg>';
+  }
+
   // ── 상세 ──
   function openDetail(r){
     state.current=r;
@@ -323,11 +368,21 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     var bgHref='/minicad/?bg='+encodeURIComponent(url)+'&bgname='+encodeURIComponent(r.complex_name+(r.area_type?' '+r.area_type:''));
     var planMatch=/^\/catalog\/plans\/img\/((?:std|cx)-[a-z0-9-]+)\.svg$/.exec(r.image_path||'');
     var cadBtn=document.getElementById('dtCad'), bgBtn=document.getElementById('dtBg');
+    var parseWrap=document.getElementById('dtParseWrap'), parseBox=document.getElementById('dtParse');
+    parseWrap.style.display='none';parseBox.innerHTML='';
     if(planMatch){
       cadBtn.style.display='';
       cadBtn.href='/minicad/?plan='+encodeURIComponent('/catalog/plans/data/'+planMatch[1]+'.json');
       bgBtn.textContent='🖼 밑그림으로만 열기';
       bgBtn.href=bgHref;
+      // 파싱 미리보기 (내부 검수용) — 도면 이미지와 파싱 구조를 눈으로 대조
+      fetch('/catalog/plans/data/'+planMatch[1]+'.json')
+        .then(function(res){return res.ok?res.json():null;})
+        .then(function(d){
+          if(!d||state.current!==r)return; // 다른 항목으로 이동했으면 무시
+          var svg=renderParsePreview(d);
+          if(svg){parseBox.innerHTML=svg;parseWrap.style.display='';}
+        }).catch(function(){});
     }else{
       cadBtn.style.display='none';
       bgBtn.textContent='📐 MiniCAD 밑그림으로 열기';
