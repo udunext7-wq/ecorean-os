@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="652" height="598.4" viewBox="0 0 652 598.4" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif">
+<defs><pattern id="hatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#f3f0e8"/><line x1="0" y1="0" x2="0" y2="8" stroke="#ddd6c6" stroke-width="2"/></pattern></defs>
+<rect width="652" height="598.4" fill="#faf9f6"/>
+<rect x="46" y="41.4" width="201.6" height="168" fill="#fdfcf6" stroke="#3a352c" stroke-width="2"/>
+<text x="146.8" y="122.4" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">안방</text>
+<text x="146.8" y="138.4" font-size="9.5" text-anchor="middle" fill="#9a917f">10.8㎡</text>
+<rect x="247.6" y="41.4" width="95.2" height="168" fill="#e9f1f5" stroke="#3a352c" stroke-width="2"/>
+<text x="295.2" y="122.4" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">부부욕실</text>
+<text x="295.2" y="138.4" font-size="9.5" text-anchor="middle" fill="#9a917f">5.1㎡</text>
+<rect x="342.8" y="41.4" width="263.2" height="168" fill="#e9f1f5" stroke="#3a352c" stroke-width="2"/>
+<text x="474.4" y="122.4" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">주방·식당</text>
+<text x="474.4" y="138.4" font-size="9.5" text-anchor="middle" fill="#9a917f">14.1㎡</text>
+<rect x="46" y="209.4" width="296.8" height="302.4" fill="#fbf6ec" stroke="#3a352c" stroke-width="2"/>
+<text x="194.4" y="357.6" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">거실</text>
+<text x="194.4" y="373.6" font-size="9.5" text-anchor="middle" fill="#9a917f">28.6㎡</text>
+<rect x="342.8" y="209.4" width="123.2" height="151.2" fill="#f3f0ea" stroke="#3a352c" stroke-width="2"/>
+<text x="404.40000000000003" y="282" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">현관·복도</text>
+<text x="404.40000000000003" y="298" font-size="9.5" text-anchor="middle" fill="#9a917f">5.9㎡</text>
+<rect x="466" y="209.4" width="140" height="151.2" fill="#e9f1f5" stroke="#3a352c" stroke-width="2"/>
+<text x="536" y="282" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">공용욕실</text>
+<text x="536" y="298" font-size="9.5" text-anchor="middle" fill="#9a917f">6.8㎡</text>
+<rect x="342.8" y="360.59999999999997" width="131.6" height="151.2" fill="#fdfcf6" stroke="#3a352c" stroke-width="2"/>
+<text x="408.6" y="433.19999999999993" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">침실2</text>
+<text x="408.6" y="449.19999999999993" font-size="9.5" text-anchor="middle" fill="#9a917f">6.3㎡</text>
+<rect x="474.4" y="360.59999999999997" width="131.6" height="151.2" fill="#fdfcf6" stroke="#3a352c" stroke-width="2"/>
+<text x="540.1999999999999" y="433.19999999999993" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">침실3</text>
+<text x="540.1999999999999" y="449.19999999999993" font-size="9.5" text-anchor="middle" fill="#9a917f">6.3㎡</text>
+<rect x="46" y="41.4" width="560" height="470.4" fill="none" stroke="#26221b" stroke-width="5"/>
+<g id="openings">
+<rect x="121.6" y="205.9" width="50.4" height="7" fill="#fdfcf6"/>
+<path d="M 121.6 209.4 L 121.6 159 A 50.4 50.4 0 0 1 172 209.4" fill="none" stroke="#3a352c" stroke-width="1.2"/>
+<rect x="339.3" y="100.2" width="7" height="50.4" fill="#fdfcf6"/>
+<path d="M 342.8 100.2 L 292.4 100.2 A 50.4 50.4 0 0 0 342.8 150.6" fill="none" stroke="#3a352c" stroke-width="1.2"/>
+<rect x="462.5" y="259.8" width="7" height="50.4" fill="#fdfcf6"/>
+<path d="M 466 259.8 L 516.4 259.8 A 50.4 50.4 0 0 1 466 310.2" fill="none" stroke="#3a352c" stroke-width="1.2"/>
+<rect x="339.3" y="411" width="7" height="50.4" fill="#fdfcf6"/>
+<path d="M 342.8 411 L 393.2 411 A 50.4 50.4 0 0 1 342.8 461.4" fill="none" stroke="#3a352c" stroke-width="1.2"/>
+<rect x="470.9" y="411" width="7" height="50.4" fill="#fdfcf6"/>
+<path d="M 474.4 411 L 524.8 411 A 50.4 50.4 0 0 1 474.4 461.4" fill="none" stroke="#3a352c" stroke-width="1.2"/>
+<rect x="96.4" y="37.9" width="100.8" height="7" fill="#fdfcf6"/>
+<line x1="96.4" y1="39.6" x2="197.2" y2="39.6" stroke="#3a352c" stroke-width="1"/>
+<line x1="96.4" y1="43.199999999999996" x2="197.2" y2="43.199999999999996" stroke="#3a352c" stroke-width="1"/>
+<line x1="96.4" y1="37.4" x2="96.4" y2="45.4" stroke="#3a352c" stroke-width="1.4"/>
+<line x1="197.2" y1="37.4" x2="197.2" y2="45.4" stroke="#3a352c" stroke-width="1.4"/>
+<rect x="424" y="37.9" width="100.8" height="7" fill="#fdfcf6"/>
+<line x1="424" y1="39.6" x2="524.8" y2="39.6" stroke="#3a352c" stroke-width="1"/>
+<line x1="424" y1="43.199999999999996" x2="524.8" y2="43.199999999999996" stroke="#3a352c" stroke-width="1"/>
+<line x1="424" y1="37.4" x2="424" y2="45.4" stroke="#3a352c" stroke-width="1.4"/>
+<line x1="524.8" y1="37.4" x2="524.8" y2="45.4" stroke="#3a352c" stroke-width="1.4"/>
+<rect x="42.5" y="259.8" width="7" height="201.6" fill="#fdfcf6"/>
+<line x1="44.2" y1="259.8" x2="44.2" y2="461.4" stroke="#3a352c" stroke-width="1"/>
+<line x1="47.8" y1="259.8" x2="47.8" y2="461.4" stroke="#3a352c" stroke-width="1"/>
+<line x1="42" y1="259.8" x2="50" y2="259.8" stroke="#3a352c" stroke-width="1.4"/>
+<line x1="42" y1="461.4" x2="50" y2="461.4" stroke="#3a352c" stroke-width="1.4"/>
+<rect x="358.2" y="508.3" width="100.8" height="7" fill="#fdfcf6"/>
+<line x1="358.2" y1="510" x2="459" y2="510" stroke="#3a352c" stroke-width="1"/>
+<line x1="358.2" y1="513.6" x2="459" y2="513.6" stroke="#3a352c" stroke-width="1"/>
+<line x1="358.2" y1="507.8" x2="358.2" y2="515.8" stroke="#3a352c" stroke-width="1.4"/>
+<line x1="459" y1="507.8" x2="459" y2="515.8" stroke="#3a352c" stroke-width="1.4"/>
+<rect x="602.5" y="385.8" width="7" height="100.8" fill="#fdfcf6"/>
+<line x1="604.2" y1="385.8" x2="604.2" y2="486.6" stroke="#3a352c" stroke-width="1"/>
+<line x1="607.8" y1="385.8" x2="607.8" y2="486.6" stroke="#3a352c" stroke-width="1"/>
+<line x1="602" y1="385.8" x2="610" y2="385.8" stroke="#3a352c" stroke-width="1.4"/>
+<line x1="602" y1="486.6" x2="610" y2="486.6" stroke="#3a352c" stroke-width="1.4"/>
+</g>
+<line x1="46" y1="25.4" x2="606" y2="25.4" stroke="#B8965A" stroke-width="1"/>
+<line x1="46" y1="20.4" x2="46" y2="30.4" stroke="#B8965A" stroke-width="1"/>
+<line x1="606" y1="20.4" x2="606" y2="30.4" stroke="#B8965A" stroke-width="1"/>
+<text x="326" y="19.4" font-size="11" text-anchor="middle" fill="#8a713f">10m</text>
+<line x1="30" y1="41.4" x2="30" y2="511.79999999999995" stroke="#B8965A" stroke-width="1"/>
+<line x1="25" y1="41.4" x2="35" y2="41.4" stroke="#B8965A" stroke-width="1"/>
+<line x1="25" y1="511.79999999999995" x2="35" y2="511.79999999999995" stroke="#B8965A" stroke-width="1"/>
+<text x="24" y="276.59999999999997" font-size="11" text-anchor="middle" fill="#8a713f" transform="rotate(-90 24 276.59999999999997)">8.4m</text>
+<line x1="46" y1="544.4" x2="606" y2="544.4" stroke="#d9d2c2" stroke-width="1"/>
+<text x="46" y="562.4" font-size="15" font-weight="800" fill="#26221b">송도더샵퍼스트파크 84 (개략 재작도)</text>
+<text x="46" y="581.4" font-size="11.5" fill="#7a7263">전용 84㎡급 · 방 3 · 욕실 2 — 실단지 개략 재작도 (실측 아님·참고용)</text>
+<text x="606" y="562.4" font-size="11" text-anchor="end" fill="#B8965A" font-weight="800" letter-spacing="2">ECOREAN</text>
+</svg>

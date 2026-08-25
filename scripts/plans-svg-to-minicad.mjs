@@ -162,7 +162,7 @@ function exteriorSegs(r, W, H) {
 }
 
 let totalPlans = 0, totalSpaces = 0, totalOpenings = 0;
-for (const file of readdirSync(IMG).filter(f => /^std-.*\.svg$/.test(f))) {
+for (const file of readdirSync(IMG).filter(f => /^(std|cx)-.*.svg$/.test(f))) {
   const svg = readFileSync(join(IMG, file), 'utf8');
   const slug = basename(file, '.svg');
 

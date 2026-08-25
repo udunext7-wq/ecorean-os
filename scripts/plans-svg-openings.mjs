@@ -12,7 +12,7 @@ const PADL = 46, PADT = 41.4;
 const GAP = '#fdfcf6', LINE = '#3a352c';
 
 let done = 0;
-for (const file of readdirSync(IMG).filter(f => /^std-.*\.svg$/.test(f))) {
+for (const file of readdirSync(IMG).filter(f => /^(std|cx)-.*.svg$/.test(f))) {
   const slug = basename(file, '.svg');
   let json;
   try { json = JSON.parse(readFileSync(join(DATA, `${slug}.json`), 'utf8')); }

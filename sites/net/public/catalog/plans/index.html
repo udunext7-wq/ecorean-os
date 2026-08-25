@@ -73,12 +73,17 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     <option value="1">1개</option><option value="2">2개</option><option value="3">3개</option>
     <option value="4">4개</option><option value="5">5개 이상</option>
   </select>
+  <button id="mapBtn" type="button" class="ghost">🗺 지도</button>
   <button id="addBtn" type="button">+ 평면도 등록</button>
   <a class="btn ghost" href="/hub">허브</a>
 </div>
 
 <div class="count" id="count"></div>
 <div class="wrap"><div class="grid" id="grid"><div class="empty">불러오는 중…</div></div></div>
+<div class="wrap" id="mapWrap" style="display:none">
+  <div id="map" style="height:72vh;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);background:#e8e6e0"></div>
+  <p style="font-size:11.5px;color:#999;margin-top:8px">※ 마커 위치는 개략 좌표입니다. 마커를 클릭하면 평면도 상세가 열립니다. 검색·지역 필터가 지도에도 적용됩니다.</p>
+</div>
 
 <!-- 등록 모달 -->
 <div class="overlay" id="upModal">
@@ -169,7 +174,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   function load(){
     var f=[];
     var q=document.getElementById('q').value.trim();
-    if(q){var enc=q.replace(/[%_,()]/g,'');f.push('or=(complex_name.ilike.*'+encodeURIComponent(enc)+'*,address.ilike.*'+encodeURIComponent(enc)+'*)');}
+    if(q){var enc=encodeURIComponent(q.replace(/[%_,()]/g,''));f.push('or=(complex_name.ilike.*'+enc+'*,address.ilike.*'+enc+'*,region_gugun.ilike.*'+enc+'*,region_sido.ilike.*'+enc+'*)');}
     var sido=document.getElementById('sido').value;
     if(sido)f.push('region_sido=eq.'+encodeURIComponent(sido));
     var at=document.getElementById('areaType').value.trim();
@@ -200,11 +205,60 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     g.querySelectorAll('.card').forEach(function(c){
       c.addEventListener('click',function(){openDetail(state.rows[Number(c.dataset.i)]);});
     });
+    renderMap(); // 지도가 열려 있으면 필터 결과를 마커에도 반영
   }
   ['q','areaType'].forEach(function(id){
     var t;document.getElementById(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(load,350);});
   });
   ['sido','rooms'].forEach(function(id){document.getElementById(id).addEventListener('change',load);});
+
+  // ── 🗺 지도 뷰 (Leaflet + OpenStreetMap — 키 불필요) ──
+  var map=null, markerLayer=null, mapOn=false;
+  function ensureLeaflet(){
+    if(window.L)return Promise.resolve();
+    return new Promise(function(res,rej){
+      var css=document.createElement('link');css.rel='stylesheet';
+      css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(css);
+      var s=document.createElement('script');
+      s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      s.onload=res;s.onerror=function(){rej(new Error('지도 라이브러리 로드 실패'));};
+      document.head.appendChild(s);
+    });
+  }
+  function renderMap(){
+    if(!mapOn||!window.L)return;
+    if(!map){
+      map=L.map('map').setView([36.5,127.8],7); // 전국 뷰
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+      markerLayer=L.layerGroup().addTo(map);
+    }
+    markerLayer.clearLayers();
+    var pts=[];
+    state.rows.forEach(function(r){
+      if(r.lat==null||r.lng==null)return;
+      var m=L.marker([r.lat,r.lng]).addTo(markerLayer);
+      m.bindPopup('<b>'+esc(r.complex_name)+'</b> '+esc(r.area_type||'')+'<br>'+
+        esc([r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' '))+'<br>'+
+        '<a href="#" class="mk-open" style="font-weight:700;color:#8a713f">평면도 보기 →</a>');
+      m.on('popupopen',function(e){
+        var a=e.popup.getElement().querySelector('.mk-open');
+        if(a)a.addEventListener('click',function(ev){ev.preventDefault();openDetail(r);});
+      });
+      pts.push([r.lat,r.lng]);
+    });
+    if(pts.length)map.fitBounds(pts,{padding:[36,36],maxZoom:14});
+  }
+  document.getElementById('mapBtn').addEventListener('click',function(){
+    var btn=this;
+    mapOn=!mapOn;
+    document.getElementById('mapWrap').style.display=mapOn?'':'none';
+    document.querySelector('.wrap:not(#mapWrap)').style.display=mapOn?'none':'';
+    btn.textContent=mapOn?'📋 목록':'🗺 지도';
+    if(mapOn)ensureLeaflet().then(function(){
+      renderMap();setTimeout(function(){map.invalidateSize();},50);
+    }).catch(function(e){alert(e.message);});
+  });
 
   // ── 모달 공통 ──
   document.querySelectorAll('[data-close]').forEach(function(b){
@@ -263,7 +317,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     // 표준 평면도(/catalog/plans/img/std-*.svg)는 MiniCAD 공간·벽 데이터(JSON)가 함께 있음
     //  → 기본 버튼은 실제 공간 생성(?plan=), 사진·스캔 도면은 밑그림(?bg=)만 가능
     var bgHref='/minicad/?bg='+encodeURIComponent(url)+'&bgname='+encodeURIComponent(r.complex_name+(r.area_type?' '+r.area_type:''));
-    var planMatch=/^\/catalog\/plans\/img\/(std-[a-z0-9]+)\.svg$/.exec(r.image_path||'');
+    var planMatch=/^\/catalog\/plans\/img\/((?:std|cx)-[a-z0-9-]+)\.svg$/.exec(r.image_path||'');
     var cadBtn=document.getElementById('dtCad'), bgBtn=document.getElementById('dtBg');
     if(planMatch){
       cadBtn.style.display='';
