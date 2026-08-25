@@ -421,7 +421,8 @@
   height: 520px;
   margin-top: 15vh; /* 창 전체를 화면비 15% 아래로 (대표 지시 2026-08-25) */
   transform-style: preserve-3d;
-  transform: rotateX(var(--pry)) rotateY(var(--prx));
+  /* 기본 8° 내려다보는 시점 — 모든 유리 박스의 상판이 상시 보인다 (박스 부피감) */
+  transform: rotateX(calc(var(--pry, 0deg) + 8deg)) rotateY(var(--prx, 0deg));
   transition: transform 0.3s ease-out;
 }
 .hubf-cardw {
@@ -547,6 +548,38 @@
   transform: rotateY(-90deg);
   background: linear-gradient(90deg, rgba(120, 210, 225, 0.22), rgba(220, 252, 255, 0.6) 50%, rgba(120, 210, 225, 0.22));
 }
+/* 앞판 둘레 유리 엣지 밴드 — 정면에서도 두께가 읽히는 굴절 링 (위 밝음 → 아래 어두움) */
+.hubf-glassrim {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  padding: 10px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(238, 252, 255, 0.5) 0%,
+    rgba(170, 225, 238, 0.2) 22%,
+    rgba(120, 190, 210, 0.1) 55%,
+    rgba(35, 80, 100, 0.42) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+/* 엣지 링 안쪽 경계 — 앞판 유리면과 단면의 접합선 (마스크 밖 별도 요소) */
+.hubf-glassrim-line {
+  position: absolute;
+  inset: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 246, 252, 0.22);
+  pointer-events: none;
+}
+
 /* 호버 팝 시 슬래브도 앞판과 함께 이동 */
 .hubf-cardw.is-front:hover .hubf-slab {
   transform: translateZ(46px) translateY(-8px);

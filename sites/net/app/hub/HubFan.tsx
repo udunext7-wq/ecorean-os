@@ -453,6 +453,12 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
                   </div>
                 ) : null}
                 <div className={`hubf-card ${slot.kind === 'ghost' ? 'is-ghost' : ''}`}>
+                  {slot.kind !== 'ghost' ? (
+                    <>
+                      <span className="hubf-glassrim" aria-hidden />
+                      <span className="hubf-glassrim-line" aria-hidden />
+                    </>
+                  ) : null}
                   <span className="hubc-tick hubc-tick-tl" aria-hidden />
                   <span className="hubc-tick hubc-tick-tr" aria-hidden />
                   <span className="hubc-tick hubc-tick-bl" aria-hidden />
