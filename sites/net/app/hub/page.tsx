@@ -53,6 +53,7 @@ const SECTIONS: HubSection[] = [
     desc: '이미지 자산 · 프롬프트',
     items: [
       { href: '/studio/moodboards', name: '무드보드 갤러리', desc: '현장·컨셉별 레퍼런스 보드' },
+      { href: '/studio/prompt-guide.html', name: '프롬프트 가이드', desc: '인테리어 AI 프롬프트 완성본' },
     ],
   },
   {
