@@ -316,7 +316,9 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     const d = dragging.current;
     if (!d) return;
     const dx = e.clientX - d.x;
-    if (!d.moved && Math.abs(dx) > 6) {
+    // 클릭 의도 보호: 15px 이상 움직여야 드래그로 전환 (데스크톱 클릭 시 미세 이동으로
+    // 카드 클릭이 무시되던 문제 — 대표 보고 2026-08-25)
+    if (!d.moved && Math.abs(dx) > 15) {
       d.moved = true;
       try {
         (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
