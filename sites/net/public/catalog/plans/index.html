@@ -158,7 +158,11 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       if(!r.ok) return r.text().then(function(t){throw new Error(r.status+' '+t.slice(0,140));});
       return r.text().then(function(t){return t?JSON.parse(t):null;});});
   }
-  function imgUrl(row){return PUB+row.image_path.split('/').map(encodeURIComponent).join('/');}
+  function imgUrl(row){
+    if(/^(https?:)?\//.test(row.image_path))return row.image_path; /* 사이트 정적 파일·절대 URL (표준 평면도) */
+    return PUB+row.image_path.split('/').map(encodeURIComponent).join('/');
+  }
+  function isLocal(row){return /^(https?:)?\//.test(row.image_path);}
 
   // ── 검색·목록 ──
   function load(){
@@ -274,7 +278,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     if(!r)return;
     if(!confirm('「'+r.complex_name+'」 평면도를 삭제할까요? 되돌릴 수 없습니다.'))return;
     api('/floor_plans?id=eq.'+r.id,{method:'DELETE'})
-      .then(function(){return fetch(STORE+'/object/floor-plans/'+r.image_path,{method:'DELETE',headers:hdr()});})
+      .then(function(){if(!isLocal(r))return fetch(STORE+'/object/floor-plans/'+r.image_path,{method:'DELETE',headers:hdr()});})
       .then(function(){document.getElementById('dtModal').classList.remove('open');return load();})
       .catch(function(e){alert('삭제 실패: '+e.message);});
   });

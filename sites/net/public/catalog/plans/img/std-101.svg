@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 797.6 643.6" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif">
+<defs><pattern id="hatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#f3f0e8"/><line x1="0" y1="0" x2="0" y2="8" stroke="#ddd6c6" stroke-width="2"/></pattern></defs>
+<rect width="797.6" height="643.6" fill="#faf9f6"/>
+<rect x="46" y="41.4" width="168" height="235.20000000000002" fill="#fdfcf6" stroke="#3a352c" stroke-width="2"/>
+<text x="130" y="156" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">침실3</text>
+<text x="130" y="172" font-size="9.5" text-anchor="middle" fill="#9a917f">12.6㎡</text>
+<rect x="214" y="41.4" width="151.20000000000002" height="235.20000000000002" fill="#fdfcf6" stroke="#3a352c" stroke-width="2"/>
+<text x="289.6" y="156" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">침실4</text>
+<text x="289.6" y="172" font-size="9.5" text-anchor="middle" fill="#9a917f">11.3㎡</text>
+<rect x="365.2" y="41.4" width="168" height="235.20000000000002" fill="#e9f1f5" stroke="#3a352c" stroke-width="2"/>
+<text x="449.2" y="156" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">주방·식당</text>
+<text x="449.2" y="172" font-size="9.5" text-anchor="middle" fill="#9a917f">12.6㎡</text>
+<rect x="533.1999999999999" y="41.4" width="67.2" height="235.20000000000002" fill="#f3f0ea" stroke="#3a352c" stroke-width="2"/>
+<text x="566.8" y="156" font-size="10.5" text-anchor="middle" fill="#3a352c" font-weight="700">현관·복도</text>
+<text x="566.8" y="172" font-size="9.5" text-anchor="middle" fill="#9a917f">5.0㎡</text>
+<rect x="600.4" y="41.4" width="75.60000000000001" height="117.60000000000001" fill="#e9f1f5" stroke="#3a352c" stroke-width="2"/>
+<text x="638.1999999999999" y="104.2" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">공용욕실</text>
+<rect x="600.4" y="159" width="75.60000000000001" height="117.60000000000001" fill="#e9f1f5" stroke="#3a352c" stroke-width="2"/>
+<text x="638.1999999999999" y="221.8" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">부부욕실</text>
+<rect x="676" y="41.4" width="75.60000000000001" height="235.20000000000002" fill="#f6f1e8" stroke="#3a352c" stroke-width="2"/>
+<text x="713.8" y="156" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">드레스룸</text>
+<text x="713.8" y="172" font-size="9.5" text-anchor="middle" fill="#9a917f">5.7㎡</text>
+<rect x="46" y="276.6" width="168" height="212.79999999999998" fill="#fdfcf6" stroke="#3a352c" stroke-width="2"/>
+<text x="130" y="380" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">침실2</text>
+<text x="130" y="396" font-size="9.5" text-anchor="middle" fill="#9a917f">11.4㎡</text>
+<rect x="214" y="276.6" width="302.40000000000003" height="212.79999999999998" fill="#fbf6ec" stroke="#3a352c" stroke-width="2"/>
+<text x="365.20000000000005" y="380" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">거실</text>
+<text x="365.20000000000005" y="396" font-size="9.5" text-anchor="middle" fill="#9a917f">20.5㎡</text>
+<rect x="516.4000000000001" y="276.6" width="235.20000000000002" height="212.79999999999998" fill="#fdfcf6" stroke="#3a352c" stroke-width="2"/>
+<text x="634.0000000000001" y="380" font-size="13" text-anchor="middle" fill="#3a352c" font-weight="700">안방</text>
+<text x="634.0000000000001" y="396" font-size="9.5" text-anchor="middle" fill="#9a917f">16.0㎡</text>
+<rect x="46" y="489.4" width="705.6" height="67.2" fill="url(#hatch)" stroke="#3a352c" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="398.8" y="527" font-size="11" text-anchor="middle" fill="#8a8272" font-weight="700">발코니 (확장 가능)</text>
+<rect x="46" y="41.4" width="705.6" height="448" fill="none" stroke="#26221b" stroke-width="5"/>
+<line x1="46" y1="25.4" x2="751.6" y2="25.4" stroke="#B8965A" stroke-width="1"/>
+<line x1="46" y1="20.4" x2="46" y2="30.4" stroke="#B8965A" stroke-width="1"/>
+<line x1="751.6" y1="20.4" x2="751.6" y2="30.4" stroke="#B8965A" stroke-width="1"/>
+<text x="398.8" y="19.4" font-size="11" text-anchor="middle" fill="#8a713f">12.6m</text>
+<line x1="30" y1="41.4" x2="30" y2="489.4" stroke="#B8965A" stroke-width="1"/>
+<line x1="25" y1="41.4" x2="35" y2="41.4" stroke="#B8965A" stroke-width="1"/>
+<line x1="25" y1="489.4" x2="35" y2="489.4" stroke="#B8965A" stroke-width="1"/>
+<text x="24" y="265.4" font-size="11" text-anchor="middle" fill="#8a713f" transform="rotate(-90 24 265.4)">8.0m</text>
+<line x1="46" y1="589.6" x2="751.6" y2="589.6" stroke="#d9d2c2" stroke-width="1"/>
+<text x="46" y="607.6" font-size="15" font-weight="800" fill="#26221b">표준 101㎡ (방4 판상형)</text>
+<text x="46" y="626.6" font-size="11.5" fill="#7a7263">전용 100.8㎡ · 방 4 · 욕실 2 — ECOREAN 자체 작성 표준 도면 (실측 아님·밑그림용)</text>
+<text x="751.6" y="607.6" font-size="11" text-anchor="end" fill="#B8965A" font-weight="800" letter-spacing="2">ECOREAN</text>
+</svg>
