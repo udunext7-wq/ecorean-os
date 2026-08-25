@@ -423,7 +423,11 @@
   transform-style: preserve-3d;
   transform: rotateX(var(--pry)) rotateY(var(--prx));
   transition: transform 0.3s ease-out;
+  /* 컨테이너 평면(z=0)이 뒤(z<0)에 선 카드들의 클릭을 가로채던 버그 —
+     컨테이너는 투과시키고 카드만 히트 (2026-08-25 대표 보고) */
+  pointer-events: none;
 }
+.hubf-cardw { pointer-events: auto; }
 .hubf-cardw {
   position: absolute;
   left: 50%;
