@@ -157,66 +157,76 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     h.stop(t0 + opts.dur);
   }
 
-  // 모듈 줄 호버 — 실제 심장박동 샘플 (대표 지시 2026-08-25, MA_Beison Heartbeats Single)
-  const lastBlip = useRef(0);
-  const heartBuf = useRef<AudioBuffer | null>(null);
-  const heartLoading = useRef(false);
+  // 효과음 샘플 캐시 — 호버(심장박동)·클릭(모던 클릭) 실제 샘플 (대표 지시 2026-08-25)
+  const HEART_SFX = '/audio/sfx-heartbeat.mp3';
+  const CLICK_SFX = '/audio/sfx-click.wav';
+  const sfxBufs = useRef<Record<string, AudioBuffer | undefined>>({});
+  const sfxLoading = useRef<Record<string, boolean>>({});
 
-  function loadHeart(ctx: AudioContext) {
-    if (heartBuf.current || heartLoading.current) return;
-    heartLoading.current = true;
-    fetch('/audio/sfx-heartbeat.mp3')
+  function loadSfx(ctx: AudioContext, url: string) {
+    if (sfxBufs.current[url] || sfxLoading.current[url]) return;
+    sfxLoading.current[url] = true;
+    fetch(url)
       .then((r) => r.arrayBuffer())
       .then((ab) => ctx.decodeAudioData(ab))
       .then((buf) => {
-        heartBuf.current = buf;
+        sfxBufs.current[url] = buf;
       })
       .catch(() => {
-        heartLoading.current = false; // 실패 시 재시도 허용
+        sfxLoading.current[url] = false; // 실패 시 재시도 허용
       });
   }
 
   // 진입 시 미리 디코드 (AudioContext 는 제스처 전엔 suspended 로 생성돼도 디코드는 가능)
   useEffect(() => {
     const ctx = ensureCtx();
-    if (ctx) loadHeart(ctx);
+    if (ctx) {
+      loadSfx(ctx, HEART_SFX);
+      loadSfx(ctx, CLICK_SFX);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function playBlip() {
-    const now = performance.now();
-    if (now - lastBlip.current < 280) return; // 심장박동 길이만큼 연타 방지
-    lastBlip.current = now;
+  // 샘플 재생 — 아직 로드 전이면 false (호출부가 합성음 폴백)
+  function playSample(url: string, gain: number): boolean {
     const ctx = ensureCtx();
-    if (!ctx) return;
+    if (!ctx) return false;
+    const buf = sfxBufs.current[url];
+    if (!buf) {
+      loadSfx(ctx, url);
+      return false;
+    }
     try {
-      const buf = heartBuf.current;
-      if (buf) {
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        const g = ctx.createGain();
-        g.gain.value = 0.5;
-        src.connect(g);
-        g.connect(ctx.destination);
-        src.start();
-      } else {
-        loadHeart(ctx);
-        // 로드 전 임시 폴백 — 합성 저음 둥
-        playThud(ctx, { f0: 210, f1: 140, dur: 0.22, gain: 0.05, harm: 0.25 });
-      }
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const g = ctx.createGain();
+      g.gain.value = gain;
+      src.connect(g);
+      g.connect(ctx.destination);
+      src.start();
+      return true;
     } catch {
-      /* no-op */
+      return false;
     }
   }
 
-  // 모듈 클릭 — 깊고 여운 있는 "둥—" 후 이동
+  // 모듈 줄 호버 — 심장박동
+  const lastBlip = useRef(0);
+  function playBlip() {
+    const now = performance.now();
+    if (now - lastBlip.current < 280) return; // 연타 방지
+    lastBlip.current = now;
+    if (!playSample(HEART_SFX, 0.5)) {
+      const ctx = ensureCtx();
+      if (ctx) playThud(ctx, { f0: 210, f1: 140, dur: 0.22, gain: 0.05, harm: 0.25 });
+    }
+  }
+
+  // 모듈 클릭 — 모던 클릭 샘플 (MA_BANT Modern Clicks And Beeps 3)
   function playSelect() {
-    const ctx = ensureCtx();
-    if (!ctx) return;
-    try {
-      playThud(ctx, { f0: 160, f1: 82, dur: 0.5, gain: 0.13, harm: 0.2 });
-    } catch {
-      /* no-op */
+    if (!playSample(CLICK_SFX, 0.55)) {
+      const ctx = ensureCtx();
+      if (ctx) playThud(ctx, { f0: 160, f1: 82, dur: 0.5, gain: 0.13, harm: 0.2 });
     }
   }
 
