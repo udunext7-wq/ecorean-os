@@ -2651,10 +2651,20 @@ function sendToEstimateOS(silent){
   // 도면 스냅샷 PNG — 헌법: export 시 2.5D 강제 OFF (견적서 첨부용)
   let png=null;
   try{
+    // 2026-08-25: 아티팩트 생성기·견적서 첨부용 — 라이트(도면) 테마로 캡처 후 원복 (printPlan과 동일 패턴)
     const wasPlus2D=STATE.plus2D;
-    if(wasPlus2D){STATE.plus2D=false;renderAll();}
+    const wasTheme=document.body.getAttribute('data-theme');
+    const isAlreadyLight=wasTheme==='architect';
+    if(wasPlus2D){STATE.plus2D=false;}
+    if(!isAlreadyLight) document.body.setAttribute('data-theme','architect');
+    renderAll();
     png=stage.toDataURL({pixelRatio:1.5,mimeType:'image/png'});
-    if(wasPlus2D){STATE.plus2D=true;renderAll();}
+    if(wasPlus2D){STATE.plus2D=true;}
+    if(!isAlreadyLight){
+      if(wasTheme) document.body.setAttribute('data-theme',wasTheme);
+      else document.body.removeAttribute('data-theme');
+    }
+    renderAll();
   }catch(e){console.warn('[브리지] PNG 캡처 실패 — 도면 없이 전송',e);}
   const payload={sentAt:new Date().toISOString(),from:'MiniCAD v5.9',plan:j,png};
   try{

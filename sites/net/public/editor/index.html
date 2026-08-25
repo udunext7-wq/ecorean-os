@@ -545,7 +545,7 @@ const COMP_GROUPS={
   '★ 인테리어 포트폴리오':[['pf-template','✦ 원클릭 템플릿','wand'],['pf-cover','프로젝트 커버','home-star'],['pf-before-after','비포·애프터','arrows-left-right'],['pf-gallery','갤러리','photo'],['pf-specs','시공 개요','clipboard-list'],['pf-materials','자재 보드','color-swatch'],['pf-process','시공 과정','timeline-event'],['pf-zones','공간별 포인트','layout-grid'],['pf-review','고객 후기','star'],['pf-contact','견적 문의','phone']],
   '레이아웃':[['nav','네비','menu-2'],['footer','푸터','layout-bottombar'],['divider','구분선','minus'],['spacer','여백','arrows-vertical'],['two-col','2단','columns-2'],['three-col','3단','columns-3'],['hero-split','히어로2','layout-distribute-horizontal']],
   '텍스트':[['h1','H1','h-1'],['h2','H2','h-2'],['h3','H3','h-3'],['p','본문','paragraph'],['overline','오버라인','text-size'],['quote','인용구','quote']],
-  '미디어':[['image','이미지','photo'],['video','비디오','video']],
+  '미디어':[['image','이미지','photo'],['video','비디오','video'],['minicad-plan','미니캐드 평면도','ruler-measure']],
   '입력/폼':[['button','버튼','square-rounded'],['button-group','버튼 그룹','layout-distribute-horizontal'],['input','인풋','input-search'],['form-contact','문의폼','mail']],
   '조합형':[['hero','히어로','layout-board'],['cta','CTA','arrow-up-right'],['card','카드','square-rounded-letter-c'],['stat','통계','chart-bar'],['card-row','카드4열','layout-grid'],['stat-row','통계4열','layout-columns'],['login','로그인','login'],['testimonial','후기','message-circle'],['faq','FAQ','help'],['pricing','가격표','currency-dollar'],['timeline','타임라인','timeline'],['feature','피처','star'],['features-grid','피처6','grid-4x4'],['stats-banner','배너','award'],['section-dark','다크','moon'],['accordion','아코디언','list'],['notification','알림','bell'],['badge','배지','tag'],['countdown','카운트','clock'],['member-card','멤버카드','user-circle'],['social-links','소셜링크','share'],['step-indicator','진행단계','steps'],['marquee','흐르는글','marquee'],['rating','별점','star'],['tag-group','태그묶음','tags'],['icon','아이콘','sparkles'],['divider-fancy','구분선+','separator'],['code-block','코드블록','code'],['map-embed','지도','map']],
   '대시보드':[['kpi','KPI','target'],['chart-bar','막대','chart-bar'],['chart-donut','도넛','chart-pie'],['chart-line','라인','chart-line'],['progress','진행률','progress'],['gauge','게이지','gauge'],['activity','활동','activity'],['table','테이블','table']]
@@ -1494,6 +1494,7 @@ function renderLeft(){
 <div class="comp-grid">${items.map(([k,nm,ic])=>`<div class="comp-item" data-comp="${k}"><i class="ti ti-${ic}"></i>${nm}</div>`).join('')}</div>`).join('');
     el.querySelectorAll('.comp-item').forEach(it=>it.addEventListener('click',()=>{
       if(it.dataset.comp==='image'){const ip=setupImageUpload();ip.click();}
+      else if(it.dataset.comp==='minicad-plan'){insertMiniCadPlan();} // 2026-08-25: 미니캐드 평면도 삽입
       else if(it.dataset.comp==='pf-template'){ // 2026-08-23: 포트폴리오 한 페이지 원클릭 구성
         ['pf-cover','pf-specs','pf-before-after','pf-gallery','pf-zones','pf-materials','pf-process','pf-review','pf-contact'].forEach(k=>{
           const tpl=COMP_TPL[k];if(!tpl)return;
@@ -2676,6 +2677,81 @@ function setupImageUpload(){
     inp.value='';
   };
   return inp;
+}
+
+// ========== 2026-08-25: 미니캐드 평면도 삽입 (대표 지시 — MiniCAD 호환 1차) ==========
+// 경로 1: 같은 기기 로컬 브리지(ecorean_bridge_plan_v1 — 미니캐드 '견적OS 전송' 시 기록)
+// 경로 2: Supabase 클라우드(minicad_bridge_plans — 기기 간 공유, 미니캐드와 동일 테이블)
+const MC_BRIDGE_KEY='ecorean_bridge_plan_v1';
+const MC_SUPA_URL='https://gdcfqbdgubgpzusbtftf.supabase.co';
+const MC_SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkY2ZxYmRndWJncHp1c2J0ZnRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzODYzNjUsImV4cCI6MjA5Nzk2MjM2NX0.-AnRCk6rYwYCgQk-N82zmeBjpeuAnupHLtVZy6OUHrI';
+function _mcInsertPlanImage(png,title,areaM2){
+  if(!png){alert('이 도면에는 PNG 스냅샷이 없습니다. 미니캐드에서 다시 전송해주세요.');return;}
+  const cap=(title||'평면도')+(areaM2?(' · '+areaM2+'㎡'):'')+' — ECOREAN MiniCAD';
+  const el={id:newId(),type:'image',props:{src:png,alt:title||'MiniCAD 평면도',caption:cap,height:'420',align:'center',imgw:'100'},style:{},effects:{}};
+  if(S.freeMode){const n=activePage().elements.length;el.free={x:30+(n%6)*24,y:30+(n%6)*24,w:560};}
+  activePage().elements.push(el);S.selectedId=el.id;
+  pushHist();renderAll();
+}
+function _mcFmtDate(iso){
+  try{const d=new Date(iso);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}catch(e){return '';}
+}
+function insertMiniCadPlan(){
+  let local=null;
+  try{local=JSON.parse(localStorage.getItem(MC_BRIDGE_KEY)||'null');}catch(e){local=null;}
+  const localRow=(local&&local.png)?
+    `<div class="mc-plan-row" data-src="local" style="display:flex;gap:10px;align-items:center;padding:9px 10px;border:1px solid #d4af3766;border-radius:8px;margin-bottom:8px;cursor:pointer;background:#d4af3712">
+      <img src="${local.png}" style="width:74px;height:52px;object-fit:contain;background:#fff;border-radius:4px;border:1px solid #333">
+      <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:12px">📐 ${(local.plan&&local.plan.meta&&local.plan.meta.project)||'이 기기의 최신 도면'}</div>
+      <div style="font-size:10px;color:#999">로컬 브리지 · ${_mcFmtDate(local.sentAt)}</div></div>
+      <span style="font-size:10px;color:#d4af37">삽입 →</span></div>`
+    :'<div style="font-size:11px;color:#888;padding:6px 2px 10px">이 기기의 로컬 도면 없음 — 미니캐드에서 <b style="color:#d4af37">견적OS 전송</b>을 누르면 여기 나타납니다.</div>';
+  const m=showModal('📐 미니캐드 평면도 삽입',`
+    <div style="padding:12px 14px">
+      ${localRow}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:6px 0 6px">
+        <strong style="font-size:11px;color:#bbb">☁ 클라우드 도면 (기기 간 공유)</strong>
+        <button id="mc-cloud-load" class="btn-reset" style="cursor:pointer">불러오기</button>
+      </div>
+      <div id="mc-cloud-list" style="max-height:300px;overflow-y:auto;font-size:11px;color:#777">버튼을 누르면 최근 10개를 불러옵니다.</div>
+    </div>`);
+  const localEl=m.querySelector('.mc-plan-row[data-src="local"]');
+  if(localEl) localEl.addEventListener('click',()=>{
+    const area=local.plan&&local.plan.estimateInput&&local.plan.estimateInput.summary&&local.plan.estimateInput.summary.totalFloorArea_m2;
+    _mcInsertPlanImage(local.png,(local.plan&&local.plan.meta&&local.plan.meta.project),area);
+    m.remove();
+  });
+  const listEl=m.querySelector('#mc-cloud-list');
+  m.querySelector('#mc-cloud-load').addEventListener('click',()=>{
+    listEl.textContent='불러오는 중…';
+    fetch(MC_SUPA_URL+'/rest/v1/minicad_bridge_plans?select=id,title,summary,created_at&order=created_at.desc&limit=10',
+      {headers:{apikey:MC_SUPA_KEY,Authorization:'Bearer '+MC_SUPA_KEY}})
+      .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(rows=>{
+        if(!rows.length){listEl.textContent='클라우드에 저장된 도면이 없습니다.';return;}
+        listEl.innerHTML=rows.map(r=>{
+          const sm=r.summary||{};
+          return `<div class="mc-plan-row" data-id="${r.id}" style="display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid #333;border-radius:8px;margin-bottom:6px;cursor:pointer">
+            <span style="font-size:16px">🗂</span>
+            <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12px;color:#ddd">${(r.title||'무제 도면')}</div>
+            <div style="font-size:10px;color:#888">${_mcFmtDate(r.created_at)} · 공간 ${sm.spaces||0} · ${sm.area_m2||0}㎡ · 문 ${sm.doors||0}/창 ${sm.windows||0}</div></div>
+            <span style="font-size:10px;color:#d4af37">삽입 →</span></div>`;
+        }).join('');
+        listEl.querySelectorAll('.mc-plan-row').forEach(row=>row.addEventListener('click',()=>{
+          row.style.opacity='0.5';
+          fetch(MC_SUPA_URL+'/rest/v1/minicad_bridge_plans?select=png,title,summary&id=eq.'+row.dataset.id,
+            {headers:{apikey:MC_SUPA_KEY,Authorization:'Bearer '+MC_SUPA_KEY}})
+            .then(r=>r.json())
+            .then(d=>{
+              const rec=d&&d[0];
+              if(!rec){alert('도면을 불러오지 못했습니다.');return;}
+              _mcInsertPlanImage(rec.png,rec.title,rec.summary&&rec.summary.area_m2);
+              m.remove();
+            }).catch(err=>alert('불러오기 실패: '+err.message));
+        }));
+      })
+      .catch(err=>{listEl.textContent='클라우드 목록 실패: '+err.message;});
+  });
 }
 
 // ========== 이벤트 ==========
