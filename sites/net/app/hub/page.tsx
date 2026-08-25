@@ -49,6 +49,13 @@ const SECTIONS: HubSection[] = [
     ],
   },
   {
+    title: 'AI 스튜디오',
+    desc: '이미지 자산 · 프롬프트',
+    items: [
+      { href: '/studio/moodboards', name: '무드보드 갤러리', desc: '현장·컨셉별 레퍼런스 보드' },
+    ],
+  },
+  {
     title: 'BOC 마스터 DB',
     desc: '단가·자재 기준 데이터와 관리',
     items: [
