@@ -22,14 +22,14 @@ const SIDO_CODES = { // 법정동코드 시도 2자리 (특별자치도 개편 �
   '경남': ['48'], '제주': ['50'],
 };
 const SIDO_SHORT = { '서울특별시':'서울','부산광역시':'부산','대구광역시':'대구','인천광역시':'인천','광주광역시':'광주','대전광역시':'대전','울산광역시':'울산','세종특별자치시':'세종','경기도':'경기','강원특별자치도':'강원','강원도':'강원','충청북도':'충북','충청남도':'충남','전북특별자치도':'전북','전라북도':'전북','전라남도':'전남','경상북도':'경북','경상남도':'경남','제주특별자치도':'제주' };
-// API 버전이 갱신돼도 앞에서부터 순차 시도 (성공한 것을 기억)
+// API 버전이 갱신돼도 앞에서부터 순차 시도 (2026-08-25 프로브로 확인된 현행: List4 · BasisV5)
 const LIST_ENDPOINTS = [
+  'https://apis.data.go.kr/1613000/AptListService4/getSidoAptList4',
   'https://apis.data.go.kr/1613000/AptListService3/getSidoAptList3',
-  'https://apis.data.go.kr/1613000/AptListService2/getSidoAptList',
 ];
 const BASIS_ENDPOINTS = [
+  'https://apis.data.go.kr/1613000/AptBasisInfoServiceV5/getAphusBassInfoV5',
   'https://apis.data.go.kr/1613000/AptBasisInfoServiceV3/getAphusBassInfoV3',
-  'https://apis.data.go.kr/1613000/AptBasisInfoService1/getAphusBassInfo',
 ];
 const OUT = 'scripts/plans-complexes-auto.json';
 const SPEC_EXISTING = 'scripts/plans-complexes-spec.json';
@@ -56,8 +56,23 @@ function loadKey() {
   }
   return null;
 }
-const tag = (xml, name) => { const m = xml.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`)); return m ? m[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : ''; };
-const items = xml => [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m => m[1]);
+// XML·JSON 응답 겸용 필드 추출 (List4/BasisV5 는 JSON, 구버전은 XML)
+const tag = (chunk, name) => {
+  let m = chunk.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`));
+  if (m) return m[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+  m = chunk.match(new RegExp(`"${name}"\\s*:\\s*(?:"((?:[^"\\\\]|\\\\.)*)"|(-?[\\d.]+))`));
+  return m ? (m[1] ?? m[2] ?? '').trim() : '';
+};
+const items = body => {
+  const xml = [...body.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m => m[1]);
+  if (xml.length) return xml;
+  try {
+    const j = JSON.parse(body);
+    let arr = j?.response?.body?.items?.item ?? j?.response?.body?.items ?? [];
+    if (!Array.isArray(arr)) arr = arr ? [arr] : [];
+    return arr.map(x => JSON.stringify(x));
+  } catch { return []; }
+};
 const num = v => { const n = parseInt(String(v).replace(/[^\d-]/g, ''), 10); return isNaN(n) ? 0 : n; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
