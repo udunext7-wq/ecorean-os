@@ -25,6 +25,11 @@ export default function MoodboardDetailPage() {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const refFileRef = useRef<HTMLInputElement | null>(null);
   const [refUploading, setRefUploading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [eTitle, setETitle] = useState('');
+  const [eSite, setESite] = useState('');
+  const [eConcept, setEConcept] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!boardId) return;
@@ -74,6 +79,54 @@ export default function MoodboardDetailPage() {
       }
     }
     load();
+  }
+
+  // 보드 정보 편집 (제목·현장·컨셉) — RLS: 본인 보드 또는 admin
+  function startEdit() {
+    if (!board) return;
+    setETitle(board.title);
+    setESite(board.site ?? '');
+    setEConcept(board.concept ?? '');
+    setEditing(true);
+  }
+  async function saveEdit() {
+    if (!boardId || !eTitle.trim()) return;
+    setBusy(true);
+    const supabase = createBrowserSupabase();
+    const { error: updErr } = await supabase
+      .from('moodboards')
+      .update({ title: eTitle.trim(), site: eSite.trim() || null, concept: eConcept.trim() || null })
+      .eq('id', boardId);
+    setBusy(false);
+    if (updErr) {
+      setError('수정 권한이 없습니다 (본인 보드 또는 admin만 수정 가능).');
+      return;
+    }
+    setBoard((b) => (b ? { ...b, title: eTitle.trim(), site: eSite.trim() || null, concept: eConcept.trim() || null } : b));
+    setEditing(false);
+  }
+
+  // 보드 삭제 — 파생 이미지 행(cascade)·스토리지 파일까지 정리 후 목록으로
+  async function deleteBoard() {
+    if (!boardId || !board) return;
+    if (!window.confirm(`"${board.title}" 보드와 파생 이미지 ${images.length}장을 모두 삭제할까요?\n되돌릴 수 없습니다.`)) return;
+    setBusy(true);
+    const supabase = createBrowserSupabase();
+    const { error: delErr } = await supabase.from('moodboards').delete().eq('id', boardId);
+    if (delErr) {
+      setBusy(false);
+      setError('삭제 권한이 없습니다 (본인 보드 또는 admin만 삭제 가능).');
+      return;
+    }
+    // 스토리지 파일 정리 (best-effort — 실패해도 보드는 이미 삭제됨)
+    try {
+      const { data: objs } = await supabase.storage.from('moodboards').list(boardId, { limit: 1000 });
+      const paths = (objs ?? []).map((o) => `${boardId}/${o.name}`);
+      if (paths.length) await supabase.storage.from('moodboards').remove(paths);
+    } catch {
+      /* no-op */
+    }
+    window.location.href = '/studio/moodboards';
   }
 
   // 기준 무드보드 이미지 업로드/교체 — 이 보드의 출발점이 되는 원본
@@ -145,18 +198,79 @@ export default function MoodboardDetailPage() {
     <main className={`${noto.className} min-h-screen bg-[#04070c] p-6 text-[#e6edf2]`}>
       <div className="mx-auto max-w-6xl">
         <header className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[#9BC9D8]/15 pb-5">
-          <div>
+          <div className="min-w-0 flex-1">
             <Link href="/studio/moodboards" className="text-xs tracking-[0.3em] text-[#9BC9D8]/70 hover:text-[#c8e4ee]">
               ← MOODBOARDS
             </Link>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#f0deb9]">
-              {board?.title ?? '무드보드'}
-            </h1>
-            <p className="mt-1 text-sm text-[#94aab8]">
-              {[board?.site, board?.concept].filter(Boolean).join(' · ') || '컨셉 메모 없음'}
-            </p>
+            {editing ? (
+              <div className="mt-2 grid max-w-2xl gap-2 sm:grid-cols-2">
+                <input
+                  value={eTitle}
+                  onChange={(e) => setETitle(e.target.value)}
+                  placeholder="보드 이름"
+                  className="rounded-md border border-[#9BC9D8]/30 bg-[#04070c] px-3 py-2 text-sm outline-none focus:border-[#9BC9D8]/60 sm:col-span-2"
+                />
+                <input
+                  value={eSite}
+                  onChange={(e) => setESite(e.target.value)}
+                  placeholder="현장 (선택)"
+                  className="rounded-md border border-[#9BC9D8]/30 bg-[#04070c] px-3 py-2 text-sm outline-none focus:border-[#9BC9D8]/60"
+                />
+                <input
+                  value={eConcept}
+                  onChange={(e) => setEConcept(e.target.value)}
+                  placeholder="컨셉 메모"
+                  className="rounded-md border border-[#9BC9D8]/30 bg-[#04070c] px-3 py-2 text-sm outline-none focus:border-[#9BC9D8]/60"
+                />
+                <div className="flex gap-2 sm:col-span-2">
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    disabled={busy || !eTitle.trim()}
+                    className="rounded-md bg-gradient-to-b from-[#d6b87e] to-[#b8965a] px-4 py-1.5 text-sm font-semibold text-[#0f0e0c] disabled:opacity-50"
+                  >
+                    {busy ? '저장 중…' : '저장'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="rounded-md border border-[#9BC9D8]/30 px-4 py-1.5 text-sm text-[#c8e4ee] hover:bg-[#9BC9D8]/10"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#f0deb9]">
+                  {board?.title ?? '무드보드'}
+                </h1>
+                <p className="mt-1 text-sm text-[#94aab8]">
+                  {[board?.site, board?.concept].filter(Boolean).join(' · ') || '컨셉 메모 없음'}
+                </p>
+              </>
+            )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {!editing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  className="rounded-full border border-[#9BC9D8]/35 px-4 py-1.5 text-xs text-[#c8e4ee] hover:bg-[#9BC9D8]/10"
+                >
+                  편집
+                </button>
+                <button
+                  type="button"
+                  onClick={deleteBoard}
+                  disabled={busy}
+                  className="rounded-full border border-[#E5726A]/40 px-4 py-1.5 text-xs text-[#E5726A] hover:bg-[#E5726A]/10 disabled:opacity-50"
+                >
+                  {busy ? '삭제 중…' : '보드 삭제'}
+                </button>
+              </>
+            ) : null}
             <input
               ref={fileRef}
               type="file"
