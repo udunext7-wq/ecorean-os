@@ -35,7 +35,6 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   const step = 360 / n;
   const [rot, setRot] = useState(0);
   const [vw, setVw] = useState(1280);
-  const [animAll, setAnimAll] = useState(false);
   const rotRef = useRef(0);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragging = useRef<{ x: number; rot0: number; moved: boolean } | null>(null);
@@ -44,11 +43,18 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   const prevFront = useRef<number | null>(null);
   const pendingRot = useRef(0);
   const moveRaf = useRef(0);
+  const animRaf = useRef(0);
   const vel = useRef(0); // px/ms (지수 평활)
   const lastMove = useRef<{ t: number; x: number } | null>(null);
   rotRef.current = rot;
 
-  useEffect(() => () => cancelAnimationFrame(moveRaf.current), []);
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(moveRaf.current);
+      cancelAnimationFrame(animRaf.current);
+    },
+    [],
+  );
 
   // 바람(휘익) 사운드 — 파일 없이 노이즈 + 밴드패스 스윕으로 합성
   function playWhoosh() {
@@ -127,11 +133,20 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [front]);
 
-  // 목표 회전각으로 감속 애니메이션 — 거리가 멀수록 오래, 끝은 길게 눌리는 이즈아웃
+  // 목표 회전각으로 JS 프레임 감속 애니메이션 — 회전각을 직접 보간하므로
+  // 몇 칸을 돌든 카드가 항상 원호(궤도)를 따라 움직인다 (CSS 직선 보간 붕괴 방지)
   function animateTo(target: number, durSec: number) {
-    stageRef.current?.style.setProperty('--snapdur', `${durSec.toFixed(2)}s`);
-    setAnimAll(true);
-    setRot(target);
+    cancelAnimationFrame(animRaf.current);
+    const startRot = rotRef.current;
+    const t0 = performance.now();
+    const durMs = durSec * 1000;
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3.4); // 긴 감속 꼬리
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - t0) / durMs);
+      setRot(startRot + (target - startRot) * ease(t));
+      if (t < 1) animRaf.current = requestAnimationFrame(frame);
+    };
+    animRaf.current = requestAnimationFrame(frame);
     const idx = mod(Math.round(-target / step), n);
     const slot = slots[idx];
     try {
@@ -139,7 +154,6 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     } catch {
       /* no-op */
     }
-    window.setTimeout(() => setAnimAll(false), durSec * 1000 + 60);
   }
 
   function snapTo(i: number) {
@@ -151,6 +165,7 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     // 여기서 pointer capture 를 걸면 카드 안 링크 클릭이 가로채져 안 열린다 —
     // 실제 드래그가 시작된 순간(onPointerMove)에만 capture 한다.
+    cancelAnimationFrame(animRaf.current); // 회전 중 잡으면 그 자리에서 멈춰 이어잡기
     dragging.current = { x: e.clientX, rot0: rotRef.current, moved: false };
     vel.current = 0;
     lastMove.current = { t: performance.now(), x: e.clientX };
@@ -263,7 +278,7 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
             return (
               <div
                 key={i}
-                className={`hubf-cardw ${isFront ? 'is-front' : ''} ${animAll ? 'is-anim' : ''}`}
+                className={`hubf-cardw ${isFront ? 'is-front' : ''}`}
                 style={{
                   transform: `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) scale(${scale.toFixed(3)})`,
                   opacity: 0.72 + 0.28 * depth,
