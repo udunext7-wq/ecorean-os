@@ -441,6 +441,15 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
                   if (!dragging.current?.moved) snapTo(i);
                 }}
               >
+                {slot.kind !== 'ghost' ? (
+                  <div className="hubf-slab" aria-hidden>
+                    <div className="hubf-slab-back" />
+                    <div className="hubf-edge hubf-edge-t" />
+                    <div className="hubf-edge hubf-edge-b" />
+                    <div className="hubf-edge hubf-edge-l" />
+                    <div className="hubf-edge hubf-edge-r" />
+                  </div>
+                ) : null}
                 <div className={`hubf-card ${slot.kind === 'ghost' ? 'is-ghost' : ''}`}>
                   <span className="hubc-tick hubc-tick-tl" aria-hidden />
                   <span className="hubc-tick hubc-tick-tr" aria-hidden />

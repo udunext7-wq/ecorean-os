@@ -456,7 +456,8 @@
   backdrop-filter: blur(10px);
   box-shadow:
     0 34px 70px -28px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 rgba(220, 236, 242, 0.06);
+    inset 0 1px 0 rgba(220, 236, 242, 0.1),
+    inset 0 0 44px -22px rgba(180, 230, 240, 0.18);
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s ease, border-color 0.4s ease;
 }
 .hubf-cardw.is-front .hubf-card {
@@ -478,6 +479,70 @@
 .hubf-cardw:not(.is-front):hover .hubf-card {
   transform: translateY(-8px);
   border-color: rgba(155, 201, 216, 0.4);
+}
+
+/* ── 유리 슬래브 두께 30T — 앞판 뒤로 뒷판 + 4면 단면 (2026-08-25 대표 지시) ── */
+.hubf-slab {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hubf-slab-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  transform: translateZ(-30px);
+  background: linear-gradient(168deg, rgba(120, 180, 195, 0.1), rgba(55, 100, 115, 0.09));
+  border: 1px solid rgba(160, 215, 225, 0.2);
+  box-shadow: 0 34px 60px -26px rgba(0, 0, 0, 0.85);
+}
+/* 유리 단면 — 실제 유리 절단면의 옅은 청록빛 */
+.hubf-edge {
+  position: absolute;
+  background: linear-gradient(180deg, rgba(185, 238, 244, 0.26), rgba(105, 185, 200, 0.09));
+}
+.hubf-edge-t {
+  left: 12px;
+  right: 12px;
+  top: 0;
+  height: 30px;
+  transform-origin: center top;
+  transform: rotateX(-90deg);
+  background: linear-gradient(90deg, rgba(200, 245, 250, 0.14), rgba(225, 250, 252, 0.36) 50%, rgba(200, 245, 250, 0.14));
+}
+.hubf-edge-b {
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 30px;
+  transform-origin: center bottom;
+  transform: rotateX(90deg);
+  opacity: 0.45;
+}
+.hubf-edge-l {
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 30px;
+  transform-origin: left center;
+  transform: rotateY(90deg);
+}
+.hubf-edge-r {
+  top: 12px;
+  bottom: 12px;
+  right: 0;
+  width: 30px;
+  transform-origin: right center;
+  transform: rotateY(-90deg);
+}
+/* 호버 팝 시 슬래브도 앞판과 함께 이동 */
+.hubf-cardw.is-front:hover .hubf-slab {
+  transform: translateZ(46px) translateY(-8px);
+}
+.hubf-cardw:not(.is-front):hover .hubf-slab {
+  transform: translateY(-8px);
 }
 /* 홀로 광택 + 스캔라인 / 상단 림라이트 */
 .hubf-card::before {
