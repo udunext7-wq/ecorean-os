@@ -426,6 +426,8 @@
   transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease, filter 0.5s ease;
 }
 .hubf-cardw:not(.is-front) { cursor: pointer; }
+/* 측면 카드는 카드 전체가 "중앙으로 가져오기" 버튼 — 내부 링크는 중앙에 온 뒤에만 활성 */
+.hubf-cardw:not(.is-front) a { pointer-events: none; }
 
 .hubf-card {
   position: relative;

@@ -244,9 +244,9 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
                 }}
                 role="option"
                 aria-selected={isFront}
-                onClick={(e) => {
+                onClick={() => {
+                  // 중앙이 아닌 카드는 어디를 눌러도 중앙으로 회전 (대표 지시 2026-08-25)
                   if (isFront) return;
-                  if ((e.target as HTMLElement).closest('a')) return;
                   if (!dragging.current?.moved) snapTo(i);
                 }}
               >
