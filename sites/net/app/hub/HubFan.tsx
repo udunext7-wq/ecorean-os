@@ -3,7 +3,14 @@
 // 업무 허브 v8 — 잡고 돌리는 3단 깊이 팬 카루셀 (대표 지시 2026-08-25)
 // 5장이 모두 정면을 향해 서 있고(글씨 항상 가독), 크기 3단계: 중앙 > 안쪽 한 쌍 > 바깥 한 쌍.
 // 마우스로 잡고 좌우로 돌리면 회전, 놓으면 가장 가까운 카드가 중앙에 스냅. 자동 회전 없음.
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent,
+} from 'react';
 import { Cinzel, JetBrains_Mono, Noto_Sans_KR } from 'next/font/google';
 
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['400'], display: 'swap' });
@@ -56,17 +63,26 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     [],
   );
 
-  // 바람(휘익) 사운드 — 파일 없이 노이즈 + 밴드패스 스윕으로 합성
-  function playWhoosh() {
+  function ensureCtx(): AudioContext | null {
     try {
       const Ctx =
         window.AudioContext ??
         (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctx) return;
+      if (!Ctx) return null;
       if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
       const ctx = audioCtxRef.current;
       if (ctx.state === 'suspended') void ctx.resume();
-      // 묵직한 저역 바람: 저주파 밴드 스윕 + 로우패스로 고역을 걷어낸다
+      return ctx;
+    } catch {
+      return null;
+    }
+  }
+
+  // 바람(휘익) — 묵직한 저역 노이즈 스윕 (창 넘어갈 때)
+  function playWhoosh() {
+    const ctx = ensureCtx();
+    if (!ctx) return;
+    try {
       const dur = 1.05;
       const t0 = ctx.currentTime;
       const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
@@ -96,6 +112,69 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     } catch {
       /* 사운드는 장식 — 실패해도 무시 */
     }
+  }
+
+  // 모듈 줄 호버 — 짧은 일렉트로닉 블립 (대표 지시 2026-08-25)
+  const lastBlip = useRef(0);
+  function playBlip() {
+    const now = performance.now();
+    if (now - lastBlip.current < 70) return; // 스윕 시 연타 방지
+    lastBlip.current = now;
+    const ctx = ensureCtx();
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1350, t0);
+      osc.frequency.exponentialRampToValueAtTime(1850, t0 + 0.055);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.04, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.1);
+    } catch {
+      /* no-op */
+    }
+  }
+
+  // 모듈 클릭 — 두 음 상승 확인음(일렉트로닉), 재생 후 이동
+  function playSelect() {
+    const ctx = ensureCtx();
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(760, t0);
+      osc.frequency.setValueAtTime(1520, t0 + 0.065);
+      const flt = ctx.createBiquadFilter();
+      flt.type = 'lowpass';
+      flt.frequency.value = 2600;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.06, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+      osc.connect(flt);
+      flt.connect(g);
+      g.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.17);
+    } catch {
+      /* no-op */
+    }
+  }
+
+  // 클릭음이 페이지 이동에 잘리지 않게 140ms 후 이동
+  function onItemClick(e: ReactMouseEvent<HTMLAnchorElement>, href: string) {
+    e.preventDefault();
+    playSelect();
+    window.setTimeout(() => {
+      window.location.href = href;
+    }, 140);
   }
 
   useEffect(() => {
@@ -329,7 +408,13 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
                             .filter((it) => !it.admin)
                             .map((item) => (
                               <li key={item.href}>
-                                <a href={item.href} className="hubc-item" draggable={false}>
+                                <a
+                                  href={item.href}
+                                  className="hubc-item"
+                                  draggable={false}
+                                  onMouseEnter={playBlip}
+                                  onClick={(e) => onItemClick(e, item.href)}
+                                >
                                   <span className="hubc-item-name">{item.name}</span>
                                   <span className="hubc-item-desc">{item.desc}</span>
                                 </a>
@@ -339,7 +424,13 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
                             .filter((it) => it.admin)
                             .map((item) => (
                               <li key={item.href}>
-                                <a href={item.href} className="hubc-item is-admin" draggable={false}>
+                                <a
+                                  href={item.href}
+                                  className="hubc-item is-admin"
+                                  draggable={false}
+                                  onMouseEnter={playBlip}
+                                  onClick={(e) => onItemClick(e, item.href)}
+                                >
                                   <span className="hubc-item-name">{item.name}</span>
                                   <span className="hubc-item-desc">{item.desc}</span>
                                   <span className={`${mono.className} hubc-item-tag`}>ADMIN</span>
