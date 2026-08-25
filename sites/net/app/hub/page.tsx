@@ -30,7 +30,7 @@ const SECTIONS: HubSection[] = [
     desc: '도면에서 견적까지',
     items: [
       { href: '/minicad/', name: 'MiniCAD', desc: '도면·견적' },
-      { href: '/catalog/plans/', name: '평면도 라이브러리', desc: '주거 평면도 DB → MiniCAD 밑그림' },
+      { href: '/catalog/plans/', name: '평면도 라이브러리', desc: '주거 평면도 DB → MiniCAD 공간 자동 생성' },
       { href: '/estimate/', name: '자동 견적', desc: '통합견적 OS · MiniCAD 도면 연동' },
       { href: '/estform/', name: '견적서 양식', desc: '주거·상업 반자동' },
       { href: '/pms/', name: '공정표', desc: '공정관리 PMS' },

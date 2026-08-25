@@ -129,7 +129,8 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     <img class="dt-img" id="dtImg" alt="평면도">
     <div class="dt-meta" id="dtMeta"></div>
     <div class="dt-btns">
-      <a class="primary" id="dtCad" target="_blank" rel="noopener">📐 MiniCAD 밑그림으로 열기</a>
+      <a class="primary" id="dtCad" target="_blank" rel="noopener">📐 MiniCAD로 열기 (공간 자동 생성)</a>
+      <a class="ghost" id="dtBg" target="_blank" rel="noopener">🖼 밑그림으로만 열기</a>
       <button type="button" class="ghost" id="dtCopy">🔗 이미지 URL 복사</button>
       <a class="ghost" id="dtOrig" target="_blank" rel="noopener">원본 보기</a>
       <button type="button" class="danger" id="dtDel">삭제</button>
@@ -259,7 +260,21 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     document.getElementById('dtName').textContent=r.complex_name;
     document.getElementById('dtImg').src=url;
     document.getElementById('dtOrig').href=url;
-    document.getElementById('dtCad').href='/minicad/?bg='+encodeURIComponent(url)+'&bgname='+encodeURIComponent(r.complex_name+(r.area_type?' '+r.area_type:''));
+    // 표준 평면도(/catalog/plans/img/std-*.svg)는 MiniCAD 공간·벽 데이터(JSON)가 함께 있음
+    //  → 기본 버튼은 실제 공간 생성(?plan=), 사진·스캔 도면은 밑그림(?bg=)만 가능
+    var bgHref='/minicad/?bg='+encodeURIComponent(url)+'&bgname='+encodeURIComponent(r.complex_name+(r.area_type?' '+r.area_type:''));
+    var planMatch=/^\/catalog\/plans\/img\/(std-[a-z0-9]+)\.svg$/.exec(r.image_path||'');
+    var cadBtn=document.getElementById('dtCad'), bgBtn=document.getElementById('dtBg');
+    if(planMatch){
+      cadBtn.style.display='';
+      cadBtn.href='/minicad/?plan='+encodeURIComponent('/catalog/plans/data/'+planMatch[1]+'.json');
+      bgBtn.textContent='🖼 밑그림으로만 열기';
+      bgBtn.href=bgHref;
+    }else{
+      cadBtn.style.display='none';
+      bgBtn.textContent='📐 MiniCAD 밑그림으로 열기';
+      bgBtn.href=bgHref;
+    }
     var rows=[['지역',[r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' ')],
               ['평형/타입',[r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · ')],
               ['구성',r.rooms!=null?'방 '+r.rooms+(r.baths!=null?' / 욕실 '+r.baths:''):''],

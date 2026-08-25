@@ -4070,25 +4070,39 @@ console.log('Stage:',stage.width(),'×',stage.height(),' / 모바일:',STATE.isM
 
 }
 
-// 평면도 라이브러리 연동 (2026-08-10) — /catalog/plans/ 에서 [MiniCAD 밑그림으로 열기]
-// ?bg=<이미지 URL> 로 열면 트레이싱용 배경 이미지로 자동 로드 (자사 스토리지·자사 정적 파일만 허용)
+// 평면도 라이브러리 연동 — /catalog/plans/ 에서 열기
+// ?plan=<도면 JSON URL> : 표준 평면도를 실제 공간·벽 객체로 생성 (2026-08-25 대표 지시 — 이미지가 아닌 실측값 공간)
+// ?bg=<이미지 URL>      : 트레이싱용 배경 이미지 (사진·스캔 도면용)
+// 둘 다 자사 정적 파일(같은 오리진)·자사 Supabase 스토리지만 허용
 window.addEventListener('load',()=>{
-  let bg,name;
+  let bg,name,plan;
   try{
     const p=new URL(location.href).searchParams;
     bg=p.get('bg');
     name=p.get('bgname')||'평면도';
+    plan=p.get('plan');
   }catch(e){return;}
-  const sameOrigin=bg&&bg.startsWith('/')&&!bg.startsWith('//'); // 표준 평면도 등 사이트 정적 파일
-  if(!bg||!(sameOrigin||bg.startsWith('https://gdcfqbdgubgpzusbtftf.supabase.co/storage/')))return;
+  const ok=u=>u&&((u.startsWith('/')&&!u.startsWith('//'))||u.startsWith('https://gdcfqbdgubgpzusbtftf.supabase.co/storage/'));
+  // 앱 초기화(initApp: load+50ms) 전에 로드가 끝나면 bgLayer 미생성 → drawGrid TypeError
+  //  → 캔버스 레이어 준비를 기다렸다가 적용
+  const whenReady=fn=>{const t=()=>{if(typeof bgLayer!=='undefined'&&bgLayer)fn();else setTimeout(t,120);};t();};
+  if(ok(plan)){
+    fetch(plan)
+      .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(d=>{
+        if(!d||!d.schema||!String(d.schema).startsWith('ECOREAN.FloorPlan'))throw new Error('MiniCAD 도면 JSON이 아닙니다');
+        whenReady(()=>{
+          applyLoadedData(d);
+          showStatus('표준 평면도 로드 — '+((d.meta&&d.meta.project)||'')+' · 공간 '+STATE.spaces.length+'개 (실측 아님 · 실측 후 수정)');
+        });
+      })
+      .catch(err=>showStatus('표준 평면도 로드 실패: '+err.message));
+    return; // plan 우선 — bg 병행 시 무시
+  }
+  if(!ok(bg))return;
   fetch(bg)
     .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
     .then(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}))
-    .then(dataURL=>{
-      // 앱 초기화(initApp: load+50ms) 전에 이미지 로드가 끝나면 bgLayer 미생성 → drawGrid TypeError
-      //  → 캔버스 레이어 준비를 기다렸다가 적용
-      const apply=()=>{if(typeof bgLayer!=='undefined'&&bgLayer)setBgImage(dataURL,name);else setTimeout(apply,120);};
-      apply();
-    })
+    .then(dataURL=>{whenReady(()=>setBgImage(dataURL,name));})
     .catch(err=>showStatus('평면도 밑그림 로드 실패: '+err.message));
 });
