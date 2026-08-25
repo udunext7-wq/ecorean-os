@@ -316,6 +316,16 @@
 .hubc-hairline-btm {
   margin: 16px auto 0;
 }
+.hubc-brand-link {
+  display: inline-block;
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+.hubc-brand-link:hover {
+  filter: brightness(1.18);
+  transform: scale(1.02);
+}
 .hubc-brand {
   margin: 0;
   font-size: clamp(24px, 4.6vw, 36px);

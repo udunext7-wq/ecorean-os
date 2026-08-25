@@ -237,7 +237,16 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     <div className={`hubc ${noto.className}`}>
       <header className="hubc-head">
         <div className="hubc-hairline" aria-hidden />
-        <p className={`${cinzel.className} hubc-brand`}>ECOREAN</p>
+        {/* 워드마크 클릭 → 고객 사이트 ecorean.kr (대표 지시 2026-08-25) */}
+        <a
+          href="https://ecorean.kr"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="ecorean.kr — 고객 사이트로 이동"
+          className={`${cinzel.className} hubc-brand hubc-brand-link`}
+        >
+          ECOREAN
+        </a>
         <p className={`${mono.className} hubc-sub`}>WORK HUB · OPERATION DECK</p>
         <div className="hubc-hairline hubc-hairline-btm" aria-hidden />
       </header>
