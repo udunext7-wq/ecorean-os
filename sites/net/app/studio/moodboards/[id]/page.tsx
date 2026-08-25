@@ -21,6 +21,8 @@ export default function MoodboardDetailPage() {
   const [uploading, setUploading] = useState(0); // 남은 업로드 수
   const [lightbox, setLightbox] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const refFileRef = useRef<HTMLInputElement | null>(null);
+  const [refUploading, setRefUploading] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createBrowserSupabase();
@@ -69,6 +71,45 @@ export default function MoodboardDetailPage() {
       }
     }
     load();
+  }
+
+  // 기준 무드보드 이미지 업로드/교체 — 이 보드의 출발점이 되는 원본
+  async function onRefFile(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    const supabase = createBrowserSupabase();
+    setRefUploading(true);
+    setError(null);
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${boardId}/ref-${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('moodboards').upload(path, file, {
+        cacheControl: '31536000',
+        contentType: file.type || undefined,
+      });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('moodboards').getPublicUrl(path);
+      const { error: updErr } = await supabase
+        .from('moodboards')
+        .update({ cover_url: pub.publicUrl })
+        .eq('id', boardId);
+      if (updErr) throw updErr;
+      setBoard((b) => (b ? { ...b, cover_url: pub.publicUrl } : b));
+    } catch (err) {
+      setError(`기준 이미지 업로드 실패: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setRefUploading(false);
+    }
+  }
+
+  // 파생 이미지 중 하나를 기준으로 승격
+  async function setAsReference(img: Img) {
+    const supabase = createBrowserSupabase();
+    const { error: updErr } = await supabase
+      .from('moodboards')
+      .update({ cover_url: img.url })
+      .eq('id', boardId);
+    if (!updErr) setBoard((b) => (b ? { ...b, cover_url: img.url } : b));
   }
 
   async function removeImage(img: Img) {
@@ -127,15 +168,58 @@ export default function MoodboardDetailPage() {
               disabled={uploading > 0}
               className="rounded-full bg-gradient-to-b from-[#d6b87e] to-[#b8965a] px-5 py-2 text-sm font-semibold text-[#0f0e0c] disabled:opacity-50"
             >
-              {uploading > 0 ? `업로드 중… (${uploading})` : '+ 이미지 업로드'}
+              {uploading > 0 ? `업로드 중… (${uploading})` : '+ 파생 이미지 업로드'}
             </button>
           </div>
         </header>
 
         {error ? <p className="mb-5 text-sm text-[#E5726A]">{error}</p> : null}
+
+        {/* 기준 무드보드 — 이 보드의 출발점 */}
+        <section className="mb-9">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[11px] font-semibold tracking-[0.3em] text-[#9BC9D8]/80">
+              기준 무드보드 <span className="text-[#9BC9D8]/40">REFERENCE</span>
+            </h2>
+            <input
+              ref={refFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => onRefFile(e.target.files)}
+            />
+            <button
+              type="button"
+              onClick={() => refFileRef.current?.click()}
+              disabled={refUploading}
+              className="rounded-full border border-[#9BC9D8]/35 px-4 py-1.5 text-xs text-[#c8e4ee] hover:bg-[#9BC9D8]/10 disabled:opacity-50"
+            >
+              {refUploading ? '업로드 중…' : board?.cover_url ? '기준 이미지 변경' : '기준 이미지 업로드'}
+            </button>
+          </div>
+          {board?.cover_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={board.cover_url}
+              alt="기준 무드보드"
+              className="max-h-[46vh] w-full rounded-xl border border-[#E8C99B]/25 object-cover shadow-[0_0_60px_-24px_rgba(214,190,145,0.45)]"
+            />
+          ) : (
+            <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-[#9BC9D8]/25 text-sm text-[#94aab8]">
+              기준이 될 무드보드 이미지를 먼저 올려주세요 — 여기서 파생 이미지들이 시작됩니다
+            </div>
+          )}
+        </section>
+
+        {/* 파생 이미지 */}
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[11px] font-semibold tracking-[0.3em] text-[#9BC9D8]/80">
+            파생 이미지 <span className="text-[#9BC9D8]/40">DERIVED · {images.length}</span>
+          </h2>
+        </div>
         {images.length === 0 && !error ? (
-          <p className="mt-16 text-center text-sm text-[#94aab8]">
-            아직 이미지가 없습니다 — 레퍼런스 사진이나 AI 렌더링을 올려보세요. (여러 장 한 번에 가능)
+          <p className="mt-10 text-center text-sm text-[#94aab8]">
+            아직 파생 이미지가 없습니다 — 기준 무드보드에서 발전시킨 AI 변형·레퍼런스를 올려보세요. (여러 장 한 번에 가능)
           </p>
         ) : null}
 
@@ -201,6 +285,16 @@ export default function MoodboardDetailPage() {
             <span>
               {lightbox + 1} / {images.length}
             </span>
+            <button
+              type="button"
+              className="rounded-full border border-[#E8C99B]/40 px-3 py-1 text-[#e8c99b] hover:bg-[#E8C99B]/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAsReference(images[lightbox]);
+              }}
+            >
+              기준으로 지정
+            </button>
             <button
               type="button"
               className="rounded-full border border-[#E5726A]/40 px-3 py-1 text-[#E5726A] hover:bg-[#E5726A]/10"
