@@ -4084,6 +4084,11 @@ window.addEventListener('load',()=>{
   fetch(bg)
     .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
     .then(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}))
-    .then(dataURL=>setBgImage(dataURL,name))
+    .then(dataURL=>{
+      // 앱 초기화(initApp: load+50ms) 전에 이미지 로드가 끝나면 bgLayer 미생성 → drawGrid TypeError
+      //  → 캔버스 레이어 준비를 기다렸다가 적용
+      const apply=()=>{if(typeof bgLayer!=='undefined'&&bgLayer)setBgImage(dataURL,name);else setTimeout(apply,120);};
+      apply();
+    })
     .catch(err=>showStatus('평면도 밑그림 로드 실패: '+err.message));
 });
