@@ -157,16 +157,53 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     h.stop(t0 + opts.dur);
   }
 
-  // 모듈 줄 호버 — 아주 작은 저음 "둥"
+  // 모듈 줄 호버 — 실제 심장박동 샘플 (대표 지시 2026-08-25, MA_Beison Heartbeats Single)
   const lastBlip = useRef(0);
+  const heartBuf = useRef<AudioBuffer | null>(null);
+  const heartLoading = useRef(false);
+
+  function loadHeart(ctx: AudioContext) {
+    if (heartBuf.current || heartLoading.current) return;
+    heartLoading.current = true;
+    fetch('/audio/sfx-heartbeat.mp3')
+      .then((r) => r.arrayBuffer())
+      .then((ab) => ctx.decodeAudioData(ab))
+      .then((buf) => {
+        heartBuf.current = buf;
+      })
+      .catch(() => {
+        heartLoading.current = false; // 실패 시 재시도 허용
+      });
+  }
+
+  // 진입 시 미리 디코드 (AudioContext 는 제스처 전엔 suspended 로 생성돼도 디코드는 가능)
+  useEffect(() => {
+    const ctx = ensureCtx();
+    if (ctx) loadHeart(ctx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function playBlip() {
     const now = performance.now();
-    if (now - lastBlip.current < 90) return; // 스윕 시 연타 방지
+    if (now - lastBlip.current < 280) return; // 심장박동 길이만큼 연타 방지
     lastBlip.current = now;
     const ctx = ensureCtx();
     if (!ctx) return;
     try {
-      playThud(ctx, { f0: 210, f1: 140, dur: 0.22, gain: 0.05, harm: 0.25 });
+      const buf = heartBuf.current;
+      if (buf) {
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const g = ctx.createGain();
+        g.gain.value = 0.5;
+        src.connect(g);
+        g.connect(ctx.destination);
+        src.start();
+      } else {
+        loadHeart(ctx);
+        // 로드 전 임시 폴백 — 합성 저음 둥
+        playThud(ctx, { f0: 210, f1: 140, dur: 0.22, gain: 0.05, harm: 0.25 });
+      }
     } catch {
       /* no-op */
     }
