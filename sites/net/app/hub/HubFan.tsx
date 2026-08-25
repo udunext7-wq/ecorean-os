@@ -44,6 +44,8 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   const prevFront = useRef<number | null>(null);
   const pendingRot = useRef(0);
   const moveRaf = useRef(0);
+  const vel = useRef(0); // px/ms (지수 평활)
+  const lastMove = useRef<{ t: number; x: number } | null>(null);
   rotRef.current = rot;
 
   useEffect(() => () => cancelAnimationFrame(moveRaf.current), []);
@@ -125,24 +127,33 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [front]);
 
-  function snapTo(i: number) {
-    const r = rotRef.current;
-    const delta = mod(-i * step - r + 180, 360) - 180;
+  // 목표 회전각으로 감속 애니메이션 — 거리가 멀수록 오래, 끝은 길게 눌리는 이즈아웃
+  function animateTo(target: number, durSec: number) {
+    stageRef.current?.style.setProperty('--snapdur', `${durSec.toFixed(2)}s`);
     setAnimAll(true);
-    setRot(r + delta);
-    const slot = slots[mod(i, n)];
+    setRot(target);
+    const idx = mod(Math.round(-target / step), n);
+    const slot = slots[idx];
     try {
       localStorage.setItem(SEL_KEY, slot.kind === 'section' ? slot.sec.title : '__reserved');
     } catch {
       /* no-op */
     }
-    window.setTimeout(() => setAnimAll(false), ANIM_MS);
+    window.setTimeout(() => setAnimAll(false), durSec * 1000 + 60);
+  }
+
+  function snapTo(i: number) {
+    const r = rotRef.current;
+    const delta = mod(-i * step - r + 180, 360) - 180;
+    animateTo(r + delta, ANIM_MS / 1000);
   }
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     // 여기서 pointer capture 를 걸면 카드 안 링크 클릭이 가로채져 안 열린다 —
     // 실제 드래그가 시작된 순간(onPointerMove)에만 capture 한다.
     dragging.current = { x: e.clientX, rot0: rotRef.current, moved: false };
+    vel.current = 0;
+    lastMove.current = { t: performance.now(), x: e.clientX };
   }
   // 시차 틸트 없음 — 드래그 외에는 무대가 완전히 정지 (안정감 유지, 대표 지시)
   // 드래그 갱신은 rAF 스로틀 — 모바일에서 프레임당 1회만 렌더해 부드럽게
@@ -162,6 +173,14 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
       // 민감도: 폰은 짧은 스와이프로 한 칸, 데스크톱도 기존보다 기민하게 (대표 지시 2026-08-25)
       const sens = vw < 640 ? 0.55 : 0.38;
       pendingRot.current = d.rot0 + dx * sens;
+      // 속도 추적 (관성용)
+      const now = performance.now();
+      const lm = lastMove.current;
+      if (lm) {
+        const dt = Math.max(1, now - lm.t);
+        vel.current = vel.current * 0.75 + ((e.clientX - lm.x) / dt) * 0.25;
+      }
+      lastMove.current = { t: now, x: e.clientX };
       if (!moveRaf.current) {
         moveRaf.current = requestAnimationFrame(() => {
           moveRaf.current = 0;
@@ -173,10 +192,18 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   function onPointerUp() {
     const d = dragging.current;
     dragging.current = null;
-    if (d?.moved) {
-      dragEndAt.current = Date.now();
-      snapTo(mod(Math.round(-rotRef.current / step), n));
-    }
+    if (!d?.moved) return;
+    dragEndAt.current = Date.now();
+    // 관성 감속: 놓는 순간 속도만큼 더 돌다가 부드럽게 멈춘다 (대표 지시 2026-08-25)
+    const sens = vw < 640 ? 0.55 : 0.38;
+    let extra = vel.current * sens * 300; // 관성 이동각 (deg)
+    const maxExtra = step * 3;
+    extra = Math.max(-maxExtra, Math.min(maxExtra, extra));
+    const projected = pendingRot.current + extra;
+    const target = Math.round(projected / step) * step;
+    const distSteps = Math.abs(target - pendingRot.current) / step;
+    const dur = Math.min(1.15, 0.42 + distSteps * 0.22);
+    animateTo(target, dur);
   }
   function onLeave() {
     onPointerUp();
