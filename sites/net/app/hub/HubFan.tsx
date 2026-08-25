@@ -114,67 +114,82 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     }
   }
 
-  // 모듈 줄 호버 — 짧은 일렉트로닉 블립 (대표 지시 2026-08-25)
+  // 저음 "둥" 합성 공통부 — 사인 기본음(피치 하강) + 옅은 배음, 로우패스로 각을 죽인다
+  // (대표 지시 2026-08-25: 삑삑이 대신 고급스러운 저음 타격감)
+  function playThud(
+    ctx: AudioContext,
+    opts: { f0: number; f1: number; dur: number; gain: number; harm: number },
+  ) {
+    const t0 = ctx.currentTime;
+    const low = ctx.createBiquadFilter();
+    low.type = 'lowpass';
+    low.frequency.value = 520;
+    const master = ctx.createGain();
+    master.gain.value = 1;
+    low.connect(master);
+    master.connect(ctx.destination);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(opts.f0, t0);
+    osc.frequency.exponentialRampToValueAtTime(opts.f1, t0 + opts.dur * 0.7);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(opts.gain, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + opts.dur);
+    osc.connect(g);
+    g.connect(low);
+    osc.start(t0);
+    osc.stop(t0 + opts.dur + 0.02);
+
+    // 옅은 옥타브 배음 — 울림의 몸통
+    const h = ctx.createOscillator();
+    h.type = 'sine';
+    h.frequency.setValueAtTime(opts.f0 * 2, t0);
+    h.frequency.exponentialRampToValueAtTime(opts.f1 * 2, t0 + opts.dur * 0.6);
+    const hg = ctx.createGain();
+    hg.gain.setValueAtTime(0.0001, t0);
+    hg.gain.exponentialRampToValueAtTime(opts.gain * opts.harm, t0 + 0.015);
+    hg.gain.exponentialRampToValueAtTime(0.0001, t0 + opts.dur * 0.65);
+    h.connect(hg);
+    hg.connect(low);
+    h.start(t0);
+    h.stop(t0 + opts.dur);
+  }
+
+  // 모듈 줄 호버 — 아주 작은 저음 "둥"
   const lastBlip = useRef(0);
   function playBlip() {
     const now = performance.now();
-    if (now - lastBlip.current < 70) return; // 스윕 시 연타 방지
+    if (now - lastBlip.current < 90) return; // 스윕 시 연타 방지
     lastBlip.current = now;
     const ctx = ensureCtx();
     if (!ctx) return;
     try {
-      const t0 = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(1350, t0);
-      osc.frequency.exponentialRampToValueAtTime(1850, t0 + 0.055);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.04, t0 + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
-      osc.connect(g);
-      g.connect(ctx.destination);
-      osc.start(t0);
-      osc.stop(t0 + 0.1);
+      playThud(ctx, { f0: 210, f1: 140, dur: 0.22, gain: 0.05, harm: 0.25 });
     } catch {
       /* no-op */
     }
   }
 
-  // 모듈 클릭 — 두 음 상승 확인음(일렉트로닉), 재생 후 이동
+  // 모듈 클릭 — 깊고 여운 있는 "둥—" 후 이동
   function playSelect() {
     const ctx = ensureCtx();
     if (!ctx) return;
     try {
-      const t0 = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(760, t0);
-      osc.frequency.setValueAtTime(1520, t0 + 0.065);
-      const flt = ctx.createBiquadFilter();
-      flt.type = 'lowpass';
-      flt.frequency.value = 2600;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.06, t0 + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
-      osc.connect(flt);
-      flt.connect(g);
-      g.connect(ctx.destination);
-      osc.start(t0);
-      osc.stop(t0 + 0.17);
+      playThud(ctx, { f0: 160, f1: 82, dur: 0.5, gain: 0.13, harm: 0.2 });
     } catch {
       /* no-op */
     }
   }
 
-  // 클릭음이 페이지 이동에 잘리지 않게 140ms 후 이동
+  // 클릭음의 몸통이 들린 뒤 이동 (여운은 페이지 전환과 겹쳐 자연 소멸)
   function onItemClick(e: ReactMouseEvent<HTMLAnchorElement>, href: string) {
     e.preventDefault();
     playSelect();
     window.setTimeout(() => {
       window.location.href = href;
-    }, 140);
+    }, 190);
   }
 
   useEffect(() => {
