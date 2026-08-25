@@ -5,7 +5,7 @@
   "unit": "mm",
   "ceilingHeight_mm": 2400,
   "wallThickness": 50,
-  "tool": "ECOREAN 표준 평면도 변환기 v1",
+  "tool": "ECOREAN 표준 평면도 변환기 v2",
   "note": "ECOREAN 자체 작성 표준 도면 — 실측 아님, 견적 전 실측 확인 필요 (NEEDS_CONFIRMATION)",
   "source_svg": "/catalog/plans/img/std-66.svg"
  },
@@ -174,7 +174,7 @@
  ],
  "walls": [
   {
-   "id": "w-std-66-01-0",
+   "id": "w-sp-std-66-01-0",
    "x1": 0,
    "y1": 0,
    "x2": 3200,
@@ -183,7 +183,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-01-1",
+   "id": "w-sp-std-66-01-1",
    "x1": 3200,
    "y1": 0,
    "x2": 3200,
@@ -192,7 +192,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-01-2",
+   "id": "w-sp-std-66-01-2",
    "x1": 3200,
    "y1": 3400,
    "x2": 0,
@@ -201,7 +201,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-01-3",
+   "id": "w-sp-std-66-01-3",
    "x1": 0,
    "y1": 3400,
    "x2": 0,
@@ -210,7 +210,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-02-0",
+   "id": "w-sp-std-66-02-0",
    "x1": 3200,
    "y1": 0,
    "x2": 5800,
@@ -219,7 +219,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-02-1",
+   "id": "w-sp-std-66-02-1",
    "x1": 5800,
    "y1": 0,
    "x2": 5800,
@@ -228,7 +228,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-02-2",
+   "id": "w-sp-std-66-02-2",
    "x1": 5800,
    "y1": 3400,
    "x2": 3200,
@@ -237,7 +237,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-02-3",
+   "id": "w-sp-std-66-02-3",
    "x1": 3200,
    "y1": 3400,
    "x2": 3200,
@@ -246,7 +246,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-03-0",
+   "id": "w-sp-std-66-03-0",
    "x1": 5800,
    "y1": 0,
    "x2": 8200,
@@ -255,7 +255,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-03-1",
+   "id": "w-sp-std-66-03-1",
    "x1": 8200,
    "y1": 0,
    "x2": 8200,
@@ -264,7 +264,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-03-2",
+   "id": "w-sp-std-66-03-2",
    "x1": 8200,
    "y1": 3400,
    "x2": 5800,
@@ -273,7 +273,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-03-3",
+   "id": "w-sp-std-66-03-3",
    "x1": 5800,
    "y1": 3400,
    "x2": 5800,
@@ -282,7 +282,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-04-0",
+   "id": "w-sp-std-66-04-0",
    "x1": 0,
    "y1": 3400,
    "x2": 1800,
@@ -291,7 +291,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-04-1",
+   "id": "w-sp-std-66-04-1",
    "x1": 1800,
    "y1": 3400,
    "x2": 1800,
@@ -300,7 +300,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-04-2",
+   "id": "w-sp-std-66-04-2",
    "x1": 1800,
    "y1": 5800,
    "x2": 0,
@@ -309,7 +309,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-04-3",
+   "id": "w-sp-std-66-04-3",
    "x1": 0,
    "y1": 5800,
    "x2": 0,
@@ -318,7 +318,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-05-0",
+   "id": "w-sp-std-66-05-0",
    "x1": 1800,
    "y1": 3400,
    "x2": 3200,
@@ -327,7 +327,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-05-1",
+   "id": "w-sp-std-66-05-1",
    "x1": 3200,
    "y1": 3400,
    "x2": 3200,
@@ -336,7 +336,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-05-2",
+   "id": "w-sp-std-66-05-2",
    "x1": 3200,
    "y1": 5800,
    "x2": 1800,
@@ -345,7 +345,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-05-3",
+   "id": "w-sp-std-66-05-3",
    "x1": 1800,
    "y1": 5800,
    "x2": 1800,
@@ -354,7 +354,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-06-0",
+   "id": "w-sp-std-66-06-0",
    "x1": 3200,
    "y1": 3400,
    "x2": 8200,
@@ -363,7 +363,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-06-1",
+   "id": "w-sp-std-66-06-1",
    "x1": 8200,
    "y1": 3400,
    "x2": 8200,
@@ -372,7 +372,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-06-2",
+   "id": "w-sp-std-66-06-2",
    "x1": 8200,
    "y1": 8000,
    "x2": 3200,
@@ -381,7 +381,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-06-3",
+   "id": "w-sp-std-66-06-3",
    "x1": 3200,
    "y1": 8000,
    "x2": 3200,
@@ -390,7 +390,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-07-0",
+   "id": "w-sp-std-66-07-0",
    "x1": 0,
    "y1": 5800,
    "x2": 3200,
@@ -399,7 +399,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-07-1",
+   "id": "w-sp-std-66-07-1",
    "x1": 3200,
    "y1": 5800,
    "x2": 3200,
@@ -408,7 +408,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-07-2",
+   "id": "w-sp-std-66-07-2",
    "x1": 3200,
    "y1": 8000,
    "x2": 0,
@@ -417,13 +417,150 @@
    "thickness": 50
   },
   {
-   "id": "w-std-66-07-3",
+   "id": "w-sp-std-66-07-3",
    "x1": 0,
    "y1": 8000,
    "x2": 0,
    "y2": 5800,
    "spaceId": "sp-std-66-07",
    "thickness": 50
+  }
+ ],
+ "openings": [
+  {
+   "id": "d-std-66-01",
+   "type": "DOOR",
+   "subType": "swing",
+   "spaceId": "sp-std-66-01",
+   "x": 2500,
+   "y": 3400,
+   "wallId": null,
+   "width_mm": 900,
+   "height_mm": 2100,
+   "depth_mm": 200,
+   "sillHeight_mm": null,
+   "angle": 0,
+   "subtractMode": "double"
+  },
+  {
+   "id": "d-std-66-02",
+   "type": "DOOR",
+   "subType": "swing",
+   "spaceId": "sp-std-66-02",
+   "x": 5800,
+   "y": 1700,
+   "wallId": null,
+   "width_mm": 900,
+   "height_mm": 2100,
+   "depth_mm": 200,
+   "sillHeight_mm": null,
+   "angle": 90,
+   "subtractMode": "double"
+  },
+  {
+   "id": "d-std-66-03",
+   "type": "DOOR",
+   "subType": "swing",
+   "spaceId": "sp-std-66-04",
+   "x": 1800,
+   "y": 4600,
+   "wallId": null,
+   "width_mm": 900,
+   "height_mm": 2100,
+   "depth_mm": 200,
+   "sillHeight_mm": null,
+   "angle": 90,
+   "subtractMode": "double"
+  },
+  {
+   "id": "d-std-66-04",
+   "type": "DOOR",
+   "subType": "swing",
+   "spaceId": "sp-std-66-07",
+   "x": 3200,
+   "y": 6900,
+   "wallId": null,
+   "width_mm": 900,
+   "height_mm": 2100,
+   "depth_mm": 200,
+   "sillHeight_mm": null,
+   "angle": 90,
+   "subtractMode": "double"
+  },
+  {
+   "id": "wn-std-66-01",
+   "type": "WINDOW",
+   "subType": "sliding2",
+   "spaceId": "sp-std-66-01",
+   "x": 0,
+   "y": 1700,
+   "wallId": null,
+   "width_mm": 1800,
+   "height_mm": 1500,
+   "depth_mm": 200,
+   "sillHeight_mm": 900,
+   "angle": 90,
+   "subtractMode": "single"
+  },
+  {
+   "id": "wn-std-66-02",
+   "type": "WINDOW",
+   "subType": "sliding2",
+   "spaceId": "sp-std-66-02",
+   "x": 4500,
+   "y": 0,
+   "wallId": null,
+   "width_mm": 1800,
+   "height_mm": 1500,
+   "depth_mm": 200,
+   "sillHeight_mm": 900,
+   "angle": 0,
+   "subtractMode": "single"
+  },
+  {
+   "id": "wn-std-66-03",
+   "type": "WINDOW",
+   "subType": "sliding2",
+   "spaceId": "sp-std-66-03",
+   "x": 8200,
+   "y": 1700,
+   "wallId": null,
+   "width_mm": 1800,
+   "height_mm": 1500,
+   "depth_mm": 200,
+   "sillHeight_mm": 900,
+   "angle": 90,
+   "subtractMode": "single"
+  },
+  {
+   "id": "wn-std-66-04",
+   "type": "WINDOW",
+   "subType": "sliding4",
+   "spaceId": "sp-std-66-06",
+   "x": 5700,
+   "y": 8000,
+   "wallId": null,
+   "width_mm": 3600,
+   "height_mm": 1500,
+   "depth_mm": 200,
+   "sillHeight_mm": 900,
+   "angle": 0,
+   "subtractMode": "single"
+  },
+  {
+   "id": "wn-std-66-05",
+   "type": "WINDOW",
+   "subType": "sliding2",
+   "spaceId": "sp-std-66-07",
+   "x": 1600,
+   "y": 8000,
+   "wallId": null,
+   "width_mm": 1800,
+   "height_mm": 1500,
+   "depth_mm": 200,
+   "sillHeight_mm": 900,
+   "angle": 0,
+   "subtractMode": "single"
   }
  ]
 }

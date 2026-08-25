@@ -5,7 +5,7 @@
   "unit": "mm",
   "ceilingHeight_mm": 2400,
   "wallThickness": 50,
-  "tool": "ECOREAN 표준 평면도 변환기 v1",
+  "tool": "ECOREAN 표준 평면도 변환기 v2",
   "note": "ECOREAN 자체 작성 표준 도면 — 실측 아님, 견적 전 실측 확인 필요 (NEEDS_CONFIRMATION)",
   "source_svg": "/catalog/plans/img/std-49.svg"
  },
@@ -128,7 +128,7 @@
  ],
  "walls": [
   {
-   "id": "w-std-49-01-0",
+   "id": "w-sp-std-49-01-0",
    "x1": 0,
    "y1": 0,
    "x2": 3300,
@@ -137,7 +137,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-01-1",
+   "id": "w-sp-std-49-01-1",
    "x1": 3300,
    "y1": 0,
    "x2": 3300,
@@ -146,7 +146,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-01-2",
+   "id": "w-sp-std-49-01-2",
    "x1": 3300,
    "y1": 3600,
    "x2": 0,
@@ -155,7 +155,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-01-3",
+   "id": "w-sp-std-49-01-3",
    "x1": 0,
    "y1": 3600,
    "x2": 0,
@@ -164,7 +164,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-02-0",
+   "id": "w-sp-std-49-02-0",
    "x1": 0,
    "y1": 3600,
    "x2": 3300,
@@ -173,7 +173,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-02-1",
+   "id": "w-sp-std-49-02-1",
    "x1": 3300,
    "y1": 3600,
    "x2": 3300,
@@ -182,7 +182,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-02-2",
+   "id": "w-sp-std-49-02-2",
    "x1": 3300,
    "y1": 7000,
    "x2": 0,
@@ -191,7 +191,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-02-3",
+   "id": "w-sp-std-49-02-3",
    "x1": 0,
    "y1": 7000,
    "x2": 0,
@@ -200,7 +200,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-03-0",
+   "id": "w-sp-std-49-03-0",
    "x1": 3300,
    "y1": 0,
    "x2": 7000,
@@ -209,7 +209,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-03-1",
+   "id": "w-sp-std-49-03-1",
    "x1": 7000,
    "y1": 0,
    "x2": 7000,
@@ -218,7 +218,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-03-2",
+   "id": "w-sp-std-49-03-2",
    "x1": 7000,
    "y1": 4900,
    "x2": 3300,
@@ -227,7 +227,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-03-3",
+   "id": "w-sp-std-49-03-3",
    "x1": 3300,
    "y1": 4900,
    "x2": 3300,
@@ -236,7 +236,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-04-0",
+   "id": "w-sp-std-49-04-0",
    "x1": 3300,
    "y1": 4900,
    "x2": 5100,
@@ -245,7 +245,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-04-1",
+   "id": "w-sp-std-49-04-1",
    "x1": 5100,
    "y1": 4900,
    "x2": 5100,
@@ -254,7 +254,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-04-2",
+   "id": "w-sp-std-49-04-2",
    "x1": 5100,
    "y1": 7000,
    "x2": 3300,
@@ -263,7 +263,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-04-3",
+   "id": "w-sp-std-49-04-3",
    "x1": 3300,
    "y1": 7000,
    "x2": 3300,
@@ -272,7 +272,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-05-0",
+   "id": "w-sp-std-49-05-0",
    "x1": 5100,
    "y1": 4900,
    "x2": 7000,
@@ -281,7 +281,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-05-1",
+   "id": "w-sp-std-49-05-1",
    "x1": 7000,
    "y1": 4900,
    "x2": 7000,
@@ -290,7 +290,7 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-05-2",
+   "id": "w-sp-std-49-05-2",
    "x1": 7000,
    "y1": 7000,
    "x2": 5100,
@@ -299,13 +299,120 @@
    "thickness": 50
   },
   {
-   "id": "w-std-49-05-3",
+   "id": "w-sp-std-49-05-3",
    "x1": 5100,
    "y1": 7000,
    "x2": 5100,
    "y2": 4900,
    "spaceId": "sp-std-49-05",
    "thickness": 50
+  }
+ ],
+ "openings": [
+  {
+   "id": "d-std-49-01",
+   "type": "DOOR",
+   "subType": "entry",
+   "spaceId": "sp-std-49-05",
+   "x": 7000,
+   "y": 5950,
+   "wallId": null,
+   "width_mm": 1000,
+   "height_mm": 2100,
+   "depth_mm": 200,
+   "sillHeight_mm": null,
+   "angle": 90,
+   "subtractMode": "single"
+  },
+  {
+   "id": "d-std-49-02",
+   "type": "DOOR",
+   "subType": "swing",
+   "spaceId": "sp-std-49-01",
+   "x": 3300,
+   "y": 1800,
+   "wallId": null,
+   "width_mm": 900,
+   "height_mm": 2100,
+   "depth_mm": 200,
+   "sillHeight_mm": null,
+   "angle": 90,
+   "subtractMode": "double"
+  },
+  {
+   "id": "d-std-49-03",
+   "type": "DOOR",
+   "subType": "swing",
+   "spaceId": "sp-std-49-02",
+   "x": 3300,
+   "y": 4250,
+   "wallId": null,
+   "width_mm": 900,
+   "height_mm": 2100,
+   "depth_mm": 200,
+   "sillHeight_mm": null,
+   "angle": 90,
+   "subtractMode": "double"
+  },
+  {
+   "id": "d-std-49-04",
+   "type": "DOOR",
+   "subType": "swing",
+   "spaceId": "sp-std-49-04",
+   "x": 5100,
+   "y": 5950,
+   "wallId": null,
+   "width_mm": 900,
+   "height_mm": 2100,
+   "depth_mm": 200,
+   "sillHeight_mm": null,
+   "angle": 90,
+   "subtractMode": "double"
+  },
+  {
+   "id": "wn-std-49-01",
+   "type": "WINDOW",
+   "subType": "sliding2",
+   "spaceId": "sp-std-49-01",
+   "x": 0,
+   "y": 1800,
+   "wallId": null,
+   "width_mm": 1800,
+   "height_mm": 1500,
+   "depth_mm": 200,
+   "sillHeight_mm": 900,
+   "angle": 90,
+   "subtractMode": "single"
+  },
+  {
+   "id": "wn-std-49-02",
+   "type": "WINDOW",
+   "subType": "sliding2",
+   "spaceId": "sp-std-49-02",
+   "x": 0,
+   "y": 5300,
+   "wallId": null,
+   "width_mm": 1800,
+   "height_mm": 1500,
+   "depth_mm": 200,
+   "sillHeight_mm": 900,
+   "angle": 90,
+   "subtractMode": "single"
+  },
+  {
+   "id": "wn-std-49-03",
+   "type": "WINDOW",
+   "subType": "sliding4",
+   "spaceId": "sp-std-49-03",
+   "x": 7000,
+   "y": 2450,
+   "wallId": null,
+   "width_mm": 3600,
+   "height_mm": 1500,
+   "depth_mm": 200,
+   "sillHeight_mm": 900,
+   "angle": 90,
+   "subtractMode": "single"
   }
  ]
 }
