@@ -42,7 +42,11 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const dragEndAt = useRef(0);
   const prevFront = useRef<number | null>(null);
+  const pendingRot = useRef(0);
+  const moveRaf = useRef(0);
   rotRef.current = rot;
+
+  useEffect(() => () => cancelAnimationFrame(moveRaf.current), []);
 
   // 바람(휘익) 사운드 — 파일 없이 노이즈 + 밴드패스 스윕으로 합성
   function playWhoosh() {
@@ -141,6 +145,7 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
     dragging.current = { x: e.clientX, rot0: rotRef.current, moved: false };
   }
   // 시차 틸트 없음 — 드래그 외에는 무대가 완전히 정지 (안정감 유지, 대표 지시)
+  // 드래그 갱신은 rAF 스로틀 — 모바일에서 프레임당 1회만 렌더해 부드럽게
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
     const d = dragging.current;
     if (!d) return;
@@ -153,7 +158,15 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
         /* no-op */
       }
     }
-    if (d.moved) setRot(d.rot0 + dx * 0.22);
+    if (d.moved) {
+      pendingRot.current = d.rot0 + dx * 0.22;
+      if (!moveRaf.current) {
+        moveRaf.current = requestAnimationFrame(() => {
+          moveRaf.current = 0;
+          setRot(pendingRot.current);
+        });
+      }
+    }
   }
   function onPointerUp() {
     const d = dragging.current;
@@ -172,7 +185,8 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
   }
 
   // 반응형 무대 — 화면 폭에 비례해 같은 3D 구도를 축소 (모바일·탭 동일 경험, 대표 지시 2026-08-25)
-  const RX = Math.min(470, Math.max(148, vw * 0.36)); // 좌우 펼침 반경
+  // 폰에서는 반경을 더 좁혀 측면 카드를 뒤로 접어 여백 확보
+  const RX = vw < 640 ? Math.max(104, vw * 0.28) : Math.min(470, Math.max(180, vw * 0.36));
   const RZ = RX * 0.575; // 깊이 반경
 
   return (

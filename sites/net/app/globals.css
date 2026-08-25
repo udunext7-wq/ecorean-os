@@ -650,11 +650,29 @@
   .hubf-fan { height: 480px; margin-top: 10vh; }
 }
 @media (max-width: 639px) {
-  .hubf-stage { perspective: 860px; }
-  .hubf-fan { height: 440px; margin-top: 6vh; }
-  .hubf-card { width: 244px; height: 414px; padding: 15px 13px 10px; }
-  .hubc-card-title { font-size: 18px; }
-  .hubc-brand { letter-spacing: 0.34em; text-indent: 0.34em; }
+  .hubf-stage { perspective: 780px; }
+  .hubf-fan { height: 396px; margin-top: 3.5vh; }
+  /* 폰: 카드 축소 + 무거운 효과 제거 (여백 확보·성능, 대표 지시 2026-08-25) */
+  .hubf-card {
+    width: 206px;
+    height: 366px;
+    padding: 13px 12px 9px;
+    backdrop-filter: none;
+    background: linear-gradient(168deg, rgba(13, 20, 30, 0.85), rgba(6, 10, 17, 0.83));
+    box-shadow: 0 18px 36px -18px rgba(0, 0, 0, 0.85);
+  }
+  .hubf-cardw.is-front .hubf-card {
+    box-shadow:
+      0 22px 44px -18px rgba(0, 0, 0, 0.9),
+      0 0 30px -14px rgba(214, 190, 145, 0.35);
+  }
+  .hubc-card-title { font-size: 16.5px; }
+  .hubc-item-name { font-size: 12.5px; }
+  .hubc-item-desc { font-size: 10px; }
+  .hubc-brand { font-size: 22px; letter-spacing: 0.34em; text-indent: 0.34em; }
+  .hubc-spot,
+  .hubc-glowpool { display: none; }
+  .hubc-bgimg { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
