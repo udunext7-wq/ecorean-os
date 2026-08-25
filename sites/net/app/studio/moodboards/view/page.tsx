@@ -26,6 +26,24 @@ export default function MoodboardDetailPage() {
   const refFileRef = useRef<HTMLInputElement | null>(null);
   const [refUploading, setRefUploading] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [refSize, setRefSize] = useState<'sm' | 'md' | 'lg'>('sm');
+  const [refView, setRefView] = useState(false); // 기준 이미지 전체화면
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('ecorean.mb.refSize');
+      if (s === 'sm' || s === 'md' || s === 'lg') setRefSize(s);
+    } catch {
+      /* no-op */
+    }
+  }, []);
+  function changeRefSize(s: 'sm' | 'md' | 'lg') {
+    setRefSize(s);
+    try {
+      localStorage.setItem('ecorean.mb.refSize', s);
+    } catch {
+      /* no-op */
+    }
+  }
   const [eTitle, setETitle] = useState('');
   const [eSite, setESite] = useState('');
   const [eConcept, setEConcept] = useState('');
@@ -298,6 +316,20 @@ export default function MoodboardDetailPage() {
             <h2 className="text-[11px] font-semibold tracking-[0.3em] text-[#9BC9D8]/80">
               기준 무드보드 <span className="text-[#9BC9D8]/40">REFERENCE</span>
             </h2>
+            <div className="flex items-center gap-1 rounded-full border border-[#9BC9D8]/20 p-0.5 text-[10px]">
+              {(['sm', 'md', 'lg'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => changeRefSize(s)}
+                  className={`rounded-full px-2.5 py-1 transition ${
+                    refSize === s ? 'bg-[#9BC9D8]/20 text-[#dff4fa]' : 'text-[#94aab8] hover:text-[#c8e4ee]'
+                  }`}
+                >
+                  {s === 'sm' ? '작게' : s === 'md' ? '중간' : '크게'}
+                </button>
+              ))}
+            </div>
             <input
               ref={refFileRef}
               type="file"
@@ -315,12 +347,25 @@ export default function MoodboardDetailPage() {
             </button>
           </div>
           {board?.cover_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={board.cover_url}
-              alt="기준 무드보드"
-              className="max-h-[46vh] w-full rounded-xl border border-[#E8C99B]/25 object-cover shadow-[0_0_60px_-24px_rgba(214,190,145,0.45)]"
-            />
+            <button
+              type="button"
+              onClick={() => setRefView(true)}
+              title="클릭하면 크게 보기"
+              className="group block"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={board.cover_url}
+                alt="기준 무드보드"
+                className={`rounded-xl border border-[#E8C99B]/25 object-cover shadow-[0_0_60px_-24px_rgba(214,190,145,0.45)] transition group-hover:brightness-110 ${
+                  refSize === 'sm'
+                    ? 'h-44 w-auto max-w-full'
+                    : refSize === 'md'
+                      ? 'h-72 w-auto max-w-full'
+                      : 'max-h-[46vh] w-full'
+                }`}
+              />
+            </button>
           ) : (
             <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-[#9BC9D8]/25 text-sm text-[#94aab8]">
               기준이 될 무드보드 이미지를 먼저 올려주세요 — 여기서 파생 이미지들이 시작됩니다
@@ -360,6 +405,27 @@ export default function MoodboardDetailPage() {
           ))}
         </div>
       </div>
+
+      {/* 기준 이미지 전체화면 */}
+      {refView && board?.cover_url ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/92 p-6 backdrop-blur-sm"
+          onClick={() => setRefView(false)}
+          role="dialog"
+          aria-modal
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={board.cover_url}
+            alt="기준 무드보드"
+            className="max-h-[90vh] max-w-[94vw] rounded-md object-contain shadow-[0_0_80px_-20px_rgba(214,190,145,0.4)]"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <p className="absolute bottom-5 left-1/2 -translate-x-1/2 text-xs tracking-[0.3em] text-[#e8c99b]/80">
+            REFERENCE · 아무 곳이나 눌러 닫기
+          </p>
+        </div>
+      ) : null}
 
       {/* 라이트박스 — 전체화면 뷰 */}
       {lightbox !== null && images[lightbox] ? (

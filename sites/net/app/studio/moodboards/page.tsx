@@ -147,16 +147,24 @@ export default function MoodboardsPage() {
               href={`/studio/moodboards/view?id=${b.id}`}
               className="group overflow-hidden rounded-xl border border-[#9BC9D8]/15 bg-[#0b111a]/80 transition hover:border-[#E8C99B]/40 hover:shadow-[0_0_40px_-16px_rgba(214,190,145,0.4)]"
             >
-              <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#101826] to-[#070b12]">
+              <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#101826] to-[#070b12]">
                 {b.cover_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={b.cover_url}
-                    alt={b.title}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={b.cover_url}
+                      alt={b.title}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute left-2 top-2 rounded-full border border-[#E8C99B]/40 bg-black/45 px-2 py-0.5 text-[9px] tracking-[0.25em] text-[#e8c99b]">
+                      기준
+                    </span>
+                  </>
                 ) : (
-                  <div className="flex h-full items-center justify-center text-3xl text-[#9BC9D8]/25">✦</div>
+                  <div className="flex h-full flex-col items-center justify-center gap-2 text-[#9BC9D8]/30">
+                    <span className="text-3xl">✦</span>
+                    <span className="text-[10px] tracking-[0.2em]">기준 이미지 미지정</span>
+                  </div>
                 )}
               </div>
               <div className="p-4">
