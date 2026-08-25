@@ -144,7 +144,7 @@ export default function MoodboardsPage() {
           {boards.map((b) => (
             <Link
               key={b.id}
-              href={`/studio/moodboards/${b.id}`}
+              href={`/studio/moodboards/view?id=${b.id}`}
               className="group overflow-hidden rounded-xl border border-[#9BC9D8]/15 bg-[#0b111a]/80 transition hover:border-[#E8C99B]/40 hover:shadow-[0_0_40px_-16px_rgba(214,190,145,0.4)]"
             >
               <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#101826] to-[#070b12]">

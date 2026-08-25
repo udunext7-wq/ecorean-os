@@ -3,7 +3,6 @@
 // AI 스튜디오 — 무드보드 상세: 이미지 업로드·메이슨리 갤러리·전체화면 라이트박스 (대표 지시 2026-08-25)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
 import { createBrowserSupabase } from '@/core/db/browser';
 import { Noto_Sans_KR } from 'next/font/google';
 
@@ -13,8 +12,11 @@ type Board = { id: string; title: string; concept: string | null; site: string |
 type Img = { id: string; url: string; caption: string | null; created_at: string };
 
 export default function MoodboardDetailPage() {
-  const params = useParams<{ id: string }>();
-  const boardId = params.id;
+  // vercel.json 수동 routes 가 동적 세그먼트를 못 태워 404 → 쿼리(?id=) 방식 (2026-08-25)
+  const [boardId, setBoardId] = useState<string | null>(null);
+  useEffect(() => {
+    setBoardId(new URLSearchParams(window.location.search).get('id'));
+  }, []);
   const [board, setBoard] = useState<Board | null>(null);
   const [images, setImages] = useState<Img[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +27,7 @@ export default function MoodboardDetailPage() {
   const [refUploading, setRefUploading] = useState(false);
 
   const load = useCallback(async () => {
+    if (!boardId) return;
     const supabase = createBrowserSupabase();
     const [{ data: b }, { data: imgs, error: e2 }] = await Promise.all([
       supabase.from('moodboards').select('id,title,concept,site,cover_url').eq('id', boardId).maybeSingle(),
@@ -40,7 +43,7 @@ export default function MoodboardDetailPage() {
   }, [load]);
 
   async function onFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || !boardId) return;
     const supabase = createBrowserSupabase();
     setUploading(files.length);
     setError(null);
@@ -76,7 +79,7 @@ export default function MoodboardDetailPage() {
   // 기준 무드보드 이미지 업로드/교체 — 이 보드의 출발점이 되는 원본
   async function onRefFile(files: FileList | null) {
     const file = files?.[0];
-    if (!file) return;
+    if (!file || !boardId) return;
     const supabase = createBrowserSupabase();
     setRefUploading(true);
     setError(null);
