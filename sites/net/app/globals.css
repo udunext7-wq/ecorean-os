@@ -423,7 +423,7 @@
 }
 /* 스냅·클릭 이동 시에만 부드럽게 (드래그 중엔 프레임 직접 갱신) */
 .hubf-cardw.is-anim {
-  transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.75s ease, filter 0.75s ease;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease, filter 0.5s ease;
 }
 .hubf-cardw:not(.is-front) { cursor: pointer; }
 

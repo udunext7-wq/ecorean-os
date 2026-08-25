@@ -16,7 +16,7 @@ export type TreeSection = { title: string; desc: string; items: TreeItem[] };
 type Slot = { kind: 'section'; sec: TreeSection } | { kind: 'ghost' };
 
 const SEL_KEY = 'ecorean.hubFan.section';
-const ANIM_MS = 750;
+const ANIM_MS = 520;
 
 function mod(a: number, b: number) {
   return ((a % b) + b) % b;
@@ -159,7 +159,9 @@ export function HubFan({ sections }: { sections: TreeSection[] }) {
       }
     }
     if (d.moved) {
-      pendingRot.current = d.rot0 + dx * 0.22;
+      // 민감도: 폰은 짧은 스와이프로 한 칸, 데스크톱도 기존보다 기민하게 (대표 지시 2026-08-25)
+      const sens = vw < 640 ? 0.55 : 0.38;
+      pendingRot.current = d.rot0 + dx * sens;
       if (!moveRaf.current) {
         moveRaf.current = requestAnimationFrame(() => {
           moveRaf.current = 0;
