@@ -92,6 +92,19 @@ const COMPLEXES = [
   { slug:'cx-pohang-84',   name:'포항자이',                   at:'84',  tpl:'std-84a', sido:'경북', gugun:'포항시 북구', addr:'장성동',                   lat:36.0730, lng:129.3820 },
 ];
 
+// ── 공공데이터 자동 수집분 병합 (plans-fetch-public-specs.mjs 출력, K-apt 사실 정보 기반) ──
+try {
+  const AUTO = JSON.parse(readFileSync('scripts/plans-complexes-auto.json', 'utf8'));
+  const seenSlug = new Set(COMPLEXES.map(c => c.slug));
+  const seenNameAt = new Set(COMPLEXES.map(c => `${c.name}|${String(c.at).replace(/\D/g, '')}`));
+  let added = 0;
+  for (const a of AUTO) {
+    if (seenSlug.has(a.slug) || seenNameAt.has(`${a.name}|${String(a.at).replace(/\D/g, '')}`)) continue;
+    COMPLEXES.push(a); seenSlug.add(a.slug); added++;
+  }
+  if (added) console.log(`📥 공공데이터 자동 수집분 ${added}건 병합 (plans-complexes-auto.json)`);
+} catch { /* 자동 수집 파일 없으면 수기 목록만 사용 */ }
+
 const tplCache = {};
 const loadTpl = t => tplCache[t] || (tplCache[t] = specFromPlanJSON(JSON.parse(readFileSync(`${DATA}/${t}.json`, 'utf8'))));
 
