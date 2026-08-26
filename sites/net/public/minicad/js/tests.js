@@ -599,7 +599,18 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('도어: 슬라이딩 호 없음',cntCls(gsl,'Arc')===0);
     assert('도어: 슬라이딩 패널 2짝+',cntCls(gsl,'Rect')>=3,'Rect '+cntCls(gsl,'Rect'));
     assert('도어: 포켓 호 없음',cntCls(gpk,'Arc')===0);
-    assert('도어: 포켓 수납부+패널',cntCls(gpk,'Rect')>=3,'Rect '+cntCls(gpk,'Rect'));
+    assert('도어: 포켓 수납부+패널',cntCls(gpk,'Rect')>=4,'Rect '+cntCls(gpk,'Rect'));
+    // 2026-08-26: 포켓 치수 정합 — 전체 W 중 실선 패널 = W/2(도어 돌출), 점선(벽 속 문틀) 2개
+    (function(){
+      const wPx=mmToPx(dpk.width_mm);
+      let dashN=0, solidPanelOK=false;
+      gpk.getChildren(n=>n.getClassName()==='Rect').forEach(r=>{
+        if(r.dash()&&r.dash().length&&r.stroke()!=='#E2725B') dashN++; // 미부착 경고 rect 제외
+        else if(Math.abs(r.width()-wPx/2*0.97)<1.5&&r.height()<wPx*0.2) solidPanelOK=true;
+      });
+      assert('도어: 포켓 점선(문틀 구간) 2개',dashN===2,'dash '+dashN);
+      assert('도어: 포켓 도어 돌출 = 전체 절반',solidPanelOK);
+    })();
     assert('도어: 3연동 패널 3짝+',cntCls(gfd,'Rect')>=4,'Rect '+cntCls(gfd,'Rect'));
     // [S9] 2026-08-24: 계단실 공간 연동 — 공간 크기 자동 맞춤 (대표 지시)
     const mkSq=(x,y,w,h)=>polygonToVertexIds([{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}]);

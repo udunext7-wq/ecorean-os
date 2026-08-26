@@ -1677,17 +1677,20 @@ function renderOpenings(){
     const dPx=Math.max(3,mmToPx(o.depth_mm||(isDoor?40:200)));
     const isDouble=isDoor&&(o.subtractMode||'double')==='double';
     if(isDoor){
-      // 양면차감 시 jamb를 살짝 더 진하게(opacity ↑) + 양쪽 끝에 표시 라인
-      g.add(new Konva.Rect({x:-w/2,y:-dPx/2,width:w,height:dPx,
-        fill:color,opacity:isDouble?0.95:0.75,
-        stroke:sel?'#E2725B':'#0A0A0A',strokeWidth:sel?2:1}));
-      // 양면차감 표시: 양쪽 면(jamb 외곽)에 가는 라인
-      if(isDouble){
-        g.add(new Konva.Line({points:[-w/2,-dPx/2,w/2,-dPx/2],stroke:'#0A0A0A',strokeWidth:1.2,opacity:0.6}));
-        g.add(new Konva.Line({points:[-w/2,dPx/2,w/2,dPx/2],stroke:'#0A0A0A',strokeWidth:1.2,opacity:0.6}));
-      }
       // 2026-08-24: 도어 종류별 평면 도식 (대표 지시) — 슬라이딩 계열은 여닫이 호 대신 패널 표기
       const st=o.subType||'swing';
+      // 2026-08-26: 포켓도어는 바탕도 자체 도식 (전체 폭 = 개구부 절반 + 포켓 절반) — 대표 지시
+      if(st!=='pocket'){
+        // 양면차감 시 jamb를 살짝 더 진하게(opacity ↑) + 양쪽 끝에 표시 라인
+        g.add(new Konva.Rect({x:-w/2,y:-dPx/2,width:w,height:dPx,
+          fill:color,opacity:isDouble?0.95:0.75,
+          stroke:sel?'#E2725B':'#0A0A0A',strokeWidth:sel?2:1}));
+        // 양면차감 표시: 양쪽 면(jamb 외곽)에 가는 라인
+        if(isDouble){
+          g.add(new Konva.Line({points:[-w/2,-dPx/2,w/2,-dPx/2],stroke:'#0A0A0A',strokeWidth:1.2,opacity:0.6}));
+          g.add(new Konva.Line({points:[-w/2,dPx/2,w/2,dPx/2],stroke:'#0A0A0A',strokeWidth:1.2,opacity:0.6}));
+        }
+      }
       if(st==='sliding'||st==='folding'||st==='pocket'){
         const panelT=Math.max(3,dPx*0.30);           // 패널 시각 두께
         const jamb=Math.max(2,Math.min(dPx*0.18,6));
@@ -1700,12 +1703,23 @@ function renderOpenings(){
         const panel=(x0,len,yc)=>g.add(new Konva.Rect({x:x0,y:yc-panelT/2,width:len,height:panelT,
           fill:'#F5F1EB',stroke:'#0A0A0A',strokeWidth:1.4,listening:false}));
         if(st==='pocket'){
-          // 포켓도어: 벽 속 수납부(점선) + 개구부 절반을 덮은 패널 + 수납 방향 화살표
-          const pw=iW*0.55;
-          g.add(new Konva.Rect({x:iL-pw,y:-panelT/2,width:pw,height:panelT,
-            stroke:'#0A0A0A',strokeWidth:1.2,dash:[5,3],fillEnabled:false,listening:false}));
-          panel(iL,iW*0.55,0);
-          arrow(iL+iW*0.5,iL+iW*0.08,-dPx*0.85);
+          // 2026-08-26: 포켓도어 치수 정합 (대표 지시) — 전체 폭 W 안에서
+          //  우측 절반 = 개구부 + 도어 패널(실선, W/2 만큼 돌출), 좌측 절반 = 벽 속 포켓(문틀 구간 — 점선만)
+          const half=w/2;
+          // 개구부 바탕 (우측 절반)
+          g.add(new Konva.Rect({x:0,y:-dPx/2,width:half,height:dPx,
+            fill:color,opacity:isDouble?0.95:0.75,
+            stroke:sel?'#E2725B':'#0A0A0A',strokeWidth:sel?2:1}));
+          // 벽 속 포켓 (좌측 절반) — 문틀에 들어가는 부분: 점선 외곽만
+          g.add(new Konva.Rect({x:-half,y:-dPx/2,width:half,height:dPx,
+            stroke:sel?'#E2725B':'#0A0A0A',strokeWidth:1.2,dash:[6,4],fillEnabled:false,listening:false}));
+          // 도어 패널 (닫힘 상태 — 개구부 절반을 실선으로 정확히 덮음)
+          panel(0,half*0.97,0);
+          // 패널이 포켓으로 들어갈 자리 (점선 패널)
+          g.add(new Konva.Rect({x:-half*0.97,y:-panelT/2,width:half*0.97,height:panelT,
+            stroke:'#0A0A0A',strokeWidth:1.1,dash:[5,3],fillEnabled:false,listening:false}));
+          // 열림 방향 화살표 (개구부 → 포켓)
+          arrow(half*0.6,-half*0.6,-dPx*0.9);
         }else{
           // 슬라이딩(미서기 2짝) / 3연동(3짝): 짝들을 위아래로 어긋나게 + 물림(오버랩)
           const n=st==='sliding'?2:3;

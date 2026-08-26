@@ -33,7 +33,7 @@ const DOOR_TYPES={
   entry:{name:'현관문',w:1000,h:2100,d:200,subtract:'single'},
   sliding:{name:'슬라이딩',w:1500,h:2100,d:200,subtract:'double'},
   folding:{name:'폴딩 (3연동)',w:2400,h:2100,d:200,subtract:'double'},
-  pocket:{name:'포켓도어',w:900,h:2100,d:200,subtract:'double'},
+  pocket:{name:'포켓도어',w:1800,h:2100,d:200,subtract:'double'}, // 2026-08-26: 전체 폭(도어 900 + 벽 속 포켓 900) — 치수 정합 (대표 지시)
 };
 const WINDOW_TYPES={
   casement:{name:'여닫이창',w:1200,h:1500,d:200,sill:900},
