@@ -544,6 +544,8 @@ function addLibObject(pos,kind,type){
     layerName:makeLayerName(elem,sp),spaceId:sp?sp.id:null};
   // 2026-08-25: 다운라이트는 마지막에 고른 인치로 배치 (대표 지시 — 2인치·3인치 혼용)
   if(type==='downlight') o.inch=Math.round(STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT);
+  // 2026-08-25: 라인·간접조명은 길이 속성으로 배치 (이후 입력/드래그로 늘림)
+  if(typeof isLinearLight==='function'&&isLinearLight(type)) o.length_mm=linearLightLen({type});
   if(kind==='fixtures') STATE.fixtures.push(o);
   else if(kind==='furniture') STATE.furniture.push(o);
   else if(kind==='lights') STATE.lights.push(o);
@@ -2652,6 +2654,7 @@ function updateLibPlacementPreview(pos){
   if(!def) return;
   // 2026-08-25: 다운라이트 고스트도 선택 인치 크기로 미리보기
   if(STATE.selectedLib==='downlight'&&typeof downlightDef==='function') def=downlightDef({inch:STATE.downlightInch});
+  if(typeof isLinearLight==='function'&&isLinearLight(STATE.selectedLib)) def=linearLightDef({type:STATE.selectedLib});
   drawGroup.destroyChildren();
   _libPreviewActive=true;
 

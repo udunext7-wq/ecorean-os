@@ -2139,6 +2139,68 @@ function renderRect(arr,group,lib,kind){
   });
 }
 
+// 2026-08-25: 라인·간접조명 길이 가변 (대표 지시) — 하나를 넣고 길이를 입력해 길게 뺀다
+//  o.length_mm 인스턴스 속성. 단면 높이는 고정, 길이 방향만 실치수로 다시 그린다.
+const LINEAR_LIGHT_TYPES=['line_t5','cove','magnet_track','fluorescent','pendant_linear'];
+const LINEAR_LIGHT_CROSS={line_t5:60,cove:140,magnet_track:70,fluorescent:100,pendant_linear:140};
+const LINEAR_LIGHT_MIN=300, LINEAR_LIGHT_MAX=30000;
+function isLinearLight(t){return LINEAR_LIGHT_TYPES.indexOf(t)>=0;}
+function linearLightLen(o){
+  const base=LIGHT_LIB[o&&o.type]||{};
+  const n=Math.round((o&&o.length_mm)||0);
+  return Math.max(LINEAR_LIGHT_MIN,Math.min(LINEAR_LIGHT_MAX,n||base.size||1200));
+}
+function linearLightShape(type,L){
+  const h=L/2;
+  if(type==='cove'){
+    return [
+      {type:'rect',x:-h,y:-25,w:L,h:50,fill:'#FFF8E0',stroke:'#F5E5B8',sw:3,r:25},
+      {type:'line',x1:-h,y1:-70,x2:h,y2:-70,stroke:'#D4B872',sw:5,dash:[70,50]},
+      {type:'line',x1:-h,y1:70,x2:h,y2:70,stroke:'#D4B872',sw:5,dash:[70,50]},
+    ];
+  }
+  if(type==='magnet_track'){
+    const out=[{type:'rect',x:-h,y:-35,w:L,h:70,fill:'#2E2E2E',stroke:'#101010',sw:6,r:8}];
+    const n=Math.max(2,Math.round(L/450));
+    const seg=L/n;
+    for(let i=0;i<n;i++){
+      const cx=-h+(i+0.5)*seg;
+      if(i%2===0) out.push({type:'circle',cx,cy:0,r:45,fill:'#D4B872',stroke:'#A88248',sw:4});
+      else{
+        const mw=Math.min(360,seg*0.7);
+        out.push({type:'rect',x:cx-mw/2,y:-22,w:mw,h:44,fill:'#FFF3D0',stroke:'#D4B872',sw:3,r:22});
+      }
+    }
+    return out;
+  }
+  if(type==='fluorescent'){
+    return [
+      {type:'rect',x:-h,y:-50,w:L,h:100,fill:'#F5E5B8',stroke:'#D4B872',sw:5,r:5},
+      {type:'rect',x:-h+20,y:-30,w:Math.max(10,L-40),h:60,fill:'#FFF8E0',stroke:'#F5E5B8',sw:2,r:3},
+    ];
+  }
+  if(type==='pendant_linear'){
+    return [
+      {type:'rect',x:-h,y:-70,w:L,h:140,fill:'#2E2E2E',stroke:'#101010',sw:6,r:70},
+      {type:'rect',x:-h+60,y:-28,w:Math.max(10,L-120),h:56,fill:'#FFF3D0',stroke:'#D4B872',sw:3,r:28},
+      {type:'circle',cx:-L*0.32,cy:0,r:10,fill:'#5A5A5A',stroke:'#2E2E2E',sw:2},
+      {type:'circle',cx:L*0.32,cy:0,r:10,fill:'#5A5A5A',stroke:'#2E2E2E',sw:2},
+    ];
+  }
+  // line_t5 (기본)
+  return [
+    {type:'rect',x:-h,y:-30,w:L,h:60,fill:'#FFF3D0',stroke:'#D4B872',sw:5,r:30},
+    {type:'rect',x:-h-20,y:-18,w:40,h:36,fill:'#5A5A5A',stroke:'#2A2A2A',sw:3,r:8},
+    {type:'rect',x:h-20,y:-18,w:40,h:36,fill:'#5A5A5A',stroke:'#2A2A2A',sw:3,r:8},
+    {type:'line',x1:-h+40,y1:0,x2:h-40,y2:0,stroke:'#FFE9A8',sw:14},
+  ];
+}
+function linearLightDef(o){
+  const base=LIGHT_LIB[o.type]||{};
+  const L=linearLightLen(o);
+  return {...base,size:L,length_mm:L,crossH:LINEAR_LIGHT_CROSS[o.type]||80,
+    name:base.name+' '+L+'mm',shape:linearLightShape(o.type,L)};
+}
 // 2026-08-25: 다운라이트 인치별 도식 (대표 지시) — 외경/타공경 실치수로 그린다
 function downlightInchOf(o){
   const n=Math.round((o&&o.inch)||DOWNLIGHT_INCH_DEFAULT);
@@ -2162,7 +2224,8 @@ function renderLights(){
   groups.lights.destroyChildren();
   const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합
   STATE.lights.forEach(o=>{
-    const def=(o.type==='downlight')?downlightDef(o):LIGHT_LIB[o.type]; // 2026-08-25: 인치별 규격
+    const def=(o.type==='downlight')?downlightDef(o)
+             :(isLinearLight(o.type)?linearLightDef(o):LIGHT_LIB[o.type]); // 2026-08-25: 인치 규격 / 길이 가변
     if(!def) return;
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const sel=STATE.selectedKind==='lights'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='lights'&&b.id===o.id);
@@ -2179,7 +2242,42 @@ function renderLights(){
     }
     if(def.shape){
       drawShape(def.shape).forEach(n=>g.add(n));
-      if(sel){
+      if(sel&&isLinearLight(o.type)){
+        // 2026-08-25: 라인·간접조명 — 길이 방향 점선 박스 + 양 끝 길이 조절 핸들
+        const Lpx=mmToPx(def.size), Hpx=mmToPx(def.crossH||80);
+        g.add(new Konva.Rect({x:-Lpx/2-6,y:-Hpx/2-6,width:Lpx+12,height:Hpx+12,
+          stroke:'#E2725B',strokeWidth:2,dash:[6,4],fillEnabled:false,listening:false}));
+        [-1,1].forEach(sign=>{
+          const hd=new Konva.Circle({x:sign*Lpx/2,y:0,radius:7,fill:'#E2725B',stroke:'#fff',strokeWidth:1.5,
+            draggable:true,hitStrokeWidth:24});
+          hd.on('mousedown touchstart',e=>{e.cancelBubble=true;});
+          hd.on('mouseenter',()=>{document.body.style.cursor='ew-resize';});
+          hd.on('mouseleave',()=>{document.body.style.cursor='';});
+          hd.on('dragmove',()=>{
+            hd.y(0);
+            const newLen=Math.max(LINEAR_LIGHT_MIN,Math.min(LINEAR_LIGHT_MAX,
+              Math.round(pxToMm(Math.abs(hd.x()))*2/10)*10));
+            // 드래그 중에는 재렌더 없이 미리보기만 (노드 파괴 방지)
+            drawGroup.destroyChildren();
+            const a=g.getAbsoluteTransform().point({x:-sign*mmToPx(newLen)/2,y:0});
+            const b=g.getAbsoluteTransform().point({x:sign*mmToPx(newLen)/2,y:0});
+            drawGroup.add(new Konva.Line({points:[a.x,a.y,b.x,b.y],stroke:'#E2725B',strokeWidth:2,dash:[8,5],listening:false}));
+            drawGroup.add(new Konva.Text({x:(a.x+b.x)/2-45,y:(a.y+b.y)/2-24,width:90,align:'center',
+              text:newLen+'mm',fontSize:12,fontFamily:'JetBrains Mono',fontStyle:'700',
+              fill:'#FFFFFF',stroke:'#000000',strokeWidth:3,fillAfterStrokeEnabled:true,listening:false}));
+            previewLayer.batchDraw();
+          });
+          hd.on('dragend',()=>{
+            const newLen=Math.max(LINEAR_LIGHT_MIN,Math.min(LINEAR_LIGHT_MAX,
+              Math.round(pxToMm(Math.abs(hd.x()))*2/10)*10));
+            drawGroup.destroyChildren();previewLayer.batchDraw();
+            o.length_mm=newLen;
+            saveHistory();renderAll();refreshUI();
+            if(typeof cmdToast==='function') cmdToast('조명 길이 '+newLen+'mm');
+          });
+          g.add(hd);
+        });
+      }else if(sel){
         const r=mmToPx(def.size||200)/2+5;
         g.add(new Konva.Circle({radius:r,stroke:'#E2725B',strokeWidth:2.5,dash:[6,4],
           shadowColor:'#E2725B',shadowBlur:8,shadowOpacity:0.6}));

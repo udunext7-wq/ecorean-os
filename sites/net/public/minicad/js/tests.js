@@ -1079,6 +1079,52 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('다운라이트: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-25: 라인·간접조명 길이 가변 (대표 지시 — 하나 넣고 길게 뺀다) ===
+  try{
+    const _bakL={lights:STATE.lights.slice(),selK:STATE.selectedKind,selI:STATE.selectedId};
+    // [L1] 대상 타입
+    assert('라인조명: 대상 5종',['line_t5','cove','magnet_track','fluorescent','pendant_linear'].every(isLinearLight)
+      &&!isLinearLight('downlight')&&!isLinearLight('pendant'));
+    // [L2] 길이별 도식 — 몸체 rect 폭이 길이와 일치
+    const bodyW=(type,L)=>{const sh=linearLightShape(type,L);const r=sh.find(c=>c.type==='rect');return r?r.w:0;};
+    assert('라인조명: 길이 = 몸체 폭',bodyW('line_t5',1200)===1200&&bodyW('line_t5',4500)===4500&&bodyW('cove',3000)===3000);
+    assert('라인조명: 끝단 캡 위치 추종',(function(){const sh=linearLightShape('line_t5',2400);
+      const caps=sh.filter(c=>c.type==='rect'&&c.w===40);return caps.length===2&&Math.abs(caps[1].x-(1200-20))<0.1;})());
+    // [L3] 마그네틱 트랙 — 길이에 비례해 모듈 수 증가
+    const modN=L=>linearLightShape('magnet_track',L).length;
+    assert('라인조명: 트랙 모듈 길이 비례',modN(4500)>modN(1500),modN(1500)+'→'+modN(4500));
+    // [L4] 길이 클램프
+    assert('라인조명: 길이 하한/상한',linearLightLen({type:'line_t5',length_mm:50})===300
+      &&linearLightLen({type:'line_t5',length_mm:999999})===30000);
+    assert('라인조명: 미지정 시 기본 길이',linearLightLen({type:'cove'})===LIGHT_LIB.cove.size);
+    // [L5] 렌더 — 길이가 다르면 그려진 폭도 다르다
+    const l1={id:makeId('li'),type:'line_t5',x:2200000,y:2200000,angle:0,length_mm:1200};
+    const l2={id:makeId('li'),type:'line_t5',x:2200000,y:2201000,angle:0,length_mm:3600};
+    STATE.lights.push(l1,l2);
+    renderLights();
+    const widthOf=id=>{let w=0;groups.lights.getChildren().forEach(g5=>{if(g5.id&&g5.id()===id)
+      g5.getChildren(n=>n.getClassName()==='Rect').forEach(r=>{if(r.width()>w)w=r.width();});});return w;};
+    assert('라인조명: 렌더 폭 3배 차이',Math.abs(widthOf(l2.id)/widthOf(l1.id)-3)<0.06,
+      widthOf(l1.id).toFixed(1)+' vs '+widthOf(l2.id).toFixed(1));
+    // [L6] 선택 시 양 끝 길이 핸들 2개
+    STATE.selectedKind='lights';STATE.selectedId=l2.id;
+    renderLights();
+    let handles=0;
+    groups.lights.getChildren().forEach(g5=>{if(g5.id&&g5.id()===l2.id)
+      g5.getChildren(n=>n.getClassName()==='Circle').forEach(c=>{if(c.draggable&&c.draggable())handles++;});});
+    assert('라인조명: 길이 조절 핸들 2개',handles===2,'handles '+handles);
+    // [L7] JSON — 길이(m) 출력 + 왕복 보존
+    const jl=buildJSON();
+    const jj=jl.lights.find(x=>x.id===l2.id);
+    assert('라인조명: JSON length_m',!!jj&&jj.length_mm===3600&&jj.length_m===3.6,jj&&JSON.stringify([jj.length_mm,jj.length_m]));
+    applyLoadedData(JSON.parse(JSON.stringify(jl)));
+    const l2b=STATE.lights.find(x=>x.id===l2.id);
+    assert('라인조명: 왕복 길이 보존',!!l2b&&l2b.length_mm===3600);
+    STATE.lights=_bakL.lights;STATE.selectedKind=_bakL.selK;STATE.selectedId=_bakL.selI;
+    renderAll();
+  }catch(e){
+    assert('라인조명: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

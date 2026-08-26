@@ -576,6 +576,21 @@ function refreshDetail(){
     const arr=getArr(STATE.selectedKind);
     const obj=arr?arr.find(x=>x.id===STATE.selectedId):null;
     const hasAngle=obj&&'angle' in obj;
+    // 2026-08-25: 라인·간접조명 길이 (대표 지시) — 하나 넣고 길이를 입력해 길게
+    const isLinear=STATE.selectedKind==='lights'&&obj&&typeof isLinearLight==='function'&&isLinearLight(obj.type);
+    let lenHtml='';
+    if(isLinear){
+      const L=linearLightLen(obj);
+      lenHtml=
+        '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.08);border:1px solid rgba(212,184,114,0.35);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#D4B872">조명 길이</div>'+
+        '<div class="field"><input type="number" id="d-ll-len" value="'+L+'" step="100" min="300" max="30000"></div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:3px">'+
+        [600,900,1200,1500,1800,2400,3000,4500].map(v=>'<button type="button" class="btn sm ll-preset" data-len="'+v+'" style="flex:1 1 22%;padding:4px 2px'+(v===L?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+'">'+(v>=1000?(v/1000)+'m':v)+'</button>').join('')+
+        '</div>'+
+        '<div class="hint" style="margin-top:4px">양 끝 <b style="color:#E2725B">●</b> 핸들을 끌어도 길이 조절 (10mm 단위) · 회전은 아래 각도</div>'+
+        '</div>';
+    }
     // 2026-08-25: 다운라이트 인치 선택 (대표 지시) — 2~6인치, 타공경 자동
     const isDownlight=STATE.selectedKind==='lights'&&obj&&obj.type==='downlight';
     let inchHtml='';
@@ -620,7 +635,7 @@ function refreshDetail(){
         '</div>';
     }
     dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      inchHtml+circuitHtml+extraHtml+
+      lenHtml+inchHtml+circuitHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -631,6 +646,16 @@ function refreshDetail(){
       document.getElementById('d-rot-90').addEventListener('click',()=>{obj.angle=((obj.angle||0)+90)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-m90').addEventListener('click',()=>{obj.angle=((obj.angle||0)-90+360)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-180').addEventListener('click',()=>{obj.angle=((obj.angle||0)+180)%360;saveHistory();renderAll();refreshUI();});
+    }
+    if(isLinear){
+      const applyLen=v=>{
+        const n=Math.max(300,Math.min(30000,Math.round(v/10)*10));
+        obj.length_mm=n;saveHistory();renderAll();refreshUI();
+        showStatus('조명 길이 '+n+'mm');
+      };
+      const li=document.getElementById('d-ll-len');
+      if(li) li.addEventListener('change',e=>{const v=_numField(e,300);if(v==null){refreshUI();return;}applyLen(v);});
+      document.querySelectorAll('.ll-preset').forEach(b=>b.addEventListener('click',()=>applyLen(parseInt(b.dataset.len,10))));
     }
     if(isDownlight){
       const sel=document.getElementById('d-dl-inch');
@@ -1197,6 +1222,11 @@ function buildJSON(){
       nameKo:def.name||o.type,
       nameEn:def.nameEn||sm.kw||o.type,
       estModule:def.est||null, // 2026-08-24: 픽스가구 견적 모듈 코드 (견적 OS 소비용)
+      // 2026-08-25: 라인·간접조명 길이 — 견적 OS 가 m 단가로 산출
+      ...((typeof isLinearLight==='function'&&isLinearLight(o.type))?(function(){
+        const _L=linearLightLen(o);
+        return {length_mm:_L,length_m:parseFloat((_L/1000).toFixed(3)),nameKo:(def.name||o.type)+' '+_L+'mm'};
+      })():{}),
       // 2026-08-25: 다운라이트 인치 규격 — 견적 OS 가 타공경으로 단가 매핑
       ...(o.type==='downlight'?(function(){
         const _i=Math.round(o.inch||DOWNLIGHT_INCH_DEFAULT);
