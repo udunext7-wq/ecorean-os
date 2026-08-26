@@ -82,7 +82,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 <div class="wrap"><div class="grid" id="grid"><div class="empty">불러오는 중…</div></div></div>
 <div class="wrap" id="mapWrap" style="display:none">
   <div id="map" style="height:72vh;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);background:#e8e6e0"></div>
-  <p style="font-size:11.5px;color:#999;margin-top:8px">※ 마커 위치는 개략 좌표입니다. 마커를 클릭하면 평면도 상세가 열립니다. 검색·지역 필터가 지도에도 적용됩니다.</p>
+  <p style="font-size:11.5px;color:#999;margin-top:8px">※ 3D 지도 — <b>우클릭 드래그</b>(모바일: 두 손가락)로 회전·기울기, 휠로 확대. 확대하면 건물이 입체로 표시됩니다. 마커 위치는 개략 좌표이며, 클릭하면 평면도 상세가 열립니다. 검색·지역 필터가 지도에도 적용됩니다.</p>
 </div>
 
 <!-- 등록 모달 -->
@@ -220,28 +220,42 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   });
   ['sido','rooms'].forEach(function(id){document.getElementById(id).addEventListener('change',load);});
 
-  // ── 🗺 지도 뷰 (Leaflet + OpenStreetMap — 키 불필요) ──
-  var map=null, markerLayer=null, mapOn=false;
-  function ensureLeaflet(){
-    if(window.L)return Promise.resolve();
+  // ── 🗺 3D 지도 뷰 (MapLibre GL + OpenFreeMap 벡터 타일 — 키 불필요) ──
+  // 건물 입체(fill-extrusion)·회전·기울기 지원. 실패 시 사용자에게 안내.
+  var map=null, markers=[], mapOn=false, mapReady=false;
+  function ensureMapLibre(){
+    if(window.maplibregl)return Promise.resolve();
     return new Promise(function(res,rej){
       var css=document.createElement('link');css.rel='stylesheet';
-      css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(css);
+      css.href='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';document.head.appendChild(css);
       var s=document.createElement('script');
-      s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      s.src='https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
       s.onload=res;s.onerror=function(){rej(new Error('지도 라이브러리 로드 실패'));};
       document.head.appendChild(s);
     });
   }
-  function renderMap(){
-    if(!mapOn||!window.L)return;
-    if(!map){
-      map=L.map('map').setView([36.5,127.8],7); // 전국 뷰
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-        maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-      markerLayer=L.layerGroup().addTo(map);
-    }
-    markerLayer.clearLayers();
+  function add3DBuildings(){
+    // 스타일에 3D 건물 레이어가 없으면 벡터 소스(openmaptiles 스키마 building)를 찾아 직접 추가
+    var style=map.getStyle(), layers=style.layers||[], i;
+    for(i=0;i<layers.length;i++)if(layers[i].type==='fill-extrusion')return; // 이미 있음
+    var srcId=null;
+    for(var k in style.sources)if(style.sources[k].type==='vector'){srcId=k;break;}
+    if(!srcId)return;
+    var labelId=null; // 라벨(심볼) 아래에 끼워 넣어야 지명이 건물에 가려지지 않음
+    for(i=0;i<layers.length;i++)if(layers[i].type==='symbol'&&layers[i].layout&&layers[i].layout['text-field']){labelId=layers[i].id;break;}
+    map.addLayer({
+      id:'ecorean-3d-buildings',type:'fill-extrusion',source:srcId,'source-layer':'building',minzoom:14,
+      paint:{
+        'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],12],0,'#e3ddd0',60,'#cfc6b2',150,'#b8ac93'],
+        'fill-extrusion-height':['interpolate',['linear'],['zoom'],14,0,15.2,['coalesce',['get','render_height'],12]],
+        'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
+        'fill-extrusion-opacity':0.85
+      }
+    },labelId||undefined);
+  }
+  function placeMarkers(){
+    if(!map||!mapReady)return;
+    markers.forEach(function(m){m.remove();});markers=[];
     var pts=[];
     var seen={}; // 같은 단지 복수 평형(동일 좌표) — 마커를 살짝 비켜 배치
     state.rows.forEach(function(r){
@@ -249,17 +263,40 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       var key=r.lat+','+r.lng;
       var n=seen[key]||0;seen[key]=n+1;
       var lat=r.lat+(n?0.0006*n:0), lng=r.lng+(n?0.0006*n:0);
-      var m=L.marker([lat,lng]).addTo(markerLayer);
-      m.bindPopup('<b>'+esc(r.complex_name)+'</b> '+esc(r.area_type||'')+'<br>'+
+      var pop=new maplibregl.Popup({offset:20}).setHTML('<b>'+esc(r.complex_name)+'</b> '+esc(r.area_type||'')+'<br>'+
         esc([r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' '))+'<br>'+
         '<a href="#" class="mk-open" style="font-weight:700;color:#8a713f">평면도 보기 →</a>');
-      m.on('popupopen',function(e){
-        var a=e.popup.getElement().querySelector('.mk-open');
-        if(a)a.addEventListener('click',function(ev){ev.preventDefault();openDetail(r);});
+      pop.on('open',function(){
+        var a=pop.getElement().querySelector('.mk-open');
+        if(a&&!a.dataset.bound){a.dataset.bound='1';a.addEventListener('click',function(ev){ev.preventDefault();openDetail(r);});}
       });
-      pts.push([r.lat,r.lng]);
+      markers.push(new maplibregl.Marker({color:'#B8965A'}).setLngLat([lng,lat]).setPopup(pop).addTo(map));
+      pts.push([lng,lat]);
     });
-    if(pts.length)map.fitBounds(pts,{padding:[36,36],maxZoom:14});
+    if(pts.length){
+      var b=new maplibregl.LngLatBounds(pts[0],pts[0]);
+      pts.forEach(function(p){b.extend(p);});
+      map.fitBounds(b,{padding:70,maxZoom:15.4});
+    }
+  }
+  function renderMap(){
+    if(!mapOn||!window.maplibregl)return;
+    if(!map){
+      map=new maplibregl.Map({
+        container:'map',
+        style:'https://tiles.openfreemap.org/styles/liberty',
+        center:[127.8,36.5],zoom:6.2,pitch:55,bearing:-12,maxPitch:75, // 전국 부감 뷰
+        antialias:true
+      });
+      map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
+      map.addControl(new maplibregl.FullscreenControl(),'top-right');
+      map.on('load',function(){mapReady=true;add3DBuildings();placeMarkers();});
+      map.on('error',function(e){ // 타일/스타일 로드 실패는 콘솔만 (지도 자체는 유지)
+        if(console&&console.warn)console.warn('map:',e&&e.error&&e.error.message||e);
+      });
+      return; // 마커는 load 이벤트에서
+    }
+    placeMarkers();
   }
   document.getElementById('mapBtn').addEventListener('click',function(){
     var btn=this;
@@ -267,8 +304,8 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     document.getElementById('mapWrap').style.display=mapOn?'':'none';
     document.querySelector('.wrap:not(#mapWrap)').style.display=mapOn?'none':'';
     btn.textContent=mapOn?'📋 목록':'🗺 지도';
-    if(mapOn)ensureLeaflet().then(function(){
-      renderMap();setTimeout(function(){map.invalidateSize();},50);
+    if(mapOn)ensureMapLibre().then(function(){
+      renderMap();setTimeout(function(){if(map)map.resize();},50);
     }).catch(function(e){alert(e.message);});
   });
 
