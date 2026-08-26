@@ -1926,6 +1926,10 @@ const PASSWORD = "203703";
 //   기본 목적지 = 온톨로지 뷰어. ?next=URL 쿼리로 덮어쓰기 가능.
 const REDIRECT_URL = new URLSearchParams(location.search).get('next')
   || '/studio/ontology';
+
+// ⭐ v5.4 (2026-08-26 대표 지시): FREE 모드 — 인트로 통로에서는 암호 시퀀스를 요구하지 않는다.
+//   ?free=1 이면 시퀀스 입력 HUD 를 숨기고 코어를 바로 눌러 통과. 암호 관문은 온톨로지 전용.
+const FREE_MODE = new URLSearchParams(location.search).get('free') === '1';
 const REDIRECT_DELAY_MS = 5500;
 
 let scene, camera, renderer, composer, bloomPass;
@@ -5635,7 +5639,7 @@ function startPhaseAuth() {
   }
 
   // "Please enter the password" voice prompts the user once they arrive
-  setTimeout(() => playVoice(pleaseEnterAudio, 'pleaseEnter', 0.95), 1100);
+  if (!FREE_MODE) setTimeout(() => playVoice(pleaseEnterAudio, 'pleaseEnter', 0.95), 1100);
 
   // Show STAGE 3 HUD
   setTimeout(() => {
@@ -5654,6 +5658,25 @@ function startPhaseAuth() {
     document.getElementById('cornerBL').classList.add('show');
     document.getElementById('cornerBR').classList.add('show');
     document.getElementById('stage3Prompt').classList.add('show');
+
+    // FREE 모드: 시퀀스 입력 제거 → 코어 탭만으로 입장
+    if (FREE_MODE) {
+      const seqPanel = document.getElementById('hudSequenceInput');
+      if (seqPanel) seqPanel.style.display = 'none';
+      authComplete = true;
+      const q = document.querySelector('.stage3-prompt-question');
+      if (q) q.textContent = 'Tap the Core to enter';
+      const inst = document.getElementById('stage3Instruction');
+      if (inst) inst.textContent = 'ECOREAN WORK SYSTEM';
+      const st = document.getElementById('stage3Status');
+      if (st) { st.textContent = '\u25c9 READY \u00b7 TAP CORE'; st.className = 'ready'; }
+      const hs = document.getElementById('hudStatus');
+      if (hs) { hs.textContent = 'READY'; hs.className = 'hud-value cyan'; }
+      const cl = document.getElementById('coreLock');
+      if (cl) { cl.textContent = 'DISENGAGED'; cl.className = 'hud-value cyan'; }
+      const zh = document.getElementById('stage3ZoomHint');
+      if (zh) zh.textContent = 'DRAG TO ROTATE \u00b7 PINCH / SCROLL TO ZOOM';
+    }
   }, 700);
 
   // Adjust BGM
