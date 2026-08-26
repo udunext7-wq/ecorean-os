@@ -5,6 +5,8 @@
 <style id="ecorean-gate-style">html{visibility:hidden}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/ecorean-gate.js"></script>
+<script src="/app-cloud.js"></script>
+<script src="/boc-wp.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1519,9 +1521,22 @@ td.org{color:var(--org)}
   <div class="card ani">
     <div class="ch"><div class="ci">📅</div>횡선식 공정표 (바 차트 + 실제 날짜)
       <span class="cdesc">기본설정에서 공사 시작일 입력 시 실제 날짜 표시</span>
-      <button class="hbtn no-print" onclick="window.print()" style="margin-left:auto">🖨 공정표 인쇄</button>
+      <button class="hbtn no-print" onclick="openWpModal()" style="margin-left:auto;background:rgba(29,158,117,.14);border-color:rgba(29,158,117,.45);color:#3ddca5">🏗 BOC 공정관리 전송</button>
+      <button class="hbtn no-print" onclick="window.print()">🖨 공정표 인쇄</button>
+    </div>
+    <div class="notice no-print" style="margin-bottom:10px">
+      이 표는 <b>면적 비례 개략식</b>입니다. 실물량 기준 정밀 공정표(선행관계·인력·자재발주·게이트)는
+      <b>🏗 BOC 공정관리 전송</b> 후 <b>공정관리 시스템</b>에서 생성됩니다.
     </div>
     <div id="gantt-area" style="overflow-x:auto;-webkit-overflow-scrolling:touch"></div>
+  </div>
+</div>
+
+<!-- ══ BOC 공정관리 전송 모달 ══ -->
+<div class="mo" id="mo-wp">
+  <div class="mbox" style="width:min(760px,95vw)">
+    <div class="mh"><span>🏗 BOC 공정관리 전송 — 공정 워크패키지</span><button class="mcl" onclick="cMo('mo-wp')">×</button></div>
+    <div id="wp-body"></div>
   </div>
 </div>
 </main>
@@ -6750,6 +6765,99 @@ function openMiniCAD(){
     if(!w)alert('팝업이 차단되었습니다. MiniCAD 파일을 직접 열어주세요:\nD:\\ECOREAN\\개발프로그램\\견적서\\백업용\\MiniCAD-v5.9-Galaxy\\ecorean_minicad_v5_9.before-lightbim.html');
   }catch(e){alert('MiniCAD 열기 실패: '+e.message);}
 }
+/* ══════════════════════════════════════════════════════
+   BOC 공정관리 연계 — 견적 → 공정 워크패키지 전송
+   견적OS 공정표는 면적 비례 개략식이라 실물량 근거가 없다.
+   여기서 만든 워크패키지(공정별 물량·인일·자재)를 BOC 공정관리로 보내
+   선행관계·게이트·자재발주가 붙은 정밀 공정표를 생성하게 한다.
+════════════════════════════════════════════════════════ */
+let _wpLast=null;
+
+function buildWorkPackage(){
+  if(!window.ECOREAN_WP){alert('연계 엔진(boc-wp.js)을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.');return null;}
+  calc();
+  if(!_calc||!_calc.lines||!_calc.lines.length){
+    alert('견적 데이터가 없습니다. 공간실측·마감재를 입력한 뒤 다시 시도하세요.');return null;
+  }
+  return ECOREAN_WP.build({
+    S:S, lines:_calc.lines, summary:_calc.summary||{}, DB:DB, from:'견적OS v17'
+  });
+}
+
+function openWpModal(){
+  const wp=buildWorkPackage(); if(!wp)return;
+  _wpLast=wp;
+  const el=$('wp-body'); if(!el)return;
+  const T=wp.totals, P=wp.project;
+  const rows=wp.packages.slice().sort((a,b)=>b.manDays-a.manDays);
+  const unmapAmt=wp.unmapped.reduce((s,u)=>s+(u.sup||0),0);
+
+  el.innerHTML=`
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px">
+    ${[['현장',P.name||'(무제)'],['면적',(P.area||0)+'㎡ / '+Math.round((P.area||0)/3.305)+'평'],
+       ['공정 패키지',wp.packages.length+'개'],['총 인일',T.manDays+'인일'],
+       ['노무비',fw(T.labor)],['자재비',fw(T.mat)]].map(([k,v])=>
+      `<div style="background:var(--s2);border:1px solid var(--gbr);border-radius:8px;padding:8px 10px">
+         <div style="font-size:9px;color:var(--t3)">${k}</div>
+         <div style="font-size:12px;font-weight:800;margin-top:2px">${v}</div></div>`).join('')}
+  </div>
+  <div class="rtw" style="max-height:280px;overflow-y:auto"><table><thead><tr>
+    <th style="width:86px">대상 공정</th><th>주요 물량</th><th style="width:56px">인일</th>
+    <th style="width:78px">노무비</th><th style="width:78px">자재비</th><th style="width:44px">최소</th>
+  </tr></thead><tbody>
+  ${rows.map(p=>`<tr>
+    <td style="font-weight:800;font-size:10px">${p.key}</td>
+    <td style="font-size:9px;color:var(--t3)">${p.items.slice(0,3).map(i=>i.nm+' '+i.q+i.u).join(' · ')}${p.items.length>3?' 외 '+(p.items.length-3)+'건':''}</td>
+    <td style="text-align:right;font-weight:700">${p.manDays}</td>
+    <td style="text-align:right">${fn(p.labor)}</td>
+    <td style="text-align:right">${fn(p.mat)}</td>
+    <td style="text-align:center;color:var(--t3)">${p.minDays}일</td>
+  </tr>`).join('')}
+  </tbody></table></div>
+  ${wp.unmapped.length?`<div class="notice" style="margin-top:10px;border-color:rgba(239,68,68,.4)">
+    ⚠ 공정 매핑이 없는 항목 ${wp.unmapped.length}건 (${fw(unmapAmt)}) — 공정표에 반영되지 않습니다:
+    ${wp.unmapped.slice(0,6).map(u=>u.code).join(', ')}${wp.unmapped.length>6?' 외':''}</div>`:''}
+  <div class="notice" style="margin-top:10px;font-size:9px">
+    인일 = 공정별 노무비 ÷ 직종 일당. BOC 공정관리에서 이 인일을 템플릿의 선행관계·인력상한에 대입해
+    일수·투입인력을 산출하고, 자재비 항목은 리드타임을 붙여 발주표로 전개합니다.
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px">
+    <button onclick="sendWpToPMS()" style="padding:10px;background:rgba(29,158,117,.16);border:1px solid rgba(29,158,117,.5);border-radius:8px;color:#3ddca5;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">🏗 전송하고 공정관리 열기</button>
+    <button onclick="downloadWp()" style="padding:10px;background:var(--s3);border:1px solid var(--s4);border-radius:8px;color:var(--t2);font-size:11px;cursor:pointer;font-family:inherit">💾 JSON 내려받기</button>
+  </div>
+  <div id="wp-status" style="margin-top:8px;font-size:10px;color:var(--t3)"></div>`;
+  oMo('mo-wp');
+}
+
+function sendWpToPMS(){
+  const wp=_wpLast||buildWorkPackage(); if(!wp)return;
+  const st=$('wp-status');
+  const ok=ECOREAN_WP.bridgePush(wp);
+  if(st)st.innerHTML=ok?'✅ 이 브라우저로 전달했습니다. 클라우드 업로드 중…':'⚠ 로컬 전달 실패 — 클라우드만 시도합니다.';
+  const done=(msg)=>{
+    if(st)st.innerHTML=msg+'<br>공정관리 시스템에서 <b>📥 견적 연동</b> 을 눌러 반영하세요.';
+    const w=window.open('/pms/','ecorean_pms');
+    if(!w&&st)st.innerHTML+='<br>⚠ 팝업이 차단되었습니다. 주소창에 /pms/ 를 직접 열어주세요.';
+  };
+  if(ECOREAN_WP.cloudReady()){
+    ECOREAN_WP.cloudSave(wp)
+      .then(()=>done('✅ 전송 완료 (이 브라우저 + ☁ 클라우드).'))
+      .catch(e=>done('✅ 로컬 전송 완료. ☁ 클라우드 업로드 실패: '+e.message));
+  } else {
+    done('✅ 로컬 전송 완료 (클라우드 미연결 — 같은 브라우저에서만 보입니다).');
+  }
+}
+
+function downloadWp(){
+  const wp=_wpLast||buildWorkPackage(); if(!wp)return;
+  const blob=new Blob([JSON.stringify(wp,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='workpackage_'+(wp.project.name||'현장').replace(/[^가-힣A-Za-z0-9]/g,'_')+'_'+wp.sentAt.slice(0,10)+'.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+}
+
 function dismissBridge(){
   const d=readBridge();
   if(d)localStorage.setItem(BRIDGE_SEEN_KEY,d.sentAt||'');

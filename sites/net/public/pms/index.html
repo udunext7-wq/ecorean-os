@@ -6,6 +6,8 @@
 <style id="ecorean-gate-style">html{visibility:hidden}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/ecorean-gate.js"></script>
+<script src="/app-cloud.js"></script>
+<script src="/boc-wp.js"></script>
 <title>BOC 공정관리 시스템</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📋</text></svg>">
 <style>
@@ -273,7 +275,15 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
       <h2 style="font-size:18px">프로젝트 목록</h2>
       <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. 데이터는 브라우저에 자동 저장됩니다.</p>
     </div>
-    <button class="btn btn-b" style="font-size:11px;padding:6px 14px" onclick="document.getElementById('fileIn').click()">📥 JSON 프로젝트 가져오기</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-g" style="font-size:11px;padding:6px 14px" onclick="openWpInbox()" title="견적OS에서 전송된 견적으로 정밀 공정표를 만듭니다">📥 견적 연동 <span id="wpInboxDot"></span></button>
+      <button class="btn btn-b" style="font-size:11px;padding:6px 14px" onclick="document.getElementById('fileIn').click()">📥 JSON 프로젝트 가져오기</button>
+    </div>
+  </div>
+  <div id="wpBanner" style="display:none;margin-top:10px;padding:10px 14px;background:#e8f6f0;border:1px solid #9ed9c3;border-radius:8px;font-size:12px;color:#0f6e56;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <b>🏗 견적OS 견적 감지</b><span id="wpBannerInfo" style="flex:1"></span>
+    <button class="btn btn-g" style="font-size:11px;padding:5px 12px" onclick="openWpInbox()">공정표 만들기</button>
+    <button class="btn" style="font-size:11px;padding:5px 10px" onclick="dismissWpBanner()">나중에</button>
   </div>
   <div class="proj-grid" id="projGrid"></div>
 </div>
@@ -297,7 +307,9 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
     <button class="btn btn-g" onclick="openPrintBox()">🖨 간트 인쇄</button>
     <button class="btn btn-g" onclick="printAll()" title="간트+공정상세+자재발주+인력투입 전체를 페이지별로 인쇄">🖨 전체 인쇄</button>
     <button class="btn" onclick="saveAsTemplate()" title="현재 공정표를 내 템플릿으로 저장">📑 템플릿 저장</button>
+    <button class="btn btn-g" onclick="openWpInbox()" title="견적OS 견적을 이 공정표에 반영 — 일수·인력·자재를 실물량으로 재산출">🔗 견적 반영</button>
   </div>
+  <div id="estLinkBar" style="display:none"></div>
   <div id="infoArea" class="info"></div>
   <div class="tabs">
     <div class="tab on" onclick="showTab('gantt',this)">📊 간트차트</div>
@@ -371,6 +383,70 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn" style="flex:1" onclick="closePrintBox()">취소</button>
       <button class="btn btn-g" style="flex:2" onclick="doPrintGantt()">인쇄하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 견적 연동 수신함 ══ -->
+<div class="mo-bg" id="wpInbox">
+  <div class="mo" style="max-width:660px">
+    <h3>📥 견적 연동 — 견적OS 워크패키지</h3>
+    <p style="font-size:11px;color:#888;margin-bottom:10px">
+      견적OS 공정표 탭에서 <b>🏗 BOC 공정관리 전송</b> 을 누르면 여기에 나타납니다.
+      견적의 실물량·노무비로 <b>일수·투입인력·자재발주</b>를 다시 계산합니다.
+    </p>
+    <div id="wpInboxList" style="max-height:46vh;overflow-y:auto"></div>
+    <label style="margin-top:12px">JSON 파일로 가져오기</label>
+    <input type="file" id="wpFile" accept=".json" onchange="onWpFile(event)">
+    <div class="mo-btns"><button class="btn btn-r" onclick="closeWpInbox()">닫기</button></div>
+  </div>
+</div>
+
+<!-- ══ 견적 반영 미리보기(diff) ══ -->
+<div class="mo-bg" id="wpApply">
+  <div class="mo" style="max-width:940px">
+    <h3>🔗 견적 반영 미리보기</h3>
+    <div id="wpApplyHead"></div>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:10px 0 8px;font-size:12px">
+      <label style="display:inline;margin:0;color:#333;font-size:12px">일수 산정
+        <select id="wpMode" style="width:auto;display:inline-block;margin-left:6px" onchange="renderWpApply()">
+          <option value="safe">안전 — 견적·템플릿 중 긴 쪽 (권장)</option>
+          <option value="est">정밀 — 견적 실물량 그대로</option>
+        </select>
+      </label>
+      <label style="display:inline;margin:0;color:#333;font-size:12px">
+        <input type="checkbox" id="wpDrop" style="width:auto;display:inline-block;vertical-align:-1px" onchange="renderWpApply()">
+        견적에 물량이 없는 공정 삭제 <span style="color:#888">(선행관계 자동 연결)</span>
+      </label>
+      <label style="display:inline;margin:0;color:#333;font-size:12px">
+        <input type="checkbox" id="wpAdd" checked style="width:auto;display:inline-block;vertical-align:-1px" onchange="renderWpApply()">
+        템플릿에 없는 견적 공정 <b>신설</b> <span style="color:#888">(표준 순서로 삽입)</span>
+      </label>
+      <label style="display:inline;margin:0;color:#333;font-size:12px">
+        <input type="checkbox" id="wpTasks" checked style="width:auto;display:inline-block;vertical-align:-1px">
+        세부작업에 견적 물량 추가
+      </label>
+      <button class="btn" style="font-size:11px;padding:4px 10px;margin-left:auto" onclick="openWageBox()">⚙ 직종 일당</button>
+    </div>
+    <div id="wpApplyBody" style="max-height:48vh;overflow:auto"></div>
+    <div class="mo-btns">
+      <button class="btn btn-r" onclick="closeWpApply()">취소</button>
+      <button class="btn btn-b" onclick="applyWpAsNew()" title="템플릿을 골라 새 프로젝트로 만듭니다">＋ 새 프로젝트로</button>
+      <button class="btn btn-g" onclick="applyWpToCurrent()">이 공정표에 반영</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 직종 일당 설정 ══ -->
+<div class="mo-bg" id="wageBox">
+  <div class="mo" style="max-width:560px">
+    <h3>⚙ 직종별 일당 (원/인일)</h3>
+    <p style="font-size:11px;color:#888;margin-bottom:8px">견적 노무비를 인일로 바꿀 때 쓰는 기준입니다. 현장 실제 노임에 맞추면 일수·인력 정확도가 올라갑니다.</p>
+    <div id="wageGrid" style="max-height:50vh;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px"></div>
+    <div class="mo-btns">
+      <button class="btn btn-r" onclick="closeWageBox()">취소</button>
+      <button class="btn" onclick="resetWage()">기본값</button>
+      <button class="btn btn-g" onclick="saveWage()">저장</button>
     </div>
   </div>
 </div>
@@ -835,6 +911,19 @@ function createProject(){
     phases:JSON.parse(JSON.stringify(srcPhases))
   };
   projects.push(proj);
+  /* 견적 연동으로 생성한 경우 — 템플릿을 견적 실물량으로 즉시 재산출 */
+  if(_wpPending&&WPE()){
+    var pend=_wpPending;_wpPending=null;
+    proj.phases.forEach(function(p){
+      if(!p.baseCrew){var bc={};(p.crew||"").split(",").forEach(function(s){var x=s.split(":");var nm=(x[0]||"").trim();if(nm)bc[nm]=parseInt(x[1])||1});p.baseCrew=bc}
+      if(p.baseDur==null)p.baseDur=p.dur||1;
+    });
+    if(proj.area)proj.areaBaseRef=parseFloat(proj.area)||undefined;
+    var r=WPE().apply(proj,pend.wp,pend.opts);
+    setTimeout(function(){toast("🔗 견적 반영 완료 — 공정 "+r.applied+"개"+
+      (r.added.length?" · 신설 "+r.added.length+"개":"")+
+      (r.dropped.length?" · 삭제 "+r.dropped.length+"개":""))},300);
+  }
   saveStore();
   closeNewProj();
   renderProjects();
@@ -870,6 +959,7 @@ function openProject(i){
   var hasScale=currentProj.phases.some(function(p){return p.baseCrew});
   if(hint)hint.textContent=hasScale?"※ 인력 고정·일수 자동조정":"";
   applyAreaScaling();
+  renderEstLinkBar();
   recalc();
 }
 
@@ -881,7 +971,9 @@ function backToList(){
   document.getElementById("projectView").style.display="block";
   document.getElementById("hdrTitle").textContent="BOC 공정관리 시스템";
   document.getElementById("hdrSub").textContent="ECOREAN | 프로젝트별 공정표 관리 | 템플릿 기반 생성";
+  var elb=document.getElementById("estLinkBar");if(elb)elb.style.display="none";
   renderProjects();
+  wpBridgeCheck();
 }
 
 function updateStartDate(){
@@ -1789,31 +1881,107 @@ function onDragEnd(e){
 // ================================================================
 function renderDetail(){
   var DATA=currentProj.phases;
-  var h='<table class="mod"><thead><tr><th>No</th><th style="width:70px">코드</th><th style="width:140px">대공정</th><th>세부작업</th><th style="width:50px">시작</th><th style="width:50px">종료</th><th>CP</th></tr></thead><tbody>';
-  var n=0,cc='';DATA.forEach(function(p){if(p.cat!==cc){cc=p.cat;h+='<tr class="cat-r"><td colspan=7>◆ '+(CI[p.cat]?CI[p.cat].n:p.cat)+'</td></tr>'}
-  p.tasks.forEach(function(t,ti){n++;h+='<tr><td style="text-align:center;font-size:10px">'+n+'</td><td style="text-align:center;font-size:10px;font-weight:600">'+esc(p.id)+'</td><td style="font-size:11px;font-weight:'+(ti===0?'700':'400')+'">'+((ti===0)?esc(p.nm):'')+'</td><td>'+esc(t)+'</td><td style="text-align:center;font-size:10px">'+((ti===0&&p._ds)?fms(p._ds):'')+'</td><td style="text-align:center;font-size:10px">'+((ti===0&&p._de)?fms(p._de):'')+'</td><td style="text-align:center">'+((ti===0&&p.cp)?'<span style="background:#e24b4a;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">CP</span>':'')+'</td></tr>'})});
+  var linked=!!(currentProj&&currentProj.estimateLink);
+  var cols=linked?8:7;
+  var h='<table class="mod"><thead><tr><th>No</th><th style="width:70px">코드</th><th style="width:140px">대공정</th><th>세부작업</th>'+
+    (linked?'<th style="width:104px">견적 근거</th>':'')+
+    '<th style="width:50px">시작</th><th style="width:50px">종료</th><th>CP</th></tr></thead><tbody>';
+  var n=0,cc='';DATA.forEach(function(p){if(p.cat!==cc){cc=p.cat;h+='<tr class="cat-r"><td colspan='+cols+'>◆ '+(CI[p.cat]?CI[p.cat].n:p.cat)+'</td></tr>'}
+  var ev=p.est?(p.est.manDays+'인일 · '+Math.round((p.est.sup||0)/10000).toLocaleString()+'만원'):'';
+  p.tasks.forEach(function(t,ti){n++;var ts=String(t);
+  var fromEst=ts.indexOf('［견적］')===0, fromSp=ts.indexOf('［공간］')===0;
+  h+='<tr><td style="text-align:center;font-size:10px">'+n+'</td><td style="text-align:center;font-size:10px;font-weight:600">'+esc(p.id)+'</td><td style="font-size:11px;font-weight:'+(ti===0?'700':'400')+'">'+((ti===0)?esc(p.nm):'')+'</td><td'+(fromEst?' style="color:#0f6e56"':fromSp?' style="color:#185fa5;font-weight:600"':'')+'>'+esc(t)+'</td>'+
+    (linked?'<td style="text-align:center;font-size:10px;color:#0f6e56">'+((ti===0)?ev:'')+'</td>':'')+
+    '<td style="text-align:center;font-size:10px">'+((ti===0&&p._ds)?fms(p._ds):'')+'</td><td style="text-align:center;font-size:10px">'+((ti===0&&p._de)?fms(p._de):'')+'</td><td style="text-align:center">'+((ti===0&&p.cp)?'<span style="background:#e24b4a;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">CP</span>':'')+'</td></tr>'})});
   h+='</tbody></table>';document.getElementById("detailWrap").innerHTML=h;
 }
 
+/* 공정별 자재 목록 — 견적 연동 시 실물량·자재비가 붙은 견적 자재를 우선 사용하고
+   템플릿에만 있는 자재는 뒤에 덧붙인다 (같은 이름은 견적 쪽이 이김) */
+function phaseMaterials(p){
+  var out=[],seen={};
+  (p.est&&p.est.materials||[]).forEach(function(m){
+    var k=m.nm;
+    if(seen[k]){seen[k].q+=m.q||0;seen[k].amt+=m.amt||0;return}
+    seen[k]={nm:m.nm,u:m.u||'',q:m.q||0,amt:m.amt||0,lead:m.lead||7,src:'est'};
+    out.push(seen[k]);
+  });
+  (p.mat||'').split(",").forEach(function(s){
+    s=s.trim();if(!s)return;
+    var pts=s.split(":"),nm=pts[0];
+    if(seen[nm])return;
+    out.push({nm:nm,u:'',q:0,amt:0,lead:parseInt(pts[1])||7,src:'tmpl'});
+  });
+  return out;
+}
 function renderMat(sd){
   var DATA=currentProj.phases;
-  var h='<table class="mod"><thead><tr><th>No</th><th style="width:130px">공정</th><th>자재명</th><th>리드타임</th><th>공정시작</th><th>발주시점</th><th>사전발주</th><th>상태</th></tr></thead><tbody>';
-  var n=0,cc='';DATA.forEach(function(p){if(!p.mat)return;
-  if(p.cat!==cc){cc=p.cat;h+='<tr class="cat-r"><td colspan=8>◆ '+(CI[p.cat]?CI[p.cat].n:p.cat)+'</td></tr>'}
-  p.mat.split(",").forEach(function(m){if(!m.trim())return;var pts=m.trim().split(":");var nm=pts[0],lt=parseInt(pts[1])||7;n++;
-  var od=new Date((p._ds||sd).getTime()-lt*864e5);var early=od<sd;
-  h+='<tr'+(early?' class="early"':'')+'><td style="text-align:center;font-size:10px">'+n+'</td><td style="font-size:11px">'+esc(p.nm)+'</td><td style="font-weight:600">'+esc(nm)+'</td><td style="text-align:center">'+lt+'일</td><td style="text-align:center;font-size:10px">'+(p._ds?fms(p._ds):'')+'</td><td style="text-align:center;'+(early?'color:#e24b4a;font-weight:700':'')+'">'+fmf(od)+'</td><td style="text-align:center">'+(early?'⚠착공전':'')+'</td><td style="text-align:center;color:#888;font-size:10px">미발주</td></tr>'})});
+  var linked=!!(currentProj&&currentProj.estimateLink);
+  var h='<table class="mod"><thead><tr><th>No</th><th style="width:130px">공정</th><th>자재명</th>'+
+    (linked?'<th style="width:78px">물량</th><th style="width:86px">자재비</th>':'')+
+    '<th>리드타임</th><th>공정시작</th><th>발주시점</th><th>사전발주</th><th>상태</th></tr></thead><tbody>';
+  var cols=linked?10:8;
+  var n=0,cc='',tot=0;
+  DATA.forEach(function(p){
+    var mats=phaseMaterials(p);
+    if(!mats.length)return;
+    if(p.cat!==cc){cc=p.cat;h+='<tr class="cat-r"><td colspan='+cols+'>◆ '+(CI[p.cat]?CI[p.cat].n:p.cat)+'</td></tr>'}
+    mats.forEach(function(m){
+      n++;tot+=m.amt||0;
+      var od=new Date((p._ds||sd).getTime()-m.lead*864e5);var early=od<sd;
+      h+='<tr'+(early?' class="early"':'')+'>'+
+        '<td style="text-align:center;font-size:10px">'+n+'</td>'+
+        '<td style="font-size:11px">'+esc(p.nm)+'</td>'+
+        '<td style="font-weight:600">'+esc(m.nm)+(m.src==='tmpl'&&linked?'<span style="font-size:9px;color:#aaa"> 템플릿</span>':'')+'</td>'+
+        (linked?'<td style="text-align:right;font-size:10px">'+(m.q?m.q+esc(m.u):'')+'</td>'+
+                '<td style="text-align:right;font-size:10px">'+(m.amt?m.amt.toLocaleString():'')+'</td>':'')+
+        '<td style="text-align:center">'+m.lead+'일</td>'+
+        '<td style="text-align:center;font-size:10px">'+(p._ds?fms(p._ds):'')+'</td>'+
+        '<td style="text-align:center;'+(early?'color:#e24b4a;font-weight:700':'')+'">'+fmf(od)+'</td>'+
+        '<td style="text-align:center">'+(early?'⚠착공전':'')+'</td>'+
+        '<td style="text-align:center;color:#888;font-size:10px">미발주</td></tr>';
+    });
+  });
+  if(linked&&tot)h+='<tr style="background:#1a1a2e"><td colspan=4 style="text-align:right;color:#fff;font-weight:700;padding:8px">자재비 합계</td>'+
+    '<td style="text-align:right;color:#c9a84c;font-weight:700">'+tot.toLocaleString()+'</td><td colspan=5></td></tr>';
   h+='</tbody></table>';document.getElementById("matWrap").innerHTML=h;
 }
 
 function renderCrew(){
   var DATA=currentProj.phases;
-  var h='<table class="mod"><thead><tr><th>No</th><th style="width:150px">공정</th><th>기간</th><th>투입인력</th><th>소계</th><th>연인원</th><th>시작</th><th>종료</th></tr></thead><tbody>';
-  var cc='',gm=0;DATA.forEach(function(p,idx){if(!p.crew)return;
-  if(p.cat!==cc){cc=p.cat;h+='<tr class="cat-r"><td colspan=8>◆ '+(CI[p.cat]?CI[p.cat].n:p.cat)+'</td></tr>'}
-  var entries=p.crew.split(",").filter(function(x){return x.trim()});var total=0;entries.forEach(function(e){total+=parseInt(e.split(":")[1])||0});var md=total*p.dur;gm+=md;
-  h+='<tr><td style="text-align:center;font-size:10px">'+(idx+1)+'</td><td style="font-weight:600">'+(p.cp?'<span class="cp-dot"></span>':'')+esc(p.nm)+'</td><td style="text-align:center">'+p.dur+'일</td><td style="font-size:11px">'+entries.map(function(e){var pts=e.split(":");return esc(pts[0])+" "+pts[1]+"명"}).join(", ")+'</td><td style="text-align:center;font-weight:600">'+total+'</td><td style="text-align:center;font-weight:700;color:#185fa5">'+md+'</td><td style="text-align:center;font-size:10px">'+(p._ds?fms(p._ds):'')+'</td><td style="text-align:center;font-size:10px">'+(p._de?fms(p._de):'')+'</td></tr>'});
-  h+='<tr style="background:#1a1a2e"><td colspan=5 style="text-align:right;color:#fff;font-weight:700;padding:8px">총 연인원</td><td style="text-align:center;color:#c9a84c;font-weight:700;font-size:16px">'+gm+'</td><td colspan=2 style="color:#fff;text-align:center">인일</td></tr></tbody></table>';
+  var linked=!!(currentProj&&currentProj.estimateLink);
+  var h='<table class="mod"><thead><tr><th>No</th><th style="width:150px">공정</th><th>기간</th><th>투입인력</th><th>소계</th><th>연인원</th>'+
+    (linked?'<th style="width:64px">견적 인일</th><th style="width:56px">과부족</th>':'')+
+    '<th>시작</th><th>종료</th></tr></thead><tbody>';
+  var cols=linked?10:8;
+  var cc='',gm=0,ge=0;
+  DATA.forEach(function(p,idx){
+    if(!p.crew)return;
+    if(p.cat!==cc){cc=p.cat;h+='<tr class="cat-r"><td colspan='+cols+'>◆ '+(CI[p.cat]?CI[p.cat].n:p.cat)+'</td></tr>'}
+    var entries=p.crew.split(",").filter(function(x){return x.trim()});
+    var total=0;entries.forEach(function(e){total+=parseInt(e.split(":")[1])||0});
+    var md=total*p.dur;gm+=md;
+    var em=(p.est&&p.est.manDays)||0;ge+=em;
+    var diff=em?Math.round((md-em)*10)/10:null;
+    h+='<tr><td style="text-align:center;font-size:10px">'+(idx+1)+'</td>'+
+      '<td style="font-weight:600">'+(p.cp?'<span class="cp-dot"></span>':'')+esc(p.nm)+
+        (p.durSrc==='est'?'<span title="견적 실물량 기준 산출" style="font-size:9px;color:#0f6e56"> 🔗</span>':'')+'</td>'+
+      '<td style="text-align:center">'+p.dur+'일</td>'+
+      '<td style="font-size:11px">'+entries.map(function(e){var pts=e.split(":");return esc(pts[0])+" "+pts[1]+"명"}).join(", ")+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+total+'</td>'+
+      '<td style="text-align:center;font-weight:700;color:#185fa5">'+md+'</td>'+
+      (linked?'<td style="text-align:center;font-size:10px;color:#0f6e56">'+(em||'')+'</td>'+
+              '<td style="text-align:center;font-size:10px;color:'+(diff===null?'#ccc':diff<0?'#e24b4a':'#888')+'">'+
+              (diff===null?'':(diff>0?'+':'')+diff)+'</td>':'')+
+      '<td style="text-align:center;font-size:10px">'+(p._ds?fms(p._ds):'')+'</td>'+
+      '<td style="text-align:center;font-size:10px">'+(p._de?fms(p._de):'')+'</td></tr>';
+  });
+  h+='<tr style="background:#1a1a2e"><td colspan=5 style="text-align:right;color:#fff;font-weight:700;padding:8px">총 연인원</td>'+
+    '<td style="text-align:center;color:#c9a84c;font-weight:700;font-size:16px">'+gm+'</td>'+
+    (linked?'<td style="text-align:center;color:#7dd3a8;font-weight:700">'+(Math.round(ge*10)/10)+'</td><td></td>':'')+
+    '<td colspan=2 style="color:#fff;text-align:center">인일</td></tr></tbody></table>'+
+    (linked?'<p style="font-size:10px;color:#888;margin-top:6px">🔗 = 견적 실물량으로 일수·인력을 산출한 공정 · '+
+      '<b>과부족</b> = 편성 연인원 − 견적 인일 (음수면 견적 물량 대비 인력이 부족)</p>':'');
   document.getElementById("crewWrap").innerHTML=h;
 }
 
@@ -1902,6 +2070,333 @@ function selectRow(idx){
 // INIT — 첫 실행 시 칠원동 샘플 2건 자동 생성
 // ================================================================
 var BUILTIN_SSANGYONG=[{"id": "PRE", "nm": "현장준비·보양", "sub": "골조검수·보양·가설정리", "dur": 2, "dep": [], "cat": "wp", "cp": 1, "tasks": ["골조 상태 검수(균열/레벨)", "바닥 레벨 측정(전실)", "창호 개구부 치수 실측", "가설전기 분전반 확인", "바닥/계단 보양", "자재 야적장 확보", "공정표 게시"], "crew": "소장:1,관리:1,잡역:2", "mat": ""}, {"id": "WP_1H", "nm": "1층 화장실 방수", "sub": "바닥+벽H=1.2m 액체방수2종", "dur": 2, "dep": ["PRE"], "cat": "wp", "cp": 0, "tasks": ["바닥면 청소/프라이머", "액체방수2종 1차 도포", "액체방수2종 2차 도포", "벽면 방수(H=1.2m)", "코너/드레인 우레탄 보강", "보호몰탈 타설"], "crew": "방수공:2,잡역:1", "mat": "액체방수재2종:5,보호몰탈:3"}, {"id": "WP_2B", "nm": "2층 욕실 방수", "sub": "바닥+벽 전체 액체방수2종", "dur": 2, "dep": ["PRE"], "cat": "wp", "cp": 1, "tasks": ["바닥면 프라이머", "액체방수 1차/2차", "벽면 전체 방수", "욕조 설치부 보강", "샤워부스 구간 보강", "코너 보강", "보호몰탈"], "crew": "방수공:2,잡역:1", "mat": "액체방수재2종:5,보호몰탈:3"}, {"id": "WP_2H", "nm": "2층 화장실 방수", "sub": "바닥+벽H=1.2m", "dur": 1, "dep": ["PRE"], "cat": "wp", "cp": 0, "tasks": ["바닥 프라이머", "액체방수 도포", "벽면 방수(H=1.2m)", "보호몰탈"], "crew": "방수공:2", "mat": "액체방수재:5"}, {"id": "WP_BL", "nm": "발코니 방수", "sub": "우레탄 노출방수", "dur": 1, "dep": ["PRE"], "cat": "wp", "cp": 0, "tasks": ["바닥 면처리", "우레탄 프라이머", "우레탄 방수 2회", "배수구 주변 보강"], "crew": "방수공:2", "mat": "우레탄방수재:5"}, {"id": "WP_TEST", "nm": "방수시험 ★게이트", "sub": "48시간 침수시험 전개소", "dur": 3, "dep": ["WP_1H", "WP_2B", "WP_2H", "WP_BL"], "cat": "wp", "cp": 1, "tasks": ["1층 화장실 48h 침수", "2층 욕실 48h 침수", "2층 화장실 48h 침수", "발코니 살수시험", "하부층 천장 누수확인", "수위 변화 기록/사진", "검수 서명", "불합격 구간 재시공 후 재시험"], "crew": "방수공:1,관리:1", "mat": ""}, {"id": "PL_BLR", "nm": "보일러·온수분배기", "sub": "보일러 1대+분배기 1F/2F", "dur": 3, "dep": ["PRE"], "cat": "plb", "cp": 1, "tasks": ["보일러 설치(30,000kcal급 콘덴싱)", "연도/배기 설치", "1층 온수분배기(6구) 설치", "2층 온수분배기(7구) 설치", "급수/급탕 주관 배관", "난방 공급/환수 주관", "가스배관 연결(D25)", "보일러 전원 협의(전기)"], "crew": "배관공:3,가스공:1,잡역:1", "mat": "가스보일러:14,온수분배기6구:7,온수분배기7구:7,가스배관자재:5"}, {"id": "PL_1F", "nm": "1층 급배수 배관", "sub": "화장실+주방+다용도실", "dur": 3, "dep": ["WP_TEST"], "cat": "plb", "cp": 0, "tasks": ["화장실 급수/급탕(스테인리스 Ø15)", "화장실 오수관(D100)·바닥배수(D75)", "양변기/세면기 급배수 위치", "주방 싱크 급수/급탕", "주방 배수(D50)·식기세척기 분기", "다용도실 세탁 급배수", "수압시험(전구간)"], "crew": "배관공:3,잡역:1", "mat": "스테인리스강관:7,PVC배수관:5,수전박스:5"}, {"id": "PL_2F", "nm": "2층 급배수 배관", "sub": "욕실+화장실", "dur": 3, "dep": ["WP_TEST"], "cat": "plb", "cp": 0, "tasks": ["욕실 급수/급탕", "욕조 급배수(D75)", "샤워부스 급배수", "욕실 오수관(D100)", "화장실 양변기/세면기 급배수", "바닥배수 트랩", "수압시험"], "crew": "배관공:3,잡역:1", "mat": "스테인리스강관:7,PVC배수관:5"}, {"id": "PL_VN", "nm": "환기설비", "sub": "배기팬+덕트 전개소", "dur": 2, "dep": ["PRE"], "cat": "plb", "cp": 0, "tasks": ["1층 화장실 배기팬+덕트(Ø100)", "2층 욕실 배기팬+덕트", "2층 화장실 배기팬", "주방 렌지후드 덕트(스테인리스)", "외벽 관통부 후드캡", "역류방지댐퍼 확인"], "crew": "배관공:2,잡역:1", "mat": "배기팬:7,PVC덕트:3,후드캡:3"}, {"id": "EL_PNL", "nm": "분전반·간선", "sub": "분전반+회로 구성", "dur": 2, "dep": ["PRE"], "cat": "elec", "cp": 1, "tasks": ["분전반 설치(주차단 50A)", "전등회로 L1(1층)/L2(2층)", "전열회로 R1~R6", "에어컨 전용회로 A1/A2", "주방 인덕션 전용회로", "접지 결선/저항 확인"], "crew": "전기공:2", "mat": "분전반:10,차단기:5"}, {"id": "EL_1F", "nm": "1층 전등·전열 배선", "sub": "거실·주방·현관·방1·화장실", "dur": 3, "dep": ["EL_PNL"], "cat": "elec", "cp": 0, "tasks": ["거실 전등 배선(HFIX 2.5㎟)", "거실 콘센트(2구 접지) 배선", "주방 전열(인덕션/냉장고/전자레인지/식기세척기)", "현관 센서등 배선", "방1 전등+콘센트", "화장실 방수콘센트(비데용)", "다용도실 보일러/세탁기 콘센트(방수형)", "스위치박스 위치 확인(FL+1200)"], "crew": "전기공:3,잡역:1", "mat": "HFIX전선:5,콘센트:5,스위치:5,CD관:3"}, {"id": "EL_2F", "nm": "2층 전등·전열 배선", "sub": "부부침실·침실2·침실3·가족실", "dur": 3, "dep": ["EL_PNL"], "cat": "elec", "cp": 0, "tasks": ["부부침실 전등+콘센트+조광기 배선", "드레스룸 전등", "침실2 전등+콘센트", "침실3 전등+콘센트", "가족실 전등+콘센트", "욕실 방수콘센트", "화장실 비데 콘센트", "복도/계단 3로 스위치"], "crew": "전기공:3,잡역:1", "mat": "HFIX전선:5,콘센트:5,3로스위치:5"}, {"id": "EL_COM", "nm": "통신·TV 배선", "sub": "UTP+동축+단자함", "dur": 2, "dep": ["EL_PNL"], "cat": "elec", "cp": 0, "tasks": ["세대단자함 설치", "각실 UTP CAT.5E 포설(거실/방3/가족실)", "TV 동축배선(거실/부부침실/가족실)", "광케이블 인입 협의", "인터폰 배선(현관)"], "crew": "통신공:2,잡역:1", "mat": "UTP:5,동축케이블:5,세대단자함:7"}, {"id": "IW_1F", "nm": "1층 간벽·석고보드", "sub": "경량간벽+석고2P+도어프레임", "dur": 4, "dep": ["PL_1F", "PL_BLR", "EL_1F"], "cat": "frame_in", "cp": 1, "tasks": ["화장실/다용도실 경량간벽(스터드+석고)", "단열 보강(외벽 내측 결로부위)", "석고보드 2P 부착 — 거실", "석고보드 2P — 주방/식당", "석고보드 2P — 현관/복도", "석고보드 2P — 방1", "석고보드 2P — 다용도실", "도어프레임 설치(각실)", "개구부 보강"], "crew": "목공:4,경량철골공:2,잡역:2", "mat": "석고보드9.5T:5,경량스터드:5,단열재:5,도어프레임:10"}, {"id": "IW_2F", "nm": "2층 간벽·석고보드", "sub": "경량간벽+석고2P+도어프레임", "dur": 4, "dep": ["PL_2F", "EL_2F"], "cat": "frame_in", "cp": 0, "tasks": ["드레스룸 간벽", "욕실/화장실 간벽", "석고보드 2P — 부부침실", "석고보드 2P — 침실2", "석고보드 2P — 침실3", "석고보드 2P — 가족실", "석고보드 2P — 복도", "도어프레임 설치"], "crew": "목공:4,경량철골공:2,잡역:2", "mat": "석고보드9.5T:5,경량스터드:5,도어프레임:10"}, {"id": "CL_1F", "nm": "1층 천장틀·천장석고", "sub": "목재틀+커튼박스+간접등박스", "dur": 3, "dep": ["IW_1F"], "cat": "frame_in", "cp": 1, "tasks": ["거실 목재천정틀(우물천장 포함)", "거실 간접등박스", "거실 커튼박스", "주방 천정틀", "현관/복도 천정틀", "방1 천정틀", "화장실 경량철골 천정틀", "다용도실 천정틀", "천장 석고보드 2P(전실)", "점검구 위치 확보"], "crew": "목공:3,경량철골공:2,잡역:1", "mat": "목재천정틀:5,석고보드:5,경량철골:5"}, {"id": "CL_2F", "nm": "2층 천장틀·천장석고", "sub": "목재틀+간접등박스", "dur": 3, "dep": ["IW_2F"], "cat": "frame_in", "cp": 0, "tasks": ["부부침실 천정틀+간접등박스", "침실2/침실3 천정틀", "가족실 천정틀+커튼박스", "복도 천정틀", "욕실/화장실 경량철골 천정틀", "천장 석고보드 2P(전실)"], "crew": "목공:3,경량철골공:2,잡역:1", "mat": "목재천정틀:5,석고보드:5"}, {"id": "TL_1H", "nm": "1층 화장실 타일", "sub": "바닥 미끄럼방지+벽 자기질", "dur": 2, "dep": ["WP_TEST", "CL_1F"], "cat": "tile", "cp": 0, "tasks": ["바닥 타일(자기질 미끄럼방지 300각)", "벽 타일(자기질 300×600)", "문턱석 설치", "줄눈 시공", "코너/배수구 실란트"], "crew": "타일공:2,잡역:1", "mat": "자기질타일:7,줄눈재:3,문턱석:7"}, {"id": "TL_2B", "nm": "2층 욕실 타일", "sub": "바닥+벽 전체 자기질", "dur": 3, "dep": ["WP_TEST", "CL_2F"], "cat": "tile", "cp": 1, "tasks": ["바닥 타일(미끄럼방지)", "벽 타일(전체)", "욕조 에이프런 타일", "샤워부스 벽 타일", "문턱석", "줄눈 시공", "실란트"], "crew": "타일공:3,잡역:1", "mat": "자기질타일:7,줄눈재:3"}, {"id": "TL_2H", "nm": "2층 화장실 타일", "sub": "바닥+벽 자기질", "dur": 2, "dep": ["WP_TEST", "CL_2F"], "cat": "tile", "cp": 0, "tasks": ["바닥 타일(미끄럼방지)", "벽 타일", "문턱석", "줄눈"], "crew": "타일공:2,잡역:1", "mat": "자기질타일:7"}, {"id": "TL_ENT", "nm": "현관 타일", "sub": "바닥 도기질+걸레받이", "dur": 1, "dep": ["CL_1F"], "cat": "tile", "cp": 0, "tasks": ["현관 바닥 타일(도기질 600각)", "디딤판 단차 마감", "석재 걸레받이", "줄눈"], "crew": "타일공:2", "mat": "도기질타일:7,석재걸레받이:10"}, {"id": "FH_1F", "nm": "1층 바닥난방", "sub": "단열+차음+기포콘+XL관+몰탈", "dur": 4, "dep": ["CL_1F"], "cat": "floor_h", "cp": 1, "tasks": ["바닥 단열재(비드법보온판)", "층간차음재(THK30)", "측면완충재 둘레 설치", "경량기포 콘크리트(THK40)", "거실 XL관 포설(Ø15 P-200)", "주방/식당 XL관", "방1 XL관", "다용도실 XL관", "시멘트몰탈(THK40) 미장", "온도조절기 설치(2개소)", "난방 가압시험"], "crew": "난방공:3,미장공:3,잡역:2", "mat": "바닥단열재:5,차음재:5,XL관:5,기포콘크리트:3,온도조절기:5"}, {"id": "FH_2F", "nm": "2층 바닥난방", "sub": "차음+기포콘+XL관+몰탈", "dur": 4, "dep": ["CL_2F"], "cat": "floor_h", "cp": 0, "tasks": ["층간차음재(THK30)", "측면완충재", "경량기포 콘크리트(THK40)", "부부침실 XL관", "침실2/침실3 XL관", "가족실 XL관", "복도 XL관", "시멘트몰탈(THK40)", "온도조절기 설치(4개소)", "난방 가압시험"], "crew": "난방공:3,미장공:3,잡역:2", "mat": "차음재:5,XL관:5,기포콘크리트:3,온도조절기:5"}, {"id": "FH_TEST", "nm": "난방시험 ★게이트", "sub": "48시간 가동시험+몰탈양생", "dur": 4, "dep": ["FH_1F", "FH_2F"], "cat": "floor_h", "cp": 1, "tasks": ["보일러 가동", "1층 전구간 온도 확인", "2층 전구간 온도 확인", "분배기 유량 조정", "누수 확인(48h)", "몰탈 양생 확인(바닥재 시공가능 함수율)", "검수 기록"], "crew": "난방공:1,관리:1", "mat": ""}, {"id": "PT_1F", "nm": "1층 도장", "sub": "친환경페인트 2회(천장+벽)", "dur": 3, "dep": ["CL_1F", "FH_TEST"], "cat": "paint", "cp": 0, "tasks": ["퍼티/샌딩(석고 조인트)", "거실 천장 초벌/정벌", "거실 벽면 초벌/정벌", "주방 천장+벽", "현관/복도 천장+벽", "방1 천장+벽", "다용도실 천장+벽"], "crew": "도장공:3,잡역:1", "mat": "친환경페인트:3,퍼티:3"}, {"id": "PT_2F", "nm": "2층 도장", "sub": "친환경페인트 2회", "dur": 3, "dep": ["CL_2F", "FH_TEST"], "cat": "paint", "cp": 0, "tasks": ["퍼티/샌딩", "부부침실 천장+벽", "침실2/침실3 천장+벽", "가족실 천장+벽", "복도/계단실 천장+벽"], "crew": "도장공:3,잡역:1", "mat": "친환경페인트:3"}, {"id": "WD_ALL", "nm": "도배(선택실)", "sub": "침실 실크도배", "dur": 3, "dep": ["PT_1F", "PT_2F"], "cat": "fin", "cp": 0, "tasks": ["초배지 시공", "부부침실 실크벽지", "침실2 실크벽지", "침실3 실크벽지", "포인트월(가족실 1면)", "걸레받이부 마감"], "crew": "도배공:3,잡역:1", "mat": "실크벽지:5,초배지:3"}, {"id": "SM_WET", "nm": "욕실 SMC 천장", "sub": "SMC천정재+점검구", "dur": 1, "dep": ["TL_1H", "TL_2B", "TL_2H"], "cat": "ceil", "cp": 0, "tasks": ["1층 화장실 SMC", "2층 욕실 SMC", "2층 화장실 SMC", "점검구 설치(각소)"], "crew": "경량철골공:2", "mat": "SMC천정재:7"}, {"id": "SM_DRY", "nm": "천정지 마감", "sub": "각실 천정지+간접등 마감", "dur": 2, "dep": ["PT_1F", "PT_2F"], "cat": "ceil", "cp": 0, "tasks": ["거실 천정지", "주방 천정지", "각 침실 천정지", "가족실 천정지", "간접등박스 내부 마감"], "crew": "도배공:2,잡역:1", "mat": "천정지:5"}, {"id": "FL_1F", "nm": "1층 바닥마감", "sub": "강마루(거실·주방·방1)", "dur": 3, "dep": ["FH_TEST", "PT_1F"], "cat": "floor_f", "cp": 1, "tasks": ["바닥 함수율 확인", "방습필름 깔기", "거실 강마루", "주방/식당 강마루", "방1 강마루", "다용도실 강마루", "MDF랩핑 걸레받이(THK9)", "문턱석/마감재 연결부"], "crew": "바닥공:3,잡역:1", "mat": "강마루:7,MDF걸레받이:7,방습필름:3"}, {"id": "FL_2F", "nm": "2층 바닥마감", "sub": "강마루(전실)", "dur": 3, "dep": ["FH_TEST", "PT_2F", "WD_ALL"], "cat": "floor_f", "cp": 0, "tasks": ["부부침실 강마루", "드레스룸 강마루", "침실2/침실3 강마루", "가족실 강마루", "복도 강마루", "MDF랩핑 걸레받이", "문턱석"], "crew": "바닥공:3,잡역:1", "mat": "강마루:7,MDF걸레받이:7"}, {"id": "FL_ST", "nm": "계단 마감", "sub": "디딤판+난간", "dur": 2, "dep": ["PT_1F", "PT_2F"], "cat": "floor_f", "cp": 0, "tasks": ["계단 디딤판(집성목/멜라민)", "챌판 마감", "계단 난간 설치(막힘시공)", "논슬립 부착", "계단 걸레받이"], "crew": "목공:2,잡역:1", "mat": "계단디딤판:10,난간재:10"}, {"id": "DR_1F", "nm": "1층 내부도어", "sub": "각실 도어+하드웨어", "dur": 2, "dep": ["FL_1F"], "cat": "wood", "cp": 0, "tasks": ["방1 도어", "화장실 도어(방수형)", "다용도실 도어", "도어 하드웨어(레버/경첩/스토퍼)", "개폐/단차 조정"], "crew": "목공:2,잡역:1", "mat": "내부도어:10,도어하드웨어:5"}, {"id": "DR_2F", "nm": "2층 내부도어", "sub": "각실 도어+하드웨어", "dur": 2, "dep": ["FL_2F"], "cat": "wood", "cp": 0, "tasks": ["부부침실 도어", "드레스룸 도어(슬라이딩)", "침실2/침실3 도어", "가족실 도어", "욕실 도어(방수형)", "화장실 도어", "하드웨어/조정"], "crew": "목공:2,잡역:1", "mat": "내부도어:10,슬라이딩하드웨어:10"}, {"id": "FX_1H", "nm": "1층 화장실 도기", "sub": "양변기+세면기+수전", "dur": 1, "dep": ["TL_1H", "SM_WET"], "cat": "fix", "cp": 0, "tasks": ["양변기(절수형 2등급)", "세면기+세면수전(싱글레버)", "샤워수전", "비데 설치", "거울/수건걸이/선반"], "crew": "배관공:2", "mat": "양변기:10,세면기:10,수전류:7,비데:7"}, {"id": "FX_2B", "nm": "2층 욕실 도기", "sub": "양변기+세면기+욕조+샤워", "dur": 2, "dep": ["TL_2B", "SM_WET"], "cat": "fix", "cp": 0, "tasks": ["양변기(절수형)", "세면기+수전", "욕조 설치+욕조수전", "샤워부스 수전+슬라이드바", "샤워파티션(유리)", "거울/선반/수건걸이"], "crew": "배관공:2,잡역:1", "mat": "양변기:10,세면기:10,욕조:14,샤워파티션:10"}, {"id": "FX_2H", "nm": "2층 화장실 도기", "sub": "양변기+세면기", "dur": 1, "dep": ["TL_2H", "SM_WET"], "cat": "fix", "cp": 0, "tasks": ["양변기", "세면기+수전", "비데", "거울/액세서리"], "crew": "배관공:2", "mat": "양변기:10,세면기:10"}, {"id": "FX_KIT", "nm": "주방 수전·기기 연결", "sub": "주방수전+식기세척기", "dur": 1, "dep": ["FL_1F"], "cat": "fix", "cp": 0, "tasks": ["주방수전(싱글레버 절수형)", "정수기 분기 밸브", "식기세척기 급배수 연결", "싱크 배수트랩 최종 연결"], "crew": "배관공:1", "mat": "주방수전:7"}, {"id": "LT_1F", "nm": "1층 조명·기구", "sub": "LED+스위치+콘센트 마감", "dur": 2, "dep": ["SM_DRY", "FL_1F"], "cat": "fix", "cp": 0, "tasks": ["거실등(LED 평판/간접 포함)", "주방등(LED 직부)", "현관 센서등", "방1 방등", "화장실 방습등", "다용도실 직부등", "복도 다운라이트", "스위치 마감(1~3구/3로)", "콘센트 마감(2구 접지)", "조광기 설치(거실)"], "crew": "전기공:2,잡역:1", "mat": "LED조명:7,스위치:5,콘센트:5,조광기:5"}, {"id": "LT_2F", "nm": "2층 조명·기구", "sub": "LED+스위치+콘센트 마감", "dur": 2, "dep": ["SM_DRY", "FL_2F"], "cat": "fix", "cp": 0, "tasks": ["부부침실 방등+간접등", "침실2/침실3 방등", "가족실 등+다운라이트", "드레스룸 등", "욕실 방습등", "계단 벽부등(3로)", "스위치/콘센트 마감"], "crew": "전기공:2,잡역:1", "mat": "LED조명:7,스위치:5"}, {"id": "FR_KIT", "nm": "주방가구", "sub": "상부장+하부장+싱크+가전", "dur": 3, "dep": ["FL_1F", "LT_1F"], "cat": "furn", "cp": 1, "tasks": ["하부장 설치/수평", "싱크볼 설치", "상판(인조대리석) 시공", "상부장 설치", "인덕션 매립", "후드 설치/덕트 연결", "식기세척기 빌트인", "손잡이/경첩 조정", "상판-벽 실란트"], "crew": "가구공:3,잡역:1", "mat": "주방가구세트:21,인조대리석상판:14"}, {"id": "FR_SH", "nm": "현관 신발장", "sub": "키큰장+벤치", "dur": 1, "dep": ["TL_ENT", "LT_1F"], "cat": "furn", "cp": 0, "tasks": ["신발장 키큰장 설치", "벤치/거울 부착", "내부 LED", "도어 조정"], "crew": "가구공:2", "mat": "신발장:14"}, {"id": "FR_WD", "nm": "붙박이장·드레스룸", "sub": "부부침실 드레스룸+침실 붙박이", "dur": 3, "dep": ["FL_2F", "LT_2F"], "cat": "furn", "cp": 0, "tasks": ["드레스룸 시스템장(행거/서랍/선반)", "부부침실 붙박이장", "침실2 붙박이장", "침실3 붙박이장", "도어/슬라이딩 조정", "내부 조명"], "crew": "가구공:3,잡역:1", "mat": "시스템드레스룸:21,붙박이장:21"}, {"id": "AC_ALL", "nm": "에어컨 설치", "sub": "실내기 2대+실외기", "dur": 1, "dep": ["LT_1F", "LT_2F"], "cat": "fix", "cp": 0, "tasks": ["거실 실내기(스탠드/벽걸이)", "부부침실 실내기", "냉매배관 연결", "실외기 설치(배수 포함)", "진공/냉매충전", "시운전"], "crew": "에어컨공:2", "mat": "에어컨:7,냉매배관:5"}, {"id": "VN_FIN", "nm": "환기구·그릴 마감", "sub": "전개소 마감", "dur": 1, "dep": ["SM_DRY", "SM_WET"], "cat": "fix", "cp": 0, "tasks": ["배기팬 그릴 마감", "외벽 후드캡 최종 확인", "주방 후드 시운전", "욕실 배기 풍량 확인"], "crew": "잡역:2", "mat": "환기그릴:3"}, {"id": "AC_SIL", "nm": "실란트·코킹", "sub": "전체 접합부 마감", "dur": 2, "dep": ["FR_KIT", "FR_WD", "DR_1F", "DR_2F", "FX_2B"], "cat": "fin", "cp": 0, "tasks": ["창호 주변 내부 실란트", "욕조/세면기 주변", "싱크 상판 주변", "걸레받이-바닥 접합부", "도어프레임 주변", "타일 코너 보수"], "crew": "잡역:2", "mat": "실란트:3"}, {"id": "AC_MLD", "nm": "몰딩·터치업·보양철거", "sub": "마감 보수+보양 제거", "dur": 2, "dep": ["AC_SIL"], "cat": "fin", "cp": 0, "tasks": ["코너몰딩/마이너스몰딩 보수", "도장 터치업(전실)", "도배 터치업", "바닥 보양재 철거", "창호 보호필름 제거", "스크래치 점검/보수"], "crew": "잡역:3,도장공:1", "mat": "몰딩:3"}, {"id": "CL_RGH", "nm": "거친청소", "sub": "잔재물 반출+1차 청소", "dur": 1, "dep": ["AC_MLD", "VN_FIN", "AC_ALL", "FX_KIT", "FX_1H", "FX_2H", "FR_SH", "FL_ST"], "cat": "fin", "cp": 1, "tasks": ["잔재물/폐기물 전량 반출", "바닥 1차 청소", "벽/천장 먼지 제거", "창문 1차"], "crew": "청소:4,잡역:2", "mat": ""}, {"id": "CL_FIN", "nm": "정밀청소", "sub": "입주 전 전문 청소", "dur": 2, "dep": ["CL_RGH"], "cat": "fin", "cp": 1, "tasks": ["바닥 물청소/광택", "유리 정밀(전체 창호)", "욕실/화장실 정밀 세척", "주방가구 내외부", "붙박이장 내부", "조명/스위치/콘센트 면판", "걸레받이/몰딩 닦기"], "crew": "청소:5", "mat": ""}, {"id": "CL_FIX", "nm": "하자점검·보수 ★게이트", "sub": "전 공종 최종 점검", "dur": 3, "dep": ["CL_FIN"], "cat": "fin", "cp": 1, "tasks": ["도장/도배 터치업", "타일 줄눈 보수", "바닥재 들뜸/단차 확인", "도어 전체 개폐 조정", "창호 개폐/잠금/방충망", "수전 전체 누수 확인", "배수 속도 확인(전개소)", "난방 구간별 온도 확인", "전기 전회로 작동(차단기별)", "조명 전체 점등", "통신/TV 수신 확인", "에어컨 냉방 확인", "보일러 최종 시운전", "환기팬 작동"], "crew": "목공:1,배관공:1,전기공:1,도장공:1,잡역:1", "mat": ""}, {"id": "CL_HND", "nm": "건축주 인도", "sub": "검수·열쇠·AS·사용설명", "dur": 1, "dep": ["CL_FIX"], "cat": "fin", "cp": 1, "tasks": ["건축주 실별 동행 검수", "하자리스트 작성/서명", "지적사항 즉시 보수", "열쇠/리모컨 전체 인도", "AS 기간·연락처 안내", "보일러/에어컨/조광기 사용설명", "마감재 유지관리 안내", "준공 서류 전달"], "crew": "소장:1,관리:1", "mat": ""}];
+
+// ================================================================
+// 견적OS 연계 (ECOREAN.WorkPackage.v1)
+// 견적의 실물량·노무비 → 인일 → 공정별 일수·투입인력·자재발주
+// 전송 경로: localStorage 브리지(같은 브라우저) + APP_CLOUD(기기 간)
+// ================================================================
+var _wp=null;          // 선택된 워크패키지
+var _wpPlan=null;      // 마지막 계산된 반영 계획
+var _wpTarget=null;    // 'current' 또는 템플릿 키
+var _wpPending=null;   // 새 프로젝트 생성 후 반영할 워크패키지
+
+function WPE(){ return window.ECOREAN_WP; }
+
+function wpTemplateList(){
+  var out=[
+    ['interior','실내건축 (철거~인도, 34공정)'],
+    ['rc_new','RC 신축 (지내력검사~준공)'],
+    ['rc_full','RC신축 전체 (신축~준공 통합)'],
+    ['ssangyong','쌍용동 실내건축 (현장 실측 일정)'],
+    ['frame_rc','RC 골조만 (면적연동)'],
+    ['blank','빈 템플릿']
+  ].filter(function(x){return !!TEMPLATES[x[0]]});
+  for(var k in userTemplates)out.push([k,'내 템플릿 — '+userTemplates[k].name]);
+  return out;
+}
+function wpTargetPhases(){
+  if(_wpTarget==='current'&&currentProj)return currentProj.phases;
+  var src=TEMPLATES[_wpTarget]||(userTemplates[_wpTarget]&&userTemplates[_wpTarget].phases)||TEMPLATES.interior;
+  var ph=JSON.parse(JSON.stringify(src));
+  ph.forEach(function(p){
+    if(!p.baseCrew){var bc={};(p.crew||"").split(",").forEach(function(s){var x=s.split(":");var nm=(x[0]||"").trim();if(nm)bc[nm]=parseInt(x[1])||1});p.baseCrew=bc}
+    if(p.baseDur==null)p.baseDur=p.dur||1;
+  });
+  return ph;
+}
+
+// ── 감지 배너 ──
+function wpBridgeCheck(){
+  if(!WPE())return;
+  var d=WPE().bridgePeek();
+  var dot=document.getElementById("wpInboxDot");
+  var fresh=d&&d.sentAt&&d.sentAt!==WPE().bridgeSeen();
+  if(dot)dot.textContent=fresh?" ●":"";
+  var b=document.getElementById("wpBanner");
+  if(!b)return;
+  if(!fresh){b.style.display="none";return}
+  document.getElementById("wpBannerInfo").textContent=
+    (d.project.name||"무제 현장")+" · "+(d.project.area||0)+"㎡ · 공정 "+(d.packages||[]).length+"개 · "
+    +(d.totals.manDays||0)+"인일 · "+Math.round((d.totals.total||0)/10000).toLocaleString()+"만원";
+  b.style.display="flex";
+}
+function dismissWpBanner(){
+  var d=WPE()&&WPE().bridgePeek();
+  if(d)WPE().bridgeMarkSeen(d.sentAt);
+  wpBridgeCheck();
+}
+
+// ── 수신함 ──
+function openWpInbox(){
+  if(!WPE()){alert("연계 엔진(boc-wp.js)을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.");return}
+  document.getElementById("wpInbox").classList.add("open");
+  renderWpInbox();
+}
+function closeWpInbox(){document.getElementById("wpInbox").classList.remove("open")}
+
+function renderWpInbox(){
+  var el=document.getElementById("wpInboxList");
+  var d=WPE().bridgePeek(),h="";
+  if(d){
+    h+='<div style="border:1px solid #9ed9c3;background:#f2fbf7;border-radius:8px;padding:10px 12px;margin-bottom:8px">'+
+      '<div style="font-weight:700;font-size:13px">'+esc(d.project.name||"무제 현장")+' <span style="font-size:10px;color:#0f6e56;background:#d7f0e6;padding:1px 6px;border-radius:4px;margin-left:4px">이 브라우저</span></div>'+
+      '<div style="font-size:11px;color:#666;margin-top:3px">'+esc(d.project.addr||"")+
+      ' · '+(d.project.area||0)+'㎡ · 공정 '+(d.packages||[]).length+'개 · '+(d.totals.manDays||0)+'인일 · '+
+      Math.round((d.totals.total||0)/10000).toLocaleString()+'만원 · '+new Date(d.sentAt).toLocaleString("ko-KR")+'</div>'+
+      '<div style="margin-top:8px;display:flex;gap:6px"><button class="btn btn-g" style="font-size:11px;padding:5px 12px" onclick="pickWpLocal()">이 견적으로 진행</button>'+
+      '<button class="btn" style="font-size:11px;padding:5px 10px" onclick="clearWpLocal()">비우기</button></div></div>';
+  }else{
+    h+='<div style="font-size:11px;color:#888;padding:8px 2px">이 브라우저에 전송된 견적이 없습니다.</div>';
+  }
+  h+='<div style="display:flex;align-items:center;gap:8px;margin:12px 0 6px"><b style="font-size:12px">☁ 클라우드 견적</b>'+
+     '<span style="font-size:10px;color:#888">다른 기기에서 전송한 견적</span>'+
+     '<button class="btn" style="font-size:10px;padding:3px 9px;margin-left:auto" onclick="loadWpCloud()">↻ 새로고침</button></div>'+
+     '<div id="wpCloudList" style="font-size:11px;color:#888">버튼을 눌러 목록을 불러오세요</div>';
+  el.innerHTML=h;
+  if(WPE().cloudReady())loadWpCloud();
+}
+function loadWpCloud(){
+  var el=document.getElementById("wpCloudList");if(!el)return;
+  el.textContent="불러오는 중…";
+  WPE().cloudList().then(function(rows){
+    if(!rows||!rows.length){el.innerHTML='<span style="color:#888">클라우드에 전송된 견적이 없습니다.</span>';return}
+    el.innerHTML=rows.map(function(r){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid #eee;border-radius:6px;margin-bottom:5px">'+
+        '<div style="flex:1"><div style="font-weight:600;font-size:12px;color:#333">'+esc(r.title||r.doc_key)+'</div>'+
+        '<div style="font-size:10px;color:#999">'+esc(r.updated_by||"")+' · '+new Date(r.updated_at).toLocaleString("ko-KR")+'</div></div>'+
+        '<button class="btn btn-g" style="font-size:10px;padding:4px 10px" onclick="pickWpCloud(\''+esc(r.doc_key)+'\')">선택</button>'+
+        '<button class="btn btn-r" style="font-size:10px;padding:4px 8px" onclick="delWpCloud(\''+esc(r.doc_key)+'\')">삭제</button></div>';
+    }).join("");
+  }).catch(function(e){el.innerHTML='<span style="color:#e24b4a">불러오기 실패: '+esc(e.message)+'</span>'});
+}
+function pickWpLocal(){
+  var d=WPE().bridgePeek();
+  if(!d){alert("전송된 견적이 없습니다");return}
+  WPE().bridgeMarkSeen(d.sentAt); wpBridgeCheck();
+  openWpApply(d);
+}
+function clearWpLocal(){ WPE().bridgeClear(); wpBridgeCheck(); renderWpInbox(); }
+function pickWpCloud(key){
+  WPE().cloudLoad(key).then(function(wp){
+    if(!wp){alert("데이터를 찾을 수 없습니다");return}
+    openWpApply(wp);
+  }).catch(function(e){alert("불러오기 실패: "+e.message)});
+}
+function delWpCloud(key){
+  if(!confirm("클라우드에서 이 견적을 삭제할까요?"))return;
+  WPE().cloudRemove(key).then(loadWpCloud).catch(function(e){alert("삭제 실패: "+e.message)});
+}
+function onWpFile(ev){
+  var f=ev.target.files&&ev.target.files[0];if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var wp=JSON.parse(rd.result);
+      if(!wp||wp.schema!==WPE().SCHEMA){alert("워크패키지 JSON이 아닙니다 (schema: "+(wp&&wp.schema||"없음")+")");return}
+      openWpApply(wp);
+    }catch(e){alert("JSON 파싱 실패: "+e.message)}
+  };
+  rd.readAsText(f);
+  ev.target.value="";
+}
+
+// ── 반영 미리보기 ──
+function openWpApply(wp){
+  _wp=wp;
+  _wpTarget=currentProj?'current':'interior';
+  closeWpInbox();
+  document.getElementById("wpApply").classList.add("open");
+  var tl=wpTemplateList();
+  document.getElementById("wpApplyHead").innerHTML=
+    '<div style="background:#f7f7f5;border:1px solid #e5e5e0;border-radius:8px;padding:10px 12px;font-size:12px">'+
+    '<b>'+esc(wp.project.name||"무제 현장")+'</b> · '+esc(wp.project.addr||"")+
+    ' · '+(wp.project.area||0)+'㎡ · 공급가 '+Math.round((wp.totals.supply||0)/10000).toLocaleString()+'만원'+
+    ' · 노무 '+Math.round((wp.totals.labor||0)/10000).toLocaleString()+'만원'+
+    ' · 총 '+(wp.totals.manDays||0)+'인일'+
+    (wp.unmapped&&wp.unmapped.length?' · <span style="color:#e24b4a">미매핑 '+wp.unmapped.length+'건</span>':'')+
+    '<div style="margin-top:8px"><label style="display:inline;font-size:11px;color:#666;margin:0">대상 공정표</label> '+
+    '<select id="wpTargetSel" style="width:auto;display:inline-block;margin-left:6px" onchange="_wpTarget=this.value;renderWpApply()">'+
+    (currentProj?'<option value="current">현재 공정표 — '+esc(currentProj.name)+' ('+currentProj.phases.length+'공정)</option>':'')+
+    tl.map(function(t){return '<option value="'+t[0]+'"'+(_wpTarget===t[0]?' selected':'')+'>템플릿 — '+esc(t[1])+'</option>'}).join("")+
+    '</select></div></div>';
+  renderWpApply();
+}
+function closeWpApply(){document.getElementById("wpApply").classList.remove("open")}
+
+function renderWpApply(){
+  if(!_wp)return;
+  var mode=document.getElementById("wpMode").value;
+  var drop=document.getElementById("wpDrop").checked;
+  var phases=wpTargetPhases();
+  var pl=WPE().plan(phases,_wp,{mode:mode});
+  _wpPlan=pl;
+  var kept=pl.rows.filter(function(r){return r.matched||r.gate||!drop});
+  var d0=0,d1=0;kept.forEach(function(r){d0+=r.dur0;d1+=r.dur1});
+
+  var addOn=document.getElementById("wpAdd").checked;
+  var newAble=pl.orphan.filter(function(p){return !!WPE().PHASE_DEF[p.key]});
+  var newDays=0;newAble.forEach(function(p){var ph=WPE().makePhase(p);if(ph)newDays+=ph.dur});
+  if(addOn)d1+=newDays;
+
+  var h='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:11px">'+
+    wpChip("매칭 공정",pl.matched+" / "+pl.rows.length,"#0f6e56")+
+    wpChip("일수 합계",d0+"일 → "+d1+"일",d1>d0?"#e24b4a":"#185fa5")+
+    wpChip("삭제 대상",(drop?pl.dropCandidates:0)+"개","#888")+
+    (addOn&&newAble.length?wpChip("신설 공정",newAble.length+"개","#185fa5"):"")+
+    (pl.thin?wpChip("물량 빈약","⚠ "+pl.thin+"개","#ba7517"):"")+
+    (pl.orphan.length&&!addOn?wpChip("미반영",pl.orphan.length+"개 ("+Math.round(pl.orphanAmt/10000).toLocaleString()+"만원)","#e24b4a"):"")+
+    '</div>';
+
+  h+='<table class="mod"><thead><tr><th style="width:64px">코드</th><th>공정명</th><th style="width:52px">근거</th>'+
+     '<th style="width:56px">인일</th><th style="width:96px">일수</th><th>투입인력</th>'+
+     '<th style="width:84px">노무비</th><th style="width:84px">자재비</th></tr></thead><tbody>';
+  pl.rows.forEach(function(r){
+    var willDrop=drop&&!r.matched&&!r.gate;
+    var tag=r.gate?'<span style="background:#6d28d9;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">게이트</span>'
+      :(r.matched?'<span style="background:#0f6e56;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">견적</span>'
+      :'<span style="background:#ccc;color:#555;padding:1px 5px;border-radius:3px;font-size:9px">없음</span>');
+    var dd=r.dur1-r.dur0;
+    var durCell=r.dur0+'일 → <b style="color:'+(dd>0?'#e24b4a':dd<0?'#185fa5':'#333')+'">'+r.dur1+'일</b>'+
+      (mode==='safe'&&r.matched&&!r.gate&&r.durEst!==r.dur1?'<span style="color:#999;font-size:9px"> (견적 '+r.durEst+'일)</span>':'');
+    h+='<tr style="'+(willDrop?'opacity:.45;text-decoration:line-through':'')+'">'+
+      '<td style="text-align:center;font-size:10px;font-weight:600">'+esc(r.id)+'</td>'+
+      '<td style="font-size:11px">'+esc(r.nm)+
+        (r.absorbed&&r.absorbed.length?'<span style="font-size:9px;color:#a16207"> ←'+r.absorbed.join(",")+' 흡수</span>':'')+
+        (r.thin?'<span title="견적 물량이 템플릿 예상 대비 40% 미만 — 견적 누락 가능" style="font-size:9px;color:#ba7517"> ⚠물량빈약</span>':'')+'</td>'+
+      '<td style="text-align:center">'+tag+'</td>'+
+      '<td style="text-align:right;font-weight:600">'+(r.manDays||'')+'</td>'+
+      '<td style="text-align:center;font-size:11px">'+durCell+'</td>'+
+      '<td style="font-size:10px;color:#555">'+esc(String(r.crew1||"").replace(/:/g," ").replace(/,/g,", "))+'</td>'+
+      '<td style="text-align:right;font-size:10px">'+(r.labor?r.labor.toLocaleString():'')+'</td>'+
+      '<td style="text-align:right;font-size:10px">'+(r.mat?r.mat.toLocaleString():'')+'</td></tr>';
+  });
+  /* 신설 예정 공정 미리보기 */
+  if(addOn&&newAble.length){
+    h+='<table class="mod" style="margin-top:6px"><thead><tr><th colspan=8 style="background:#e6f1fb;color:#185fa5;text-align:left">'+
+      '＋ 템플릿에 없어 새로 만들 공정 '+newAble.length+'개 (표준 시공 순서로 삽입)</th></tr></thead><tbody>';
+    newAble.sort(function(a,b){return WPE().ORDER.indexOf(a.key)-WPE().ORDER.indexOf(b.key)}).forEach(function(p){
+      var ph=WPE().makePhase(p);
+      h+='<tr style="background:#f4f9fe"><td style="text-align:center;font-size:10px;font-weight:600">'+esc(ph.id)+'</td>'+
+        '<td style="font-size:11px">'+esc(ph.nm)+'</td>'+
+        '<td style="text-align:center"><span style="background:#185fa5;color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">신설</span></td>'+
+        '<td style="text-align:right;font-weight:600">'+p.manDays+'</td>'+
+        '<td style="text-align:center;font-size:11px">— → <b style="color:#185fa5">'+ph.dur+'일</b></td>'+
+        '<td style="font-size:10px;color:#555">'+esc(ph.crew.replace(/:/g," ").replace(/,/g,", "))+'</td>'+
+        '<td style="text-align:right;font-size:10px">'+p.labor.toLocaleString()+'</td>'+
+        '<td style="text-align:right;font-size:10px">'+p.mat.toLocaleString()+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  }
+  var rest=pl.orphan.filter(function(p){return addOn?!WPE().PHASE_DEF[p.key]:true});
+  if(rest.length){
+    h+='<div style="margin-top:8px;padding:8px 10px;background:#fff0f0;border:1px solid #f2c4c4;border-radius:6px;font-size:11px;color:#a33">'+
+      '⚠ 반영되지 않는 견적 패키지: '+
+      rest.map(function(p){return esc(p.key)+'('+Math.round(p.sup/10000).toLocaleString()+'만원)'}).join(", ")+
+      ' — '+(addOn?'표준 공정 정의가 없는 항목입니다. 공정을 직접 추가한 뒤 다시 반영하세요.'
+                  :'[템플릿에 없는 견적 공정 신설]을 켜거나 다른 템플릿을 선택하세요.')+'</div>';
+  }
+  document.getElementById("wpApplyBody").innerHTML=h;
+}
+function wpChip(k,v,c){
+  return '<span style="background:#f4f4f2;border:1px solid #e2e2dd;border-radius:6px;padding:4px 9px">'+
+    '<span style="color:#888">'+k+'</span> <b style="color:'+c+'">'+v+'</b></span>';
+}
+
+function wpApplyOpts(){
+  return {
+    mode:document.getElementById("wpMode").value,
+    dropUnused:document.getElementById("wpDrop").checked,
+    addMissing:document.getElementById("wpAdd").checked,
+    mergeTasks:document.getElementById("wpTasks").checked
+  };
+}
+function applyWpToCurrent(){
+  if(!_wp)return;
+  if(!currentProj){alert("먼저 프로젝트를 열거나 [＋ 새 프로젝트로] 를 사용하세요.");return}
+  if(_wpTarget!=='current'&&!confirm("대상이 템플릿으로 선택돼 있습니다.\n현재 공정표에 반영하려면 대상을 '현재 공정표'로 바꾸는 것이 정확합니다.\n그래도 현재 공정표에 반영할까요?"))return;
+  var o=wpApplyOpts();
+  var res=WPE().apply(currentProj,_wp,o);
+  histPush();
+  applyAreaScaling();
+  recalc(); saveStore();
+  closeWpApply();
+  renderEstLinkBar();
+  toast("🔗 견적 반영 완료 — 공정 "+res.applied+"개"+
+    (res.added.length?" · 신설 "+res.added.length+"개":"")+
+    (res.dropped.length?" · 삭제 "+res.dropped.length+"개":""));
+}
+function applyWpAsNew(){
+  if(!_wp)return;
+  var tmpl=(_wpTarget&&_wpTarget!=='current')?_wpTarget:'interior';
+  _wpPending={wp:_wp,opts:wpApplyOpts()};
+  closeWpApply();
+  openNewProj();
+  document.getElementById("np_name").value=_wp.project.name||"";
+  document.getElementById("np_addr").value=_wp.project.addr||"";
+  document.getElementById("np_area").value=_wp.project.area||"";
+  syncNpPyeong();
+  document.getElementById("np_floors").value=_wp.project.floors?String(_wp.project.floors):"";
+  document.getElementById("np_struct").value=_wp.project.buildingType||"";
+  if(_wp.project.startDate)document.getElementById("np_start").value=_wp.project.startDate;
+  var sel=document.getElementById("np_tmpl");
+  if(sel&&[].some.call(sel.options,function(o){return o.value===tmpl}))sel.value=tmpl;
+  document.getElementById("np_note").value="견적OS 연동 — 공급가 "+
+    Math.round((_wp.totals.supply||0)/10000).toLocaleString()+"만원 / "+(_wp.totals.manDays||0)+"인일";
+}
+
+// ── 연동 상태 바 (공정표 화면 상단) ──
+function renderEstLinkBar(){
+  var el=document.getElementById("estLinkBar");if(!el)return;
+  var L=currentProj&&currentProj.estimateLink;
+  if(!L){el.style.display="none";return}
+  var sumMd=0;currentProj.phases.forEach(function(p){if(p.est)sumMd+=p.est.manDays||0});
+  var planMd=0;currentProj.phases.forEach(function(p){
+    if(!p.crew)return;p.crew.split(",").forEach(function(c){planMd+=(parseInt(c.split(":")[1])||0)*p.dur})});
+  el.style.display="";
+  el.style.cssText="margin:0 12px 8px;padding:8px 12px;background:#f2fbf7;border:1px solid #9ed9c3;border-radius:8px;font-size:11px;color:#0f6e56;display:flex;gap:14px;flex-wrap:wrap;align-items:center";
+  el.innerHTML='<b>🔗 견적 연동</b>'+
+    '<span>'+esc(L.name||"")+' · '+(L.area||0)+'㎡</span>'+
+    '<span>공급가 <b>'+Math.round((L.supply||0)/10000).toLocaleString()+'만원</b></span>'+
+    '<span>견적 인일 <b>'+(sumMd?Math.round(sumMd*10)/10:0)+'</b> / 편성 연인원 <b>'+planMd+'</b></span>'+
+    '<span>반영 '+L.applied+'개'+
+      (L.added&&L.added.length?' · 신설 '+L.added.length+'개':'')+
+      (L.dropped&&L.dropped.length?' · 삭제 '+L.dropped.length+'개':'')+
+      ' · '+(L.mode==='est'?'정밀':'안전')+' 모드</span>'+
+    (L.orphanAmt?'<span style="color:#a33">미반영 '+Math.round(L.orphanAmt/10000).toLocaleString()+'만원</span>':'')+
+    '<span style="color:#888;margin-left:auto">'+new Date(L.appliedAt).toLocaleString("ko-KR")+'</span>'+
+    '<button class="btn" style="font-size:10px;padding:3px 9px" onclick="openWpInbox()">다시 반영</button>'+
+    '<button class="btn btn-r" style="font-size:10px;padding:3px 9px" onclick="unlinkEstimate()">연동 해제</button>';
+}
+function unlinkEstimate(){
+  if(!currentProj||!confirm("견적 연동 정보를 지웁니다.\n일수·인력은 현재 값 그대로 남고, 견적 물량·자재 근거만 제거됩니다."))return;
+  currentProj.phases.forEach(function(p){delete p.est;delete p.estAt;delete p.durSrc});
+  delete currentProj.estimateLink;
+  saveStore(); renderEstLinkBar(); recalc();
+  toast("견적 연동을 해제했습니다");
+}
+
+// ── 직종 일당 ──
+function openWageBox(){
+  var w=WPE().getWage(),h="";
+  Object.keys(w).sort().forEach(function(k){
+    h+='<label style="margin:0"><span style="font-size:11px;color:#666">'+esc(k)+'</span>'+
+       '<input type="number" step="10000" min="0" data-trade="'+esc(k)+'" value="'+w[k]+'"></label>';
+  });
+  document.getElementById("wageGrid").innerHTML=h;
+  document.getElementById("wageBox").classList.add("open");
+}
+function closeWageBox(){document.getElementById("wageBox").classList.remove("open")}
+function saveWage(){
+  var o={};
+  [].forEach.call(document.querySelectorAll("#wageGrid input[data-trade]"),function(i){
+    var v=parseInt(i.value)||0;if(v>0)o[i.getAttribute("data-trade")]=v;
+  });
+  WPE().setWage(o); closeWageBox();
+  if(_wp&&document.getElementById("wpApply").classList.contains("open"))renderWpApply();
+  toast("직종 일당을 저장했습니다");
+}
+function resetWage(){ WPE().setWage({}); openWageBox(); }
 
 // ================================================================
 // CLOUD SYNC — /api/pms/state (세션 인증 프록시 → Supabase boc_pms_state)
@@ -2063,6 +2558,10 @@ document.addEventListener("pointerdown",function(e){
 saveStore();
 renderProjects();
 updateTodayBadge();setInterval(updateTodayBadge,60000);
+/* 견적OS 탭에서 전송하고 돌아왔을 때 즉시 감지 — 클라우드 연결 실패와 무관하게 동작해야 하므로 먼저 건다 */
+wpBridgeCheck();
+window.addEventListener("focus",wpBridgeCheck);
+window.addEventListener("storage",function(e){if(e.key==="ecorean_wp_bridge_v1")wpBridgeCheck()});
 cloudInit();
 </script>
 </body>
