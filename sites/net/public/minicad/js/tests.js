@@ -555,19 +555,29 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     moveVertex(dup.v1Id,OFF+50000,OFF+50000);
     assert('잠금: 복제 사본 이동 가능',getVertex(dup.v1Id).x===OFF+50000);
     assert('잠금: 복제 후 원본 불변',getVertex(lw.v1Id).x===OFF&&getVertex(lw.v1Id).y===OFF);
-    // [L10] Alt+드래그 복사 — 사본 잠금 해제 (잠긴 사본이 원본 위에 고정되던 버그)
+    // [L10] Alt+드래그 복사 — 2026-08-27 정책 변경(대표 지시): 잠긴 객체는 복사 자체가 금지
+    const wallsBeforeAlt=STATE.walls.length;
+    assert('잠금: Alt복사 차단',altCopyObj('wall',lw)===null&&STATE.walls.length===wallsBeforeAlt);
+    lw.locked=false; // 해제 후에는 정상 복사되고 사본은 잠금 해제 상태
     const altc=altCopyObj('wall',lw);
-    assert('잠금: Alt복사 사본 잠금 해제',altc&&!altc.locked);
+    lw.locked=true;
+    assert('잠금: 해제 시 사본 생성·잠금 해제',altc&&!altc.locked);
     moveVertex(altc.v1Id,OFF+60000,OFF+60000);
-    assert('잠금: Alt복사 사본 이동 가능',getVertex(altc.v1Id).x===OFF+60000);
-    // [L11] 미러 — 사본 잠금 해제 + 원본 불변 (handleMirrorClick 실제 흐름)
+    assert('잠금: 사본 이동 가능',getVertex(altc.v1Id).x===OFF+60000);
+    // [L11] 미러 — 잠긴 객체는 미러 복사도 금지, 해제 시 사본 생성(잠금 해제)
     STATE.boxSelection=[];STATE.selectedKind='wall';STATE.selectedId=lw.id;
-    mirrorState={phase:'pickLine2',p1:{x:OFF+1000,y:OFF-1000}};
-    const mirrorCntBefore=STATE.walls.length;
     const px={x:STATE.offsetX+mmToPx(OFF+1000),y:STATE.offsetY+mmToPx(OFF+1000)};
+    const mirrorCntBefore=STATE.walls.length;
+    mirrorState={phase:'pickLine2',p1:{x:OFF+1000,y:OFF-1000}};
     handleMirrorClick(px);
+    assert('잠금: 미러 차단',STATE.walls.length===mirrorCntBefore,'walls +'+(STATE.walls.length-mirrorCntBefore));
+    lw.locked=false;
+    STATE.selectedKind='wall';STATE.selectedId=lw.id;
+    mirrorState={phase:'pickLine2',p1:{x:OFF+1000,y:OFF-1000}};
+    handleMirrorClick(px);
+    lw.locked=true;
     const mc=STATE.walls[STATE.walls.length-1];
-    assert('잠금: 미러 사본 생성',STATE.walls.length===mirrorCntBefore+1);
+    assert('잠금: 해제 시 미러 사본 생성',STATE.walls.length===mirrorCntBefore+1);
     assert('잠금: 미러 사본 잠금 해제',mc&&mc.id!==lw.id&&!mc.locked);
     assert('잠금: 미러 후 원본 불변',getVertex(lw.v1Id).x===OFF&&lw.v1Id===lv1.id);
     // 복원
@@ -1341,6 +1351,68 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     renderAll();
   }catch(e){
     assert('박스선택: 테스트 예외 없음',false,e.message);
+  }
+  // === 2026-08-27: 잠금 객체는 선택돼 있어도 복사·복제·미러 불가 (대표 지시) ===
+  try{
+    const _bakLK={lights:STATE.lights.slice(),furniture:STATE.furniture.slice(),walls:STATE.walls.slice(),
+      vertices:STATE.vertices.slice(),box:STATE.boxSelection.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,mirror:(typeof mirrorState!=='undefined'?mirrorState:null)};
+    const K=3600000;
+    const lockedLi={id:makeId('li'),type:'downlight',x:K,y:K,angle:0,inch:3,locked:true};
+    const freeLi={id:makeId('li'),type:'downlight',x:K+1000,y:K,angle:0,inch:3};
+    STATE.lights.push(lockedLi,freeLi);
+    const lockedFn={id:makeId('f'),type:'sofa3',x:K,y:K+3000,angle:0,locked:true};
+    STATE.furniture.push(lockedFn);
+    const liN=STATE.lights.length, fnN=STATE.furniture.length;
+    // [K1] altCopyObj 중앙 가드
+    assert('잠금복사: altCopyObj 잠금 차단',altCopyObj('lights',lockedLi)===null&&STATE.lights.length===liN);
+    assert('잠금복사: 해제 객체는 복사됨',(function(){const c=altCopyObj('lights',freeLi);const ok=!!c;
+      if(c){const i=STATE.lights.findIndex(x=>x.id===c.id);if(i>=0)STATE.lights.splice(i,1);}return ok;})());
+    // [K2] Alt 다중 복사 — 잠긴 것만 제외하고 나머지는 복사
+    STATE.boxSelection=[{kind:'lights',id:lockedLi.id},{kind:'lights',id:freeLi.id},{kind:'furniture',id:lockedFn.id}];
+    const items=altCopyBoxSelection();
+    assert('잠금복사: 잠긴 2개 제외, 1개만 복사',items.length===1&&items[0].kind==='lights',
+      'items '+items.length);
+    assert('잠금복사: 잠긴 원본 사본 생성 안 됨',STATE.furniture.length===fnN&&STATE.lights.length===liN+1);
+    _removeAltCopies({kind:'multi',items,altCopy:true});
+    assert('잠금복사: 정리 후 원상',STATE.lights.length===liN&&STATE.furniture.length===fnN);
+    // [K3] 전부 잠긴 선택 → 복사 0개
+    STATE.boxSelection=[{kind:'lights',id:lockedLi.id},{kind:'furniture',id:lockedFn.id}];
+    assert('잠금복사: 전부 잠금이면 0개',altCopyBoxSelection().length===0
+      &&STATE.lights.length===liN&&STATE.furniture.length===fnN);
+    // [K4] 복제 버튼/명령 — 잠긴 객체 제외
+    STATE.boxSelection=[];STATE.selectedKind='lights';STATE.selectedId=lockedLi.id;
+    duplicateSelected();
+    assert('잠금복사: duplicateSelected 차단',STATE.lights.length===liN);
+    duplicateSelectedAt(500,500);
+    assert('잠금복사: duplicateSelectedAt 차단',STATE.lights.length===liN);
+    // 섞인 선택은 해제된 것만 복제
+    STATE.selectedKind=null;STATE.selectedId=null;
+    STATE.boxSelection=[{kind:'lights',id:lockedLi.id},{kind:'lights',id:freeLi.id}];
+    duplicateSelected();
+    assert('잠금복사: 혼합 선택 시 해제분만 복제',STATE.lights.length===liN+1,'now '+STATE.lights.length);
+    STATE.lights=STATE.lights.filter(o=>o.id===lockedLi.id||o.id===freeLi.id||_bakLK.lights.some(x=>x.id===o.id));
+    // [K5] 미러 — 잠긴 객체 제외
+    if(typeof mirrorState!=='undefined'){
+      const before=STATE.lights.length;
+      STATE.boxSelection=[{kind:'lights',id:lockedLi.id}];
+      STATE.selectedKind=null;STATE.selectedId=null;
+      mirrorState={phase:'pickLine2',p1:{x:K,y:K-2000}};
+      handleMirrorClick({x:STATE.offsetX+mmToPx(K),y:STATE.offsetY+mmToPx(K+2000)});
+      assert('잠금복사: 미러 차단',STATE.lights.length===before,'now '+STATE.lights.length);
+    }
+    // [K6] 이동도 여전히 차단 (기존 보장 재확인)
+    const lx=lockedLi.x;
+    STATE.boxSelection=[];STATE.selectedKind='lights';STATE.selectedId=lockedLi.id;
+    moveSelectedBy(1000,1000);
+    assert('잠금복사: 이동 차단 유지',lockedLi.x===lx);
+    STATE.lights=_bakLK.lights;STATE.furniture=_bakLK.furniture;STATE.walls=_bakLK.walls;
+    STATE.vertices=_bakLK.vertices;STATE.boxSelection=_bakLK.box;
+    STATE.selectedKind=_bakLK.selK;STATE.selectedId=_bakLK.selI;
+    if(typeof mirrorState!=='undefined') mirrorState=_bakLK.mirror;
+    renderAll();
+  }catch(e){
+    assert('잠금복사: 테스트 예외 없음',false,e.message);
   }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';

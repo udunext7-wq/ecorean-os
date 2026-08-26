@@ -1427,10 +1427,11 @@ function handleMirrorClick(pos){
     mirrorState.p2=mm;
     // 미러 적용
     const targets=STATE.boxSelection.length>0?[...STATE.boxSelection]:[{kind:STATE.selectedKind,id:STATE.selectedId}];
-    let cnt=0;
+    let cnt=0, lockedSkip=0;
     targets.forEach(t=>{
       const obj=getArr(t.kind)?.find(o=>o.id===t.id);
       if(!obj) return;
+      if(obj.locked){lockedSkip++;return;} // 2026-08-27: 잠긴 객체는 미러 복사 제외 (대표 지시)
       const copy=JSON.parse(JSON.stringify(obj));
       copy.id=makeId(t.kind.charAt(0));
       copy.locked=false; // 2026-08-24: 사본은 잠금 해제로 생성 — 잠금은 원본 보호 목적, 사본은 편집 대상 (대표 지시)
@@ -1440,7 +1441,7 @@ function handleMirrorClick(pos){
       cnt++;
     });
     saveHistory();renderAll();refreshUI();
-    cmdToast('미러 — '+cnt+'개 복제');
+    cmdToast(cnt?('미러 — '+cnt+'개 복제'+(lockedSkip?' (잠금 '+lockedSkip+'개 제외)':'')):'잠금된 객체 — 미러 불가');
     mirrorState=null;
     drawGroup.destroyChildren();previewLayer.batchDraw();
     exitCmdMode();
@@ -2363,6 +2364,12 @@ stage.on('mousedown touchstart',e=>{
           }
           if(isAlt){
             // Alt+드래그: 복사본 생성 후 복사본을 드래그 (원본 제자리)
+            // 2026-08-27: 잠긴 객체는 복사 자체를 막는다 (대표 지시)
+            if(found.obj.locked){
+              cmdToast('잠금된 객체 — 복사 불가');
+              renderAll();refreshUI();
+              return;
+            }
             const copy=altCopyObj(found.kind,found.obj);
             if(copy){
               STATE.selectedKind=found.kind;STATE.selectedId=copy.id;
@@ -2386,6 +2393,8 @@ stage.on('mousedown touchstart',e=>{
 function altCopyObj(kind,obj){
   const arr=getArr(kind);
   if(!arr) return null;
+  // 2026-08-27: 잠긴 객체는 선택돼 있어도 복사 금지 (대표 지시) — 모든 복사 경로의 중앙 가드
+  if(obj&&obj.locked) return null;
   const raw=JSON.parse(JSON.stringify(obj));
   raw.id=makeId(kind.charAt(0));
   raw.locked=false; // 2026-08-24: 사본은 잠금 해제로 생성 (잠긴 사본이 원본 위에 고정되던 버그 수정)
@@ -2429,15 +2438,20 @@ function altCopyBoxSelection(){
   if(!sel.length) return [];
   const spaceIds=new Set(sel.filter(b=>b.kind==='space').map(b=>b.id));
   const items=[];
+  let lockedSkipped=0;
   sel.forEach(b=>{
     const arr=getArr(b.kind); const obj=arr?arr.find(o=>o.id===b.id):null;
     if(!obj) return;
+    if(obj.locked){lockedSkipped++;return;} // 2026-08-27: 잠긴 객체 제외 (대표 지시)
     if(b.kind==='wall'&&obj.spaceId&&spaceIds.has(obj.spaceId)) return; // 공간 사본에 포함됨
     const cp=altCopyObj(b.kind,obj);
     if(!cp) return;
     items.push({kind:b.kind,id:cp.id,baseObj:JSON.parse(JSON.stringify(cp)),
       contained:b.kind==='space'?_captureContained(cp.id):null});
   });
+  if(lockedSkipped&&typeof cmdToast==='function'){
+    cmdToast(items.length?('잠금 '+lockedSkipped+'개 제외 — '+items.length+'개만 복사'):'잠금된 객체 — 복사 불가');
+  }
   return items;
 }
 // Alt 사본 일괄 제거 (제자리 클릭·제스처 취소 시) — 단일/다중 공용

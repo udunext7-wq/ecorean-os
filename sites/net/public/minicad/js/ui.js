@@ -1655,8 +1655,12 @@ function rotateSelected(){
   saveHistory();renderAll();showStatus('회전 90° ('+n+'개)');
 }
 function duplicateSelected(){
-  const targets=getSelectedTargets();
+  let targets=getSelectedTargets();
   if(targets.length===0) return;
+  // 2026-08-27: 잠긴 객체는 복제 제외 (대표 지시)
+  const _lk=targets.filter(t=>{const o=_findObjByKindId(t.kind,t.id);return o&&o.locked;}).length;
+  targets=targets.filter(t=>{const o=_findObjByKindId(t.kind,t.id);return !(o&&o.locked);});
+  if(targets.length===0){showStatus('잠금된 객체 — 복제 불가 ('+_lk+'개)');return;}
   const newSel=[];
   targets.forEach(t=>{
     const arr=getArr(t.kind); if(!arr) return;
@@ -3956,8 +3960,12 @@ function rotateSelectedBy(angle){
 }
 
 function duplicateSelectedAt(dx,dy){
-  const targets=getSelectedTargets();
+  let targets=getSelectedTargets();
   if(targets.length===0){cmdToast('객체 선택 필요');return;}
+  // 2026-08-27: 잠긴 객체는 복제 제외 (대표 지시)
+  const _lk2=targets.filter(t=>{const o=_findObjByKindId(t.kind,t.id);return o&&o.locked;}).length;
+  targets=targets.filter(t=>{const o=_findObjByKindId(t.kind,t.id);return !(o&&o.locked);});
+  if(targets.length===0){cmdToast('잠금된 객체 — 복제 불가 ('+_lk2+'개)');return;}
   const newSel=[];
   targets.forEach(t=>{
     const arr=getArr(t.kind); if(!arr) return;
