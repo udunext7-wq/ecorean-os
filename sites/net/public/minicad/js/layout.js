@@ -103,6 +103,12 @@ function initLayout(){
     if(typeof cmdToast==='function') cmdToast('레이아웃: '+({auto:'자동 (화면 크기에 맞춤)',focus:'도면 집중 — 패널은 서랍으로',split:'분할 고정'})[m]);
   }
   function cycleMode(){setMode(L.mode==='auto'?'focus':L.mode==='focus'?'split':'auto');}
+  // 2026-08-26: 객체 선택 시 속성 서랍 자동 열기 (대표 보고 — 태블릿에서 패널이 안 보임)
+  //  서랍 모드에서만 동작. '도면 집중(focus)' 모드는 사용자가 의도적으로 접은 것이므로 존중.
+  window.autoOpenPropsDrawer=function(){
+    if(!L.drawer||L.mode==='focus'||L.rightOpen) return;
+    toggleDrawer('right',true);
+  };
   window.toggleDrawer=toggleDrawer;
   window.setLayoutMode=setMode;
   window.cycleLayoutMode=cycleMode;

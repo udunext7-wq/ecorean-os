@@ -902,6 +902,45 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('회로: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-26: 소형 기호 픽 어퍼처 + 라벨 클릭 선택 + 서랍 자동 열기 (대표 보고 — 패널 미표시) ===
+  try{
+    const _bakP={electric:STATE.electric.slice(),selectedKind:STATE.selectedKind,selectedId:STATE.selectedId,zoom:STATE.zoom};
+    STATE.zoom=1;
+    // getIntersection 은 화면(히트 캔버스) 안에서만 동작 → 스테이지 중앙 mm 좌표에 배치
+    const _mx=Math.round(pxToMm(stage.width()/2-STATE.offsetX)), _my=Math.round(pxToMm(stage.height()/2-STATE.offsetY));
+    const swP={id:makeId('e'),type:'switch_2',x:_mx,y:_my,angle:0};
+    STATE.electric.push(swP);
+    renderElectric();
+    let gP=null;groups.electric.getChildren().forEach(c=>{if(c.id&&c.id()===swP.id)gP=c;});
+    // [P1] 픽 어퍼처 — 반경 17px 이상 원이 그룹에 존재 (기호 자체는 8px대)
+    let pick=null;
+    if(gP) gP.getChildren(n=>n.getClassName()==='Circle').forEach(c=>{if(c.radius()>=17&&c.opacity()<0.01)pick=c;});
+    assert('픽: 소형 기호 히트 영역 ≥17px',!!pick,'symbol '+mmToPx(ELECTRIC_LIB.switch_2.size).toFixed(1)+'px');
+    // [P2] 히트 반경 검증 — 중심에서 12px 떨어진 점이 픽 영역 안 (실제 클릭은 E2E 하네스로 별도 검증)
+    //  (stage.getIntersection 은 히트 캔버스가 rAF 이후에 그려져 동기 테스트에서 신뢰 불가)
+    assert('픽: 중심 12px 밖도 히트 반경 내',!!pick&&pick.isListening()&&Math.hypot(12,12)<=pick.radius(),
+      pick?('r='+pick.radius().toFixed(1)):'no pick');
+    // [P3] 라벨(이름 글씨) 클릭 가능
+    let lbl=null;
+    groups.electric.getChildren(n=>n.getClassName()==='Text').forEach(t=>{if(t.text()===ELECTRIC_LIB.switch_2.name)lbl=t;});
+    assert('픽: 이름 라벨 클릭 가능',!!lbl&&lbl.listening()===true);
+    // [P4] 서랍 자동 열기 API 존재
+    assert('픽: 속성 서랍 자동 열기 API',typeof window.autoOpenPropsDrawer==='function');
+    // [P5] 대형 객체(가구)에는 픽 어퍼처 미적용 (오클릭 방지)
+    const _bakF2=STATE.furniture.slice();
+    const sofa={id:makeId('f'),type:'sofa3',x:_mx,y:_my+10000,angle:0};
+    STATE.furniture.push(sofa);
+    renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
+    let gF=null;groups.furniture.getChildren().forEach(c=>{if(c.id&&c.id()===sofa.id)gF=c;});
+    let bigPick=false;
+    if(gF) gF.getChildren(n=>n.getClassName()==='Circle').forEach(c=>{if(c.opacity()<0.01&&c.radius()>=17)bigPick=true;});
+    assert('픽: 대형 가구는 미적용',!bigPick);
+    STATE.furniture=_bakF2;
+    STATE.electric=_bakP.electric;STATE.selectedKind=_bakP.selectedKind;STATE.selectedId=_bakP.selectedId;STATE.zoom=_bakP.zoom;
+    renderAll();
+  }catch(e){
+    assert('픽: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

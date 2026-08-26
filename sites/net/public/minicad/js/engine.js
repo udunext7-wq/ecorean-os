@@ -1988,15 +1988,36 @@ function symbolBoostFactor(kind,def){
   return Math.min(MINPX/basePx,5); // 최대 5배 (과대 확대 방지)
 }
 // 2026-08-24: 점형 기호 글씨 라벨 — 기호는 실척 그대로, 이름만 고정 px 크기로 항상 판독 (대표 지시)
-function addSymbolLabel(group,xPx,yPx,def){
+// 2026-08-26: 소형 기호 픽 어퍼처 (대표 보고 — 기호가 8px라 정중앙만 눌려 패널이 안 뜨던 문제)
+//  화면 표시 크기는 실척 그대로 두고, 클릭 판정 영역만 최소 34px 로 확대 (CAD 픽 어퍼처 관례)
+const SYM_PICK_PX=17; // 반경
+function addSymbolPickArea(g,def,boost){
+  const wMm=def.w||def.size||200, hMm=def.h||def.size||200;
+  const maxPx=Math.max(mmToPx(wMm),mmToPx(hMm));
+  if(maxPx>=SYM_PICK_PX*2) return; // 충분히 크면 불필요
+  const b=Math.max(boost||1,0.001);
+  g.add(new Konva.Circle({radius:SYM_PICK_PX/b,fill:'#000',opacity:0.001,listening:true}));
+}
+// 2026-08-26: 이름 글씨 클릭 = 해당 객체 선택 (작은 기호 대신 큰 글씨를 눌러도 되게)
+function _symbolLabelClick(kind,id){
+  return e=>{
+    if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0) return;
+    e.cancelBubble=true;
+    if(kind==='lights'&&window._circuitLink&&typeof toggleCircuitLink==='function'){toggleCircuitLink(window._circuitLink.switchId,id);return;}
+    if(STATE.selectedTool==='select'&&typeof selectObj==='function') selectObj(kind,id);
+  };
+}
+function addSymbolLabel(group,xPx,yPx,def,kind,id){
   if(STATE.zoom<0.3) return; // 극축소 시 겹침 방지
   const halfPx=mmToPx((def.size||Math.max(def.w||0,def.h||0)||200))/2;
-  group.add(new Konva.Text({
+  const t=new Konva.Text({
     x:xPx-60,y:yPx+halfPx+3,width:120,align:'center',
     text:def.name,fontSize:9.5,fontFamily:'Inter',fontStyle:'600',
-    fill:def.c||'#9aa0b5',listening:false,
+    fill:def.c||'#9aa0b5',listening:!!kind,
     shadowColor:'#000000',shadowBlur:2,shadowOpacity:0.7,
-  }));
+  });
+  if(kind){t.on('click tap',_symbolLabelClick(kind,id));t.on('mouseenter',()=>{document.body.style.cursor='pointer';});t.on('mouseleave',()=>{document.body.style.cursor='';});}
+  group.add(t);
 }
 // 2026-08-26: 스위치→조명 회로 연동 (대표 지시) — 스위치 ON 시 연결된 조명 점등 표시
 function isSwitchType(t){return /^switch|^dimmer/.test(t||'');}
@@ -2020,6 +2041,7 @@ function renderRect(arr,group,lib,kind){
     const sx=o.flipped?-1:1;
     const _boost=symbolBoostFactor(kind,def); // v6.1: 점형 기호 비축척 보정
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:sx*_boost,scaleY:_boost,id:o.id});
+    if(kind==='hvac'||kind==='fixtures'||kind==='lights'||kind==='electric') addSymbolPickArea(g,def,_boost); // 2026-08-26: 픽 어퍼처
     // v5.7: 2.5D ON 시 그림자 — 객체 외곽 사각형을 어두운 색으로 약간 옵셋
     if(STATE.plus2D){
       const w=mmToPx(defW),h=mmToPx(defH);
@@ -2088,8 +2110,8 @@ function renderRect(arr,group,lib,kind){
     if(o.locked) g.opacity(0.30);
     group.add(g);
     // 2026-08-24: 소형 점형 기호(감지기·스프링클러 등)는 이름 라벨 고정 표시
-    if(kind==='hvac'&&(def.size||0)<=600) addSymbolLabel(group,x,y,def);
-    if(kind==='fixtures'&&Math.max(def.w||0,def.h||0)<=300) addSymbolLabel(group,x,y,def); // 2026-08-24: 바닥 배수구 등 소형 위생
+    if(kind==='hvac'&&(def.size||0)<=600) addSymbolLabel(group,x,y,def,kind,o.id);
+    if(kind==='fixtures'&&Math.max(def.w||0,def.h||0)<=300) addSymbolLabel(group,x,y,def,kind,o.id); // 2026-08-24: 바닥 배수구 등 소형 위생
   });
 }
 
@@ -2103,6 +2125,7 @@ function renderLights(){
     const sel=STATE.selectedKind==='lights'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='lights'&&b.id===o.id);
     const _boost=symbolBoostFactor('lights',def); // v6.1: 점형 기호 비축척 보정
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:_boost,scaleY:_boost,id:o.id});
+    addSymbolPickArea(g,def,_boost); // 2026-08-26: 픽 어퍼처
     // 2026-08-26: 회로 점등 — 연결된 스위치가 ON이면 빛 퍼짐(글로우) 표시
     if(_litSet.has(o.id)){
       const gr=mmToPx(def.size||300)*1.35+16;
@@ -2131,7 +2154,7 @@ function renderLights(){
       if(window._circuitLink&&typeof toggleCircuitLink==='function'){toggleCircuitLink(window._circuitLink.switchId,o.id);return;}
       if(STATE.selectedTool==='select') selectObj('lights',o.id);
     });
-    if((def.size||0)<=400) addSymbolLabel(groups.lights,x,y,def); // 2026-08-24: 소형 조명 라벨
+    if((def.size||0)<=400) addSymbolLabel(groups.lights,x,y,def,'lights',o.id); // 2026-08-24: 소형 조명 라벨 (클릭 = 선택/회로 연결)
     if(o.locked) g.opacity(0.30);
     groups.lights.add(g);
   });
@@ -2145,7 +2168,8 @@ function renderElectric(){
     const sel=STATE.selectedKind==='electric'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='electric'&&b.id===o.id);
     const _boost=symbolBoostFactor('electric',def); // v6.1: 비축척 확대 — 기본 OFF ('sym' 명령으로만)
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:_boost,scaleY:_boost,id:o.id});
-    addSymbolLabel(groups.electric,x,y,def); // 2026-08-24: 이름 라벨 고정 표시 (대표 지시 — 글씨로 판독)
+    addSymbolPickArea(g,def,_boost); // 2026-08-26: 픽 어퍼처 — 작은 기호도 쉽게 선택
+    addSymbolLabel(groups.electric,x,y,def,'electric',o.id); // 2026-08-24: 이름 라벨 (클릭 = 선택)
     // 2026-08-26: 스위치 회로 — ON 배지 + (선택/연결 모드 시) 조명 연결 곡선
     if(isSwitchType(o.type)){
       if(o.circuitOn){
@@ -3196,6 +3220,8 @@ function selectObj(kind,id){
   STATE.selectedKind=kind;STATE.selectedId=id;
   STATE.boxSelection=[];
   renderAll();refreshUI();
+  // 2026-08-26: 태블릿 서랍 모드 — 선택 즉시 속성 패널 노출 (대표 보고)
+  if(typeof autoOpenPropsDrawer==='function') autoOpenPropsDrawer();
 }
 function deselect(){STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];renderAll();refreshUI();}
 
