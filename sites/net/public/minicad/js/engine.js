@@ -1998,6 +1998,15 @@ function addSymbolLabel(group,xPx,yPx,def){
     shadowColor:'#000000',shadowBlur:2,shadowOpacity:0.7,
   }));
 }
+// 2026-08-26: 스위치→조명 회로 연동 (대표 지시) — 스위치 ON 시 연결된 조명 점등 표시
+function isSwitchType(t){return /^switch|^dimmer/.test(t||'');}
+function litLightIds(){
+  const set=new Set();
+  (STATE.electric||[]).forEach(sw=>{
+    if(sw.circuitOn&&isSwitchType(sw.type)&&Array.isArray(sw.lightIds)) sw.lightIds.forEach(id=>set.add(id));
+  });
+  return set;
+}
 function renderRect(arr,group,lib,kind){
   group.destroyChildren();
   arr.forEach(o=>{
@@ -2086,6 +2095,7 @@ function renderRect(arr,group,lib,kind){
 
 function renderLights(){
   groups.lights.destroyChildren();
+  const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합
   STATE.lights.forEach(o=>{
     const def=LIGHT_LIB[o.type];
     if(!def) return;
@@ -2093,6 +2103,14 @@ function renderLights(){
     const sel=STATE.selectedKind==='lights'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='lights'&&b.id===o.id);
     const _boost=symbolBoostFactor('lights',def); // v6.1: 점형 기호 비축척 보정
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:_boost,scaleY:_boost,id:o.id});
+    // 2026-08-26: 회로 점등 — 연결된 스위치가 ON이면 빛 퍼짐(글로우) 표시
+    if(_litSet.has(o.id)){
+      const gr=mmToPx(def.size||300)*1.35+16;
+      g.add(new Konva.Circle({radius:gr,listening:false,
+        fillRadialGradientStartPoint:{x:0,y:0},fillRadialGradientEndPoint:{x:0,y:0},
+        fillRadialGradientStartRadius:0,fillRadialGradientEndRadius:gr,
+        fillRadialGradientColorStops:[0,'rgba(255,233,168,0.60)',0.55,'rgba(255,233,168,0.22)',1,'rgba(255,233,168,0)']}));
+    }
     if(def.shape){
       drawShape(def.shape).forEach(n=>g.add(n));
       if(sel){
@@ -2106,7 +2124,13 @@ function renderLights(){
       g.add(new Konva.Circle({radius:r,stroke:def.c,strokeWidth:2,fill:def.c+'22'}));
       if(sel) g.add(new Konva.Circle({radius:r+4,stroke:'#E2725B',strokeWidth:2,dash:[3,3]}));
     }
-    g.on('click tap',e=>{if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('lights',o.id);});
+    g.on('click tap',e=>{
+      if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;
+      e.cancelBubble=true;
+      // 2026-08-26: 조명 연결 모드 — 클릭한 조명을 스위치 회로에 연결/해제
+      if(window._circuitLink&&typeof toggleCircuitLink==='function'){toggleCircuitLink(window._circuitLink.switchId,o.id);return;}
+      if(STATE.selectedTool==='select') selectObj('lights',o.id);
+    });
     if((def.size||0)<=400) addSymbolLabel(groups.lights,x,y,def); // 2026-08-24: 소형 조명 라벨
     if(o.locked) g.opacity(0.30);
     groups.lights.add(g);
@@ -2122,6 +2146,37 @@ function renderElectric(){
     const _boost=symbolBoostFactor('electric',def); // v6.1: 비축척 확대 — 기본 OFF ('sym' 명령으로만)
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:_boost,scaleY:_boost,id:o.id});
     addSymbolLabel(groups.electric,x,y,def); // 2026-08-24: 이름 라벨 고정 표시 (대표 지시 — 글씨로 판독)
+    // 2026-08-26: 스위치 회로 — ON 배지 + (선택/연결 모드 시) 조명 연결 곡선
+    if(isSwitchType(o.type)){
+      if(o.circuitOn){
+        g.add(new Konva.Circle({x:mmToPx((def.size||200))/2*0.9,y:-mmToPx((def.size||200))/2*0.9,radius:6/Math.max(_boost,0.001),
+          fill:'#7BA05B',stroke:'#3B4032',strokeWidth:1.5,listening:false}));
+      }
+      const showCurves=(STATE.selectedKind==='electric'&&STATE.selectedId===o.id)
+        ||(window._circuitLink&&window._circuitLink.switchId===o.id)||STATE.showCircuits;
+      if(showCurves&&Array.isArray(o.lightIds)&&o.lightIds.length){
+        o.lightIds.forEach(lid=>{
+          const lt=STATE.lights.find(l=>l.id===lid);if(!lt)return;
+          const x2=STATE.offsetX+mmToPx(lt.x),y2=STATE.offsetY+mmToPx(lt.y);
+          const mx=(x+x2)/2,my=(y+y2)/2;
+          const dx=x2-x,dy=y2-y,len=Math.hypot(dx,dy)||1;
+          const cx=mx-dy/len*Math.min(60,len*0.25),cy=my+dx/len*Math.min(60,len*0.25);
+          groups.electric.add(new Konva.Shape({listening:false,sceneFunc:(ctx,shp)=>{
+            ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(cx,cy,x2,y2);
+            ctx.setLineDash([6,5]);ctx.strokeStyle=o.circuitOn?'#D4B872':'#7BA05B';ctx.lineWidth=1.6;ctx.stroke();
+          }}));
+          groups.electric.add(new Konva.Circle({x:x2,y:y2,radius:4,fill:o.circuitOn?'#D4B872':'#7BA05B',listening:false}));
+        });
+      }
+      // 더블클릭/더블탭 = 점등 토글 (연결된 조명이 켜진 것처럼 표시)
+      g.on('dblclick dbltap',e=>{
+        e.cancelBubble=true;
+        if(!Array.isArray(o.lightIds)||!o.lightIds.length){if(typeof cmdToast==='function')cmdToast('연결된 조명 없음 — 스위치 선택 후 [조명 연결]');return;}
+        o.circuitOn=!o.circuitOn;
+        saveHistory();renderAll();refreshUI();
+        if(typeof cmdToast==='function')cmdToast('💡 회로 '+(o.circuitOn?'ON — 조명 '+o.lightIds.length+'개 점등':'OFF'));
+      });
+    }
     if(def.shape){
       drawShape(def.shape).forEach(n=>g.add(n));
       if(sel){

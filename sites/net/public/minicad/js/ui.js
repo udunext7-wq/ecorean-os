@@ -576,6 +576,22 @@ function refreshDetail(){
     const arr=getArr(STATE.selectedKind);
     const obj=arr?arr.find(x=>x.id===STATE.selectedId):null;
     const hasAngle=obj&&'angle' in obj;
+    // 2026-08-26: 스위치 회로 패널 (조명 연결·점등 토글)
+    const isSwitch=STATE.selectedKind==='electric'&&obj&&/^switch|^dimmer/.test(obj.type||'');
+    let circuitHtml='';
+    if(isSwitch){
+      const n=Array.isArray(obj.lightIds)?obj.lightIds.filter(id=>STATE.lights.some(l=>l.id===id)).length:0;
+      const linking=!!(window._circuitLink&&window._circuitLink.switchId===obj.id);
+      circuitHtml=
+        '<div style="margin-top:8px;padding:8px;background:rgba(123,160,91,0.08);border:1px solid rgba(123,160,91,0.35);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#7BA05B">회로 — 연결 조명 <b>'+n+'</b>개</div>'+
+        '<div style="display:flex;gap:4px">'+
+        '<button type="button" class="btn sm" id="d-circuit-link" style="flex:1'+(linking?';background:rgba(123,160,91,0.25);border-color:#7BA05B;color:#7BA05B':'')+'">'+(linking?'연결 모드 종료 (Esc)':'🔌 조명 연결')+'</button>'+
+        '<button type="button" class="btn sm" id="d-circuit-on" style="flex:1'+(obj.circuitOn?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+'">'+(obj.circuitOn?'💡 점등 중 (끄기)':'💡 점등 테스트')+'</button>'+
+        '</div>'+
+        (n?'<button type="button" class="btn sm" id="d-circuit-clear" style="width:100%;margin-top:4px">연결 전체 해제</button>':'')+
+        '<div class="hint" style="margin-top:4px">도면에서 스위치 더블클릭 = 점등 토글</div></div>';
+    }
     let extraHtml='';
     if(hasAngle){
       extraHtml=
@@ -588,7 +604,7 @@ function refreshDetail(){
         '</div>';
     }
     dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      extraHtml+
+      circuitHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -599,6 +615,20 @@ function refreshDetail(){
       document.getElementById('d-rot-90').addEventListener('click',()=>{obj.angle=((obj.angle||0)+90)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-m90').addEventListener('click',()=>{obj.angle=((obj.angle||0)-90+360)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-180').addEventListener('click',()=>{obj.angle=((obj.angle||0)+180)%360;saveHistory();renderAll();refreshUI();});
+    }
+    if(isSwitch){
+      const lb=document.getElementById('d-circuit-link');
+      if(lb) lb.addEventListener('click',()=>{
+        if(window._circuitLink&&window._circuitLink.switchId===obj.id) endCircuitLink();
+        else startCircuitLink(obj.id);
+      });
+      const ob=document.getElementById('d-circuit-on');
+      if(ob) ob.addEventListener('click',()=>{
+        if(!Array.isArray(obj.lightIds)||!obj.lightIds.length){cmdToast('연결된 조명 없음 — 먼저 [조명 연결]');return;}
+        obj.circuitOn=!obj.circuitOn;saveHistory();renderAll();refreshUI();
+      });
+      const cb=document.getElementById('d-circuit-clear');
+      if(cb) cb.addEventListener('click',()=>{obj.lightIds=[];obj.circuitOn=false;saveHistory();renderAll();refreshUI();cmdToast('회로 연결 전체 해제');});
     }
     document.getElementById('d-dup').addEventListener('click',duplicateSelected);
     document.getElementById('d-del').addEventListener('click',deleteSelected);
@@ -1861,6 +1891,27 @@ function migrateLoadedState(schema){
 }
 
 // ===== 2026-08-24 v6.0 업그레이드 (대표 지시: 실무 도면력·UX·안정성·AI 자동화) =====
+
+// --- 2026-08-26: 스위치→조명 회로 연동 (대표 지시) ---
+function toggleCircuitLink(switchId,lightId){
+  const sw=STATE.electric.find(e=>e.id===switchId);
+  if(!sw){window._circuitLink=null;return;}
+  if(!Array.isArray(sw.lightIds)) sw.lightIds=[];
+  const i=sw.lightIds.indexOf(lightId);
+  if(i>=0){sw.lightIds.splice(i,1);cmdToast('조명 연결 해제 — 총 '+sw.lightIds.length+'개');}
+  else{sw.lightIds.push(lightId);cmdToast('조명 연결 — 총 '+sw.lightIds.length+'개 (계속 클릭, Esc 종료)');}
+  saveHistory();renderAll();refreshUI();
+}
+function startCircuitLink(switchId){
+  window._circuitLink={switchId};
+  STATE.selectedKind='electric';STATE.selectedId=switchId;
+  renderAll();refreshUI();
+  cmdToast('🔌 조명 연결 모드 — 연결할 조명을 클릭 (다시 클릭=해제, Esc=종료)');
+}
+function endCircuitLink(){
+  if(window._circuitLink){window._circuitLink=null;renderAll();refreshUI();cmdToast('조명 연결 모드 종료');}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&window._circuitLink)endCircuitLink();});
 
 // --- [도면력] 전체 자동 치수: 모든 공간 외곽 변에 치수선 일괄 생성 (재실행 시 자동분 제거 토글) ---
 function dimAllSpaces(){
@@ -3323,6 +3374,7 @@ function processCommand(rawCmd){
   if(/^(da|dimall)$/i.test(c)){dimAllSpaces();return;}
   if(/^(af|autofurnish|자동배치)$/i.test(c)){autoFurnish();return;}
   if(/^(k|palette|팔레트)$/i.test(c)){openCmdPalette();return;}
+  if(/^(cir|회로)$/i.test(c)){STATE.showCircuits=!STATE.showCircuits;renderAll();cmdToast('회로 연결선 상시 표시 '+(STATE.showCircuits?'ON':'OFF'));return;}
   if(/^(sym|기호)$/i.test(c)){STATE.symbolBoost=STATE.symbolBoost===false?true:false;renderAll();cmdToast('기호 확대 표시 '+(STATE.symbolBoost!==false?'ON (비축척)':'OFF (실척)'));return;}
   const alM=c.match(/^al\s+(l|r|t|b|ch|cv)$/i);
   if(alM){alignSelection({l:'left',r:'right',t:'top',b:'bottom',ch:'centerh',cv:'centerv'}[alM[1].toLowerCase()]);return;}

@@ -855,6 +855,53 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('조명: 기존 정밀화(천장 5+·펜던트 5+)',LIGHT_LIB.ceiling.shape.length>=5&&LIGHT_LIB.pendant.shape.length>=5);
     assert('조명: semanticOf edge_flat_600',semanticOf('edge_flat_600').tag==='ceiling_light');
   })();
+  // === 2026-08-26: 스위치→조명 회로 연동 (대표 지시) ===
+  try{
+    const _bakC={electric:STATE.electric.slice(),lights:STATE.lights.slice(),selectedKind:STATE.selectedKind,selectedId:STATE.selectedId};
+    const sw3={id:makeId('e'),type:'switch_2',x:1500000,y:1500000,angle:0};
+    const lt1={id:makeId('li'),type:'downlight',x:1502000,y:1500000,angle:0};
+    const lt2={id:makeId('li'),type:'pendant',x:1504000,y:1500000,angle:0};
+    STATE.electric.push(sw3);STATE.lights.push(lt1,lt2);
+    // [C1] 연결/해제 토글
+    toggleCircuitLink(sw3.id,lt1.id);toggleCircuitLink(sw3.id,lt2.id);
+    assert('회로: 조명 2개 연결',Array.isArray(sw3.lightIds)&&sw3.lightIds.length===2);
+    toggleCircuitLink(sw3.id,lt2.id);
+    assert('회로: 재클릭 해제',sw3.lightIds.length===1&&sw3.lightIds[0]===lt1.id);
+    toggleCircuitLink(sw3.id,lt2.id);
+    // [C2] 점등 집합
+    sw3.circuitOn=true;
+    const lit=litLightIds();
+    assert('회로: ON 시 점등 집합',lit.has(lt1.id)&&lit.has(lt2.id));
+    sw3.circuitOn=false;
+    assert('회로: OFF 시 소등',litLightIds().size===0);
+    // [C3] 점등 글로우 렌더 (radial gradient circle)
+    sw3.circuitOn=true;
+    renderLights();
+    let glowN=0;
+    groups.lights.getChildren().forEach(g2=>{
+      if(g2.getChildren) g2.getChildren(nn=>nn.getClassName()==='Circle').forEach(c2=>{
+        var _st=c2.fillRadialGradientColorStops&&c2.fillRadialGradientColorStops();if(_st&&_st.length) glowN++;
+      });
+    });
+    assert('회로: 점등 글로우 2개',glowN===2,'glow '+glowN);
+    // [C4] 선택 시 연결 곡선 표시
+    STATE.selectedKind='electric';STATE.selectedId=sw3.id;
+    renderElectric();
+    let curveN=0;
+    groups.electric.getChildren().forEach(n2=>{if(n2.getClassName()==='Shape')curveN++;});
+    assert('회로: 연결 곡선 2개',curveN===2,'curve '+curveN);
+    // [C5] JSON 승계 (raw spread)
+    const jc=buildJSON();
+    const je2=jc.electric.find(e2=>e2.id===sw3.id);
+    assert('회로: JSON lightIds/circuitOn 승계',je2&&Array.isArray(je2.lightIds)&&je2.lightIds.length===2&&je2.circuitOn===true);
+    // 복원
+    STATE.electric=_bakC.electric;STATE.lights=_bakC.lights;
+    STATE.selectedKind=_bakC.selectedKind;STATE.selectedId=_bakC.selectedId;
+    window._circuitLink=null;
+    renderAll();
+  }catch(e){
+    assert('회로: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
