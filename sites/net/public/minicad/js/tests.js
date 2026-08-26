@@ -1414,6 +1414,49 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('잠금복사: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 잠긴 객체도 스냅 기준으로 동작 (대표 지시) ===
+  try{
+    const _bakSN={walls:STATE.walls.slice(),spaces:STATE.spaces.slice(),vertices:STATE.vertices.slice(),
+      snapEp:STATE.snap.endpoint,ctrl:STATE.ctrlPressed};
+    STATE.snap.endpoint=true;STATE.ctrlPressed=false;
+    const N=5200000;
+    const nv1=ensureVertex(N,N), nv2=ensureVertex(N+4000,N);
+    const lockW=makeWallVEF(nv1.id,nv2.id,{}); lockW.locked=true; STATE.walls.push(lockW);
+    const lsv=polygonToVertexIds([{x:N+10000,y:N},{x:N+13000,y:N},{x:N+13000,y:N+3000},{x:N+10000,y:N+3000}]);
+    const lockSp=makeSpaceVEF(lsv,{name:'스냅잠금',type:'ROOM',typeIndex:54,layerName:'A-AREA-ROOM-54'});
+    lockSp.locked=true; STATE.spaces.push(lockSp);
+    // [SN1] 잠긴 벽 끝점·중점 스냅
+    const s1=snapToEndpoint({x:N+4040,y:N+35});
+    assert('잠금스냅: 벽 끝점',s1.snapped&&s1.pt.x===N+4000&&s1.pt.y===N,JSON.stringify(s1.pt));
+    const s2=snapToEndpoint({x:N+2040,y:N+30});
+    assert('잠금스냅: 벽 중점',s2.snapped&&s2.pt.x===N+2000&&s2.pt.y===N);
+    // [SN2] 잠긴 공간 변·꼭짓점 스냅
+    const s3=snapPointToSpaceEdges({x:N+11500,y:N+80},null,200);
+    assert('잠금스냅: 공간 변',s3.snapped&&s3.pt.y===N);
+    const s4=snapToEndpoint({x:N+10050,y:N+40});
+    assert('잠금스냅: 공간 꼭짓점',s4.snapped&&s4.pt.x===N+10000&&s4.pt.y===N);
+    // [SN3] 스냅해서 그린 새 벽 — 좌표는 정확히 일치하되 버텍스는 독립 (묶이지 않음)
+    const wB=STATE.walls.length;
+    addWall(s1.pt.x,s1.pt.y,s1.pt.x+2500,s1.pt.y+2500);
+    const nw=STATE.walls[STATE.walls.length-1];
+    assert('잠금스냅: 새 벽 시작점 정확 일치',STATE.walls.length===wB+1&&nw.x1===N+4000&&nw.y1===N);
+    assert('잠금스냅: 잠긴 버텍스와 용접 안 됨',nw.v1Id!==nv2.id&&!isVertexLocked(nw.v1Id));
+    // [SN4] 새 벽은 그대로 편집 가능 (잠금 전이 안 됨)
+    moveVertex(nw.v1Id,N+4500,N+500);
+    assert('잠금스냅: 새 벽 이동 가능',getVertex(nw.v1Id).x===N+4500);
+    // [SN5] 잠긴 벽은 여전히 못 움직임
+    moveVertex(nv2.id,N+9999,N+9999);
+    assert('잠금스냅: 잠긴 벽 이동 불가',getVertex(nv2.id).x===N+4000);
+    // [SN6] 잠긴 공간 꼭짓점에 스냅해 만든 공간도 독립 버텍스
+    const newIds=polygonToVertexIds([{x:N+10000,y:N},{x:N+12000,y:N},{x:N+12000,y:N-2000},{x:N+10000,y:N-2000}]);
+    assert('잠금스냅: 공간 버텍스도 독립',newIds.every(id=>!lsv.includes(id)));
+    STATE.walls=_bakSN.walls;STATE.spaces=_bakSN.spaces;STATE.vertices=_bakSN.vertices;
+    STATE.snap.endpoint=_bakSN.snapEp;STATE.ctrlPressed=_bakSN.ctrl;
+    if(typeof reinstallVEFAll==='function') reinstallVEFAll();
+    renderAll();
+  }catch(e){
+    assert('잠금스냅: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

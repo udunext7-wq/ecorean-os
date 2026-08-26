@@ -794,6 +794,7 @@ function polygonToVertexIds(polygon){
     for(const v of STATE.vertices){
       if(used.has(v.id)) continue;
       if(v.kind==='bearing') continue; // 내력벽 vertex 제외
+      if(isVertexLocked(v.id)) continue; // 2026-08-27: 잠긴 객체 버텍스는 재사용 금지 — 스냅은 되되 묶이지는 않는다 (대표 지시)
       const d=Math.hypot(v.x-p.x,v.y-p.y);
       if(d<1&&d<bestD){bestD=d;best=v;}
     }

@@ -59,8 +59,12 @@ function _ensureFreeWallVertex(x,y,tol=60){
   x=Math.round(x);y=Math.round(y);
   const spaceVertexSet=new Set();
   STATE.spaces.forEach(s=>s.vertexIds&&s.vertexIds.forEach(vid=>spaceVertexSet.add(vid)));
+  // 2026-08-27: 잠긴 객체의 버텍스에 용접되면 새 벽까지 못 움직이게 된다 (대표 지시)
+  //  → 스냅 좌표는 그대로 쓰되 버텍스는 독립 생성 (잠긴 객체는 '스냅 기준선'으로만 동작)
   const found=STATE.vertices.find(v=>
-    v.kind!=='bearing'&&!spaceVertexSet.has(v.id)&&Math.hypot(v.x-x,v.y-y)<tol
+    v.kind!=='bearing'&&!spaceVertexSet.has(v.id)
+    &&!(typeof isVertexLocked==='function'&&isVertexLocked(v.id))
+    &&Math.hypot(v.x-x,v.y-y)<tol
   );
   if(found) return found;
   const v={id:makeId('v'),x,y};
