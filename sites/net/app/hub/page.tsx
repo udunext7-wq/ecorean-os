@@ -52,7 +52,9 @@ const SECTIONS: HubSection[] = [
     title: 'AI 스튜디오',
     desc: '이미지 자산 · 프롬프트',
     items: [
-      { href: '/studio/moodboards', name: '무드보드 갤러리', desc: '현장·컨셉별 레퍼런스 보드' },
+      { href: '/studio/moodboards', name: '무드보드 갤러리', desc: '기준 무드 → 파생·자재 연결' },
+      { href: '/studio/presets', name: '스타일 프리셋', desc: '무드에서 추출한 자재 조합' },
+      { href: '/studio/ontology', name: '온톨로지', desc: '공정 자동연계 규칙 그래프' },
       { href: '/studio/prompt-guide.html', name: '프롬프트 가이드', desc: '인테리어 AI 프롬프트 완성본' },
     ],
   },

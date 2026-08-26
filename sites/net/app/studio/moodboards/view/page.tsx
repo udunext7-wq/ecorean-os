@@ -9,7 +9,55 @@ import { Noto_Sans_KR } from 'next/font/google';
 const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300', '400', '500', '700'], display: 'swap' });
 
 type Board = { id: string; title: string; concept: string | null; site: string | null; cover_url: string | null };
-type Img = { id: string; url: string; caption: string | null; created_at: string };
+type Img = { id: string; url: string; caption: string | null; created_at: string; materials: string[] };
+type Mat = { id: string; name: string; brand: string | null; unit: string | null; unit_price: number | null };
+type Pair = { id: string; before_url: string; after_url: string; caption: string | null };
+
+// Before/After 슬라이더 비교 — 가운데 분할선을 끌어 전후를 비교한다
+function ComparePair({ pair, onDelete }: { pair: Pair; onDelete: () => void }) {
+  const [pos, setPos] = useState(50);
+  return (
+    <div className="overflow-hidden rounded-xl border border-[#9BC9D8]/15 bg-[#0b111a]">
+      <div className="relative select-none">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={pair.after_url} alt="after" className="block w-full" draggable={false} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={pair.before_url}
+          alt="before"
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}
+        />
+        <div
+          className="pointer-events-none absolute inset-y-0 w-[2px] bg-[#F5DCB0] shadow-[0_0_10px_rgba(245,220,176,0.8)]"
+          style={{ left: `${pos}%` }}
+        />
+        <span className="absolute left-2 top-2 rounded bg-black/55 px-2 py-0.5 text-[10px] tracking-[0.2em] text-[#c8e4ee]">
+          BEFORE
+        </span>
+        <span className="absolute right-2 top-2 rounded bg-black/55 px-2 py-0.5 text-[10px] tracking-[0.2em] text-[#e8c99b]">
+          AFTER
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={pos}
+          onChange={(e) => setPos(Number(e.target.value))}
+          aria-label="전후 비교 위치"
+          className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
+        />
+      </div>
+      <div className="flex items-center justify-between px-3 py-2 text-xs text-[#94aab8]">
+        <span className="truncate">{pair.caption || '현장 비교'}</span>
+        <button type="button" onClick={onDelete} className="text-[#E5726A]/80 hover:text-[#E5726A]">
+          삭제
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function MoodboardDetailPage() {
   // vercel.json 수동 routes 가 동적 세그먼트를 못 태워 404 → 쿼리(?id=) 방식 (2026-08-25)
@@ -26,6 +74,13 @@ export default function MoodboardDetailPage() {
   const refFileRef = useRef<HTMLInputElement | null>(null);
   const [refUploading, setRefUploading] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [pairs, setPairs] = useState<Pair[]>([]);
+  const [matCatalog, setMatCatalog] = useState<Record<string, Mat>>({});
+  const [matQuery, setMatQuery] = useState('');
+  const [matResults, setMatResults] = useState<Mat[]>([]);
+  const beforeRef = useRef<HTMLInputElement | null>(null);
+  const afterRef = useRef<HTMLInputElement | null>(null);
+  const [pairBusy, setPairBusy] = useState(false);
   const [refSize, setRefSize] = useState<'sm' | 'md' | 'lg'>('sm');
   const [refView, setRefView] = useState(false); // 기준 이미지 전체화면
   useEffect(() => {
@@ -52,13 +107,42 @@ export default function MoodboardDetailPage() {
   const load = useCallback(async () => {
     if (!boardId) return;
     const supabase = createBrowserSupabase();
-    const [{ data: b }, { data: imgs, error: e2 }] = await Promise.all([
+    const [{ data: b }, { data: imgs, error: e2 }, { data: prs }] = await Promise.all([
       supabase.from('moodboards').select('id,title,concept,site,cover_url').eq('id', boardId).maybeSingle(),
-      supabase.from('moodboard_images').select('id,url,caption,created_at').eq('board_id', boardId).order('created_at', { ascending: false }),
+      supabase
+        .from('moodboard_images')
+        .select('id,url,caption,created_at,materials')
+        .eq('board_id', boardId)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('mb_compare_pairs')
+        .select('id,before_url,after_url,caption')
+        .eq('board_id', boardId)
+        .order('created_at', { ascending: false }),
     ]);
     setBoard((b as Board) ?? null);
-    if (e2) setError('이미지를 불러오지 못했습니다 — 직원(staff) 권한이 필요할 수 있습니다.');
-    else setImages((imgs ?? []) as Img[]);
+    setPairs((prs ?? []) as Pair[]);
+    if (e2) {
+      setError('이미지를 불러오지 못했습니다 — 직원(staff) 권한이 필요할 수 있습니다.');
+      return;
+    }
+    const list = (imgs ?? []) as Img[];
+    setImages(list);
+    // 연결된 자재 카탈로그 로드 (BOC 통합 자재)
+    const ids = [...new Set(list.flatMap((im) => im.materials ?? []))];
+    if (ids.length) {
+      const { data: mats } = await supabase
+        .from('materials')
+        .select('id,name,brand,unit,unit_price')
+        .in('id', ids);
+      const map: Record<string, Mat> = {};
+      (mats ?? []).forEach((m) => {
+        map[(m as Mat).id] = m as Mat;
+      });
+      setMatCatalog(map);
+    } else {
+      setMatCatalog({});
+    }
   }, [boardId]);
 
   useEffect(() => {
@@ -145,6 +229,112 @@ export default function MoodboardDetailPage() {
       /* no-op */
     }
     window.location.href = '/studio/moodboards';
+  }
+
+  // ── 자재 매핑 (BOC 통합 자재 연결) ──
+  async function searchMaterials(q: string) {
+    setMatQuery(q);
+    if (q.trim().length < 2) {
+      setMatResults([]);
+      return;
+    }
+    const supabase = createBrowserSupabase();
+    const { data } = await supabase
+      .from('materials')
+      .select('id,name,brand,unit,unit_price')
+      .ilike('name', `%${q.trim()}%`)
+      .limit(8);
+    setMatResults((data ?? []) as Mat[]);
+  }
+  async function setImageMaterials(img: Img, next: string[]) {
+    const supabase = createBrowserSupabase();
+    const { error: updErr } = await supabase
+      .from('moodboard_images')
+      .update({ materials: next })
+      .eq('id', img.id);
+    if (updErr) {
+      setError('자재 연결 권한이 없습니다 (본인 등록 이미지 또는 admin).');
+      return;
+    }
+    setImages((arr) => arr.map((x) => (x.id === img.id ? { ...x, materials: next } : x)));
+  }
+  async function addMaterial(img: Img, mat: Mat) {
+    if ((img.materials ?? []).includes(mat.id)) return;
+    setMatCatalog((m) => ({ ...m, [mat.id]: mat }));
+    await setImageMaterials(img, [...(img.materials ?? []), mat.id]);
+    setMatQuery('');
+    setMatResults([]);
+  }
+
+  // 보드 전체에서 연결된 자재 (중복 제거)
+  const boardMaterialIds = [...new Set(images.flatMap((im) => im.materials ?? []))];
+  const boardMaterials = boardMaterialIds.map((id) => matCatalog[id]).filter(Boolean);
+  const priceSum = boardMaterials.reduce((s, m) => s + (m.unit_price ?? 0), 0);
+
+  // 스타일 프리셋 저장 — 보드의 자재 조합·컨셉을 프리셋으로
+  async function savePreset() {
+    if (!boardId || !board) return;
+    const name = window.prompt('프리셋 이름을 입력하세요', `${board.title} 스타일`);
+    if (!name?.trim()) return;
+    const supabase = createBrowserSupabase();
+    const { error: insErr } = await supabase.from('mb_style_presets').insert({
+      board_id: boardId,
+      name: name.trim(),
+      notes: board.concept,
+      material_ids: boardMaterialIds,
+    });
+    if (insErr) setError(`프리셋 저장 실패: ${insErr.message}`);
+    else window.alert('프리셋으로 저장했습니다 — AI 스튜디오 > 스타일 프리셋에서 확인하세요.');
+  }
+
+  // ── Before/After 현장 비교 ──
+  async function addPair() {
+    const bf = beforeRef.current?.files?.[0];
+    const af = afterRef.current?.files?.[0];
+    if (!boardId || !bf || !af) {
+      setError('Before 와 After 이미지를 각각 선택해 주세요.');
+      return;
+    }
+    setPairBusy(true);
+    setError(null);
+    const supabase = createBrowserSupabase();
+    try {
+      const up = async (file: File, label: string) => {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `${boardId}/cmp-${label}-${crypto.randomUUID()}.${ext}`;
+        const { error: e } = await supabase.storage.from('moodboards').upload(path, file, {
+          cacheControl: '31536000',
+          contentType: file.type || undefined,
+        });
+        if (e) throw e;
+        return supabase.storage.from('moodboards').getPublicUrl(path).data.publicUrl;
+      };
+      const [bu, au] = [await up(bf, 'before'), await up(af, 'after')];
+      const { error: insErr } = await supabase
+        .from('mb_compare_pairs')
+        .insert({ board_id: boardId, before_url: bu, after_url: au });
+      if (insErr) throw insErr;
+      if (beforeRef.current) beforeRef.current.value = '';
+      if (afterRef.current) afterRef.current.value = '';
+      load();
+    } catch (err) {
+      setError(`비교 등록 실패: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setPairBusy(false);
+    }
+  }
+  async function deletePair(p: Pair) {
+    const supabase = createBrowserSupabase();
+    const { error: delErr } = await supabase.from('mb_compare_pairs').delete().eq('id', p.id);
+    if (delErr) {
+      setError('삭제 권한이 없습니다.');
+      return;
+    }
+    for (const u of [p.before_url, p.after_url]) {
+      const m = u.split('/object/public/moodboards/')[1];
+      if (m) await supabase.storage.from('moodboards').remove([decodeURIComponent(m)]);
+    }
+    load();
   }
 
   // 기준 무드보드 이미지 업로드/교체 — 이 보드의 출발점이 되는 원본
@@ -404,6 +594,109 @@ export default function MoodboardDetailPage() {
             </button>
           ))}
         </div>
+
+        {/* ── 연결된 자재 (BOC 통합 자재) ── */}
+        <section className="mt-12">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[11px] font-semibold tracking-[0.3em] text-[#9BC9D8]/80">
+              연결된 자재 <span className="text-[#9BC9D8]/40">MATERIALS · {boardMaterials.length}</span>
+            </h2>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={savePreset}
+                disabled={boardMaterials.length === 0}
+                className="rounded-full border border-[#E8C99B]/40 px-4 py-1.5 text-xs text-[#e8c99b] hover:bg-[#E8C99B]/10 disabled:opacity-40"
+              >
+                스타일 프리셋으로 저장
+              </button>
+              <Link
+                href={`/studio/draft?board=${boardId ?? ''}`}
+                className="rounded-full border border-[#9BC9D8]/35 px-4 py-1.5 text-xs text-[#c8e4ee] hover:bg-[#9BC9D8]/10"
+              >
+                제안서 초안 만들기
+              </Link>
+            </div>
+          </div>
+          {boardMaterials.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-[#9BC9D8]/20 p-5 text-center text-sm text-[#94aab8]">
+              아직 연결된 자재가 없습니다 — 파생 이미지를 눌러 전체화면에서 "자재 연결"로 BOC 통합
+              자재를 붙여보세요. 붙는 순간 이 무드가 견적의 재료가 됩니다.
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-[#9BC9D8]/15 bg-[#0b111a]/80">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#9BC9D8]/12 text-left text-[10px] tracking-[0.2em] text-[#9BC9D8]/60">
+                    <th className="px-4 py-2.5">자재</th>
+                    <th className="px-4 py-2.5">브랜드</th>
+                    <th className="px-4 py-2.5">단위</th>
+                    <th className="px-4 py-2.5 text-right">단가</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#9BC9D8]/8">
+                  {boardMaterials.map((m) => (
+                    <tr key={m.id}>
+                      <td className="px-4 py-2 text-[#ebf1f5]">{m.name}</td>
+                      <td className="px-4 py-2 text-[#94aab8]">{m.brand ?? '—'}</td>
+                      <td className="px-4 py-2 text-[#94aab8]">{m.unit ?? '—'}</td>
+                      <td className="px-4 py-2 text-right tabular-nums text-[#e8c99b]">
+                        {m.unit_price != null ? m.unit_price.toLocaleString() : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-[#101826]/60">
+                    <td className="px-4 py-2.5 text-xs text-[#9BC9D8]/70" colSpan={3}>
+                      참조 단가 합계 — 단위당 단가의 단순 합 (수량·시공비 미반영, 견적 아님)
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-[#f0deb9]">
+                      {priceSum.toLocaleString()}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* ── 현장 비교 Before / After ── */}
+        <section className="mt-12">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[11px] font-semibold tracking-[0.3em] text-[#9BC9D8]/80">
+              현장 비교 <span className="text-[#9BC9D8]/40">BEFORE / AFTER · {pairs.length}</span>
+            </h2>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <label className="flex items-center gap-1.5 text-[#94aab8]">
+                Before
+                <input ref={beforeRef} type="file" accept="image/*" className="w-44 text-[10px]" />
+              </label>
+              <label className="flex items-center gap-1.5 text-[#94aab8]">
+                After
+                <input ref={afterRef} type="file" accept="image/*" className="w-44 text-[10px]" />
+              </label>
+              <button
+                type="button"
+                onClick={addPair}
+                disabled={pairBusy}
+                className="rounded-full bg-gradient-to-b from-[#d6b87e] to-[#b8965a] px-4 py-1.5 font-semibold text-[#0f0e0c] disabled:opacity-50"
+              >
+                {pairBusy ? '등록 중…' : '비교 등록'}
+              </button>
+            </div>
+          </div>
+          {pairs.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-[#9BC9D8]/20 p-5 text-center text-sm text-[#94aab8]">
+              현장 사진(Before)과 AI 시안/완공 사진(After)을 등록하면 슬라이더로 비교할 수 있습니다 —
+              고객 제안·완공 보고에 그대로 쓰세요.
+            </p>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2">
+              {pairs.map((p) => (
+                <ComparePair key={p.id} pair={p} onDelete={() => deletePair(p)} />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* 기준 이미지 전체화면 */}
@@ -464,6 +757,62 @@ export default function MoodboardDetailPage() {
           >
             ▶
           </button>
+          {/* 자재 연결 — 이 이미지에 보이는 BOC 자재를 붙인다 */}
+          <div
+            className="absolute bottom-16 left-1/2 w-[min(640px,92vw)] -translate-x-1/2 rounded-xl border border-[#9BC9D8]/20 bg-[#070b12]/90 p-3 backdrop-blur"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-[10px] tracking-[0.25em] text-[#9BC9D8]/60">자재 연결</span>
+              {(images[lightbox].materials ?? []).map((mid) => (
+                <span
+                  key={mid}
+                  className="flex items-center gap-1 rounded-full border border-[#E8C99B]/30 bg-[#E8C99B]/8 px-2 py-0.5 text-[11px] text-[#e8c99b]"
+                >
+                  {matCatalog[mid]?.name ?? '자재'}
+                  <button
+                    type="button"
+                    aria-label="자재 해제"
+                    className="text-[#e8c99b]/60 hover:text-[#E5726A]"
+                    onClick={() =>
+                      setImageMaterials(
+                        images[lightbox],
+                        (images[lightbox].materials ?? []).filter((x) => x !== mid),
+                      )
+                    }
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <input
+              value={matQuery}
+              onChange={(e) => searchMaterials(e.target.value)}
+              placeholder="자재 검색 (2자 이상 — 예: 타일, 마루, 도장)"
+              className="w-full rounded-md border border-[#9BC9D8]/25 bg-[#04070c] px-3 py-1.5 text-sm text-[#e6edf2] outline-none focus:border-[#9BC9D8]/60"
+            />
+            {matResults.length > 0 ? (
+              <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border border-[#9BC9D8]/15 bg-[#0b111a]">
+                {matResults.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => addMaterial(images[lightbox], m)}
+                      className="flex w-full items-baseline justify-between gap-3 px-3 py-1.5 text-left text-sm hover:bg-[#9BC9D8]/8"
+                    >
+                      <span className="text-[#ebf1f5]">
+                        {m.name} <span className="text-xs text-[#94aab8]">{m.brand ?? ''}</span>
+                      </span>
+                      <span className="text-xs tabular-nums text-[#e8c99b]">
+                        {m.unit_price != null ? `${m.unit_price.toLocaleString()}/${m.unit ?? ''}` : ''}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
           <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-4 text-xs text-[#94aab8]">
             <span>
               {lightbox + 1} / {images.length}
