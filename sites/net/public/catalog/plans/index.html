@@ -29,6 +29,11 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 .badge.public{background:#eaf6ec;color:#2c8544}
 .badge.survey{background:#fdf3e4;color:#a4762a}
 .badge.minicad{background:#f3eefc;color:#7c4fc2}
+.badge.redraw{background:#fdf0e4;color:#b5651d}
+.badge.realplan{background:#e8f3ea;color:#2c8544}
+/* 실도면 아님 경고 (상세) */
+.warn-redraw{background:#fdf6ec;border:1px solid #f0dcc0;border-left:4px solid #d99a3e;border-radius:8px;padding:11px 14px;margin:0 0 14px;font-size:12.5px;line-height:1.75;color:#7a5a22}
+.warn-redraw b{color:#a8701c}
 .empty{padding:90px 20px;text-align:center;color:#999;grid-column:1/-1}
 /* 지역 인덱스 칩 + 지역별 그룹 섹션 */
 .region-bar{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 18px}
@@ -146,6 +151,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   <div class="modal" style="max-width:840px">
     <button type="button" class="x" data-close="dtModal">✕</button>
     <h2 id="dtName">평면도</h2>
+    <div id="dtWarn"></div>
     <img class="dt-img" id="dtImg" alt="평면도">
     <div class="dt-meta" id="dtMeta"></div>
     <!-- 파싱 미리보기 — MiniCAD 생성 구조를 JSON 에서 직접 렌더 (내부 검수용) -->
@@ -239,6 +245,15 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       });
     });
   }
+  // 도면 성격 구분 — 실제 단지 도면인지, 유형 기준 재작도인지 이용자가 바로 알 수 있게
+  // (재작도는 공공데이터의 면적구간으로 표준 유형을 고른 것이라 단지별 실제 구조가 아니다)
+  function planKind(r){
+    var note=r.source_note||'';
+    if(/재작도/.test(note))return{cls:'redraw',label:'유형 재작도 · 실도면 아님'};
+    if(r.source==='minicad')return{cls:'minicad',label:'ECOREAN 표준 유형'};
+    if(r.source==='survey'||r.source==='customer')return{cls:'realplan',label:SRC_LABEL[r.source]};
+    return{cls:r.source,label:SRC_LABEL[r.source]||r.source};
+  }
   function cardHtml(r,i){
     var meta=[[r.region_sido,r.region_gugun].filter(Boolean).join(' '),
               [r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · '),
@@ -247,7 +262,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       '<img class="thumb" loading="lazy" src="'+imgUrl(r)+'" alt="'+esc(r.complex_name)+'">'+
       '<div class="body"><div class="nm">'+esc(r.complex_name)+'</div>'+
       '<div class="meta">'+meta.map(esc).join('<br>')+'</div>'+
-      '<span class="badge '+esc(r.source)+'">'+(SRC_LABEL[r.source]||r.source)+'</span>'+
+      '<span class="badge '+planKind(r).cls+'">'+esc(planKind(r).label)+'</span>'+
       '</div></div>';
   }
   function render(){
@@ -552,6 +567,14 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       bgBtn.textContent='📐 MiniCAD 밑그림으로 열기';
       bgBtn.href=bgHref;
     }
+    // 재작도 도면은 단지별 실제 구조가 아니므로 견적 전 실측이 필수임을 상단에 명시
+    var kind=planKind(r);
+    document.getElementById('dtWarn').innerHTML = kind.cls==='redraw'
+      ? '<div class="warn-redraw"><b>⚠ 이 도면은 「'+esc(r.complex_name)+'」의 실제 평면도가 아닙니다.</b><br>'+
+        '공공데이터의 전용면적 구간으로 같은 평형대의 표준 유형을 골라 그린 참고용 도면입니다. '+
+        '방 배치·벽 위치가 실제와 다를 수 있으니 <b>견적·시공 기준으로 쓰지 마시고 반드시 현장 실측</b>을 거치세요.<br>'+
+        '단지명·주소·전용면적·좌표는 공공데이터 기반 사실 정보입니다.</div>'
+      : '';
     var rows=[['지역',[r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' ')],
               ['평형/타입',[r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · ')],
               ['구성',r.rooms!=null?'방 '+r.rooms+(r.baths!=null?' / 욕실 '+r.baths:''):''],
