@@ -32,6 +32,9 @@ function toggleOrtho(){
   const onOff=STATE.snap.ortho?'ON':'OFF';
   cmdToast('직교 (Ortho) '+onOff+' — F8 / Ctrl+L');
   updateOrthoFAB();
+  if(typeof saveSnapPrefs==='function') saveSnapPrefs();
+  if(typeof refreshSnapStatus==='function') refreshSnapStatus();
+  if(typeof buildSnapUI==='function') buildSnapUI();
   // snap UI checkbox 동기화
   const cb=document.querySelector('input[data-snap="ortho"]');
   if(cb) cb.checked=STATE.snap.ortho;
@@ -286,9 +289,39 @@ function buildLayerUI(){
     list.appendChild(row);
   });
 }
+// 2026-08-27: 스냅 설정 지속 (대표 보고 — 껐는데 새로고침·불러오기 때마다 그리드 스냅이 되살아남)
+const SNAP_LS_KEY='minicad.snap';
+function saveSnapPrefs(){
+  try{localStorage.setItem(SNAP_LS_KEY,JSON.stringify({
+    grid:!!STATE.snap.grid,endpoint:!!STATE.snap.endpoint,
+    ghost:!!STATE.snap.ghost,ortho:!!STATE.snap.ortho,gridSize:STATE.gridSize}));}catch(_){}
+}
+function loadSnapPrefs(){
+  try{
+    const p=JSON.parse(localStorage.getItem(SNAP_LS_KEY)||'null');
+    if(!p) return false;
+    ['grid','endpoint','ghost','ortho'].forEach(k=>{if(typeof p[k]==='boolean') STATE.snap[k]=p[k];});
+    if(p.gridSize&&isFinite(p.gridSize)){
+      STATE.gridSize=p.gridSize;
+      const g=document.getElementById('snap-unit'); if(g) g.value=String(p.gridSize);
+    }
+    return true;
+  }catch(_){return false;}
+}
+// 상태바 표시 — 지금 무엇이 걸리는지 한눈에
+function refreshSnapStatus(){
+  const el=document.getElementById('snap-status'); if(!el) return;
+  const on=[];
+  if(STATE.snap.endpoint) on.push('끝점');
+  if(STATE.snap.grid) on.push('그리드 '+STATE.gridSize+'mm');
+  if(STATE.snap.ghost) on.push('고스트');
+  if(STATE.snap.ortho) on.push('직교');
+  el.textContent=on.length?on.join(' · '):'없음';
+  el.style.color=on.length?'':'var(--ink-3)';
+}
 function buildSnapUI(){
   const list=document.getElementById('snap-list');list.innerHTML='';
-  const labels={grid:['그리드 스냅','#C9A961'],endpoint:['끝점 스냅','#7BA05B'],ghost:['고스트 스냅 (선 근처)','#A8A8B8'],ortho:['직교 (Shift)','#5B8DA0']};
+  const labels={grid:['그리드 스냅','#C9A961'],endpoint:['끝점 스냅 (객체만)','#7BA05B'],ghost:['고스트 스냅 (선 근처)','#A8A8B8'],ortho:['직교 (Shift)','#5B8DA0']};
   Object.entries(labels).forEach(([k,[name,color]])=>{
     const row=document.createElement('div');
     row.className='layer-row'+(STATE.snap[k]?'':' off');
@@ -297,10 +330,13 @@ function buildSnapUI(){
       STATE.snap[k]=!STATE.snap[k];
       row.classList.toggle('off',!STATE.snap[k]);
       showStatus(name+': '+(STATE.snap[k]?'ON':'OFF'));
+      saveSnapPrefs();refreshSnapStatus();
       if(k==='ghost'&&typeof renderGhostHints==='function') renderGhostHints();
+      if(k==='ortho'&&typeof updateOrthoFAB==='function') updateOrthoFAB();
     });
     list.appendChild(row);
   });
+  refreshSnapStatus();
 }
 
 // ===== UI =====
@@ -1413,6 +1449,7 @@ function buildJSON(){
         layers:STATE.layers?{...STATE.layers}:null,
         wallAlignment:STATE.wallAlignment||'center',
         downlightInch:STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT, // 2026-08-25
+        snap:{grid:!!STATE.snap.grid,endpoint:!!STATE.snap.endpoint,ghost:!!STATE.snap.ghost,ortho:!!STATE.snap.ortho}, // 2026-08-27
       },
       // v5.7: 차세대 AI 생성 파이프라인 SSoT 메타
       aiPromptHints:STATE.aiPromptHints,
@@ -2195,6 +2232,11 @@ function applyLoadedData(d){
     if('videoSequenceOrder' in _set) STATE.videoSequenceOrder=_set.videoSequenceOrder||null;
     if(_set.layers&&typeof _set.layers==='object') STATE.layers={...STATE.layers,..._set.layers};
     if(_set.downlightInch&&DOWNLIGHT_INCH[_set.downlightInch]) STATE.downlightInch=_set.downlightInch;
+    if(_set.snap&&typeof _set.snap==='object'){
+      ['grid','endpoint','ghost','ortho'].forEach(k=>{if(typeof _set.snap[k]==='boolean') STATE.snap[k]=_set.snap[k];});
+      if(typeof buildSnapUI==='function') buildSnapUI();
+      if(typeof saveSnapPrefs==='function') saveSnapPrefs();
+    }
     if(_set.wallAlignment){
       STATE.wallAlignment=_set.wallAlignment;
       if(typeof setWallAlignment==='function') setWallAlignment(_set.wallAlignment,{silent:true});
@@ -3255,7 +3297,9 @@ function _showTextModal(title,text){
   ov.style.display='flex';
 }
 function hideTextModal(){const ov=document.getElementById('text-modal-overlay');if(ov)ov.style.display='none';}
-document.getElementById('snap-unit').addEventListener('change',e=>{STATE.gridSize=parseInt(e.target.value);drawGrid();showStatus('스냅 거리: '+e.target.value+'mm');});
+document.getElementById('snap-unit').addEventListener('change',e=>{STATE.gridSize=parseInt(e.target.value);drawGrid();showStatus('스냅 거리: '+e.target.value+'mm');
+  if(typeof saveSnapPrefs==='function') saveSnapPrefs();
+  if(typeof refreshSnapStatus==='function') refreshSnapStatus();});
 document.getElementById('ceiling-height').addEventListener('change',e=>{const v=_numField(e,1000);if(v==null){e.target.value=STATE.ceilingHeight;return;}STATE.ceilingHeight=v;refreshUI();});
 document.getElementById('wall-thickness').addEventListener('change',e=>{
   const v=parseInt(e.target.value);STATE.wallThickness=v;
@@ -4135,6 +4179,7 @@ setTool=function(tool){
 
 function initUI(){
 // ===== 초기화 =====
+if(typeof loadSnapPrefs==='function') loadSnapPrefs(); // 2026-08-27: 저장된 스냅 설정 복원
 buildSpaceTypeUI();buildLayerUI();buildSnapUI();
 drawGrid();saveHistory();refreshUI();
 document.getElementById('btn-grid').classList.add('gold');

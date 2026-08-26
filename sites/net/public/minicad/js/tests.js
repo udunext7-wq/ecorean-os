@@ -1457,6 +1457,61 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('잠금스냅: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 끝점=객체만 / 그리드=켰을 때만 + 설정 지속 (대표 지시) ===
+  try{
+    const _bakSP={grid:STATE.snap.grid,ep:STATE.snap.endpoint,gs:STATE.gridSize,ctrl:STATE.ctrlPressed,
+      zoom:STATE.zoom,ox:STATE.offsetX,oy:STATE.offsetY,walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
+      ls:(function(){try{return localStorage.getItem('minicad.snap');}catch(_){return null;}})()};
+    STATE.ctrlPressed=false;STATE.gridSize=100;STATE.zoom=1;STATE.offsetX=0;STATE.offsetY=0;
+    const P={x:mmToPx(1234),y:mmToPx(2345)};
+    // [SP1] 빈 곳: 그리드 ON → 격자 흡착 / 그리드 OFF → 자유 좌표 (끝점 ON 이어도)
+    STATE.snap.grid=true;STATE.snap.endpoint=true;
+    let m=getMm(P);
+    assert('스냅: 빈 곳 그리드 ON 흡착',m.x===1200&&m.y===2300,JSON.stringify(m));
+    STATE.snap.grid=false;
+    m=getMm(P);
+    assert('스냅: 빈 곳 그리드 OFF 자유',m.x===1234&&m.y===2345,JSON.stringify(m));
+    // [SP2] 끝점 스냅은 객체에서만 — 빈 곳에서는 아무 흡착 없음
+    assert('스냅: 끝점은 빈 곳에서 미작동',snapToEndpoint({x:1234,y:2345}).snapped===false);
+    const bv1=ensureVertex(7000000,7000000), bv2=ensureVertex(7000000+3000,7000000);
+    const bw=makeWallVEF(bv1.id,bv2.id,{});STATE.walls.push(bw);
+    const r2=snapToEndpoint({x:7000000+3040,y:7000000+30});
+    assert('스냅: 끝점은 객체에서 작동',r2.snapped&&r2.pt.x===7000000+3000);
+    // [SP3] 그리드 OFF + 끝점 ON — 객체 근처는 정확히 끝점, 격자로 밀리지 않음
+    STATE.snap.grid=false;STATE.snap.endpoint=true;
+    const q=getMm({x:mmToPx(7000000+3040),y:mmToPx(7000000+30)});
+    assert('스냅: 객체 근처 끝점 우선',q.x===7000000+3000&&q.y===7000000,JSON.stringify(q));
+    // [SP4] 끝점 OFF → 객체 근처여도 흡착 없음
+    STATE.snap.endpoint=false;
+    const q2=getMm({x:mmToPx(7000000+3040),y:mmToPx(7000000+30)});
+    assert('스냅: 끝점 OFF면 객체도 미흡착',q2.x===7000000+3040);
+    // [SP5] 설정 지속 — 저장/복원
+    STATE.snap.grid=false;STATE.snap.endpoint=true;STATE.gridSize=200;
+    saveSnapPrefs();
+    STATE.snap.grid=true;STATE.snap.endpoint=false;STATE.gridSize=1;
+    assert('스냅: 저장→복원',loadSnapPrefs()===true&&STATE.snap.grid===false&&STATE.snap.endpoint===true&&STATE.gridSize===200,
+      JSON.stringify([STATE.snap.grid,STATE.snap.endpoint,STATE.gridSize]));
+    // [SP6] 문서(JSON) 왕복에도 스냅 스펙 유지
+    STATE.snap.grid=false;STATE.snap.endpoint=true;
+    const rawSp=JSON.stringify(buildJSON());
+    STATE.snap.grid=true;STATE.snap.endpoint=false;
+    applyLoadedData(JSON.parse(rawSp));
+    assert('스냅: 문서 왕복 보존',STATE.snap.grid===false&&STATE.snap.endpoint===true,
+      JSON.stringify([STATE.snap.grid,STATE.snap.endpoint]));
+    // [SP7] 상태바 표시
+    STATE.snap.grid=true;STATE.snap.endpoint=true;STATE.gridSize=100;refreshSnapStatus();
+    const stEl=document.getElementById('snap-status');
+    assert('스냅: 상태바 표시',!!stEl&&stEl.textContent.indexOf('끝점')>=0&&stEl.textContent.indexOf('100mm')>=0,
+      stEl&&stEl.textContent);
+    STATE.snap.grid=_bakSP.grid;STATE.snap.endpoint=_bakSP.ep;STATE.gridSize=_bakSP.gs;
+    STATE.ctrlPressed=_bakSP.ctrl;STATE.zoom=_bakSP.zoom;STATE.offsetX=_bakSP.ox;STATE.offsetY=_bakSP.oy;
+    STATE.walls=_bakSP.walls;STATE.vertices=_bakSP.vertices;
+    try{if(_bakSP.ls===null) localStorage.removeItem('minicad.snap'); else localStorage.setItem('minicad.snap',_bakSP.ls);}catch(_){}
+    if(typeof reinstallVEFAll==='function') reinstallVEFAll();
+    refreshSnapStatus();renderAll();
+  }catch(e){
+    assert('스냅: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
