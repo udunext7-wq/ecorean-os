@@ -1304,6 +1304,13 @@ function buildJSON(){
       coordOrigin:{x:0,y:0,units:'mm',rotation_deg:0,yAxis:'down',note:'화면 좌표계 — +y는 남쪽(아래). placement의 north는 -y 방향'}, // v5.9: 외부 파서의 남북 반전 오해석 방지
       layerNamingScheme:'A-{ELEMENT}-{SPACECODE}-{INDEX02}',
       elementCodes:['AREA','WALL','DOOR','WIND','FURN','FIXT','LITE','ELEC','HVAC','CIRC','ARC','DIMS','ANNO'],
+      // 2026-08-26: 문서 설정 왕복 — 견적 옵션·동선 순서·레이어 표시·벽 정렬 (대표 보고: 불러오면 설정이 변경됨)
+      settings:{
+        estimateConfig:STATE.estimateConfig||{},
+        videoSequenceOrder:STATE.videoSequenceOrder||null,
+        layers:STATE.layers?{...STATE.layers}:null,
+        wallAlignment:STATE.wallAlignment||'center',
+      },
       // v5.7: 차세대 AI 생성 파이프라인 SSoT 메타
       aiPromptHints:STATE.aiPromptHints,
       videoSequence:{
@@ -1321,6 +1328,9 @@ function buildJSON(){
     spaces:STATE.spaces.map(s=>{
       const st=SPACE_TYPES[s.type]||{name:s.type,code:'GEN',ks:null,color:'#C9A961',waterproof:false}; // v5.9: 미등록 타입 가드
       return{
+      // 2026-08-26: 화이트리스트 때문에 사용자 설정(계단 stair·잠금 locked·원형공간 _circleMeta 등)이
+      //  저장 시 통째로 빠져 불러오면 기본값으로 되돌아가던 버그 (대표 보고) → 원본 필드 먼저 보존
+      ...s,
       id:s.id,name:s.name,type:s.type,typeIndex:s.typeIndex||1,
       layerName:s.layerName||makeLayerName('AREA',s),
       ksCode:st.ks,
@@ -1702,25 +1712,9 @@ function applyCloudDoc(d){
   if(!d||!d.schema||!String(d.schema).startsWith('ECOREAN.FloorPlan')){
     alert('ECOREAN MiniCAD 도면 데이터가 아닙니다');return false;
   }
-  // 2026-08-22: 대표 지시 4번 — 저장 당시 스펙 유지, meta 누락 값은 현재 값 유지
-  STATE.projectName=(d.meta&&d.meta.project)||STATE.projectName;
-  STATE.ceilingHeight=(d.meta&&d.meta.ceilingHeight_mm)||STATE.ceilingHeight;
-  if(d.meta&&d.meta.gridSize){STATE.gridSize=d.meta.gridSize;const g=document.getElementById('snap-unit');if(g)g.value=String(d.meta.gridSize);}
-  if(d.meta&&d.meta.wallThickness){STATE.wallThickness=d.meta.wallThickness;const el=document.getElementById('wall-thickness');if(el)el.value=d.meta.wallThickness;}
-  STATE.vertices=d.vertices||[];
-  STATE.spaces=d.spaces||[];STATE.walls=d.walls||[];
-  STATE.openings=d.openings||[];STATE.furniture=d.furniture||[];
-  STATE.fixtures=d.fixtures||[];STATE.lights=d.lights||[];
-  STATE.electric=d.electric||[];STATE.texts=d.texts||[];
-  STATE.measures=d.measures||[];
-  STATE.circles=d.circles||[];STATE.arcs=d.arcs||[];STATE.hvac=d.hvac||[];
-  STATE.leaders=d.leaders||[];STATE.xlines=d.xlines||[];
-  STATE.curves=d.curves||[];STATE.pillars=d.pillars||[];
-  if(d.meta&&d.meta.aiPromptHints)STATE.aiPromptHints={...STATE.aiPromptHints,...d.meta.aiPromptHints};
-  migrateLoadedState(d.schema);
-  document.getElementById('project-name').value=STATE.projectName;
-  document.getElementById('ceiling-height').value=STATE.ceilingHeight;
-  saveHistory();renderAll();refreshUI();
+  // 2026-08-26: 파일 불러오기와 동일 경로로 일원화 (applyLoadedData) —
+  //  로직이 두 벌이라 한쪽만 갱신되면 설정이 유실되던 문제 재발 방지 (대표 보고)
+  applyLoadedData(d);
   return true;
 }
 // 서버 저장 — doc_key는 STATE.cloudDocKey(없으면 생성) 고정 → 재저장 시 같은 문서 업데이트
@@ -2087,6 +2081,18 @@ function applyLoadedData(d){
   STATE.circles=d.circles||[];STATE.arcs=d.arcs||[];STATE.hvac=d.hvac||[];
   STATE.leaders=d.leaders||[];STATE.xlines=d.xlines||[];STATE.curves=d.curves||[];STATE.pillars=d.pillars||[];
   if(d.meta&&d.meta.aiPromptHints) STATE.aiPromptHints={...STATE.aiPromptHints,...d.meta.aiPromptHints};
+  // 2026-08-26: 문서 설정 복원 (저장 당시 스펙 유지 — 없으면 현재 값 유지)
+  const _set=d.meta&&d.meta.settings;
+  if(_set){
+    if(_set.estimateConfig&&typeof _set.estimateConfig==='object') STATE.estimateConfig=_set.estimateConfig;
+    if('videoSequenceOrder' in _set) STATE.videoSequenceOrder=_set.videoSequenceOrder||null;
+    if(_set.layers&&typeof _set.layers==='object') STATE.layers={...STATE.layers,..._set.layers};
+    if(_set.wallAlignment){
+      STATE.wallAlignment=_set.wallAlignment;
+      if(typeof setWallAlignment==='function') setWallAlignment(_set.wallAlignment,{silent:true});
+    }
+    if(typeof buildLayerUI==='function') buildLayerUI();
+  }
   migrateLoadedState(d.schema||'ECOREAN.FloorPlan.v5.9');
   const pn=document.getElementById('project-name');if(pn)pn.value=STATE.projectName;
   const ch=document.getElementById('ceiling-height');if(ch)ch.value=STATE.ceilingHeight;

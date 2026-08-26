@@ -941,6 +941,57 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('픽: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-26: 저장→불러오기 설정 왕복 보존 (대표 보고: 계단 방향 등이 되돌아감) ===
+  try{
+    const _bakR={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
+      estimateConfig:STATE.estimateConfig,videoSequenceOrder:STATE.videoSequenceOrder,
+      layers:{...STATE.layers},wallAlignment:STATE.wallAlignment,projectName:STATE.projectName,
+      openings:STATE.openings.slice(),electric:STATE.electric.slice(),lights:STATE.lights.slice()};
+    // 설정을 잔뜩 넣은 문서 구성
+    const rv=polygonToVertexIds([{x:0,y:0},{x:1500,y:0},{x:1500,y:5000},{x:0,y:5000}]);
+    const rsp=makeSpaceVEF(rv,{name:'계단실왕복',type:'STAIRS',typeIndex:88,layerName:'A-AREA-STR-88'});
+    rsp.stair={type:'U',upDir:'down',stepCount:20,splitCount:8,width_mm:900,floorHeight_mm:3000,showBreak:false,rot:90,mirror:true};
+    rsp.locked=true;
+    STATE.spaces.push(rsp);
+    const rsw={id:makeId('e'),type:'switch_2',x:200,y:2000,angle:0};
+    const rlt={id:makeId('li'),type:'downlight',x:700,y:2000,angle:0};
+    STATE.electric.push(rsw);STATE.lights.push(rlt);
+    rsw.lightIds=[rlt.id];rsw.circuitOn=true;
+    const rop={id:makeId('o'),type:'DOOR',subType:'pocket',x:750,y:0,width_mm:1800,height_mm:2100,depth_mm:200,angle:0,flipped:true,subtractMode:'single',spaceId:rsp.id};
+    STATE.openings.push(rop);
+    STATE.estimateConfig={DEMO_TEST:{option:'PREMIUM'}};
+    STATE.videoSequenceOrder=[rsp.id];
+    STATE.layers.walls=false;
+    STATE.wallAlignment='interior';
+    // 저장 → (서버 왕복 시뮬: JSON 문자열화) → 불러오기
+    const raw=JSON.stringify(buildJSON());
+    // 저장 후 설정을 일부러 뒤집어 놓고 복원되는지 확인
+    rsp.stair={type:'I',upDir:'up'};rsp.locked=false;
+    STATE.estimateConfig={};STATE.videoSequenceOrder=null;STATE.layers.walls=true;STATE.wallAlignment='center';
+    applyLoadedData(JSON.parse(raw));
+    const rsp2=STATE.spaces.find(x=>x.id===rsp.id);
+    assert('왕복: 계단 설정 전체 보존',!!(rsp2&&rsp2.stair)&&rsp2.stair.type==='U'&&rsp2.stair.upDir==='down'
+      &&rsp2.stair.stepCount===20&&rsp2.stair.splitCount===8&&rsp2.stair.showBreak===false
+      &&rsp2.stair.rot===90&&rsp2.stair.mirror===true,rsp2&&JSON.stringify(rsp2.stair));
+    assert('왕복: 공간 잠금 보존',!!rsp2&&rsp2.locked===true);
+    const rsw2=STATE.electric.find(x=>x.id===rsw.id);
+    assert('왕복: 회로(연결·점등) 보존',!!rsw2&&Array.isArray(rsw2.lightIds)&&rsw2.lightIds.length===1&&rsw2.circuitOn===true);
+    const rop2=STATE.openings.find(x=>x.id===rop.id);
+    assert('왕복: 도어 설정(포켓·반전·단면) 보존',!!rop2&&rop2.subType==='pocket'&&rop2.flipped===true&&rop2.subtractMode==='single'&&rop2.width_mm===1800);
+    assert('왕복: 견적 옵션 보존',!!(STATE.estimateConfig&&STATE.estimateConfig.DEMO_TEST&&STATE.estimateConfig.DEMO_TEST.option==='PREMIUM'));
+    assert('왕복: 동선 순서 보존',Array.isArray(STATE.videoSequenceOrder)&&STATE.videoSequenceOrder[0]===rsp.id);
+    assert('왕복: 레이어 표시 보존',STATE.layers.walls===false);
+    assert('왕복: 벽 정렬 보존',STATE.wallAlignment==='interior');
+    // 복원
+    STATE.spaces=_bakR.spaces;STATE.walls=_bakR.walls;STATE.vertices=_bakR.vertices;
+    STATE.openings=_bakR.openings;STATE.electric=_bakR.electric;STATE.lights=_bakR.lights;
+    STATE.estimateConfig=_bakR.estimateConfig;STATE.videoSequenceOrder=_bakR.videoSequenceOrder;
+    STATE.layers=_bakR.layers;STATE.wallAlignment=_bakR.wallAlignment;STATE.projectName=_bakR.projectName;
+    if(typeof reinstallVEFAll==='function') reinstallVEFAll();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('왕복: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
