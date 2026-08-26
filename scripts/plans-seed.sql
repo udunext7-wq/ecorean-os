@@ -217,3 +217,42 @@ WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/i
 INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
 SELECT '포항자이', '경북', '포항시 북구', '장성동', '84', 84.4, 3, 2, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-pohang-84.svg', 36.073, 129.382
 WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-pohang-84.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '광화문스페이스본 아파트', '서울', '종로구', '사직로8길 4 (신문로2가)', '84', 84.5, 3, 2, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11005401-84.svg', 37.5745, 126.9688
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11005401-84.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '광화문스페이스본 아파트', '서울', '종로구', '사직로8길 4 (신문로2가)', '114', 114.8, 4, 2, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11005401-114.svg', 37.5745, 126.9688
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11005401-114.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '광화문스페이스본 아파트', '서울', '종로구', '사직로8길 4 (신문로2가)', '145', 145.4, 4, 2, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11005401-145.svg', 37.5745, 126.9688
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11005401-145.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '명륜아남1차', '서울', '종로구', '창경궁로 265 (명륜2가)', '84', 99.6, 3, 1, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11052201-84.svg', 37.5861, 126.9993
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11052201-84.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '창신두산', '서울', '종로구', '지봉로5길 7 (창신동)', '59', 59, 3, 1, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11054101-59.svg', 37.5741, 127.0138
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11054101-59.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '창신두산', '서울', '종로구', '지봉로5길 7 (창신동)', '84', 99.6, 3, 1, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11054101-84.svg', 37.5741, 127.0138
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11054101-84.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '창신두산', '서울', '종로구', '지봉로5길 7 (창신동)', '114', 114.8, 4, 2, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11054101-114.svg', 37.5741, 127.0138
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11054101-114.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '창신쌍용1단지', '서울', '종로구', '동망산길 19 (창신동)', '59', 59, 3, 1, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11054301-59.svg', 37.58, 127.0142
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11054301-59.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '창신쌍용1단지', '서울', '종로구', '동망산길 19 (창신동)', '84', 99.6, 3, 1, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11054301-84.svg', 37.58, 127.0142
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11054301-84.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '창신쌍용1단지', '서울', '종로구', '동망산길 19 (창신동)', '114', 114.8, 4, 2, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11054301-114.svg', 37.58, 127.0142
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11054301-114.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '창신쌍용아파트2단지', '서울', '종로구', '낙산길 198 (창신동)', '59', 59, 3, 1, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11077101-59.svg', 37.5811, 127.0115
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11077101-59.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '창신쌍용아파트2단지', '서울', '종로구', '낙산길 198 (창신동)', '84', 99.6, 3, 1, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11077101-84.svg', 37.5811, 127.0115
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11077101-84.svg');
+INSERT INTO floor_plans (complex_name, region_sido, region_gugun, address, area_type, exclusive_area_m2, rooms, baths, source, source_note, image_path, lat, lng)
+SELECT '창신쌍용아파트2단지', '서울', '종로구', '낙산길 198 (창신동)', '114', 114.8, 4, 2, 'minicad', '실단지 개략 재작도 (참고용·실측 아님)', '/catalog/plans/img/cx-aa11077101-114.svg', 37.5811, 127.0115
+WHERE NOT EXISTS (SELECT 1 FROM floor_plans WHERE image_path = '/catalog/plans/img/cx-aa11077101-114.svg');

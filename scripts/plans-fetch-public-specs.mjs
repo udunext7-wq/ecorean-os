@@ -73,7 +73,7 @@ const items = body => {
     return arr.map(x => JSON.stringify(x));
   } catch { return []; }
 };
-const num = v => { const n = parseInt(String(v).replace(/[^\d-]/g, ''), 10); return isNaN(n) ? 0 : n; };
+const num = v => { const n = parseFloat(String(v).replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : Math.round(n); }; // "5540.0"·"120.0" 등 소수 표기 대응
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function apiGet(endpoints, params) {
@@ -182,8 +182,10 @@ for (const b of picked) {
   const road = (b.doroJuso || '').split(/\s+/).slice(gugunEnd).join(' ');
   const addr = road ? `${road}${dong ? ` (${dong})` : ''}` : dong;
   let geo = null;
-  if (ARG.geocode) { geo = await geocode(addrFull); await sleep(1100); }
-  if (!geo) console.warn(`  ⚠ 지오코딩 실패: ${b.name} — lat/lng null (지도 마커 제외됨)`);
+  if (ARG.geocode) {
+    geo = await geocode(addrFull); await sleep(1100);
+    if (!geo) console.warn(`  ⚠ 지오코딩 실패: ${b.name} — lat/lng null (지도 마커 제외됨)`);
+  }
   for (const t of pickTypes(b)) {
     specs.push({
       slug: `cx-a${b.kaptCode.toLowerCase().replace(/[^a-z0-9]/g, '')}-${t.at}`,
