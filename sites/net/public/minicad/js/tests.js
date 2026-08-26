@@ -1125,6 +1125,49 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('라인조명: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-26: 라이브러리 중복 제거 (대표 보고: 다운라이트가 두 개로 잡힌다) ===
+  try{
+    const _bakDup={tool:STATE.selectedTool,lib:STATE.selectedLib};
+    // [D1] 최근 사용이 있어도 팔레트에 같은 항목이 두 번 나오지 않는다
+    try{localStorage.setItem('minicad.recent.light',JSON.stringify(['downlight','cove']));}catch(_){}
+    setLibCategory('light');
+    const btns=[...document.querySelectorAll('#lib-popup-grid .lib-thumb-btn')];
+    const cnt={};btns.forEach(b=>{cnt[b.dataset.libKey]=(cnt[b.dataset.libKey]||0)+1;});
+    const dupK=Object.keys(cnt).filter(k=>cnt[k]>1);
+    assert('중복: 팔레트 항목 유일',dupK.length===0,'중복 '+dupK.join(','));
+    // [D2] 개수 = 숨김 제외 라이브러리 수
+    const visible=Object.entries(LIGHT_LIB).filter(([k,d])=>!d.hidden).length;
+    assert('중복: 팔레트 수 = 표시 대상 수',btns.length===visible,btns.length+' vs '+visible);
+    // [D3] 최근 사용은 앞으로 정렬 (첫 항목이 최근)
+    assert('중복: 최근 사용 우선 정렬',btns[0]&&btns[0].dataset.libKey==='downlight',btns[0]&&btns[0].dataset.libKey);
+    // [D4] 레거시 중복 항목은 숨김 + 대체 지정
+    const legacy=[['LIGHT_LIB','track','spot_bar_3'],['ELECTRIC_LIB','ac','ac_wall'],
+                  ['ELECTRIC_LIB','ac_floor','ac_stand'],['HVAC_FIRE_LIB','ac_ceiling','ac_4way'],
+                  ['FURNITURE_LIB','island','island_1500']];
+    const LIBS={LIGHT_LIB,ELECTRIC_LIB,HVAC_FIRE_LIB,FURNITURE_LIB};
+    assert('중복: 레거시 5종 숨김+대체',legacy.every(([L,k,rep])=>LIBS[L][k]&&LIBS[L][k].hidden===true&&LIBS[L][k].replacedBy===rep),
+      legacy.filter(([L,k])=>!(LIBS[L][k]&&LIBS[L][k].hidden)).map(x=>x[1]).join(','));
+    // [D5] 숨김 항목도 기존 도면은 그대로 렌더 (데이터 손실 없음)
+    const _bakH=STATE.hvac.slice();
+    const oldAc={id:makeId('h'),type:'ac_ceiling',x:2300000,y:2300000,angle:0};
+    STATE.hvac.push(oldAc);
+    renderRect(STATE.hvac,groups.hvac,HVAC_FIRE_LIB,'hvac');
+    let found=false;groups.hvac.getChildren().forEach(g6=>{if(g6.id&&g6.id()===oldAc.id)found=true;});
+    assert('중복: 레거시 타입 기존 도면 렌더 유지',found);
+    STATE.hvac=_bakH;
+    // [D6] 다른 카테고리 팔레트도 중복 없음
+    ['furniture','furniture2','fixture','electric','hvac'].forEach(t=>{
+      setLibCategory(t);
+      const bs=[...document.querySelectorAll('#lib-popup-grid .lib-thumb-btn')];
+      const c2={};bs.forEach(b=>{c2[b.dataset.libKey]=(c2[b.dataset.libKey]||0)+1;});
+      assert('중복: '+t+' 팔레트 유일',Object.values(c2).every(v=>v===1));
+    });
+    hideLibPopup();
+    setTool(_bakDup.tool||'select');STATE.selectedLib=_bakDup.lib;
+    renderAll();
+  }catch(e){
+    assert('중복: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

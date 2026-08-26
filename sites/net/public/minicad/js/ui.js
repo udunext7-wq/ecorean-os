@@ -180,7 +180,7 @@ function showLibPopup(tool,lib){
   // 2026-08-24 v6.0: 최근 사용 (도구별 최대 6개, localStorage)
   let _recent=[];
   try{_recent=JSON.parse(localStorage.getItem('minicad.recent.'+tool)||'[]');}catch(_){_recent=[];}
-  _recent=_recent.filter(k=>lib[k]);
+  _recent=_recent.filter(k=>lib[k]&&!lib[k].hidden);
   const _pushRecent=key=>{
     try{
       let r=JSON.parse(localStorage.getItem('minicad.recent.'+tool)||'[]');
@@ -188,7 +188,11 @@ function showLibPopup(tool,lib){
       localStorage.setItem('minicad.recent.'+tool,JSON.stringify(r));
     }catch(_){}
   };
-  const _entries=_recent.map(k=>[k,lib[k],true]).concat(Object.entries(lib).map(e=>[e[0],e[1],false]));
+  // 2026-08-26: 최근 사용을 별도 행으로 '복제'하던 탓에 같은 항목이 두 번 잡히던 버그 (대표 보고)
+  //  → 복제 없이 앞으로 정렬만 한다. hidden(레거시 중복) 항목은 팔레트에서 제외.
+  const _recentSet=new Set(_recent);
+  const _entries=_recent.map(k=>[k,lib[k],true])
+    .concat(Object.entries(lib).filter(([k,d])=>!_recentSet.has(k)&&!d.hidden).map(e=>[e[0],e[1],false]));
   _entries.forEach(([key,def,isRecent])=>{
     const btn=document.createElement('button');
     btn.className='lib-thumb-btn'+(STATE.selectedLib===key?' active':'');

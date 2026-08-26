@@ -142,7 +142,7 @@ const FURNITURE_LIB={
     {type:'rect',x:-380,y:-870,w:760,h:200,fill:'#5A5A5A',stroke:'#1A1A1A',sw:5,r:8},
   ]},
   // ===== 2026-08-24: 트렌드 가구 13종 (대표 지시) =====
-  island:{name:'아일랜드 식탁',nameEn:'kitchen island',w:2400,h:900,c:'#9A8C78',shape:[
+  island:{hidden:true,replacedBy:'island_1500',name:'아일랜드 식탁',nameEn:'kitchen island',w:2400,h:900,c:'#9A8C78',shape:[
     {type:'rect',x:-1200,y:-450,w:2400,h:900,fill:'#8A8073',stroke:'#3E362C',sw:25,r:40},
     {type:'rect',x:-1160,y:-410,w:2320,h:820,fill:'#A99C89',stroke:'#6B6152',sw:8,r:30},
     {type:'line',x1:-1160,y1:180,x2:1160,y2:180,stroke:'#6B6152',sw:6,dash:[60,45]},
@@ -582,7 +582,7 @@ const LIGHT_LIB={
     {type:'circle',cx:0,cy:0,r:30,fill:'#3E3E3E',stroke:'#1A1A1A',sw:3},
     {type:'line',x1:0,y1:30,x2:150,y2:170,stroke:'#5A5A5A',sw:5},
   ]},
-  track:{name:'트랙라이트',nameEn:'track light',size:300,c:'#D4B872',shape:[
+  track:{hidden:true,replacedBy:'spot_bar_3',name:'트랙라이트',nameEn:'track light',size:300,c:'#D4B872',shape:[
     {type:'rect',x:-150,y:-25,w:300,h:50,fill:'#5A5A5A',stroke:'#1A1A1A',sw:5,r:5},
     {type:'circle',cx:-100,cy:0,r:18,fill:'#D4B872',stroke:'#A88248',sw:2},
     {type:'circle',cx:0,cy:0,r:18,fill:'#D4B872',stroke:'#A88248',sw:2},
@@ -806,12 +806,12 @@ const ELECTRIC_LIB={
     {type:'rect',x:-50,y:-50,w:100,h:30,fill:'#3E3E3E',stroke:'#1A1A1A',sw:2,r:3},
     {type:'rect',x:-50,y:20,w:100,h:30,fill:'#3E3E3E',stroke:'#1A1A1A',sw:2,r:3},
   ]},
-  ac:{name:'에어컨',nameEn:'wall-mounted air conditioner',size:800,c:'#5B8DA0',sym:'❄',shape:[
+  ac:{hidden:true,replacedBy:'ac_wall',name:'에어컨',nameEn:'wall-mounted air conditioner',size:800,c:'#5B8DA0',sym:'❄',shape:[
     {type:'rect',x:-400,y:-150,w:800,h:300,fill:'#F5F1EB',stroke:'#5B8DA0',sw:10,r:30},
     {type:'rect',x:-380,y:-130,w:760,h:60,fill:'#3E3E3E',stroke:'#1A1A1A',sw:3,r:8},
     {type:'rect',x:-380,y:-50,w:760,h:160,fill:'transparent',stroke:'#A8A8A8',sw:2,dash:[10,5]},
   ]},
-  ac_floor:{name:'스탠드 에어컨',nameEn:'floor-standing air conditioner',size:500,c:'#5B8DA0',sym:'❄',shape:[
+  ac_floor:{hidden:true,replacedBy:'ac_stand',name:'스탠드 에어컨',nameEn:'floor-standing air conditioner',size:500,c:'#5B8DA0',sym:'❄',shape:[
     {type:'rect',x:-250,y:-200,w:500,h:400,fill:'#F5F1EB',stroke:'#5B8DA0',sw:12,r:25},
     {type:'rect',x:-220,y:-170,w:440,h:60,fill:'#3E3E3E',stroke:'#1A1A1A',sw:3,r:8},
     {type:'rect',x:-220,y:-90,w:440,h:260,fill:'transparent',stroke:'#A8A8A8',sw:2,dash:[10,5]},
@@ -833,7 +833,7 @@ const ELECTRIC_LIB={
 // v5.6: 공조/소방 라이브러리 (HVAC + Fire) — 한국 평면도 표준 심볼
 const HVAC_FIRE_LIB={
   // ===== 공조 (HVAC) =====
-  ac_ceiling:{name:'시스템 에어컨',nameEn:'ceiling-mounted system AC',size:900,c:'#5B8DA0',shape:[
+  ac_ceiling:{hidden:true,replacedBy:'ac_4way',name:'시스템 에어컨',nameEn:'ceiling-mounted system AC',size:900,c:'#5B8DA0',shape:[
     {type:'rect',x:-450,y:-450,w:900,h:900,fill:'#F5F1EB',stroke:'#5B8DA0',sw:15,r:10},
     {type:'rect',x:-380,y:-380,w:760,h:760,fill:'transparent',stroke:'#5B8DA0',sw:5,r:5},
     {type:'line',x1:-380,y1:0,x2:380,y2:0,stroke:'#5B8DA0',sw:5,dash:[20,10]},
