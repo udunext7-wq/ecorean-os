@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createBrowserSupabase } from '@/core/db/browser';
 import { Noto_Sans_KR } from 'next/font/google';
+import { StudioNav } from '../StudioNav';
 
 const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300', '400', '500', '700'], display: 'swap' });
 
@@ -57,6 +58,18 @@ export default function PresetsPage() {
     load();
   }, []);
 
+  async function rename(p: Preset) {
+    const name = window.prompt('새 프리셋 이름', p.name);
+    if (!name?.trim() || name.trim() === p.name) return;
+    const supabase = createBrowserSupabase();
+    const { error: err } = await supabase
+      .from('mb_style_presets')
+      .update({ name: name.trim() })
+      .eq('id', p.id);
+    if (err) setError('수정 권한이 없습니다 (본인 또는 admin).');
+    else load();
+  }
+
   async function remove(p: Preset) {
     if (!window.confirm(`"${p.name}" 프리셋을 삭제할까요?`)) return;
     const supabase = createBrowserSupabase();
@@ -68,11 +81,9 @@ export default function PresetsPage() {
   return (
     <main className={`${noto.className} min-h-screen bg-[#04070c] p-6 text-[#e6edf2]`}>
       <div className="mx-auto max-w-4xl">
+        <StudioNav />
         <header className="mb-8 border-b border-[#9BC9D8]/15 pb-5">
-          <Link href="/hub" className="text-xs tracking-[0.3em] text-[#9BC9D8]/70 hover:text-[#c8e4ee]">
-            ← WORK HUB
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#f0deb9]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f0deb9]">
             AI 스튜디오 · 스타일 프리셋
           </h1>
           <p className="mt-1 text-sm text-[#94aab8]">
@@ -133,6 +144,13 @@ export default function PresetsPage() {
                         원본 무드보드 열기
                       </Link>
                     ) : null}
+                    <button
+                      type="button"
+                      onClick={() => rename(p)}
+                      className="text-[#9BC9D8] hover:underline"
+                    >
+                      이름 수정
+                    </button>
                     <button
                       type="button"
                       onClick={() => remove(p)}

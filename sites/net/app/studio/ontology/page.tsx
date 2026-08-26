@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Noto_Sans_KR } from 'next/font/google';
+import { StudioNav } from '../StudioNav';
 import data from './rules.json';
 
 const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300', '400', '500', '700'], display: 'swap' });
@@ -36,6 +37,7 @@ export default function OntologyPage() {
   const meta = (data as { _meta: { version: string; totalCount: number } })._meta;
   const [focus, setFocus] = useState<string | null>(null); // 공정 노드 포커스
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [q, setQ] = useState('');
 
   const nodes = useMemo(() => {
     const names = [...new Set(rules.flatMap((r) => [r.triggerProcess, r.autoLinkProcess]))];
@@ -55,18 +57,20 @@ export default function OntologyPage() {
   const visible = rules.filter(
     (r) =>
       (!typeFilter || r.relationshipType === typeFilter) &&
-      (!focus || r.triggerProcess === focus || r.autoLinkProcess === focus),
+      (!focus || r.triggerProcess === focus || r.autoLinkProcess === focus) &&
+      (!q.trim() ||
+        r.triggerProcess.includes(q.trim()) ||
+        r.autoLinkProcess.includes(q.trim()) ||
+        r.note.includes(q.trim())),
   );
   const activeNames = new Set(visible.flatMap((r) => [r.triggerProcess, r.autoLinkProcess]));
 
   return (
     <main className={`${noto.className} min-h-screen bg-[#04070c] p-6 text-[#e6edf2]`}>
       <div className="mx-auto max-w-7xl">
+        <StudioNav />
         <header className="mb-6 border-b border-[#9BC9D8]/15 pb-5">
-          <Link href="/hub" className="text-xs tracking-[0.3em] text-[#9BC9D8]/70 hover:text-[#c8e4ee]">
-            ← WORK HUB
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#f0deb9]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f0deb9]">
             AI 스튜디오 · 온톨로지
           </h1>
           <p className="mt-1 text-sm text-[#94aab8]">
@@ -93,6 +97,12 @@ export default function OntologyPage() {
                 {t}
               </button>
             ))}
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="공정 검색 (예: 타일, 도장)"
+              className="w-44 rounded-full border border-[#9BC9D8]/25 bg-[#0b111a] px-3.5 py-1 outline-none focus:border-[#9BC9D8]/60"
+            />
             {focus ? (
               <button
                 type="button"

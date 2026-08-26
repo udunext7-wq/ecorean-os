@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createBrowserSupabase } from '@/core/db/browser';
 import { Noto_Sans_KR } from 'next/font/google';
+import { StudioNav, optimizeImage } from '../../StudioNav';
 
 const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300', '400', '500', '700'], display: 'swap' });
 
@@ -149,6 +150,24 @@ export default function MoodboardDetailPage() {
     load();
   }, [load]);
 
+  // 클립보드 붙여넣기 업로드 (Ctrl+V) — 스크린샷·복사 이미지 즉시 등록
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const files = e.clipboardData?.files;
+      if (files && files.length > 0) onFiles(files);
+    }
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  });
+
+  const [matPanel, setMatPanel] = useState(true); // 라이트박스 자재 패널 접기
+
+  // 이미지 캡션 저장
+  async function saveCaption(img: Img, caption: string) {
+    const supabase = createBrowserSupabase();
+    await supabase.from('moodboard_images').update({ caption: caption || null }).eq('id', img.id);
+  }
+
   async function onFiles(files: FileList | null) {
     if (!files || files.length === 0 || !boardId) return;
     const supabase = createBrowserSupabase();
@@ -156,11 +175,11 @@ export default function MoodboardDetailPage() {
     setError(null);
     for (const file of Array.from(files)) {
       try {
-        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-        const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from('moodboards').upload(path, file, {
+        const opt = await optimizeImage(file);
+        const path = `${boardId}/${crypto.randomUUID()}.${opt.ext}`;
+        const { error: upErr } = await supabase.storage.from('moodboards').upload(path, opt.blob, {
           cacheControl: '31536000',
-          contentType: file.type || undefined,
+          contentType: opt.type || undefined,
         });
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage.from('moodboards').getPublicUrl(path);
@@ -300,11 +319,11 @@ export default function MoodboardDetailPage() {
     const supabase = createBrowserSupabase();
     try {
       const up = async (file: File, label: string) => {
-        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-        const path = `${boardId}/cmp-${label}-${crypto.randomUUID()}.${ext}`;
-        const { error: e } = await supabase.storage.from('moodboards').upload(path, file, {
+        const opt = await optimizeImage(file);
+        const path = `${boardId}/cmp-${label}-${crypto.randomUUID()}.${opt.ext}`;
+        const { error: e } = await supabase.storage.from('moodboards').upload(path, opt.blob, {
           cacheControl: '31536000',
-          contentType: file.type || undefined,
+          contentType: opt.type || undefined,
         });
         if (e) throw e;
         return supabase.storage.from('moodboards').getPublicUrl(path).data.publicUrl;
@@ -345,11 +364,11 @@ export default function MoodboardDetailPage() {
     setRefUploading(true);
     setError(null);
     try {
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${boardId}/ref-${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('moodboards').upload(path, file, {
+      const opt = await optimizeImage(file);
+      const path = `${boardId}/ref-${crypto.randomUUID()}.${opt.ext}`;
+      const { error: upErr } = await supabase.storage.from('moodboards').upload(path, opt.blob, {
         cacheControl: '31536000',
-        contentType: file.type || undefined,
+        contentType: opt.type || undefined,
       });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from('moodboards').getPublicUrl(path);
@@ -405,11 +424,9 @@ export default function MoodboardDetailPage() {
   return (
     <main className={`${noto.className} min-h-screen bg-[#04070c] p-6 text-[#e6edf2]`}>
       <div className="mx-auto max-w-6xl">
+        <StudioNav />
         <header className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[#9BC9D8]/15 pb-5">
           <div className="min-w-0 flex-1">
-            <Link href="/studio/moodboards" className="text-xs tracking-[0.3em] text-[#9BC9D8]/70 hover:text-[#c8e4ee]">
-              ← MOODBOARDS
-            </Link>
             {editing ? (
               <div className="mt-2 grid max-w-2xl gap-2 sm:grid-cols-2">
                 <input
@@ -571,12 +588,19 @@ export default function MoodboardDetailPage() {
         </div>
         {images.length === 0 && !error ? (
           <p className="mt-10 text-center text-sm text-[#94aab8]">
-            아직 파생 이미지가 없습니다 — 기준 무드보드에서 발전시킨 AI 변형·레퍼런스를 올려보세요. (여러 장 한 번에 가능)
+            아직 파생 이미지가 없습니다 — 업로드 버튼, 화면에 드래그, 또는 Ctrl+V 붙여넣기로 올릴 수 있습니다.
           </p>
         ) : null}
 
         {/* 메이슨리 갤러리 */}
-        <div className="columns-2 gap-4 sm:columns-3 lg:columns-4 [&>*]:mb-4">
+        <div
+          className="columns-2 gap-4 sm:columns-3 lg:columns-4 [&>*]:mb-4"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            onFiles(e.dataTransfer.files);
+          }}
+        >
           {images.map((img, i) => (
             <button
               key={img.id}
@@ -762,6 +786,36 @@ export default function MoodboardDetailPage() {
             className="absolute bottom-16 left-1/2 w-[min(640px,92vw)] -translate-x-1/2 rounded-xl border border-[#9BC9D8]/20 bg-[#070b12]/90 p-3 backdrop-blur"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="mb-2 flex items-center gap-2">
+              <input
+                key={images[lightbox].id}
+                defaultValue={images[lightbox].caption ?? ''}
+                placeholder="캡션 (예: 거실 웜그레이 톤 — Enter 저장)"
+                className="min-w-0 flex-1 rounded-md border border-[#9BC9D8]/20 bg-transparent px-2.5 py-1 text-xs text-[#e6edf2] outline-none focus:border-[#9BC9D8]/50"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const v = (e.target as HTMLInputElement).value.trim();
+                    saveCaption(images[lightbox], v);
+                    setImages((arr) => arr.map((x) => (x.id === images[lightbox].id ? { ...x, caption: v || null } : x)));
+                  }
+                  e.stopPropagation();
+                }}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  saveCaption(images[lightbox], v);
+                  setImages((arr) => arr.map((x) => (x.id === images[lightbox].id ? { ...x, caption: v || null } : x)));
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setMatPanel((v) => !v)}
+                className="shrink-0 rounded-full border border-[#9BC9D8]/25 px-3 py-1 text-[10px] text-[#94aab8] hover:text-[#c8e4ee]"
+              >
+                자재 {matPanel ? '접기 ▾' : '펼치기 ▴'}
+              </button>
+            </div>
+            {matPanel ? (
+            <>
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
               <span className="mr-1 text-[10px] tracking-[0.25em] text-[#9BC9D8]/60">자재 연결</span>
               {(images[lightbox].materials ?? []).map((mid) => (
@@ -811,6 +865,8 @@ export default function MoodboardDetailPage() {
                   </li>
                 ))}
               </ul>
+            ) : null}
+            </>
             ) : null}
           </div>
           <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-4 text-xs text-[#94aab8]">

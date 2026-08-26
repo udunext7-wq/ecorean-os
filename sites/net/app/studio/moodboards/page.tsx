@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { createBrowserSupabase } from '@/core/db/browser';
 import { Noto_Sans_KR } from 'next/font/google';
+import { StudioNav } from '../StudioNav';
 
 const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300', '400', '500', '700'], display: 'swap' });
 
@@ -28,6 +29,7 @@ export default function MoodboardsPage() {
   const [site, setSite] = useState('');
   const [concept, setConcept] = useState('');
   const [saving, setSaving] = useState(false);
+  const [q, setQ] = useState('');
 
   async function load() {
     const supabase = createBrowserSupabase();
@@ -77,18 +79,23 @@ export default function MoodboardsPage() {
   return (
     <main className={`${noto.className} min-h-screen bg-[#04070c] p-6 text-[#e6edf2]`}>
       <div className="mx-auto max-w-6xl">
+        <StudioNav />
         <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-[#9BC9D8]/15 pb-5">
           <div>
-            <Link href="/hub" className="text-xs tracking-[0.3em] text-[#9BC9D8]/70 hover:text-[#c8e4ee]">
-              ← WORK HUB
-            </Link>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#f0deb9]">
+            <h1 className="text-2xl font-bold tracking-tight text-[#f0deb9]">
               AI 스튜디오 · 무드보드 갤러리
             </h1>
             <p className="mt-1 text-sm text-[#94aab8]">
               현장·컨셉별 레퍼런스와 AI 이미지를 보드로 모아 보관하고, 미팅에서 바로 펼쳐 보여주세요.
             </p>
           </div>
+          <div className="flex items-center gap-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="보드 검색 (제목·현장·컨셉)"
+            className="w-52 rounded-full border border-[#9BC9D8]/25 bg-[#0b111a] px-4 py-2 text-sm outline-none focus:border-[#9BC9D8]/60"
+          />
           <button
             type="button"
             onClick={() => setShowForm((v) => !v)}
@@ -96,6 +103,7 @@ export default function MoodboardsPage() {
           >
             {showForm ? '닫기' : '+ 새 보드'}
           </button>
+          </div>
         </header>
 
         {showForm ? (
@@ -141,7 +149,13 @@ export default function MoodboardsPage() {
         ) : null}
 
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-          {boards.map((b) => (
+          {boards
+            .filter((b) => {
+              const k = q.trim().toLowerCase();
+              if (!k) return true;
+              return [b.title, b.site, b.concept].some((v) => v?.toLowerCase().includes(k));
+            })
+            .map((b) => (
             <Link
               key={b.id}
               href={`/studio/moodboards/view?id=${b.id}`}

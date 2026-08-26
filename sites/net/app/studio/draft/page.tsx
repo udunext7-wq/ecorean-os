@@ -7,24 +7,25 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createBrowserSupabase } from '@/core/db/browser';
 import { Noto_Sans_KR } from 'next/font/google';
+import { StudioNav } from '../StudioNav';
 
 const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300', '400', '500', '700'], display: 'swap' });
 
 type Mat = { id: string; name: string; brand: string | null; unit: string | null; unit_price: number | null };
+
+type BoardOpt = { id: string; title: string };
 
 export default function DraftPage() {
   const [text, setText] = useState('');
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [boardList, setBoardList] = useState<BoardOpt[]>([]);
+  const [selected, setSelected] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      const boardId = new URLSearchParams(window.location.search).get('board');
-      if (!boardId) {
-        setError('보드 정보가 없습니다 — 무드보드 상세에서 "제안서 초안 만들기"로 진입하세요.');
-        return;
-      }
+  async function generate(boardId: string) {
+    setError(null);
+    {
       const supabase = createBrowserSupabase();
       const [{ data: board }, { data: imgs }] = await Promise.all([
         supabase.from('moodboards').select('title,site,concept').eq('id', boardId).maybeSingle(),
@@ -65,7 +66,26 @@ export default function DraftPage() {
           `   정식 견적은 실측 후 별도 산출하여 드립니다.\n` +
           `\nECOREAN | 설계·시공 하이엔드 인테리어\n`,
       );
+    }
+  }
+
+  useEffect(() => {
+    (async () => {
+      const boardId = new URLSearchParams(window.location.search).get('board');
+      if (boardId) {
+        setSelected(boardId);
+        await generate(boardId);
+        return;
+      }
+      // 보드 없이 진입 — 선택 목록 제공
+      const supabase = createBrowserSupabase();
+      const { data } = await supabase
+        .from('moodboards')
+        .select('id,title')
+        .order('created_at', { ascending: false });
+      setBoardList((data ?? []) as BoardOpt[]);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function copy() {
@@ -81,14 +101,9 @@ export default function DraftPage() {
   return (
     <main className={`${noto.className} min-h-screen bg-[#04070c] p-6 text-[#e6edf2]`}>
       <div className="mx-auto max-w-3xl">
+        <StudioNav />
         <header className="mb-6 border-b border-[#9BC9D8]/15 pb-5">
-          <Link
-            href="/studio/moodboards"
-            className="text-xs tracking-[0.3em] text-[#9BC9D8]/70 hover:text-[#c8e4ee]"
-          >
-            ← MOODBOARDS
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#f0deb9]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f0deb9]">
             제안서 초안 {title ? `— ${title}` : ''}
           </h1>
           <p className="mt-1 text-sm text-[#94aab8]">
@@ -97,6 +112,32 @@ export default function DraftPage() {
         </header>
 
         {error ? <p className="mb-4 text-sm text-[#E5726A]">{error}</p> : null}
+
+        {!text && boardList.length > 0 ? (
+          <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-[#9BC9D8]/20 bg-[#0b111a]/80 p-4 text-sm">
+            <span className="text-[#94aab8]">보드 선택:</span>
+            <select
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              className="rounded-md border border-[#9BC9D8]/25 bg-[#04070c] px-3 py-1.5 outline-none"
+            >
+              <option value="">— 무드보드 —</option>
+              {boardList.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.title}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!selected}
+              onClick={() => generate(selected)}
+              className="rounded-full bg-gradient-to-b from-[#d6b87e] to-[#b8965a] px-4 py-1.5 text-xs font-semibold text-[#0f0e0c] disabled:opacity-50"
+            >
+              초안 생성
+            </button>
+          </div>
+        ) : null}
 
         <textarea
           value={text}
