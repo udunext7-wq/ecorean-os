@@ -30,6 +30,18 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 .badge.survey{background:#fdf3e4;color:#a4762a}
 .badge.minicad{background:#f3eefc;color:#7c4fc2}
 .empty{padding:90px 20px;text-align:center;color:#999;grid-column:1/-1}
+/* 지역 인덱스 칩 + 지역별 그룹 섹션 */
+.region-bar{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 18px}
+.rchip{background:#fff;border:1px solid #e0dbd0;border-radius:20px;padding:6px 13px;font-size:12.5px;cursor:pointer;transition:.13s;color:#3a352c}
+.rchip:hover{border-color:var(--gold);transform:translateY(-1px)}
+.rchip.on{background:var(--dark);border-color:var(--dark);color:#F8F4EE}
+.rchip b{color:var(--gold);margin-left:5px;font-size:11.5px}
+.rchip.on b{color:#d8bd83}
+.gsec{margin:0 0 26px}
+.ghead{display:flex;align-items:baseline;gap:10px;padding:0 0 9px;margin-bottom:12px;border-bottom:2px solid #e5e0d4;position:sticky;top:54px;background:#f2efe9;z-index:20}
+.ghead h3{font-size:15px;letter-spacing:.02em;color:#2a251d}
+.ghead span{font-size:11.5px;color:#9a9284}
+.ghead .gback{margin-left:auto;font-size:11.5px;color:#8a713f;cursor:pointer;text-decoration:underline}
 /* 모달 공통 */
 .overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(10,12,10,.72);backdrop-filter:blur(3px);overflow:auto;padding:24px}
 .overlay.open{display:flex;align-items:flex-start;justify-content:center}
@@ -79,7 +91,10 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 </div>
 
 <div class="count" id="count"></div>
-<div class="wrap"><div class="grid" id="grid"><div class="empty">불러오는 중…</div></div></div>
+<div class="wrap">
+  <div class="region-bar" id="regionBar"></div>
+  <div id="grid"><div class="grid"><div class="empty">불러오는 중…</div></div></div>
+</div>
 <div class="wrap" id="mapWrap" style="display:none">
   <div id="map" style="height:72vh;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);background:#e8e6e0"></div>
   <p style="font-size:11.5px;color:#999;margin-top:8px">※ 리얼 3D 지도 — 위성 실사 텍스처 + 실지형(산악 기복) + 건물 입체. <b>우클릭 드래그</b>(모바일: 두 손가락)로 회전·기울기, 휠로 확대. 좌상단 버튼으로 위성↔벡터 전환. 마커 팝업의 "🏙 3D로 보기"로 단지 상공 뷰. 검색·지역 필터가 지도에도 적용됩니다.</p>
@@ -161,7 +176,8 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   var PUB=STORE+'/object/public/floor-plans/';
   var ANON='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
   var SRC_LABEL={customer:'고객 제공',public:'공공 자료',survey:'현장 실측',minicad:'MiniCAD'};
-  var state={rows:[],current:null};
+  var LIST_LIMIT=500; // 지역별 묶음 표시라 한 번에 더 많이 받는다 (전국 1천건대)
+  var state={rows:[],current:null,regionCount:null,regionComplexes:null};
 
   function token(){var s=window.ECOREAN_AUTH&&window.ECOREAN_AUTH.session;return s&&s.access_token?s.access_token:null;}
   function hdr(extra){return Object.assign({apikey:ANON,Authorization:'Bearer '+(token()||ANON)},extra||{});}
@@ -189,36 +205,87 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     if(at)f.push('area_type=ilike.*'+encodeURIComponent(at.replace(/[%_,()]/g,''))+'*');
     var rooms=document.getElementById('rooms').value;
     if(rooms)f.push(rooms==='5'?'rooms=gte.5':'rooms=eq.'+rooms);
-    return api('/floor_plans?select=*&order=created_at.desc&limit=200'+(f.length?'&'+f.join('&'):''))
+    return api('/floor_plans?select=*&order=region_sido.asc,region_gugun.asc,complex_name.asc,area_type.asc&limit='+LIST_LIMIT+(f.length?'&'+f.join('&'):''))
       .then(function(rows){state.rows=rows||[];render();})
       .catch(function(e){
         document.getElementById('grid').innerHTML='<div class="empty">불러오기 실패 — '+esc(e.message)+'<br><span style="font-size:12px">DB 마이그레이션(floor_plans)이 아직 적용되지 않았을 수 있습니다</span></div>';
       });
   }
+  // ── 지역 인덱스 (시도별 전체 건수) ──
+  // 집계는 RPC 로 — PostgREST 는 기본 1000행 상한이라 행을 받아 세면 전국 규모에서 누락된다.
+  function loadRegionIndex(){
+    return api('/rpc/plans_region_counts',{method:'POST',body:'{}'}).then(function(rows){
+      var c={},cx={};
+      (rows||[]).forEach(function(r){c[r.region_sido]=r.plans;cx[r.region_sido]=r.complexes;});
+      state.regionCount=c;state.regionComplexes=cx;renderRegionBar();
+    }).catch(function(e){if(console&&console.warn)console.warn('region index:',e.message);});
+  }
+  function renderRegionBar(){
+    var bar=document.getElementById('regionBar'),c=state.regionCount;
+    if(!c)return;
+    var cur=document.getElementById('sido').value;
+    var keys=Object.keys(c).sort(function(a,b){return c[b]-c[a];});
+    var total=keys.reduce(function(s,k){return s+c[k];},0);
+    bar.innerHTML='<button type="button" class="rchip '+(cur?'':'on')+'" data-r="">전국 <b>'+total+'</b></button>'+
+      keys.map(function(k){
+        var cx=state.regionComplexes&&state.regionComplexes[k];
+        return '<button type="button" class="rchip '+(cur===k?'on':'')+'" data-r="'+esc(k)+'"'+
+          (cx?' title="'+esc(k)+' '+cx+'개 단지 · '+c[k]+'개 평면도"':'')+'>'+esc(k)+' <b>'+c[k]+'</b></button>';
+      }).join('');
+    bar.querySelectorAll('.rchip').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.getElementById('sido').value=b.dataset.r;
+        renderRegionBar();load();
+      });
+    });
+  }
+  function cardHtml(r,i){
+    var meta=[[r.region_sido,r.region_gugun].filter(Boolean).join(' '),
+              [r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · '),
+              r.rooms!=null?'방 '+r.rooms+(r.baths!=null?' / 욕실 '+r.baths:''):null].filter(Boolean);
+    return '<div class="card" data-i="'+i+'">'+
+      '<img class="thumb" loading="lazy" src="'+imgUrl(r)+'" alt="'+esc(r.complex_name)+'">'+
+      '<div class="body"><div class="nm">'+esc(r.complex_name)+'</div>'+
+      '<div class="meta">'+meta.map(esc).join('<br>')+'</div>'+
+      '<span class="badge '+esc(r.source)+'">'+(SRC_LABEL[r.source]||r.source)+'</span>'+
+      '</div></div>';
+  }
   function render(){
-    var g=document.getElementById('grid');
-    document.getElementById('count').textContent=state.rows.length?state.rows.length+'건'+(state.rows.length===200?' (최대 200건 표시 — 검색으로 좁혀주세요)':''):'';
-    if(!state.rows.length){g.innerHTML='<div class="empty">평면도가 없습니다 — [+ 평면도 등록]으로 시작하세요</div>';return;}
-    g.innerHTML=state.rows.map(function(r,i){
-      var meta=[[r.region_sido,r.region_gugun].filter(Boolean).join(' '),
-                [r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · '),
-                r.rooms!=null?'방 '+r.rooms+(r.baths!=null?' / 욕실 '+r.baths:''):null].filter(Boolean);
-      return '<div class="card" data-i="'+i+'">'+
-        '<img class="thumb" loading="lazy" src="'+imgUrl(r)+'" alt="'+esc(r.complex_name)+'">'+
-        '<div class="body"><div class="nm">'+esc(r.complex_name)+'</div>'+
-        '<div class="meta">'+meta.map(esc).join('<br>')+'</div>'+
-        '<span class="badge '+esc(r.source)+'">'+(SRC_LABEL[r.source]||r.source)+'</span>'+
-        '</div></div>';
+    var g=document.getElementById('grid'), sido=document.getElementById('sido').value;
+    var n=state.rows.length;
+    document.getElementById('count').textContent=n?n+'건'+(n>=LIST_LIMIT?' (최대 '+LIST_LIMIT+'건 표시 — 지역·검색으로 좁혀주세요)':''):'';
+    if(!n){g.innerHTML='<div class="grid"><div class="empty">평면도가 없습니다 — [+ 평면도 등록]으로 시작하세요</div></div>';renderMap();return;}
+    // 지역별 묶음: 전국 보기 → 시도별, 특정 시도 선택 → 시군구별
+    var byGugun=!!sido, groups={}, order=[];
+    state.rows.forEach(function(r,i){
+      var k=(byGugun?r.region_gugun:r.region_sido)||'지역 미지정';
+      if(!groups[k]){groups[k]=[];order.push(k);}
+      groups[k].push(i);
+    });
+    order.sort(function(a,b){return groups[b].length-groups[a].length||a.localeCompare(b,'ko');});
+    g.innerHTML=order.map(function(k){
+      var idx=groups[k];
+      var sub=byGugun?(sido+' '+k):(k+' · '+new Set(idx.map(function(i){return state.rows[i].region_gugun;})).size+'개 시군구');
+      return '<section class="gsec"><div class="ghead"><h3>'+esc(k)+'</h3>'+
+        '<span>'+esc(sub)+' · '+idx.length+'건</span>'+
+        (byGugun?'':'<span class="gback" data-drill="'+esc(k)+'">이 지역만 보기 →</span>')+
+        '</div><div class="grid">'+idx.map(function(i){return cardHtml(state.rows[i],i);}).join('')+'</div></section>';
     }).join('');
     g.querySelectorAll('.card').forEach(function(c){
       c.addEventListener('click',function(){openDetail(state.rows[Number(c.dataset.i)]);});
+    });
+    g.querySelectorAll('[data-drill]').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.getElementById('sido').value=b.dataset.drill;
+        renderRegionBar();load();window.scrollTo({top:0,behavior:'smooth'});
+      });
     });
     renderMap(); // 지도가 열려 있으면 필터 결과를 마커에도 반영
   }
   ['q','areaType'].forEach(function(id){
     var t;document.getElementById(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(load,350);});
   });
-  ['sido','rooms'].forEach(function(id){document.getElementById(id).addEventListener('change',load);});
+  ['sido','rooms'].forEach(function(id){document.getElementById(id).addEventListener('change',function(){renderRegionBar();load();});});
 
   // ── 🗺 3D 지도 뷰 (MapLibre GL + OpenFreeMap 벡터 타일 — 키 불필요) ──
   // 건물 입체(fill-extrusion)·회전·기울기 지원. 실패 시 사용자에게 안내.
@@ -264,12 +331,23 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       }
     },labelId||undefined);
   }
+  // 지형 on/off — DEM 최대 z15 라서 건물 스케일(z16+)에서 켜두면 지면이 늘어나 이미지가 깨진다.
+  // 광역(≤z15.5)에서만 지형을 적용하고, 확대하면 평면으로 되돌린다.
+  var TERRAIN_MAX_ZOOM=15.5, terrainOn=false;
+  function syncTerrain(){
+    if(!map||!map.getSource('ec-dem'))return;
+    var want=map.getZoom()<=TERRAIN_MAX_ZOOM;
+    if(want===terrainOn)return;
+    terrainOn=want;
+    try{map.setTerrain(want?{source:'ec-dem',exaggeration:1.25}:null);}
+    catch(e){if(console&&console.warn)console.warn('terrain:',e.message);}
+  }
   // 실지형(산악 기복)·하늘 대기 — 스타일이 바뀔 때마다 재적용 (style.load)
   function enhanceRealism(){
     try{
       if(!map.getSource('ec-dem'))map.addSource('ec-dem',{type:'raster-dem',encoding:'terrarium',
         tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],tileSize:256,maxzoom:15});
-      map.setTerrain({source:'ec-dem',exaggeration:1.3});
+      terrainOn=false;syncTerrain();
     }catch(e){if(console&&console.warn)console.warn('terrain:',e.message);}
     try{
       map.setSky({'sky-color':'#8fb8de','horizon-color':'#e6d5bd','fog-color':'#f2ece0',
@@ -332,11 +410,13 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
         container:'map',
         style:satStyle(), // 기본 = 위성 실사 텍스처
         center:[127.8,36.5],zoom:6.2,pitch:55,bearing:-12,maxPitch:78, // 전국 부감 뷰
+        maxZoom:19, // Esri 위성 원본 한계(z19) — 넘기면 늘려 찍어 이미지가 깨진다
         antialias:true
       });
       map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
       map.addControl(new maplibregl.FullscreenControl(),'top-right');
       map.on('style.load',enhanceRealism); // 최초 + 토글로 스타일 바뀔 때마다
+      map.on('zoom',syncTerrain);          // 확대 시 지형 해제 → 위성 이미지 왜곡 방지
       map.on('load',function(){mapReady=true;placeMarkers();applyStyleToggleUI();});
       map.on('error',function(e){ // 타일/스타일 로드 실패는 콘솔만 (지도 자체는 유지)
         if(console&&console.warn)console.warn('map:',e&&e.error&&e.error.message||e);
@@ -495,6 +575,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       .catch(function(e){alert('삭제 실패: '+e.message);});
   });
 
+  loadRegionIndex();
   load();
 })();
 </script>
