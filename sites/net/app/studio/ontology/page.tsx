@@ -45,6 +45,28 @@ export default function OntologyPage() {
   const rotRef = useRef(rot);
   rotRef.current = rot;
 
+  // 암호 게이트 — portal.html(ACCESS PORTAL) 통과자만 열람 (대표 지시 2026-08-26)
+  // 통과 표식은 세션 동안만 유지되고, 탭을 닫으면 다시 관문을 거친다.
+  const [gate, setGate] = useState<'checking' | 'open'>('checking');
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('granted') === '1') {
+        sessionStorage.setItem('ecorean.ontologyGate', '1');
+        window.history.replaceState({}, '', '/studio/ontology');
+        setGate('open');
+        return;
+      }
+      if (sessionStorage.getItem('ecorean.ontologyGate') === '1') {
+        setGate('open');
+        return;
+      }
+    } catch {
+      /* no-op */
+    }
+    window.location.href = '/portal.html?next=' + encodeURIComponent('/studio/ontology?granted=1');
+  }, []);
+
   // 자동 자전 — 드래그·호버 중엔 정지, 모션 최소화 존중
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
@@ -127,6 +149,14 @@ export default function OntologyPage() {
   }
   function onUp() {
     dragging.current = null;
+  }
+
+  if (gate !== 'open') {
+    return (
+      <main className={`${noto.className} flex min-h-screen items-center justify-center bg-[#04070c]`}>
+        <p className="text-xs tracking-[0.4em] text-[#9BC9D8]/70">ACCESS PORTAL 연결 중…</p>
+      </main>
+    );
   }
 
   return (
