@@ -189,11 +189,35 @@ function showLibPopup(tool,lib){
     }catch(_){}
   };
   // 2026-08-26: 최근 사용을 별도 행으로 '복제'하던 탓에 같은 항목이 두 번 잡히던 버그 (대표 보고)
-  //  → 복제 없이 앞으로 정렬만 한다. hidden(레거시 중복) 항목은 팔레트에서 제외.
+  //  → 어느 섹션에도 중복 없이 딱 한 번만 등장한다.
+  // 2026-08-27: 소분류 섹션 (대표 지시) — 최근 사용 → 분류별 → 기타
   const _recentSet=new Set(_recent);
-  const _entries=_recent.map(k=>[k,lib[k],true])
-    .concat(Object.entries(lib).filter(([k,d])=>!_recentSet.has(k)&&!d.hidden).map(e=>[e[0],e[1],false]));
-  _entries.forEach(([key,def,isRecent])=>{
+  const _visible=Object.entries(lib).filter(([k,d])=>!d.hidden);
+  const _placed=new Set(_recent);
+  const _sections=[];
+  if(_recent.length) _sections.push(['★ 최근 사용',_recent.slice()]);
+  ((typeof LIB_GROUPS!=='undefined'&&LIB_GROUPS[tool])||[]).forEach(([gname,keys])=>{
+    const ks=keys.filter(k=>lib[k]&&!lib[k].hidden&&!_placed.has(k));
+    if(!ks.length) return;
+    ks.forEach(k=>_placed.add(k));
+    _sections.push([gname,ks]);
+  });
+  const _rest=_visible.map(e=>e[0]).filter(k=>!_placed.has(k));
+  if(_rest.length) _sections.push([_sections.length?'기타':'전체',_rest]);
+  const _entries=[];
+  _sections.forEach(([gname,keys])=>{
+    _entries.push({group:gname,count:keys.length});
+    keys.forEach(k=>_entries.push({key:k,def:lib[k],isRecent:_recentSet.has(k)}));
+  });
+  _entries.forEach(item=>{
+    if(item.group){
+      const h=document.createElement('div');
+      h.className='lib-group-title';
+      h.innerHTML='<span>'+escapeHtml(item.group)+'</span><span class="cnt">'+item.count+'</span>';
+      grid.appendChild(h);
+      return;
+    }
+    const key=item.key, def=item.def, isRecent=item.isRecent;
     const btn=document.createElement('button');
     btn.className='lib-thumb-btn'+(STATE.selectedLib===key?' active':'');
     btn.type='button';

@@ -992,3 +992,49 @@ const HVAC_FIRE_LIB={
     {type:'line',x1:0,y1:-100,x2:0,y2:100,stroke:'#C96A4A',sw:5},
   ]},
 };
+
+// ===== 2026-08-27: 라이브러리 소분류 (대표 지시 — 비슷한 종류대로) =====
+//  팔레트 팝업에서 섹션 헤더로 표시. 목록에 없는 키는 자동으로 '기타' 섹션으로 간다.
+const LIB_GROUPS={
+  furniture:[
+    ['거실',['sofa3','sofa2','sofa1','sofa_modular','sofa_curved','lounge_chair','beanbag','coffee','side_table','console','tv_stand','rug','plant']],
+    ['침실·드레스룸',['bed_d','bed_s','bed_k','nightstand','wardrobe','dressing_table','mirror','system_hanger']],
+    ['주방·다이닝',['dining4','dining6','dining_round','chair','bar_stool','home_bar']],
+    ['서재·업무',['desk','desk_l','desk_motion','office_chair','bookshelf']],
+    ['취미·기타',['piano','treadmill','massage_chair','styler','cat_tower']],
+  ],
+  furniture2:[
+    ['주방 하부장',['base_600','base_900','base_sink_900','base_cook_600','base_drawer_600','corner_base_900']],
+    ['주방 상부·키큰장',['wall_600','wall_900','corner_wall_600','tall_600','fridge_cab_900']],
+    ['아일랜드',['island_1500']],
+    ['빌트인 수납',['wardrobe_fix_1200','shoe_cab_1200','tv_lowcab_2400']],
+    ['욕실·세탁',['bath_vanity_900','laundry_cab_700']],
+  ],
+  fixture:[
+    ['변기·비데',['toilet','toilet_round','bidet','urinal']],
+    ['세면대',['sink_b','sink_b_oval','sink_vessel','sink_counter_1200','sink_double_1500']],
+    ['욕조·샤워',['bathtub','bathtub_free','bathtub_corner','shower','shower_slide','shower_corner']],
+    ['배수·다용도',['floor_drain','utility_sink']],
+    ['가전',['fridge','fridge_2door','washer','dryer']],
+  ],
+  light:[
+    ['천장 매입',['downlight','edge_flat_600','kitchen_flat','spot_cyl']],
+    ['천장 직부',['ceiling','ceiling_fan','spot_bar_3','fluorescent','sensor_light','bath_light']],
+    ['라인·간접 (길이 조절)',['line_t5','cove','magnet_track','pendant_linear']],
+    ['펜던트·장식',['pendant','pendant_cluster','chandelier']],
+    ['벽·스탠드',['wall_lamp','step_light','floor_lamp','table_lamp']],
+  ],
+  electric:[
+    ['콘센트',['outlet_w','outlet_w4','outlet_f','outlet_220','outlet_wp','outlet_usb']],
+    ['스위치',['switch_1','switch_2','switch_3','switch_4','switch_5','switch_6','switch_3way','dimmer']],
+    ['통신·홈네트워크',['internet','wallpad','intercom','doorbell']],
+    ['분전·제어',['dist_panel','boiler_ctrl']],
+  ],
+  hvac:[
+    ['냉난방 (에어컨)',['ac_4way','ac_2way','ac_1way','ac_duct','ac_wall','ac_stand','ac_outdoor']],
+    ['환기',['diffuser','vent_fan','hvac_grille','erv','hood']],
+    ['난방',['boiler_unit']],
+    ['화재 감지',['smoke_detector','heat_detector','sprinkler','sprinkler_side','auto_ext']],
+    ['피난·소화',['emerg_light','exit_sign','emerg_bell','fire_ext','hydrant']],
+  ],
+};

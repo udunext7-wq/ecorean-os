@@ -1168,6 +1168,58 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('중복: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 라이브러리 소분류 + 전체 중복 재감사 (대표 지시) ===
+  try{
+    const _bakG={tool:STATE.selectedTool,lib:STATE.selectedLib};
+    const LIBMAP={furniture:FURNITURE_LIB,furniture2:FIXFURN_LIB,fixture:FIXTURE_LIB,
+                  light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB};
+    // [G1] 전 라이브러리 키 유일 (내부·교차 중복 없음)
+    const seen={},cross=[];
+    Object.entries(LIBMAP).forEach(([L,lb])=>Object.keys(lb).forEach(k=>{
+      if(L==='furniture'&&FIXFURN_LIB[k]) return; // 가구2 병합분은 제외
+      (seen[k]=seen[k]||[]).push(L);
+    }));
+    Object.entries(seen).forEach(([k,v])=>{if(v.length>1)cross.push(k+':'+v.join('+'));});
+    assert('분류: 전 라이브러리 키 유일',cross.length===0,cross.join(', '));
+    // [G2] 이름(한글) 중복 없음 — 숨김 제외
+    const nameDup=[];
+    Object.entries(LIBMAP).forEach(([L,lb])=>{
+      const nm={};
+      Object.entries(lb).forEach(([k,d])=>{if(d.hidden)return;nm[d.name]=(nm[d.name]||0)+1;});
+      Object.entries(nm).forEach(([n,c])=>{if(c>1)nameDup.push(L+':'+n);});
+    });
+    assert('분류: 카테고리 내 이름 중복 없음',nameDup.length===0,nameDup.join(', '));
+    // [G3] 분류표가 실재 키만 참조 + 분류 내 중복 없음
+    const badRef=[],dupInGroup=[];
+    Object.entries(LIB_GROUPS).forEach(([tool,gs])=>{
+      const lb=LIBMAP[tool]||{}, used={};
+      gs.forEach(([gn,keys])=>keys.forEach(k=>{
+        if(!lb[k]) badRef.push(tool+':'+k);
+        used[k]=(used[k]||0)+1;
+        if(used[k]>1) dupInGroup.push(tool+':'+k);
+      }));
+    });
+    assert('분류: 분류표 키 실재',badRef.length===0,badRef.join(', '));
+    assert('분류: 분류표 내 중복 없음',dupInGroup.length===0,dupInGroup.join(', '));
+    // [G4] 팔레트 — 모든 표시 대상이 정확히 한 번 등장 + 섹션 헤더 존재
+    ['furniture','furniture2','fixture','light','electric','hvac'].forEach(t=>{
+      setLibCategory(t);
+      const bs=[...document.querySelectorAll('#lib-popup-grid .lib-thumb-btn')];
+      const hs=[...document.querySelectorAll('#lib-popup-grid .lib-group-title')];
+      const cnt={};bs.forEach(b=>{cnt[b.dataset.libKey]=(cnt[b.dataset.libKey]||0)+1;});
+      const lb=LIBMAP[t];
+      const visible=Object.entries(lb).filter(([k,d])=>!d.hidden&&!(t==='furniture'&&FIXFURN_LIB[k])).map(e=>e[0]);
+      assert('분류: '+t+' 항목 1회씩',bs.length===visible.length&&Object.values(cnt).every(v=>v===1),
+        bs.length+' vs '+visible.length);
+      assert('분류: '+t+' 누락 없음',visible.every(k=>cnt[k]===1),visible.filter(k=>!cnt[k]).join(','));
+      assert('분류: '+t+' 섹션 헤더 표시',hs.length>=2,'headers '+hs.length);
+    });
+    hideLibPopup();
+    setTool(_bakG.tool||'select');STATE.selectedLib=_bakG.lib;
+    renderAll();
+  }catch(e){
+    assert('분류: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
