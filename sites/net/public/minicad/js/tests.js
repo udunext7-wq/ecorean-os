@@ -1220,6 +1220,67 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('분류: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: Alt+드래그 복사 — 다중 선택 전체 복사 (대표 지시) ===
+  try{
+    const _bakA={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
+      lights:STATE.lights.slice(),furniture:STATE.furniture.slice(),box:STATE.boxSelection.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId};
+    const OFF9=2400000;
+    // 공간(자식 벽 포함) + 독립 벽 + 조명 2개를 박스 선택
+    const sv=polygonToVertexIds([{x:OFF9,y:OFF9},{x:OFF9+3000,y:OFF9},{x:OFF9+3000,y:OFF9+2000},{x:OFF9,y:OFF9+2000}]);
+    const spA=makeSpaceVEF(sv,{name:'알트복사',type:'ROOM',typeIndex:77,layerName:'A-AREA-ROOM-77'});
+    STATE.spaces.push(spA);
+    const childWalls=[];
+    for(let i=0;i<4;i++){const w=makeWallVEF(sv[i],sv[(i+1)%4],{spaceId:spA.id,layerName:'A-WALL-ROOM-77'});STATE.walls.push(w);childWalls.push(w);}
+    const freeV1=ensureVertex(OFF9+5000,OFF9), freeV2=ensureVertex(OFF9+7000,OFF9);
+    const freeWall=makeWallVEF(freeV1.id,freeV2.id,{});STATE.walls.push(freeWall);
+    const li1={id:makeId('li'),type:'downlight',x:OFF9+800,y:OFF9+800,angle:0,inch:3};
+    const li2={id:makeId('li'),type:'downlight',x:OFF9+2200,y:OFF9+800,angle:0,inch:3};
+    STATE.lights.push(li1,li2);
+    STATE.boxSelection=[{kind:'space',id:spA.id},{kind:'wall',id:childWalls[0].id},
+                        {kind:'wall',id:freeWall.id},{kind:'lights',id:li1.id},{kind:'lights',id:li2.id}];
+    const spBefore=STATE.spaces.length, wBefore=STATE.walls.length, liBefore=STATE.lights.length;
+    // [A1] 선택 전체 복사 — 공간 소속 벽은 공간 사본에 포함되어 중복 생성 안 됨
+    const copies=altCopyBoxSelection();
+    assert('알트복사: 항목 4개 (공간 소속 벽 제외)',copies.length===4,'copies '+copies.length);
+    assert('알트복사: 공간 1개 추가',STATE.spaces.length===spBefore+1);
+    assert('알트복사: 벽 = 자식4 + 독립1 추가',STATE.walls.length===wBefore+5,'walls +'+(STATE.walls.length-wBefore));
+    assert('알트복사: 조명 2개 추가',STATE.lights.length===liBefore+2);
+    // [A2] 사본은 새 id·잠금 해제, 원본 불변
+    const newSp=STATE.spaces[STATE.spaces.length-1];
+    assert('알트복사: 사본 새 id',newSp.id!==spA.id&&copies.every(c=>c.id!==spA.id));
+    assert('알트복사: 사본 잠금 해제',copies.every(c=>{const a=getArr(c.kind);const o=a&&a.find(x=>x.id===c.id);return o&&!o.locked;}));
+    const origX=li1.x, origPolyX=spA.polygon[0].x;
+    // [A3] 다중 드래그 — 사본 전부 이동, 원본 제자리
+    const st={kind:'multi',items:copies,startMm:{x:0,y:0},altCopy:true};
+    applyDragMove(st,1500,900);
+    const movedOK=copies.every(c=>{
+      const a=getArr(c.kind);const o=a&&a.find(x=>x.id===c.id);if(!o)return false;
+      if('x' in o) return Math.abs(o.x-(c.baseObj.x+1500))<2&&Math.abs(o.y-(c.baseObj.y+900))<2;
+      if(o.polygon) return Math.abs(o.polygon[0].x-(c.baseObj.polygon[0].x+1500))<2;
+      if('x1' in o) return Math.abs(o.x1-(c.baseObj.x1+1500))<2;
+      return true;
+    });
+    assert('알트복사: 사본 전체 이동',movedOK);
+    assert('알트복사: 원본 제자리',li1.x===origX&&spA.polygon[0].x===origPolyX);
+    // [A4] 공간 사본의 자식 벽도 함께 이동 (VEF 공유 vertex)
+    const copySp=STATE.spaces.find(x=>x.id===(copies.find(c=>c.kind==='space')||{}).id);
+    const copyChild=STATE.walls.filter(w=>w.spaceId===copySp.id);
+    assert('알트복사: 공간 자식 벽 4개 동반',copyChild.length===4,'child '+copyChild.length);
+    assert('알트복사: 자식 벽도 이동',copyChild.every(w=>w.x1>=OFF9+1000));
+    // [A5] 취소 시 사본 일괄 제거 (원본은 유지)
+    const removed=_removeAltCopies(st);
+    assert('알트복사: 사본 일괄 제거',removed===4&&STATE.spaces.length===spBefore&&STATE.lights.length===liBefore,
+      'removed '+removed+' spaces '+STATE.spaces.length+'/'+spBefore);
+    assert('알트복사: 제거 후 원본 유지',!!STATE.spaces.find(x=>x.id===spA.id)&&!!STATE.lights.find(x=>x.id===li1.id));
+    STATE.spaces=_bakA.spaces;STATE.walls=_bakA.walls;STATE.vertices=_bakA.vertices;
+    STATE.lights=_bakA.lights;STATE.furniture=_bakA.furniture;STATE.boxSelection=_bakA.box;
+    STATE.selectedKind=_bakA.selK;STATE.selectedId=_bakA.selI;
+    if(typeof reinstallVEFAll==='function') reinstallVEFAll();
+    renderAll();
+  }catch(e){
+    assert('알트복사: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

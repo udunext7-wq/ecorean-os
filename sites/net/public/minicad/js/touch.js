@@ -504,6 +504,20 @@ window.showTouchCtxMenu=function(px,py,hitFound){
       case 'lock': if(typeof applyLockToSelection==='function') applyLockToSelection(!allLocked); break;
       case 'rotate': if(typeof rotateSelected==='function') rotateSelected(); break;
       case 'dup':
+        // 2026-08-27: 다중 선택이면 선택 전체 복제 (대표 지시 — Alt 복사와 동일 동작)
+        if(STATE.boxSelection&&STATE.boxSelection.length>1&&typeof altCopyBoxSelection==='function'){
+          const copies=altCopyBoxSelection();
+          if(copies.length){
+            STATE.boxSelection=copies.map(c=>({kind:c.kind,id:c.id}));
+            STATE.selectedKind=null;STATE.selectedId=null;
+            if(typeof _nudgeSelected==='function') _nudgeSelected(300,300);
+            if(typeof saveHistory==='function') saveHistory();
+            if(typeof renderAll==='function') renderAll();
+            if(typeof refreshUI==='function') refreshUI();
+            if(typeof cmdToast==='function') cmdToast(copies.length+'개 복제됨 — 드래그해서 위치 조정');
+          }
+          break;
+        }
         if(single&&typeof altCopyObj==='function'){
           if(single.obj.locked){if(typeof cmdToast==='function') cmdToast('잠긴 객체는 복제할 수 없습니다');break;}
           const copy=altCopyObj(single.kind,single.obj);

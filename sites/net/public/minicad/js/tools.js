@@ -2222,6 +2222,19 @@ stage.on('mousedown touchstart',e=>{
           // v5.9: 클릭 객체가 박스 선택에 포함돼 있으면 다중 드래그 (boxSelection 유지)
           const isInBox=STATE.boxSelection&&STATE.boxSelection.length>1&&
                         STATE.boxSelection.some(b=>b.kind===found.kind&&b.id===found.id);
+          // 2026-08-27: Alt + 다중 선택 → 선택한 객체 전부 복사 후 함께 드래그 (대표 지시)
+          if(isInBox&&isAlt){
+            const copies=altCopyBoxSelection();
+            if(copies.length){
+              STATE.boxSelection=copies.map(c=>({kind:c.kind,id:c.id}));
+              STATE.selectedKind=null;STATE.selectedId=null;
+              dragMoveState={kind:'multi',items:copies,startMm:rawMm(pos),altCopy:true};
+              if(STATE.altLatched){STATE.altLatched=false;if(typeof refreshTouchQuickBar==='function') refreshTouchQuickBar();}
+              cmdToast(copies.length+'개 복사 — 드래그로 위치 지정');
+            }
+            renderAll();refreshUI();
+            return;
+          }
           if(isInBox&&!isAlt){
             // 다중 드래그: 박스선택 모든 객체 base 캡처
             // v5.9: 클릭한 객체가 잠긴 경우 드래그 시작 안 함 (잠긴 항목은 applyDragMove에서 자동 스킵)
@@ -2328,6 +2341,41 @@ function altCopyObj(kind,obj){
   return raw;
 }
 
+// 2026-08-27: Alt+드래그 복사 — 박스 선택 전체를 한 번에 복사 (대표 지시)
+//  공간이 함께 선택돼 있으면 그 공간 소속 벽은 altCopyObj(space) 가 이미 복사하므로 건너뛴다(중복 방지).
+function altCopyBoxSelection(){
+  const sel=(STATE.boxSelection||[]).slice();
+  if(!sel.length) return [];
+  const spaceIds=new Set(sel.filter(b=>b.kind==='space').map(b=>b.id));
+  const items=[];
+  sel.forEach(b=>{
+    const arr=getArr(b.kind); const obj=arr?arr.find(o=>o.id===b.id):null;
+    if(!obj) return;
+    if(b.kind==='wall'&&obj.spaceId&&spaceIds.has(obj.spaceId)) return; // 공간 사본에 포함됨
+    const cp=altCopyObj(b.kind,obj);
+    if(!cp) return;
+    items.push({kind:b.kind,id:cp.id,baseObj:JSON.parse(JSON.stringify(cp)),
+      contained:b.kind==='space'?_captureContained(cp.id):null});
+  });
+  return items;
+}
+// Alt 사본 일괄 제거 (제자리 클릭·제스처 취소 시) — 단일/다중 공용
+function _removeAltCopies(state){
+  if(!state||!state.altCopy) return 0;
+  const list=(state.kind==='multi'&&Array.isArray(state.items))
+    ? state.items.map(it=>({kind:it.kind,id:it.id}))
+    : [{kind:state.kind,id:state.id}];
+  let n=0;
+  list.forEach(function(t){
+    const arr=getArr(t.kind); if(!arr) return;
+    if(t.kind==='space') STATE.walls=STATE.walls.filter(w=>w.spaceId!==t.id);
+    const idx=arr.findIndex(o=>o.id===t.id);
+    if(idx>=0){arr.splice(idx,1);n++;}
+  });
+  if(typeof cleanupOrphanVertices==='function') cleanupOrphanVertices();
+  STATE.boxSelection=[];STATE.selectedKind=null;STATE.selectedId=null;
+  return n;
+}
 // v5.4: id로 객체 검색 (모든 배열 순회)
 function findObjById(id){
   const map=[
@@ -3008,16 +3056,13 @@ stage.on('mouseup touchend',e=>{
     if(!isClick){
       saveHistory();
       renderAll(); /* PERF: 드래그 중 생략된 재구성을 드롭 시점에 1회 확정 */
-      if(dragMoveState.altCopy) cmdToast('복사됨 (Alt+드래그)');
-    }else if(dragMoveState.altCopy){
-      // Alt+클릭(드래그 없음): 제자리 복사본 제거
-      const arr=getArr(dragMoveState.kind);
-      if(arr){
-        if(dragMoveState.kind==='space') STATE.walls=STATE.walls.filter(w=>w.spaceId!==dragMoveState.id);
-        const idx=arr.findIndex(o=>o.id===dragMoveState.id);
-        if(idx>=0) arr.splice(idx,1);
-        cleanupOrphanVertices();
+      if(dragMoveState.altCopy){
+        const _n=(dragMoveState.kind==='multi'&&Array.isArray(dragMoveState.items))?dragMoveState.items.length:1;
+        cmdToast('복사됨 — '+_n+'개 (Alt+드래그)');
       }
+    }else if(dragMoveState.altCopy){
+      // Alt+클릭(드래그 없음): 제자리 복사본 제거 — 2026-08-27: 다중 사본도 일괄 제거
+      _removeAltCopies(dragMoveState);
     }
     dragMoveState=null;
     mouseDownPos=null;
@@ -3142,15 +3187,8 @@ window.cancelPointerGesture=function(){
   let dirty=false;
   if(dragMoveState){
     try{applyDragMove(dragMoveState,0,0);}catch(err){}
-    if(dragMoveState.altCopy){
-      const arr=getArr(dragMoveState.kind);
-      if(arr){
-        if(dragMoveState.kind==='space') STATE.walls=STATE.walls.filter(w=>w.spaceId!==dragMoveState.id);
-        const idx=arr.findIndex(o=>o.id===dragMoveState.id);
-        if(idx>=0) arr.splice(idx,1);
-        if(typeof cleanupOrphanVertices==='function') cleanupOrphanVertices();
-      }
-    }
+    // 2026-08-27: 다중 Alt 사본도 일괄 제거
+    _removeAltCopies(dragMoveState);
     dragMoveState=null;dirty=true;STATE.dragSnapGuides=null;
   }
   if(STATE.rotateState){STATE.rotateState=null;dirty=true;}
@@ -3178,6 +3216,9 @@ window.showShapeConvertMenu=showShapeConvertMenu;window.hideShapeConvertMenu=hid
 window.showSelectionCtxMenu=showSelectionCtxMenu;window.hideSelectionCtxMenu=hideSelectionCtxMenu;
 window.findObjById=findObjById;
 window.altCopyObj=altCopyObj;
+// 2026-08-27: Alt 다중 복사 — initTools 내부 선언이므로 전역 노출 필수 (touch.js·테스트에서 사용)
+window.altCopyBoxSelection=altCopyBoxSelection;
+window._removeAltCopies=_removeAltCopies;
 window._nudgeSelected=_nudgeSelected;
 window._captureContained=_captureContained;
 stage.on('dblclick dbltap',e=>{
