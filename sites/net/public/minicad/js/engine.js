@@ -943,11 +943,12 @@ function renderSpaces(){
     // 2026-08-24: 계단실(STAIRS) 타입 — 공간 크기에 자동 맞춘 계단 도식 (대표 지시)
     if(s.type==='STAIRS'){
       const stairShp=buildSpaceStairShape(s);
-      if(stairShp){
-        const bb=_polyBBoxMm(s.polygon);
+      const _sf=stairShp?_polyFrameMm(s.polygon):null;
+      if(stairShp&&_sf){
         const sg=new Konva.Group({
-          x:STATE.offsetX+mmToPx((bb.minX+bb.maxX)/2),
-          y:STATE.offsetY+mmToPx((bb.minY+bb.maxY)/2),
+          x:STATE.offsetX+mmToPx(_sf.cx),
+          y:STATE.offsetY+mmToPx(_sf.cy),
+          rotation:_sf.deg, // 2026-08-26: 방이 돌아가면 계단도 같이 돌아간다 (대표 보고)
           listening:false,name:'space-stairs',opacity:s.locked?0.30:0.9});
         drawShape(stairShp).forEach(n=>{n.listening(false);sg.add(n);});
         groups.spaces.add(sg);
@@ -1871,9 +1872,32 @@ function _polyBBoxMm(poly){
   poly.forEach(p=>{if(p.x<minX)minX=p.x;if(p.x>maxX)maxX=p.x;if(p.y<minY)minY=p.y;if(p.y>maxY)maxY=p.y;});
   return {minX,minY,maxX,maxY,w:maxX-minX,h:maxY-minY};
 }
+// 2026-08-26: 방 자체 기준축(OBB) — 공간을 회전시키면 계단도 방을 따라가야 한다 (대표 보고)
+//  가장 긴 변의 각도를 방 축으로 삼되 90° 로 접어 (-45,45] 로 정규화 →
+//  축정렬 방은 각도 0 이라 기존 동작과 완전히 동일 (회귀 없음)
+function _polyFrameMm(poly){
+  let bestLen=-1,ang=0;
+  for(let i=0;i<poly.length;i++){
+    const a=poly[i],b=poly[(i+1)%poly.length];
+    const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+    if(len>bestLen){bestLen=len;ang=Math.atan2(dy,dx);}
+  }
+  let deg=ang*180/Math.PI;
+  deg=((deg%90)+90)%90; if(deg>45) deg-=90;
+  if(Math.abs(deg)<0.05) deg=0;
+  const r=-deg*Math.PI/180, cos=Math.cos(r), sin=Math.sin(r);
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  poly.forEach(p=>{
+    const x=p.x*cos-p.y*sin, y=p.x*sin+p.y*cos;
+    if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;
+  });
+  const cxL=(minX+maxX)/2, cyL=(minY+maxY)/2;
+  const r2=deg*Math.PI/180, c2=Math.cos(r2), s2=Math.sin(r2);
+  return {deg,w:maxX-minX,h:maxY-minY,cx:cxL*c2-cyL*s2,cy:cxL*s2+cyL*c2};
+}
 function spaceStairInfo(s){
   if(!s||!s.polygon||s.polygon.length<3) return null;
-  const bb=_polyBBoxMm(s.polygon);
+  const bb=_polyFrameMm(s.polygon); // 2026-08-26: 방 기준축(회전 추종). 축정렬 방은 deg=0 → 기존과 동일
   if(bb.w<600||bb.h<600) return null;
   const st=s.stair||{};
   const rot=(((Math.round((st.rot||0)/90)*90)%360)+360)%360;

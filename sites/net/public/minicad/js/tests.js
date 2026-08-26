@@ -992,6 +992,54 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('왕복: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-26: 계단이 방 회전을 따라간다 (대표 보고: 저장하고 열면 계단이 돌아가 있다) ===
+  try{
+    const _bakS={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice()};
+    const mkStair=(x,y,w,h,idx,st,rot)=>{
+      const v=polygonToVertexIds([{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}]);
+      const sp=makeSpaceVEF(v,{name:'회전검증'+idx,type:'STAIRS',typeIndex:idx,layerName:'A-AREA-STR-'+idx});
+      if(st) sp.stair=st;
+      STATE.spaces.push(sp);
+      if(rot) rotateSpaceByAngle(sp.id,rot);
+      return sp;
+    };
+    // [R1] 축정렬 방 — 프레임 각 0, 치수 그대로 (기존 동작 회귀 없음)
+    const sA=mkStair(2000000,2000000,1500,5000,60,{type:'I'},0);
+    const fA=_polyFrameMm(sA.polygon);
+    assert('계단축: 축정렬 방 각도 0·치수 유지',fA.deg===0&&Math.abs(fA.w-1500)<1&&Math.abs(fA.h-5000)<1,
+      fA.deg+'/'+Math.round(fA.w)+'x'+Math.round(fA.h));
+    // [R2] 45° 회전 방 — 방 실치수 복원 (AABB 였다면 4596 정사각)
+    const sB=mkStair(2010000,2000000,1500,5000,61,{type:'I'},45);
+    const fB=_polyFrameMm(sB.polygon);
+    assert('계단축: 45° 방도 실치수 1500×5000',Math.abs(fB.w-1500)<3&&Math.abs(fB.h-5000)<3,
+      Math.round(fB.w)+'x'+Math.round(fB.h)+' deg='+fB.deg.toFixed(1));
+    const iB=spaceStairInfo(sB);
+    assert('계단축: 회전 방 단수 정상(≈18)',iB&&Math.abs(iB.N-18)<=1,iB&&iB.N);
+    // [R3] 렌더 오버레이가 방 각도로 회전
+    renderSpaces();
+    let sg=null;
+    groups.spaces.getChildren().forEach(g3=>{if(g3.name&&g3.name()==='space-stairs')sg=g3;});
+    assert('계단축: 오버레이 회전 적용',!!sg&&Math.abs(Math.abs(sg.rotation())-45)<1||!!sg&&sg.rotation()===0,
+      sg?sg.rotation().toFixed(1):'none');
+    // [R4] 저장→불러오기 후 계단 도식 시그니처 동일
+    const sigOf=sp=>{
+      const info=spaceStairInfo(sp),shp=buildSpaceStairShape(sp)||[];
+      let h=0,v=0;shp.forEach(c=>{if(c.type!=='line')return;if(Math.abs(c.y1-c.y2)<1)h++;else if(Math.abs(c.x1-c.x2)<1)v++;});
+      const f=_polyFrameMm(sp.polygon);
+      return [info&&info.type,info&&info.N,info&&info.rot,h,v,Math.round(f.deg*10),Math.round(f.w),Math.round(f.h)].join('|');
+    };
+    sB.stair={type:'U',upDir:'down',rot:90,mirror:true,splitCount:9};
+    const sigBefore=sigOf(sB);
+    const rawS=JSON.stringify(buildJSON());
+    applyLoadedData(JSON.parse(rawS));
+    const sB2=STATE.spaces.find(x=>x.id===sB.id);
+    assert('계단축: 저장→불러오기 도식 동일',!!sB2&&sigOf(sB2)===sigBefore,sB2?(sigOf(sB2)+' vs '+sigBefore):'lost');
+    STATE.spaces=_bakS.spaces;STATE.walls=_bakS.walls;STATE.vertices=_bakS.vertices;
+    if(typeof reinstallVEFAll==='function') reinstallVEFAll();
+    renderAll();
+  }catch(e){
+    assert('계단축: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
