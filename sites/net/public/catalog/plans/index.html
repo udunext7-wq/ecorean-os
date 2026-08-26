@@ -265,10 +265,17 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       var lat=r.lat+(n?0.0006*n:0), lng=r.lng+(n?0.0006*n:0);
       var pop=new maplibregl.Popup({offset:20}).setHTML('<b>'+esc(r.complex_name)+'</b> '+esc(r.area_type||'')+'<br>'+
         esc([r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' '))+'<br>'+
-        '<a href="#" class="mk-open" style="font-weight:700;color:#8a713f">평면도 보기 →</a>');
+        '<a href="#" class="mk-open" style="font-weight:700;color:#8a713f">평면도 보기 →</a>'+
+        ' &nbsp;<a href="#" class="mk-fly" style="font-weight:700;color:#4a7fb5">🏙 3D로 보기</a>');
       pop.on('open',function(){
-        var a=pop.getElement().querySelector('.mk-open');
+        var el=pop.getElement();
+        var a=el.querySelector('.mk-open');
         if(a&&!a.dataset.bound){a.dataset.bound='1';a.addEventListener('click',function(ev){ev.preventDefault();openDetail(r);});}
+        var f=el.querySelector('.mk-fly'); // 단지 상공으로 급강하 — 건물 입체가 보이는 줌·기울기
+        if(f&&!f.dataset.bound){f.dataset.bound='1';f.addEventListener('click',function(ev){
+          ev.preventDefault();
+          map.flyTo({center:[lng,lat],zoom:16.6,pitch:66,bearing:-24,duration:2200,essential:true});
+        });}
       });
       markers.push(new maplibregl.Marker({color:'#B8965A'}).setLngLat([lng,lat]).setPopup(pop).addTo(map));
       pts.push([lng,lat]);
