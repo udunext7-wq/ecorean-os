@@ -82,7 +82,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 <div class="wrap"><div class="grid" id="grid"><div class="empty">불러오는 중…</div></div></div>
 <div class="wrap" id="mapWrap" style="display:none">
   <div id="map" style="height:72vh;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);background:#e8e6e0"></div>
-  <p style="font-size:11.5px;color:#999;margin-top:8px">※ 3D 지도 — <b>우클릭 드래그</b>(모바일: 두 손가락)로 회전·기울기, 휠로 확대. 확대하면 건물이 입체로 표시됩니다. 마커 위치는 개략 좌표이며, 클릭하면 평면도 상세가 열립니다. 검색·지역 필터가 지도에도 적용됩니다.</p>
+  <p style="font-size:11.5px;color:#999;margin-top:8px">※ 리얼 3D 지도 — 위성 실사 텍스처 + 실지형(산악 기복) + 건물 입체. <b>우클릭 드래그</b>(모바일: 두 손가락)로 회전·기울기, 휠로 확대. 좌상단 버튼으로 위성↔벡터 전환. 마커 팝업의 "🏙 3D로 보기"로 단지 상공 뷰. 검색·지역 필터가 지도에도 적용됩니다.</p>
 </div>
 
 <!-- 등록 모달 -->
@@ -234,6 +234,14 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       document.head.appendChild(s);
     });
   }
+  // 하이퍼 리얼 모드: Esri 위성 실사 텍스처 + 건물 벡터(OpenFreeMap)만 얹은 최소 스타일
+  function satStyle(){
+    return {version:8,sources:{
+      'ec-sat':{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize:256,maxzoom:19,attribution:'&copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, GIS User Community'},
+      'ec-omt':{type:'vector',url:'https://tiles.openfreemap.org/planet'}
+    },layers:[{id:'ec-sat',type:'raster',source:'ec-sat'}]};
+  }
   function add3DBuildings(){
     // 스타일에 3D 건물 레이어가 없으면 벡터 소스(openmaptiles 스키마 building)를 찾아 직접 추가
     var style=map.getStyle(), layers=style.layers||[], i;
@@ -243,15 +251,31 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     if(!srcId)return;
     var labelId=null; // 라벨(심볼) 아래에 끼워 넣어야 지명이 건물에 가려지지 않음
     for(i=0;i<layers.length;i++)if(layers[i].type==='symbol'&&layers[i].layout&&layers[i].layout['text-field']){labelId=layers[i].id;break;}
+    var sat=styleMode==='sat'; // 위성 위에는 지붕 실사가 비치도록 차분한 회갈색·높은 불투명
     map.addLayer({
       id:'ecorean-3d-buildings',type:'fill-extrusion',source:srcId,'source-layer':'building',minzoom:14,
       paint:{
-        'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],12],0,'#e3ddd0',60,'#cfc6b2',150,'#b8ac93'],
+        'fill-extrusion-color':sat
+          ?['interpolate',['linear'],['coalesce',['get','render_height'],12],0,'#c8c2b6',60,'#aaa294',150,'#8e8574']
+          :['interpolate',['linear'],['coalesce',['get','render_height'],12],0,'#e3ddd0',60,'#cfc6b2',150,'#b8ac93'],
         'fill-extrusion-height':['interpolate',['linear'],['zoom'],14,0,15.2,['coalesce',['get','render_height'],12]],
         'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
-        'fill-extrusion-opacity':0.85
+        'fill-extrusion-opacity':sat?0.92:0.85
       }
     },labelId||undefined);
+  }
+  // 실지형(산악 기복)·하늘 대기 — 스타일이 바뀔 때마다 재적용 (style.load)
+  function enhanceRealism(){
+    try{
+      if(!map.getSource('ec-dem'))map.addSource('ec-dem',{type:'raster-dem',encoding:'terrarium',
+        tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],tileSize:256,maxzoom:15});
+      map.setTerrain({source:'ec-dem',exaggeration:1.3});
+    }catch(e){if(console&&console.warn)console.warn('terrain:',e.message);}
+    try{
+      map.setSky({'sky-color':'#8fb8de','horizon-color':'#e6d5bd','fog-color':'#f2ece0',
+        'sky-horizon-blend':0.6,'horizon-fog-blend':0.7,'fog-ground-blend':0.85});
+    }catch(e){/* 구버전 maplibre — 하늘 미지원이어도 지도는 정상 */}
+    add3DBuildings();
   }
   function placeMarkers(){
     if(!map||!mapReady)return;
@@ -286,18 +310,34 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       map.fitBounds(b,{padding:70,maxZoom:15.4});
     }
   }
+  var styleMode='sat'; // 기본 = 하이퍼 리얼(위성 실사) · 'vec' = 벡터(라벨·도로 중심)
+  function applyStyleToggleUI(){
+    var el=document.getElementById('mapStyleToggle');
+    if(el){el.textContent=styleMode==='sat'?'🗺 벡터 지도':'🛰 리얼 위성';return;}
+    el=document.createElement('button');
+    el.id='mapStyleToggle';el.type='button';
+    el.textContent=styleMode==='sat'?'🗺 벡터 지도':'🛰 리얼 위성';
+    el.style.cssText='position:absolute;top:10px;left:10px;z-index:5;background:rgba(26,24,20,.85);color:#F8F4EE;border:1px solid #B8965A;border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px)';
+    el.addEventListener('click',function(){
+      styleMode=styleMode==='sat'?'vec':'sat';
+      applyStyleToggleUI();
+      map.setStyle(styleMode==='sat'?satStyle():'https://tiles.openfreemap.org/styles/liberty'); // style.load 에서 지형·건물 재적용
+    });
+    document.getElementById('map').appendChild(el);
+  }
   function renderMap(){
     if(!mapOn||!window.maplibregl)return;
     if(!map){
       map=new maplibregl.Map({
         container:'map',
-        style:'https://tiles.openfreemap.org/styles/liberty',
-        center:[127.8,36.5],zoom:6.2,pitch:55,bearing:-12,maxPitch:75, // 전국 부감 뷰
+        style:satStyle(), // 기본 = 위성 실사 텍스처
+        center:[127.8,36.5],zoom:6.2,pitch:55,bearing:-12,maxPitch:78, // 전국 부감 뷰
         antialias:true
       });
       map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
       map.addControl(new maplibregl.FullscreenControl(),'top-right');
-      map.on('load',function(){mapReady=true;add3DBuildings();placeMarkers();});
+      map.on('style.load',enhanceRealism); // 최초 + 토글로 스타일 바뀔 때마다
+      map.on('load',function(){mapReady=true;placeMarkers();applyStyleToggleUI();});
       map.on('error',function(e){ // 타일/스타일 로드 실패는 콘솔만 (지도 자체는 유지)
         if(console&&console.warn)console.warn('map:',e&&e.error&&e.error.message||e);
       });
