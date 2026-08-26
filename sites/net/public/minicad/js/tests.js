@@ -1281,6 +1281,67 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('알트복사: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: AutoCAD 방식 박스 선택 — Window(좌→우) / Crossing(우→좌) (대표 지시) ===
+  try{
+    const _bakB={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
+      furniture:STATE.furniture.slice(),lights:STATE.lights.slice(),box:STATE.boxSelection.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,draw:drawState};
+    const B=3000000;
+    // 긴 벽 (B,B) → (B+6000,B)
+    const wv1=ensureVertex(B,B), wv2=ensureVertex(B+6000,B);
+    const wallX=makeWallVEF(wv1.id,wv2.id,{});STATE.walls.push(wallX);
+    // 공간 사각 (B+1000,B+1000) ~ (B+3000,B+3000)
+    const sv=polygonToVertexIds([{x:B+1000,y:B+1000},{x:B+3000,y:B+1000},{x:B+3000,y:B+3000},{x:B+1000,y:B+3000}]);
+    const spB=makeSpaceVEF(sv,{name:'박스선택',type:'ROOM',typeIndex:66,layerName:'A-AREA-ROOM-66'});
+    STATE.spaces.push(spB);
+    // 소파 2200x900, 중심 (B+8000, B+5000)
+    const sofa={id:makeId('f'),type:'sofa3',x:B+8000,y:B+5000,angle:0};
+    STATE.furniture.push(sofa);
+    const sel=(sx,sy,cx,cy)=>{ // start→current 로 박스 선택 실행
+      STATE.boxSelection=[];
+      drawState={type:'box',start:{x:sx,y:sy},current:{x:cx,y:cy}};
+      finishBoxSelection();
+      return STATE.boxSelection.slice();
+    };
+    const has=(arr,kind,id)=>arr.some(b=>b.kind===kind&&b.id===id);
+    // [B1] Window(좌→우): 공간 완전 포함 → 선택
+    let r=sel(B+500,B+500,B+3500,B+3500);
+    assert('박스선택: Window 완전 포함 선택',has(r,'space',spB.id));
+    // [B2] Window: 공간 일부만 덮음 → 선택 안 됨
+    r=sel(B+500,B+500,B+2000,B+2000);
+    assert('박스선택: Window 부분 겹침 제외',!has(r,'space',spB.id));
+    // [B3] Crossing(우→좌): 공간 모서리만 살짝 → 선택
+    r=sel(B+2000,B+2000,B+900,B+900);
+    assert('박스선택: Crossing 살짝 걸침 선택',has(r,'space',spB.id));
+    // [B4] Crossing: 긴 벽 한가운데 (양 끝점 모두 박스 밖) → 관통 선택 (기존 방식은 놓쳤음)
+    r=sel(B+3500,B+300,B+2500,B-300);
+    assert('박스선택: Crossing 관통 선분 선택',has(r,'wall',wallX.id));
+    // [B5] Window: 같은 박스로는 벽이 안 잡힘 (좌→우)
+    r=sel(B+2500,B-300,B+3500,B+300);
+    assert('박스선택: Window 관통만 하면 제외',!has(r,'wall',wallX.id));
+    // [B6] Window: 소파 중심만 들어오고 몸통이 삐져나감 → 제외 (기존엔 중심만 봐서 잘못 선택)
+    r=sel(B+7800,B+4800,B+8300,B+5200);
+    assert('박스선택: Window 중심만 포함 제외',!has(r,'furniture',sofa.id));
+    // [B7] Crossing: 소파 가장자리만 걸침(중심 밖) → 선택 (기존엔 놓침)
+    r=sel(B+7300,B+5200,B+6950,B+4800);
+    assert('박스선택: Crossing 가장자리 선택',has(r,'furniture',sofa.id));
+    // [B8] Window: 소파 전체 포함 → 선택
+    r=sel(B+6700,B+4400,B+9300,B+5600);
+    assert('박스선택: Window 전체 포함 선택',has(r,'furniture',sofa.id));
+    // [B9] Crossing: 박스가 공간 내부에 완전히 들어감 → 공간 선택
+    r=sel(B+2500,B+2500,B+1500,B+1500);
+    assert('박스선택: Crossing 박스가 도형 내부',has(r,'space',spB.id));
+    // [B10] 선분↔사각 교차 유틸 단위 검증
+    assert('박스선택: 선분 관통 판정',_segRectHit(0,50,200,50,50,0,150,100)===true
+      &&_segRectHit(0,500,200,500,50,0,150,100)===false);
+    STATE.spaces=_bakB.spaces;STATE.walls=_bakB.walls;STATE.vertices=_bakB.vertices;
+    STATE.furniture=_bakB.furniture;STATE.lights=_bakB.lights;STATE.boxSelection=_bakB.box;
+    STATE.selectedKind=_bakB.selK;STATE.selectedId=_bakB.selI;drawState=_bakB.draw;
+    if(typeof reinstallVEFAll==='function') reinstallVEFAll();
+    renderAll();
+  }catch(e){
+    assert('박스선택: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

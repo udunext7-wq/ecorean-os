@@ -894,6 +894,88 @@ function addLinearCurve(x1,y1,x2,y2){
   saveHistory();renderAll();refreshUI();
   cmdToast('선/곡선 추가 — 컨트롤 핸들 드래그로 곡선화');
 }
+// 2026-08-27: AutoCAD 방식 박스 선택 기하 판정 (대표 지시)
+//  Window(좌→우): 객체가 박스에 '완전히' 들어와야 선택
+//  Crossing(우→좌): 박스에 조금이라도 '걸치면' 선택 (선분 교차·도형 겹침·박스가 도형 내부 포함)
+// 선분 ↔ AABB 교차 (Liang-Barsky) — 양 끝점이 모두 박스 밖이어도 관통하면 true
+function _segRectHit(ax,ay,bx,by,x1,y1,x2,y2){
+  let t0=0,t1=1;
+  const dx=bx-ax, dy=by-ay;
+  const P=[-dx,dx,-dy,dy], Q=[ax-x1,x2-ax,ay-y1,y2-ay];
+  for(let i=0;i<4;i++){
+    if(P[i]===0){ if(Q[i]<0) return false; }
+    else{
+      const r=Q[i]/P[i];
+      if(P[i]<0){ if(r>t1) return false; if(r>t0) t0=r; }
+      else{ if(r<t0) return false; if(r<t1) t1=r; }
+    }
+  }
+  return true;
+}
+function _rotPts(cx,cy,w,h,angDeg){
+  const a=(angDeg||0)*Math.PI/180, co=Math.cos(a), si=Math.sin(a);
+  return [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]].map(([dx,dy])=>({
+    x:cx+dx*co-dy*si, y:cy+dx*si+dy*co}));
+}
+function _libDefForSel(key,o){
+  if(key==='lights'){
+    if(o.type==='downlight'&&typeof downlightDef==='function') return downlightDef(o);
+    if(typeof isLinearLight==='function'&&isLinearLight(o.type)&&typeof linearLightDef==='function') return linearLightDef(o);
+  }
+  const LB={furniture:typeof FURNITURE_LIB!=='undefined'?FURNITURE_LIB:{},
+            fixtures:typeof FIXTURE_LIB!=='undefined'?FIXTURE_LIB:{},
+            lights:typeof LIGHT_LIB!=='undefined'?LIGHT_LIB:{},
+            electric:typeof ELECTRIC_LIB!=='undefined'?ELECTRIC_LIB:{},
+            hvac:typeof HVAC_FIRE_LIB!=='undefined'?HVAC_FIRE_LIB:{}}[key];
+  return LB?LB[o.type]:null;
+}
+// 객체 → 판정용 기하 {pts:[...], closed:bool}
+function _boxSelGeom(key,o){
+  const ellipse=(cx,cy,rx,ry,rot)=>{
+    const pts=[],a=(rot||0)*Math.PI/180,co=Math.cos(a),si=Math.sin(a);
+    for(let i=0;i<16;i++){
+      const t=i/16*Math.PI*2, ex=Math.cos(t)*rx, ey=Math.sin(t)*ry;
+      pts.push({x:cx+ex*co-ey*si,y:cy+ex*si+ey*co});
+    }
+    return {pts,closed:true};
+  };
+  if(key==='walls'||key==='measures') return {pts:[{x:o.x1,y:o.y1},{x:o.x2,y:o.y2}],closed:false};
+  if(key==='spaces') return {pts:o.polygon||[],closed:true};
+  if(key==='leaders') return {pts:o.points||[],closed:false};
+  if(key==='curves'){
+    const pts=[];
+    (o.segments||[]).forEach(sg=>{
+      for(let i=0;i<=8;i++){
+        const t=i/8, mt=1-t;
+        pts.push({
+          x:mt*mt*mt*sg.p0.x+3*mt*mt*t*sg.p1.x+3*mt*t*t*sg.p2.x+t*t*t*sg.p3.x,
+          y:mt*mt*mt*sg.p0.y+3*mt*mt*t*sg.p1.y+3*mt*t*t*sg.p2.y+t*t*t*sg.p3.y});
+      }
+    });
+    return {pts,closed:false};
+  }
+  if(key==='circles') return ellipse(o.x,o.y,o.rx_mm||o.radius_mm||100,o.ry_mm||o.radius_mm||100,o.rotation);
+  if(key==='arcs'){
+    const r=o.radius_mm||100, sa=(o.startAngle||0), ea=(o.endAngle||360);
+    const pts=[]; const steps=12;
+    for(let i=0;i<=steps;i++){
+      const t=(sa+(ea-sa)*i/steps)*Math.PI/180;
+      pts.push({x:o.x+Math.cos(t)*r,y:o.y+Math.sin(t)*r});
+    }
+    return {pts,closed:false};
+  }
+  if(key==='pillars') return {pts:_rotPts(o.x,o.y,o.width||500,o.height||500,o.rotation),closed:true};
+  if(key==='openings') return {pts:_rotPts(o.x,o.y,o.width_mm||900,o.depth_mm||200,o.angle),closed:true};
+  if(key==='texts') return {pts:[{x:o.x,y:o.y}],closed:false};
+  // 라이브러리 객체 — 실제 크기(회전 반영) 사각형
+  const def=_libDefForSel(key,o);
+  if(def){
+    const w=def.w||def.size||300;
+    const h=def.h||def.crossH||def.size||300;
+    return {pts:_rotPts(o.x,o.y,w,h,o.angle),closed:true};
+  }
+  return {pts:[{x:o.x,y:o.y}],closed:false};
+}
 // v5.3: 박스 선택 종료 — 박스 안 객체들 boxSelection에 추가
 function finishBoxSelection(){
   if(!drawState||drawState.type!=='box') return;
@@ -902,35 +984,33 @@ function finishBoxSelection(){
   const x2=Math.max(s.x,c.x), y2=Math.max(s.y,c.y);
   const isCrossing=c.x<s.x; // 우→좌 = crossing
   const inBox=(p)=>p.x>=x1&&p.x<=x2&&p.y>=y1&&p.y<=y2;
-  // 객체별 검사: window=완전포함 / crossing=하나라도 걸치면
+  // 2026-08-27: AutoCAD 판정 — Window=완전 포함 / Crossing=조금이라도 걸치면 (대표 지시)
+  const hit=(key,o)=>{
+    const g=_boxSelGeom(key,o);
+    if(!g||!g.pts||!g.pts.length) return false;
+    if(!isCrossing) return g.pts.every(inBox);          // Window
+    if(g.pts.some(inBox)) return true;                  // Crossing — 점이 박스 안
+    const n=g.pts.length, last=g.closed?n:n-1;
+    for(let i=0;i<last;i++){                            // Crossing — 변이 박스를 관통
+      const a=g.pts[i], b=g.pts[(i+1)%n];
+      if(_segRectHit(a.x,a.y,b.x,b.y,x1,y1,x2,y2)) return true;
+    }
+    // Crossing — 박스가 도형(공간·가구 등) 안에 완전히 들어간 경우
+    if(g.closed&&typeof ptInPoly==='function'&&ptInPoly({x:x1,y:y1},g.pts)) return true;
+    return false;
+  };
   const tests={
-    walls:w=>{const a=inBox({x:w.x1,y:w.y1}),b=inBox({x:w.x2,y:w.y2});return isCrossing?(a||b):(a&&b);},
-    spaces:s=>{const all=s.polygon.every(inBox), any=s.polygon.some(inBox);return isCrossing?any:all;},
-    openings:o=>inBox({x:o.x,y:o.y}),
-    furniture:o=>inBox({x:o.x,y:o.y}),
-    fixtures:o=>inBox({x:o.x,y:o.y}),
-    lights:o=>inBox({x:o.x,y:o.y}),
-    electric:o=>inBox({x:o.x,y:o.y}),
-    texts:o=>inBox({x:o.x,y:o.y}),
-    measures:m=>{const a=inBox({x:m.x1,y:m.y1}),b=inBox({x:m.x2,y:m.y2});return isCrossing?(a||b):(a&&b);},
-    circles:c=>inBox({x:c.x,y:c.y}),
-    arcs:a=>inBox({x:a.x,y:a.y}),
-    hvac:o=>inBox({x:o.x,y:o.y}),
-    leaders:l=>{if(!l.points||l.points.length===0) return false; const all=l.points.every(inBox), any=l.points.some(inBox); return isCrossing?any:all;},
-    curves:cv=>{
-      if(!cv.segments||cv.segments.length===0) return false;
-      // 곡선의 모든 앵커·컨트롤 점이 박스 안에 있는지 검사
-      const pts=[];
-      cv.segments.forEach(s=>{pts.push(s.p0,s.p1,s.p2,s.p3);});
-      const all=pts.every(inBox), any=pts.some(inBox);
-      return isCrossing?any:all;
-    },
-    pillars:p=>inBox({x:p.x,y:p.y}),
-    // v5.9: 무한 안내선 — 직선이 박스를 통과하면 선택 (네 꼭지점이 선 양쪽에 걸치는지)
+    walls:o=>hit('walls',o), spaces:o=>hit('spaces',o), openings:o=>hit('openings',o),
+    furniture:o=>hit('furniture',o), fixtures:o=>hit('fixtures',o), lights:o=>hit('lights',o),
+    electric:o=>hit('electric',o), texts:o=>hit('texts',o), measures:o=>hit('measures',o),
+    circles:o=>hit('circles',o), arcs:o=>hit('arcs',o), hvac:o=>hit('hvac',o),
+    leaders:o=>hit('leaders',o), curves:o=>hit('curves',o), pillars:o=>hit('pillars',o),
+    // 무한 안내선: 길이가 무한이라 Window 로는 절대 포함될 수 없음 → Crossing 에서 관통 판정만
     xlines:xl=>{
+      if(!isCrossing) return false;
       const dx=xl.x2-xl.x1, dy=xl.y2-xl.y1;
       let pos=0,neg=0;
-      [[x1,y1],[x2,y1],[x2,y2],[x1,y2]].forEach(([cx,cy])=>{const s=(cx-xl.x1)*dy-(cy-xl.y1)*dx;if(s>0.001)pos++;else if(s<-0.001)neg++;});
+      [[x1,y1],[x2,y1],[x2,y2],[x1,y2]].forEach(([cx,cy])=>{const sg=(cx-xl.x1)*dy-(cy-xl.y1)*dx;if(sg>0.001)pos++;else if(sg<-0.001)neg++;});
       return pos>0&&neg>0;
     },
   };
@@ -2069,9 +2149,10 @@ function updatePreview(){
     const isCrossing=current.x<start.x; // 우→좌 = crossing
     drawGroup.add(new Konva.Rect({
       x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),
-      fill:isCrossing?'#E2725B14':'#5BA0D414',
-      stroke:isCrossing?'#E2725B':'#5BA0D4',
-      strokeWidth:1.2,dash:isCrossing?[3,3]:[]
+      // 2026-08-27: AutoCAD 관례 — Crossing(우→좌)=초록 점선 / Window(좌→우)=파랑 실선
+      fill:isCrossing?'#7BA05B1F':'#5BA0D414',
+      stroke:isCrossing?'#7BA05B':'#5BA0D4',
+      strokeWidth:1.4,dash:isCrossing?[6,4]:[]
     }));
     previewLayer.batchDraw();return;
   }
@@ -3218,6 +3299,7 @@ window.findObjById=findObjById;
 window.altCopyObj=altCopyObj;
 // 2026-08-27: Alt 다중 복사 — initTools 내부 선언이므로 전역 노출 필수 (touch.js·테스트에서 사용)
 window.altCopyBoxSelection=altCopyBoxSelection;
+window._segRectHit=_segRectHit;window._boxSelGeom=_boxSelGeom;window.finishBoxSelection=finishBoxSelection;
 window._removeAltCopies=_removeAltCopies;
 window._nudgeSelected=_nudgeSelected;
 window._captureContained=_captureContained;
