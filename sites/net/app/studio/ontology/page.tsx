@@ -93,6 +93,13 @@ export default function OntologyPage() {
     return m;
   }, [seeds, rot]);
 
+  // 씨앗 색 배정 — 이름 해시로 약 1/4 골드, 나머지 블루 (레퍼런스 이미지 비율)
+  function isGold(name: string) {
+    let h = 0;
+    for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return h % 4 === 0;
+  }
+
   const visible = rules.filter(
     (r) =>
       (!typeFilter || r.relationshipType === typeFilter) &&
@@ -173,7 +180,7 @@ export default function OntologyPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           {/* 3D 민들레 */}
           <div
-            className="overflow-hidden rounded-xl border border-[#9BC9D8]/15 bg-[radial-gradient(60%_60%_at_50%_45%,#0b1420_0%,#070b12_70%)]"
+            className="onto-stage overflow-hidden rounded-xl border border-[#9BC9D8]/15"
             onMouseEnter={() => {
               hovering.current = true;
             }}
@@ -189,6 +196,40 @@ export default function OntologyPage() {
               onPointerUp={onUp}
               onPointerCancel={onUp}
             >
+              <defs>
+                <radialGradient id="orbB" cx="35%" cy="30%" r="75%">
+                  <stop offset="0%" stopColor="#eaf8ff" />
+                  <stop offset="35%" stopColor="#6cc4ff" />
+                  <stop offset="75%" stopColor="rgba(20,90,190,0.55)" />
+                  <stop offset="100%" stopColor="rgba(8,30,70,0.15)" />
+                </radialGradient>
+                <radialGradient id="orbG" cx="35%" cy="30%" r="75%">
+                  <stop offset="0%" stopColor="#fff6dd" />
+                  <stop offset="35%" stopColor="#f2c35c" />
+                  <stop offset="75%" stopColor="rgba(190,130,30,0.55)" />
+                  <stop offset="100%" stopColor="rgba(80,50,10,0.15)" />
+                </radialGradient>
+                <radialGradient id="glowB" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="rgba(80,180,255,0.5)" />
+                  <stop offset="60%" stopColor="rgba(60,150,255,0.16)" />
+                  <stop offset="100%" stopColor="rgba(60,150,255,0)" />
+                </radialGradient>
+                <radialGradient id="glowG" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="rgba(250,200,90,0.5)" />
+                  <stop offset="60%" stopColor="rgba(240,180,60,0.15)" />
+                  <stop offset="100%" stopColor="rgba(240,180,60,0)" />
+                </radialGradient>
+                <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(80,180,255,0)" />
+                  <stop offset="45%" stopColor="rgba(120,200,255,0.35)" />
+                  <stop offset="55%" stopColor="rgba(160,220,255,0.5)" />
+                  <stop offset="100%" stopColor="rgba(80,180,255,0)" />
+                </linearGradient>
+              </defs>
+
+              {/* 중심 수직 광선 */}
+              <rect x={CX - 2.5} y={CY - RADIUS * 1.25} width={5} height={RADIUS * 2.5} fill="url(#beam)" />
+
               {/* 은은한 구 실루엣 */}
               <circle cx={CX} cy={CY} r={RADIUS * 1.02} fill="none" stroke="rgba(155,201,216,0.07)" />
 
@@ -234,23 +275,35 @@ export default function OntologyPage() {
                       y1={CY}
                       x2={pt.x}
                       y2={pt.y}
-                      stroke="#9BC9D8"
+                      stroke="rgba(90,180,255,0.8)"
                       strokeWidth={0.5 + depth * 0.7}
-                      opacity={0.28}
+                      opacity={0.22}
                     />
-                    <circle
-                      cx={pt.x}
-                      cy={pt.y}
-                      r={(isFocus ? 6.5 : 3 + depth * 2.5) * pt.s}
-                      fill={isFocus ? '#f0deb9' : '#cfe8f2'}
-                      opacity={0.9}
-                    />
-                    <circle
-                      cx={pt.x}
-                      cy={pt.y}
-                      r={(isFocus ? 13 : 7) * pt.s}
-                      fill={isFocus ? 'rgba(240,222,185,0.18)' : 'rgba(155,201,216,0.1)'}
-                    />
+                    {(() => {
+                      const gold = isFocus || isGold(name);
+                      const R0 = (isFocus ? 11 : 5.5 + depth * 4.5) * pt.s; // 구체 반지름
+                      const k = R0 / 8;
+                      const wire = gold ? 'rgba(255,225,160,0.75)' : 'rgba(160,220,255,0.75)';
+                      return (
+                        <g transform={`translate(${pt.x} ${pt.y}) scale(${k})`}>
+                          {/* 외부 발광 */}
+                          <circle r={20} fill={`url(#${gold ? 'glowG' : 'glowB'})`} />
+                          {/* 구체 본체 */}
+                          <circle r={8} fill={`url(#${gold ? 'orbG' : 'orbB'})`} />
+                          {/* 내부 와이어프레임 (위도·자오선) */}
+                          <ellipse rx={8} ry={2.8} fill="none" stroke={wire} strokeWidth={0.5} opacity={0.8} />
+                          <ellipse rx={8} ry={2.8} fill="none" stroke={wire} strokeWidth={0.45} opacity={0.55} transform="rotate(58)" />
+                          <ellipse rx={2.8} ry={8} fill="none" stroke={wire} strokeWidth={0.45} opacity={0.55} />
+                          {/* 내부 네트워크 점 */}
+                          <circle cx={2.6} cy={-1.8} r={0.7} fill="#ffffff" opacity={0.85} />
+                          <circle cx={-2.2} cy={2.4} r={0.6} fill={wire} opacity={0.8} />
+                          <circle cx={-0.6} cy={-3.2} r={0.5} fill={wire} opacity={0.7} />
+                          {/* 림 + 스펙큘러 하이라이트 */}
+                          <circle r={8} fill="none" stroke={gold ? 'rgba(255,235,190,0.5)' : 'rgba(190,235,255,0.5)'} strokeWidth={0.6} />
+                          <circle cx={-2.6} cy={-2.8} r={1.5} fill="rgba(255,255,255,0.9)" />
+                        </g>
+                      );
+                    })()}
                     {showLabel ? (
                       <text
                         x={pt.x}
@@ -269,9 +322,14 @@ export default function OntologyPage() {
                 );
               })}
 
-              {/* 중심 코어 */}
-              <circle cx={CX} cy={CY} r={10} fill="#E8C99B" opacity={0.9} />
-              <circle cx={CX} cy={CY} r={22} fill="rgba(232,201,155,0.15)" />
+              {/* 중심 코어 — 홀로그램 구 + 궤도 링 */}
+              <circle cx={CX} cy={CY} r={44} fill="url(#glowB)" />
+              <ellipse cx={CX} cy={CY} rx={46} ry={11} fill="none" stroke="rgba(240,190,90,0.55)" strokeWidth={1} transform={`rotate(-12 ${CX} ${CY})`} />
+              <ellipse cx={CX} cy={CY} rx={56} ry={14} fill="none" stroke="rgba(120,200,255,0.3)" strokeWidth={0.8} transform={`rotate(-12 ${CX} ${CY})`} />
+              <circle cx={CX} cy={CY} r={17} fill="url(#orbB)" />
+              <ellipse cx={CX} cy={CY} rx={17} ry={6} fill="none" stroke="rgba(180,230,255,0.7)" strokeWidth={0.7} />
+              <ellipse cx={CX} cy={CY} rx={6} ry={17} fill="none" stroke="rgba(180,230,255,0.5)" strokeWidth={0.6} />
+              <circle cx={CX - 5.5} cy={CY - 6} r={2.8} fill="rgba(255,255,255,0.9)" />
               <text
                 x={CX}
                 y={CY + 40}
