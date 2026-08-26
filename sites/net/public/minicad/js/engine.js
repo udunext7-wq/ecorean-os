@@ -79,22 +79,26 @@ function lineLineIntersect(p1,p2,p3,p4){
   const py=((x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4))/denom;
   return {x:px,y:py};
 }
-function snapToEndpoint(mm){
+// 2026-08-27: excludeIds — 드래그 중인 객체가 '자기 자신'에 스냅해 제자리로 되돌아가던 문제 (대표 보고)
+function snapToEndpoint(mm,excludeIds){
   // v5.9: Ctrl 누르면 자석 스냅 OFF
   if(STATE.ctrlPressed) return {pt:mm,snapped:false};
   if(!STATE.snap.endpoint) return {pt:mm,snapped:false};
+  const _ex=excludeIds?(excludeIds instanceof Set?excludeIds:new Set([].concat(excludeIds))):null;
+  const _skip=id=>!!(_ex&&id&&_ex.has(id));
   const threshold=Math.max(300,snapRadiusMm()); // 2026-08-19: 터치·줌아웃 시 반경 확대 (마우스 100%에선 기존 300mm 유지)
   let nearest=null,minD=threshold;
   // 공간 폴리곤 점
-  STATE.spaces.forEach(s=>s.polygon.forEach(p=>{
+  STATE.spaces.forEach(s=>{if(_skip(s.id))return;s.polygon.forEach(p=>{
     const dx=p.x-mm.x,dy=p.y-mm.y;
     const d=Math.sqrt(dx*dx+dy*dy);
     if(d<minD){minD=d;nearest={x:p.x,y:p.y};}
-  }));
+  });});
   // 벽 끝점 + 중점 — 도구별 격리: 일반 벽 그리기 중엔 내력벽 무시, 내력벽 그리기 중엔 일반벽 무시
   const _isDrawingBearing=STATE.selectedTool==='gabyeok';
   const _isDrawingRegular=STATE.selectedTool==='wall'||STATE.selectedTool==='line';
   STATE.walls.forEach(w=>{
+    if(_skip(w.id)) return;
     const isB=w.wallType==='bearing';
     if(_isDrawingBearing&&!isB) return; // 내력벽 그릴 때 일반벽 끝점 무시
     if(_isDrawingRegular&&isB) return;  // 일반벽 그릴 때 내력벽 끝점 무시
@@ -131,12 +135,14 @@ function snapToEndpoint(mm){
   }
   // v5.9: 도어/창 중심점 스냅 — 라이브러리 객체와 동일하게 끌어당김
   STATE.openings.forEach(o=>{
+    if(_skip(o.id)) return;
     const dx=o.x-mm.x, dy=o.y-mm.y;
     const d=Math.sqrt(dx*dx+dy*dy);
     if(d<minD){minD=d;nearest={x:o.x,y:o.y};}
   });
   // v5.4: 원·아크 중심 + 4분점 (사분점)
   STATE.circles.forEach(c=>{
+    if(_skip(c.id)) return;
     const pts=[{x:c.x,y:c.y},{x:c.x+c.radius_mm,y:c.y},{x:c.x-c.radius_mm,y:c.y},{x:c.x,y:c.y+c.radius_mm},{x:c.x,y:c.y-c.radius_mm}];
     pts.forEach(p=>{
       const dx=p.x-mm.x,dy=p.y-mm.y;
@@ -145,6 +151,7 @@ function snapToEndpoint(mm){
     });
   });
   STATE.arcs.forEach(a=>{
+    if(_skip(a.id)) return;
     const sa=a.startAngle*Math.PI/180, ea=a.endAngle*Math.PI/180;
     const pts=[
       {x:a.x,y:a.y}, // 중심
@@ -159,7 +166,7 @@ function snapToEndpoint(mm){
   });
   // v5.9: 곡선 (Bezier) — 각 segment의 앵커 + 컨트롤 + 중점
   if(STATE.curves) STATE.curves.forEach(cv=>{
-    if(!cv.segments) return;
+    if(!cv.segments||_skip(cv.id)) return;
     cv.segments.forEach(s=>{
       const t=0.5, mt=1-t;
       const midX=mt*mt*mt*s.p0.x+3*mt*mt*t*s.p1.x+3*mt*t*t*s.p2.x+t*t*t*s.p3.x;
@@ -174,6 +181,7 @@ function snapToEndpoint(mm){
   // v5.4: 라이브러리 객체 중심점 (v5.9: hvac도 포함)
   [STATE.furniture,STATE.fixtures,STATE.lights,STATE.electric,STATE.hvac||[]].forEach(arr=>{
     arr.forEach(o=>{
+      if(_skip(o.id)) return; // 2026-08-27: 자기 자신 제외
       const dx=o.x-mm.x,dy=o.y-mm.y;
       const d=Math.sqrt(dx*dx+dy*dy);
       if(d<minD){minD=d;nearest={x:o.x,y:o.y};}
@@ -181,6 +189,7 @@ function snapToEndpoint(mm){
   });
   // v5.9: 기둥 — 중심점 + 폴리곤 corner 점 모두 스냅 대상
   if(STATE.pillars) STATE.pillars.forEach(p=>{
+    if(_skip(p.id)) return;
     [{x:p.x,y:p.y},...pillarPolygon(p)].forEach(pt=>{
       const dx=pt.x-mm.x, dy=pt.y-mm.y;
       const d=Math.sqrt(dx*dx+dy*dy);
@@ -341,6 +350,22 @@ function snapPointToSpaceEdges(mm,excludeId,thresholdMm){
     }
   });
   return best?{pt:best,snapped:true,distance:minD}:{pt:mm,snapped:false};
+}
+// 2026-08-27: 드래그용 그리드 스냅 — '이동량'이 아니라 '결과 위치'가 격자에 맞도록 (대표 보고)
+//  기존엔 delta 만 격자화해 원래 좌표의 어긋남이 그대로 남아 격자에 절대 안 붙었다.
+function gridQuantizeDelta(refX,refY,sx,sy,orthoAxisLocked){
+  if(!STATE.snap.grid||STATE.ctrlPressed) return {sx:Math.round(sx),sy:Math.round(sy)};
+  const g=Math.max(1,STATE.gridSize||1);
+  const qx=(orthoAxisLocked==='x')?0:Math.round((refX+sx)/g)*g-refX;
+  const qy=(orthoAxisLocked==='y')?0:Math.round((refY+sy)/g)*g-refY;
+  return {sx:Math.round(qx),sy:Math.round(qy)};
+}
+function _dragRefPoint(base){
+  if(!base) return {x:0,y:0};
+  if(typeof base.x==='number') return {x:base.x,y:base.y};
+  if(base.polygon&&base.polygon.length) return {x:base.polygon[0].x,y:base.polygon[0].y};
+  if(typeof base.x1==='number') return {x:base.x1,y:base.y1};
+  return {x:0,y:0};
 }
 function getMm(pos){
   let mm={x:snapMm(pxToMm(pos.x-STATE.offsetX)),y:snapMm(pxToMm(pos.y-STATE.offsetY))};

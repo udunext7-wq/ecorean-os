@@ -1512,6 +1512,52 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('스냅: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 드래그 스냅 3대 수정 (자기 자신 스냅·그리드 절대 흡착·직교 유지) ===
+  try{
+    const _bakDS={furniture:STATE.furniture.slice(),grid:STATE.snap.grid,ep:STATE.snap.endpoint,
+      ortho:STATE.snap.ortho,gs:STATE.gridSize,ctrl:STATE.ctrlPressed,shift:STATE.shiftPressed};
+    STATE.ctrlPressed=false;STATE.shiftPressed=false;STATE.gridSize=100;
+    const mkF=(x,y)=>{const o={id:makeId('f'),type:'side_table',x,y,angle:0};STATE.furniture.push(o);return o;};
+    const runDrag=(gridOn,orthoOn,dx,dy)=>{
+      const o=mkF(1234,2345);
+      STATE.snap.grid=gridOn;STATE.snap.endpoint=true;STATE.snap.ortho=orthoOn;
+      applyDragMove({kind:'furniture',id:o.id,startMm:{x:0,y:0},baseObj:JSON.parse(JSON.stringify(o))},dx,dy);
+      const r=[o.x,o.y];
+      STATE.furniture=STATE.furniture.filter(x=>x.id!==o.id);
+      return r;
+    };
+    // [DS1] 자기 자신 스냅 금지 — 끝점 ON 이어도 제자리로 되돌아가지 않는다
+    let r=runDrag(false,false,253,137);
+    assert('드래그: 자기 자신 스냅 안 함(자유 이동)',r[0]===1487&&r[1]===2482,JSON.stringify(r));
+    // [DS2] 그리드 ON — 결과 위치가 격자 배수에 안착 (기존엔 delta 만 격자화라 안 붙었음)
+    r=runDrag(true,false,250,130);
+    assert('드래그: 그리드 결과 위치 흡착',r[0]%100===0&&r[1]%100===0,JSON.stringify(r));
+    // [DS3] 직교 — 그리드 OFF 에서도 축 고정 유지
+    r=runDrag(false,true,253,137);
+    assert('드래그: 그리드 OFF 직교 유지',r[1]===2345&&r[0]===1487,JSON.stringify(r));
+    // [DS4] 직교 + 그리드 — 고정축은 그대로, 이동축만 격자
+    r=runDrag(true,true,250,130);
+    assert('드래그: 직교+그리드 동시',r[1]===2345&&r[0]%100===0,JSON.stringify(r));
+    // [DS5] 다중 드래그도 격자 흡착 + 상대 간격 유지
+    const a1=mkF(1234,2345), a2=mkF(3456,2345);
+    STATE.snap.grid=true;STATE.snap.ortho=false;
+    applyDragMove({kind:'multi',startMm:{x:0,y:0},items:[a1,a2].map(o=>({kind:'furniture',id:o.id,baseObj:JSON.parse(JSON.stringify(o))}))},250,130);
+    assert('드래그: 다중 격자 흡착',a1.x%100===0&&a1.y%100===0,a1.x+','+a1.y);
+    assert('드래그: 다중 상대 간격 유지',(a2.x-a1.x)===2222,String(a2.x-a1.x));
+    STATE.furniture=STATE.furniture.filter(x=>x.id!==a1.id&&x.id!==a2.id);
+    // [DS6] snapToEndpoint 제외 인자 동작
+    const ex=mkF(9000000,9000000);
+    STATE.snap.endpoint=true;
+    const near={x:9000000+50,y:9000000+50};
+    assert('드래그: 제외 없으면 스냅',snapToEndpoint(near).snapped===true);
+    assert('드래그: 제외하면 스냅 안 함',snapToEndpoint(near,ex.id).snapped===false);
+    STATE.furniture=STATE.furniture.filter(x=>x.id!==ex.id);
+    STATE.furniture=_bakDS.furniture;STATE.snap.grid=_bakDS.grid;STATE.snap.endpoint=_bakDS.ep;
+    STATE.snap.ortho=_bakDS.ortho;STATE.gridSize=_bakDS.gs;STATE.ctrlPressed=_bakDS.ctrl;STATE.shiftPressed=_bakDS.shift;
+    renderAll();
+  }catch(e){
+    assert('드래그: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

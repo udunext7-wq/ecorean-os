@@ -2621,8 +2621,15 @@ function applyDragMove(state,dx,dy){
   // v5.9: 다중 선택 일괄 드래그 — items 배열 전체에 동일 delta 적용
   if(state.kind==='multi'&&Array.isArray(state.items)){
     let sx=Math.round(dx), sy=Math.round(dy);
+    // 2026-08-27: 직교 먼저(축 고정) → 그리드는 '결과 위치' 기준 흡착 (대표 보고)
     const orthoActive=(STATE.snap.ortho&&!STATE.shiftPressed)||(!STATE.snap.ortho&&STATE.shiftPressed);
-    if(orthoActive){if(Math.abs(sx)>=Math.abs(sy)) sy=0; else sx=0;}
+    let lockedAxis=null;
+    if(orthoActive){if(Math.abs(sx)>=Math.abs(sy)){sy=0;lockedAxis='y';}else{sx=0;lockedAxis='x';}}
+    if(state.items.length&&typeof gridQuantizeDelta==='function'){
+      const ref=_dragRefPoint(state.items[0].baseObj);
+      const q=gridQuantizeDelta(ref.x,ref.y,sx,sy,lockedAxis);
+      sx=q.sx;sy=q.sy;
+    }
     state.items.forEach(item=>{
       const arr=getArr(item.kind); if(!arr) return;
       const obj=arr.find(o=>o.id===item.id); if(!obj) return;
@@ -2669,12 +2676,18 @@ function applyDragMove(state,dx,dy){
   if(!obj) return;
   if(obj.locked) return; // v5.9: 잠금된 객체는 드래그 안 됨
   const base=state.baseObj;
-  // 2026-08-19: delta 는 순수 커서 기준(rawMm) → 그리드 스냅은 여기서 1회 적용
-  let sx=snapMm(dx), sy=snapMm(dy);
+  // 2026-08-27: 순서 정리 — ① 직교(축 고정) ② 그리드(결과 위치 격자 흡착) ③ 끝점/변 스냅(덮어쓰기)
+  let sx=Math.round(dx), sy=Math.round(dy);
   // Shift 직교: F8 OFF+Shift 또는 F8 ON+Shift 미누름 시 수평/수직 이동만 허용
   const orthoActive=(STATE.snap.ortho&&!STATE.shiftPressed)||(!STATE.snap.ortho&&STATE.shiftPressed);
+  let _lockedAxis=null;
   if(orthoActive){
-    if(Math.abs(sx)>=Math.abs(sy)) sy=0; else sx=0;
+    if(Math.abs(sx)>=Math.abs(sy)){sy=0;_lockedAxis='y';} else {sx=0;_lockedAxis='x';}
+  }
+  if(typeof gridQuantizeDelta==='function'){
+    const _ref=_dragRefPoint(base);
+    const _q=gridQuantizeDelta(_ref.x,_ref.y,sx,sy,_lockedAxis);
+    sx=_q.sx;sy=_q.sy;
   }
 
   // 2026-08-19: 공간 드래그 스냅 전면 개편 (태블릿 "연결" 불안정 해소)
@@ -2744,7 +2757,7 @@ function applyDragMove(state,dx,dy){
   // v5.8: 라이브러리/기타 객체 드래그 — 끝점·중심 스냅 (snapToEndpoint 활용)
   else if(state.kind!=='space' && state.kind!=='wall' && 'x' in obj){
     const moved={x:base.x+sx, y:base.y+sy};
-    const snap=snapToEndpoint(moved);
+    const snap=snapToEndpoint(moved,state.id); // 2026-08-27: 자기 자신 제외 (제자리로 되돌아가던 버그)
     if(snap.snapped){
       const sd=Math.sqrt((snap.pt.x-moved.x)**2+(snap.pt.y-moved.y)**2);
       if(sd<snapRadiusMm(150)){sx+=snap.pt.x-moved.x; sy+=snap.pt.y-moved.y;}
