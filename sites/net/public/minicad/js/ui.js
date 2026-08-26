@@ -576,6 +576,22 @@ function refreshDetail(){
     const arr=getArr(STATE.selectedKind);
     const obj=arr?arr.find(x=>x.id===STATE.selectedId):null;
     const hasAngle=obj&&'angle' in obj;
+    // 2026-08-25: 다운라이트 인치 선택 (대표 지시) — 2~6인치, 타공경 자동
+    const isDownlight=STATE.selectedKind==='lights'&&obj&&obj.type==='downlight';
+    let inchHtml='';
+    if(isDownlight){
+      const cur=Math.round(obj.inch||STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT);
+      const d=DOWNLIGHT_INCH[cur]||DOWNLIGHT_INCH[DOWNLIGHT_INCH_DEFAULT];
+      inchHtml=
+        '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.08);border:1px solid rgba(212,184,114,0.35);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#D4B872">다운라이트 규격</div>'+
+        '<div class="field"><select id="d-dl-inch">'+
+        Object.keys(DOWNLIGHT_INCH).map(k=>'<option value="'+k+'"'+(String(cur)===String(k)?' selected':'')+'>'+DOWNLIGHT_INCH[k].label+' (타공 Ø'+DOWNLIGHT_INCH[k].bore+')</option>').join('')+
+        '</select></div>'+
+        '<div class="hint">외경 Ø'+d.outer+'mm · 타공 Ø'+d.bore+'mm — 선택한 인치가 다음 배치의 기본값이 됩니다</div>'+
+        '<button type="button" class="btn sm" id="d-dl-apply-all" style="width:100%;margin-top:4px">같은 공간 다운라이트 전체 적용</button>'+
+        '</div>';
+    }
     // 2026-08-26: 스위치 회로 패널 (조명 연결·점등 토글)
     const isSwitch=STATE.selectedKind==='electric'&&obj&&/^switch|^dimmer/.test(obj.type||'');
     let circuitHtml='';
@@ -604,7 +620,7 @@ function refreshDetail(){
         '</div>';
     }
     dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      circuitHtml+extraHtml+
+      inchHtml+circuitHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -615,6 +631,28 @@ function refreshDetail(){
       document.getElementById('d-rot-90').addEventListener('click',()=>{obj.angle=((obj.angle||0)+90)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-m90').addEventListener('click',()=>{obj.angle=((obj.angle||0)-90+360)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-180').addEventListener('click',()=>{obj.angle=((obj.angle||0)+180)%360;saveHistory();renderAll();refreshUI();});
+    }
+    if(isDownlight){
+      const sel=document.getElementById('d-dl-inch');
+      if(sel) sel.addEventListener('change',e=>{
+        const v=parseInt(e.target.value,10);
+        if(!DOWNLIGHT_INCH[v]) return;
+        obj.inch=v;STATE.downlightInch=v;
+        saveHistory();renderAll();refreshUI();
+        showStatus('다운라이트 '+DOWNLIGHT_INCH[v].label+' — 타공 Ø'+DOWNLIGHT_INCH[v].bore+'mm');
+      });
+      const ab=document.getElementById('d-dl-apply-all');
+      if(ab) ab.addEventListener('click',()=>{
+        const v=Math.round(obj.inch||DOWNLIGHT_INCH_DEFAULT);
+        let n=0;
+        STATE.lights.forEach(l=>{
+          if(l.type!=='downlight'||l.locked) return;
+          if(obj.spaceId&&l.spaceId!==obj.spaceId) return;
+          l.inch=v;n++;
+        });
+        saveHistory();renderAll();refreshUI();
+        cmdToast('다운라이트 '+DOWNLIGHT_INCH[v].label+' 일괄 적용 — '+n+'개');
+      });
     }
     if(isSwitch){
       const lb=document.getElementById('d-circuit-link');
@@ -1159,6 +1197,12 @@ function buildJSON(){
       nameKo:def.name||o.type,
       nameEn:def.nameEn||sm.kw||o.type,
       estModule:def.est||null, // 2026-08-24: 픽스가구 견적 모듈 코드 (견적 OS 소비용)
+      // 2026-08-25: 다운라이트 인치 규격 — 견적 OS 가 타공경으로 단가 매핑
+      ...(o.type==='downlight'?(function(){
+        const _i=Math.round(o.inch||DOWNLIGHT_INCH_DEFAULT);
+        const _d=DOWNLIGHT_INCH[_i]||DOWNLIGHT_INCH[DOWNLIGHT_INCH_DEFAULT];
+        return {inch:_i,boreDia_mm:_d.bore,outerDia_mm:_d.outer,nameKo:'다운라이트 '+_i+'"',nameEn:_i+'-inch recessed downlight'};
+      })():{}),
       semanticTag:sm.tag,
       promptKeyword:def.nameEn||sm.kw,
       placement:placementOf(o,sp),
@@ -1310,6 +1354,7 @@ function buildJSON(){
         videoSequenceOrder:STATE.videoSequenceOrder||null,
         layers:STATE.layers?{...STATE.layers}:null,
         wallAlignment:STATE.wallAlignment||'center',
+        downlightInch:STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT, // 2026-08-25
       },
       // v5.7: 차세대 AI 생성 파이프라인 SSoT 메타
       aiPromptHints:STATE.aiPromptHints,
@@ -2087,6 +2132,7 @@ function applyLoadedData(d){
     if(_set.estimateConfig&&typeof _set.estimateConfig==='object') STATE.estimateConfig=_set.estimateConfig;
     if('videoSequenceOrder' in _set) STATE.videoSequenceOrder=_set.videoSequenceOrder||null;
     if(_set.layers&&typeof _set.layers==='object') STATE.layers={...STATE.layers,..._set.layers};
+    if(_set.downlightInch&&DOWNLIGHT_INCH[_set.downlightInch]) STATE.downlightInch=_set.downlightInch;
     if(_set.wallAlignment){
       STATE.wallAlignment=_set.wallAlignment;
       if(typeof setWallAlignment==='function') setWallAlignment(_set.wallAlignment,{silent:true});

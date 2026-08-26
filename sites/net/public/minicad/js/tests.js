@@ -1040,6 +1040,45 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('계단축: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-25: 다운라이트 인치 규격 (대표 지시 — 2인치·3인치 혼용) ===
+  try{
+    const _bakD={lights:STATE.lights.slice(),dlInch:STATE.downlightInch,selK:STATE.selectedKind,selI:STATE.selectedId};
+    // [I1] 규격표
+    assert('다운라이트: 인치 규격 2~6',[2,3,4,5,6].every(k=>DOWNLIGHT_INCH[k]&&DOWNLIGHT_INCH[k].bore>0&&DOWNLIGHT_INCH[k].outer>DOWNLIGHT_INCH[k].bore));
+    // [I2] 인치별 도식 크기 = 실치수
+    const d2=downlightDef({inch:2}), d3=downlightDef({inch:3}), d6=downlightDef({inch:6});
+    assert('다운라이트: 2/3/6인치 외경 반영',d2.size===70&&d3.size===95&&d6.size===175,d2.size+'/'+d3.size+'/'+d6.size);
+    assert('다운라이트: 타공경 원 반영',d2.shape[1].r===27.5&&d6.shape[1].r===75,d2.shape[1].r+'/'+d6.shape[1].r);
+    assert('다운라이트: 이름에 인치 표기',d2.name.indexOf('2"')>=0&&d6.name.indexOf('6"')>=0,d2.name);
+    // [I3] 잘못된 인치는 기본값(3)로 보정
+    assert('다운라이트: 미지원 인치 보정',downlightDef({inch:9}).inch===3&&downlightDef({}).inch===3);
+    // [I4] 렌더 — 서로 다른 인치가 서로 다른 크기로 그려짐
+    const l2={id:makeId('li'),type:'downlight',x:2100000,y:2100000,angle:0,inch:2};
+    const l6={id:makeId('li'),type:'downlight',x:2100500,y:2100000,angle:0,inch:6};
+    STATE.lights.push(l2,l6);
+    renderLights();
+    const radOf=id=>{let r=0;groups.lights.getChildren().forEach(g4=>{if(g4.id&&g4.id()===id)
+      g4.getChildren(n=>n.getClassName()==='Circle').forEach(c=>{if(c.opacity()>0.5&&c.radius()>r)r=c.radius();});});return r;};
+    assert('다운라이트: 인치별 렌더 크기 차이',radOf(l6.id)>radOf(l2.id)*1.8,radOf(l2.id).toFixed(1)+' vs '+radOf(l6.id).toFixed(1));
+    // [I5] JSON — 타공경/외경 출력 (견적 OS 연동)
+    const jd=buildJSON();
+    const j2=jd.lights.find(x=>x.id===l2.id), j6=jd.lights.find(x=>x.id===l6.id);
+    assert('다운라이트: JSON 타공경 출력',!!j2&&j2.inch===2&&j2.boreDia_mm===55&&j2.outerDia_mm===70,j2&&JSON.stringify([j2.inch,j2.boreDia_mm]));
+    assert('다운라이트: JSON 6인치',!!j6&&j6.boreDia_mm===150&&j6.nameKo.indexOf('6')>=0);
+    // [I6] 저장→불러오기 왕복 보존
+    STATE.downlightInch=5;
+    const rawD=JSON.stringify(buildJSON());
+    STATE.downlightInch=3;
+    applyLoadedData(JSON.parse(rawD));
+    const l2b=STATE.lights.find(x=>x.id===l2.id), l6b=STATE.lights.find(x=>x.id===l6.id);
+    assert('다운라이트: 왕복 인치 보존',!!l2b&&l2b.inch===2&&!!l6b&&l6b.inch===6);
+    assert('다운라이트: 왕복 기본 인치 보존',STATE.downlightInch===5,'now '+STATE.downlightInch);
+    STATE.lights=_bakD.lights;STATE.downlightInch=_bakD.dlInch;
+    STATE.selectedKind=_bakD.selK;STATE.selectedId=_bakD.selI;
+    renderAll();
+  }catch(e){
+    assert('다운라이트: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

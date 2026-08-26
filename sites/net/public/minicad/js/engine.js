@@ -2139,11 +2139,30 @@ function renderRect(arr,group,lib,kind){
   });
 }
 
+// 2026-08-25: 다운라이트 인치별 도식 (대표 지시) — 외경/타공경 실치수로 그린다
+function downlightInchOf(o){
+  const n=Math.round((o&&o.inch)||DOWNLIGHT_INCH_DEFAULT);
+  return DOWNLIGHT_INCH[n]?n:DOWNLIGHT_INCH_DEFAULT;
+}
+function downlightDef(o){
+  const base=LIGHT_LIB.downlight;
+  const inch=downlightInchOf(o);
+  const d=DOWNLIGHT_INCH[inch];
+  return {...base,
+    size:d.outer,
+    name:base.name+' '+inch+'"',
+    nameEn:inch+'-inch recessed downlight',
+    inch,boreDia_mm:d.bore,
+    shape:[
+      {type:'circle',cx:0,cy:0,r:d.outer/2,fill:'#D4B872',stroke:'#A88248',sw:5},
+      {type:'circle',cx:0,cy:0,r:d.bore/2,fill:'#F5E5B8',stroke:'#D4B872',sw:2},
+    ]};
+}
 function renderLights(){
   groups.lights.destroyChildren();
   const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합
   STATE.lights.forEach(o=>{
-    const def=LIGHT_LIB[o.type];
+    const def=(o.type==='downlight')?downlightDef(o):LIGHT_LIB[o.type]; // 2026-08-25: 인치별 규격
     if(!def) return;
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const sel=STATE.selectedKind==='lights'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='lights'&&b.id===o.id);

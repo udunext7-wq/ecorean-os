@@ -542,6 +542,8 @@ function addLibObject(pos,kind,type){
   const elem={fixtures:'FIXT',furniture:'FURN',lights:'LITE',electric:'ELEC',hvac:'HVAC'}[kind]||'OBJ';
   const o={id:makeId(kind.charAt(0)),type,x:mm.x,y:mm.y,angle:_libPlaceAngle||0,flipped:!!_libPlaceFlipped,
     layerName:makeLayerName(elem,sp),spaceId:sp?sp.id:null};
+  // 2026-08-25: 다운라이트는 마지막에 고른 인치로 배치 (대표 지시 — 2인치·3인치 혼용)
+  if(type==='downlight') o.inch=Math.round(STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT);
   if(kind==='fixtures') STATE.fixtures.push(o);
   else if(kind==='furniture') STATE.furniture.push(o);
   else if(kind==='lights') STATE.lights.push(o);
@@ -2646,8 +2648,10 @@ function updateLibPlacementPreview(pos){
     if(_libPreviewActive){drawGroup.destroyChildren();previewLayer.batchDraw();_libPreviewActive=false;}
     return;
   }
-  const def=lib[STATE.selectedLib];
+  let def=lib[STATE.selectedLib];
   if(!def) return;
+  // 2026-08-25: 다운라이트 고스트도 선택 인치 크기로 미리보기
+  if(STATE.selectedLib==='downlight'&&typeof downlightDef==='function') def=downlightDef({inch:STATE.downlightInch});
   drawGroup.destroyChildren();
   _libPreviewActive=true;
 

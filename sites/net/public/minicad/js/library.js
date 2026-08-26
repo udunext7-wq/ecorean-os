@@ -531,6 +531,16 @@ const FIXTURE_LIB={
   ]},
 };
 
+// 2026-08-25: 다운라이트 인치 규격 (대표 지시) — 국내 통용 타공경(bore)·외경(outer) mm
+//  견적 OS 연동: boreDia_mm 로 JSON 출력. 인치는 인스턴스 속성 o.inch 로 저장
+const DOWNLIGHT_INCH={
+  2:{bore:55,outer:70,label:'2인치'},
+  3:{bore:75,outer:95,label:'3인치'},
+  4:{bore:100,outer:120,label:'4인치'},
+  5:{bore:125,outer:145,label:'5인치'},
+  6:{bore:150,outer:175,label:'6인치'},
+};
+const DOWNLIGHT_INCH_DEFAULT=3;
 const LIGHT_LIB={
   ceiling:{name:'천장 조명',nameEn:'ceiling light',size:400,c:'#D4B872',shape:[
     {type:'circle',cx:0,cy:0,r:200,fill:'#D4B872',stroke:'#A88248',sw:8},
@@ -539,9 +549,9 @@ const LIGHT_LIB={
     {type:'line',x1:-200,y1:0,x2:200,y2:0,stroke:'#A88248',sw:3},
     {type:'line',x1:0,y1:-200,x2:0,y2:200,stroke:'#A88248',sw:3},
   ]},
-  downlight:{name:'다운라이트',nameEn:'recessed downlight',size:150,c:'#D4B872',shape:[
-    {type:'circle',cx:0,cy:0,r:75,fill:'#D4B872',stroke:'#A88248',sw:5},
-    {type:'circle',cx:0,cy:0,r:55,fill:'#F5E5B8',stroke:'#D4B872',sw:2},
+  downlight:{name:'다운라이트',nameEn:'recessed downlight',size:95,c:'#D4B872',inchDefault:3,shape:[
+    {type:'circle',cx:0,cy:0,r:47.5,fill:'#D4B872',stroke:'#A88248',sw:5},
+    {type:'circle',cx:0,cy:0,r:37.5,fill:'#F5E5B8',stroke:'#D4B872',sw:2},
   ]},
   pendant:{name:'펜던트',nameEn:'pendant light',size:300,c:'#D4B872',shape:[
     {type:'circle',cx:0,cy:0,r:150,fill:'#D4B872',stroke:'#A88248',sw:8},
