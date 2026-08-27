@@ -42,6 +42,10 @@ export default function OntologyPage() {
   const [rot, setRot] = useState({ yaw: 0.6, pitch: -0.35 });
   const dragging = useRef<{ x: number; y: number; yaw0: number; pitch0: number } | null>(null);
   const hovering = useRef(false);
+  // 포인터 근접 글로우 — 커서 주변 씨앗만 밝아진다 (대표 지시 2026-08-27)
+  const [ptr, setPtr] = useState<{ x: number; y: number } | null>(null);
+  const ptrRaf = useRef(0);
+  const PROX = 130; // 글로우 반응 반경 (viewBox 단위)
   const raf = useRef(0);
   const rotRef = useRef(rot);
   rotRef.current = rot;
@@ -171,6 +175,17 @@ export default function OntologyPage() {
     (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
   }
   function onMove(e: PointerEvent<SVGSVGElement>) {
+    // 포인터 좌표를 viewBox 단위로 변환해 근접 글로우에 사용
+    const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+    const scale = SIZE / (rect.width || SIZE);
+    const px = (e.clientX - rect.left) * scale;
+    const py = (e.clientY - rect.top) * scale;
+    if (!ptrRaf.current) {
+      ptrRaf.current = requestAnimationFrame(() => {
+        ptrRaf.current = 0;
+        setPtr({ x: px, y: py });
+      });
+    }
     const d = dragging.current;
     if (!d) return;
     const yaw = d.yaw0 + (e.clientX - d.x) * 0.008;
@@ -274,6 +289,7 @@ export default function OntologyPage() {
             }}
             onMouseLeave={() => {
               hovering.current = false;
+              setPtr(null);
             }}
           >
             <svg
@@ -330,6 +346,14 @@ export default function OntologyPage() {
                   const b = projected[r.autoLinkProcess];
                   if (!a || !b) return null;
                   const depth = ((a.z + b.z) / 2 + RADIUS) / (2 * RADIUS);
+                  // 근접 가산 — 커서가 양 끝 씨앗 근처면 해당 연계선만 또렷해진다
+                  const near = ptr
+                    ? Math.max(
+                        0,
+                        1 - Math.min(Math.hypot(a.x - ptr.x, a.y - ptr.y), Math.hypot(b.x - ptr.x, b.y - ptr.y)) / PROX,
+                      )
+                    : 0;
+                  const lit = focus ? 1 : near;
                   return (
                     <line
                       key={`e${i}`}
@@ -338,8 +362,8 @@ export default function OntologyPage() {
                       x2={b.x}
                       y2={b.y}
                       stroke={REL_COLOR[r.relationshipType] ?? '#9BC9D8'}
-                      strokeWidth={1 + depth}
-                      opacity={0.2 + depth * 0.6}
+                      strokeWidth={0.6 + depth * 0.5 + lit * 0.9}
+                      opacity={0.05 + depth * 0.13 + lit * 0.42}
                     />
                   );
                 })}
@@ -350,11 +374,13 @@ export default function OntologyPage() {
                 const depth = (pt.z + RADIUS) / (2 * RADIUS); // 0 뒤 ~ 1 앞
                 const dimmed = !activeNames.has(name);
                 const isFocus = focus === name;
-                const showLabel = isFocus || (!dimmed && depth > 0.62);
+                // 커서 근접도 — 0(멀다) ~ 1(바로 위)
+                const near = ptr ? Math.max(0, 1 - Math.hypot(pt.x - ptr.x, pt.y - ptr.y) / PROX) : 0;
+                const showLabel = isFocus || (!dimmed && (near > 0.45 || depth > 0.82));
                 return (
                   <g
                     key={name}
-                    opacity={dimmed ? 0.14 : 0.35 + depth * 0.65}
+                    opacity={dimmed ? 0.1 : 0.22 + depth * 0.34 + near * 0.44}
                     className="cursor-pointer"
                     onClick={() => setFocus((v) => (v === name ? null : name))}
                   >
@@ -364,18 +390,22 @@ export default function OntologyPage() {
                       x2={pt.x}
                       y2={pt.y}
                       stroke="rgba(90,180,255,0.8)"
-                      strokeWidth={0.5 + depth * 0.7}
-                      opacity={0.22}
+                      strokeWidth={0.4 + depth * 0.5 + near * 0.5}
+                      opacity={0.08 + near * 0.22}
                     />
                     {(() => {
                       const gold = isFocus || isGold(name);
-                      const R0 = (isFocus ? 11 : 5.5 + depth * 4.5) * pt.s; // 구체 반지름
+                      const R0 = (isFocus ? 11 : 5.5 + depth * 4.5) * pt.s * (1 + near * 0.22); // 구체 반지름(근접 확대)
                       const k = R0 / 8;
                       const wire = gold ? 'rgba(255,225,160,0.75)' : 'rgba(160,220,255,0.75)';
                       return (
                         <g transform={`translate(${pt.x} ${pt.y}) scale(${k})`}>
-                          {/* 외부 발광 */}
-                          <circle r={20} fill={`url(#${gold ? 'glowG' : 'glowB'})`} />
+                          {/* 외부 발광 — 커서가 가까울수록 크고 밝게 */}
+                          <circle
+                            r={16 + near * 20}
+                            fill={`url(#${gold ? 'glowG' : 'glowB'})`}
+                            opacity={0.45 + near * 0.55}
+                          />
                           {/* 구체 본체 */}
                           <circle r={8} fill={`url(#${gold ? 'orbG' : 'orbB'})`} />
                           {/* 내부 와이어프레임 (위도·자오선) */}
@@ -387,7 +417,13 @@ export default function OntologyPage() {
                           <circle cx={-2.2} cy={2.4} r={0.6} fill={wire} opacity={0.8} />
                           <circle cx={-0.6} cy={-3.2} r={0.5} fill={wire} opacity={0.7} />
                           {/* 림 + 스펙큘러 하이라이트 */}
-                          <circle r={8} fill="none" stroke={gold ? 'rgba(255,235,190,0.5)' : 'rgba(190,235,255,0.5)'} strokeWidth={0.6} />
+                          <circle
+                            r={8}
+                            fill="none"
+                            stroke={gold ? 'rgba(255,235,190,1)' : 'rgba(190,235,255,1)'}
+                            strokeOpacity={0.35 + near * 0.6}
+                            strokeWidth={0.6 + near * 0.5}
+                          />
                           <circle cx={-2.6} cy={-2.8} r={1.5} fill="rgba(255,255,255,0.9)" />
                         </g>
                       );
