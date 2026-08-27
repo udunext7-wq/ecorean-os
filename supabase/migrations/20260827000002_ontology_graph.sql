@@ -1,0 +1,9 @@
+-- 온톨로지 그래프 DB + ETL + 공정표 생성 (2026-08-27 대표 지시)
+-- 원본 SQL 은 Supabase 에 적용 완료. 이 파일은 형상 관리를 위한 기록본.
+-- 1) ontology_nodes / ontology_edges 스키마 (RLS: staff 조회, 쓰기는 승인 경로만)
+-- 2) ETL: cost_items 670 → PROCESS, v_all_materials 5,248 → MATERIAL,
+--         분류 330(CATEGORY), 브랜드 43, 직종 32 / 엣지: 소속 960, 브랜드 5,210, 사용자재 67,015
+-- 3) ontology_ingest_rules(jsonb) — rules.json → 개념/검사/인허가 노드 + 규칙 엣지 (admin+)
+-- 4) cost_item_phase(text) — 대분류 → 생애주기 12단계 매핑
+-- 5) ontology_schedule(start, domain, categories, parallel) — 표준 공기 기반 공정표 자동 생성
+-- 상세 정의는 docs/ontology/SCHEMA.md 및 Supabase 함수 정의 참조.

@@ -55,6 +55,7 @@ const SECTIONS: HubSection[] = [
       { href: '/studio/moodboards', name: '무드보드 갤러리', desc: '기준 무드 → 파생·자재 연결' },
       { href: '/studio/presets', name: '스타일 프리셋', desc: '무드에서 추출한 자재 조합' },
       { href: '/studio/ontology', name: '온톨로지', desc: '공정 자동연계 규칙 · 암호 관문' },
+      { href: '/studio/schedule', name: '공정표 자동 생성', desc: '온톨로지 기반 12단계 일정' },
       { href: '/studio/prompt-guide.html', name: '프롬프트 가이드', desc: '인테리어 AI 프롬프트 완성본' },
     ],
   },
