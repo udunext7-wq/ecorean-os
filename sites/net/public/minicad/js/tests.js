@@ -1677,6 +1677,67 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('연결모드: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 조명 점핑(데이지 체인) 배선 — 스위치 ON 시 연쇄 점등 (대표 지시) ===
+  try{
+    const _bakJP={lights:STATE.lights.slice(),electric:STATE.electric.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice(),showC:STATE.showCircuits};
+    const P=8600000;
+    const jsw={id:makeId('e'),type:'switch_2',x:P,y:P,angle:0};
+    STATE.electric.push(jsw);
+    const L=[0,1,2,3].map(i=>{const o={id:makeId('li'),type:'downlight',x:P+1000+i*900,y:P,angle:0,inch:3};STATE.lights.push(o);return o;});
+    // 스위치는 L0 에만 직결, 나머지는 점핑으로 연결 (실무 배선)
+    toggleCircuitLink(jsw.id,L[0].id);
+    endCircuitLink();
+    toggleJumpLink(L[0].id,L[1].id);
+    toggleJumpLink(L[1].id,L[2].id);
+    endJumpLink();
+    assert('점핑: 연결 저장',(L[0].jumpIds||[]).indexOf(L[1].id)>=0&&(L[1].jumpIds||[]).indexOf(L[2].id)>=0);
+    assert('점핑: 이웃 조회 양방향',jumpNeighbors(L[1].id).length===2&&jumpNeighbors(L[2].id).indexOf(L[1].id)>=0);
+    // [JP1] 스위치 OFF → 전부 소등
+    jsw.circuitOn=false;
+    let lit=litLightIds();
+    assert('점핑: OFF 시 전부 소등',!lit.has(L[0].id)&&!lit.has(L[2].id));
+    // [JP2] 스위치 ON → 직결 + 점핑 연쇄 점등, 미연결(L3)은 소등
+    jsw.circuitOn=true;
+    lit=litLightIds();
+    assert('점핑: ON 시 연쇄 점등',lit.has(L[0].id)&&lit.has(L[1].id)&&lit.has(L[2].id),
+      [lit.has(L[0].id),lit.has(L[1].id),lit.has(L[2].id)].join());
+    assert('점핑: 미연결 조명은 소등',!lit.has(L[3].id));
+    // [JP3] 렌더 — 점핑선 표시 + 연쇄 글로우
+    STATE.selectedKind='lights';STATE.selectedId=L[1].id;
+    renderAll();
+    let jl=0,glow=0;
+    groups.lights.getChildren().forEach(n=>{
+      if(n.getClassName()==='Line'&&n.name&&n.name()==='jump-line') jl++;
+      if(n.getChildren) n.getChildren(c=>c.getClassName()==='Circle').forEach(c=>{
+        const st=c.fillRadialGradientColorStops&&c.fillRadialGradientColorStops();if(st&&st.length)glow++;});
+    });
+    assert('점핑: 점핑선 렌더',jl>=2,'lines '+jl);
+    assert('점핑: 연쇄 3개 글로우',glow===3,'glow '+glow);
+    // [JP4] 중간 연결 해제 → 뒤쪽 체인 소등
+    toggleJumpLink(L[0].id,L[1].id);
+    lit=litLightIds();
+    assert('점핑: 중간 해제 시 뒤쪽 소등',lit.has(L[0].id)&&!lit.has(L[1].id)&&!lit.has(L[2].id));
+    toggleJumpLink(L[0].id,L[1].id); // 원복
+    // [JP5] 조명 삭제 시 회로·점핑 참조 정리
+    STATE.selectedKind='lights';STATE.selectedId=L[2].id;STATE.boxSelection=[];
+    deleteSelected();
+    assert('점핑: 삭제 시 참조 정리',!(L[1].jumpIds||[]).includes(L[2].id)&&!(jsw.lightIds||[]).includes(L[2].id));
+    // [JP6] 저장→불러오기 왕복
+    const rawJ=JSON.stringify(buildJSON());
+    applyLoadedData(JSON.parse(rawJ));
+    const l0=STATE.lights.find(x=>x.id===L[0].id), l1=STATE.lights.find(x=>x.id===L[1].id);
+    assert('점핑: 왕복 보존',!!l0&&!!l1&&(l0.jumpIds||[]).indexOf(L[1].id)>=0);
+    assert('점핑: 왕복 후에도 연쇄 점등',litLightIds().has(L[1].id));
+    // 정리
+    STATE.lights=_bakJP.lights;STATE.electric=_bakJP.electric;
+    STATE.selectedKind=_bakJP.selK;STATE.selectedId=_bakJP.selI;STATE.boxSelection=_bakJP.box;
+    STATE.showCircuits=_bakJP.showC;window._jumpLink=null;window._circuitLink=null;
+    if(typeof _circuitBanner==='function') _circuitBanner();
+    renderAll();
+  }catch(e){
+    assert('점핑: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

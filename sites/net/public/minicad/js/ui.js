@@ -672,6 +672,24 @@ function refreshDetail(){
         '<button type="button" class="btn sm" id="d-dl-apply-all" style="width:100%;margin-top:4px">같은 공간 다운라이트 전체 적용</button>'+
         '</div>';
     }
+    // 2026-08-27: 조명 점핑 패널 (대표 지시) — 조명↔조명 연결
+    const isLightSel=STATE.selectedKind==='lights'&&obj;
+    let jumpHtml='';
+    if(isLightSel){
+      const nb=(typeof jumpNeighbors==='function')?jumpNeighbors(obj.id):[];
+      const linkingJ=!!(window._jumpLink&&window._jumpLink.lightId===obj.id);
+      const litNow=(typeof litLightIds==='function')&&litLightIds().has(obj.id);
+      const feeder=(STATE.electric||[]).filter(e=>Array.isArray(e.lightIds)&&e.lightIds.indexOf(obj.id)>=0).length;
+      jumpHtml=
+        '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.08);border:1px solid rgba(212,184,114,0.35);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#D4B872">배선 — 점핑 <b>'+nb.length+'</b>개'+(feeder?' · 스위치 직결':'')+
+        ' <span style="color:'+(litNow?'#D4B872':'#7B82B5')+'">'+(litNow?'● 점등 중':'○ 소등')+'</span></div>'+
+        '<div style="display:flex;gap:4px">'+
+        '<button type="button" class="btn sm" id="d-jump-link" style="flex:1'+(linkingJ?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+'">'+(linkingJ?'점핑 모드 종료 (Esc)':'🔗 조명 점핑 연결')+'</button>'+
+        (nb.length?'<button type="button" class="btn sm" id="d-jump-clear" style="flex:1">점핑 전체 해제</button>':'')+
+        '</div>'+
+        '<div class="hint" style="margin-top:4px">스위치에 직결되지 않아도, 점핑으로 이어진 조명은 함께 켜집니다</div></div>';
+    }
     // 2026-08-26: 스위치 회로 패널 (조명 연결·점등 토글)
     const isSwitch=STATE.selectedKind==='electric'&&obj&&/^switch|^dimmer/.test(obj.type||'');
     let circuitHtml='';
@@ -700,7 +718,7 @@ function refreshDetail(){
         '</div>';
     }
     dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      lenHtml+inchHtml+circuitHtml+extraHtml+
+      lenHtml+inchHtml+jumpHtml+circuitHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -711,6 +729,21 @@ function refreshDetail(){
       document.getElementById('d-rot-90').addEventListener('click',()=>{obj.angle=((obj.angle||0)+90)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-m90').addEventListener('click',()=>{obj.angle=((obj.angle||0)-90+360)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-180').addEventListener('click',()=>{obj.angle=((obj.angle||0)+180)%360;saveHistory();renderAll();refreshUI();});
+    }
+    if(isLightSel){
+      const jb=document.getElementById('d-jump-link');
+      if(jb) jb.addEventListener('click',()=>{
+        if(window._jumpLink&&window._jumpLink.lightId===obj.id) endJumpLink();
+        else startJumpLink(obj.id);
+      });
+      const jc=document.getElementById('d-jump-clear');
+      if(jc) jc.addEventListener('click',()=>{
+        const nb=(typeof jumpNeighbors==='function')?jumpNeighbors(obj.id):[];
+        obj.jumpIds=[];
+        STATE.lights.forEach(l=>{if(Array.isArray(l.jumpIds)) l.jumpIds=l.jumpIds.filter(id=>id!==obj.id);});
+        saveHistory();renderAll();refreshUI();
+        cmdToast('점핑 전체 해제 — '+nb.length+'개');
+      });
     }
     if(isLinear){
       const applyLen=v=>{
@@ -1769,6 +1802,13 @@ function deleteSelected(){
     STATE.videoSequenceOrder=STATE.videoSequenceOrder.filter(id=>!delIds.has(id));
     if(STATE.videoSequenceOrder.length===0) STATE.videoSequenceOrder=null;
   }
+  // 2026-08-27: 삭제된 조명은 스위치 회로·점핑 목록에서도 제거 (끊긴 참조 방지)
+  (function(){
+    const gone=new Set(targets.filter(t=>t.kind==='lights').map(t=>t.id));
+    if(!gone.size) return;
+    (STATE.electric||[]).forEach(e=>{if(Array.isArray(e.lightIds)) e.lightIds=e.lightIds.filter(id=>!gone.has(id));});
+    (STATE.lights||[]).forEach(l=>{if(Array.isArray(l.jumpIds)) l.jumpIds=l.jumpIds.filter(id=>!gone.has(id));});
+  })();
   cleanupOrphanVertices();
   saveHistory();renderAll();refreshUI();showStatus('삭제 ('+targets.length+'개)'+(lockedCnt?' — 잠금 '+lockedCnt+'개 제외':''));
 }
@@ -2038,10 +2078,15 @@ function migrateLoadedState(schema){
 // 2026-08-27: 연결 모드 상시 배너 — 종료 전까지 계속 켜져 있음을 눈으로 확인 (대표 지시)
 function _circuitBanner(){
   let el=document.getElementById('circuit-link-banner');
-  const link=window._circuitLink;
-  if(!link){ if(el) el.remove(); return; }
-  const sw=STATE.electric.find(e=>e.id===link.switchId);
-  const n=sw&&Array.isArray(sw.lightIds)?sw.lightIds.filter(id=>STATE.lights.some(l=>l.id===id)).length:0;
+  const link=window._circuitLink, jump=window._jumpLink;
+  if(!link&&!jump){ if(el) el.remove(); return; }
+  let n=0;
+  if(link){
+    const sw=STATE.electric.find(e=>e.id===link.switchId);
+    n=sw&&Array.isArray(sw.lightIds)?sw.lightIds.filter(id=>STATE.lights.some(l=>l.id===id)).length:0;
+  }else{
+    n=(typeof jumpNeighbors==='function')?jumpNeighbors(jump.lightId).length:0;
+  }
   if(!el){
     el=document.createElement('div');
     el.id='circuit-link-banner';
@@ -2054,12 +2099,16 @@ function _circuitBanner(){
     btn.textContent='종료 (Esc)';
     btn.style.cssText='background:#0A0A0A;color:#7BA05B;border:none;border-radius:12px;padding:3px 10px;'
       +'font-size:11px;font-weight:700;cursor:pointer';
-    btn.addEventListener('click',()=>{if(typeof endCircuitLink==='function')endCircuitLink();});
+    btn.addEventListener('click',()=>{
+      if(window._jumpLink&&typeof endJumpLink==='function') endJumpLink();
+      else if(typeof endCircuitLink==='function') endCircuitLink();
+    });
     el.appendChild(txt);el.appendChild(btn);
     document.body.appendChild(el);
   }
   const t=document.getElementById('circuit-link-text');
-  if(t) t.textContent='🔌 조명 연결 모드 — 조명을 클릭해 연결/해제 (연결 '+n+'개)';
+  if(t) t.textContent=(jump?'🔗 점핑 연결 모드 — 이어 붙일 조명 클릭':'🔌 조명 연결 모드 — 조명을 클릭해 연결/해제')+' (연결 '+n+'개)';
+  if(el) el.style.background=jump?'rgba(212,184,114,0.96)':'rgba(123,160,91,0.95)';
 }
 function toggleCircuitLink(switchId,lightId){
   const sw=STATE.electric.find(e=>e.id===switchId);
@@ -2078,10 +2127,44 @@ function startCircuitLink(switchId){
   renderAll();refreshUI();_circuitBanner();
   cmdToast('🔌 조명 연결 모드 — 연결할 조명을 계속 클릭 (다시 클릭=해제, Esc·배너 버튼=종료)');
 }
+// 2026-08-27: 조명↔조명 점핑 연결 (대표 지시 — 실무는 조명에서 조명으로 점핑하는 경우가 더 많다)
+function toggleJumpLink(fromId,toId){
+  if(fromId===toId){cmdToast('같은 조명입니다');return;}
+  const a=STATE.lights.find(l=>l.id===fromId), b=STATE.lights.find(l=>l.id===toId);
+  if(!a||!b){window._jumpLink=null;_circuitBanner();return;}
+  if(!Array.isArray(a.jumpIds)) a.jumpIds=[];
+  const i=a.jumpIds.indexOf(toId);
+  // 반대 방향에 저장돼 있으면 그쪽에서 해제
+  const bi=Array.isArray(b.jumpIds)?b.jumpIds.indexOf(fromId):-1;
+  if(i>=0||bi>=0){
+    if(i>=0) a.jumpIds.splice(i,1);
+    if(bi>=0) b.jumpIds.splice(bi,1);
+    cmdToast('점핑 해제 — '+(a.jumpIds.length)+'개 연결');
+  }else{
+    a.jumpIds.push(toId);
+    cmdToast('점핑 연결 — '+a.jumpIds.length+'개 (계속 클릭, Esc 종료)');
+  }
+  STATE.selectedKind='lights';STATE.selectedId=fromId;STATE.boxSelection=[];
+  saveHistory();renderAll();refreshUI();_circuitBanner();
+}
+function startJumpLink(lightId){
+  window._circuitLink=null;
+  window._jumpLink={lightId};
+  STATE.selectedKind='lights';STATE.selectedId=lightId;STATE.boxSelection=[];
+  renderAll();refreshUI();_circuitBanner();
+  cmdToast('🔗 점핑 연결 모드 — 이어 붙일 조명을 계속 클릭 (다시 클릭=해제, Esc·배너=종료)');
+}
+function endJumpLink(){
+  if(window._jumpLink){window._jumpLink=null;renderAll();refreshUI();_circuitBanner();cmdToast('점핑 연결 모드 종료');}
+}
 function endCircuitLink(){
   if(window._circuitLink){window._circuitLink=null;renderAll();refreshUI();_circuitBanner();cmdToast('조명 연결 모드 종료');}
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&window._circuitLink)endCircuitLink();});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  if(window._jumpLink) endJumpLink();
+  else if(window._circuitLink) endCircuitLink();
+});
 
 // --- [도면력] 전체 자동 치수: 모든 공간 외곽 변에 치수선 일괄 생성 (재실행 시 자동분 제거 토글) ---
 function dimAllSpaces(){

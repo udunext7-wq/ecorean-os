@@ -2288,6 +2288,12 @@ stage.on('mousedown touchstart',e=>{
         renderAll();refreshUI();
         return;
       }
+      if(window._jumpLink){ // 2026-08-27: 점핑 모드도 빈 곳 클릭에 모드 유지
+        drawState=null;
+        STATE.selectedKind='lights';STATE.selectedId=window._jumpLink.lightId;STATE.boxSelection=[];
+        renderAll();refreshUI();
+        return;
+      }
       drawState={type:'box',start:mm,current:mm};
       STATE.selectedKind=null;STATE.selectedId=null;
       if(!STATE.shiftPressed) STATE.boxSelection=[];
@@ -2312,6 +2318,11 @@ stage.on('mousedown touchstart',e=>{
         if(window._circuitLink&&found){
           if(found.kind!=='electric') return;           // 조명·기타 객체: 드래그·선택 금지
           if(found.id!==window._circuitLink.switchId) return; // 다른 전기 객체도 무시
+        }
+        // 2026-08-27: 점핑 연결 모드 — 조명 클릭은 click 핸들러가 처리, 그 외는 무시
+        if(window._jumpLink&&found){
+          if(found.kind!=='lights') return;
+          if(found.id!==window._jumpLink.lightId) return;
         }
         if(found){
           const isAlt=!!(e.evt&&e.evt.altKey)||!!STATE.altLatched; // 2026-08-19: 퀵바 ⎇ Alt 고정 (태블릿 드래그 복제)
@@ -3880,6 +3891,7 @@ document.addEventListener('keydown',e=>{
       break;
     case 'escape':
       // 2026-08-27: 조명 연결 모드가 켜져 있으면 Esc 는 '모드 종료'만 수행 (선택·도구 상태 보존)
+      if(window._jumpLink&&typeof endJumpLink==='function'){endJumpLink();break;}
       if(window._circuitLink&&typeof endCircuitLink==='function'){endCircuitLink();break;}
       drawState=null;STATE.measureFirst=null;offsetState=null;polyState=null;polyClickGuard=false;
       leaderDrawState=null;

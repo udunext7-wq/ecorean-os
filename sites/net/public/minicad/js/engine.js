@@ -2054,6 +2054,7 @@ function _symbolLabelClick(kind,id){
     if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0) return;
     e.cancelBubble=true;
     if(kind==='lights'&&window._circuitLink&&typeof toggleCircuitLink==='function'){toggleCircuitLink(window._circuitLink.switchId,id);return;}
+    if(kind==='lights'&&window._jumpLink&&typeof toggleJumpLink==='function'){toggleJumpLink(window._jumpLink.lightId,id);return;}
     if(STATE.selectedTool==='select'&&typeof selectObj==='function') selectObj(kind,id);
   };
 }
@@ -2071,11 +2072,51 @@ function addSymbolLabel(group,xPx,yPx,def,kind,id){
 }
 // 2026-08-26: 스위치→조명 회로 연동 (대표 지시) — 스위치 ON 시 연결된 조명 점등 표시
 function isSwitchType(t){return /^switch|^dimmer/.test(t||'');}
+// 2026-08-27: 실무 배선 반영 — 조명끼리 '점핑(데이지 체인)'으로 이어지면 스위치 ON 시 연쇄 점등 (대표 지시)
+//  o.jumpIds = 이 조명과 직접 연결된 다른 조명 id 배열 (무방향)
+function lightById(id){return (STATE.lights||[]).find(l=>l.id===id);}
+function jumpNeighbors(id){
+  const out=new Set();
+  const l=lightById(id);
+  if(l&&Array.isArray(l.jumpIds)) l.jumpIds.forEach(j=>{if(lightById(j))out.add(j);});
+  (STATE.lights||[]).forEach(o=>{if(Array.isArray(o.jumpIds)&&o.jumpIds.indexOf(id)>=0) out.add(o.id);});
+  out.delete(id);
+  return [...out];
+}
+// 시드(스위치 직결 조명)에서 점핑을 따라 확장한 전체 집합
+function expandJumpChain(seedIds){
+  const seen=new Set(),stack=[];
+  (seedIds||[]).forEach(id=>{if(lightById(id)&&!seen.has(id)){seen.add(id);stack.push(id);}});
+  while(stack.length){
+    const cur=stack.pop();
+    jumpNeighbors(cur).forEach(n=>{if(!seen.has(n)){seen.add(n);stack.push(n);}});
+  }
+  return seen;
+}
 function litLightIds(){
-  const set=new Set();
+  const seeds=[];
   (STATE.electric||[]).forEach(sw=>{
-    if(sw.circuitOn&&isSwitchType(sw.type)&&Array.isArray(sw.lightIds)) sw.lightIds.forEach(id=>set.add(id));
+    if(sw.circuitOn&&isSwitchType(sw.type)&&Array.isArray(sw.lightIds)) sw.lightIds.forEach(id=>seeds.push(id));
   });
+  return expandJumpChain(seeds); // 점핑 연쇄 포함
+}
+// 점핑선을 그릴 대상 집합 (선택·회로 상시표시·연결 모드 기준)
+function jumpVisibleSet(){
+  const set=new Set();
+  if(STATE.showCircuits){ (STATE.lights||[]).forEach(l=>set.add(l.id)); return set; }
+  if(window._jumpLink&&window._jumpLink.lightId){
+    set.add(window._jumpLink.lightId);
+    jumpNeighbors(window._jumpLink.lightId).forEach(n=>set.add(n));
+  }
+  if(STATE.selectedKind==='lights'&&STATE.selectedId){
+    set.add(STATE.selectedId);
+    jumpNeighbors(STATE.selectedId).forEach(n=>set.add(n));
+  }
+  if(STATE.selectedKind==='electric'&&STATE.selectedId){
+    const sw=(STATE.electric||[]).find(e=>e.id===STATE.selectedId);
+    if(sw&&isSwitchType(sw.type)) expandJumpChain(sw.lightIds||[]).forEach(id=>set.add(id));
+  }
+  (STATE.boxSelection||[]).forEach(b=>{if(b.kind==='lights'){set.add(b.id);jumpNeighbors(b.id).forEach(n=>set.add(n));}});
   return set;
 }
 function renderRect(arr,group,lib,kind){
@@ -2248,7 +2289,26 @@ function downlightDef(o){
 }
 function renderLights(){
   groups.lights.destroyChildren();
-  const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합
+  const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합 (2026-08-27: 점핑 연쇄 포함)
+  // 2026-08-27: 조명↔조명 점핑선 (중복 방지 위해 id 사전순 한 번만)
+  const _jvis=jumpVisibleSet();
+  const _drawn=new Set();
+  (STATE.lights||[]).forEach(l=>{
+    jumpNeighbors(l.id).forEach(nid=>{
+      const key=l.id<nid?l.id+'|'+nid:nid+'|'+l.id;
+      if(_drawn.has(key)) return;
+      if(!(_jvis.has(l.id)||_jvis.has(nid))) return;
+      _drawn.add(key);
+      const t=lightById(nid); if(!t) return;
+      const x1=STATE.offsetX+mmToPx(l.x),y1=STATE.offsetY+mmToPx(l.y);
+      const x2=STATE.offsetX+mmToPx(t.x),y2=STATE.offsetY+mmToPx(t.y);
+      const on=_litSet.has(l.id)&&_litSet.has(nid);
+      groups.lights.add(new Konva.Line({points:[x1,y1,x2,y2],stroke:on?'#D4B872':'#7BA05B',
+        strokeWidth:1.6,dash:[5,4],opacity:0.95,listening:false,name:'jump-line'}));
+      groups.lights.add(new Konva.Circle({x:(x1+x2)/2,y:(y1+y2)/2,radius:3.2,
+        fill:on?'#D4B872':'#7BA05B',listening:false,name:'jump-mid'}));
+    });
+  });
   STATE.lights.forEach(o=>{
     const def=(o.type==='downlight')?downlightDef(o)
              :(isLinearLight(o.type)?linearLightDef(o):LIGHT_LIB[o.type]); // 2026-08-25: 인치 규격 / 길이 가변
@@ -2319,6 +2379,8 @@ function renderLights(){
       e.cancelBubble=true;
       // 2026-08-26: 조명 연결 모드 — 클릭한 조명을 스위치 회로에 연결/해제
       if(window._circuitLink&&typeof toggleCircuitLink==='function'){toggleCircuitLink(window._circuitLink.switchId,o.id);return;}
+      // 2026-08-27: 조명↔조명 점핑 연결 모드
+      if(window._jumpLink&&typeof toggleJumpLink==='function'){toggleJumpLink(window._jumpLink.lightId,o.id);return;}
       if(STATE.selectedTool==='select') selectObj('lights',o.id);
     });
     if((def.size||0)<=400) addSymbolLabel(groups.lights,x,y,def,'lights',o.id); // 2026-08-24: 소형 조명 라벨 (클릭 = 선택/회로 연결)
