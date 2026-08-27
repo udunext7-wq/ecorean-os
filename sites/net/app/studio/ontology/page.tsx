@@ -47,12 +47,12 @@ const PHASE_COLOR: Record<number, string> = {
   9: '#F58FA8',
 };
 
-const SIZE = 760;
+const SIZE = 980;
 const CX = SIZE / 2;
 const CY = SIZE / 2;
-const RADIUS = 250;
-const FOV = 1000;
-const PROX = 120; // 근접 글로우 반경
+const RADIUS = 355;
+const FOV = 1350;
+const PROX = 140; // 근접 글로우 반경
 
 export default function OntologyPage() {
   const rules = (data as { rules: Rule[] }).rules;
@@ -285,7 +285,7 @@ export default function OntologyPage() {
 
   return (
     <main className={`${noto.className} min-h-screen bg-[#04070c] p-6 text-[#e6edf2]`}>
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-[1600px]">
         <StudioNav />
         <header className="mb-6 border-b border-[#9BC9D8]/15 pb-5">
           <h1 className="text-2xl font-bold tracking-tight text-[#f0deb9]">AI 스튜디오 · 온톨로지</h1>
@@ -390,7 +390,7 @@ export default function OntologyPage() {
           </div>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div
             className="onto-stage overflow-hidden rounded-xl border border-[#9BC9D8]/15"
             onMouseEnter={() => {
@@ -403,7 +403,7 @@ export default function OntologyPage() {
           >
             <svg
               viewBox={`0 0 ${SIZE} ${SIZE}`}
-              className="mx-auto block max-w-[760px] cursor-grab touch-none active:cursor-grabbing"
+              className="mx-auto block w-full max-w-[980px] cursor-grab touch-none active:cursor-grabbing"
               onPointerDown={onDown}
               onPointerMove={onMove}
               onPointerUp={onUp}
@@ -548,7 +548,7 @@ export default function OntologyPage() {
                 const near = ptr ? Math.max(0, 1 - Math.hypot(pt.x - ptr.x, pt.y - ptr.y) / PROX) : 0;
                 const showLabel = isFocus || (!dimmed && (near > 0.55 || depth > 0.93));
                 const ph = phaseOf[name] ?? 0;
-                const R0 = (isFocus ? 9 : 3.6 + depth * 3.4) * pt.s * (1 + near * 0.3);
+                const R0 = (isFocus ? 6.5 : 2.2 + depth * 2.2) * pt.s * (1 + near * 0.32);
                 const k = R0 / 8;
                 return (
                   <g
