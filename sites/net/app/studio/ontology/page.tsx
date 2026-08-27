@@ -47,6 +47,36 @@ const PHASE_COLOR: Record<number, string> = {
   9: '#F58FA8',
 };
 
+// ── 물리 기반 조명 모델 (2026-08-27 대표 지시) ────────────────────────────
+// 광원: BOC cost_items 전기공정 실제 품목 + 해당 기구의 표준 LED 광속·배광각
+// 조도: E[lx] = I[cd] / d[m]²  (역제곱 법칙),  I = Φ[lm] / Ω[sr],  Ω = 2π(1−cos(θ/2))
+// 도달 반경: KS A 3011 실내 최저 권장 조도대(≈50lx)까지 빛이 닿는 거리로 정의
+type Fixture = { label: string; lm: number; beam: number };
+const FIXTURES: Record<number, Fixture> = {
+  0: { label: '팬던트 조명', lm: 800, beam: 360 },
+  1: { label: '팬던트 조명 (전방위)', lm: 800, beam: 360 },
+  2: { label: '가설 작업등', lm: 2000, beam: 120 },
+  3: { label: 'LED 매입등', lm: 1000, beam: 60 },
+  4: { label: '다운라이트 6인치', lm: 1800, beam: 60 },
+  5: { label: '다운라이트 4인치', lm: 1200, beam: 60 },
+  6: { label: '욕실 방수등', lm: 1400, beam: 120 },
+  7: { label: '간접등 LED바 (1m)', lm: 1000, beam: 120 },
+  8: { label: '주방 매립등', lm: 2000, beam: 60 },
+  9: { label: '비상조명 LED', lm: 500, beam: 120 },
+};
+const E_THRESHOLD = 50; // lx — KS A 3011 실내 최저 권장 조도대
+const UNITS_PER_M = 8; // 화면 축척: viewBox 1m = 8단위
+const STANDBY = 0.25; // 대기 출력 25% (조광) — 도달거리는 √0.25 = 절반
+
+function candela(f: Fixture, fluxFactor: number) {
+  const omega = 2 * Math.PI * (1 - Math.cos(((f.beam * Math.PI) / 180) / 2));
+  return (f.lm * fluxFactor) / omega;
+}
+/** 조도 임계까지 빛이 닿는 거리 [m] — d = √(I / E) */
+function reachM(f: Fixture, fluxFactor: number) {
+  return Math.sqrt(candela(f, fluxFactor) / E_THRESHOLD);
+}
+
 const SIZE = 980;
 const CX = SIZE / 2;
 const CY = SIZE / 2;
@@ -418,10 +448,17 @@ export default function OntologyPage() {
                     <stop offset="100%" stopColor={c} stopOpacity={0.12} />
                   </radialGradient>
                 ))}
+                {/* 역제곱 감쇠(E ∝ 1/d²) 프로파일 — 중심부 포화, 급격한 감광, 옅은 외곽 */}
                 {Object.entries(PHASE_COLOR).map(([id, c]) => (
                   <radialGradient key={`g${id}`} id={`glow${id}`} cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor={c} stopOpacity={0.5} />
-                    <stop offset="60%" stopColor={c} stopOpacity={0.14} />
+                    {[0.12, 0.2, 0.3, 0.45, 0.65, 0.85, 1].map((f) => (
+                      <stop
+                        key={f}
+                        offset={`${(f * 100).toFixed(0)}%`}
+                        stopColor={c}
+                        stopOpacity={Math.min(1, (0.12 / f) ** 2)}
+                      />
+                    ))}
                     <stop offset="100%" stopColor={c} stopOpacity={0} />
                   </radialGradient>
                 ))}
@@ -550,9 +587,12 @@ export default function OntologyPage() {
                 const ph = phaseOf[name] ?? 0;
                 const R0 = (isFocus ? 5 : 1.5 + depth * 1.5) * pt.s * (1 + near * 0.35);
                 const k = R0 / 8;
-                // 조명이 미치는 범위 — 노드 크기와 분리된 절대 반경의 빛 웅덩이
-                const haloR = (16 + depth * 14 + near * 34 + (isFocus ? 30 : 0)) * pt.s;
-                const haloO = dimmed ? 0.05 : 0.16 + depth * 0.22 + near * 0.5 + (isFocus ? 0.25 : 0);
+                // 조명 도달 반경 — 실제 기구 광속·배광각에서 역제곱 법칙으로 산출
+                // 대기 시 25% 조광(도달 절반), 커서 근접·포커스 시 100% 출력으로 점등
+                const fx = FIXTURES[ph] ?? FIXTURES[0];
+                const fluxFactor = isFocus ? 1 : STANDBY + near * (1 - STANDBY);
+                const haloR = reachM(fx, fluxFactor) * UNITS_PER_M * pt.s;
+                const haloO = dimmed ? 0.05 : 0.3 + depth * 0.25 + near * 0.35 + (isFocus ? 0.15 : 0);
                 return (
                   <g
                     key={name}
@@ -676,6 +716,17 @@ export default function OntologyPage() {
                 ONTOLOGY
               </text>
             </svg>
+            <p className="border-t border-[#9BC9D8]/10 px-4 py-2 text-[10px] leading-relaxed text-[#94aab8]">
+              조명 모델 — 단계별 광원은 BOC 전기공정 실제 품목(
+              {Object.values(FIXTURES)
+                .slice(1)
+                .map((f) => f.label)
+                .join(' · ')}
+              )의 표준 광속을 사용합니다. 도달 반경은 I = Φ/Ω, E = I/d² (역제곱 법칙)로 계산해 KS A 3011
+              실내 최저 권장 조도 {E_THRESHOLD}lx 지점까지이며, 화면 축척은 1m = {UNITS_PER_M}단위입니다.
+              대기 상태는 {Math.round(STANDBY * 100)}% 조광(도달 √{STANDBY} = 절반)이고, 커서를 대면 100%
+              출력으로 점등됩니다.
+            </p>
           </div>
 
           {/* 우측: 포커스 시 공정 상세, 아니면 규칙 목록 */}
