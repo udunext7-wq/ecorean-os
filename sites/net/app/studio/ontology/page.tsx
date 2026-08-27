@@ -358,9 +358,33 @@ export default function OntologyPage() {
               setPtr(null);
             }}
           >
+            {/* JARVIS HUD 크롬 — 코너 브래킷 + 텔레메트리 */}
+            <div className="onto-hud" aria-hidden>
+              <span className="onto-bk tl" />
+              <span className="onto-bk tr" />
+              <span className="onto-bk bl" />
+              <span className="onto-bk br" />
+              <div className="onto-tele left">
+                <p>SYS · ONTOLOGY CORE</p>
+                <p>NODES {audit.nodes}</p>
+                <p>LINKS {rules.length}</p>
+                <p>RENDER {visible.length}</p>
+              </div>
+              <div className="onto-tele right">
+                <p>PROJECTION 3D-SPH</p>
+                <p>YAW {((rot.yaw * 180) / Math.PI).toFixed(0).padStart(3, '0')}°</p>
+                <p>PITCH {((rot.pitch * 180) / Math.PI).toFixed(0).padStart(3, '0')}°</p>
+                <p className={audit.cycles.length ? 'warn' : ''}>
+                  INTEGRITY {audit.cycles.length ? 'CHECK' : 'OK'}
+                </p>
+              </div>
+              <div className="onto-tele bottom">
+                <p>{focus ? `TARGET · ${focus}` : 'DRAG TO ROTATE · HOVER TO SCAN · CLICK TO LOCK'}</p>
+              </div>
+            </div>
             <svg
               viewBox={`0 0 ${SIZE} ${SIZE}`}
-              className="mx-auto block max-w-[760px] cursor-grab touch-none active:cursor-grabbing"
+              className="onto-svg mx-auto block max-w-[760px] cursor-grab touch-none active:cursor-grabbing"
               onPointerDown={onDown}
               onPointerMove={onMove}
               onPointerUp={onUp}
@@ -382,6 +406,16 @@ export default function OntologyPage() {
                     <stop offset="100%" stopColor={c} stopOpacity={0} />
                   </radialGradient>
                 ))}
+                <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="rgba(120,225,255,0)" />
+                  <stop offset="70%" stopColor="rgba(120,225,255,0.35)" />
+                  <stop offset="100%" stopColor="rgba(190,245,255,0.85)" />
+                </linearGradient>
+                <linearGradient id="coneGrad" x1="0" y1="1" x2="0" y2="0">
+                  <stop offset="0%" stopColor="rgba(90,200,255,0.22)" />
+                  <stop offset="60%" stopColor="rgba(90,200,255,0.05)" />
+                  <stop offset="100%" stopColor="rgba(90,200,255,0)" />
+                </linearGradient>
                 <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="rgba(80,180,255,0)" />
                   <stop offset="45%" stopColor="rgba(120,200,255,0.3)" />
@@ -390,7 +424,59 @@ export default function OntologyPage() {
                 </linearGradient>
               </defs>
 
+              {/* 프로젝터 콘 — 아래에서 투사되는 홀로그램 광원 (JARVIS 연출) */}
+              <polygon
+                points={`${CX - 26},${SIZE} ${CX + 26},${SIZE} ${CX + RADIUS * 1.15},${CY} ${CX - RADIUS * 1.15},${CY}`}
+                fill="url(#coneGrad)"
+              />
+              <ellipse cx={CX} cy={SIZE - 6} rx={40} ry={7} fill="rgba(120,220,255,0.28)" />
+
               <rect x={CX - 2.5} y={CY - RADIUS * 1.25} width={5} height={RADIUS * 2.5} fill="url(#beam)" />
+
+              {/* 외곽 틱 스케일 — 계기 눈금 */}
+              <g opacity={0.5}>
+                {Array.from({ length: 72 }, (_, i) => {
+                  const a = (i / 72) * Math.PI * 2;
+                  const major = i % 6 === 0;
+                  const r1 = RADIUS * 1.16;
+                  const r2 = RADIUS * (major ? 1.22 : 1.19);
+                  return (
+                    <line
+                      key={`tk${i}`}
+                      x1={CX + Math.cos(a) * r1}
+                      y1={CY + Math.sin(a) * r1}
+                      x2={CX + Math.cos(a) * r2}
+                      y2={CY + Math.sin(a) * r2}
+                      stroke={major ? 'rgba(190,245,255,0.55)' : 'rgba(120,200,235,0.3)'}
+                      strokeWidth={major ? 1 : 0.6}
+                    />
+                  );
+                })}
+                <circle cx={CX} cy={CY} r={RADIUS * 1.16} fill="none" stroke="rgba(120,200,235,0.18)" strokeWidth={0.6} />
+              </g>
+
+              {/* 자이로 링 3중 — 서로 다른 축·속도로 회전 (SMIL: 리렌더 비용 없음) */}
+              <g fill="none" strokeWidth={0.9}>
+                <g>
+                  <ellipse cx={CX} cy={CY} rx={RADIUS * 1.1} ry={RADIUS * 0.32} stroke="rgba(120,225,255,0.35)" strokeDasharray="3 7" />
+                  <animateTransform attributeName="transform" type="rotate" from={`0 ${CX} ${CY}`} to={`360 ${CX} ${CY}`} dur="26s" repeatCount="indefinite" />
+                </g>
+                <g>
+                  <ellipse cx={CX} cy={CY} rx={RADIUS * 0.34} ry={RADIUS * 1.08} stroke="rgba(232,201,155,0.28)" strokeDasharray="2 9" />
+                  <animateTransform attributeName="transform" type="rotate" from={`360 ${CX} ${CY}`} to={`0 ${CX} ${CY}`} dur="34s" repeatCount="indefinite" />
+                </g>
+                <g>
+                  <circle cx={CX} cy={CY} r={RADIUS * 1.04} stroke="rgba(150,235,255,0.16)" strokeDasharray="1 12" />
+                  <animateTransform attributeName="transform" type="rotate" from={`0 ${CX} ${CY}`} to={`360 ${CX} ${CY}`} dur="60s" repeatCount="indefinite" />
+                </g>
+              </g>
+
+              {/* 레이더 스캔 스윕 */}
+              <g opacity={0.45}>
+                <line x1={CX} y1={CY} x2={CX + RADIUS * 1.16} y2={CY} stroke="url(#sweepGrad)" strokeWidth={2} />
+                <animateTransform attributeName="transform" type="rotate" from={`0 ${CX} ${CY}`} to={`360 ${CX} ${CY}`} dur="7s" repeatCount="indefinite" />
+              </g>
+
               <circle cx={CX} cy={CY} r={RADIUS * 1.02} fill="none" stroke="rgba(155,201,216,0.06)" />
 
               {/* 연계선 */}
@@ -504,6 +590,72 @@ export default function OntologyPage() {
                   </g>
                 );
               })}
+
+              {/* 포커스 리티클 — 대상 조준 브래킷 */}
+              {focus && projected[focus]
+                ? (() => {
+                    const f = projected[focus];
+                    const R1 = 26;
+                    const arm = 9;
+                    const corners = [
+                      [-1, -1],
+                      [1, -1],
+                      [-1, 1],
+                      [1, 1],
+                    ];
+                    return (
+                      <g pointerEvents="none">
+                        <g>
+                          <circle
+                            cx={f.x}
+                            cy={f.y}
+                            r={R1}
+                            fill="none"
+                            stroke="rgba(190,245,255,0.55)"
+                            strokeWidth={0.8}
+                            strokeDasharray="4 6"
+                          />
+                          <animateTransform
+                            attributeName="transform"
+                            type="rotate"
+                            from={`0 ${f.x} ${f.y}`}
+                            to={`360 ${f.x} ${f.y}`}
+                            dur="9s"
+                            repeatCount="indefinite"
+                          />
+                        </g>
+                        {corners.map(([sx, sy], i) => (
+                          <path
+                            key={`rc${i}`}
+                            d={`M ${f.x + sx * R1} ${f.y + sy * R1 - sy * arm} L ${f.x + sx * R1} ${f.y + sy * R1} L ${f.x + sx * R1 - sx * arm} ${f.y + sy * R1}`}
+                            fill="none"
+                            stroke="#F0DEB9"
+                            strokeWidth={1.3}
+                            opacity={0.85}
+                          />
+                        ))}
+                        <line
+                          x1={f.x + R1}
+                          y1={f.y}
+                          x2={f.x + R1 + 34}
+                          y2={f.y}
+                          stroke="rgba(240,222,185,0.5)"
+                          strokeWidth={0.8}
+                        />
+                        <text
+                          x={f.x + R1 + 38}
+                          y={f.y + 3}
+                          fontSize={9}
+                          fill="#F0DEB9"
+                          fontFamily="monospace"
+                          letterSpacing={1}
+                        >
+                          [ TARGET LOCK ]
+                        </text>
+                      </g>
+                    );
+                  })()
+                : null}
 
               {/* 중심 코어 */}
               <circle cx={CX} cy={CY} r={44} fill="url(#glow3)" />
