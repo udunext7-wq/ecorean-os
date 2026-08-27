@@ -9,6 +9,7 @@ const TABS = [
   { href: '/studio/presets', label: '스타일 프리셋' },
   { href: '/studio/ontology', label: '온톨로지' },
   { href: '/studio/schedule', label: '공정표' },
+  { href: '/studio/building', label: '건축물대장' },
   { href: '/studio/prompt-guide.html', label: '프롬프트 가이드' },
 ];
 
