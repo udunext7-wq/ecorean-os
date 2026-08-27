@@ -12,3 +12,6 @@ build/
 .vercel
 .env*
 logs/
+
+# 분양 평면도 원본 — 재작도 근거자료(내부 참조용). 공개 저장소에 재배포하지 않는다.
+assets/plan-sources/

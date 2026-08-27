@@ -1,0 +1,291 @@
+[
+ {
+  "house_manage_no": "2026000404",
+  "name": "검암역 푸르지오 프라베뉴 (B-1BL) 공공분양주택",
+  "slug": "검암역-푸르지오-프라베뉴-B-1BL-공공분양주택",
+  "address": "인천광역시 서해구 인천검암역세권 공공주택지구 내 B-1BL",
+  "builder": "㈜대우건설, 동부건설㈜, ㈜비에스한양, 경화건설㈜, 브니엘네이처㈜",
+  "pblanc_de": "2026-08-21",
+  "homepage": "https://www.prugio.com/hb/2026/pravenue",
+  "pblanc_url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000404&pblancNo=2026000404",
+  "images": [
+   {
+    "file": "unit_60a.jpg",
+    "url": "https://www.prugio.com/hb/2026/pravenue/assets/images/sub/unit_60a.jpg",
+    "w": 1408,
+    "h": 3028,
+    "kb": 784
+   },
+   {
+    "file": "unit_60b.jpg",
+    "url": "https://www.prugio.com/hb/2026/pravenue/assets/images/sub/unit_60b.jpg",
+    "w": 1408,
+    "h": 3028,
+    "kb": 768
+   },
+   {
+    "file": "unit_60c.jpg",
+    "url": "https://www.prugio.com/hb/2026/pravenue/assets/images/sub/unit_60c.jpg",
+    "w": 1408,
+    "h": 3311,
+    "kb": 817
+   },
+   {
+    "file": "unit_84a.jpg",
+    "url": "https://www.prugio.com/hb/2026/pravenue/assets/images/sub/unit_84a.jpg",
+    "w": 1408,
+    "h": 3033,
+    "kb": 801
+   },
+   {
+    "file": "unit_84b.jpg",
+    "url": "https://www.prugio.com/hb/2026/pravenue/assets/images/sub/unit_84b.jpg",
+    "w": 1408,
+    "h": 3290,
+    "kb": 811
+   },
+   {
+    "file": "unit_84c.jpg",
+    "url": "https://www.prugio.com/hb/2026/pravenue/assets/images/sub/unit_84c.jpg",
+    "w": 1408,
+    "h": 3098,
+    "kb": 762
+   }
+  ]
+ },
+ {
+  "house_manage_no": "2026000383",
+  "name": "포레나힐스테이트 진주",
+  "slug": "포레나힐스테이트-진주",
+  "address": "경상남도 진주시 이현동 10-1번지 외 13필지",
+  "builder": "주식회사 한화, 현대건설 주식회사",
+  "pblanc_de": "2026-08-14",
+  "homepage": "http://jinju.forena.co.kr",
+  "pblanc_url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000383&pblancNo=2026000383",
+  "images": [
+   {
+    "file": "unit_59a.jpg",
+    "url": "http://jinju.forena.co.kr/assets/images/sub/unit_59a.jpg",
+    "w": 1200,
+    "h": 930,
+    "kb": 256
+   },
+   {
+    "file": "unit_59b.jpg",
+    "url": "http://jinju.forena.co.kr/assets/images/sub/unit_59b.jpg",
+    "w": 1200,
+    "h": 930,
+    "kb": 245
+   },
+   {
+    "file": "unit_72a.jpg",
+    "url": "http://jinju.forena.co.kr/assets/images/sub/unit_72a.jpg",
+    "w": 1200,
+    "h": 952,
+    "kb": 280
+   },
+   {
+    "file": "unit_72b.jpg",
+    "url": "http://jinju.forena.co.kr/assets/images/sub/unit_72b.jpg",
+    "w": 1200,
+    "h": 1074,
+    "kb": 266
+   },
+   {
+    "file": "unit_84a.jpg",
+    "url": "http://jinju.forena.co.kr/assets/images/sub/unit_84a.jpg",
+    "w": 1200,
+    "h": 990,
+    "kb": 323
+   },
+   {
+    "file": "unit_84b.jpg",
+    "url": "http://jinju.forena.co.kr/assets/images/sub/unit_84b.jpg",
+    "w": 1200,
+    "h": 1074,
+    "kb": 267
+   }
+  ]
+ },
+ {
+  "house_manage_no": "2026000364",
+  "name": "써밋 클라비온",
+  "slug": "써밋-클라비온",
+  "address": "서울특별시 영등포구 신길동 3590번지 일원",
+  "builder": "(주)대우건설",
+  "pblanc_de": "2026-08-07",
+  "homepage": "https://summitclavion.com/",
+  "pblanc_url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000364&pblancNo=2026000364",
+  "images": [
+   {
+    "file": "84a.jpg",
+    "url": "https://summitclavion.com/bon/img/unit/84a.jpg",
+    "w": 2229,
+    "h": 2471,
+    "kb": 261
+   },
+   {
+    "file": "84b.jpg",
+    "url": "https://summitclavion.com/bon/img/unit/84b.jpg",
+    "w": 2287,
+    "h": 2534,
+    "kb": 260
+   }
+  ]
+ },
+ {
+  "house_manage_no": "2026000282",
+  "name": "창원 한신더휴 메가센텀",
+  "slug": "창원-한신더휴-메가센텀",
+  "address": "경상남도 창원시 마산회원구 회원동 480-31번지 일대",
+  "builder": "한신공영(주)",
+  "pblanc_de": "2026-07-16",
+  "homepage": "https://cw-thehue.com/",
+  "pblanc_url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000282&pblancNo=2026000282",
+  "images": [
+   {
+    "file": "unit01.jpg",
+    "url": "https://cw-thehue.com/sub/unit01.jpg",
+    "w": 1100,
+    "h": 1123,
+    "kb": 269
+   },
+   {
+    "file": "unit02.jpg",
+    "url": "https://cw-thehue.com/sub/unit02.jpg",
+    "w": 1100,
+    "h": 1123,
+    "kb": 295
+   },
+   {
+    "file": "unit03.jpg",
+    "url": "https://cw-thehue.com/sub/unit03.jpg",
+    "w": 1100,
+    "h": 1055,
+    "kb": 338
+   },
+   {
+    "file": "unit04.jpg",
+    "url": "https://cw-thehue.com/sub/unit04.jpg",
+    "w": 1100,
+    "h": 1201,
+    "kb": 416
+   },
+   {
+    "file": "unit05.jpg",
+    "url": "https://cw-thehue.com/sub/unit05.jpg",
+    "w": 1100,
+    "h": 1218,
+    "kb": 405
+   },
+   {
+    "file": "unit06.jpg",
+    "url": "https://cw-thehue.com/sub/unit06.jpg",
+    "w": 1100,
+    "h": 1223,
+    "kb": 463
+   },
+   {
+    "file": "unit07.jpg",
+    "url": "https://cw-thehue.com/sub/unit07.jpg",
+    "w": 1100,
+    "h": 1296,
+    "kb": 406
+   },
+   {
+    "file": "unit08.jpg",
+    "url": "https://cw-thehue.com/sub/unit08.jpg",
+    "w": 1100,
+    "h": 1218,
+    "kb": 438
+   },
+   {
+    "file": "unit09.jpg",
+    "url": "https://cw-thehue.com/sub/unit09.jpg",
+    "w": 1100,
+    "h": 1278,
+    "kb": 451
+   },
+   {
+    "file": "unit10.jpg",
+    "url": "https://cw-thehue.com/sub/unit10.jpg",
+    "w": 1100,
+    "h": 1089,
+    "kb": 375
+   },
+   {
+    "file": "unit11.jpg",
+    "url": "https://cw-thehue.com/sub/unit11.jpg",
+    "w": 1100,
+    "h": 1293,
+    "kb": 443
+   },
+   {
+    "file": "unit12.jpg",
+    "url": "https://cw-thehue.com/sub/unit12.jpg",
+    "w": 1100,
+    "h": 1050,
+    "kb": 372
+   }
+  ]
+ },
+ {
+  "house_manage_no": "2026000253",
+  "name": "거제 푸르지오 마린피스",
+  "slug": "거제-푸르지오-마린피스",
+  "address": "경상남도 거제시 장평동 1번지 외 6필지",
+  "builder": "㈜대우건설",
+  "pblanc_de": "2026-07-07",
+  "homepage": "http://www.prugio.com/hb/2026/marinepiece",
+  "pblanc_url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000253&pblancNo=2026000253",
+  "images": [
+   {
+    "file": "unit_84.jpg",
+    "url": "https://www.prugio.com/hb/2026/marinepiece/assets/images/sub/unit_84.jpg",
+    "w": 1408,
+    "h": 2763,
+    "kb": 700
+   },
+   {
+    "file": "unit_105.jpg",
+    "url": "https://www.prugio.com/hb/2026/marinepiece/assets/images/sub/unit_105.jpg",
+    "w": 1408,
+    "h": 2805,
+    "kb": 707
+   },
+   {
+    "file": "unit_107.jpg",
+    "url": "https://www.prugio.com/hb/2026/marinepiece/assets/images/sub/unit_107.jpg",
+    "w": 1408,
+    "h": 2805,
+    "kb": 710
+   }
+  ]
+ },
+ {
+  "house_manage_no": "2026000271",
+  "name": "트리븐 김해",
+  "slug": "트리븐-김해",
+  "address": "경상남도 김해시 내동 243-1번지 일원",
+  "builder": "두산에너빌리티(주)",
+  "pblanc_de": "2026-06-26",
+  "homepage": "http://trivn-doosan-gimhae.com/",
+  "pblanc_url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000271&pblancNo=2026000271",
+  "images": [
+   {
+    "file": "unit_155p.png",
+    "url": "http://trivn-doosan-gimhae.com/sub/bon/public/unit_renew/unit_155p.png",
+    "w": 2600,
+    "h": 2700,
+    "kb": 1828
+   },
+   {
+    "file": "unit_217p.png",
+    "url": "http://trivn-doosan-gimhae.com/sub/bon/public/unit_renew/unit_217p.png",
+    "w": 2600,
+    "h": 2699,
+    "kb": 1840
+   }
+  ]
+ }
+]
