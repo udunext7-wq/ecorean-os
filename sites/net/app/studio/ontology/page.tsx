@@ -473,18 +473,6 @@ export default function OntologyPage() {
                 })}
               </g>
 
-              {/* 자이로 링 — 전체를 감싸는 회전 프레임 (장식) */}
-              <g fill="none" strokeWidth={0.8}>
-                <g>
-                  <circle cx={CX} cy={CY} r={RADIUS * 1.08} stroke="rgba(150,235,255,0.14)" strokeDasharray="1 14" />
-                  <animateTransform attributeName="transform" type="rotate" from={`0 ${CX} ${CY}`} to={`360 ${CX} ${CY}`} dur="60s" repeatCount="indefinite" />
-                </g>
-                <g>
-                  <ellipse cx={CX} cy={CY} rx={RADIUS * 0.3} ry={RADIUS * 1.12} stroke="rgba(232,201,155,0.2)" strokeDasharray="2 10" />
-                  <animateTransform attributeName="transform" type="rotate" from={`360 ${CX} ${CY}`} to={`0 ${CX} ${CY}`} dur="38s" repeatCount="indefinite" />
-                </g>
-              </g>
-
               <circle cx={CX} cy={CY} r={RADIUS * 1.02} fill="none" stroke="rgba(155,201,216,0.06)" />
 
               {/* 연계선 */}
