@@ -550,6 +550,9 @@ export default function OntologyPage() {
                 const ph = phaseOf[name] ?? 0;
                 const R0 = (isFocus ? 5 : 1.5 + depth * 1.5) * pt.s * (1 + near * 0.35);
                 const k = R0 / 8;
+                // 조명이 미치는 범위 — 노드 크기와 분리된 절대 반경의 빛 웅덩이
+                const haloR = (16 + depth * 14 + near * 34 + (isFocus ? 30 : 0)) * pt.s;
+                const haloO = dimmed ? 0.05 : 0.16 + depth * 0.22 + near * 0.5 + (isFocus ? 0.25 : 0);
                 return (
                   <g
                     key={name}
@@ -566,8 +569,16 @@ export default function OntologyPage() {
                       strokeWidth={0.3 + depth * 0.4 + near * 0.5}
                       opacity={0.05 + near * 0.2}
                     />
+                    <circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={haloR}
+                      fill={`url(#glow${ph})`}
+                      opacity={haloO}
+                      style={{ mixBlendMode: 'screen' }}
+                      pointerEvents="none"
+                    />
                     <g transform={`translate(${pt.x} ${pt.y}) scale(${k})`}>
-                      <circle r={14 + near * 22} fill={`url(#glow${ph})`} opacity={0.4 + near * 0.6} />
                       <circle r={8} fill={`url(#orb${ph})`} />
                       <ellipse
                         rx={8}
