@@ -295,13 +295,15 @@ const SNAP_LS_KEY='minicad.snap';
 function saveSnapPrefs(){
   try{localStorage.setItem(SNAP_LS_KEY,JSON.stringify({
     grid:!!STATE.snap.grid,endpoint:!!STATE.snap.endpoint,
-    ghost:!!STATE.snap.ghost,ortho:!!STATE.snap.ortho,gridSize:STATE.gridSize}));}catch(_){}
+    ghost:!!STATE.snap.ghost,ortho:!!STATE.snap.ortho,gridSize:STATE.gridSize,
+    showCircuits:!!STATE.showCircuits}));}catch(_){}
 }
 function loadSnapPrefs(){
   try{
     const p=JSON.parse(localStorage.getItem(SNAP_LS_KEY)||'null');
     if(!p) return false;
     ['grid','endpoint','ghost','ortho'].forEach(k=>{if(typeof p[k]==='boolean') STATE.snap[k]=p[k];});
+    if(typeof p.showCircuits==='boolean'){STATE.showCircuits=p.showCircuits;if(typeof updateCircuitsBtn==='function')updateCircuitsBtn();}
     if(p.gridSize&&isFinite(p.gridSize)){
       STATE.gridSize=p.gridSize;
       const g=document.getElementById('snap-unit'); if(g) g.value=String(p.gridSize);
@@ -1816,6 +1818,20 @@ function deleteSelected(){
 // ===== 토글 =====
 function toggleGrid(){STATE.showGrid=!STATE.showGrid;document.getElementById('btn-grid').classList.toggle('gold',STATE.showGrid);drawGrid();showStatus('그리드: '+(STATE.showGrid?'ON':'OFF'));}
 function toggleDim(){STATE.showDimensions=!STATE.showDimensions;document.getElementById('btn-dim').classList.toggle('gold',STATE.showDimensions);renderAll();showStatus('치수: '+(STATE.showDimensions?'ON':'OFF'));}
+// 2026-08-27: 배선 전체 보기 (대표 지시) — 스위치→조명 회로선 + 조명↔조명 점핑선을 한 번에 표시
+function updateCircuitsBtn(){
+  const b=document.getElementById('btn-circuits');
+  if(b) b.classList.toggle('gold',!!STATE.showCircuits);
+}
+function toggleCircuits(){
+  STATE.showCircuits=!STATE.showCircuits;
+  updateCircuitsBtn();
+  renderAll();
+  if(typeof saveSnapPrefs==='function') saveSnapPrefs();
+  const n=(STATE.electric||[]).reduce((a,e)=>a+((e.lightIds||[]).length),0)
+        + (STATE.lights||[]).reduce((a,l)=>a+((l.jumpIds||[]).length),0);
+  showStatus('배선 전체 보기: '+(STATE.showCircuits?('ON — 연결 '+n+'개'):'OFF'));
+}
 // v5.7: 2.5D 영업 모드 토글 — 인쇄/JSON/AI번들 시 강제 OFF
 function toggle2_5D(){
   STATE.plus2D=!STATE.plus2D;
@@ -2477,6 +2493,7 @@ function _paletteCommands(){
     {label:'📐 치수 표시 토글',kw:'dimension 치수 표시',run:toggleDim},
     {label:'◐ 2.5D 영업 모드 토글',kw:'2.5d 영업',run:toggle2_5D},
     {label:'🔣 기호 확대 표시 토글 (전기·감지기 비축척)',kw:'symbol sym 기호 확대 비축척',run:()=>{STATE.symbolBoost=STATE.symbolBoost===false?true:false;renderAll();cmdToast('기호 확대 표시 '+(STATE.symbolBoost!==false?'ON':'OFF'));}},
+    {label:'⚡ 배선 전체 보기 토글 (회로·점핑)',kw:'circuit wiring cir 배선 회로 점핑 엣지 연결선',run:()=>toggleCircuits()},
     {label:'🛠 도구 — 선택',kw:'tool select 선택 v',run:()=>setTool('select')},
     {label:'🛠 도구 — 벽',kw:'tool wall 벽 b',run:()=>setTool('wall')},
     {label:'🛠 도구 — 선 (참조선/분할)',kw:'tool line 선 l',run:()=>setTool('line')},
@@ -2990,6 +3007,7 @@ document.getElementById('btn-undo').addEventListener('click',undo);
 document.getElementById('btn-redo').addEventListener('click',redo);
 document.getElementById('btn-grid').addEventListener('click',toggleGrid);
 document.getElementById('btn-dim').addEventListener('click',toggleDim);
+document.getElementById('btn-circuits').addEventListener('click',toggleCircuits); // 2026-08-27
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
 // v5.9.2: 통합견적 OS 브리지 — estimate 프로파일 JSON을 localStorage로 전송.
@@ -3678,7 +3696,8 @@ function processCommand(rawCmd){
   if(/^(da|dimall)$/i.test(c)){dimAllSpaces();return;}
   if(/^(af|autofurnish|자동배치)$/i.test(c)){autoFurnish();return;}
   if(/^(k|palette|팔레트)$/i.test(c)){openCmdPalette();return;}
-  if(/^(cir|회로)$/i.test(c)){STATE.showCircuits=!STATE.showCircuits;renderAll();cmdToast('회로 연결선 상시 표시 '+(STATE.showCircuits?'ON':'OFF'));return;}
+  // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
+  if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
   if(/^(sym|기호)$/i.test(c)){STATE.symbolBoost=STATE.symbolBoost===false?true:false;renderAll();cmdToast('기호 확대 표시 '+(STATE.symbolBoost!==false?'ON (비축척)':'OFF (실척)'));return;}
   const alM=c.match(/^al\s+(l|r|t|b|ch|cv)$/i);
   if(alM){alignSelection({l:'left',r:'right',t:'top',b:'bottom',ch:'centerh',cv:'centerv'}[alM[1].toLowerCase()]);return;}
@@ -4329,6 +4348,7 @@ if(typeof loadSnapPrefs==='function') loadSnapPrefs(); // 2026-08-27: 저장된 
 buildSpaceTypeUI();buildLayerUI();buildSnapUI();
 drawGrid();saveHistory();refreshUI();
 document.getElementById('btn-grid').classList.add('gold');
+if(typeof updateCircuitsBtn==='function') updateCircuitsBtn(); // 2026-08-27: 저장된 배선 보기 상태 반영
 document.getElementById('btn-dim').classList.add('gold');
 setTimeout(handleResize,100);setTimeout(handleResize,500);
 document.getElementById('cmd-hint').textContent=CMD_HINTS.select;

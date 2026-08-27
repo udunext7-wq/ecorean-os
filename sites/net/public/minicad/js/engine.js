@@ -2681,7 +2681,10 @@ function renderAll(){
   let circuitSig='',lightPosSig='';
   try{
     if(J){
-      circuitSig='§'+J((STATE.electric||[]).map(e=>[e.id,e.circuitOn?1:0,(e.lightIds||[]).join('.')]));
+      // 2026-08-27: 점핑 연결·배선 전체보기도 조명 레이어에 영향 → 서명에 포함 (토글 즉시 반영)
+      circuitSig='§'+J((STATE.electric||[]).map(e=>[e.id,e.circuitOn?1:0,(e.lightIds||[]).join('.')]))
+                +'§'+J((STATE.lights||[]).map(l=>[l.id,(l.jumpIds||[]).join('.')]))
+                +(STATE.showCircuits?'C':'')+(window._jumpLink?'J':'');
       lightPosSig='§'+J((STATE.lights||[]).map(l=>[l.id,l.x,l.y]))+(STATE.showCircuits?'C':'');
     }
   }catch(e){circuitSig='';lightPosSig='';}

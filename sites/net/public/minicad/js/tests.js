@@ -1738,6 +1738,62 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('점핑: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 상단 [⚡ 배선] 버튼 — 전체 연결선 보기 (대표 지시) ===
+  try{
+    const _bakWB={show:STATE.showCircuits,lights:STATE.lights.slice(),electric:STATE.electric.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,
+      ls:(function(){try{return localStorage.getItem('minicad.snap');}catch(_){return null;}})()};
+    const W=8800000;
+    const wsw={id:makeId('e'),type:'switch_2',x:W,y:W,angle:0};
+    STATE.electric.push(wsw);
+    const WL=[0,1,2].map(i=>{const o={id:makeId('li'),type:'downlight',x:W+1000+i*900,y:W,angle:0,inch:3};STATE.lights.push(o);return o;});
+    wsw.lightIds=[WL[0].id];wsw.circuitOn=false;
+    WL[0].jumpIds=[WL[1].id];WL[1].jumpIds=[WL[2].id];
+    // [WB1] 버튼 존재
+    const btn=document.getElementById('btn-circuits');
+    assert('배선버튼: 상단 버튼 존재',!!btn&&btn.textContent.indexOf('배선')>=0,btn&&btn.textContent);
+    // [WB2] OFF 상태에선 선택 안 했으면 연결선 없음
+    STATE.showCircuits=false;STATE.selectedKind=null;STATE.selectedId=null;
+    updateCircuitsBtn();renderAll();
+    const countLines=()=>{
+      let jump=0,curve=0;
+      groups.lights.getChildren().forEach(n=>{if(n.getClassName()==='Line'&&n.name&&n.name()==='jump-line')jump++;});
+      groups.electric.getChildren().forEach(n=>{if(n.getClassName()==='Shape')curve++;});
+      return {jump,curve};
+    };
+    let c1=countLines();
+    assert('배선버튼: OFF 시 숨김',c1.jump===0&&c1.curve===0,JSON.stringify(c1));
+    assert('배선버튼: OFF 시 버튼 비활성 표시',!btn.classList.contains('gold'));
+    // [WB3] 버튼 클릭 → 전체 연결선 표시 (회로선 + 점핑선 동시)
+    btn.click();
+    let c2=countLines();
+    assert('배선버튼: ON 시 회로선 표시',c2.curve>=1,'curve '+c2.curve);
+    assert('배선버튼: ON 시 점핑선 표시',c2.jump>=2,'jump '+c2.jump);
+    assert('배선버튼: ON 시 버튼 활성 표시',btn.classList.contains('gold'));
+    assert('배선버튼: STATE 반영',STATE.showCircuits===true);
+    // [WB4] 다시 클릭 → 숨김
+    btn.click();
+    let c3=countLines();
+    assert('배선버튼: 재클릭 시 숨김',c3.jump===0&&c3.curve===0&&!btn.classList.contains('gold'));
+    // [WB5] 명령어 cir·배선 도 동일 동작
+    if(STATE.cmdMode&&typeof exitCmdMode==='function') exitCmdMode(); // 이전 블록이 남긴 단계입력 모드 정리
+    processCommand('wire');
+    assert('배선버튼: wire 명령 동작',STATE.showCircuits===true&&btn.classList.contains('gold'));
+    processCommand('배선');
+    assert('배선버튼: 배선 명령 동작',STATE.showCircuits===false);
+    // [WB6] 설정 저장/복원
+    STATE.showCircuits=true;saveSnapPrefs();
+    STATE.showCircuits=false;
+    loadSnapPrefs();
+    assert('배선버튼: 상태 지속',STATE.showCircuits===true&&btn.classList.contains('gold'));
+    STATE.showCircuits=_bakWB.show;updateCircuitsBtn();
+    STATE.lights=_bakWB.lights;STATE.electric=_bakWB.electric;
+    STATE.selectedKind=_bakWB.selK;STATE.selectedId=_bakWB.selI;
+    try{if(_bakWB.ls===null) localStorage.removeItem('minicad.snap'); else localStorage.setItem('minicad.snap',_bakWB.ls);}catch(_){}
+    renderAll();
+  }catch(e){
+    assert('배선버튼: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
