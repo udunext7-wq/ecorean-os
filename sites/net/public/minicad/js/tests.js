@@ -1794,6 +1794,68 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('배선버튼: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
+  try{
+    const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,cmd:STATE.cmdMode};
+    // [EX1] 파서 기본
+    const cases=[['6000/2',3000],['(1200+800)/2',1000],['3*900',2700],['1,200+300',1500],
+                 ['2400mm/3',800],['-500+1200',700],['900',900],['4500/1.5',3000]];
+    assert('계산식: 사칙연산·괄호·단위',cases.every(([q,v])=>evalDimInt(q)===v),
+      cases.filter(([q,v])=>evalDimInt(q)!==v).map(x=>x[0]).join(','));
+    // [EX2] 잘못된 입력은 null (기존 값 유지 유도)
+    assert('계산식: 잘못된 입력 차단',['abc','2+','6000/0','1..2','9;9','',null].every(q=>evalDim(q)===null));
+    // [EX3] 패널 입력(_numField) — 계산식이 값으로 변환되고 입력창에도 반영
+    const fake={target:{value:'6000/2'}};
+    assert('계산식: 패널 입력 변환',_numField(fake,10)===3000&&fake.target.value==='3000');
+    const bad={target:{value:'abc'}};
+    assert('계산식: 패널 잘못된 입력 null',_numField(bad,10)===null);
+    const belowMin={target:{value:'100/50'}};
+    assert('계산식: 최소값 미만 null',_numField(belowMin,10)===null,'v='+_numField(belowMin,10));
+    // [EX4] 실제 패널 경로 — 조명 길이 입력에 계산식
+    const exl={id:makeId('li'),type:'line_t5',x:9000000,y:9000000,angle:0,length_mm:1200};
+    STATE.lights.push(exl);
+    STATE.selectedKind='lights';STATE.selectedId=exl.id;STATE.boxSelection=[];
+    refreshDetail();
+    const lenInput=document.getElementById('d-ll-len');
+    assert('계산식: 조명 길이 입력 존재',!!lenInput);
+    if(lenInput){
+      lenInput.value='6000/2';
+      lenInput.dispatchEvent(new Event('change'));
+      assert('계산식: 조명 길이 6000/2 → 3000',linearLightLen(STATE.lights.find(l=>l.id===exl.id))===3000,
+        String(linearLightLen(STATE.lights.find(l=>l.id===exl.id))));
+    }
+    // [EX5] 도어 W 입력에도 적용
+    const exo={id:makeId('o'),type:'DOOR',subType:'swing',x:9000000,y:9001000,width_mm:900,height_mm:2100,depth_mm:200,angle:0,spaceId:null};
+    STATE.openings.push(exo);
+    STATE.selectedKind='opening';STATE.selectedId=exo.id;
+    refreshDetail();
+    const wIn=document.getElementById('d-w');
+    if(wIn){
+      wIn.value='(1200+600)/2';
+      wIn.dispatchEvent(new Event('change'));
+      assert('계산식: 도어 W (1200+600)/2 → 900',STATE.openings.find(o=>o.id===exo.id).width_mm===900,
+        String(STATE.openings.find(o=>o.id===exo.id).width_mm));
+    }
+    // [EX6] 명령창 — 회전·이동 인자에 계산식
+    if(STATE.cmdMode&&typeof exitCmdMode==='function') exitCmdMode();
+    const exf={id:makeId('f'),type:'side_table',x:9100000,y:9100000,angle:0};
+    STATE.furniture.push(exf);
+    STATE.selectedKind='furniture';STATE.selectedId=exf.id;STATE.boxSelection=[];
+    processCommand('m 6000/2,900*2');
+    const movedF=STATE.furniture.find(f=>f.id===exf.id);
+    assert('계산식: 명령 이동 m 6000/2,900*2',movedF.x===9100000+3000&&movedF.y===9100000+1800,
+      movedF.x-9100000+','+(movedF.y-9100000));
+    processCommand('r 90/2');
+    assert('계산식: 명령 회전 r 90/2',Math.round(movedF.angle)===45,String(movedF.angle));
+    STATE.furniture=STATE.furniture.filter(f=>f.id!==exf.id);
+    STATE.lights=_bakEX.lights;STATE.openings=_bakEX.openings;
+    STATE.selectedKind=_bakEX.selK;STATE.selectedId=_bakEX.selI;
+    if(STATE.cmdMode&&typeof exitCmdMode==='function') exitCmdMode();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('계산식: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

@@ -47,7 +47,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=tablet50">
+<link rel="stylesheet" href="css/style.css?v=tablet51">
 </head>
 <body>
 <div id="loading"><div class="spinner"></div><div class="msg">ECOREAN MiniCAD v6.0 로딩…</div></div>
@@ -100,7 +100,7 @@
       <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">프로젝트</div><span class="psec-chevron">▾</span></div>
       <div class="field"><label class="field-label" for="project-name">프로젝트명</label><input type="text" id="project-name" value="신규 인테리어"></div>
       <div class="field"><label class="field-label" for="ceiling-height">기본 천장고 (mm)</label>
-        <input type="number" id="ceiling-height" value="2400" min="2000" max="4000" step="50"></div>
+        <input type="text" inputmode="decimal" id="ceiling-height" value="2400" min="2000" max="4000" step="50"></div>
       <div class="field"><label class="field-label" for="wall-thickness">벽체 두께 (mm)</label>
         <div class="field-row" style="gap:4px;margin-top:2px">
           <select id="wall-thickness" name="wall-thickness" style="flex:1.4">
@@ -110,7 +110,7 @@
             <option value="200">200</option>
             <option value="250">250</option>
           </select>
-          <input type="number" id="wall-thickness-input" name="wall-thickness-input" aria-label="벽체 두께 직접 입력 (mm)" value="50" min="10" max="1000" step="10" style="flex:1;min-width:0" placeholder="직접입력">
+          <input type="text" inputmode="decimal" id="wall-thickness-input" name="wall-thickness-input" aria-label="벽체 두께 직접 입력 (mm)" value="50" min="10" max="1000" step="10" style="flex:1;min-width:0" placeholder="직접입력">
         </div></div>
       <div class="field"><label class="field-label" for="bearing-thickness-select">내력벽 두께 (mm)</label>
         <div class="field-row" style="gap:4px;margin-top:2px">
@@ -124,7 +124,7 @@
             <option value="400">400</option>
             <option value="450">450</option>
           </select>
-          <input type="number" id="bearing-thickness" name="bearing-thickness" aria-label="내력벽 두께 직접 입력 (mm)" value="200" min="50" max="800" step="10" style="flex:1;min-width:0" placeholder="직접입력">
+          <input type="text" inputmode="decimal" id="bearing-thickness" name="bearing-thickness" aria-label="내력벽 두께 직접 입력 (mm)" value="200" min="50" max="800" step="10" style="flex:1;min-width:0" placeholder="직접입력">
         </div></div>
       <div class="field"><label class="field-label">기둥 (Q) — 클릭으로 배치</label>
         <div class="field-row" style="gap:4px;margin-top:2px">
@@ -135,12 +135,12 @@
           </select>
         </div>
         <div class="field-row" style="gap:4px;margin-top:4px">
-          <input type="number" id="pillar-w" name="pillar-w" aria-label="기둥 너비/지름" value="500" min="100" max="3000" step="50" style="flex:1;min-width:0" placeholder="너비(W/Ø)">
-          <input type="number" id="pillar-h" name="pillar-h" aria-label="기둥 높이" value="500" min="100" max="3000" step="50" style="flex:1;min-width:0" placeholder="높이(H)">
+          <input type="text" inputmode="decimal" id="pillar-w" name="pillar-w" aria-label="기둥 너비/지름" value="500" min="100" max="3000" step="50" style="flex:1;min-width:0" placeholder="너비(W/Ø)">
+          <input type="text" inputmode="decimal" id="pillar-h" name="pillar-h" aria-label="기둥 높이" value="500" min="100" max="3000" step="50" style="flex:1;min-width:0" placeholder="높이(H)">
         </div>
         <div class="field-row" style="gap:4px;margin-top:4px">
-          <input type="number" id="pillar-t" name="pillar-t" aria-label="L자 팔 두께" value="200" min="50" max="600" step="10" style="flex:1;min-width:0" placeholder="L팔 두께">
-          <input type="number" id="pillar-rot" name="pillar-rot" aria-label="회전 (도)" value="0" min="-360" max="360" step="15" style="flex:1;min-width:0" placeholder="회전°">
+          <input type="text" inputmode="decimal" id="pillar-t" name="pillar-t" aria-label="L자 팔 두께" value="200" min="50" max="600" step="10" style="flex:1;min-width:0" placeholder="L팔 두께">
+          <input type="text" inputmode="decimal" id="pillar-rot" name="pillar-rot" aria-label="회전 (도)" value="0" min="-360" max="360" step="15" style="flex:1;min-width:0" placeholder="회전°">
         </div>
       </div>
       <div class="field"><label class="field-label">벽 정렬 (벽·내력벽 공통)</label>
@@ -604,17 +604,17 @@
   </div>
 </div>
 
-<script src="js/state.js?v=tablet50"></script>
-<script src="js/data.js?v=tablet50"></script>
-<script src="js/library.js?v=tablet50"></script>
-<script src="js/engine.js?v=tablet50"></script>
-<script src="js/tools.js?v=tablet50"></script>
-<script src="js/ui.js?v=tablet50"></script>
-<script src="js/layout.js?v=tablet50"></script>
-<script src="js/touch.js?v=tablet50"></script>
-<script src="js/import-cad.js?v=tablet50"></script>
-<script src="js/estimate.js?v=tablet50"></script>
-<script src="js/tests.js?v=tablet50"></script>
+<script src="js/state.js?v=tablet51"></script>
+<script src="js/data.js?v=tablet51"></script>
+<script src="js/library.js?v=tablet51"></script>
+<script src="js/engine.js?v=tablet51"></script>
+<script src="js/tools.js?v=tablet51"></script>
+<script src="js/ui.js?v=tablet51"></script>
+<script src="js/layout.js?v=tablet51"></script>
+<script src="js/touch.js?v=tablet51"></script>
+<script src="js/import-cad.js?v=tablet51"></script>
+<script src="js/estimate.js?v=tablet51"></script>
+<script src="js/tests.js?v=tablet51"></script>
 <script>
 'use strict';
 // ===== v5.9: 저작권 보호 — EULA, 우클릭 차단, 워터마크, 콘솔 경고 =====

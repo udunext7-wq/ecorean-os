@@ -65,6 +65,57 @@ function snapRadiusMm(minMm){
   const px=SNAP_PX[t]||SNAP_PX.mouse;
   return Math.max(minMm||50,Math.min(1500,pxToMm(px)));
 }
+// 2026-08-27: 치수 입력 계산식 (대표 지시) — 6000/2, (1200+800)/2, 3*900 등
+//  eval 미사용 재귀 하강 파서. + - * / ( ) 와 소수점, mm 접미사, 공백/천단위 콤마 허용.
+//  실패 시 null → 호출부가 기존 값 유지
+function evalDim(raw){
+  if(raw===null||raw===undefined) return null;
+  let t=String(raw).trim();
+  if(!t) return null;
+  t=t.replace(/mm/gi,'').replace(/÷/g,'/').replace(/[·∙]/g,'*').replace(/\s+/g,'');
+  t=t.replace(/(\d),(?=\d{3}(\D|$))/g,'$1'); // 1,200 → 1200 (좌표 구분 콤마는 호출부가 먼저 분리)
+  if(!/^[0-9+\-*/().]+$/.test(t)) return null;
+  let i=0;
+  function factor(){
+    if(t[i]==='+'){i++;return factor();}
+    if(t[i]==='-'){i++;const v=factor();return v===null?null:-v;}
+    if(t[i]==='('){
+      i++;const v=expr();
+      if(t[i]!==')') return null;
+      i++;return v;
+    }
+    const st=i;
+    while(i<t.length&&/[0-9.]/.test(t[i])) i++;
+    if(i===st) return null;
+    const tok=t.slice(st,i);
+    if(!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(tok)) return null; // 2026-08-27: '1..2' 등 잘못된 숫자 거부
+    const v=parseFloat(tok);
+    return isFinite(v)?v:null;
+  }
+  function term(){
+    let v=factor(); if(v===null) return null;
+    while(t[i]==='*'||t[i]==='/'){
+      const op=t[i++]; const r=factor(); if(r===null) return null;
+      if(op==='*') v*=r; else { if(r===0) return null; v/=r; }
+    }
+    return v;
+  }
+  function expr(){
+    let v=term(); if(v===null) return null;
+    while(t[i]==='+'||t[i]==='-'){
+      const op=t[i++]; const r=term(); if(r===null) return null;
+      v = op==='+' ? v+r : v-r;
+    }
+    return v;
+  }
+  const out=expr();
+  return (i===t.length&&out!==null&&isFinite(out))?out:null;
+}
+// mm 정수 결과 (헌법: mm 정수)
+function evalDimInt(raw){
+  const v=evalDim(raw);
+  return v===null?null:Math.round(v);
+}
 function snapMm(mm){
   // v5.9: Ctrl 누르면 그리드 스냅도 OFF (자유 입력)
   if(STATE.ctrlPressed) return Math.round(mm);

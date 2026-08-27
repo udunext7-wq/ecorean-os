@@ -348,9 +348,14 @@ function refreshUI(){refreshHeader();refreshSpaceList();refreshDetail();refreshE
 function _numField(e,min){
   const raw=(e&&e.target?e.target.value:'').trim();
   if(raw==='') return null;
-  const v=parseInt(raw,10);
-  if(!isFinite(v)) return null;
+  // 2026-08-27: 계산식 허용 (6000/2 → 3000) — 대표 지시
+  const v=(typeof evalDimInt==='function')?evalDimInt(raw):parseInt(raw,10);
+  if(v===null||!isFinite(v)) return null;
   if(typeof min==='number'&&v<min) return null;
+  if(e&&e.target&&String(v)!==raw){
+    e.target.value=String(v); // 계산 결과를 그대로 보여준다
+    if(/[+\-*/()]/.test(raw)&&typeof cmdToast==='function') cmdToast(raw+' = '+v+'mm');
+  }
   return v;
 }
 // v5.9.4 PERF: 비활성 탭 패널은 지연 갱신 — 매 액션마다 견적표(20ms)·JSON(67ms)을
@@ -406,7 +411,7 @@ function refreshDetail(){
       '<div class="field"><label class="field-label">타입</label><select id="d-type">'+
       Object.entries(SPACE_TYPES).map(([k,td])=>'<option value="'+k+'"'+(k===s.type?' selected':'')+'>'+td.name+'</option>').join('')+'</select></div>'+
       '<div class="field"><label class="field-label">개별 천장고 (mm)</label>'+
-      '<input type="number" id="d-ch" value="'+(s.ceilingHeight_mm||'')+'" placeholder="'+STATE.ceilingHeight+'"></div>'+
+      '<input type="text" inputmode="decimal" id="d-ch" value="'+(s.ceilingHeight_mm||'')+'" placeholder="'+STATE.ceilingHeight+'"></div>'+
       // v5.8: 바닥재 / 벽자재 드롭다운
       '<div class="field-row"><div class="field"><label class="field-label">바닥재</label>'+
       '<select id="d-floor">'+
@@ -456,13 +461,13 @@ function refreshDetail(){
         '<div class="field-label" style="margin-bottom:6px;color:#C9A961">계단 설정 — 공간 크기 자동 맞춤</div>'+
         '<div class="field"><label class="field-label">유형</label><select id="stx-type">'+tsel('I','직선')+tsel('L','ㄱ자 (꺾임)')+tsel('U','U턴 (되돌음)')+'</select></div>'+
         '<div class="field-row">'+
-        '<div class="field"><label class="field-label">단수 (자동 '+info.N+')</label><input type="number" id="stx-count" value="'+(st.stepCount||'')+'" placeholder="'+info.N+'" step="1" min="2"></div>'+
-        (isTurn?'<div class="field"><label class="field-label">꺾임 전 단수 (자동 '+info.N1+')</label><input type="number" id="stx-split" value="'+(st.splitCount||'')+'" placeholder="'+info.N1+'" step="1" min="1"></div>'
-               :'<div class="field"><label class="field-label">층높이 (mm)</label><input type="number" id="stx-fh" value="'+fh+'" step="50" min="1000"></div>')+
+        '<div class="field"><label class="field-label">단수 (자동 '+info.N+')</label><input type="text" inputmode="decimal" id="stx-count" value="'+(st.stepCount||'')+'" placeholder="'+info.N+'" step="1" min="2"></div>'+
+        (isTurn?'<div class="field"><label class="field-label">꺾임 전 단수 (자동 '+info.N1+')</label><input type="text" inputmode="decimal" id="stx-split" value="'+(st.splitCount||'')+'" placeholder="'+info.N1+'" step="1" min="1"></div>'
+               :'<div class="field"><label class="field-label">층높이 (mm)</label><input type="text" inputmode="decimal" id="stx-fh" value="'+fh+'" step="50" min="1000"></div>')+
         '</div>'+
         (isTurn?'<div class="field-row">'+
-        '<div class="field"><label class="field-label">'+(info.type==='U'?'참 깊이':'플라이트 폭')+' (자동 '+Math.round(info.type==='U'?info.L0:info.W)+')</label><input type="number" id="stx-w" value="'+(st.width_mm||'')+'" placeholder="'+Math.round(info.type==='U'?info.L0:info.W)+'" step="50" min="300"></div>'+
-        '<div class="field"><label class="field-label">층높이 (mm)</label><input type="number" id="stx-fh" value="'+fh+'" step="50" min="1000"></div>'+
+        '<div class="field"><label class="field-label">'+(info.type==='U'?'참 깊이':'플라이트 폭')+' (자동 '+Math.round(info.type==='U'?info.L0:info.W)+')</label><input type="text" inputmode="decimal" id="stx-w" value="'+(st.width_mm||'')+'" placeholder="'+Math.round(info.type==='U'?info.L0:info.W)+'" step="50" min="300"></div>'+
+        '<div class="field"><label class="field-label">층높이 (mm)</label><input type="text" inputmode="decimal" id="stx-fh" value="'+fh+'" step="50" min="1000"></div>'+
         '</div>':'')+
         '<div class="hint">디딤판 '+(info.type==='I'?Math.round(info.T):Math.round(info.T1)+' / '+Math.round(info.T2))+'mm (자동) · 챌판 <b style="color:'+(rw?'#E2725B':'#7BA05B')+'">'+riser+'mm</b>'+(rw?' ⚠ 권장 160~200':' ✓ 적정')+'</div>'+
         '<div style="display:flex;gap:4px;margin-top:4px">'+
@@ -545,18 +550,18 @@ function refreshDetail(){
       '<div class="field"><label class="field-label">'+(isDoor?'문 종류':'창 종류')+'</label>'+
       '<select id="d-subtype">'+Object.entries(lib).map(([k,d])=>'<option value="'+k+'"'+(k===o.subType?' selected':'')+'>'+d.name+'</option>').join('')+'</select></div>'+
       '<div class="field-row-3">'+
-      '<div class="field"><label class="field-label">가로 W (mm)</label><input type="number" id="d-w" value="'+o.width_mm+'" step="50"></div>'+
-      '<div class="field"><label class="field-label">세로 H (mm)</label><input type="number" id="d-h" value="'+o.height_mm+'" step="50"></div>'+
-      '<div class="field"><label class="field-label">뎁스 D (mm)</label><input type="number" id="d-d" value="'+o.depth_mm+'" step="10"></div>'+
+      '<div class="field"><label class="field-label">가로 W (mm)</label><input type="text" inputmode="decimal" id="d-w" value="'+o.width_mm+'" step="50"></div>'+
+      '<div class="field"><label class="field-label">세로 H (mm)</label><input type="text" inputmode="decimal" id="d-h" value="'+o.height_mm+'" step="50"></div>'+
+      '<div class="field"><label class="field-label">뎁스 D (mm)</label><input type="text" inputmode="decimal" id="d-d" value="'+o.depth_mm+'" step="10"></div>'+
       '</div>'+
-      (!isDoor?'<div class="field"><label class="field-label">창대 높이 (mm) — 바닥에서</label><input type="number" id="d-sill" value="'+(o.sillHeight_mm||0)+'" step="50"></div>':'')+
+      (!isDoor?'<div class="field"><label class="field-label">창대 높이 (mm) — 바닥에서</label><input type="text" inputmode="decimal" id="d-sill" value="'+(o.sillHeight_mm||0)+'" step="50"></div>':'')+
       (isDoor?'<div class="field"><label class="field-label">벽면 차감</label>'+
       '<div class="align-toggle" id="d-subtract-toggle" role="group" aria-label="도어 차감 모드">'+
       '<button type="button" class="align-btn'+((o.subtractMode||'double')==='single'?' active':'')+'" data-sub="single" title="단면차감 — 외부문(현관·발코니) 등">단면</button>'+
       '<button type="button" class="align-btn'+((o.subtractMode||'double')==='double'?' active':'')+'" data-sub="double" title="양면차감 — 내부문(방문·미닫이) 등 양쪽 모두 마감 차감">양면</button>'+
       '</div></div>':'')+
       '<div class="field"><label class="field-label">회전 (°) — 0~359</label>'+
-      '<input type="number" id="d-angle" value="'+Math.round(o.angle||0)+'" step="1" min="-360" max="360"></div>'+
+      '<input type="text" inputmode="decimal" id="d-angle" value="'+Math.round(o.angle||0)+'" step="1" min="-360" max="360"></div>'+
       '<div class="hint">통상값 자동 적용. 회전은 벽 가까이 추가 시 자동 정렬됨.</div>'+
       (!(o.spaceId&&STATE.spaces.some(s=>s.id===o.spaceId))?'<div class="warn warning" style="margin-top:6px">⚠ 벽 미부착 — 공간 모서리나 벽 가까이 재배치하세요.</div>':'')+
       '<div style="display:flex;gap:4px;margin-top:6px">'+
@@ -617,9 +622,9 @@ function refreshDetail(){
       '</select></div>'+
       '<button class="btn sm" id="d-wmat-all" style="width:100%;margin:2px 0 8px" title="현재 선택한 마감재를 도면의 모든 벽에 적용">⇊ 이 자재를 모든 벽에 적용</button>'+
       '<div class="field"><label class="field-label">개별 높이 (mm)</label>'+
-      '<input type="number" id="d-wh" value="'+(w.height_mm||'')+'" placeholder="공간 천장고 따름" step="50"></div>'+
+      '<input type="text" inputmode="decimal" id="d-wh" value="'+(w.height_mm||'')+'" placeholder="공간 천장고 따름" step="50"></div>'+
       '<div class="field"><label class="field-label">두께 (mm)</label>'+
-      '<input type="number" id="d-wthick" value="'+(w.thickness||100)+'" step="10"></div>'+
+      '<input type="text" inputmode="decimal" id="d-wthick" value="'+(w.thickness||100)+'" step="10"></div>'+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     // 2026-08-22: 전체 벽 일괄 적용 (대표 지시 10번)
@@ -651,7 +656,7 @@ function refreshDetail(){
       lenHtml=
         '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.08);border:1px solid rgba(212,184,114,0.35);border-radius:4px">'+
         '<div class="field-label" style="margin-bottom:6px;color:#D4B872">조명 길이</div>'+
-        '<div class="field"><input type="number" id="d-ll-len" value="'+L+'" step="100" min="300" max="30000"></div>'+
+        '<div class="field"><input type="text" inputmode="decimal" id="d-ll-len" value="'+L+'" step="100" min="300" max="30000"></div>'+
         '<div style="display:flex;flex-wrap:wrap;gap:3px">'+
         [600,900,1200,1500,1800,2400,3000,4500].map(v=>'<button type="button" class="btn sm ll-preset" data-len="'+v+'" style="flex:1 1 22%;padding:4px 2px'+(v===L?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+'">'+(v>=1000?(v/1000)+'m':v)+'</button>').join('')+
         '</div>'+
@@ -712,7 +717,7 @@ function refreshDetail(){
     if(hasAngle){
       extraHtml=
         '<div class="field"><label class="field-label">회전 (°)</label>'+
-        '<input type="number" id="d-angle" value="'+Math.round(obj.angle||0)+'" step="1" min="-360" max="360"></div>'+
+        '<input type="text" inputmode="decimal" id="d-angle" value="'+Math.round(obj.angle||0)+'" step="1" min="-360" max="360"></div>'+
         '<div style="display:flex;gap:4px;margin-top:6px">'+
         '<button class="btn sm" id="d-rot-90" style="flex:1">+90°</button>'+
         '<button class="btn sm" id="d-rot-m90" style="flex:1">−90°</button>'+
@@ -3710,33 +3715,41 @@ function processCommand(rawCmd){
   // v5.9: cv / curve — 선택된 아크를 자유 곡선으로 변환
   if(/^(cv|curve|곡선)$/i.test(c)){convertArcToCurve();return;}
 
+  // 2026-08-27: 아래 인자들은 모두 계산식 허용 (예: r 90/2, m 6000/2,0, @1200*2,0, 6000/2x3000)
+  const EXPR='[-0-9.+*/()\\s]+';
+  const _e=v=>evalDim(v);
+  const _ok=(...vs)=>vs.every(v=>v!==null&&isFinite(v));
+
   // r [angle] — 회전
-  const rotM=c.match(/^r\s+(-?\d+\.?\d*)$/i);
-  if(rotM){const ang=parseFloat(rotM[1]);rotateSelectedBy(ang);return;}
+  const rotM=c.match(new RegExp('^r\\s+('+EXPR+')$','i'));
+  if(rotM){const ang=_e(rotM[1]);if(_ok(ang)){rotateSelectedBy(ang);return;}}
 
   // m x,y — 이동
-  const mvM=c.match(/^m\s+(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/i);
-  if(mvM){moveSelectedBy(parseFloat(mvM[1]),parseFloat(mvM[2]));return;}
+  const mvM=c.match(new RegExp('^m\\s+('+EXPR+'),('+EXPR+')$','i'));
+  if(mvM){const a=_e(mvM[1]),b=_e(mvM[2]);if(_ok(a,b)){moveSelectedBy(a,b);return;}}
 
   // cp x,y — 복제
-  const cpM=c.match(/^cp\s+(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/i);
-  if(cpM){duplicateSelectedAt(parseFloat(cpM[1]),parseFloat(cpM[2]));return;}
+  const cpM=c.match(new RegExp('^cp\\s+('+EXPR+'),('+EXPR+')$','i'));
+  if(cpM){const a=_e(cpM[1]),b=_e(cpM[2]);if(_ok(a,b)){duplicateSelectedAt(a,b);return;}}
 
   // @x,y — 상대 좌표
-  const relM=c.match(/^@\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
-  if(relM){handleRelativeCoord(parseFloat(relM[1]),parseFloat(relM[2]));return;}
+  const relM=c.match(new RegExp('^@\\s*('+EXPR+'),('+EXPR+')$'));
+  if(relM){const a=_e(relM[1]),b=_e(relM[2]);if(_ok(a,b)){handleRelativeCoord(a,b);return;}}
 
   // W,H,D — 도어/창 3차원 크기
-  const d3M=c.match(/^(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)$/);
-  if(d3M){handleSizeInput(parseFloat(d3M[1]),parseFloat(d3M[2]),parseFloat(d3M[3]));return;}
+  const d3M=c.match(new RegExp('^('+EXPR+'),('+EXPR+'),('+EXPR+')$'));
+  if(d3M){const a=_e(d3M[1]),b=_e(d3M[2]),d=_e(d3M[3]);if(_ok(a,b,d)){handleSizeInput(a,b,d);return;}}
 
   // WxHxD 또는 W×H×D
-  const xM=c.match(/^(\d+\.?\d*)\s*[x×]\s*(\d+\.?\d*)(?:\s*[x×]\s*(\d+\.?\d*))?$/i);
-  if(xM){handleSizeInput(parseFloat(xM[1]),parseFloat(xM[2]),xM[3]?parseFloat(xM[3]):null);return;}
+  const xM=c.match(new RegExp('^('+EXPR+')[x×]('+EXPR+')(?:[x×]('+EXPR+'))?$','i'));
+  if(xM){
+    const a=_e(xM[1]),b=_e(xM[2]),d=xM[3]?_e(xM[3]):null;
+    if(_ok(a,b)&&(xM[3]?_ok(d):true)){handleSizeInput(a,b,d);return;}
+  }
 
   // x,y — 절대좌표 또는 2D 크기
-  const absM=c.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
-  if(absM){handleAbsoluteOrSize(parseFloat(absM[1]),parseFloat(absM[2]));return;}
+  const absM=c.match(new RegExp('^('+EXPR+'),('+EXPR+')$'));
+  if(absM){const a=_e(absM[1]),b=_e(absM[2]);if(_ok(a,b)){handleAbsoluteOrSize(a,b);return;}}
 
   cmdToast('알 수 없는 명령: '+c+' — / 또는 ? 로 도움말');
 }
@@ -3755,7 +3768,7 @@ function handleCmdModeInput(c){
   // ===== rect-w: 폭 입력 대기 =====
   // v5.6: offset-d 옵셋 거리 입력
   if(mode==='offset-d'){
-    const num=parseFloat(c);
+    const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)||num<=0){cmdToast('양수 거리(mm) 입력');return true;}
     offsetState={distance:num};
     exitCmdMode();
@@ -3765,7 +3778,7 @@ function handleCmdModeInput(c){
 
   // ===== circlespace-r: 원형공간 반지름 =====
   if(mode==='circlespace-r'){
-    const num=parseFloat(c);
+    const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)||num<=0){cmdToast('양수 반지름(mm) 입력');return true;}
     const{cx,cy}=STATE.cmdData;
     addCircleSpace(cx,cy,num);
@@ -3775,7 +3788,7 @@ function handleCmdModeInput(c){
   }
   // v5.3 ===== circle-r: 원 반지름 =====
   if(mode==='circle-r'){
-    const num=parseFloat(c);
+    const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)||num<=0){cmdToast('양수 반지름(mm) 입력');return true;}
     if(drawState&&drawState.type==='circle'){
       addCircle(drawState.center.x,drawState.center.y,num);
@@ -3788,21 +3801,21 @@ function handleCmdModeInput(c){
   }
   // v5.3 ===== arc-r: 아크 반지름 =====
   if(mode==='arc-r'){
-    const num=parseFloat(c);
+    const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)||num<=0){cmdToast('양수 반지름(mm) 입력');return true;}
     STATE.cmdData.r=num;
     enterCmdMode('arc-start',STATE.cmdData,'시작각(°):','시작 각도 (0=동쪽, 90=북, 180=서, 270=남)');
     return true;
   }
   if(mode==='arc-start'){
-    const num=parseFloat(c);
+    const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)){cmdToast('각도(°) 입력');return true;}
     STATE.cmdData.startAngle=num;
     enterCmdMode('arc-end',STATE.cmdData,'끝각(°):','끝 각도 (시계방향)');
     return true;
   }
   if(mode==='arc-end'){
-    const num=parseFloat(c);
+    const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)){cmdToast('각도(°) 입력');return true;}
     const r=STATE.cmdData.r, sa=STATE.cmdData.startAngle, ea=num;
     const cx=drawState&&drawState.type==='arc'?drawState.center.x:0;
@@ -3814,7 +3827,7 @@ function handleCmdModeInput(c){
   }
 
   if(mode==='rect-w'){
-    const num=parseFloat(c);
+    const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)||num<=0){cmdToast('양수 폭(mm) 입력 필요');return true;}
     STATE.cmdData.w=Math.round(num);
     enterCmdMode('rect-h',STATE.cmdData,'높이(mm):','세로 길이 입력 후 Enter');
@@ -3822,7 +3835,7 @@ function handleCmdModeInput(c){
   }
   // ===== rect-h: 높이 입력 → 사각공간 생성 =====
   if(mode==='rect-h'){
-    const num=parseFloat(c);
+    const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)||num<=0){cmdToast('양수 높이(mm) 입력 필요');return true;}
     const h=Math.round(num);
     const w=STATE.cmdData.w;
@@ -3856,7 +3869,7 @@ function handleCmdModeInput(c){
       cmdToast((isLineMode?'선':(isGabyeok?'내력벽':'벽'))+' 추가 — 다음 끝점 클릭 또는 길이 입력 (Esc 종료)');
       return true;
     }
-    const num=parseFloat(c);
+    const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)||num<=0){cmdToast('양수 길이(mm) 또는 @dx,dy 입력');return true;}
     const s=drawState.start;
     let dx=drawState.current.x-s.x, dy=drawState.current.y-s.y;
@@ -3897,7 +3910,7 @@ function handleCmdModeInput(c){
   // ===== polygon-r: 반지름 입력 =====
   if(mode==='polygon-r'){
     if(!polyState||!polyState.center){exitCmdMode();return true;}
-    const r=parseFloat(c);
+    const r=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(r)||r<50){cmdToast('50mm 이상 반지름 입력');return true;}
     createRegularPolygon(polyState.center,r,polyState.n);
     return true;
@@ -3912,7 +3925,7 @@ function handleCmdModeInput(c){
       endX=STATE.measureFirst.x+parseFloat(relM[1]);
       endY=STATE.measureFirst.y+parseFloat(relM[2]);
     }else{
-      const num=parseFloat(c);
+      const num=evalDim(c); // 2026-08-27: 계산식 허용
       if(!isFinite(num)||num<=0){cmdToast('거리(mm) 또는 @dx,dy 입력');return true;}
       const s=STATE.measureFirst;
       let dx=(STATE.cmdData.curX!=null?STATE.cmdData.curX:s.x+1)-s.x;
@@ -3960,7 +3973,7 @@ function handleCmdModeInput(c){
 
   // ===== rotate-space: 공간 회전 각도 입력 =====
   if(mode==='rotate-space'){
-    const ang=parseFloat(c);
+    const ang=evalDim(c); // 2026-08-27: 계산식 허용
     if(isNaN(ang)){cmdToast('숫자를 입력하세요 (예: 45, -90)');return true;}
     rotateSpaceByAngle(STATE.cmdData.spaceId,ang);
     saveHistory();renderAll();refreshUI();
