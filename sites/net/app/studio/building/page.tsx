@@ -33,6 +33,15 @@ export default function BuildingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; applyUrl?: string } | null>(null);
   const [recent, setRecent] = useState<Bld[]>([]);
+  const [keyReady, setKeyReady] = useState<boolean | null>(null);
+
+  // 인증키 설정 여부를 먼저 확인해, 미설정이면 신청 링크를 상단에 바로 띄운다
+  useEffect(() => {
+    fetch('/api/gov/status')
+      .then((r) => r.json())
+      .then((j) => setKeyReady(Boolean(j.hasKey)))
+      .catch(() => setKeyReady(null));
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -84,6 +93,57 @@ export default function BuildingPage() {
             출발점으로 씁니다.
           </p>
         </header>
+
+        {keyReady === false ? (
+          <div className="mb-6 rounded-xl border border-[#E8C99B]/35 bg-[#E8C99B]/[0.06] p-5">
+            <p className="text-[10px] tracking-[0.3em] text-[#e8c99b]/80">인증키 설정 필요 · 무료 · 약 5분</p>
+            <h2 className="mt-1 text-base font-semibold text-[#f0deb9]">
+              공공데이터포털 인증키를 등록하면 바로 조회됩니다
+            </h2>
+            <ol className="mt-3 space-y-2 text-xs leading-relaxed text-[#c8d6de]">
+              <li>
+                <b className="text-[#e8c99b]">1.</b> 아래 버튼으로 이동해 <b>활용신청</b> (로그인 필요, 자동 승인)
+              </li>
+              <li>
+                <b className="text-[#e8c99b]">2.</b> 마이페이지 → 개발계정 → <b>일반 인증키(Decoding)</b> 복사
+              </li>
+              <li>
+                <b className="text-[#e8c99b]">3.</b> Vercel → Settings → Environment Variables →{' '}
+                <code className="rounded bg-[#0b111a] px-1.5 py-0.5 text-[#9BC9D8]">DATA_GO_KR_KEY</code> 등록 후 재배포
+              </li>
+            </ol>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs">
+              <a
+                href="https://www.data.go.kr/data/15134735/openapi.do"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-gradient-to-b from-[#d6b87e] to-[#b8965a] px-5 py-2 font-semibold text-[#0f0e0c]"
+              >
+                건축물대장 API 활용신청 →
+              </a>
+              <a
+                href="https://www.data.go.kr/iim/api/selectAPIAcountView.do"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-[#9BC9D8]/35 px-4 py-2 text-[#c8e4ee] hover:bg-[#9BC9D8]/10"
+              >
+                내 인증키 확인
+              </a>
+              <a
+                href="https://vercel.com/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-[#9BC9D8]/25 px-4 py-2 text-[#94aab8] hover:text-[#c8e4ee]"
+              >
+                Vercel 환경변수 설정
+              </a>
+            </div>
+          </div>
+        ) : null}
+
+        {keyReady === true ? (
+          <p className="mb-4 text-xs text-[#86efac]">인증키 연결됨 · 조회 가능</p>
+        ) : null}
 
         <div className="mb-6 grid gap-3 rounded-xl border border-[#9BC9D8]/20 bg-[#0b111a]/80 p-5 sm:grid-cols-[1fr_1fr_1fr_0.6fr_auto]">
           <label className="flex flex-col gap-1 text-xs">
