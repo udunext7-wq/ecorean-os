@@ -301,6 +301,7 @@ export default function MoodboardDetailPage() {
       name: name.trim(),
       notes: board.concept,
       material_ids: boardMaterialIds,
+      cover_url: board.cover_url, // 기준 무드 이미지를 프리셋 커버로 (색상 추출 원본)
     });
     if (insErr) setError(`프리셋 저장 실패: ${insErr.message}`);
     else window.alert('프리셋으로 저장했습니다 — AI 스튜디오 > 스타일 프리셋에서 확인하세요.');

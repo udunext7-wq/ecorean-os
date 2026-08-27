@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { Noto_Sans_KR } from 'next/font/google';
 import { StudioNav } from '../StudioNav';
+import { OntologyPanel, chainFrom, type Rule as PanelRule } from './OntologyPanel';
 import data from './rules.json';
 
 const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300', '400', '500', '700'], display: 'swap' });
@@ -133,6 +134,35 @@ export default function OntologyPage() {
   );
   const activeNames = new Set(visible.flatMap((r) => [r.triggerProcess, r.autoLinkProcess]));
 
+  // 무결성 점검 — 순환 연계, 고립 공정, 유형별 분포 (조회 전용 진단)
+  const audit = useMemo(() => {
+    const names = [...new Set(rules.flatMap((r) => [r.triggerProcess, r.autoLinkProcess]))];
+    const cycles: string[] = [];
+    names.forEach((n) => {
+      if (chainFrom(rules as PanelRule[], n, 5).some((c) => c.name === n)) cycles.push(n);
+    });
+    const triggers = new Set(rules.map((r) => r.triggerProcess));
+    const leaves = names.filter((n) => !triggers.has(n));
+    const byType: Record<string, number> = {};
+    rules.forEach((r) => {
+      byType[r.relationshipType] = (byType[r.relationshipType] ?? 0) + 1;
+    });
+    return { nodes: names.length, cycles, leaves: leaves.length, byType };
+  }, [rules]);
+
+  // 규칙 CSV 내보내기 — 회의·검토용 반출
+  function exportCsv() {
+    const head = ['트리거 공정', '관계유형', '자동연계 공정', '조건', '수량계산', '비고'];
+    const rows = [head, ...rules.map((r) => [r.triggerProcess, r.relationshipType, r.autoLinkProcess, r.condition, r.quantityCalc, r.note])];
+    const csv = '\ufeff' + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ECOREAN_공정자동연계_규칙_v${meta.version}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // 페인터 정렬 (뒤 → 앞)
   const seedOrder = [...seeds].sort((a, b) => projected[a.name].z - projected[b.name].z);
 
@@ -204,6 +234,34 @@ export default function OntologyPage() {
                 포커스 해제: {focus} ×
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={exportCsv}
+              className="ml-auto rounded-full border border-[#9BC9D8]/25 px-3 py-1 text-[#94aab8] hover:text-[#c8e4ee]"
+            >
+              규칙 CSV
+            </button>
+          </div>
+
+          {/* 무결성 점검 요약 */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-[#9BC9D8]/12 bg-[#0b111a]/60 px-4 py-2 text-[11px] text-[#94aab8]">
+            <span>
+              공정 <b className="text-[#c8e4ee]">{audit.nodes}</b>
+            </span>
+            <span>
+              규칙 <b className="text-[#c8e4ee]">{rules.length}</b>
+            </span>
+            {Object.entries(audit.byType).map(([t, n]) => (
+              <span key={t} style={{ color: REL_COLOR[t] }}>
+                {t} {n}
+              </span>
+            ))}
+            <span>
+              종단 공정 <b className="text-[#c8e4ee]">{audit.leaves}</b>
+            </span>
+            <span className={audit.cycles.length ? 'text-[#E5726A]' : 'text-[#86efac]'}>
+              순환 연계 {audit.cycles.length ? `${audit.cycles.length}건 — 검토 필요` : '없음 ✓'}
+            </span>
           </div>
         </header>
 
@@ -373,8 +431,17 @@ export default function OntologyPage() {
             </svg>
           </div>
 
-          {/* 규칙 목록 */}
+          {/* 우측: 포커스 시 공정 상세, 아니면 규칙 목록 */}
           <div className="max-h-[76vh] space-y-2 overflow-y-auto pr-1">
+            {focus ? (
+              <OntologyPanel
+                name={focus}
+                rules={rules as PanelRule[]}
+                relColor={REL_COLOR}
+                onPick={(n) => setFocus(n)}
+              />
+            ) : (
+              <>
             <p className="text-[10px] tracking-[0.25em] text-[#9BC9D8]/60">
               규칙 {visible.length} / {rules.length}
             </p>
@@ -409,6 +476,8 @@ export default function OntologyPage() {
                 </p>
               </div>
             ))}
+              </>
+            )}
           </div>
         </div>
       </div>
