@@ -548,7 +548,7 @@ export default function OntologyPage() {
                 const near = ptr ? Math.max(0, 1 - Math.hypot(pt.x - ptr.x, pt.y - ptr.y) / PROX) : 0;
                 const showLabel = isFocus || (!dimmed && (near > 0.55 || depth > 0.93));
                 const ph = phaseOf[name] ?? 0;
-                const R0 = (isFocus ? 6.5 : 2.2 + depth * 2.2) * pt.s * (1 + near * 0.32);
+                const R0 = (isFocus ? 5 : 1.5 + depth * 1.5) * pt.s * (1 + near * 0.35);
                 const k = R0 / 8;
                 return (
                   <g
