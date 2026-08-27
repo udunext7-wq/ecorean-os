@@ -7,3 +7,7 @@
 -- 4) cost_item_phase(text) — 대분류 → 생애주기 12단계 매핑
 -- 5) ontology_schedule(start, domain, categories, parallel) — 표준 공기 기반 공정표 자동 생성
 -- 상세 정의는 docs/ontology/SCHEMA.md 및 Supabase 함수 정의 참조.
+-- 6) 계층 조회 RPC (2026-08-27 추가)
+--    ontology_overview()  — L0 대분류 40 + 관계 213(규칙 투영·자재공유·단계선행), 페이로드 21KB
+--    ontology_drill(major, middle) — L1 중분류 / L2 공정
+--    ontology_process_detail(id) — 공정 상세(연결 자재 상위 30 · 적용 규칙)

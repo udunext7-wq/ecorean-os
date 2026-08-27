@@ -7,6 +7,9 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { Noto_Sans_KR } from 'next/font/google';
 import { StudioNav } from '../StudioNav';
 import { OntologyPanel, chainFrom, type Rule as PanelRule } from './OntologyPanel';
+import { GraphDB } from './GraphDB';
+import { ProcessDetail } from './ProcessDetail';
+import { createBrowserSupabase } from '@/core/db/browser';
 import data from './rules.json';
 
 const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300', '400', '500', '700'], display: 'swap' });
@@ -108,6 +111,22 @@ export default function OntologyPage() {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [phaseFilter, setPhaseFilter] = useState<number | null>(null);
   const [domainFilter, setDomainFilter] = useState<string | null>(null);
+  // 뷰 모드 — 규칙(파일 258건) / 그래프 DB(6,323 노드 · 73,185 관계, 계층 집約)
+  const [mode, setMode] = useState<'rules' | 'db'>('rules');
+  const [pick, setPick] = useState<{ id: string; name: string } | null>(null);
+  const [sync, setSync] = useState<string | null>(null);
+
+  async function syncToDb() {
+    setSync('동기화 중…');
+    const supabase = createBrowserSupabase();
+    const { data: res, error: err } = await supabase.rpc('ontology_ingest_rules', { payload: data });
+    if (err) {
+      setSync(err.message.includes('NOT_AUTHORIZED') ? '관리자(admin)만 동기화할 수 있습니다' : `실패: ${err.message}`);
+      return;
+    }
+    const r = res as { totalNodes: number; totalEdges: number };
+    setSync(`동기화 완료 — 그래프 노드 ${r.totalNodes.toLocaleString()} · 관계 ${r.totalEdges.toLocaleString()}`);
+  }
   const [q, setQ] = useState('');
   const [rot, setRot] = useState({ yaw: 0.6, pitch: -0.35 });
   const [ptr, setPtr] = useState<{ x: number; y: number } | null>(null);
@@ -350,6 +369,34 @@ export default function OntologyPage() {
           </p>
           {meta.status ? <p className="mt-1 text-[11px] text-[#F2A05C]/80">{meta.status}</p> : null}
 
+          {/* 뷰 모드 */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <div className="flex rounded-full border border-[#9BC9D8]/25 p-0.5">
+              {(['rules', 'db'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`rounded-full px-4 py-1 transition ${mode === m ? 'bg-[#9BC9D8]/18 text-[#dff4fa]' : 'text-[#94aab8] hover:text-[#c8e4ee]'}`}
+                >
+                  {m === 'rules' ? '규칙 온톨로지' : '그래프 DB (전 자산)'}
+                </button>
+              ))}
+            </div>
+            {mode === 'db' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={syncToDb}
+                  className="rounded-full border border-[#E8C99B]/35 px-3 py-1 text-[#e8c99b] hover:bg-[#E8C99B]/10"
+                >
+                  규칙 → DB 동기화
+                </button>
+                {sync ? <span className="text-[#86efac]">{sync}</span> : null}
+              </>
+            ) : null}
+          </div>
+
           {/* 도메인 · 노드 유형 */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
             <button
@@ -485,6 +532,29 @@ export default function OntologyPage() {
           </div>
         </header>
 
+        {mode === 'db' ? (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <GraphDB onDetail={(id, name) => setPick({ id, name })} />
+            <div className="max-h-[80vh] overflow-y-auto pr-1">
+              {pick ? (
+                <ProcessDetail id={pick.id} name={pick.name} onClose={() => setPick(null)} />
+              ) : (
+                <div className="rounded-xl border border-[#9BC9D8]/15 bg-[#0b111a]/70 p-5 text-sm text-[#94aab8]">
+                  <p className="text-[10px] tracking-[0.3em] text-[#9BC9D8]/60">그래프 DB 모드</p>
+                  <p className="mt-2 leading-relaxed">
+                    보유 데이터 전량(공정 단가 670 · 자재 5,248 · 분류 330 · 브랜드 43 · 직종 32)을 하나의
+                    그래프로 적재했습니다. 관계 73,185건은 한 번에 그릴 수 없어 <b className="text-[#c8e4ee]">
+                    대분류 → 중분류 → 공정</b> 순으로 집約해 보여줍니다.
+                  </p>
+                  <p className="mt-2 leading-relaxed">
+                    구를 클릭해 파고들면 마지막 단계에서 그 공정의 <b className="text-[#c8e4ee]">연결 자재와
+                    적용 규칙</b>이 이 자리에 열립니다.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div
             className="onto-stage overflow-hidden rounded-xl border border-[#9BC9D8]/15"
@@ -883,6 +953,7 @@ export default function OntologyPage() {
             )}
           </div>
         </div>
+        )}
       </div>
     </main>
   );
