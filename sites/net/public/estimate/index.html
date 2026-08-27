@@ -3016,7 +3016,10 @@ function calcEst(){
   let flByType={},wlByType={};
   S.spaces.forEach(sp=>{
     const a=+sp.area||0,p=+sp.perim||0,h=(+sp.h||2400)/1000;
-    const wa=p*h;
+    /* 벽면적: 도면 연동 시 MiniCAD 실측값(sp.wa — 개방 동선·개구부 차감)을 우선 사용.
+       수기 입력 공간은 종전대로 둘레×높이. (둘레×높이는 벽이 없는 개방 구간까지 세어
+       철거 물량 PRE_WL 이 과다 계상되던 문제 — 84㎡ 기준 +46%) */
+    const wa=(+sp.wa>0)?+sp.wa:p*h;
     totF+=a;totW+=wa;
     if(sp.wet){wetF+=a;wetW+=wa;}
     const ff=sp.flF||'강마루';flByType[ff]=(flByType[ff]||0)+a;
@@ -3220,7 +3223,21 @@ function calcEst(){
   const ptArea=finWallArea+finCeilArea;
   const pa=S.procAuto||{};
   if(ptArea>0 && pa.pt!==false) push('FIN_PT',R(ptArea),'퍼티+프라이머(벽+천장)');
-  /* 몰딩·걸레받이 — 목공 모듈에서 직접 선택 (자동 제거) */
+  /* 몰딩·걸레받이 — 목공 모듈에 직접 입력했으면 그것을 쓰고, 없으면 공간 둘레로 자동 산출.
+     (종전에는 자동을 완전히 제거해 두어 도면 연동 견적에서 항상 0원으로 빠졌다 —
+      84㎡ 기준 걸레받이+몰딩 약 174만원 누락) */
+  {
+    const carpTypes=new Set((S.carps||[]).map(r=>r.type));
+    if(mlEA>0 && !carpTypes.has('몰딩(2.4m)') && pa.ml!==false)
+      push('FIN_ML',mlEA,'천장 둘레 자동');
+    if(!carpTypes.has('걸레받이(2.4m)') && pa.bb!==false){
+      /* 걸레받이는 문 개구부만큼 끊긴다 — 문 1개당 표준 0.9m 차감 */
+      const doorQty=(S.doors||[]).reduce((s,d)=>s+(+d.qty||0),0);
+      const periSum=S.spaces.reduce((s,sp)=>s+(+sp.perim||0),0);
+      const bbEA=Math.ceil(Math.max(0,periSum-doorQty*0.9)/2.4);
+      if(bbEA>0)push('FIN_BB',bbEA,'벽 둘레−문폭 자동');
+    }
+  }
   if(totArea>0 && S.finishes.length>0 && pa.sl!==false) push('FIN_SL',Math.ceil(totArea*0.26),'실리콘(m 환산)');
   /* 마감재 모듈 집계 */
   /* ── 마감재 모듈 → DB 코드 매핑 (type + pat 조합) ── */
@@ -3436,6 +3453,8 @@ const PROC_CTRL_GROUPS = [
     items:[
       {id:'pt',  label:'퍼티+프라이머', desc:'마감재 면적',  get:()=>S.procAuto?.pt!==false,   set:(v)=>{if(!S.procAuto)S.procAuto={};S.procAuto.pt=v;}},
       {id:'sl',  label:'실리콘',        desc:'총면적×0.26m', get:()=>S.procAuto?.sl!==false,   set:(v)=>{if(!S.procAuto)S.procAuto={};S.procAuto.sl=v;}},
+      {id:'ml',  label:'몰딩',          desc:'공간 둘레÷2.4m', get:()=>S.procAuto?.ml!==false,  set:(v)=>{if(!S.procAuto)S.procAuto={};S.procAuto.ml=v;}},
+      {id:'bb',  label:'걸레받이',      desc:'둘레−문폭÷2.4m', get:()=>S.procAuto?.bb!==false,  set:(v)=>{if(!S.procAuto)S.procAuto={};S.procAuto.bb=v;}},
     ]
   },
   {
@@ -6455,6 +6474,7 @@ function importFloorPlan(plan,srcLabel,png){
       spName[sp.id]=row.nm;
       const aF=row.area;
       const aW=Math.round(((+sp.wallArea_m2)||row.perim*(row.h/1000))*10)/10;
+      row.wa=aW; /* 철거·집계가 쓰는 벽면적도 도면 실측값과 일치시킨다 (calcEst 참조) */
       const tMat=PLAN_TILE_MAT[fmCode]||'포세린타일';
       /* 바닥 */
       if(flF==='타일'||wet){
