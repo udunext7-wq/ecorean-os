@@ -2613,6 +2613,16 @@ function renderAll(){
     return (STATE.selectedKind===k?String(STATE.selectedId):'')+'·'+box.filter(b=>b.kind===k).map(b=>b.id).join(',')+'§';
   };
   const sig=(k,extra)=>{ if(!J)return null; try{return gk+selK(k)+extra;}catch(e){return null;} };
+  // 2026-08-27: 레이어 간 상호 의존 서명 (대표 보고 — 스위치를 켜도 화면을 움직여야 조명이 켜졌다)
+  //  · 조명 점등은 STATE.electric(스위치)에 달려 있으므로 lights 서명에 회로 상태를 포함
+  //  · 회로 연결선은 조명 위치에 달려 있으므로 electric 서명에 조명 좌표를 포함
+  let circuitSig='',lightPosSig='';
+  try{
+    if(J){
+      circuitSig='§'+J((STATE.electric||[]).map(e=>[e.id,e.circuitOn?1:0,(e.lightIds||[]).join('.')]));
+      lightPosSig='§'+J((STATE.lights||[]).map(l=>[l.id,l.x,l.y]))+(STATE.showCircuits?'C':'');
+    }
+  }catch(e){circuitSig='';lightPosSig='';}
 
   _rif('walls',   sig('wall',   (J?J(STATE.walls):'')+sSpaces),                                        ()=>renderWalls());
   _rif('spaces',  sig('space',  sSpaces+(J?J(STATE.rotateState||0):'')+(STATE.showDimensions?1:0)),    ()=>renderSpaces());
@@ -2620,8 +2630,8 @@ function renderAll(){
   _rif('fixtures',sig('fixtures',J?J(STATE.fixtures):''),  ()=>renderRect(STATE.fixtures,groups.fixtures,FIXTURE_LIB,'fixtures'));
   _rif('furniture',sig('furniture',J?J(STATE.furniture):''),()=>renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture'));
   _rif('hvac',    sig('hvac',   J?J(STATE.hvac):''),        ()=>renderRect(STATE.hvac,groups.hvac,HVAC_FIRE_LIB,'hvac'));
-  _rif('lights',  sig('lights', J?J(STATE.lights):''),      ()=>renderLights());
-  _rif('electric',sig('electric',J?J(STATE.electric):''),   ()=>renderElectric());
+  _rif('lights',  sig('lights', (J?J(STATE.lights):'')+circuitSig),      ()=>renderLights());
+  _rif('electric',sig('electric',(J?J(STATE.electric):'')+lightPosSig),   ()=>renderElectric());
   _rif('texts',   sig('texts',  J?J(STATE.texts):''),       ()=>renderTexts());
   _rif('measures',sig('measures',J?J(STATE.measures):''),   ()=>renderMeasures());
   _rif('circles', sig('circles',(J?J(STATE.circles):'')+sSpaces), ()=>renderCircles());

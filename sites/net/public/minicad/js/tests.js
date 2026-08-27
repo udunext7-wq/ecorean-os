@@ -1558,6 +1558,60 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('드래그: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 회로 점등이 renderAll 만으로 즉시 반영 (대표 보고 — 화면을 움직여야 보였음) ===
+  try{
+    const _bakIM={lights:STATE.lights.slice(),electric:STATE.electric.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,showC:STATE.showCircuits};
+    const G=7500000;
+    const gl={id:makeId('li'),type:'downlight',x:G,y:G,angle:0,inch:3};
+    const gs={id:makeId('e'),type:'switch_2',x:G-1500,y:G,angle:0};
+    STATE.lights.push(gl);STATE.electric.push(gs);
+    gs.lightIds=[gl.id];gs.circuitOn=false;
+    renderAll(); // 초기 렌더 (소등)
+    const glowCount=()=>{
+      let n=0;
+      groups.lights.getChildren().forEach(g=>{
+        if(!g.getChildren) return;
+        g.getChildren(c=>c.getClassName()==='Circle').forEach(c=>{
+          const st=c.fillRadialGradientColorStops&&c.fillRadialGradientColorStops();
+          if(st&&st.length) n++;
+        });
+      });
+      return n;
+    };
+    assert('즉시반영: 소등 상태 글로우 0',glowCount()===0,'glow '+glowCount());
+    // [IM1] 스위치만 바꾸고 renderAll — 조명 레이어가 즉시 다시 그려져야 한다
+    gs.circuitOn=true;
+    renderAll();
+    assert('즉시반영: 점등 즉시 글로우 표시',glowCount()===1,'glow '+glowCount());
+    // [IM2] 다시 끄면 즉시 사라진다
+    gs.circuitOn=false;
+    renderAll();
+    assert('즉시반영: 소등 즉시 반영',glowCount()===0,'glow '+glowCount());
+    // [IM3] 연결 조명 추가도 즉시 반영
+    const gl2={id:makeId('li'),type:'downlight',x:G+1200,y:G,angle:0,inch:3};
+    STATE.lights.push(gl2);
+    gs.lightIds=[gl.id,gl2.id];gs.circuitOn=true;
+    renderAll();
+    assert('즉시반영: 연결 추가 즉시 2개 점등',glowCount()===2,'glow '+glowCount());
+    // [IM4] 조명을 옮기면 연결선도 즉시 따라온다 (electric 서명에 조명 좌표 포함)
+    STATE.selectedKind='electric';STATE.selectedId=gs.id;
+    renderAll();
+    const curveCount=()=>{let n=0;groups.electric.getChildren().forEach(nd=>{if(nd.getClassName()==='Shape')n++;});return n;};
+    assert('즉시반영: 연결선 2개',curveCount()===2,'curves '+curveCount());
+    gl2.x=G+4000;
+    renderAll();
+    let far=false;
+    groups.electric.getChildren().forEach(nd=>{
+      if(nd.getClassName()==='Circle'&&Math.abs(nd.x()-(STATE.offsetX+mmToPx(G+4000)))<2) far=true;
+    });
+    assert('즉시반영: 조명 이동 시 연결선 갱신',far);
+    STATE.lights=_bakIM.lights;STATE.electric=_bakIM.electric;
+    STATE.selectedKind=_bakIM.selK;STATE.selectedId=_bakIM.selI;STATE.showCircuits=_bakIM.showC;
+    renderAll();
+  }catch(e){
+    assert('즉시반영: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
