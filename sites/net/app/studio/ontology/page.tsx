@@ -20,8 +20,8 @@ type Rule = {
   note: string;
   phase?: number;
 };
-type Phase = { id: number; name: string; category: string };
-type Process = { name: string; phase: number };
+type Phase = { id: number; name: string; category: string; domain: string };
+type Process = { name: string; phase: number; type: string; domain: string };
 
 const REL_COLOR: Record<string, string> = {
   필수: '#E8C99B',
@@ -36,15 +36,24 @@ const REL_COLOR: Record<string, string> = {
 // 시공 순서를 색 스펙트럼으로 (차가운 초기 단계 → 따뜻한 마감 단계)
 const PHASE_COLOR: Record<number, string> = {
   0: '#9BC9D8',
-  1: '#9BB8FF',
+  1: '#A5B4FF',
   2: '#8FA3B8',
-  3: '#5BC8FF',
-  4: '#4FE3D0',
-  5: '#7FE39B',
-  6: '#C9E36B',
-  7: '#F2C35C',
-  8: '#F2A05C',
-  9: '#F58FA8',
+  3: '#6FB3D6',
+  4: '#5BC8FF',
+  5: '#4FE0E3',
+  6: '#4FE3B8',
+  7: '#7FE39B',
+  8: '#A9E37F',
+  9: '#C9E36B',
+  10: '#F2C35C',
+  11: '#F2A05C',
+  12: '#F58FA8',
+};
+// 노드 유형 — 시공 공정 / 검사·시험 / 인허가·행정
+const TYPE_LABEL: Record<string, string> = {
+  PROCESS: '시공 공정',
+  CHECK: '검사·시험',
+  PERMIT: '인허가·행정',
 };
 
 // ── 물리 기반 조명 모델 (2026-08-27 대표 지시) ────────────────────────────
@@ -54,15 +63,18 @@ const PHASE_COLOR: Record<number, string> = {
 type Fixture = { label: string; lm: number; beam: number };
 const FIXTURES: Record<number, Fixture> = {
   0: { label: '팬던트 조명', lm: 800, beam: 360 },
-  1: { label: '팬던트 조명 (전방위)', lm: 800, beam: 360 },
+  1: { label: '팬던트 조명', lm: 800, beam: 360 },
   2: { label: '가설 작업등', lm: 2000, beam: 120 },
-  3: { label: 'LED 매입등', lm: 1000, beam: 60 },
-  4: { label: '다운라이트 6인치', lm: 1800, beam: 60 },
-  5: { label: '다운라이트 4인치', lm: 1200, beam: 60 },
-  6: { label: '욕실 방수등', lm: 1400, beam: 120 },
-  7: { label: '간접등 LED바 (1m)', lm: 1000, beam: 120 },
-  8: { label: '주방 매립등', lm: 2000, beam: 60 },
-  9: { label: '비상조명 LED', lm: 500, beam: 120 },
+  3: { label: '가설 투광등 50W', lm: 5000, beam: 120 },
+  4: { label: '고천장 투광등 30W', lm: 3000, beam: 120 },
+  5: { label: '외부 방수 벽등', lm: 1400, beam: 120 },
+  6: { label: 'LED 매입등', lm: 1000, beam: 60 },
+  7: { label: '다운라이트 6인치', lm: 1800, beam: 60 },
+  8: { label: '다운라이트 4인치', lm: 1200, beam: 60 },
+  9: { label: '욕실 방수등', lm: 1400, beam: 120 },
+  10: { label: '간접등 LED바 (1m)', lm: 1000, beam: 120 },
+  11: { label: '주방 매립등', lm: 2000, beam: 60 },
+  12: { label: '비상조명 LED', lm: 500, beam: 120 },
 };
 const E_THRESHOLD = 50; // lx — KS A 3011 실내 최저 권장 조도대
 const UNITS_PER_M = 8; // 화면 축척: viewBox 1m = 8단위
@@ -95,6 +107,7 @@ export default function OntologyPage() {
   const [focus, setFocus] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [phaseFilter, setPhaseFilter] = useState<number | null>(null);
+  const [domainFilter, setDomainFilter] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [rot, setRot] = useState({ yaw: 0.6, pitch: -0.35 });
   const [ptr, setPtr] = useState<{ x: number; y: number } | null>(null);
@@ -147,10 +160,17 @@ export default function OntologyPage() {
     });
     return m;
   }, [processes]);
+  const nodeMeta = useMemo(() => {
+    const m: Record<string, { type: string; domain: string }> = {};
+    processes.forEach((p) => {
+      m[p.name] = { type: p.type ?? 'PROCESS', domain: p.domain ?? '공통' };
+    });
+    return m;
+  }, [processes]);
 
   // 단계 위도 밴드 배치 — 1단계(기획)는 위, 9단계(준공)는 아래.
   // 구를 돌리면 시공 순서가 위→아래 궤도 벨트로 흐른다 (위치가 곧 정보)
-  const BANDS = 9;
+  const BANDS = 12;
   const seeds = useMemo(() => {
     const names = [...new Set(rules.flatMap((r) => [r.triggerProcess, r.autoLinkProcess]))];
     const byPhase: Record<number, string[]> = {};
@@ -228,6 +248,9 @@ export default function OntologyPage() {
       (!phaseFilter ||
         phaseOf[r.triggerProcess] === phaseFilter ||
         phaseOf[r.autoLinkProcess] === phaseFilter) &&
+      (!domainFilter ||
+        nodeMeta[r.triggerProcess]?.domain === domainFilter ||
+        nodeMeta[r.autoLinkProcess]?.domain === domainFilter) &&
       (!focus || r.triggerProcess === focus || r.autoLinkProcess === focus) &&
       (!q.trim() ||
         r.triggerProcess.includes(q.trim()) ||
@@ -321,10 +344,52 @@ export default function OntologyPage() {
           <h1 className="text-2xl font-bold tracking-tight text-[#f0deb9]">AI 스튜디오 · 온톨로지</h1>
           <p className="mt-1 text-sm text-[#94aab8]">
             공정 {meta.processCount ?? audit.nodes}개 · 연계 규칙 {meta.totalCount}건 (v{meta.version}) —
-            견적·발주가 따르는 시스템의 헌법입니다. 위에서 아래로 <b className="text-[#c8e4ee]">시공
-            순서대로 9개 궤도</b>에 공정이 놓여 있고, 씨앗을 클릭하면 연쇄·단가가 열립니다.
+            건축·인테리어 전 생애주기의 헌법입니다. 위에서 아래로 <b className="text-[#c8e4ee]">인허가
+            → 골조 → 마감 → 준공 12개 궤도</b>에 공정·검사·인허가가 놓여 있고, 노드를 클릭하면
+            연쇄·단가가 열립니다.
           </p>
           {meta.status ? <p className="mt-1 text-[11px] text-[#F2A05C]/80">{meta.status}</p> : null}
+
+          {/* 도메인 · 노드 유형 */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setDomainFilter(null)}
+              className={`rounded-full border px-3 py-1 ${!domainFilter ? 'border-[#f0deb9]/60 text-[#f0deb9]' : 'border-[#9BC9D8]/25 text-[#94aab8]'}`}
+            >
+              전 영역
+            </button>
+            {['건축', '인테리어', '공통'].map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDomainFilter((v) => (v === d ? null : d))}
+                className={`rounded-full border px-3 py-1 ${domainFilter === d ? 'border-[#9BC9D8]/60 bg-[#9BC9D8]/12 text-[#dff4fa]' : 'border-[#9BC9D8]/20 text-[#94aab8] hover:text-[#c8e4ee]'}`}
+              >
+                {d}
+              </button>
+            ))}
+            <span className="ml-3 flex items-center gap-3 text-[10px] text-[#94aab8]">
+              <span className="flex items-center gap-1">
+                <svg width="11" height="11" viewBox="-9 -9 18 18">
+                  <circle r="7" fill="#9BC9D8" opacity="0.8" />
+                </svg>
+                시공 공정
+              </span>
+              <span className="flex items-center gap-1">
+                <svg width="11" height="11" viewBox="-9 -9 18 18">
+                  <path d="M 0 -8 L 8 0 L 0 8 L -8 0 Z" fill="#9BC9D8" opacity="0.8" />
+                </svg>
+                검사·시험
+              </span>
+              <span className="flex items-center gap-1">
+                <svg width="11" height="11" viewBox="-9 -9 18 18">
+                  <path d="M 7 0 L 3.5 6 L -3.5 6 L -7 0 L -3.5 -6 L 3.5 -6 Z" fill="#9BC9D8" opacity="0.8" />
+                </svg>
+                인허가·행정
+              </span>
+            </span>
+          </div>
 
           {/* 단계 필터 */}
           {phases.length ? (
@@ -585,6 +650,7 @@ export default function OntologyPage() {
                 const near = ptr ? Math.max(0, 1 - Math.hypot(pt.x - ptr.x, pt.y - ptr.y) / PROX) : 0;
                 const showLabel = isFocus || (!dimmed && (near > 0.55 || depth > 0.93));
                 const ph = phaseOf[name] ?? 0;
+                const nType = nodeMeta[name]?.type ?? 'PROCESS';
                 const R0 = (isFocus ? 5 : 1.5 + depth * 1.5) * pt.s * (1 + near * 0.35);
                 const k = R0 / 8;
                 // 조명 도달 반경 — 실제 기구 광속·배광각에서 역제곱 법칙으로 산출
@@ -619,31 +685,48 @@ export default function OntologyPage() {
                       pointerEvents="none"
                     />
                     <g transform={`translate(${pt.x} ${pt.y}) scale(${k})`}>
-                      <circle r={8} fill={`url(#orb${ph})`} />
-                      <ellipse
-                        rx={8}
-                        ry={2.8}
-                        fill="none"
-                        stroke="#ffffff"
-                        strokeOpacity={0.5}
-                        strokeWidth={0.45}
-                      />
-                      <ellipse
-                        rx={2.8}
-                        ry={8}
-                        fill="none"
-                        stroke="#ffffff"
-                        strokeOpacity={0.32}
-                        strokeWidth={0.4}
-                      />
-                      <circle
-                        r={8}
-                        fill="none"
-                        stroke="#ffffff"
-                        strokeOpacity={0.25 + near * 0.6}
-                        strokeWidth={0.5 + near * 0.5}
-                      />
-                      <circle cx={-2.6} cy={-2.8} r={1.4} fill="#ffffff" opacity={0.85} />
+                      {nType === 'CHECK' ? (
+                        <>
+                          {/* 검사·시험 — 다이아몬드 */}
+                          <path d="M 0 -9 L 9 0 L 0 9 L -9 0 Z" fill={`url(#orb${ph})`} />
+                          <path
+                            d="M 0 -9 L 9 0 L 0 9 L -9 0 Z"
+                            fill="none"
+                            stroke="#ffffff"
+                            strokeOpacity={0.4 + near * 0.5}
+                            strokeWidth={0.7}
+                          />
+                          <circle r={2.4} fill="none" stroke="#ffffff" strokeOpacity={0.5} strokeWidth={0.5} />
+                        </>
+                      ) : nType === 'PERMIT' ? (
+                        <>
+                          {/* 인허가·행정 — 육각형 */}
+                          <path d="M 8 0 L 4 7 L -4 7 L -8 0 L -4 -7 L 4 -7 Z" fill={`url(#orb${ph})`} />
+                          <path
+                            d="M 8 0 L 4 7 L -4 7 L -8 0 L -4 -7 L 4 -7 Z"
+                            fill="none"
+                            stroke="#ffffff"
+                            strokeOpacity={0.42 + near * 0.5}
+                            strokeWidth={0.8}
+                          />
+                          <path d="M -3.4 0 L -1 2.6 L 3.6 -2.4" fill="none" stroke="#ffffff" strokeOpacity={0.7} strokeWidth={0.9} />
+                        </>
+                      ) : (
+                        <>
+                          {/* 시공 공정 — 홀로그램 구체 */}
+                          <circle r={8} fill={`url(#orb${ph})`} />
+                          <ellipse rx={8} ry={2.8} fill="none" stroke="#ffffff" strokeOpacity={0.5} strokeWidth={0.45} />
+                          <ellipse rx={2.8} ry={8} fill="none" stroke="#ffffff" strokeOpacity={0.32} strokeWidth={0.4} />
+                          <circle
+                            r={8}
+                            fill="none"
+                            stroke="#ffffff"
+                            strokeOpacity={0.25 + near * 0.6}
+                            strokeWidth={0.5 + near * 0.5}
+                          />
+                          <circle cx={-2.6} cy={-2.8} r={1.4} fill="#ffffff" opacity={0.85} />
+                        </>
+                      )}
                     </g>
                     {showLabel ? (
                       <text
@@ -742,6 +825,12 @@ export default function OntologyPage() {
                     }}
                   >
                     {phases.find((p) => p.id === (phaseOf[focus] ?? 0))?.name ?? '공통'} 단계
+                  </span>
+                  <span className="rounded-full border border-[#9BC9D8]/30 px-2 py-0.5 text-[#c8e4ee]">
+                    {TYPE_LABEL[nodeMeta[focus]?.type ?? 'PROCESS']}
+                  </span>
+                  <span className="rounded-full border border-[#9BC9D8]/20 px-2 py-0.5 text-[#94aab8]">
+                    {nodeMeta[focus]?.domain ?? '공통'}
                   </span>
                 </div>
                 <OntologyPanel
