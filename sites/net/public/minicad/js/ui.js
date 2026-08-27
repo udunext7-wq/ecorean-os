@@ -67,6 +67,7 @@ function setTool(tool){
   if(libTools[tool]) rebuildLibPanel(tool);
   else{const p=document.getElementById('lib-panel');if(p)p.innerHTML='';STATE.selectedLib=null;}
   showStatus('도구: '+tool);
+  if(typeof _circuitBanner==='function') _circuitBanner(); // 2026-08-27: 연결 모드 배너 유지
 }
 document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
 
@@ -2034,23 +2035,51 @@ function migrateLoadedState(schema){
 // ===== 2026-08-24 v6.0 업그레이드 (대표 지시: 실무 도면력·UX·안정성·AI 자동화) =====
 
 // --- 2026-08-26: 스위치→조명 회로 연동 (대표 지시) ---
+// 2026-08-27: 연결 모드 상시 배너 — 종료 전까지 계속 켜져 있음을 눈으로 확인 (대표 지시)
+function _circuitBanner(){
+  let el=document.getElementById('circuit-link-banner');
+  const link=window._circuitLink;
+  if(!link){ if(el) el.remove(); return; }
+  const sw=STATE.electric.find(e=>e.id===link.switchId);
+  const n=sw&&Array.isArray(sw.lightIds)?sw.lightIds.filter(id=>STATE.lights.some(l=>l.id===id)).length:0;
+  if(!el){
+    el=document.createElement('div');
+    el.id='circuit-link-banner';
+    el.style.cssText='position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:9200;'
+      +'background:rgba(123,160,91,0.95);color:#0A0A0A;font-family:Inter,sans-serif;font-weight:700;'
+      +'font-size:12px;padding:8px 14px;border-radius:20px;box-shadow:0 4px 18px rgba(0,0,0,0.45);'
+      +'display:flex;align-items:center;gap:10px;pointer-events:auto';
+    const txt=document.createElement('span'); txt.id='circuit-link-text';
+    const btn=document.createElement('button');
+    btn.textContent='종료 (Esc)';
+    btn.style.cssText='background:#0A0A0A;color:#7BA05B;border:none;border-radius:12px;padding:3px 10px;'
+      +'font-size:11px;font-weight:700;cursor:pointer';
+    btn.addEventListener('click',()=>{if(typeof endCircuitLink==='function')endCircuitLink();});
+    el.appendChild(txt);el.appendChild(btn);
+    document.body.appendChild(el);
+  }
+  const t=document.getElementById('circuit-link-text');
+  if(t) t.textContent='🔌 조명 연결 모드 — 조명을 클릭해 연결/해제 (연결 '+n+'개)';
+}
 function toggleCircuitLink(switchId,lightId){
   const sw=STATE.electric.find(e=>e.id===switchId);
-  if(!sw){window._circuitLink=null;return;}
+  if(!sw){window._circuitLink=null;_circuitBanner();return;}
   if(!Array.isArray(sw.lightIds)) sw.lightIds=[];
   const i=sw.lightIds.indexOf(lightId);
   if(i>=0){sw.lightIds.splice(i,1);cmdToast('조명 연결 해제 — 총 '+sw.lightIds.length+'개');}
   else{sw.lightIds.push(lightId);cmdToast('조명 연결 — 총 '+sw.lightIds.length+'개 (계속 클릭, Esc 종료)');}
-  saveHistory();renderAll();refreshUI();
+  // 2026-08-27: 연결 후에도 모드·선택을 그대로 유지 (종료 전까지 계속 작동)
+  STATE.selectedKind='electric';STATE.selectedId=switchId;STATE.boxSelection=[];
+  saveHistory();renderAll();refreshUI();_circuitBanner();
 }
 function startCircuitLink(switchId){
   window._circuitLink={switchId};
-  STATE.selectedKind='electric';STATE.selectedId=switchId;
-  renderAll();refreshUI();
-  cmdToast('🔌 조명 연결 모드 — 연결할 조명을 클릭 (다시 클릭=해제, Esc=종료)');
+  STATE.selectedKind='electric';STATE.selectedId=switchId;STATE.boxSelection=[];
+  renderAll();refreshUI();_circuitBanner();
+  cmdToast('🔌 조명 연결 모드 — 연결할 조명을 계속 클릭 (다시 클릭=해제, Esc·배너 버튼=종료)');
 }
 function endCircuitLink(){
-  if(window._circuitLink){window._circuitLink=null;renderAll();refreshUI();cmdToast('조명 연결 모드 종료');}
+  if(window._circuitLink){window._circuitLink=null;renderAll();refreshUI();_circuitBanner();cmdToast('조명 연결 모드 종료');}
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&window._circuitLink)endCircuitLink();});
 

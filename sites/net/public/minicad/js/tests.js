@@ -1636,6 +1636,47 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('성능: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 조명 연결 모드 지속 (종료 전까지 계속 작동) ===
+  try{
+    const _bakLM={lights:STATE.lights.slice(),electric:STATE.electric.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice()};
+    const M=8100000;
+    const msw={id:makeId('e'),type:'switch_3',x:M,y:M,angle:0};
+    STATE.electric.push(msw);
+    const mls=[0,1,2,3].map(i=>{const o={id:makeId('li'),type:'downlight',x:M+1000+i*800,y:M,angle:0,inch:3};STATE.lights.push(o);return o;});
+    startCircuitLink(msw.id);
+    assert('연결모드: 시작',!!window._circuitLink&&window._circuitLink.switchId===msw.id);
+    assert('연결모드: 배너 표시',!!document.getElementById('circuit-link-banner'));
+    // 연속 연결 — 매번 모드·선택 유지
+    mls.forEach((o,i)=>{
+      toggleCircuitLink(msw.id,o.id);
+      assert('연결모드: '+(i+1)+'개째 연결 후 유지',!!window._circuitLink
+        &&STATE.selectedKind==='electric'&&STATE.selectedId===msw.id
+        &&(msw.lightIds||[]).length===i+1,
+        'mode '+!!window._circuitLink+' n '+(msw.lightIds||[]).length);
+    });
+    // 재클릭 = 해제, 모드는 계속
+    toggleCircuitLink(msw.id,mls[3].id);
+    assert('연결모드: 재클릭 해제 후에도 유지',!!window._circuitLink&&(msw.lightIds||[]).length===3);
+    // 배너 개수 갱신
+    _circuitBanner();
+    const bt=document.getElementById('circuit-link-text');
+    assert('연결모드: 배너 개수 갱신',!!bt&&bt.textContent.indexOf('3개')>=0,bt&&bt.textContent);
+    // 도구를 바꿔도 모드 유지
+    setTool('wall');
+    assert('연결모드: 도구 변경에도 유지',!!window._circuitLink&&!!document.getElementById('circuit-link-banner'));
+    setTool('select');
+    // 종료
+    endCircuitLink();
+    assert('연결모드: 종료',!window._circuitLink&&!document.getElementById('circuit-link-banner'));
+    assert('연결모드: 종료 후 연결 보존',(msw.lightIds||[]).length===3);
+    STATE.lights=_bakLM.lights;STATE.electric=_bakLM.electric;
+    STATE.selectedKind=_bakLM.selK;STATE.selectedId=_bakLM.selI;STATE.boxSelection=_bakLM.box;
+    window._circuitLink=null;_circuitBanner();
+    renderAll();
+  }catch(e){
+    assert('연결모드: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

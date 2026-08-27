@@ -2281,6 +2281,13 @@ stage.on('mousedown touchstart',e=>{
     // v5.4: 객체 위 mousedown = 드래그 이동 시작 / 빈 영역 = 박스 선택
     if(e.target===stage){
       const mm=getMm(pos);
+      // 2026-08-27: 조명 연결 모드 중 빈 곳 클릭 — 스위치 선택·모드 유지 (종료는 Esc·배너 버튼만)
+      if(window._circuitLink){
+        drawState=null;
+        STATE.selectedKind='electric';STATE.selectedId=window._circuitLink.switchId;STATE.boxSelection=[];
+        renderAll();refreshUI();
+        return;
+      }
       drawState={type:'box',start:mm,current:mm};
       STATE.selectedKind=null;STATE.selectedId=null;
       if(!STATE.shiftPressed) STATE.boxSelection=[];
@@ -2300,6 +2307,12 @@ stage.on('mousedown touchstart',e=>{
       }
       if(id){
         const found=findObjById(id);
+        // 2026-08-27: 조명 연결 모드 중에는 선택/드래그로 모드가 풀리지 않는다 (대표 지시)
+        //  조명 클릭은 Konva click 핸들러가 연결/해제 처리, 그 외 객체 클릭은 무시(스위치는 유지)
+        if(window._circuitLink&&found){
+          if(found.kind!=='electric') return;           // 조명·기타 객체: 드래그·선택 금지
+          if(found.id!==window._circuitLink.switchId) return; // 다른 전기 객체도 무시
+        }
         if(found){
           const isAlt=!!(e.evt&&e.evt.altKey)||!!STATE.altLatched; // 2026-08-19: 퀵바 ⎇ Alt 고정 (태블릿 드래그 복제)
           const isShift=!!(e.evt&&e.evt.shiftKey);
@@ -3865,7 +3878,10 @@ document.addEventListener('keydown',e=>{
       e.preventDefault();
       doEnterAction();
       break;
-    case 'escape':drawState=null;STATE.measureFirst=null;offsetState=null;polyState=null;polyClickGuard=false;
+    case 'escape':
+      // 2026-08-27: 조명 연결 모드가 켜져 있으면 Esc 는 '모드 종료'만 수행 (선택·도구 상태 보존)
+      if(window._circuitLink&&typeof endCircuitLink==='function'){endCircuitLink();break;}
+      drawState=null;STATE.measureFirst=null;offsetState=null;polyState=null;polyClickGuard=false;
       leaderDrawState=null;
       freePolyState=null;document.getElementById('polyclose-fab')?.classList.add('hidden'); // v5.9
       drawGroup.destroyChildren();previewLayer.batchDraw();deselect();
