@@ -432,16 +432,6 @@ export default function OntologyPage() {
                     <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
-                <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="rgba(120,225,255,0)" />
-                  <stop offset="70%" stopColor="rgba(120,225,255,0.35)" />
-                  <stop offset="100%" stopColor="rgba(190,245,255,0.85)" />
-                </linearGradient>
-                <linearGradient id="coneGrad" x1="0" y1="1" x2="0" y2="0">
-                  <stop offset="0%" stopColor="rgba(90,200,255,0.22)" />
-                  <stop offset="60%" stopColor="rgba(90,200,255,0.05)" />
-                  <stop offset="100%" stopColor="rgba(90,200,255,0)" />
-                </linearGradient>
                 <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="rgba(80,180,255,0)" />
                   <stop offset="45%" stopColor="rgba(120,200,255,0.3)" />
