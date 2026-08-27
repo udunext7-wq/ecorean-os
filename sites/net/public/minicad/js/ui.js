@@ -1443,14 +1443,7 @@ function buildJSON(){
       layerNamingScheme:'A-{ELEMENT}-{SPACECODE}-{INDEX02}',
       elementCodes:['AREA','WALL','DOOR','WIND','FURN','FIXT','LITE','ELEC','HVAC','CIRC','ARC','DIMS','ANNO'],
       // 2026-08-26: 문서 설정 왕복 — 견적 옵션·동선 순서·레이어 표시·벽 정렬 (대표 보고: 불러오면 설정이 변경됨)
-      settings:{
-        estimateConfig:STATE.estimateConfig||{},
-        videoSequenceOrder:STATE.videoSequenceOrder||null,
-        layers:STATE.layers?{...STATE.layers}:null,
-        wallAlignment:STATE.wallAlignment||'center',
-        downlightInch:STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT, // 2026-08-25
-        snap:{grid:!!STATE.snap.grid,endpoint:!!STATE.snap.endpoint,ghost:!!STATE.snap.ghost,ortho:!!STATE.snap.ortho}, // 2026-08-27
-      },
+      settings:buildDocSettings(),
       // v5.7: 차세대 AI 생성 파이프라인 SSoT 메타
       aiPromptHints:STATE.aiPromptHints,
       videoSequence:{
@@ -1582,8 +1575,18 @@ function buildJSONProfile(profile){
   }
   return j;
 }
+// 2026-08-27 PERF: JSON 탭을 열어두면 매 동작마다 무거운 재구성(대형 도면 ~1초)이 돌았다.
+//  → 탭이 열려 있을 때는 250ms 디바운스로 묶어 연속 조작 중 멈칫을 없앤다. 탭 전환 시엔 즉시 갱신.
+let _jsonTimer=null;
 function refreshJSON(){
-  if(!_tabActive('json')){_jsonDirty=true;return;} /* PERF: JSON 탭 열 때만 재구성 */
+  if(!_tabActive('json')){_jsonDirty=true;return;}
+  _jsonDirty=false;
+  if(_jsonTimer) clearTimeout(_jsonTimer);
+  _jsonTimer=setTimeout(refreshJSONNow,250);
+}
+function refreshJSONNow(){
+  if(_jsonTimer){clearTimeout(_jsonTimer);_jsonTimer=null;}
+  if(!_tabActive('json')){_jsonDirty=true;return;}
   _jsonDirty=false;
   const _prof=document.getElementById('json-profile');
   const t=JSON.stringify(buildJSONProfile(_prof?_prof.value:'full'),null,2);
@@ -2197,12 +2200,43 @@ function autoFurnish(spaceId){
   cmdToast('⚡ 자동 배치 — '+(SPACE_TYPES[s.type]?SPACE_TYPES[s.type].name:s.type)+' 세트 '+n+'개 (Ctrl+Z 취소)');
 }
 
+// 2026-08-27: 문서 설정 블록 공용화 (buildJSON·자동저장 공용 — 한쪽만 갱신돼 설정이 새는 것 방지)
+function buildDocSettings(){
+  return {
+    estimateConfig:STATE.estimateConfig||{},
+    videoSequenceOrder:STATE.videoSequenceOrder||null,
+    layers:STATE.layers?{...STATE.layers}:null,
+    wallAlignment:STATE.wallAlignment||'center',
+    downlightInch:STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT,
+    snap:{grid:!!STATE.snap.grid,endpoint:!!STATE.snap.endpoint,ghost:!!STATE.snap.ghost,ortho:!!STATE.snap.ortho},
+  };
+}
+// 2026-08-27 PERF: 자동 저장용 경량 스냅샷 — 복구에 필요한 원본 데이터만.
+//  기존엔 buildJSON()(견적 산출·관계 그래프·시맨틱 enrich 포함)을 2초마다 돌려
+//  대형 도면에서 0.5초대 멈칫이 생겼다. 복구 경로(applyLoadedData)는 아래 필드만 읽는다.
+function buildAutosavePayload(){
+  return {
+    schema:'ECOREAN.FloorPlan.v5.9',
+    vertices:STATE.vertices,
+    meta:{
+      project:STATE.projectName,unit:'mm',
+      ceilingHeight_mm:STATE.ceilingHeight,wallThickness:STATE.wallThickness,gridSize:STATE.gridSize,
+      aiPromptHints:STATE.aiPromptHints,
+      settings:buildDocSettings(),
+    },
+    spaces:STATE.spaces,walls:STATE.walls,openings:STATE.openings,
+    furniture:STATE.furniture,fixtures:STATE.fixtures,lights:STATE.lights,
+    electric:STATE.electric,hvac:STATE.hvac,texts:STATE.texts,measures:STATE.measures,
+    circles:STATE.circles,arcs:STATE.arcs,curves:STATE.curves||[],
+    leaders:STATE.leaders||[],xlines:STATE.xlines||[],pillars:STATE.pillars||[],
+  };
+}
 // --- [안정] 자동 저장 (2초 디바운스) + 복구 제안 ---
 let _autosaveTimer=null;
 function _autosaveNow(){
   try{
-    const j=buildJSON();
-    if(j.bgImage) delete j.bgImage; // 대용량 배경 이미지는 자동저장 제외
+    // 2026-08-27 PERF: 경량 스냅샷 사용 (buildJSON 은 저장/전송 등 사용자 액션에서만)
+    const j=buildAutosavePayload();
     localStorage.setItem('minicad.autosave',JSON.stringify({at:Date.now(),data:j}));
     return true;
   }catch(_){return false;}
@@ -2809,7 +2843,7 @@ document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>
   document.querySelectorAll('.tab-btn').forEach(x=>x.classList.toggle('active',x===b));
   document.querySelectorAll('.tab-content').forEach(x=>x.classList.toggle('active',x.dataset.tabContent===tab));
   /* PERF: 지연 갱신된 탭은 열 때 재구성 */
-  if(tab==='json'&&_jsonDirty)refreshJSON();
+  if(tab==='json'&&_jsonDirty)refreshJSONNow(); // 2026-08-27: 탭 전환은 즉시
   if(tab==='estimate'&&_estimateDirty)refreshEstimate();
 }));
 

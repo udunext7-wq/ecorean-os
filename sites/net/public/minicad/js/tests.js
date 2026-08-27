@@ -1612,6 +1612,30 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('즉시반영: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 자동 저장 경량화 + JSON 탭 디바운스 (성능 검토) ===
+  try{
+    const _bakPF={ls:(function(){try{return localStorage.getItem('minicad.autosave');}catch(_){return null;}})()};
+    // [PF1] 경량 스냅샷이 복구에 필요한 필드를 모두 담는다
+    const pay=buildAutosavePayload();
+    const need=['schema','vertices','meta','spaces','walls','openings','furniture','fixtures',
+                'lights','electric','hvac','texts','measures','circles','arcs','curves','leaders','xlines','pillars'];
+    assert('성능: 자동저장 필드 완비',need.every(k=>k in pay),need.filter(k=>!(k in pay)).join(','));
+    assert('성능: 자동저장 설정 포함',!!(pay.meta&&pay.meta.settings&&pay.meta.settings.snap&&'downlightInch' in pay.meta.settings));
+    // [PF2] 자동 저장은 buildJSON 보다 확연히 가볍다 (견적·관계 그래프 미포함)
+    assert('성능: 자동저장에 견적 미포함',!('estimateInput' in pay)&&!('relationships' in pay)&&!('integrity' in pay));
+    // [PF3] 실제 저장·복구 왕복
+    assert('성능: 자동저장 기록',_autosaveNow()===true);
+    const saved=JSON.parse(localStorage.getItem('minicad.autosave'));
+    assert('성능: 저장 데이터 유효',!!(saved&&saved.data&&Array.isArray(saved.data.spaces)&&saved.at>0));
+    // [PF4] 문서 설정 공용 빌더 — buildJSON 과 동일 값
+    const dj=buildJSON();
+    assert('성능: 설정 빌더 공용',JSON.stringify(dj.meta.settings)===JSON.stringify(buildDocSettings()));
+    // [PF5] JSON 탭 디바운스 API 존재 (즉시 갱신 경로 포함)
+    assert('성능: JSON 즉시 갱신 함수',typeof refreshJSONNow==='function'&&typeof refreshJSON==='function');
+    try{if(_bakPF.ls===null) localStorage.removeItem('minicad.autosave'); else localStorage.setItem('minicad.autosave',_bakPF.ls);}catch(_){}
+  }catch(e){
+    assert('성능: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
