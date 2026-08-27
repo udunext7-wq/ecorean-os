@@ -95,8 +95,14 @@ async function findPlanImages(home) {
       let t;
       try { const pr = await fetch(p, { headers: { ...UA, Referer: baseUrl } }); if (!pr.ok) continue; t = await pr.text(); }
       catch { continue; }
-      for (const m of t.matchAll(/(?:src|data-src|href)="([^"]+\.(?:jpg|jpeg|png))"/gi)) {
-        const raw = m[1];
+      // src/href 속성 + CSS background-image + 스크립트에 박힌 경로까지 훑는다
+      // (분양 사이트 상당수가 SPA·슬라이더라 img 태그로 안 나온다)
+      const cands = [
+        ...[...t.matchAll(/(?:src|data-src|data-original|data-lazy|href)="([^"]+\.(?:jpg|jpeg|png))"/gi)].map(m => m[1]),
+        ...[...t.matchAll(/url\(\s*['"]?([^'")]+\.(?:jpg|jpeg|png))['"]?\s*\)/gi)].map(m => m[1]),
+        ...[...t.matchAll(/['"]([^'"\s]+\.(?:jpg|jpeg|png))['"]/gi)].map(m => m[1]),
+      ];
+      for (const raw of cands) {
         if (SKIP_HINT.test(raw) || !PLAN_FILE.test(raw.split('?')[0])) continue;
         try { found.set(new URL(raw, p).href, true); } catch { }
       }
