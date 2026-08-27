@@ -304,7 +304,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 
   // ── 🗺 3D 지도 뷰 (MapLibre GL + OpenFreeMap 벡터 타일 — 키 불필요) ──
   // 건물 입체(fill-extrusion)·회전·기울기 지원. 실패 시 사용자에게 안내.
-  var map=null, markers=[], mapOn=false, mapReady=false;
+  var map=null, planPopup=null, mapOn=false, mapReady=false;
   function ensureMapLibre(){
     if(window.maplibregl)return Promise.resolve();
     return new Promise(function(res,rej){
@@ -318,7 +318,9 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   }
   // 하이퍼 리얼 모드: Esri 위성 실사 텍스처 + 건물 벡터(OpenFreeMap)만 얹은 최소 스타일
   function satStyle(){
-    return {version:8,sources:{
+    return {version:8,
+      glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf', // 클러스터 숫자 라벨용
+      sources:{
       'ec-sat':{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
         tileSize:256,maxzoom:19,attribution:'&copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, GIS User Community'},
       'ec-omt':{type:'vector',url:'https://tiles.openfreemap.org/planet'}
@@ -348,10 +350,14 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   }
   // 지형 on/off — DEM 최대 z15 라서 건물 스케일(z16+)에서 켜두면 지면이 늘어나 이미지가 깨진다.
   // 광역(≤z15.5)에서만 지형을 적용하고, 확대하면 평면으로 되돌린다.
-  var TERRAIN_MAX_ZOOM=15.5, terrainOn=false;
+  // 히스테리시스: 켜짐 임계(14.2)와 꺼짐 임계(15.2)를 벌려, 경계에서 확대·축소를 반복해도
+  // setTerrain 이 연속 호출되며 전체 타일이 재렌더(흰 화면 깜빡임)되지 않게 한다.
+  var TERRAIN_ON_ZOOM=14.2, TERRAIN_OFF_ZOOM=15.2, terrainOn=false;
   function syncTerrain(){
     if(!map||!map.getSource('ec-dem'))return;
-    var want=map.getZoom()<=TERRAIN_MAX_ZOOM;
+    var z=map.getZoom(), want=terrainOn;
+    if(terrainOn&&z>TERRAIN_OFF_ZOOM)want=false;
+    else if(!terrainOn&&z<TERRAIN_ON_ZOOM)want=true;
     if(want===terrainOn)return;
     terrainOn=want;
     try{map.setTerrain(want?{source:'ec-dem',exaggeration:1.25}:null);}
@@ -369,39 +375,73 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
         'sky-horizon-blend':0.6,'horizon-fog-blend':0.7,'fog-ground-blend':0.85});
     }catch(e){/* 구버전 maplibre — 하늘 미지원이어도 지도는 정상 */}
     add3DBuildings();
+    if(mapReady)placeMarkers(false); // 스타일 교체 시 소스가 초기화되므로 마커 레이어만 재구성
   }
-  function placeMarkers(){
-    if(!map||!mapReady)return;
-    markers.forEach(function(m){m.remove();});markers=[];
-    var pts=[];
-    var seen={}; // 같은 단지 복수 평형(동일 좌표) — 마커를 살짝 비켜 배치
-    state.rows.forEach(function(r){
+  // 마커는 GeoJSON 소스 + GPU 레이어로 그린다.
+  // (DOM 마커는 확대·이동 프레임마다 수백 개를 재배치해 심한 렉·흰 화면을 유발했다 — 2026-08-27 수정)
+  function planGeoJSON(){
+    var feats=[],seen={};
+    state.rows.forEach(function(r,i){
       if(r.lat==null||r.lng==null)return;
-      var key=r.lat+','+r.lng;
-      var n=seen[key]||0;seen[key]=n+1;
-      var lat=r.lat+(n?0.0006*n:0), lng=r.lng+(n?0.0006*n:0);
-      var pop=new maplibregl.Popup({offset:20}).setHTML('<b>'+esc(r.complex_name)+'</b> '+esc(r.area_type||'')+'<br>'+
+      var key=r.lat+','+r.lng,n=seen[key]||0;seen[key]=n+1; // 같은 좌표(복수 평형)는 살짝 비켜 배치
+      feats.push({type:'Feature',
+        geometry:{type:'Point',coordinates:[r.lng+(n?0.0006*n:0),r.lat+(n?0.0006*n:0)]},
+        properties:{i:i}});
+    });
+    return {type:'FeatureCollection',features:feats};
+  }
+  var planHandlersBound=false;
+  function ensurePlanLayers(){
+    if(!map||map.getSource('ec-plans'))return;
+    map.addSource('ec-plans',{type:'geojson',data:planGeoJSON(),cluster:true,clusterRadius:46,clusterMaxZoom:14});
+    map.addLayer({id:'ec-cluster',type:'circle',source:'ec-plans',filter:['has','point_count'],
+      paint:{'circle-color':'#1A1814','circle-opacity':0.86,'circle-stroke-color':'#B8965A','circle-stroke-width':2,
+        'circle-radius':['step',['get','point_count'],14,10,18,50,23,200,29]}});
+    map.addLayer({id:'ec-cluster-n',type:'symbol',source:'ec-plans',filter:['has','point_count'],
+      layout:{'text-field':['get','point_count_abbreviated'],'text-size':12,'text-font':['Noto Sans Bold']},
+      paint:{'text-color':'#F8F4EE'}});
+    map.addLayer({id:'ec-pt',type:'circle',source:'ec-plans',filter:['!',['has','point_count']],
+      paint:{'circle-color':'#B8965A','circle-radius':7,'circle-stroke-color':'#1A1814','circle-stroke-width':2}});
+    if(planHandlersBound)return;
+    planHandlersBound=true;
+    map.on('click','ec-cluster',function(e){
+      var f=e.features&&e.features[0];if(!f)return;
+      map.easeTo({center:f.geometry.coordinates,zoom:Math.min(16,map.getZoom()+2.2),duration:600});
+    });
+    map.on('click','ec-pt',function(e){
+      var f=e.features&&e.features[0];if(!f)return;
+      var r=state.rows[f.properties.i],c=f.geometry.coordinates.slice();
+      if(!r)return;
+      if(planPopup)planPopup.remove();
+      planPopup=new maplibregl.Popup({offset:14}).setLngLat(c).setHTML(
+        '<b>'+esc(r.complex_name)+'</b> '+esc(r.area_type||'')+'<br>'+
         esc([r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' '))+'<br>'+
         '<a href="#" class="mk-open" style="font-weight:700;color:#8a713f">평면도 보기 →</a>'+
-        ' &nbsp;<a href="#" class="mk-fly" style="font-weight:700;color:#4a7fb5">🏙 3D로 보기</a>');
-      pop.on('open',function(){
-        var el=pop.getElement();
-        var a=el.querySelector('.mk-open');
-        if(a&&!a.dataset.bound){a.dataset.bound='1';a.addEventListener('click',function(ev){ev.preventDefault();openDetail(r);});}
-        var f=el.querySelector('.mk-fly'); // 단지 상공으로 급강하 — 건물 입체가 보이는 줌·기울기
-        if(f&&!f.dataset.bound){f.dataset.bound='1';f.addEventListener('click',function(ev){
-          ev.preventDefault();
-          map.flyTo({center:[lng,lat],zoom:16.6,pitch:66,bearing:-24,duration:2200,essential:true});
-        });}
+        ' &nbsp;<a href="#" class="mk-fly" style="font-weight:700;color:#4a7fb5">🏙 3D로 보기</a>').addTo(map);
+      var el=planPopup.getElement();
+      var a=el.querySelector('.mk-open');
+      if(a)a.addEventListener('click',function(ev){ev.preventDefault();openDetail(r);});
+      var fl=el.querySelector('.mk-fly'); // 단지 상공으로 급강하 — 건물 입체가 보이는 줌·기울기
+      if(fl)fl.addEventListener('click',function(ev){
+        ev.preventDefault();
+        map.flyTo({center:c,zoom:16.6,pitch:66,bearing:-24,duration:2200,essential:true});
       });
-      markers.push(new maplibregl.Marker({color:'#B8965A'}).setLngLat([lng,lat]).setPopup(pop).addTo(map));
-      pts.push([lng,lat]);
     });
-    if(pts.length){
-      var b=new maplibregl.LngLatBounds(pts[0],pts[0]);
-      pts.forEach(function(p){b.extend(p);});
-      map.fitBounds(b,{padding:70,maxZoom:15.4});
-    }
+    ['ec-pt','ec-cluster'].forEach(function(id){
+      map.on('mouseenter',id,function(){map.getCanvas().style.cursor='pointer';});
+      map.on('mouseleave',id,function(){map.getCanvas().style.cursor='';});
+    });
+  }
+  function placeMarkers(fit){
+    if(!map||!mapReady)return;
+    ensurePlanLayers();
+    var gj=planGeoJSON();
+    var src=map.getSource('ec-plans');
+    if(src)src.setData(gj);
+    if(!gj.features.length||fit===false)return; // 스타일 교체 재구성 시엔 시점을 유지
+    var b=new maplibregl.LngLatBounds(gj.features[0].geometry.coordinates,gj.features[0].geometry.coordinates);
+    gj.features.forEach(function(f){b.extend(f.geometry.coordinates);});
+    map.fitBounds(b,{padding:70,maxZoom:13.5}); // 지형 전환 임계(15.5)에서 충분히 떨어뜨려 껐다켜짐 방지
   }
   var styleMode='sat'; // 기본 = 하이퍼 리얼(위성 실사) · 'vec' = 벡터(라벨·도로 중심)
   function applyStyleToggleUI(){
@@ -435,6 +475,14 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       map.on('load',function(){mapReady=true;placeMarkers();applyStyleToggleUI();});
       map.on('error',function(e){ // 타일/스타일 로드 실패는 콘솔만 (지도 자체는 유지)
         if(console&&console.warn)console.warn('map:',e&&e.error&&e.error.message||e);
+      });
+      // WebGL 컨텍스트가 날아가면 캔버스가 흰색으로 남는다 → 지도를 재생성해 복구
+      map.getCanvas().addEventListener('webglcontextlost',function(ev){
+        ev.preventDefault();
+        if(console&&console.warn)console.warn('WebGL 컨텍스트 손실 — 지도 재생성');
+        try{map.remove();}catch(e){}
+        map=null;mapReady=false;planHandlersBound=false;
+        setTimeout(function(){if(mapOn)renderMap();},400);
       });
       return; // 마커는 load 이벤트에서
     }
