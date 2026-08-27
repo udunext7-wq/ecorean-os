@@ -118,36 +118,79 @@ export default function OntologyPage() {
     return m;
   }, [processes]);
 
-  // 구면 좌표 (피보나치 분포)
+  // 단계 위도 밴드 배치 — 1단계(기획)는 위, 9단계(준공)는 아래.
+  // 구를 돌리면 시공 순서가 위→아래 궤도 벨트로 흐른다 (위치가 곧 정보)
+  const BANDS = 9;
   const seeds = useMemo(() => {
     const names = [...new Set(rules.flatMap((r) => [r.triggerProcess, r.autoLinkProcess]))];
-    const GA = Math.PI * (3 - Math.sqrt(5));
-    return names.map((name, i) => {
-      const y = 1 - (2 * (i + 0.5)) / names.length;
-      const rr = Math.sqrt(Math.max(0, 1 - y * y));
-      const th = i * GA;
-      return { name, p: [rr * Math.cos(th) * RADIUS, y * RADIUS, rr * Math.sin(th) * RADIUS] as const };
+    const byPhase: Record<number, string[]> = {};
+    names.forEach((n) => {
+      const ph = phaseOf[n] ?? 5;
+      (byPhase[ph] ??= []).push(n);
     });
-  }, [rules]);
+    const GA = Math.PI * (3 - Math.sqrt(5));
+    const out: { name: string; p: readonly [number, number, number] }[] = [];
+    for (let ph = 1; ph <= BANDS; ph += 1) {
+      const list = byPhase[ph] ?? [];
+      const yA = -1 + (2 * (ph - 1)) / BANDS; // 밴드 상단 (SVG y: 음수가 위)
+      const yB = -1 + (2 * ph) / BANDS; // 밴드 하단
+      const rows = Math.min(3, Math.max(1, Math.ceil(list.length / 12))); // 밴드 내 부행 수
+      list.forEach((name, i) => {
+        const row = ((i % rows) + 0.5) / rows;
+        const y = yA + (yB - yA) * row;
+        const rr = Math.sqrt(Math.max(0.04, 1 - y * y));
+        const th = i * GA + ph * 0.7; // 밴드마다 시작 각도 오프셋
+        out.push({
+          name,
+          p: [rr * Math.cos(th) * RADIUS, y * RADIUS, rr * Math.sin(th) * RADIUS] as const,
+        });
+      });
+    }
+    return out;
+  }, [rules, phaseOf]);
 
-  const projected = useMemo(() => {
+  // 회전·원근 투영 유틸 (궤도 링 그리기에 재사용)
+  const project = useMemo(() => {
     const { yaw, pitch } = rot;
     const cy1 = Math.cos(yaw);
     const sy1 = Math.sin(yaw);
     const cp = Math.cos(pitch);
     const sp = Math.sin(pitch);
-    const m: Record<string, { x: number; y: number; z: number; s: number }> = {};
-    seeds.forEach(({ name, p }) => {
-      const [x0, y0, z0] = p;
+    return (x0: number, y0: number, z0: number) => {
       const x1 = x0 * cy1 + z0 * sy1;
       const z1 = -x0 * sy1 + z0 * cy1;
       const y2 = y0 * cp - z1 * sp;
       const z2 = y0 * sp + z1 * cp;
-      const s = FOV / (FOV - z2);
-      m[name] = { x: CX + x1 * s, y: CY + y2 * s, z: z2, s };
+      const sc = FOV / (FOV - z2);
+      return { x: CX + x1 * sc, y: CY + y2 * sc, z: z2, s: sc };
+    };
+  }, [rot]);
+
+  // 단계별 궤도 링 — 48점 폴리라인으로 정확 투영
+  const bandRings = useMemo(
+    () =>
+      Array.from({ length: BANDS }, (_, k) => {
+        const ph = k + 1;
+        const yc = -1 + (2 * (ph - 0.5)) / BANDS;
+        const rr = Math.sqrt(Math.max(0.04, 1 - yc * yc));
+        const pts = Array.from({ length: 49 }, (_, i) => {
+          const a = (i / 48) * Math.PI * 2;
+          return project(rr * Math.cos(a) * RADIUS, yc * RADIUS, rr * Math.sin(a) * RADIUS);
+        });
+        const front = pts.reduce((m, q) => (q.z > m.z ? q : m), pts[0]);
+        const left = pts.reduce((m, q) => (q.x < m.x ? q : m), pts[0]);
+        return { ph, pts, front, left };
+      }),
+    [project],
+  );
+
+  const projected = useMemo(() => {
+    const m: Record<string, { x: number; y: number; z: number; s: number }> = {};
+    seeds.forEach(({ name, p }) => {
+      m[name] = project(p[0], p[1], p[2]);
     });
     return m;
-  }, [seeds, rot]);
+  }, [seeds, project]);
 
   const visible = rules.filter(
     (r) =>
@@ -248,8 +291,8 @@ export default function OntologyPage() {
           <h1 className="text-2xl font-bold tracking-tight text-[#f0deb9]">AI 스튜디오 · 온톨로지</h1>
           <p className="mt-1 text-sm text-[#94aab8]">
             공정 {meta.processCount ?? audit.nodes}개 · 연계 규칙 {meta.totalCount}건 (v{meta.version}) —
-            견적·발주가 따르는 시스템의 헌법입니다. 씨앗 색은 시공 단계이며, 클릭하면 그 공정의
-            연쇄·단가가 열립니다.
+            견적·발주가 따르는 시스템의 헌법입니다. 위에서 아래로 <b className="text-[#c8e4ee]">시공
+            순서대로 9개 궤도</b>에 공정이 놓여 있고, 씨앗을 클릭하면 연쇄·단가가 열립니다.
           </p>
           {meta.status ? <p className="mt-1 text-[11px] text-[#F2A05C]/80">{meta.status}</p> : null}
 
@@ -406,6 +449,13 @@ export default function OntologyPage() {
                     <stop offset="100%" stopColor={c} stopOpacity={0} />
                   </radialGradient>
                 ))}
+                <filter id="flowGlow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="1.6" result="fb" />
+                  <feMerge>
+                    <feMergeNode in="fb" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
                 <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0">
                   <stop offset="0%" stopColor="rgba(120,225,255,0)" />
                   <stop offset="70%" stopColor="rgba(120,225,255,0.35)" />
@@ -455,19 +505,46 @@ export default function OntologyPage() {
                 <circle cx={CX} cy={CY} r={RADIUS * 1.16} fill="none" stroke="rgba(120,200,235,0.18)" strokeWidth={0.6} />
               </g>
 
-              {/* 자이로 링 3중 — 서로 다른 축·속도로 회전 (SMIL: 리렌더 비용 없음) */}
-              <g fill="none" strokeWidth={0.9}>
+              {/* 단계 궤도 벨트 — 9개 시공 단계가 위→아래로 쌓인 오비탈 스택 */}
+              <g fill="none">
+                {bandRings.map(({ ph, pts, left }) => {
+                  const dim = phaseFilter && phaseFilter !== ph;
+                  const col = PHASE_COLOR[ph];
+                  return (
+                    <g key={`bd${ph}`} opacity={dim ? 0.12 : 1}>
+                      <polyline
+                        points={pts.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(' ')}
+                        stroke={col}
+                        strokeOpacity={0.22}
+                        strokeWidth={0.9}
+                        strokeDasharray="2 6"
+                      />
+                      <text
+                        x={left.x - 8}
+                        y={left.y + 3}
+                        fontSize={8.5}
+                        textAnchor="end"
+                        fill={col}
+                        fillOpacity={0.75}
+                        fontFamily="monospace"
+                        letterSpacing={1.2}
+                      >
+                        {String(ph).padStart(2, '0')} {phases.find((q) => q.id === ph)?.name ?? ''}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+
+              {/* 자이로 링 — 전체를 감싸는 회전 프레임 (장식) */}
+              <g fill="none" strokeWidth={0.8}>
                 <g>
-                  <ellipse cx={CX} cy={CY} rx={RADIUS * 1.1} ry={RADIUS * 0.32} stroke="rgba(120,225,255,0.35)" strokeDasharray="3 7" />
-                  <animateTransform attributeName="transform" type="rotate" from={`0 ${CX} ${CY}`} to={`360 ${CX} ${CY}`} dur="26s" repeatCount="indefinite" />
-                </g>
-                <g>
-                  <ellipse cx={CX} cy={CY} rx={RADIUS * 0.34} ry={RADIUS * 1.08} stroke="rgba(232,201,155,0.28)" strokeDasharray="2 9" />
-                  <animateTransform attributeName="transform" type="rotate" from={`360 ${CX} ${CY}`} to={`0 ${CX} ${CY}`} dur="34s" repeatCount="indefinite" />
-                </g>
-                <g>
-                  <circle cx={CX} cy={CY} r={RADIUS * 1.04} stroke="rgba(150,235,255,0.16)" strokeDasharray="1 12" />
+                  <circle cx={CX} cy={CY} r={RADIUS * 1.08} stroke="rgba(150,235,255,0.14)" strokeDasharray="1 14" />
                   <animateTransform attributeName="transform" type="rotate" from={`0 ${CX} ${CY}`} to={`360 ${CX} ${CY}`} dur="60s" repeatCount="indefinite" />
+                </g>
+                <g>
+                  <ellipse cx={CX} cy={CY} rx={RADIUS * 0.3} ry={RADIUS * 1.12} stroke="rgba(232,201,155,0.2)" strokeDasharray="2 10" />
+                  <animateTransform attributeName="transform" type="rotate" from={`360 ${CX} ${CY}`} to={`0 ${CX} ${CY}`} dur="38s" repeatCount="indefinite" />
                 </g>
               </g>
 
@@ -504,17 +581,42 @@ export default function OntologyPage() {
                       )
                     : 0;
                   const lit = focus ? 1 : near;
+                  const col = REL_COLOR[r.relationshipType] ?? '#9BC9D8';
                   return (
-                    <line
-                      key={`e${i}`}
-                      x1={a.x}
-                      y1={a.y}
-                      x2={b.x}
-                      y2={b.y}
-                      stroke={REL_COLOR[r.relationshipType] ?? '#9BC9D8'}
-                      strokeWidth={0.5 + depth * 0.4 + lit * 0.9}
-                      opacity={0.04 + depth * 0.1 + lit * 0.45}
-                    />
+                    <g key={`e${i}`}>
+                      <line
+                        x1={a.x}
+                        y1={a.y}
+                        x2={b.x}
+                        y2={b.y}
+                        stroke={col}
+                        strokeWidth={0.5 + depth * 0.4 + lit * 0.9}
+                        opacity={0.04 + depth * 0.1 + lit * 0.45}
+                      />
+                      {/* 에너지 플로우 — 포커스 시 연계 방향으로 빛이 흐른다 (SMIL: 회전 중에도 유지) */}
+                      {focus ? (
+                        <line
+                          x1={a.x}
+                          y1={a.y}
+                          x2={b.x}
+                          y2={b.y}
+                          stroke={col}
+                          strokeWidth={1.6}
+                          strokeLinecap="round"
+                          strokeDasharray="3 26"
+                          opacity={0.9}
+                          filter="url(#flowGlow)"
+                        >
+                          <animate
+                            attributeName="stroke-dashoffset"
+                            from="29"
+                            to="0"
+                            dur="1.5s"
+                            repeatCount="indefinite"
+                          />
+                        </line>
+                      ) : null}
+                    </g>
                   );
                 })}
 
@@ -624,6 +726,15 @@ export default function OntologyPage() {
                             repeatCount="indefinite"
                           />
                         </g>
+                        {/* 확산 펄스 — 대상 지정 신호 */}
+                        <circle cx={f.x} cy={f.y} r={12} fill="none" stroke="#9BE7FF" strokeWidth={1}>
+                          <animate attributeName="r" from="10" to="34" dur="2.2s" repeatCount="indefinite" />
+                          <animate attributeName="opacity" from="0.7" to="0" dur="2.2s" repeatCount="indefinite" />
+                        </circle>
+                        <circle cx={f.x} cy={f.y} r={12} fill="none" stroke="#F0DEB9" strokeWidth={0.8}>
+                          <animate attributeName="r" from="10" to="34" dur="2.2s" begin="1.1s" repeatCount="indefinite" />
+                          <animate attributeName="opacity" from="0.6" to="0" dur="2.2s" begin="1.1s" repeatCount="indefinite" />
+                        </circle>
                         {corners.map(([sx, sy], i) => (
                           <path
                             key={`rc${i}`}
