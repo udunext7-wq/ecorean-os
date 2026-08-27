@@ -1902,6 +1902,83 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('가전: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 라이브러리 연속 배치 흐름 (대표 보고 — 하나 놓고 다른 것 고르면 배치가 안 됨) ===
+  try{
+    const _bakPL={tool:STATE.selectedTool,lib:STATE.selectedLib,last:Object.assign({},STATE.lastLib||{}),
+      furniture:STATE.furniture.slice(),lights:STATE.lights.slice()};
+    hideLibPopup();
+    // [PL1] 도구별 유효성 — 카테고리 교차 선택 차단
+    assert('배치흐름: 가구 키 유효',libHasKey('furniture','sofa3'));
+    assert('배치흐름: 타 카테고리 키 차단',!libHasKey('light','sofa3')&&!libHasKey('furniture','downlight'));
+    assert('배치흐름: 숨김(레거시) 키 차단',!libHasKey('fixture','fridge'));
+    assert('배치흐름: 가구2 키는 가구에서 제외',!libHasKey('furniture',Object.keys(FIXFURN_LIB)[0]));
+    // [PL2] 다른 카테고리 항목이 남아도 정의 없는 유령 객체가 배치되지 않는다
+    setTool('light');STATE.selectedLib='sofa3';STATE.lastLib={};
+    const _nl=STATE.lights.length;
+    const okGhost=placeLibAt({x:400,y:400});
+    assert('배치흐름: 유령 객체 배치 차단',okGhost===false&&STATE.lights.length===_nl&&!STATE.selectedLib);
+    // [PL3] 미선택 클릭 → 무반응 대신 팔레트 자동 오픈
+    assert('배치흐름: 미선택 시 팔레트 자동 오픈',document.getElementById('lib-popup').classList.contains('show'));
+    hideLibPopup();
+    // [PL4] 정상 배치 + 같은 항목 연속 배치
+    setTool('furniture');STATE.selectedLib='sofa3';
+    const _nf=STATE.furniture.length;
+    assert('배치흐름: 배치 성공',placeLibAt({x:300,y:300})===true&&STATE.furniture.length===_nf+1);
+    assert('배치흐름: 연속 배치',placeLibAt({x:360,y:360})===true&&STATE.furniture.length===_nf+2);
+    assert('배치흐름: 배치 후 선택 유지',STATE.selectedLib==='sofa3');
+    // [PL5] 도구를 오갔다 돌아와도 직전 선택이 되살아난다
+    STATE.lastLib.furniture='sofa3';
+    setTool('select');
+    assert('배치흐름: 선택도구에서는 배치 항목 해제',STATE.selectedLib===null);
+    setTool('furniture');
+    assert('배치흐름: 가구 복귀 시 직전 항목 복원',STATE.selectedLib==='sofa3');
+    const _nf2=STATE.furniture.length;
+    assert('배치흐름: 복귀 직후 바로 배치',placeLibAt({x:420,y:420})===true&&STATE.furniture.length===_nf2+1);
+    // [PL6] 카테고리 버튼을 다시 눌러도 팔레트가 닫히지 않는다
+    setLibCategory('furniture');
+    assert('배치흐름: 팔레트 열림',document.getElementById('lib-popup').classList.contains('show'));
+    setLibCategory('furniture');
+    assert('배치흐름: 재클릭해도 안 닫힘',document.getElementById('lib-popup').classList.contains('show'));
+    const act=[...document.querySelectorAll('#lib-popup-grid .lib-thumb-btn.active')].map(b=>b.dataset.libKey);
+    assert('배치흐름: 선택 항목 강조 1개 유지',act.length===1&&act[0]==='sofa3',act.join(','));
+    hideLibPopup();
+    assert('배치흐름: 닫기는 ✕/Esc 로',!document.getElementById('lib-popup').classList.contains('show'));
+    // [PL7] 가구2 도 고스트 미리보기 대상 (이전에는 누락)
+    assert('배치흐름: 가구2 고스트 대상',LIB_TOOL_KIND['furniture2']==='furniture');
+    // [PL8] 팔레트 항목 클릭이 카테고리별 마지막 선택을 기록
+    const _rk='minicad.recent.furniture2';let _rbak=null;
+    try{_rbak=localStorage.getItem(_rk);}catch(_){}
+    setLibCategory('furniture2');
+    const b2=document.querySelector('#lib-popup-grid .lib-thumb-btn');
+    assert('배치흐름: 가구2 팔레트 항목 존재',!!b2);
+    if(b2){
+      b2.click();
+      assert('배치흐름: 카테고리별 마지막 선택 기록',STATE.lastLib.furniture2===b2.dataset.libKey);
+      setTool('furniture');setTool('furniture2');
+      assert('배치흐름: 가구2 복귀 시 복원',STATE.selectedLib===b2.dataset.libKey);
+    }
+    try{if(_rbak===null) localStorage.removeItem(_rk); else localStorage.setItem(_rk,_rbak);}catch(_){}
+    hideLibPopup();
+    // [PL9] 진짜 마우스 이벤트로 배치 — 이벤트 순서(pointerup→mouseup) 회귀 방지
+    setTool('furniture');STATE.selectedLib='sofa3';
+    const _cont=stage.container(),_cr=_cont.getBoundingClientRect();
+    const _cx=Math.round(_cr.left+_cr.width/2),_cy=Math.round(_cr.top+_cr.height/2);
+    const _tgt=_cont.querySelector('canvas')||_cont;
+    const _mk=t=>_tgt.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:_cx,clientY:_cy,button:0}));
+    const _pk=t=>{try{_tgt.dispatchEvent(new PointerEvent(t,{bubbles:true,cancelable:true,clientX:_cx,clientY:_cy,button:0,pointerId:1,pointerType:'mouse'}));}catch(_){}};
+    const _n3=STATE.furniture.length;
+    _pk('pointerdown');_mk('mousedown');_pk('pointerup');_mk('mouseup');
+    assert('배치흐름: 실제 마우스 클릭으로 배치',STATE.furniture.length===_n3+1,
+      'furniture '+_n3+' → '+STATE.furniture.length);
+    // 연속 두 번째도 동일하게
+    _pk('pointerdown');_mk('mousedown');_pk('pointerup');_mk('mouseup');
+    assert('배치흐름: 실제 클릭 연속 배치',STATE.furniture.length===_n3+2);
+    STATE.furniture=_bakPL.furniture;STATE.lights=_bakPL.lights;STATE.lastLib=_bakPL.last;
+    setTool(_bakPL.tool||'select');STATE.selectedLib=_bakPL.lib;
+    renderAll();refreshUI();
+  }catch(e){
+    assert('배치흐름: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

@@ -19,6 +19,7 @@ const STATE={
   pillars:[], // v5.9: 기둥 (사각/원형/L자) — RC 콘크리트 표기
   pillarDefaults:{shape:'rect',width:500,height:500,thickness:200,rotation:0}, // v5.9: 기둥 도구 기본값
   selectedTool:'select',selectedSpaceType:'LIVING',selectedLib:null,
+  lastLib:{}, // 2026-08-27: 카테고리별 마지막 선택 (도구 왕복 후 복원)
   selectedId:null,selectedKind:null,
   boxSelection:[], // v5.3: 다중 선택 [{kind,id},...]
   zoom:1,offsetX:200,offsetY:100,

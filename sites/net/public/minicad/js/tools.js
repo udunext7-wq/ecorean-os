@@ -540,6 +540,24 @@ function pointToSegmentDist(p,a,b){
   const ex=p.x-px, ey=p.y-py;
   return Math.sqrt(ex*ex+ey*ey);
 }
+// 2026-08-27: 라이브러리 배치 단일 진입점 (대표 지시 — 연속 배치가 끊기던 문제)
+//  · 항목 미선택 상태의 캔버스 클릭이 '아무 반응 없음'으로 끝나던 것을 안내 + 팔레트 자동 오픈으로
+//  · 다른 카테고리 항목이 남아 정의 없는 객체가 배치되던 것을 차단
+const LIB_TOOL_KIND={furniture:'furniture',furniture2:'furniture',fixture:'fixtures',
+                     light:'lights',electric:'electric',hvac:'hvac'};
+function placeLibAt(pos){
+  const tool=STATE.selectedTool, kind=LIB_TOOL_KIND[tool];
+  if(!kind) return false;
+  if(typeof normalizeSelectedLib==='function') normalizeSelectedLib(tool);
+  if(!STATE.selectedLib){
+    const nm={furniture:'가구',furniture2:'가구2(픽스)',fixture:'위생/주방',light:'조명',electric:'전기',hvac:'공조/소방'}[tool]||'항목';
+    if(typeof cmdToast==='function') cmdToast(nm+' 팔레트에서 항목을 먼저 고르세요');
+    if(typeof setLibCategory==='function') setLibCategory(tool,{keepOpen:true});
+    return false;
+  }
+  addLibObject(pos,kind,STATE.selectedLib);
+  return true;
+}
 function addLibObject(pos,kind,type){
   const mm=getMm(pos);
   const sp=findNearestSpace(mm);
@@ -3123,7 +3141,7 @@ stage.on('mousemove touchmove',e=>{
     previewLayer.batchDraw();
   }
   // v5.9: 라이브러리 객체 배치 미리보기 (고스트 + 벽까지 거리)
-  if(['furniture','fixture','light','electric','hvac'].includes(STATE.selectedTool)){
+  if(LIB_TOOL_KIND[STATE.selectedTool]){ // 2026-08-27: 가구2 고스트 누락 보완
     updateLibPlacementPreview(pos);
   }else if(_libPreviewActive&&!drawState){
     // drawState가 있을 때(=다른 도구의 미리보기 그리는 중)는 지우지 않음
@@ -3132,6 +3150,21 @@ stage.on('mousemove touchmove',e=>{
   // v5.2: 스냅 마커 갱신 (모든 도구에서 endpoint 스냅 시 글로우 표시)
   updateSnapMarker(pos);
 });
+// 2026-08-27: 캔버스 밖(팔레트·패널 위)에서 버튼을 떼면 isMouseDown 이 true 로 남아
+//  배치 고스트가 되살아나지 않던 문제.
+//  주의 — 마우스 이벤트 순서는 pointerdown→mousedown→pointerup→mouseup 이라
+//  pointerup 으로 정리하면 Konva 의 mouseup 보다 먼저 돌아 클릭 자체를 삼킨다.
+//  반드시 '버블 단계 mouseup/touchend' 로만, 즉 스테이지 핸들러가 끝난 뒤에 정리한다.
+function _releaseOutsideCleanup(){
+  if(!isMouseDown&&!isPanning) return; // 캔버스에서 뗐다면 스테이지 핸들러가 이미 처리함
+  if(isPanning){isPanning=false;panStart=null;if(typeof endViewTransform==='function') endViewTransform();}
+  isMouseDown=false;
+}
+window.addEventListener('mouseup',_releaseOutsideCleanup);
+window.addEventListener('touchend',_releaseOutsideCleanup);
+window.addEventListener('touchcancel',_releaseOutsideCleanup);
+window.addEventListener('pointercancel',_releaseOutsideCleanup);
+window.addEventListener('blur',_releaseOutsideCleanup);
 stage.on('mouseup touchend',e=>{
   if(_isCompatMouse(e)) return;
   const _wasPanning=isPanning;
@@ -3298,12 +3331,7 @@ stage.on('mouseup touchend',e=>{
     if(STATE.selectedTool==='polygon') clickPolygon(pos);
     else if(STATE.selectedTool==='door') addOpening(pos,'DOOR');
     else if(STATE.selectedTool==='window') addOpening(pos,'WINDOW');
-    else if(STATE.selectedTool==='furniture'&&STATE.selectedLib) addLibObject(pos,'furniture',STATE.selectedLib);
-    else if(STATE.selectedTool==='furniture2'&&STATE.selectedLib) addLibObject(pos,'furniture',STATE.selectedLib); // 2026-08-24: 가구2(픽스) — kind 는 furniture 공용
-    else if(STATE.selectedTool==='fixture'&&STATE.selectedLib) addLibObject(pos,'fixtures',STATE.selectedLib);
-    else if(STATE.selectedTool==='light'&&STATE.selectedLib) addLibObject(pos,'lights',STATE.selectedLib);
-    else if(STATE.selectedTool==='electric'&&STATE.selectedLib) addLibObject(pos,'electric',STATE.selectedLib);
-    else if(STATE.selectedTool==='hvac'&&STATE.selectedLib) addLibObject(pos,'hvac',STATE.selectedLib);  // v5.6
+    else if(LIB_TOOL_KIND[STATE.selectedTool]) placeLibAt(pos); // 2026-08-27: 배치 단일 진입점
     else if(STATE.selectedTool==='text') addText(pos);
     else if(STATE.selectedTool==='leader') handleLeaderClick(pos);
     else if(STATE.selectedTool==='pillar') addPillarAtPos(pos);

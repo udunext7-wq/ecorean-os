@@ -1,14 +1,16 @@
 'use strict';
 // ===== UI / 패널 / 저장·로드 / 버튼 바인딩 =====
 // v5.9: 라이브러리 카테고리 — 인라인 패널 → 팝업 창 (썸네일 버튼)
-function setLibCategory(toolName){
+function setLibCategory(toolName,opts){
   const popup=document.getElementById('lib-popup');
   const wasOpen=popup.classList.contains('show');
   const prevTool=popup.dataset.tool;
-  // 같은 카테고리 다시 클릭 → 토글로 닫기
-  if(wasOpen && prevTool===toolName){
-    hideLibPopup();
-    document.querySelectorAll('.libcat-btn').forEach(b=>b.classList.remove('active'));
+  // 2026-08-27: 같은 카테고리를 다시 눌렀을 때 팔레트가 닫혀버려 '다른 것을 고를 수 없던' 문제 (대표 보고)
+  //  → 카테고리 버튼은 언제나 '연 상태'를 유지한다. 닫기는 ✕ 또는 Esc.
+  if(wasOpen && prevTool===toolName && !(opts&&opts.forceClose)){
+    if(typeof normalizeSelectedLib==='function') normalizeSelectedLib(toolName);
+    document.querySelectorAll('.libcat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===toolName));
+    _syncLibActive();
     return;
   }
   const lib={furniture:FURNITURE_LIB,furniture2:FIXFURN_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB}[toolName];
@@ -18,6 +20,19 @@ function setLibCategory(toolName){
     popup.dataset.tool=toolName;
   }
   cmdToast({furniture:'1 가구',furniture2:'6 가구2 (픽스)',fixture:'2 위생/주방',light:'3 조명',electric:'4 전기',hvac:'5 공조/소방'}[toolName]||toolName);
+}
+// 2026-08-27: 현재 선택 항목을 팔레트에서 강조 + 보이는 곳으로 스크롤
+function _syncLibActive(){
+  const grid=document.getElementById('lib-popup-grid');
+  if(!grid) return;
+  grid.querySelectorAll('.lib-thumb-btn').forEach(b=>b.classList.remove('active'));
+  if(!STATE.selectedLib) return;
+  const el=grid.querySelector('.lib-thumb-btn[data-lib-key="'+STATE.selectedLib+'"]');
+  if(!el) return;
+  el.classList.add('active');
+  if(typeof el.scrollIntoView==='function'){
+    try{el.scrollIntoView({block:'nearest'});}catch(_){el.scrollIntoView();}
+  }
 }
 function rebuildLibPanel(toolName){
   // v5.9: 인라인 패널 비활성 — 팝업으로 이전됨. 카테고리 탭 강조만 동기화.
@@ -64,7 +79,12 @@ function setTool(tool){
   container.className='tool-'+tool;
   document.querySelectorAll('.libcat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===tool));
   const libTools={furniture:FURNITURE_LIB,furniture2:FIXFURN_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB};
-  if(libTools[tool]) rebuildLibPanel(tool);
+  if(libTools[tool]){
+    rebuildLibPanel(tool);
+    // 2026-08-27: 도구를 오갔다 돌아와도 직전에 고른 항목이 그대로 살아있게 (대표 지시)
+    if(typeof normalizeSelectedLib==='function') normalizeSelectedLib(tool);
+    _syncLibActive();
+  }
   else{const p=document.getElementById('lib-panel');if(p)p.innerHTML='';STATE.selectedLib=null;}
   showStatus('도구: '+tool);
   if(typeof _circuitBanner==='function') _circuitBanner(); // 2026-08-27: 연결 모드 배너 유지
@@ -176,6 +196,8 @@ function showLibPopup(tool,lib){
   _attachLibPopupDrag(popup);
   const grid=document.getElementById('lib-popup-grid');
   grid.innerHTML='';
+  // 2026-08-27: 이 카테고리에 없는 선택은 버리고 카테고리별 마지막 선택을 되살린다
+  if(typeof normalizeSelectedLib==='function') normalizeSelectedLib(tool);
   const kindMap={furniture:'furniture',furniture2:'furniture',fixture:'fixtures',light:'lights',electric:'electric',hvac:'hvac'};
   // 2026-08-24: 픽스가구는 '6 가구2' 전용 — '1 가구' 팝업에서는 제외 (FURNITURE_LIB 병합분 숨김)
   if(tool==='furniture'&&typeof FIXFURN_LIB!=='undefined'){
@@ -241,6 +263,8 @@ function showLibPopup(tool,lib){
     btn.innerHTML='<div class="lib-thumb">'+thumbHTML+'</div><div class="lib-thumb-name">'+def.name+'</div>'+enHTML;
     btn.addEventListener('click',()=>{
       STATE.selectedLib=key;
+      if(!STATE.lastLib) STATE.lastLib={};
+      STATE.lastLib[tool]=key; // 2026-08-27: 도구 왕복 후 복원용
       _pushRecent(key);
       grid.querySelectorAll('.lib-thumb-btn').forEach(b=>b.classList.remove('active'));
       grid.querySelectorAll('.lib-thumb-btn[data-lib-key="'+key+'"]').forEach(b=>b.classList.add('active'));
@@ -249,6 +273,7 @@ function showLibPopup(tool,lib){
     grid.appendChild(btn);
   });
   popup.classList.add('show');
+  _syncLibActive(); // 2026-08-27: 되살린 선택을 화면에 보이게
 }
 function hideLibPopup(){
   const p=document.getElementById('lib-popup');

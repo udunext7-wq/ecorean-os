@@ -1044,6 +1044,32 @@ const HVAC_FIRE_LIB={
 
 // ===== 2026-08-27: 라이브러리 소분류 (대표 지시 — 비슷한 종류대로) =====
 //  팔레트 팝업에서 섹션 헤더로 표시. 목록에 없는 키는 자동으로 '기타' 섹션으로 간다.
+// 2026-08-27: 도구별 라이브러리 조회/검증 (대표 지시 — 연속 배치 흐름)
+//  카테고리를 옮겨도 이전 카테고리의 항목이 남아 '보이지 않는 객체'가 배치되던 문제 방지
+function libForTool(tool){
+  return ({furniture:typeof FURNITURE_LIB!=='undefined'?FURNITURE_LIB:null,
+           furniture2:typeof FIXFURN_LIB!=='undefined'?FIXFURN_LIB:null,
+           fixture:typeof FIXTURE_LIB!=='undefined'?FIXTURE_LIB:null,
+           light:typeof LIGHT_LIB!=='undefined'?LIGHT_LIB:null,
+           electric:typeof ELECTRIC_LIB!=='undefined'?ELECTRIC_LIB:null,
+           hvac:typeof HVAC_FIRE_LIB!=='undefined'?HVAC_FIRE_LIB:null})[tool]||null;
+}
+function libHasKey(tool,key){
+  const lib=libForTool(tool);
+  if(!lib||!key||!lib[key]||lib[key].hidden) return false;
+  // '1 가구' 팝업은 픽스가구를 제외하므로 배치 판정도 같은 기준
+  if(tool==='furniture'&&typeof FIXFURN_LIB!=='undefined'&&FIXFURN_LIB[key]) return false;
+  return true;
+}
+// 현재 도구에 맞지 않는 선택은 버리고, 카테고리별 마지막 선택을 되살린다
+function normalizeSelectedLib(tool){
+  if(!libForTool(tool)) return null;
+  if(!libHasKey(tool,STATE.selectedLib)){
+    const last=(STATE.lastLib||{})[tool];
+    STATE.selectedLib=libHasKey(tool,last)?last:null;
+  }
+  return STATE.selectedLib;
+}
 const LIB_GROUPS={
   furniture:[
     ['거실',['sofa3','sofa2','sofa1','sofa_modular','sofa_curved','lounge_chair','beanbag','coffee','side_table','console','tv_stand','rug','plant']],
