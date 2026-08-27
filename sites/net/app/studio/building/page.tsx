@@ -33,14 +33,14 @@ export default function BuildingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; applyUrl?: string } | null>(null);
   const [recent, setRecent] = useState<Bld[]>([]);
-  const [keyReady, setKeyReady] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<{ state: string; message?: string; applyUrl?: string; myKeyUrl?: string } | null>(null);
 
-  // 인증키 설정 여부를 먼저 확인해, 미설정이면 신청 링크를 상단에 바로 띄운다
+  // 연동 상태 실측 — 키 보유 여부뿐 아니라 '이 API 활용신청 여부'까지 확인
   useEffect(() => {
     fetch('/api/gov/status')
       .then((r) => r.json())
-      .then((j) => setKeyReady(Boolean(j.hasKey)))
-      .catch(() => setKeyReady(null));
+      .then(setStatus)
+      .catch(() => setStatus(null));
   }, []);
 
   useEffect(() => {
@@ -94,23 +94,43 @@ export default function BuildingPage() {
           </p>
         </header>
 
-        {keyReady === false ? (
+        {status && status.state !== 'READY' ? (
           <div className="mb-6 rounded-xl border border-[#E8C99B]/35 bg-[#E8C99B]/[0.06] p-5">
-            <p className="text-[10px] tracking-[0.3em] text-[#e8c99b]/80">인증키 설정 필요 · 무료 · 약 5분</p>
+            <p className="text-[10px] tracking-[0.3em] text-[#e8c99b]/80">
+              {status.state === 'NOT_APPLIED' ? '활용신청 1건만 남았습니다 · 무료 · 약 2분' : '인증키 설정 필요 · 무료 · 약 5분'}
+            </p>
             <h2 className="mt-1 text-base font-semibold text-[#f0deb9]">
-              공공데이터포털 인증키를 등록하면 바로 조회됩니다
+              {status.state === 'NOT_APPLIED'
+                ? '인증키는 이미 있습니다 — 건축물대장 API만 추가 신청하면 바로 열립니다'
+                : '공공데이터포털 인증키를 등록하면 바로 조회됩니다'}
             </h2>
+            {status.message ? <p className="mt-1.5 text-xs text-[#94aab8]">{status.message}</p> : null}
             <ol className="mt-3 space-y-2 text-xs leading-relaxed text-[#c8d6de]">
-              <li>
-                <b className="text-[#e8c99b]">1.</b> 아래 버튼으로 이동해 <b>활용신청</b> (로그인 필요, 자동 승인)
-              </li>
-              <li>
-                <b className="text-[#e8c99b]">2.</b> 마이페이지 → 개발계정 → <b>일반 인증키(Decoding)</b> 복사
-              </li>
-              <li>
-                <b className="text-[#e8c99b]">3.</b> Vercel → Settings → Environment Variables →{' '}
-                <code className="rounded bg-[#0b111a] px-1.5 py-0.5 text-[#9BC9D8]">DATA_GO_KR_KEY</code> 등록 후 재배포
-              </li>
+              {status.state === 'NOT_APPLIED' ? (
+                <>
+                  <li>
+                    <b className="text-[#e8c99b]">1.</b> 아래 <b>건축물대장 API 활용신청</b> 버튼 → 로그인 → 활용신청
+                    (자동 승인, 기존 키 그대로 사용)
+                  </li>
+                  <li>
+                    <b className="text-[#e8c99b]">2.</b> 승인 반영까지 수 분 소요 — 이 페이지를 새로고침하면 상태가
+                    <b className="text-[#86efac]"> 연결됨</b>으로 바뀝니다
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    <b className="text-[#e8c99b]">1.</b> 아래 버튼으로 이동해 <b>활용신청</b> (로그인 필요, 자동 승인)
+                  </li>
+                  <li>
+                    <b className="text-[#e8c99b]">2.</b> 마이페이지 → 개발계정 → <b>일반 인증키(Decoding)</b> 복사
+                  </li>
+                  <li>
+                    <b className="text-[#e8c99b]">3.</b> Vercel → Settings → Environment Variables →{' '}
+                    <code className="rounded bg-[#0b111a] px-1.5 py-0.5 text-[#9BC9D8]">DATA_GO_KR_KEY</code> 등록 후 재배포
+                  </li>
+                </>
+              )}
             </ol>
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               <a
@@ -141,8 +161,8 @@ export default function BuildingPage() {
           </div>
         ) : null}
 
-        {keyReady === true ? (
-          <p className="mb-4 text-xs text-[#86efac]">인증키 연결됨 · 조회 가능</p>
+        {status?.state === 'READY' ? (
+          <p className="mb-4 text-xs text-[#86efac]">공공데이터포털 연결됨 · 조회 가능</p>
         ) : null}
 
         <div className="mb-6 grid gap-3 rounded-xl border border-[#9BC9D8]/20 bg-[#0b111a]/80 p-5 sm:grid-cols-[1fr_1fr_1fr_0.6fr_auto]">
