@@ -30,6 +30,8 @@ export default function BuildingPage() {
   const [bun, setBun] = useState('');
   const [ji, setJi] = useState('0');
   const [bld, setBld] = useState<Bld | null>(null);
+  const [list, setList] = useState<Bld[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; applyUrl?: string } | null>(null);
   const [recent, setRecent] = useState<Bld[]>([]);
@@ -59,6 +61,8 @@ export default function BuildingPage() {
     setLoading(true);
     setError(null);
     setBld(null);
+    setList([]);
+    setTotal(0);
     try {
       const res = await fetch(
         `/api/gov/building?sigunguCd=${encodeURIComponent(sigungu)}&bjdongCd=${encodeURIComponent(bjdong)}&bun=${encodeURIComponent(bun)}&ji=${encodeURIComponent(ji || '0')}`,
@@ -68,7 +72,10 @@ export default function BuildingPage() {
         setError({ message: j.message ?? j.error ?? '조회 실패', applyUrl: j.applyUrl });
         return;
       }
-      setBld(j.building as Bld);
+      const bs = (j.buildings ?? [j.building]) as Bld[];
+      setList(bs);
+      setTotal(Number(j.totalCount ?? bs.length));
+      setBld(bs[0] ?? null);
     } catch (e) {
       setError({ message: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -245,6 +252,42 @@ export default function BuildingPage() {
                 </p>
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {list.length > 1 ? (
+          <div className="mb-4 rounded-xl border border-[#9BC9D8]/20 bg-[#0b111a]/70 p-4">
+            <div className="mb-2 flex flex-wrap items-baseline gap-3">
+              <p className="text-[10px] tracking-[0.3em] text-[#9BC9D8]/60">
+                이 지번의 건축물 {total}동 (표시 {list.length})
+              </p>
+              <p className="text-xs text-[#94aab8]">
+                단지 연면적 합계{' '}
+                <b className="text-[#e8c99b]">
+                  {list.reduce((s2, b) => s2 + (b.tot_area ?? 0), 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}㎡
+                </b>{' '}
+                ({Math.round(list.reduce((s2, b) => s2 + (b.tot_area ?? 0), 0) / 3.3058).toLocaleString()}평)
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {list.map((b, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setBld(b)}
+                  className={`rounded-full border px-3 py-1 text-xs transition ${
+                    bld === b
+                      ? 'border-[#E8C99B]/60 bg-[#E8C99B]/10 text-[#f0deb9]'
+                      : 'border-[#9BC9D8]/25 text-[#94aab8] hover:text-[#c8e4ee]'
+                  }`}
+                >
+                  {b.bld_nm || `(동 ${i + 1})`}
+                  <span className="ml-1.5 text-[10px] text-[#9BC9D8]/60">
+                    {b.tot_area ? `${Math.round(b.tot_area).toLocaleString()}㎡` : ''}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
 
