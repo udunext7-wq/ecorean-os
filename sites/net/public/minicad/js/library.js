@@ -229,6 +229,55 @@ const FURNITURE_LIB={
     {type:'circle',cx:130,cy:110,r:120,fill:'#B5A68F',stroke:'#6B6152',sw:8},
     {type:'circle',cx:-90,cy:-70,r:42,fill:'#5C5040',stroke:'#3B332A',sw:5},
   ]},
+  // ===== 2026-08-27: 가전 (대표 지시 — 비스포크 냉장고 추가, 가전을 가구 카테고리로 일원화) =====
+  //  브랜드명은 표시 이름에만 사용하고 nameEn/promptKeyword 는 일반명사 (헌법 준수)
+  fridge_bespoke:{name:'비스포크 냉장고 (4도어)',nameEn:'4-door panel refrigerator',w:916,h:716,c:'#E8E2D8',shape:[
+    {type:'rect',x:-458,y:-358,w:916,h:716,fill:'#EFEAE0',stroke:'#8A8378',sw:18,r:12},
+    {type:'line',x1:0,y1:-358,x2:0,y2:358,stroke:'#8A8378',sw:6},
+    {type:'line',x1:-458,y1:0,x2:458,y2:0,stroke:'#8A8378',sw:6},
+    {type:'rect',x:-430,y:-330,w:400,h:300,fill:'#DCD3C4',stroke:'#A79C8C',sw:5,r:8},
+    {type:'rect',x:30,y:-330,w:400,h:300,fill:'#CFC4B2',stroke:'#A79C8C',sw:5,r:8},
+    {type:'rect',x:-430,y:30,w:400,h:300,fill:'#C9BCA8',stroke:'#A79C8C',sw:5,r:8},
+    {type:'rect',x:30,y:30,w:400,h:300,fill:'#DCD3C4',stroke:'#A79C8C',sw:5,r:8},
+    {type:'rect',x:-40,y:-250,w:26,h:140,fill:'#5A5A5A',stroke:'#3E3E3E',sw:3,r:12},
+    {type:'rect',x:14,y:-250,w:26,h:140,fill:'#5A5A5A',stroke:'#3E3E3E',sw:3,r:12},
+    {type:'rect',x:-40,y:110,w:26,h:140,fill:'#5A5A5A',stroke:'#3E3E3E',sw:3,r:12},
+    {type:'rect',x:14,y:110,w:26,h:140,fill:'#5A5A5A',stroke:'#3E3E3E',sw:3,r:12},
+  ]},
+  fridge_bespoke_kf:{name:'비스포크 냉장고 (키친핏)',nameEn:'kitchen-fit panel refrigerator',w:596,h:665,c:'#E8E2D8',shape:[
+    {type:'rect',x:-298,y:-332,w:596,h:665,fill:'#EFEAE0',stroke:'#8A8378',sw:16,r:10},
+    {type:'line',x1:-298,y1:-60,x2:298,y2:-60,stroke:'#8A8378',sw:5},
+    {type:'rect',x:-272,y:-306,w:544,h:220,fill:'#DCD3C4',stroke:'#A79C8C',sw:4,r:6},
+    {type:'rect',x:-272,y:-34,w:544,h:340,fill:'#CFC4B2',stroke:'#A79C8C',sw:4,r:6},
+    {type:'rect',x:236,y:-270,w:24,h:140,fill:'#5A5A5A',stroke:'#3E3E3E',sw:3,r:10},
+    {type:'rect',x:236,y:20,w:24,h:200,fill:'#5A5A5A',stroke:'#3E3E3E',sw:3,r:10},
+  ]},
+  fridge_std:{name:'냉장고',nameEn:'refrigerator',w:800,h:700,c:'#FFFFFF',shape:[
+    {type:'rect',x:-400,y:-350,w:800,h:700,fill:'#F5F1EB',stroke:'#A8A8A8',sw:18,r:10},
+    {type:'line',x1:-400,y1:-50,x2:400,y2:-50,stroke:'#A8A8A8',sw:5},
+    {type:'rect',x:-380,y:-330,w:760,h:260,fill:'transparent',stroke:'#5A5A5A',sw:2,r:5},
+    {type:'rect',x:-380,y:-30,w:760,h:360,fill:'transparent',stroke:'#5A5A5A',sw:2,r:5},
+    {type:'rect',x:330,y:-280,w:30,h:160,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
+    {type:'rect',x:330,y:50,w:30,h:240,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
+  ]},
+  fridge_side:{name:'냉장고 (양문형)',nameEn:'side-by-side refrigerator',w:1100,h:750,c:'#FFFFFF',shape:[
+    {type:'rect',x:-550,y:-375,w:1100,h:750,fill:'#F5F1EB',stroke:'#A8A8A8',sw:18,r:10},
+    {type:'line',x1:0,y1:-375,x2:0,y2:375,stroke:'#A8A8A8',sw:5},
+    {type:'rect',x:-30,y:-300,w:30,h:200,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
+    {type:'rect',x:0,y:-300,w:30,h:200,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
+  ]},
+  washer_std:{name:'세탁기',nameEn:'washing machine',w:700,h:700,c:'#FFFFFF',shape:[
+    {type:'rect',x:-350,y:-350,w:700,h:700,fill:'#F5F1EB',stroke:'#A8A8A8',sw:15,r:8},
+    {type:'circle',cx:0,cy:30,r:240,fill:'#3E3E3E',stroke:'#5A5A5A',sw:8},
+    {type:'circle',cx:0,cy:30,r:200,fill:'#1A1A1A',stroke:'#5A5A5A',sw:3},
+    {type:'rect',x:-300,y:-330,w:600,h:80,fill:'#3E3E3E',stroke:'#1A1A1A',sw:3,r:5},
+    {type:'circle',cx:240,cy:-290,r:15,fill:'#5BA0D4'},
+  ]},
+  dryer_std:{name:'건조기',nameEn:'clothes dryer',w:700,h:700,c:'#FFFFFF',shape:[
+    {type:'rect',x:-350,y:-350,w:700,h:700,fill:'#F5F1EB',stroke:'#A8A8A8',sw:15,r:8},
+    {type:'circle',cx:0,cy:30,r:240,fill:'#5A5A5A',stroke:'#3E3E3E',sw:8},
+    {type:'rect',x:-300,y:-330,w:600,h:80,fill:'#5A5A5A',stroke:'#1A1A1A',sw:3,r:5},
+  ]},
   system_hanger:{name:'시스템 행거',nameEn:'system hanger',w:2000,h:500,c:'#5A5A5A',shape:[
     {type:'rect',x:-1000,y:-250,w:2000,h:500,fill:'transparent',stroke:'#5A5A5A',sw:14,r:20},
     {type:'line',x1:-960,y1:-140,x2:960,y2:-140,stroke:'#2A2A2A',sw:12},
@@ -502,7 +551,7 @@ const FIXTURE_LIB={
     {type:'line',x1:-50,y1:0,x2:50,y2:0,stroke:'#5BA0D4',sw:3},
     {type:'line',x1:-50,y1:25,x2:50,y2:25,stroke:'#5BA0D4',sw:3},
   ]},
-  fridge:{name:'냉장고',nameEn:'refrigerator',w:800,h:700,c:'#FFFFFF',shape:[
+  fridge:{hidden:true,replacedBy:'fridge_std',name:'냉장고',nameEn:'refrigerator',w:800,h:700,c:'#FFFFFF',shape:[
     {type:'rect',x:-400,y:-350,w:800,h:700,fill:'#F5F1EB',stroke:'#A8A8A8',sw:18,r:10},
     {type:'line',x1:-400,y1:-50,x2:400,y2:-50,stroke:'#A8A8A8',sw:5},
     {type:'rect',x:-380,y:-330,w:760,h:260,fill:'transparent',stroke:'#5A5A5A',sw:2,r:5},
@@ -510,21 +559,21 @@ const FIXTURE_LIB={
     {type:'rect',x:330,y:-280,w:30,h:160,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
     {type:'rect',x:330,y:50,w:30,h:240,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
   ]},
-  fridge_2door:{name:'냉장고 양문',nameEn:'side-by-side refrigerator',w:1100,h:750,c:'#FFFFFF',shape:[
+  fridge_2door:{hidden:true,replacedBy:'fridge_side',name:'냉장고 양문',nameEn:'side-by-side refrigerator',w:1100,h:750,c:'#FFFFFF',shape:[
     {type:'rect',x:-550,y:-375,w:1100,h:750,fill:'#F5F1EB',stroke:'#A8A8A8',sw:18,r:10},
     {type:'line',x1:0,y1:-375,x2:0,y2:375,stroke:'#A8A8A8',sw:5},
     {type:'rect',x:-30,y:-300,w:30,h:200,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
     {type:'rect',x:0,y:-300,w:30,h:200,fill:'#5A5A5A',stroke:'#3E3E3E',sw:2,r:5},
   ]},
   // ===== 세탁/유틸리티 =====
-  washer:{name:'세탁기',nameEn:'washing machine',w:700,h:700,c:'#FFFFFF',shape:[
+  washer:{hidden:true,replacedBy:'washer_std',name:'세탁기',nameEn:'washing machine',w:700,h:700,c:'#FFFFFF',shape:[
     {type:'rect',x:-350,y:-350,w:700,h:700,fill:'#F5F1EB',stroke:'#A8A8A8',sw:15,r:8},
     {type:'circle',cx:0,cy:30,r:240,fill:'#3E3E3E',stroke:'#5A5A5A',sw:8},
     {type:'circle',cx:0,cy:30,r:200,fill:'#1A1A1A',stroke:'#5A5A5A',sw:3},
     {type:'rect',x:-300,y:-330,w:600,h:80,fill:'#3E3E3E',stroke:'#1A1A1A',sw:3,r:5},
     {type:'circle',cx:240,cy:-290,r:15,fill:'#5BA0D4'},
   ]},
-  dryer:{name:'건조기',nameEn:'clothes dryer',w:700,h:700,c:'#FFFFFF',shape:[
+  dryer:{hidden:true,replacedBy:'dryer_std',name:'건조기',nameEn:'clothes dryer',w:700,h:700,c:'#FFFFFF',shape:[
     {type:'rect',x:-350,y:-350,w:700,h:700,fill:'#F5F1EB',stroke:'#A8A8A8',sw:15,r:8},
     {type:'circle',cx:0,cy:30,r:240,fill:'#5A5A5A',stroke:'#3E3E3E',sw:8},
     {type:'rect',x:-300,y:-330,w:600,h:80,fill:'#5A5A5A',stroke:'#1A1A1A',sw:3,r:5},
@@ -1002,6 +1051,7 @@ const LIB_GROUPS={
     ['주방·다이닝',['dining4','dining6','dining_round','chair','bar_stool','home_bar']],
     ['서재·업무',['desk','desk_l','desk_motion','office_chair','bookshelf']],
     ['취미·기타',['piano','treadmill','massage_chair','styler','cat_tower']],
+    ['가전',['fridge_bespoke','fridge_bespoke_kf','fridge_std','fridge_side','washer_std','dryer_std']],
   ],
   furniture2:[
     ['주방 하부장',['base_600','base_900','base_sink_900','base_cook_600','base_drawer_600','corner_base_900']],
@@ -1015,7 +1065,6 @@ const LIB_GROUPS={
     ['세면대',['sink_b','sink_b_oval','sink_vessel','sink_counter_1200','sink_double_1500']],
     ['욕조·샤워',['bathtub','bathtub_free','bathtub_corner','shower','shower_slide','shower_corner']],
     ['배수·다용도',['floor_drain','utility_sink']],
-    ['가전',['fridge','fridge_2door','washer','dryer']],
   ],
   light:[
     ['천장 매입',['downlight','edge_flat_600','kitchen_flat','spot_cyl']],

@@ -1098,6 +1098,13 @@ const SEMANTIC_MAP={
   beanbag:{tag:'accent_chair',kw:'beanbag lounger'},
   cat_tower:{tag:'pet',kw:'cat tower with platforms'},
   system_hanger:{tag:'wardrobe',kw:'open system hanger rack with shelf'},
+  // 2026-08-27: 가전 (가구 카테고리로 일원화) — 브랜드명 없이 일반명사만 (헌법)
+  fridge_bespoke:{tag:'appliance',kw:'4-door panel refrigerator with color panels'},
+  fridge_bespoke_kf:{tag:'appliance',kw:'kitchen-fit built-in style panel refrigerator'},
+  fridge_std:{tag:'appliance',kw:'two-door refrigerator'},
+  fridge_side:{tag:'appliance',kw:'side-by-side refrigerator'},
+  washer_std:{tag:'laundry',kw:'front-load washing machine'},
+  dryer_std:{tag:'laundry',kw:'clothes dryer'},
   // ===== FIXTURE_LIB (20종) =====
   toilet:{tag:'sanitary',kw:'modern wall-hung toilet'},
   toilet_round:{tag:'sanitary',kw:'round-bowl toilet'},

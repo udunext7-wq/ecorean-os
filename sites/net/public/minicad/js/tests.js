@@ -1856,6 +1856,52 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('계산식: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-27: 비스포크 냉장고 + 가전 가구 일원화 (대표 지시) ===
+  try{
+    const _bakBP={tool:STATE.selectedTool,lib:STATE.selectedLib,furniture:STATE.furniture.slice(),fixtures:STATE.fixtures.slice()};
+    const NEW=['fridge_bespoke','fridge_bespoke_kf','fridge_std','fridge_side','washer_std','dryer_std'];
+    // [BP1] 가구 라이브러리 등록 + 도형
+    assert('가전: 6종 가구 등록',NEW.every(k=>FURNITURE_LIB[k]&&Array.isArray(FURNITURE_LIB[k].shape)&&FURNITURE_LIB[k].shape.length>=3&&FURNITURE_LIB[k].w>0),
+      NEW.filter(k=>!FURNITURE_LIB[k]).join(','));
+    assert('가전: 비스포크 4도어 4분할',FURNITURE_LIB.fridge_bespoke.shape.filter(c=>c.type==='rect').length>=5);
+    // [BP2] 브랜드명은 표시 이름에만 (nameEn·프롬프트는 일반명사 — 헌법)
+    assert('가전: 영문명 브랜드 없음',NEW.every(k=>!/bespoke|samsung|lg/i.test(FURNITURE_LIB[k].nameEn||'')),
+      NEW.filter(k=>/bespoke/i.test(FURNITURE_LIB[k].nameEn||'')).join(','));
+    assert('가전: 시맨틱 등록',NEW.every(k=>semanticOf(k)&&!/bespoke/i.test(semanticOf(k).kw||'')));
+    // [BP3] 기존 위생 가전은 레거시 숨김 + 대체 지정 (기존 도면 보존)
+    const OLD=[['fridge','fridge_std'],['fridge_2door','fridge_side'],['washer','washer_std'],['dryer','dryer_std']];
+    assert('가전: 위생 레거시 숨김',OLD.every(([k,rep])=>FIXTURE_LIB[k]&&FIXTURE_LIB[k].hidden===true&&FIXTURE_LIB[k].replacedBy===rep));
+    const _bakFx=STATE.fixtures.slice();
+    const oldFr={id:makeId('x'),type:'fridge',x:9500000,y:9500000,angle:0};
+    STATE.fixtures.push(oldFr);
+    renderRect(STATE.fixtures,groups.fixtures,FIXTURE_LIB,'fixtures');
+    let found=false;groups.fixtures.getChildren().forEach(g=>{if(g.id&&g.id()===oldFr.id)found=true;});
+    assert('가전: 기존 도면 냉장고 렌더 유지',found);
+    STATE.fixtures=_bakFx;
+    // [BP4] 팔레트 — 가구에 6종 노출, 위생에는 가전 없음, 중복 0
+    setLibCategory('furniture');
+    const fb=[...document.querySelectorAll('#lib-popup-grid .lib-thumb-btn')].map(b=>b.dataset.libKey);
+    assert('가전: 가구 팔레트 노출',NEW.every(k=>fb.includes(k)),NEW.filter(k=>!fb.includes(k)).join(','));
+    assert('가전: 가구 팔레트 중복 0',new Set(fb).size===fb.length);
+    const hasGroup=[...document.querySelectorAll('#lib-popup-grid .lib-group-title')].some(h=>h.textContent.indexOf('가전')>=0);
+    assert('가전: 가구에 가전 섹션',hasGroup);
+    setLibCategory('fixture');
+    const xb=[...document.querySelectorAll('#lib-popup-grid .lib-thumb-btn')].map(b=>b.dataset.libKey);
+    assert('가전: 위생에서 제외',!xb.includes('fridge')&&!xb.includes('washer')&&!xb.includes('dryer'));
+    assert('가전: 위생 팔레트 중복 0',new Set(xb).size===xb.length);
+    hideLibPopup();
+    // [BP5] 배치·렌더 정상
+    const bp={id:makeId('f'),type:'fridge_bespoke',x:9600000,y:9600000,angle:0};
+    STATE.furniture.push(bp);
+    renderRect(STATE.furniture,groups.furniture,FURNITURE_LIB,'furniture');
+    let g2=null;groups.furniture.getChildren().forEach(g=>{if(g.id&&g.id()===bp.id)g2=g;});
+    assert('가전: 비스포크 배치 렌더',!!g2&&g2.getChildren().length>=5);
+    STATE.furniture=_bakBP.furniture;STATE.fixtures=_bakBP.fixtures;
+    setTool(_bakBP.tool||'select');STATE.selectedLib=_bakBP.lib;
+    renderAll();
+  }catch(e){
+    assert('가전: 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');
