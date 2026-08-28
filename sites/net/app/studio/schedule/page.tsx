@@ -4,6 +4,7 @@
 // 온톨로지 그래프(ontology_nodes)의 표준 공기 + 생애주기 12단계 순서로 일정을 자동 배정한다.
 // 데이터 근거: BOC cost_items 670건의 default_duration. 추정 없이 등록값만 사용.
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { createBrowserSupabase } from '@/core/db/browser';
 import { Noto_Sans_KR } from 'next/font/google';
 import { StudioNav } from '../StudioNav';
@@ -35,6 +36,9 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openPhase, setOpenPhase] = useState<number | null>(null);
+  // 건축물대장에서 넘어온 규모·범위 (2026-08-28)
+  const [ctx, setCtx] = useState<{ bld: string; area: number | null } | null>(null);
+  const [ready, setReady] = useState(false);
 
   const run = useCallback(async () => {
     setLoading(true);
@@ -54,9 +58,22 @@ export default function SchedulePage() {
     setRows((data ?? []) as Row[]);
   }, [start, domain, parallel]);
 
+  // /studio/building 의 "이 규모로 공정표 생성" 에서 넘어온 값을 이어받는다.
+  // (첫 생성 전에 범위를 확정해 RPC 를 두 번 부르지 않는다)
   useEffect(() => {
-    run();
-  }, [run]);
+    const p = new URLSearchParams(window.location.search);
+    const d = p.get('domain');
+    if (d === '건축' || d === '인테리어') setDomain(d);
+    const area = Number(p.get('area'));
+    const bld = (p.get('bld') ?? '').trim();
+    const hasArea = Number.isFinite(area) && area > 0;
+    if (bld || hasArea) setCtx({ bld, area: hasArea ? area : null });
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (ready) run();
+  }, [ready, run]);
 
   // 단계 요약
   const phases = [...new Set(rows.map((r) => r.phase))].sort((a, b) => a - b);
@@ -164,6 +181,23 @@ export default function SchedulePage() {
             </button>
           </div>
         </header>
+
+        {ctx ? (
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-[#E8C99B]/25 bg-[#E8C99B]/[0.05] px-4 py-2.5 text-xs">
+            <span className="text-[10px] tracking-[0.3em] text-[#e8c99b]/80">건축물대장 연계</span>
+            {ctx.bld ? <b className="text-[#f0deb9]">{ctx.bld}</b> : null}
+            {ctx.area ? (
+              <span className="text-[#94aab8]">
+                연면적 <b className="text-[#c8e4ee]">{ctx.area.toLocaleString()}㎡</b> (
+                {Math.round(ctx.area / 3.3058).toLocaleString()}평)
+              </span>
+            ) : null}
+            <span className="text-[#94aab8]">— 공기는 표준 공정 기준, 면적별 물량은 견적에서 반영합니다</span>
+            <Link href="/studio/building" className="ml-auto text-[#9BC9D8] underline underline-offset-2">
+              대장으로 돌아가기
+            </Link>
+          </div>
+        ) : null}
 
         {error ? <p className="mb-4 text-sm text-[#E5726A]">{error}</p> : null}
 
