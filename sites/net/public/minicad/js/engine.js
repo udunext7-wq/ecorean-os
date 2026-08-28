@@ -588,6 +588,8 @@ function ensureBgImageNode(){
 //  화면은 어두운 배경에 네온색이 잘 읽히지만, 종이에서는 그 색이 그대로 옅은 색면이 되어
 //  선·글씨가 묻힌다. 인쇄 때는 도면 관례대로 '흰 바탕 + 검정 선화'로 바꾼다.
 function _pm(){return !!STATE.printMode;}
+// 2026-08-29: 칼라 인쇄 (대표 지시) — 공간·가구 색을 살려 제안용 도면으로 낸다
+function _pcolor(){return !!STATE.printColor;}
 // 채움색 → 아주 밝은 무채색 (선과 글씨가 살아나도록). 투명도는 보존.
 function _inkFill(c){
   if(!c||typeof c!=='string'||c==='transparent') return c;
@@ -607,6 +609,49 @@ function _inkFill(c){
   if(a<0.55) return 'transparent'; // 화면용 글로우/헤일로 — 종이에서는 회색 얼룩이 된다
   if(a>=0.999){const hx=v.toString(16).padStart(2,'0');return '#'+hx+hx+hx;}
   return 'rgba('+v+','+v+','+v+','+a.toFixed(3)+')';
+}
+// 2026-08-29: 칼라 인쇄 — 화면 색을 그대로 쓰되, 종이에서 문제되는 것만 손본다.
+//  · 그림자: 회색 얼룩으로 찍힌다  · 흰 글씨: 흰 종이에서 사라진다 → 검정으로 뒤집고 외곽선은 흰색
+// 종이에서 사라지는 옆은 선은 진하게 — 화면은 어두운 배경이라 옆은 선도 보였다.
+//  색상(색조)은 유지하고 밝기만 낮춘다 — 칼라 인쇄의 색 구분이 죽지 않게.
+function _darkenIfPale(c){
+  if(!c||typeof c!=='string'||c==='transparent') return c;
+  let r,g,b;
+  if(c.charAt(0)==='#'){
+    let h=c.slice(1);
+    if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    if(h.length===8) h=h.slice(0,6);
+    if(h.length!==6) return c;
+    r=parseInt(h.slice(0,2),16);g=parseInt(h.slice(2,4),16);b=parseInt(h.slice(4,6),16);
+  }else if(/^rgba?\(/i.test(c)){
+    const m=c.match(/[\d.]+/g)||[];r=+m[0]||0;g=+m[1]||0;b=+m[2]||0;
+  }else return c;
+  const L=(0.299*r+0.587*g+0.114*b)/255;
+  if(L<0.72) return c;
+  const k=0.48/L;
+  const hx=v=>Math.max(0,Math.min(255,Math.round(v*k))).toString(16).padStart(2,'0');
+  return '#'+hx(r)+hx(g)+hx(b);
+}
+function applyPrintColor(){
+  try{
+    mainLayer.find('Shape').forEach(n=>{
+      try{
+        if(n.shadowBlur&&n.shadowBlur()){n.shadowBlur(0);n.shadowOpacity(0);}
+        const cls=n.getClassName?n.getClassName():'';
+        if(cls==='Text'){
+          const f=String((n.fill&&n.fill())||'').toLowerCase();
+          if(f==='white'||/^#f{3}$|^#f{6}$|^#fff/.test(f)) n.fill('#111111');
+          else if(n.fill&&n.fill()) n.fill(_darkenIfPale(n.fill()));
+          if(n.stroke&&n.stroke()) n.stroke('#FFFFFF');
+          return;
+        }
+        const op=n.opacity?n.opacity():1;
+        if(op<0.05){n.visible(false);return;} // 화면 전용 투명 클릭영역
+        if(n.stroke&&n.stroke()) n.stroke(_darkenIfPale(n.stroke())); // 채움은 그대로, 선만
+      }catch(_){}
+    });
+    mainLayer.draw();
+  }catch(_){}
 }
 // 렌더가 끝난 장면 전체를 인쇄용 잉크로 환산 (sceneFunc 로 그린 내력벽은 이미 검정)
 function applyPrintInk(){
@@ -720,6 +765,27 @@ function isClockwise(pts){
 }
 
 // ===== 공간 회전 (점·선·면·벽·치수·가구 포함) =====
+// ===== 2026-08-29: '이 공간 안의 객체' 판정 단일화 (대표 보고 — 공간을 옮겨도 가구가 남는다) =====
+//  회전은 폴리곤 안쪽(pointInPolygon)으로 판정하는데 이동은 spaceId 만 봐서,
+//  배치 시 spaceId 가 기록되지 않은 객체는 공간만 움직이고 제자리에 남았다.
+//  문·창(openings)은 벽 위 점이라 경계 판정이 불안정 → 종전대로 spaceId 로만 본다.
+const SPACE_CONTAINED_KINDS=['openings','furniture','fixtures','lights','electric','hvac'];
+function spaceContainedObjects(spaceId,kinds){
+  const sp=(STATE.spaces||[]).find(s=>s.id===spaceId);
+  const poly=sp&&sp.polygon;
+  const out={};
+  (kinds||SPACE_CONTAINED_KINDS).forEach(k=>{
+    const byId=k==='openings';
+    out[k]=(STATE[k]||[]).filter(o=>{
+      if(!o||!('x' in o)) return false;
+      if(o.spaceId===spaceId) return true;
+      if(byId||o.spaceId) return false; // 다른 방 소속으로 이미 기록됨
+      if(!poly||poly.length<3) return false;
+      return typeof pointInPolygon==='function'&&pointInPolygon({x:o.x,y:o.y},poly);
+    });
+  });
+  return out;
+}
 function rotateSpaceByAngle(spaceId,angleDeg){
   const sp=STATE.spaces.find(s=>s.id===spaceId);
   if(!sp) return;
@@ -1042,7 +1108,8 @@ function renderSpaces(){
     s.polygon.forEach(p=>{pts.push(STATE.offsetX+mmToPx(p.x),STATE.offsetY+mmToPx(p.y));});
     const sel=STATE.selectedKind==='space'&&STATE.selectedId===s.id||STATE.boxSelection.some(b=>b.kind==='space'&&b.id===s.id);
     // 2026-08-27: 인쇄는 흰 바탕 (색면이 선·글씨를 덮던 문제)
-    const fillColor=_pm()?'#FFFFFF':(s.materialColor||td.color+'33');
+    // 2026-08-29: 흑백 인쇄만 흰 바탕 — 칼라 인쇄는 공간 색을 그대로
+    const fillColor=(_pm()&&!_pcolor())?'#FFFFFF':(s.materialColor||td.color+'33');
     let poly;
     if(s.holes&&s.holes.length){
       // v5.9: 도넛 (hole 있음) — Konva.Shape sceneFunc로 even-odd 채우기
@@ -1096,7 +1163,14 @@ function renderSpaces(){
         opacity:(!_pm()&&s.locked)?0.30:1, dash:(!_pm()&&s.locked)?[8,5]:null,
       });
     }
-    poly.on('click tap',e=>{if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('space',s.id);});
+    poly.on('click tap',e=>{
+      if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;
+      e.cancelBubble=true;
+      // 2026-08-29: 방 안에서 박스 선택을 끌고 놓은 직후의 click 은 무시
+      //  (그렇지 않으면 공간이 다시 잡혀 박스 결과가 날아간다)
+      if(window._suppressClickSelect) return;
+      if(STATE.selectedTool==='select') selectObj('space',s.id);
+    });
     groups.spaces.add(poly);
 
     // 2026-08-24: 계단실(STAIRS) 타입 — 공간 크기에 자동 맞춘 계단 도식 (대표 지시)
@@ -1840,7 +1914,7 @@ function renderOpenings(){
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const w=mmToPx(o.width_mm);
     const isDoor=o.type==='DOOR';
-    const color=_pm()?'#000000':(isDoor?'#D4A05B':'#5BA0D4');
+    const color=(_pm()&&!_pcolor())?'#000000':(isDoor?'#D4A05B':'#5BA0D4'); // 2026-08-29: 칼라 인쇄은 문·창도 색으로
     const sel=STATE.selectedKind==='opening'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='opening'&&b.id===o.id);
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:o.flipped?-1:1,id:o.id});
     // v5.9: depth_mm가 클수록 jamb(벽 단면) 사각형 시각 두께 증가
@@ -3027,7 +3101,7 @@ function renderAll(){
     sSpaces=J(STATE.spaces);
     const theme=document.body?document.body.getAttribute('data-theme')||'':'';
     gk=[STATE.offsetX,STATE.offsetY,STATE.zoom,theme,STATE.plus2D?1:0,STATE.selectedTool,
-        symbolLabelMode(),(STATE.printMode?'P':'')+(STATE.printLabels?'L':'')
+        symbolLabelMode(),(STATE.printMode?'P':'')+(STATE.printLabels?'L':'')+(STATE.printColor?'C':'')
        ].join('|')+'§'; // 2026-08-28: 라벨 모드·인쇄 모드 — 토글 즉시 반영
   }catch(e){J=null;}
   const selK=k=>{

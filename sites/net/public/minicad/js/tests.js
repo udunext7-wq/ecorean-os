@@ -2360,6 +2360,114 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('조명경고: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-29: 공간 드래그 + 칼라 인쇄 (대표 지시) ===
+  try{
+    const _bakSD={spaces:STATE.spaces.slice(),vertices:STATE.vertices.slice(),walls:STATE.walls.slice(),
+      furniture:STATE.furniture.slice(),lights:STATE.lights.slice(),cfg:STATE.printConfig,
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice(),zoom:STATE.zoom};
+    const SX=2600000;
+    STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];STATE.printConfig=null;
+    const sv=polygonToVertexIds([{x:SX,y:SX},{x:SX+6000,y:SX},{x:SX+6000,y:SX+5000},{x:SX,y:SX+5000}]);
+    const ssp=makeSpaceVEF(sv,{name:'드래그검증',type:'LIVING',typeIndex:92,layerName:'A-AREA-ROOM-92'});
+    STATE.spaces.push(ssp);
+    // spaceId 를 기록하지 않은 가구·조명 (실제로 이렇게 남는 경우가 있어 문제가 됐다)
+    const sf={id:makeId('f'),type:'sofa3',x:SX+1500,y:SX+3800,angle:0};
+    const sl={id:makeId('li'),type:'downlight',x:SX+4000,y:SX+1500,angle:0,inch:3};
+    // 방 밖 객체 — 따라오면 안 된다
+    const outF={id:makeId('f'),type:'sofa3',x:SX+12000,y:SX+1000,angle:0};
+    STATE.furniture.push(sf,outF);STATE.lights.push(sl);
+
+    // [SD1] 공간 안 객체 판정 — spaceId 가 없어도 폴리곤 안이면 포함
+    const cont=spaceContainedObjects(ssp.id);
+    assert('공간이동: spaceId 없어도 안쪽 객체 인식',
+      cont.furniture.some(o=>o.id===sf.id)&&cont.lights.some(o=>o.id===sl.id),
+      'f='+cont.furniture.length+' l='+cont.lights.length);
+    assert('공간이동: 방 밖 객체는 제외',!cont.furniture.some(o=>o.id===outF.id));
+    // 다른 방 소속으로 기록된 객체는 제외
+    sf.spaceId='sp_other';
+    assert('공간이동: 다른 방 소속은 제외',!spaceContainedObjects(ssp.id).furniture.some(o=>o.id===sf.id));
+    delete sf.spaceId;
+
+    // [SD2] 드래그 캡처에도 같은 규칙이 적용된다
+    const cap=_captureContained(ssp.id);
+    assert('공간이동: 드래그 캡처에 반영',
+      cap.furniture.some(o=>o.id===sf.id)&&cap.lights.some(o=>o.id===sl.id)&&
+      !cap.furniture.some(o=>o.id===outF.id));
+
+    // 갓 만든 사본(Alt 복사)은 아직 가진 것이 없다 — 원본 가구를 끜고 가면 안 된다
+    const capNew=_captureContained(ssp.id,{byIdOnly:true});
+    assert('공간이동: 사본은 원본 가구를 가져가지 않는다',
+      capNew.furniture.length===0&&capNew.lights.length===0,
+      'f='+capNew.furniture.length+' l='+capNew.lights.length);
+
+    // [SD3] 명령/방향키 이동 — 공간과 안의 객체가 함께, 밖은 그대로
+    STATE.selectedKind='space';STATE.selectedId=ssp.id;STATE.boxSelection=[];
+    const p0=[ssp.polygon[0].x,ssp.polygon[0].y];
+    const f0=[sf.x,sf.y], l0=[sl.x,sl.y], o0=[outF.x,outF.y];
+    const moved=(typeof _nudgeSelected==='function')?_nudgeSelected(1000,500):null;
+    if(moved){
+      assert('공간이동: 공간이 이동',Math.abs((ssp.polygon[0].x-p0[0])-1000)<2&&
+        Math.abs((ssp.polygon[0].y-p0[1])-500)<2,(ssp.polygon[0].x-p0[0])+'/'+(ssp.polygon[0].y-p0[1]));
+      assert('공간이동: 안의 가구·조명도 함께',
+        Math.abs((sf.x-f0[0])-1000)<2&&Math.abs((sl.x-l0[0])-1000)<2,
+        (sf.x-f0[0])+'/'+(sl.x-l0[0]));
+      assert('공간이동: 방 밖 객체는 그대로',outF.x===o0[0]&&outF.y===o0[1]);
+    }else{
+      assert('공간이동: 이동 API 확인',false,'_nudgeSelected 없음/실패');
+    }
+
+    // 방 안 빈 곳 드래그 = 박스 선택 / 다시 눌러 끌면 이동 — 실제 마우스 경로는
+    //  헤드리스 E2E(cdp-repro3)에서 검증한다. 동기 테스트에서는 mousedown 을 재현할 수 없다.
+
+    // --- 칼라 인쇄 ---
+    const cfgC=printCfg();
+    assert('칼라인쇄: 기본은 흑백 선화',cfgC.colorMode==='ink',cfgC.colorMode);
+    // [SD5] 흑백에서는 공간이 흰 바탕, 칼라에서는 공간 색이 남는다
+    const fillOf=()=>{let c=null;groups.spaces.getChildren().forEach(n=>{
+      if(n.id&&n.id()===ssp.id&&n.fill) c=n.fill();});return c;};
+    const _bz=STATE.zoom;
+    STATE.printMode=true;STATE.printColor=false;renderSpaces();
+    const inkFill=fillOf();
+    STATE.printColor=true;renderSpaces();
+    const colorFill=fillOf();
+    STATE.printMode=false;STATE.printColor=false;renderSpaces();
+    assert('칼라인쇄: 흑백은 흰 바탕',String(inkFill).toUpperCase()==='#FFFFFF',String(inkFill));
+    assert('칼라인쇄: 칼라는 공간 색 유지',String(colorFill).toUpperCase()!=='#FFFFFF'&&
+      String(colorFill).indexOf(SPACE_TYPES.LIVING.color)>=0,String(colorFill));
+    // [SD6] 옅은 선은 종이에서 보이게 진해진다 (색조는 유지)
+    assert('칼라인쇄: 옅은 선 진하게',_darkenIfPale('#F0F0F0')!=='#F0F0F0');
+    assert('칼라인쇄: 진한 선은 그대로',_darkenIfPale('#333333')==='#333333');
+    const _dk=_darkenIfPale('#FFE0E0');
+    assert('칼라인쇄: 색조는 유지 (붉은기 유지)',
+      parseInt(_dk.slice(1,3),16)>parseInt(_dk.slice(3,5),16),_dk);
+    assert('칼라인쇄: 변환 함수 존재',typeof applyPrintColor==='function'&&typeof applyPrintInk==='function');
+    // [SD7] 설정이 캡처까지 전달된다
+    cfgC.colorMode='color';
+    const bbC=printRegionBBox(cfgC);
+    if(bbC){
+      const LC=choosePrintLayout(bbC,cfgC);
+      const imgC=_printCapture(bbC,LC,cfgC,22);
+      assert('칼라인쇄: 캡처 성공',!!imgC&&imgC.url.indexOf('data:image/png')===0);
+      assert('칼라인쇄: 캡처 후 플래그 복구',STATE.printColor===false&&STATE.printMode===false);
+      const cfgI={...cfgC,colorMode:'ink'};
+      const imgI=_printCapture(bbC,choosePrintLayout(bbC,cfgI),cfgI,22);
+      assert('칼라인쇄: 흑백과 결과가 다르다',imgC.url!==imgI.url);
+      // 표제란에 칼라 표기
+      const shC=buildPrintSheet(imgC,LC,_printInfo(),cfgC,{preview:true,onlyPage:1});
+      const shI=buildPrintSheet(imgI,LC,_printInfo(),cfgI,{preview:true,onlyPage:1});
+      assert('칼라인쇄: 표제란에 칼라 표기',shC.indexOf('칼라')>=0&&shI.indexOf('칼라')<0);
+    }
+    cfgC.colorMode='ink';
+    STATE.zoom=_bz;
+
+    STATE.spaces=_bakSD.spaces;STATE.vertices=_bakSD.vertices;STATE.walls=_bakSD.walls;
+    STATE.furniture=_bakSD.furniture;STATE.lights=_bakSD.lights;STATE.printConfig=_bakSD.cfg;
+    STATE.selectedKind=_bakSD.selK;STATE.selectedId=_bakSD.selI;STATE.boxSelection=_bakSD.box;
+    STATE.zoom=_bakSD.zoom;
+    renderAll();refreshUI();
+  }catch(e){
+    assert('공간이동·칼라인쇄: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),

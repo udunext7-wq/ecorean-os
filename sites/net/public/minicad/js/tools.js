@@ -2352,6 +2352,22 @@ stage.on('mousedown touchstart',e=>{
           const isShift=!!(e.evt&&e.evt.shiftKey);
           // v5.9: Shift+객체 클릭 — 박스 선택 토글 (드래그/이동 안 함, click 이벤트가 selectObj 처리)
           if(isShift){return;}
+          // 2026-08-29: 방 안 빈 곳 드래그 = 박스 선택 (대표 지시 — "공간에서는 드래그가 안된다")
+          //  바닥 색면이 도면 전체를 덮고 있어, 방 안에서는 박스 선택을 시작할 수가 없었다.
+          //  공간은 '이미 고른 상태에서 다시 눌러' 끌 때만 이동한다 (도형 편집기 관행).
+          if(found.kind==='space'&&!isAlt){
+            const _already=(STATE.selectedKind==='space'&&STATE.selectedId===found.id)
+                        ||(STATE.boxSelection||[]).some(b=>b.kind==='space'&&b.id===found.id);
+            if(!_already){
+              const mm0=getMm(pos);
+              drawState={type:'box',start:mm0,current:mm0,fromSpace:found.id,
+                         startPx:{x:pos.x,y:pos.y}}; // 클릭/드래그 판정은 스냅 안 탄 실제 픽셀로
+              STATE.selectedKind=null;STATE.selectedId=null;
+              if(!STATE.shiftPressed) STATE.boxSelection=[];
+              renderAll();refreshUI();
+              return; // 움직이지 않았다면 mouseup 의 click 핸들러가 공간을 선택한다
+            }
+          }
           // v5.9: 클릭 객체가 박스 선택에 포함돼 있으면 다중 드래그 (boxSelection 유지)
           const isInBox=STATE.boxSelection&&STATE.boxSelection.length>1&&
                         STATE.boxSelection.some(b=>b.kind===found.kind&&b.id===found.id);
@@ -2425,7 +2441,7 @@ stage.on('mousedown touchstart',e=>{
             if(copy){
               STATE.selectedKind=found.kind;STATE.selectedId=copy.id;
               dragMoveState={kind:found.kind,id:copy.id,startMm:rawMm(pos),baseObj:JSON.parse(JSON.stringify(copy)),altCopy:true,
-                contained:found.kind==='space'?_captureContained(copy.id):null};
+                contained:found.kind==='space'?_captureContained(copy.id,{byIdOnly:true}):null};
               if(STATE.altLatched){STATE.altLatched=false;if(typeof refreshTouchQuickBar==='function') refreshTouchQuickBar();}
             }
           }else{
@@ -2498,7 +2514,7 @@ function altCopyBoxSelection(){
     const cp=altCopyObj(b.kind,obj);
     if(!cp) return;
     items.push({kind:b.kind,id:cp.id,baseObj:JSON.parse(JSON.stringify(cp)),
-      contained:b.kind==='space'?_captureContained(cp.id):null});
+      contained:b.kind==='space'?_captureContained(cp.id,{byIdOnly:true}):null});
   });
   if(lockedSkipped&&typeof cmdToast==='function'){
     cmdToast(items.length?('잠금 '+lockedSkipped+'개 제외 — '+items.length+'개만 복사'):'잠금된 객체 — 복사 불가');
@@ -2595,12 +2611,15 @@ function _nudgeSelected(dx,dy){
       if(obj.holes&&obj.holes.length){
         obj.holes=obj.holes.map(h=>h.map(p=>({x:p.x+dx,y:p.y+dy})));
       }
-      // 공간 안의 자식 객체들도 함께 이동
-      ['openings','furniture','fixtures','lights','electric','hvac'].forEach(k=>{
-        STATE[k].forEach(o=>{
-          if(o.spaceId===id) containedShifts.push({arrKey:k,id:o.id,dx,dy});
+      // 공간 안의 자식 객체들도 함께 이동 (2026-08-29: 드래그와 같은 판정 규칙)
+      const _cont=(typeof spaceContainedObjects==='function')?spaceContainedObjects(id):null;
+      if(_cont){
+        Object.keys(_cont).forEach(k=>{_cont[k].forEach(o=>containedShifts.push({arrKey:k,id:o.id,dx,dy}));});
+      }else{
+        ['openings','furniture','fixtures','lights','electric','hvac'].forEach(k=>{
+          STATE[k].forEach(o=>{if(o.spaceId===id) containedShifts.push({arrKey:k,id:o.id,dx,dy});});
         });
-      });
+      }
     } else if('x' in obj){
       obj.x+=dx; obj.y+=dy;
     } else if('x1' in obj){
@@ -2631,12 +2650,17 @@ function _nudgeSelected(dx,dy){
   return true;
 }
 // v5.9: 공간 드래그 시 함께 따라가야 하는 자식 객체들의 base 위치 캡처
-function _captureContained(spaceId){
-  const arrs=['openings','furniture','fixtures','lights','electric','hvac'];
+function _captureContained(spaceId,opts){
+  // 2026-08-29: spaceId 가 없는 객체도 폴리곤 안에 있으면 함께 들고 간다
+  //  (종전엔 spaceId 만 봐서, 공간만 움직이고 가구가 제자리에 남았다)
+  //  단, Alt 복사로 갓 만든 사본은 아직 가진 것이 없다 — 기하 판정을 쓰면
+  //  원본 자리에 겹쳐 있는 원본의 가구를 끜고 가버린다 → byIdOnly 로 막는다.
+  const src=(typeof spaceContainedObjects==='function'&&!(opts&&opts.byIdOnly))
+    ? spaceContainedObjects(spaceId)
+    : (function(){const r={};['openings','furniture','fixtures','lights','electric','hvac']
+        .forEach(k=>{r[k]=STATE[k].filter(o=>o.spaceId===spaceId);});return r;})();
   const result={};
-  arrs.forEach(k=>{
-    result[k]=STATE[k].filter(o=>o.spaceId===spaceId).map(o=>({id:o.id,x:o.x,y:o.y}));
-  });
+  Object.keys(src).forEach(k=>{result[k]=src[k].map(o=>({id:o.id,x:o.x,y:o.y}));});
   return result;
 }
 // v5.9: 선택된 객체(들) 잠금/해제 — 잠긴 객체는 이동·핸들 편집 불가
@@ -3355,6 +3379,27 @@ stage.on('mouseup touchend',e=>{
     }
   }
   else if(STATE.selectedTool==='select'&&drawState&&drawState.type==='box'){
+    // 2026-08-29: 방 안에서 시작한 드래그 — 움직였으면 박스 선택, 그대로면 공간 선택.
+    //  (농기기 직후 renderAll 이 도형 노드를 다시 만들어 Konva click 이 안 터진다 —
+    //   그래서 클릭 선택을 여기서 직접 처리한다)
+    if(drawState.fromSpace){
+      const _up=stage.getPointerPosition();
+      const _sp0=drawState.startPx;
+      const _dpx=(_sp0&&_up)
+        ? (Math.abs(_up.x-_sp0.x)+Math.abs(_up.y-_sp0.y))
+        : (Math.abs(mmToPx((drawState.current.x||0)-(drawState.start.x||0)))
+          +Math.abs(mmToPx((drawState.current.y||0)-(drawState.start.y||0))));
+      if(_dpx<6){ // 클릭 — 방을 고른다
+        const _sid=drawState.fromSpace;
+        drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+        STATE.boxSelection=[];
+        if(typeof selectObj==='function') selectObj('space',_sid);
+        else{STATE.selectedKind='space';STATE.selectedId=_sid;renderAll();refreshUI();}
+        return;
+      }
+      // 실제로 끌었다 — 이어서 터지는 공간 click 이 박스 결과를 덮어쓰지 않게 한 번 막는다
+      window._suppressClickSelect=true;setTimeout(()=>{window._suppressClickSelect=false;},0);
+    }
     // v5.3: 박스 선택 종료
     finishBoxSelection();
     drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();

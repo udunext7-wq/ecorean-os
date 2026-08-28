@@ -2775,6 +2775,7 @@ function printCfg(){
   if(!c.preset) c.preset='full';
   if(!c.layers) c.layers=printPresetLayers(c.preset);
   if(!c.symbolLabels) c.symbolLabels='off';
+  if(!c.colorMode) c.colorMode='ink'; // 2026-08-29: ink=흑백 선화 / color=칼라
   if(!Array.isArray(c.spaceIds)) c.spaceIds=[];
   ['titleBlock','scaleBar','north','page2'].forEach(k=>{if(typeof c[k]!=='boolean') c[k]=true;});
   return c;
@@ -2977,7 +2978,8 @@ function buildPrintSheet(dataURL,L,info,cfg,opts){
         '<div class="big">'+escapeHtml(STATE.projectName||'')+'</div></div>'+
       '<div class="cell" style="flex:1"><div class="k">DRAWING</div><div class="v">'+escapeHtml(printDrawingTitle(cfg))+'</div></div>'+
       '<div class="cell" style="flex:0.9"><div class="k">SCALE</div><div class="big">1 / '+L.scale+'</div></div>'+
-      '<div class="cell" style="flex:0.9"><div class="k">PAPER</div><div class="v">'+L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+'</div></div>'+
+      '<div class="cell" style="flex:0.9"><div class="k">PAPER</div><div class="v">'+L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+
+        (cfg.colorMode==='color'?' · 칼라':'')+'</div></div>'+
       '<div class="cell" style="flex:1"><div class="k">바닥면적</div><div class="v">'+info.area+'㎡ ('+info.py+'py)</div></div>'+
       '<div class="cell" style="flex:0.8"><div class="k">문/창</div><div class="v">'+info.doorN+' / '+info.winN+'</div></div>'+
       '<div class="cell" style="flex:0.9"><div class="k">천장고</div><div class="v">'+info.ch+'mm</div></div>'+
@@ -3085,6 +3087,7 @@ function _printCapture(bbox,L,cfg,dpi){
     // 기호 이름 라벨 — 조명·전기 도면은 이름이 있어야 읽힌다 (묶음 대표만)
     STATE.printLabels=(cfg.symbolLabels&&cfg.symbolLabels!=='off');
     if(STATE.printLabels) STATE.symbolLabelMode=cfg.symbolLabels;
+    STATE.printColor=(cfg.colorMode==='color'); // 2026-08-29: 칼라 인쇄
     // 축척 1/S 을 96dpi 기준으로 배치 → 캡처 때 pixelRatio 로 승격
     const zoom=(96/25.4/L.scale)/(STATE.scale/1000);
     STATE.zoom=zoom;
@@ -3098,12 +3101,12 @@ function _printCapture(bbox,L,cfg,dpi){
     STATE.offsetY=outH/2-mmToPx(cy);
     if(stage.width()<outW||stage.height()<outH) stage.size({width:outW,height:outH});
     drawGrid();renderAll();
-    applyPrintInk();
+    if(STATE.printColor) applyPrintColor(); else applyPrintInk();
     return {url:stage.toDataURL({x:0,y:0,width:outW,height:outH,
               pixelRatio:(dpi||PRINT_DPI)/96,mimeType:'image/png'}),
             wMm:outW/96*25.4, hMm:outH/96*25.4};
   }finally{
-    STATE.printMode=false;STATE.printLabels=false;
+    STATE.printMode=false;STATE.printLabels=false;STATE.printColor=false;
     STATE.layers=bak.layers;STATE.symbolLabelMode=bak.labelMode;STATE.showDimensions=bak.dims;
     STATE.plus2D=bak.plus2D;STATE.showGrid=bak.grid;
     STATE.zoom=bak.zoom;STATE.offsetX=bak.ox;STATE.offsetY=bak.oy;
@@ -3191,6 +3194,9 @@ function _pdLeftHTML(cfg){
 
   const chk2=(id,label,on)=>'<label style="display:flex;align-items:center;gap:5px;font-size:11.5px;cursor:pointer;padding:2px 0">'+
     '<input type="checkbox" class="pd-opt" data-k="'+id+'"'+(on?' checked':'')+' style="accent-color:#C9A961">'+label+'</label>';
+  const color=_pdSection('인쇄 색상',
+    sel('pd-color',cfg.colorMode,[['ink','흑백 선화 (시공도면)'],['color','칼라 (제안·영업용)']])+
+    '<div class="hint" style="margin-top:4px">흑백은 흰 바탕에 검정 선화 · 칼라는 공간·문창 색을 살려 찍습니다</div>');
   const sheet=_pdSection('도면 양식',
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">'+
     chk2('titleBlock','표제란',cfg.titleBlock)+chk2('scaleBar','축척바',cfg.scaleBar)+
@@ -3199,7 +3205,7 @@ function _pdLeftHTML(cfg){
 
   return region+
     (cfg.region==='space'?_pdSection('인쇄할 공간 (여러 개 선택 가능)',spaceChips):'')+
-    paper+layers+sheet;
+    paper+layers+color+sheet;
 }
 function _pdThumbsHTML(cfg){
   return '<div style="display:flex;gap:8px">'+PRINT_PRESETS.map(p=>
@@ -3303,7 +3309,7 @@ function _pdRenderLeft(){
     cfg.region='space';
     _pdRenderLeft();_pdPreview();_pdThumbs();
   }));
-  ['pd-paper','pd-ori','pd-scale','pd-symlabel'].forEach(id=>{
+  ['pd-paper','pd-ori','pd-scale','pd-symlabel','pd-color'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
     el.addEventListener('change',()=>{
@@ -3311,6 +3317,7 @@ function _pdRenderLeft(){
       if(id==='pd-paper') cfg.paper=v;
       else if(id==='pd-ori') cfg.orientation=v;
       else if(id==='pd-scale') cfg.scale=(v==='auto')?'auto':parseInt(v,10);
+      else if(id==='pd-color') cfg.colorMode=v;
       else cfg.symbolLabels=v;
       _pdPreview();
     });
