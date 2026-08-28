@@ -108,3 +108,132 @@ export interface AllMaterialRow {
   is_approved: boolean;
   origin_dataset: string;
 }
+
+// ─────────────────────────────────────────────────────────────
+// 거래처(협력업체) — 20260828000001~3 (대표 지시 2026-08-28)
+// 결정: 시공·자재·장비·운반 한 명부 / 표준·계약단가 둘 다 / 직영 미포함
+// ─────────────────────────────────────────────────────────────
+
+/** 거래처 구분 — 한 업체가 여러 개를 가질 수 있다(겸업) */
+export type PartnerKind = '시공' | '자재' | '장비' | '운반';
+export const PARTNER_KINDS: readonly PartnerKind[] = ['시공', '자재', '장비', '운반'];
+
+export type PartnerStatus = 'ACTIVE' | 'SUSPENDED' | 'TERMINATED';
+export type ContractStatus = 'DRAFT' | 'ACTIVE' | 'EXPIRED' | 'TERMINATED';
+export type PaymentCycle = 'MONTHLY' | 'PER_ORDER' | 'MILESTONE';
+
+/** public.process_groups — 공정군 C01~C16 (거래처 작업내용의 축) */
+export interface ProcessGroupRow {
+  id: string;
+  tenant_id: string;
+  code: string;
+  name: string;
+  color: string | null;
+}
+
+/** public.partners */
+export interface PartnerRow {
+  id: string;
+  tenant_id: string;
+  partner_code: string;
+  name: string;
+  kinds: PartnerKind[];
+  trade_groups: string[]; // process_groups.code
+  biz_reg_no: string | null;
+  rep_name: string | null;
+  phone: string | null;
+  email: string | null;
+  zipcode: string | null;
+  address: string | null;
+  bank_name: string | null;
+  bank_account: string | null;
+  bank_holder: string | null;
+  grade: string | null;
+  status: PartnerStatus;
+  memo: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** public.v_partner_overview — 목록·요약 (기존 work_* 에서 집계, 사본 아님) */
+export interface PartnerOverviewRow {
+  partner_id: string;
+  tenant_id: string;
+  partner_code: string;
+  name: string;
+  kinds: PartnerKind[];
+  trade_groups: string[];
+  grade: string | null;
+  status: PartnerStatus;
+  phone: string | null;
+  rep_name: string | null;
+  biz_reg_no: string | null;
+  active_contracts: number;
+  approved_prices: number;
+  pending_prices: number;
+  po_count: number;
+  po_amount: number;
+  invoice_amount: number;
+  schedule_count: number;
+  next_start_date: string | null;
+  safety_docs_expire_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** public.partner_contracts — 계약사항(기간 조건). 발주=건별과 분리 */
+export interface PartnerContractRow {
+  id: string;
+  partner_id: string;
+  contract_no: string | null;
+  title: string;
+  start_date: string | null;
+  end_date: string | null;
+  payment_terms: string | null;
+  payment_closing_day: number | null;
+  payment_day: number | null;
+  payment_cycle: PaymentCycle | null;
+  retention_rate: number | null;
+  warranty_months: number | null;
+  safety_docs_expire_at: string | null;
+  insurance_4major: boolean;
+  insurance_expire_at: string | null;
+  status: ContractStatus;
+  file_url: string | null;
+  memo: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** public.partner_prices — 표준 참조 + 계약단가. 승인 전 유효단가 뷰 제외(헌법 9조) */
+export interface PartnerPriceRow {
+  id: string;
+  partner_id: string;
+  contract_id: string | null;
+  cost_item_id: string | null;
+  subcontractor_id: string | null;
+  trade_group: string | null;
+  item_name: string;
+  unit: string | null;
+  contract_price: number | null;
+  std_price_snapshot: number | null;
+  effective_from: string;
+  effective_to: string | null;
+  data_status: DataStatus;
+  is_approved: boolean;
+  approved_at: string | null;
+  approved_by: string | null;
+  notes: string | null;
+}
+
+/** 이 업체가 잡힌 공정 (work_schedule_items + work_sites) — 스케줄 탭 */
+export interface PartnerScheduleRow {
+  id: string;
+  site_id: string | null;
+  process_name: string | null;
+  process_code: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  progress: number | null;
+  work_sites: { name: string | null } | null;
+}

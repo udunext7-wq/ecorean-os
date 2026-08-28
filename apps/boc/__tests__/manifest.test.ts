@@ -22,12 +22,36 @@ describe('boc pack.manifest (pack-contract 2.1)', () => {
       expect(manifest.tables.write).not.toContain(t);
     }
     // 쓰기는 security definer 함수 경유만 허용
-    expect(manifest.tables.write).toEqual(['role_requests', 'profiles', 'minicad_price_keys']);
+    expect(manifest.tables.write).toEqual([
+      'role_requests',
+      'profiles',
+      'minicad_price_keys',
+      // 거래처 — partner_upsert / partner_contract_upsert /
+      // partner_price_propose / partner_price_decide 경유 (2026-08-28)
+      'partners',
+      'partner_contracts',
+      'partner_prices',
+    ]);
   });
   it('read 테이블에 화면이 실제 조회하는 테이블이 선언됨 (준수사항 5)', () => {
     for (const t of ['cost_items', 'tile_products', 'v_all_materials', 'profiles']) {
       expect(manifest.tables.read).toContain(t);
     }
+  });
+  it('거래처 화면이 읽는 테이블·뷰가 선언됨 (2026-08-28)', () => {
+    for (const t of [
+      'partners',
+      'v_partner_overview',
+      'partner_contracts',
+      'partner_prices',
+      'process_groups',
+      'work_schedule_items',
+      'work_purchase_orders',
+      'work_invoices',
+    ]) {
+      expect(manifest.tables.read).toContain(t);
+    }
+    expect(manifest.routes).toContain('/boc/partners');
   });
   it('routes와 menu가 선언됨', () => {
     expect(manifest.routes.length).toBeGreaterThan(0);
