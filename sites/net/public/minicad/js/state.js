@@ -10,6 +10,7 @@ const STATE={
   symbolLabelMode:'smart',
   // 2026-08-28: 인쇄 설정 (대표 지시 — 원하는 포인트만 뽑게). 문서와 함께 저장된다
   printConfig:null,   // {region,rect,spaceIds,paper,orientation,scale,preset,layers,symbolLabels,titleBlock,scaleBar,north,page2}
+  printFrameOn:false, // 2026-08-28: 도면 위에 인쇄 틀을 띄워 손으로 잡기
   printLabels:false,  // 인쇄 중 기호 이름을 찍을지 (조명·전기 도면용)
   symbolBoost:false, // 2026-08-24: 기호는 실척 유지(대표 지시 — 크기 확대 금지), 'sym' 명령으로만 확대 가능. 판독은 고정 글씨 라벨로
   bgImage:null, // {filename, dataURL, x_mm, y_mm, scale, opacity, locked, naturalWidth, naturalHeight}

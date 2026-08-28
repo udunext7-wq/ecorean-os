@@ -3860,6 +3860,7 @@ document.addEventListener('keydown',e=>{
     if(typeof hideTextModal==='function') hideTextModal();               // 2026-08-22: ? 도움말 모달
     if(_scaleCalActive){_scaleCalActive=false;_scaleCalP1=null;showStatus('스케일 보정 취소');}
     if(_printRectActive&&typeof cancelPrintRegionPick==='function') cancelPrintRegionPick(); // 2026-08-28
+    else if(STATE.printFrameOn&&typeof togglePrintFrame==='function') togglePrintFrame(false); // 2026-08-28: 틀 끄기
     if(typeof closePrintDialog==='function') closePrintDialog();                             // 2026-08-28
   }
   // 2026-08-28: 인쇄 설정창이 열려 있으면 도면 단축키를 가로채지 않는다 (버튼 클릭 후 키 입력이 도구를 바꾸던 문제)

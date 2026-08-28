@@ -25,6 +25,7 @@ groups={
   xlines:new Konva.Group(), // v5.9: 무한 안내선 (XLINE)
   pillars:new Konva.Group(), // v5.9: 기둥 (RC) — 내력벽과 함께 최상단
   spaceHandles:new Konva.Group(), // v5.9: 공간 vertex 편집 핸들 (선택 시만 표시, 가장 위 z-order)
+  printFrame:new Konva.Group(), // 2026-08-28: 화면에서 잡는 인쇄 영역 틀 (최상단, 인쇄엔 미포함)
 };
 // v5.9: 공간(fill 배경) → 벽(상단) 순서 — 벽이 위에 그려져 클릭 가능, 공간 fill에 가려지지 않음
 mainLayer.add(groups.spaces);mainLayer.add(groups.walls);mainLayer.add(groups.openings);
@@ -37,6 +38,7 @@ mainLayer.add(groups.leaders); // v5.9
 mainLayer.add(groups.xlines); // v5.9: 무한 안내선 — 벽 위, 핸들 아래 (클릭 선택 가능)
 mainLayer.add(groups.pillars); // v5.9: 기둥 — 벽 위로
 mainLayer.add(groups.spaceHandles); // v5.9: 핸들이 가장 위 — 벽보다 위에서 클릭 가능
+mainLayer.add(groups.printFrame);   // 2026-08-28: 인쇄 영역 틀은 모든 것 위
 labelGroup=new Konva.Group({listening:false});
 labelSpacesGroup=new Konva.Group({listening:false});
 labelOpeningsGroup=new Konva.Group({listening:false});
@@ -2946,8 +2948,139 @@ function renderAll(){
   // v5.9: 자동 면적 라벨 비활성화 — 공간 공유 변 사이 부분영역마다 라벨이 생겨 도면이 어지러움
   renderSpaceHandles(); // 선택 의존·저비용 — 항상 실행
   renderGhostHints();   // 저비용 — 항상 실행
+  renderPrintFrame();   // 2026-08-28: 인쇄 영역 틀 (팜·줌을 따라온다)
   Object.entries(STATE.layers).forEach(([k,v])=>{if(groups[k]) groups[k].visible(v);});
   mainLayer.batchDraw();previewLayer.batchDraw();
+}
+
+// ===== 2026-08-28: 화면에서 인쇄 영역 잡기 (대표 지시 — "인쇄를 화면으로 잡을 수 있게") =====
+//  설정창에서 한 번 드래그하고 끝나는 게 아니라, 도면 위에 인쇄 틀을 띄워 두고
+//  손으로 끌어 옮기고 모서리를 잡아 늘린다. 틀 바깥은 어둡게 덮어 뭐가 찍히는지 바로 보인다.
+let _pfNodes=null;
+const PRINT_FRAME_MIN_MM=300;
+function printFrameActive(){
+  if(!STATE.printFrameOn||_pm()) return false;
+  // 영역을 새로 드래그하는 중에는 틀을 치운다 (틀이 클릭을 가로채지 않게)
+  if(typeof _printRectActive!=='undefined'&&_printRectActive) return false;
+  return true;
+}
+// 지금 틀이 잡고 있는 범위 (mm)
+function printFrameRectMm(){
+  if(typeof printCfg!=='function') return null;
+  const c=printCfg();
+  if(c.region==='rect'&&c.rect){
+    return {minX:Math.min(c.rect.x1,c.rect.x2),minY:Math.min(c.rect.y1,c.rect.y2),
+            maxX:Math.max(c.rect.x1,c.rect.x2),maxY:Math.max(c.rect.y1,c.rect.y2)};
+  }
+  const bb=(typeof printRegionBBox==='function')?printRegionBBox(c):null;
+  return bb?{minX:bb.minX,minY:bb.minY,maxX:bb.maxX,maxY:bb.maxY}:null;
+}
+function _pfHandlePos(k,x,y,w,h){
+  return {nw:{x:x,y:y},n:{x:x+w/2,y:y},ne:{x:x+w,y:y},e:{x:x+w,y:y+h/2},
+          se:{x:x+w,y:y+h},s:{x:x+w/2,y:y+h},sw:{x:x,y:y+h},w:{x:x,y:y+h/2}}[k];
+}
+const PF_CURSOR={nw:'nwse-resize',se:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize',
+                 n:'ns-resize',s:'ns-resize',e:'ew-resize',w:'ew-resize'};
+function renderPrintFrame(){
+  if(!groups.printFrame) return;
+  groups.printFrame.destroyChildren();
+  _pfNodes=null;
+  if(!printFrameActive()) return;
+  const r=printFrameRectMm();
+  if(!r) return;
+  const SW=stage.width(), SH=stage.height(), PAD=3000; // 팬 중에도 덮개가 벌어지지 않도록 넉넉히
+  let cur={x:STATE.offsetX+mmToPx(r.minX), y:STATE.offsetY+mmToPx(r.minY),
+           w:mmToPx(r.maxX-r.minX), h:mmToPx(r.maxY-r.minY)};
+  const MIN=Math.max(10,mmToPx(PRINT_FRAME_MIN_MM));
+  // 바깥 덮개 — 찍히지 않는 곳을 어둡게
+  const mask=[0,1,2,3].map(()=>{
+    const m=new Konva.Rect({fill:'#000',opacity:0.34,listening:false});
+    groups.printFrame.add(m);return m;
+  });
+  // 틀 안쪽은 클릭을 먹지 않는다 — 안에 들어있는 객체를 그대로 고르고 고칠 수 있게.
+  //  틀은 테두리(폭 18px)와 손잡이로만 잡는다 — 사진 크롭 박스와 같은 방식.
+  const rect=new Konva.Rect({stroke:'#D4B872',strokeWidth:2,dash:[10,6],
+    fillEnabled:false,draggable:true,hitStrokeWidth:18,
+    shadowColor:'#D4B872',shadowBlur:7,shadowOpacity:0.55});
+  groups.printFrame.add(rect);
+  const label=new Konva.Text({text:'',fontSize:12.5,fontFamily:'JetBrains Mono, monospace',
+    fontStyle:'700',fill:'#FFE9A8',stroke:'#0A0A0A',strokeWidth:3.2,
+    fillAfterStrokeEnabled:true,lineJoin:'round',listening:false});
+  groups.printFrame.add(label);
+  const HK=['nw','n','ne','e','se','s','sw','w'];
+  const handles={};
+  HK.forEach(k=>{
+    const nd=new Konva.Circle({radius:6.5,fill:'#D4B872',stroke:'#0A0A0A',strokeWidth:1.6,
+      draggable:true,hitStrokeWidth:22});
+    nd.dragBoundFunc(function(pos){
+      const out={x:pos.x,y:pos.y};
+      if(k==='n'||k==='s') out.x=cur.x+cur.w/2;
+      if(k==='e'||k==='w') out.y=cur.y+cur.h/2;
+      return out;
+    });
+    handles[k]=nd;groups.printFrame.add(nd);
+  });
+  // 틀 정보 — 이 범위가 어떤 용지·축척으로 나오는지
+  const infoText=()=>{
+    const wMm=Math.round(pxToMm(cur.w)), hMm=Math.round(pxToMm(cur.h));
+    let head='';
+    try{
+      if(typeof choosePrintLayout==='function'&&typeof printCfg==='function'){
+        const c=printCfg();
+        const L=choosePrintLayout({w:wMm+600,h:hMm+600},c); // 여백 300mm 양쪽 반영
+        head=L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+' · 1/'+L.scale+' · ';
+      }
+    }catch(_){}
+    return '🖨 '+head+wMm+'×'+hMm+'mm';
+  };
+  const layout=(nx,ny,nw,nh,skip)=>{
+    cur={x:nx,y:ny,w:nw,h:nh};
+    if(rect!==skip) rect.position({x:nx,y:ny});
+    rect.size({width:nw,height:nh});
+    mask[0].setAttrs({x:-PAD,y:-PAD,width:SW+PAD*2,height:ny+PAD});
+    mask[1].setAttrs({x:-PAD,y:ny+nh,width:SW+PAD*2,height:SH-(ny+nh)+PAD});
+    mask[2].setAttrs({x:-PAD,y:ny,width:nx+PAD,height:nh});
+    mask[3].setAttrs({x:nx+nw,y:ny,width:SW-(nx+nw)+PAD,height:nh});
+    HK.forEach(k=>{const nd=handles[k];if(nd&&nd!==skip) nd.position(_pfHandlePos(k,nx,ny,nw,nh));});
+    label.text(infoText());
+    label.position({x:Math.max(2,nx+2),y:(ny-21<2)?(ny+6):(ny-21)});
+    mainLayer.batchDraw();
+  };
+  const commit=()=>{
+    if(typeof printCfg!=='function') return;
+    // 틀 노드 자체가 기준 — 마지막 dragmove 가 생략돼도 위치가 어긋나지 않게
+    cur={x:rect.x(),y:rect.y(),w:rect.width(),h:rect.height()};
+    const c=printCfg();
+    c.region='rect';
+    c.rect={x1:Math.round(pxToMm(cur.x-STATE.offsetX)),y1:Math.round(pxToMm(cur.y-STATE.offsetY)),
+            x2:Math.round(pxToMm(cur.x+cur.w-STATE.offsetX)),y2:Math.round(pxToMm(cur.y+cur.h-STATE.offsetY))};
+    if(typeof refreshPrintFrameBar==='function') refreshPrintFrameBar();
+    renderPrintFrame();
+  };
+  rect.on('mousedown touchstart',e=>{e.cancelBubble=true;});
+  rect.on('mouseenter',()=>{document.body.style.cursor='move';});
+  rect.on('mouseleave',()=>{document.body.style.cursor='';});
+  rect.on('dragmove',()=>{const p=rect.position();layout(p.x,p.y,cur.w,cur.h,rect);});
+  rect.on('dragend',commit);
+  HK.forEach(k=>{
+    const nd=handles[k];
+    nd.on('mousedown touchstart',e=>{e.cancelBubble=true;});
+    nd.on('mouseenter',()=>{document.body.style.cursor=PF_CURSOR[k]||'pointer';});
+    nd.on('mouseleave',()=>{document.body.style.cursor='';});
+    nd.on('dragmove',()=>{
+      const p=nd.position();
+      let l=cur.x,t=cur.y,rr=cur.x+cur.w,b=cur.y+cur.h;
+      if(k.indexOf('w')>=0) l=Math.min(p.x,rr-MIN);
+      if(k.indexOf('e')>=0) rr=Math.max(p.x,l+MIN);
+      if(k.indexOf('n')>=0) t=Math.min(p.y,b-MIN);
+      if(k.indexOf('s')>=0) b=Math.max(p.y,t+MIN);
+      layout(l,t,rr-l,b-t,nd);
+      nd.position(_pfHandlePos(k,l,t,rr-l,b-t)); // 최소 크기에 걸리면 핸들도 모서리에 붙인다
+    });
+    nd.on('dragend',commit);
+  });
+  layout(cur.x,cur.y,cur.w,cur.h,null);
+  _pfNodes={rect,handles,mask,label,layout,commit};
 }
 
 // v5.9: 고스트 스냅 힌트 — 모든 객체의 잠재적 스냅점 미리 표시

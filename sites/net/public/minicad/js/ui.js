@@ -2573,6 +2573,7 @@ function _paletteCommands(){
     {label:'🖨 인쇄 설정 — 범위·용지·축척 미리보기',kw:'print 인쇄 출력 미리보기 범위 용지 축척 설정',run:openPrintDialog},
     {label:'🖨 바로 인쇄 (직전 설정으로)',kw:'print 인쇄 바로 출력',run:()=>printPlan()},
     {label:'⬚ 인쇄 영역 드래그로 지정',kw:'print 인쇄 영역 범위 부분 확대 crop',run:startPrintRegionPick},
+    {label:'🖥 인쇄 영역 — 화면에서 잡기 (pf)',kw:'print 인쇄 영역 틀 화면 잡기 frame pf',run:()=>togglePrintFrame()},
     {label:'💾 JSON 저장',kw:'save json 저장 파일',run:saveJSON},
     {label:'📂 JSON 불러오기',kw:'load open 불러오기 열기',run:loadJSON},
     {label:'🤖 AI 번들 내보내기',kw:'ai bundle export 번들 내보내기',run:exportAIBundle},
@@ -3093,7 +3094,10 @@ function _pdLeftHTML(cfg){
     radio('pd-region','space',cfg.region,'공간 지정',cfg.spaceIds.length?cfg.spaceIds.length+'개':'미지정')+
     radio('pd-region','view',cfg.region,'현재 화면 그대로')+
     '</div>'+
-    '<button type="button" class="btn sm" id="pd-pick-rect" style="width:100%;margin-top:6px">⬚ 도면에서 영역 드래그로 지정</button>');
+    '<div style="display:flex;gap:5px;margin-top:6px">'+
+    '<button type="button" class="btn sm" id="pd-pick-rect" style="flex:1">⬚ 드래그로 지정</button>'+
+    '<button type="button" class="btn sm" id="pd-grab" style="flex:1">🖥 화면에서 잡기</button>'+
+    '</div>');
 
   const spaceChips=(STATE.spaces||[]).length
     ? '<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:96px;overflow-y:auto">'+
@@ -3232,6 +3236,8 @@ function _pdRenderLeft(){
   }));
   const pick=document.getElementById('pd-pick-rect');
   if(pick) pick.addEventListener('click',startPrintRegionPick);
+  const grab=document.getElementById('pd-grab');
+  if(grab) grab.addEventListener('click',()=>togglePrintFrame(true));
   left.querySelectorAll('.pd-space').forEach(b=>b.addEventListener('click',()=>{
     const id=b.dataset.id, i=cfg.spaceIds.indexOf(id);
     if(i>=0) cfg.spaceIds.splice(i,1); else cfg.spaceIds.push(id);
@@ -3294,6 +3300,7 @@ function _pdPreview(){
     if(!host||!_printDlgEl) return;
     const cfg=printCfg();
     const bbox=printRegionBBox(cfg);
+    if(typeof refreshPrintFrameBar==='function') refreshPrintFrameBar(); // 틀이 켜져 있으면 함께 갱신
     const info=document.getElementById('pd-info');
     if(!bbox){
       host.innerHTML='<div style="color:#fff;font-size:12px">인쇄할 도면이 없습니다 — 공간을 먼저 그려주세요</div>';
@@ -3374,7 +3381,100 @@ function finishPrintRegionPick(mm1,mm2){
   c.region='rect';
   c.rect={x1:Math.round(mm1.x),y1:Math.round(mm1.y),x2:Math.round(mm2.x),y2:Math.round(mm2.y)};
   showStatus('인쇄 영역 지정: '+Math.abs(c.rect.x2-c.rect.x1)+'×'+Math.abs(c.rect.y2-c.rect.y1)+'mm');
-  openPrintDialog();
+  // 2026-08-28: 드래그로 그리면 그대로 화면 틀로 넘긴다 — 바로 다시 잡을 수 있게
+  if(STATE.printFrameOn){renderPrintFrame();mainLayer.batchDraw();refreshPrintFrameBar();}
+  else openPrintDialog();
+}
+// ===== 2026-08-28: 화면에서 인쇄 영역 잡기 — 켜기/끄기 + 도면 위 조작 바 =====
+function _pfBarEl(){return document.getElementById('print-frame-bar');}
+function refreshPrintFrameBar(){
+  const bar=_pfBarEl();
+  if(!bar) return;
+  const c=printCfg();
+  const bb=printRegionBBox(c);
+  const info=document.getElementById('pfb-info');
+  if(info&&bb){
+    let head='';
+    try{const L=choosePrintLayout(bb,c);head=L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+' · 1/'+L.scale+' · ';}catch(_){}
+    info.textContent=head+Math.round(bb.w)+'×'+Math.round(bb.h)+'mm';
+  }
+}
+function showPrintFrameBar(){
+  hidePrintFrameBar();
+  const bar=document.createElement('div');
+  bar.id='print-frame-bar';
+  bar.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:64px;z-index:820;'+
+    'display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:9px;'+
+    'background:rgba(16,17,30,0.94);border:1px solid var(--gold,#C9A961);'+
+    'box-shadow:0 6px 22px rgba(0,0,0,0.55);font-size:12px;color:var(--text-primary,#F5F1EB)';
+  bar.innerHTML=
+    '<span style="color:var(--gold,#C9A961);font-weight:700">🖨 인쇄 영역</span>'+
+    '<span id="pfb-info" style="font-family:JetBrains Mono,monospace;color:var(--text-secondary,#A9B0C9)"></span>'+
+    '<span style="width:1px;height:16px;background:var(--border,#3D4466)"></span>'+
+    '<button type="button" class="btn sm" id="pfb-view">화면 맞춤</button>'+
+    '<button type="button" class="btn sm" id="pfb-all">도면 전체</button>'+
+    '<button type="button" class="btn sm" id="pfb-set">설정</button>'+
+    '<button type="button" class="btn sm gold" id="pfb-print" style="font-weight:700">인쇄</button>'+
+    '<button type="button" class="btn sm" id="pfb-off">끄기 (Esc)</button>';
+  document.body.appendChild(bar);
+  document.getElementById('pfb-view').addEventListener('click',()=>printFrameFromView());
+  document.getElementById('pfb-all').addEventListener('click',()=>printFrameFromPlan());
+  document.getElementById('pfb-set').addEventListener('click',()=>openPrintDialog());
+  document.getElementById('pfb-print').addEventListener('click',()=>printPlan());
+  document.getElementById('pfb-off').addEventListener('click',()=>togglePrintFrame(false));
+  refreshPrintFrameBar();
+}
+function hidePrintFrameBar(){const b=_pfBarEl();if(b) b.remove();}
+// 지금 범위를 '잡을 수 있는 사각형'으로 굳힌다 (전체/공간/화면 → rect)
+function _pfMaterializeRect(){
+  const c=printCfg();
+  if(c.region==='rect'&&c.rect) return c;
+  const bb=printRegionBBox(c);
+  if(!bb) return c;
+  c.rect={x1:Math.round(bb.minX),y1:Math.round(bb.minY),x2:Math.round(bb.maxX),y2:Math.round(bb.maxY)};
+  c.region='rect';
+  return c;
+}
+function togglePrintFrame(on){
+  const next=(typeof on==='boolean')?on:!STATE.printFrameOn;
+  STATE.printFrameOn=next;
+  if(next){
+    const c=_pfMaterializeRect();
+    if(!c.rect){cmdToast('인쇄할 도면이 없습니다 — 공간을 먼저 그려주세요');STATE.printFrameOn=false;return;}
+    closePrintDialog();
+    showPrintFrameBar();
+    showStatus('인쇄 영역 — 틀을 끌어 옮기고 모서리를 잡아 크기를 맞추세요 (Esc 끄기)');
+    cmdToast('🖨 인쇄 영역을 화면에서 잡으세요');
+  }else{
+    hidePrintFrameBar();
+    showStatus('인쇄 영역 표시 끔');
+  }
+  updatePrintFrameBtn();
+  renderPrintFrame();
+  mainLayer.batchDraw();
+}
+function updatePrintFrameBtn(){
+  const b=document.getElementById('btn-printframe');
+  if(b) b.classList.toggle('gold',!!STATE.printFrameOn);
+}
+// 지금 보고 있는 화면을 그대로 인쇄 영역으로
+function printFrameFromView(){
+  const c=printCfg();
+  c.region='rect';
+  c.rect={x1:pxToMm(0-STATE.offsetX),y1:pxToMm(0-STATE.offsetY),
+          x2:pxToMm(stage.width()-STATE.offsetX),y2:pxToMm(stage.height()-STATE.offsetY)};
+  refreshPrintFrameBar();renderPrintFrame();mainLayer.batchDraw();
+  showStatus('인쇄 영역 = 현재 화면');
+}
+// 도면 전체를 인쇄 영역으로
+function printFrameFromPlan(){
+  const bb=planBBoxMm();
+  if(!bb){cmdToast('도면이 없습니다');return;}
+  const c=printCfg();
+  c.region='rect';
+  c.rect={x1:Math.round(bb.minX),y1:Math.round(bb.minY),x2:Math.round(bb.maxX),y2:Math.round(bb.maxY)};
+  refreshPrintFrameBar();renderPrintFrame();mainLayer.batchDraw();
+  showStatus('인쇄 영역 = 도면 전체');
 }
 function cancelPrintRegionPick(){
   _printRectActive=false;_printRectP1=null;
@@ -3797,6 +3897,7 @@ document.getElementById('btn-grid').addEventListener('click',toggleGrid);
 document.getElementById('btn-dim').addEventListener('click',toggleDim);
 document.getElementById('btn-circuits').addEventListener('click',toggleCircuits); // 2026-08-27
 (function(){const b=document.getElementById('btn-symlabel');if(b)b.addEventListener('click',cycleSymbolLabelMode);})(); // 2026-08-28
+(function(){const b=document.getElementById('btn-printframe');if(b)b.addEventListener('click',()=>togglePrintFrame());})(); // 2026-08-28
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
 // v5.9.2: 통합견적 OS 브리지 — estimate 프로파일 JSON을 localStorage로 전송.
@@ -4490,12 +4591,14 @@ function processCommand(rawCmd){
   if(/^(k|palette|팔레트)$/i.test(c)){openCmdPalette();return;}
   // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
+  if(/^(pf|인쇄영역)$/i.test(c)){togglePrintFrame();return;} // 2026-08-28
   // 2026-08-28: 인쇄 — 기본은 설정창, 'print now' 는 바로, 'print area' 는 영역 지정
-  const prM=c.match(/^(?:print|인쇄|prn)(?:\s+(now|area|바로|영역))?$/i);
+  const prM=c.match(/^(?:print|인쇄|prn)(?:\s+(now|area|frame|바로|영역|틀|화면))?$/i);
   if(prM){
     const v=(prM[1]||'').toLowerCase();
     if(v==='now'||v==='바로') printPlan();
     else if(v==='area'||v==='영역') startPrintRegionPick();
+    else if(v==='frame'||v==='틀'||v==='화면') togglePrintFrame();
     else openPrintDialog();
     return;
   }
@@ -5167,6 +5270,7 @@ drawGrid();saveHistory();refreshUI();
 document.getElementById('btn-grid').classList.add('gold');
 if(typeof updateCircuitsBtn==='function') updateCircuitsBtn(); // 2026-08-27: 저장된 배선 보기 상태 반영
 if(typeof updateSymbolLabelBtn==='function') updateSymbolLabelBtn(); // 2026-08-28: 라벨 모드 버튼 표시
+if(typeof updatePrintFrameBtn==='function') updatePrintFrameBtn();   // 2026-08-28: 인쇄 영역 틀 버튼
 document.getElementById('btn-dim').classList.add('gold');
 setTimeout(handleResize,100);setTimeout(handleResize,500);
 document.getElementById('cmd-hint').textContent=CMD_HINTS.select;

@@ -2096,6 +2096,125 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('인쇄: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-28: 화면에서 인쇄 영역 잡기 (대표 지시 — "인쇄를 화면으로 잡을 수 있게") ===
+  try{
+    const _bakPF={spaces:STATE.spaces.slice(),vertices:STATE.vertices.slice(),walls:STATE.walls.slice(),
+      cfg:STATE.printConfig,on:STATE.printFrameOn,zoom:STATE.zoom,ox:STATE.offsetX,oy:STATE.offsetY};
+    const FX=1500000;
+    STATE.printConfig=null;STATE.printFrameOn=false;
+    const fv=polygonToVertexIds([{x:FX,y:FX},{x:FX+5000,y:FX},{x:FX+5000,y:FX+4000},{x:FX,y:FX+4000}]);
+    STATE.spaces.push(makeSpaceVEF(fv,{name:'틀검증',type:'ROOM',typeIndex:93,layerName:'A-AREA-ROOM-93'}));
+
+    const nodes=()=>groups.printFrame?groups.printFrame.getChildren():[];
+    const circles=()=>groups.printFrame?groups.printFrame.getChildren(n=>n.getClassName()==='Circle'):[];
+    const frameRect=()=>{let r=null;(groups.printFrame?groups.printFrame.getChildren(n=>n.getClassName()==='Rect'):[])
+      .forEach(n=>{if(n.draggable&&n.draggable())r=n;});return r;};
+
+    // [PF1] 기본은 꺼짐 — 도면 위에 아무것도 없다
+    renderPrintFrame();
+    assert('인쇄틀: 기본 꺼짐',nodes().length===0,'n='+nodes().length);
+    assert('인쇄틀: 전용 그룹이 최상단',!!groups.printFrame&&
+      mainLayer.getChildren().indexOf(groups.printFrame)===mainLayer.getChildren().length-1);
+
+    // [PF2] 켜면 틀 + 손잡이 8개 + 바깥 덮개
+    togglePrintFrame(true);
+    assert('인쇄틀: 켜짐',STATE.printFrameOn===true);
+    assert('인쇄틀: 손잡이 8개',circles().length===8,'n='+circles().length);
+    assert('인쇄틀: 끌 수 있는 틀',!!frameRect()&&frameRect().draggable()===true);
+    // 틀 안쪽은 클릭을 먹지 않아야 한다 — 안의 객체를 그대로 고를 수 있게
+    assert('인쇄틀: 안쪽은 클릭 통과 (테두리만 잡힘)',
+      !!frameRect()&&frameRect().fillEnabled()===false&&frameRect().hitStrokeWidth()>=12,
+      frameRect()?('fill='+frameRect().fillEnabled()+' hit='+frameRect().hitStrokeWidth()):'-');
+    assert('인쇄틀: 바깥 덮개 4장',
+      groups.printFrame.getChildren(n=>n.getClassName()==='Rect'&&!n.draggable()).length===4);
+    assert('인쇄틀: 범위가 rect 로 굳는다',printCfg().region==='rect'&&!!printCfg().rect);
+    assert('인쇄틀: 조작 바 표시',!!document.getElementById('print-frame-bar')&&
+      !!document.getElementById('pfb-info'));
+
+    // [PF3] 틀은 도면 좌표에 붙어 있다 — 화면을 옮겨도 같은 범위
+    const before={...printCfg().rect};
+    const r0=frameRect(), x0=r0.x(), y0=r0.y();
+    STATE.offsetX-=137;STATE.offsetY-=91;
+    renderPrintFrame();
+    const r1=frameRect();
+    assert('인쇄틀: 화면 이동 시 함께 이동',Math.abs((r1.x()-x0)+137)<0.5&&Math.abs((r1.y()-y0)+91)<0.5,
+      (r1.x()-x0)+'/'+(r1.y()-y0));
+    assert('인쇄틀: 도면상 범위는 그대로',printCfg().rect.x1===before.x1&&printCfg().rect.y1===before.y1);
+    STATE.offsetX+=137;STATE.offsetY+=91;renderPrintFrame();
+
+    // [PF4] 틀을 끌면 인쇄 범위가 따라온다
+    const rc=frameRect();
+    const mmBefore={...printCfg().rect};
+    rc.position({x:rc.x()+mmToPx(1000),y:rc.y()+mmToPx(500)});
+    rc.fire('dragend');
+    const mmAfter=printCfg().rect;
+    assert('인쇄틀: 끌면 범위 이동',Math.abs((mmAfter.x1-mmBefore.x1)-1000)<25&&
+      Math.abs((mmAfter.y1-mmBefore.y1)-500)<25,
+      (mmAfter.x1-mmBefore.x1)+'/'+(mmAfter.y1-mmBefore.y1));
+    assert('인쇄틀: 끌어도 크기 유지',Math.abs((mmAfter.x2-mmAfter.x1)-(mmBefore.x2-mmBefore.x1))<25);
+
+    // [PF5] 모서리를 잡아 늘리면 범위가 커진다
+    let se=null;circles().forEach(n=>{const R=frameRect();
+      if(Math.abs(n.x()-(R.x()+R.width()))<0.6&&Math.abs(n.y()-(R.y()+R.height()))<0.6) se=n;});
+    assert('인쇄틀: 우하단 손잡이 존재',!!se);
+    const wBefore=printCfg().rect.x2-printCfg().rect.x1;
+    if(se){
+      se.position({x:se.x()+mmToPx(2000),y:se.y()+mmToPx(1000)});
+      se.fire('dragmove');se.fire('dragend');
+    }
+    const wAfter=printCfg().rect.x2-printCfg().rect.x1;
+    assert('인쇄틀: 모서리로 크기 조절',Math.abs((wAfter-wBefore)-2000)<40,(wAfter-wBefore)+'mm');
+
+    // [PF6] 최소 크기 아래로는 줄지 않는다
+    let nw=null;circles().forEach(n=>{const R=frameRect();
+      if(Math.abs(n.x()-R.x())<0.6&&Math.abs(n.y()-R.y())<0.6) nw=n;});
+    if(nw){
+      const R=frameRect();
+      nw.position({x:R.x()+R.width()+9999,y:R.y()+R.height()+9999});
+      nw.fire('dragmove');nw.fire('dragend');
+    }
+    const wMin=printCfg().rect.x2-printCfg().rect.x1, hMin=printCfg().rect.y2-printCfg().rect.y1;
+    assert('인쇄틀: 최소 크기 유지',wMin>=PRINT_FRAME_MIN_MM-25&&hMin>=PRINT_FRAME_MIN_MM-25,wMin+'×'+hMin);
+
+    // [PF7] 화면 맞춤 / 도면 전체
+    printFrameFromView();
+    const rv=printCfg().rect;
+    assert('인쇄틀: 화면 맞춤',Math.abs(rv.x1-pxToMm(0-STATE.offsetX))<2&&
+      Math.abs(rv.x2-pxToMm(stage.width()-STATE.offsetX))<2);
+    printFrameFromPlan();
+    const bbAllF=planBBoxMm(), rp=printCfg().rect;
+    assert('인쇄틀: 도면 전체',Math.abs(rp.x1-bbAllF.minX)<2&&Math.abs(rp.y2-bbAllF.maxY)<2);
+
+    // [PF8] 인쇄에는 틀이 찍히지 않는다
+    STATE.printMode=true;renderPrintFrame();
+    assert('인쇄틀: 인쇄에는 미포함',nodes().length===0,'n='+nodes().length);
+    STATE.printMode=false;renderPrintFrame();
+    assert('인쇄틀: 인쇄 후 복귀',nodes().length>0);
+
+    // [PF9] 영역 드래그 지정 중에는 틀이 비켜준다 (클릭을 가로채지 않게)
+    _printRectActive=true;renderPrintFrame();
+    assert('인쇄틀: 새 영역 드래그 중 비활성',nodes().length===0);
+    _printRectActive=false;renderPrintFrame();
+
+    // [PF10] 명령 / 버튼 / 끄기
+    const pfBtn=document.getElementById('btn-printframe');
+    assert('인쇄틀: 상단 버튼 존재·활성 표시',!!pfBtn&&pfBtn.classList.contains('gold'));
+    if(STATE.cmdMode&&typeof exitCmdMode==='function') exitCmdMode();
+    processCommand('pf');
+    assert('인쇄틀: pf 명령으로 끔',STATE.printFrameOn===false&&nodes().length===0&&
+      !document.getElementById('print-frame-bar')&&!pfBtn.classList.contains('gold'));
+    processCommand('print frame');
+    assert('인쇄틀: print frame 명령으로 켬',STATE.printFrameOn===true&&circles().length===8);
+    togglePrintFrame(false);
+    assert('인쇄틀: 끄면 조작 바도 사라짐',!document.getElementById('print-frame-bar'));
+
+    STATE.spaces=_bakPF.spaces;STATE.vertices=_bakPF.vertices;STATE.walls=_bakPF.walls;
+    STATE.printConfig=_bakPF.cfg;STATE.printFrameOn=_bakPF.on;
+    STATE.zoom=_bakPF.zoom;STATE.offsetX=_bakPF.ox;STATE.offsetY=_bakPF.oy;
+    hidePrintFrameBar();updatePrintFrameBtn();renderAll();refreshUI();
+  }catch(e){
+    assert('인쇄틀: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),
