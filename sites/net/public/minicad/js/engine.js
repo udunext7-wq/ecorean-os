@@ -2303,8 +2303,29 @@ function symbolDefOf(kind,o){
   if(kind==='lights') return (o.type==='downlight')?downlightDef(o)
     :(isLinearLight(o.type)?linearLightDef(o):LIGHT_LIB[o.type]);
   const lib=(kind==='electric')?ELECTRIC_LIB:(kind==='hvac')?HVAC_FIRE_LIB
-           :(kind==='fixtures')?FIXTURE_LIB:null;
+           :(kind==='fixtures')?FIXTURE_LIB
+           :(kind==='furniture')?FURNITURE_LIB:null; // 2026-08-29: 범례가 가구 한글명을 쓰도록
   return lib?lib[o.type]:null;
+}
+// ===== 2026-08-29: 범례용 품명·규격 (대표 보고 — 범례에 다운라이트 인치가 안 적혀 있다) =====
+//  종전엔 LIGHT_LIB[type].name 을 그대로 썼다. 그러면 2"·3"·6" 가 전부 '다운라이트' 한 줄로
+//  묶여, 현장에서 몇 인치를 몇 개 사야 하는지 알 수 없었다.
+function legendItemOf(kind,o){
+  const def=(typeof symbolDefOf==='function')?symbolDefOf(kind,o):null;
+  const base=def||{};
+  if(kind==='lights'&&o&&o.type==='downlight'){
+    const d=downlightDef(o);
+    return {name:d.name, spec:'외경 Ø'+d.size+' · 타공 Ø'+d.boreDia_mm};
+  }
+  if(kind==='lights'&&o&&typeof isLinearLight==='function'&&isLinearLight(o.type)){
+    const L=linearLightLen(o);
+    return {name:(LIGHT_LIB[o.type]||{}).name||o.type, spec:(L/1000).toFixed(1)+'m'};
+  }
+  const w=base.w, h=base.h, sz=base.size;
+  let spec='';
+  if(w&&h) spec=w+'×'+h;
+  else if(sz) spec='Ø'+sz;
+  return {name:base.name||(o&&o.type)||'', spec:spec};
 }
 // 점이 들어있는 공간 id (없으면 null) — 묶음의 기준. 거실 8개·주방 4개가 따로 세어진다.
 function spaceIdAtMm(x,y){
@@ -2876,7 +2897,15 @@ function renderElectric(){
       g.add(new Konva.Circle({radius:r,fill:def.c+'88',stroke:sel?'#E2725B':'#0A0A0A',strokeWidth:sel?2:1}));
       g.add(new Konva.Text({x:-r,y:-7,width:r*2,text:def.sym,fontSize:13,fill:'#FFFFFF',align:'center',listening:false}));
     }
-    g.on('click tap',e=>{if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('electric',o.id);});
+    g.on('click tap',e=>{
+      if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;
+      e.cancelBubble=true;
+      // 2026-08-29: 조명을 먼저 고른 상태라면, 이 스위치에 한 번에 붙인다
+      if(window._circuitAttach&&typeof attachLightsToSwitch==='function'){
+        attachLightsToSwitch(o.id,window._circuitAttach.lightIds);return;
+      }
+      if(STATE.selectedTool==='select') selectObj('electric',o.id);
+    });
     if(o.locked) g.opacity(0.30);
     groups.electric.add(g);
   });

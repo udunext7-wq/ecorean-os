@@ -2305,16 +2305,11 @@ stage.on('mousedown touchstart',e=>{
     if(e.target===stage){
       const mm=getMm(pos);
       // 2026-08-27: 조명 연결 모드 중 빈 곳 클릭 — 스위치 선택·모드 유지 (종료는 Esc·배너 버튼만)
-      if(window._circuitLink){
-        drawState=null;
-        STATE.selectedKind='electric';STATE.selectedId=window._circuitLink.switchId;STATE.boxSelection=[];
-        renderAll();refreshUI();
-        return;
-      }
-      if(window._jumpLink){ // 2026-08-27: 점핑 모드도 빈 곳 클릭에 모드 유지
-        drawState=null;
-        STATE.selectedKind='lights';STATE.selectedId=window._jumpLink.lightId;STATE.boxSelection=[];
-        renderAll();refreshUI();
+      // 2026-08-29: 연결 모드에서도 드래그를 허용한다 — 박스 안 조명을 한꺼번에 연결
+      //  (종전엔 빈 곳을 누르면 모드만 유지하고 끝나, 조명을 하나씩 클릭해야 했다)
+      if(window._circuitLink||window._jumpLink){
+        drawState={type:'box',start:mm,current:mm,startPx:{x:pos.x,y:pos.y},
+                   linkBox:window._circuitLink?'circuit':'jump'};
         return;
       }
       drawState={type:'box',start:mm,current:mm};
@@ -3378,6 +3373,19 @@ stage.on('mouseup touchend',e=>{
       cmdToast('두 번째 점 클릭으로 고정 — Shift=직교 / Esc=취소');
     }
   }
+  else if(STATE.selectedTool==='select'&&drawState&&drawState.type==='box'&&drawState.linkBox){
+    // 2026-08-29: 연결 모드 박스 — 안에 들어온 조명을 한꺼번에 연결
+    const _lu=stage.getPointerPosition(), _lp=drawState.startPx;
+    const _ld=(_lu&&_lp)?(Math.abs(_lu.x-_lp.x)+Math.abs(_lu.y-_lp.y)):0;
+    const _mode=drawState.linkBox, _s=drawState.start, _c=drawState.current;
+    drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+    if(_ld>=6&&typeof circuitBoxConnect==='function') circuitBoxConnect(_mode,_s.x,_s.y,_c.x,_c.y);
+    else{ // 단순 클릭 — 모드만 유지
+      if(window._circuitLink){STATE.selectedKind='electric';STATE.selectedId=window._circuitLink.switchId;}
+      else if(window._jumpLink){STATE.selectedKind='lights';STATE.selectedId=window._jumpLink.lightId;}
+      STATE.boxSelection=[];renderAll();refreshUI();
+    }
+  }
   else if(STATE.selectedTool==='select'&&drawState&&drawState.type==='box'){
     // 2026-08-29: 방 안에서 시작한 드래그 — 움직였으면 박스 선택, 그대로면 공간 선택.
     //  (농기기 직후 renderAll 이 도형 노드를 다시 만들어 Konva click 이 안 터진다 —
@@ -3904,6 +3912,7 @@ document.addEventListener('keydown',e=>{
     document.getElementById('canvas-help')?.classList.remove('visible'); // 2026-08-22: 단축키 모달
     if(typeof hideTextModal==='function') hideTextModal();               // 2026-08-22: ? 도움말 모달
     if(_scaleCalActive){_scaleCalActive=false;_scaleCalP1=null;showStatus('스케일 보정 취소');}
+    if(window._circuitAttach&&typeof endCircuitAttach==='function') endCircuitAttach(); // 2026-08-29
     if(_printRectActive&&typeof cancelPrintRegionPick==='function') cancelPrintRegionPick(); // 2026-08-28
     else if(STATE.printFrameOn&&typeof togglePrintFrame==='function') togglePrintFrame(false); // 2026-08-28: 틀 끄기
     if(typeof closePrintDialog==='function') closePrintDialog();                             // 2026-08-28

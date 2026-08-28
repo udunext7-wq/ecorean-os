@@ -426,6 +426,39 @@ function refreshDetail(){
   const detail=document.getElementById('sp-detail');
   const stats=document.getElementById('detail-stats-card');
   const warn=document.getElementById('detail-warn-card');
+  // 2026-08-29: 박스로만 골랐을 때도 할 수 있는 일을 보여준다 (종전엔 빈 패널)
+  if((!STATE.selectedKind||!STATE.selectedId)&&(STATE.boxSelection||[]).length>0){
+    empty.style.display='none';detail.style.display='block';
+    stats.style.display='none';warn.style.display='none';
+    const _kn={space:'공간',wall:'벽',opening:'문·창',furniture:'가구',fixtures:'위생/주방',
+      lights:'조명',electric:'전기',hvac:'공조/소방',texts:'텍스트',measures:'치수',
+      circles:'원',arcs:'아크',curves:'공선',leaders:'지시선',xlines:'안내선',pillars:'기둥'};
+    const _cnt={};
+    STATE.boxSelection.forEach(b=>{_cnt[b.kind]=(_cnt[b.kind]||0)+1;});
+    const _lit=selectedLightIds();
+    document.getElementById('detail-content').innerHTML=
+      '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+
+        STATE.boxSelection.length+'개</strong></p>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">'+
+        Object.keys(_cnt).map(k=>'<span style="font-size:11px;padding:2px 7px;border-radius:10px;'+
+          'background:rgba(201,169,97,0.15);color:var(--text-primary)">'+(_kn[k]||k)+' '+_cnt[k]+'</span>').join('')+
+      '</div>'+
+      (_lit.length?
+        '<div style="padding:8px;background:rgba(123,160,91,0.08);border:1px solid rgba(123,160,91,0.35);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#7BA05B">조명 <b>'+_lit.length+'개</b> — 한 번에 연결</div>'+
+        '<button type="button" class="btn sm" id="d-ms-attach" style="width:100%">🔌 스위치에 연결</button>'+
+        (_lit.length>1?'<button type="button" class="btn sm" id="d-ms-chain" style="width:100%;margin-top:4px">🔗 서로 점핑 연결</button>':'')+
+        '<div class="hint" style="margin-top:4px">스위치에 연결 → 버튼을 누르고 스위치를 클릭하세요</div></div>'
+        :'<div class="hint">조명을 드래그로 고르면 한 번에 회로에 연결할 수 있습니다</div>')+
+      '<button class="btn danger sm" id="d-ms-del" style="width:100%;margin-top:8px">삭제 (Del)</button>';
+    const _ab=document.getElementById('d-ms-attach');
+    if(_ab) _ab.addEventListener('click',()=>startCircuitAttach(_lit));
+    const _cb=document.getElementById('d-ms-chain');
+    if(_cb) _cb.addEventListener('click',()=>chainSelectedLights(_lit));
+    const _db=document.getElementById('d-ms-del');
+    if(_db) _db.addEventListener('click',deleteSelected);
+    return;
+  }
   if(!STATE.selectedKind||!STATE.selectedId){empty.style.display='block';detail.style.display='none';return;}
   empty.style.display='none';detail.style.display='block';
   stats.style.display='none';warn.style.display='none';
@@ -2244,10 +2277,11 @@ function migrateLoadedState(schema){
 // 2026-08-27: 연결 모드 상시 배너 — 종료 전까지 계속 켜져 있음을 눈으로 확인 (대표 지시)
 function _circuitBanner(){
   let el=document.getElementById('circuit-link-banner');
-  const link=window._circuitLink, jump=window._jumpLink;
-  if(!link&&!jump){ if(el) el.remove(); return; }
+  const link=window._circuitLink, jump=window._jumpLink, attach=window._circuitAttach;
+  if(!link&&!jump&&!attach){ if(el) el.remove(); return; }
   let n=0;
-  if(link){
+  if(attach){ n=(attach.lightIds||[]).length; }
+  else if(link){
     const sw=STATE.electric.find(e=>e.id===link.switchId);
     n=sw&&Array.isArray(sw.lightIds)?sw.lightIds.filter(id=>STATE.lights.some(l=>l.id===id)).length:0;
   }else{
@@ -2266,15 +2300,18 @@ function _circuitBanner(){
     btn.style.cssText='background:#0A0A0A;color:#7BA05B;border:none;border-radius:12px;padding:3px 10px;'
       +'font-size:11px;font-weight:700;cursor:pointer';
     btn.addEventListener('click',()=>{
-      if(window._jumpLink&&typeof endJumpLink==='function') endJumpLink();
+      if(window._circuitAttach&&typeof endCircuitAttach==='function') endCircuitAttach();
+      else if(window._jumpLink&&typeof endJumpLink==='function') endJumpLink();
       else if(typeof endCircuitLink==='function') endCircuitLink();
     });
     el.appendChild(txt);el.appendChild(btn);
     document.body.appendChild(el);
   }
   const t=document.getElementById('circuit-link-text');
-  if(t) t.textContent=(jump?'🔗 점핑 연결 모드 — 이어 붙일 조명 클릭':'🔌 조명 연결 모드 — 조명을 클릭해 연결/해제')+' (연결 '+n+'개)';
-  if(el) el.style.background=jump?'rgba(212,184,114,0.96)':'rgba(123,160,91,0.95)';
+  if(t) t.textContent=attach
+    ? ('🔌 조명 '+n+'개 — 연결할 스위치를 클릭하세요')
+    : ((jump?'🔗 점핑 연결 모드 — 이어 붙일 조명 클릭·드래그':'🔌 조명 연결 모드 — 조명 클릭·드래그로 한꺼번에')+' (연결 '+n+'개)');
+  if(el) el.style.background=attach?'rgba(91,160,212,0.96)':(jump?'rgba(212,184,114,0.96)':'rgba(123,160,91,0.95)');
 }
 function toggleCircuitLink(switchId,lightId){
   const sw=STATE.electric.find(e=>e.id===switchId);
@@ -2286,6 +2323,115 @@ function toggleCircuitLink(switchId,lightId){
   // 2026-08-27: 연결 후에도 모드·선택을 그대로 유지 (종료 전까지 계속 작동)
   STATE.selectedKind='electric';STATE.selectedId=switchId;STATE.boxSelection=[];
   saveHistory();renderAll();refreshUI();_circuitBanner();
+}
+// ===== 2026-08-29: 여러 조명을 한 번에 연결 (대표 지시 — "드래그로 선택된 조명들은 조명연결을") =====
+//  종전엔 스위치를 고르고 조명을 하나씩 클릭해야 했다. 다운라이트 12개면 12번 클릭이다.
+//  두 방향 모두 열어 둔다.
+//   A. 조명 먼저 — 드래그로 조명들을 고른 뒤 [스위치에 연결] → 스위치 한 번 클릭
+//   B. 스위치 먼저 — 조명 연결 모드에서 드래그하면 박스 안 조명이 한꺼번에 연결
+function selectedLightIds(){
+  const ids=[];
+  (STATE.boxSelection||[]).forEach(b=>{if(b.kind==='lights'&&STATE.lights.some(l=>l.id===b.id))ids.push(b.id);});
+  if(!ids.length&&STATE.selectedKind==='lights'&&STATE.selectedId) ids.push(STATE.selectedId);
+  return [...new Set(ids)];
+}
+// 박스(mm) 안에 들어온 조명 — 점형 기호라 중심점으로 판정한다
+function lightsInBoxMm(x1,y1,x2,y2){
+  const lo={x:Math.min(x1,x2),y:Math.min(y1,y2)}, hi={x:Math.max(x1,x2),y:Math.max(y1,y2)};
+  return (STATE.lights||[]).filter(l=>l.x>=lo.x&&l.x<=hi.x&&l.y>=lo.y&&l.y<=hi.y).map(l=>l.id);
+}
+// 스위치에 여러 조명을 한 번에 붙인다 (이미 붙은 건 그대로 둔다)
+function attachLightsToSwitch(switchId,lightIds,opts){
+  const sw=(STATE.electric||[]).find(e=>e.id===switchId);
+  if(!sw){cmdToast('스위치를 찾을 수 없습니다');return 0;}
+  if(typeof isSwitchType==='function'&&!isSwitchType(sw.type)){
+    cmdToast('스위치·디머만 회로에 연결할 수 있습니다');return 0;
+  }
+  if(!Array.isArray(sw.lightIds)) sw.lightIds=[];
+  let added=0;
+  (lightIds||[]).forEach(id=>{
+    if(!STATE.lights.some(l=>l.id===id)) return;
+    if(sw.lightIds.indexOf(id)>=0) return;
+    sw.lightIds.push(id);added++;
+  });
+  if(!added){cmdToast('이미 모두 연결돼 있습니다 — 총 '+sw.lightIds.length+'개');}
+  else{
+    saveHistory();
+    cmdToast('🔌 조명 '+added+'개 연결 — 이 스위치 총 '+sw.lightIds.length+'개');
+  }
+  if(!(opts&&opts.keepMode)) window._circuitAttach=null;
+  STATE.selectedKind='electric';STATE.selectedId=switchId;STATE.boxSelection=[];
+  renderAll();refreshUI();_circuitBanner();
+  return added;
+}
+// A. 조명 먼저 — 고른 조명들을 들고 스위치를 기다린다
+function startCircuitAttach(ids){
+  const lightIds=(ids&&ids.length)?ids:selectedLightIds();
+  if(!lightIds.length){cmdToast('먼저 조명을 선택하세요 (드래그로 여러 개 선택 가능)');return;}
+  window._circuitAttach={lightIds};
+  window._circuitLink=null;window._jumpLink=null;
+  renderAll();refreshUI();_circuitBanner();
+  cmdToast('🔌 조명 '+lightIds.length+'개 — 연결할 스위치를 클릭하세요 (Esc 취소)');
+  showStatus('조명 '+lightIds.length+'개 연결 대기 — 스위치를 클릭하세요');
+}
+function endCircuitAttach(silent){
+  if(!window._circuitAttach) return;
+  window._circuitAttach=null;
+  renderAll();refreshUI();_circuitBanner();
+  if(!silent) showStatus('조명 연결 취소');
+}
+// 고른 조명들끼리 점핑(데이지 체인) — 가까운 순서대로 이어 붙인다
+function chainSelectedLights(ids){
+  const lightIds=(ids&&ids.length)?ids:selectedLightIds();
+  if(lightIds.length<2){cmdToast('조명을 2개 이상 선택하세요');return 0;}
+  const pts=lightIds.map(id=>STATE.lights.find(l=>l.id===id)).filter(Boolean);
+  if(pts.length<2) return 0;
+  // 최근접 이웃 순서로 정렬 — 도면상 지그재그로 배선되지 않게
+  const order=[pts.shift()];
+  while(pts.length){
+    const cur=order[order.length-1];
+    let bi=0,bd=Infinity;
+    pts.forEach((p,i)=>{const d=(p.x-cur.x)**2+(p.y-cur.y)**2;if(d<bd){bd=d;bi=i;}});
+    order.push(pts.splice(bi,1)[0]);
+  }
+  let n=0;
+  for(let i=0;i<order.length-1;i++){
+    const a=order[i],b=order[i+1];
+    if(!Array.isArray(a.jumpIds)) a.jumpIds=[];
+    if(a.jumpIds.indexOf(b.id)<0&&!(Array.isArray(b.jumpIds)&&b.jumpIds.indexOf(a.id)>=0)){
+      a.jumpIds.push(b.id);n++;
+    }
+  }
+  if(!n){cmdToast('이미 점핑으로 이어져 있습니다');return 0;}
+  saveHistory();renderAll();refreshUI();
+  cmdToast('🔗 점핑 '+n+'개 연결 — 조명 '+order.length+'개를 한 줄로');
+  return n;
+}
+// B. 스위치 먼저 — 연결 모드에서 박스로 쓸어 담는다
+function circuitBoxConnect(mode,x1,y1,x2,y2){
+  const ids=lightsInBoxMm(x1,y1,x2,y2);
+  if(!ids.length){cmdToast('박스 안에 조명이 없습니다');return 0;}
+  if(mode==='circuit'&&window._circuitLink){
+    return attachLightsToSwitch(window._circuitLink.switchId,ids,{keepMode:true});
+  }
+  if(mode==='jump'&&window._jumpLink){
+    const from=STATE.lights.find(l=>l.id===window._jumpLink.lightId);
+    if(!from) return 0;
+    if(!Array.isArray(from.jumpIds)) from.jumpIds=[];
+    let n=0;
+    ids.forEach(id=>{
+      if(id===from.id) return;
+      if(from.jumpIds.indexOf(id)>=0) return;
+      const t=STATE.lights.find(l=>l.id===id);
+      if(Array.isArray(t.jumpIds)&&t.jumpIds.indexOf(from.id)>=0) return;
+      from.jumpIds.push(id);n++;
+    });
+    if(!n){cmdToast('이미 모두 점핑돼 있습니다');return 0;}
+    saveHistory();renderAll();refreshUI();_circuitBanner();
+    cmdToast('🔗 점핑 '+n+'개 추가 — 총 '+jumpNeighbors(from.id).length+'개');
+    return n;
+  }
+  return 0;
 }
 function startCircuitLink(switchId){
   window._circuitLink={switchId};
@@ -2631,6 +2777,8 @@ function _paletteCommands(){
     {label:'🖨 바로 인쇄 (직전 설정으로)',kw:'print 인쇄 바로 출력',run:()=>printPlan()},
     {label:'⬚ 인쇄 영역 드래그로 지정',kw:'print 인쇄 영역 범위 부분 확대 crop',run:startPrintRegionPick},
     {label:'🖥 인쇄 영역 — 화면에서 잡기 (pf)',kw:'print 인쇄 영역 틀 화면 잡기 frame pf',run:()=>togglePrintFrame()},
+    {label:'🔌 선택한 조명을 스위치에 연결 (link)',kw:'circuit link 연결 조명 스위치 회로 다중',run:()=>startCircuitAttach()},
+    {label:'🔗 선택한 조명끼리 점핑 연결 (chain)',kw:'jump chain 점핑 조명 연결 데이지체인',run:()=>chainSelectedLights()},
     {label:'⚠ 겹친 조명 찾기 (dup)',kw:'duplicate 중복 겹침 다운라이트 조명 경고 dup',run:()=>reportDuplicateLights()},
     {label:'⚠ 겹친 조명 전부 정리 (dup fix)',kw:'duplicate 중복 정리 삭제 조명 dup fix',run:()=>cleanDuplicateLights()},
     {label:'💾 JSON 저장',kw:'save json 저장 파일',run:saveJSON},
@@ -3015,17 +3163,26 @@ function buildPrintPage2(L,info){
     '<td>'+escapeHtml(sp.name||'')+'</td>'+
     '<td class="r">'+spArea(sp).toFixed(2)+'</td>'+
     '<td class="r">'+(spArea(sp)/3.3058).toFixed(1)+'</td></tr>').join('');
+  // 2026-08-29: 품명에 규격을 살린다 — 다운라이트 2"/3"/6" 가 따로 집계되고 타공경도 나온다
   const legend=[];
-  const cnt=(arr,lib,label)=>{
-    const m={};(arr||[]).forEach(o=>{const d=lib&&lib[o.type];if(d)m[d.name]=(m[d.name]||0)+1;});
-    Object.keys(m).forEach(nm=>legend.push([label,nm,m[nm]]));
+  const cnt=(arr,kind,label)=>{
+    const m={};
+    (arr||[]).forEach(o=>{
+      const it=(typeof legendItemOf==='function')?legendItemOf(kind,o):null;
+      if(!it||!it.name) return;
+      const key=it.name+'\u0000'+(it.spec||'');
+      if(!m[key]) m[key]={name:it.name,spec:it.spec||'',n:0};
+      m[key].n++;
+    });
+    Object.keys(m).sort().forEach(k=>legend.push([label,m[k].name,m[k].spec,m[k].n]));
   };
-  cnt(STATE.furniture,typeof FURNITURE_LIB!=='undefined'?FURNITURE_LIB:null,'가구');
-  cnt(STATE.fixtures,typeof FIXTURE_LIB!=='undefined'?FIXTURE_LIB:null,'위생/주방');
-  cnt(STATE.lights,typeof LIGHT_LIB!=='undefined'?LIGHT_LIB:null,'조명');
-  cnt(STATE.electric,typeof ELECTRIC_LIB!=='undefined'?ELECTRIC_LIB:null,'전기');
-  cnt(STATE.hvac,typeof HVAC_FIRE_LIB!=='undefined'?HVAC_FIRE_LIB:null,'공조/소방');
-  const legendRows=legend.map(r=>'<tr><td>'+r[0]+'</td><td>'+escapeHtml(r[1])+'</td><td class="r">'+r[2]+'</td></tr>').join('');
+  cnt(STATE.furniture,'furniture','가구');
+  cnt(STATE.fixtures,'fixtures','위생/주방');
+  cnt(STATE.lights,'lights','조명');
+  cnt(STATE.electric,'electric','전기');
+  cnt(STATE.hvac,'hvac','공조/소방');
+  const legendRows=legend.map(r=>'<tr><td>'+r[0]+'</td><td>'+escapeHtml(r[1])+'</td>'+
+    '<td>'+escapeHtml(r[2]||'-')+'</td><td class="r">'+r[3]+'</td></tr>').join('');
   const opRows=(STATE.openings||[]).map((o,i)=>
     '<tr><td class="r">'+(i+1)+'</td><td>'+(o.type==='DOOR'?'문':'창')+'</td>'+
     '<td>'+escapeHtml((o.doorType&&DOOR_TYPES&&DOOR_TYPES[o.doorType]?DOOR_TYPES[o.doorType].name:(o.subType||''))||'-')+'</td>'+
@@ -3036,8 +3193,8 @@ function buildPrintPage2(L,info){
       '<table class="dt"><tr><th colspan="4">공간 면적표</th></tr>'+
         '<tr><th>구분</th><th>실명</th><th>㎡</th><th>평</th></tr>'+spaceRows+
         '<tr><th colspan="2">합계</th><th class="r">'+info.area+'</th><th class="r">'+info.py+'</th></tr></table>'+
-      (legendRows?'<table class="dt"><tr><th colspan="3">범례 (수량)</th></tr>'+
-        '<tr><th>분류</th><th>품명</th><th>수량</th></tr>'+legendRows+'</table>':'')+
+      (legendRows?'<table class="dt"><tr><th colspan="4">범례 (수량)</th></tr>'+
+        '<tr><th>분류</th><th>품명</th><th>규격 (mm)</th><th>수량</th></tr>'+legendRows+'</table>':'')+
       (opRows?'<table class="dt"><tr><th colspan="4">개구부 리스트</th></tr>'+
         '<tr><th>NO</th><th>종별</th><th>형식</th><th>W×H</th></tr>'+opRows+'</table>':'')+
     '</div></div>';
@@ -4658,6 +4815,9 @@ function processCommand(rawCmd){
   // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
   if(/^(pf|인쇄영역)$/i.test(c)){togglePrintFrame();return;} // 2026-08-28
+  // 2026-08-29: 고른 조명들을 한 번에 — link=스위치에, chain=서로 점핑
+  if(/^(link|연결)$/i.test(c)){startCircuitAttach();return;}
+  if(/^(chain|점핑)$/i.test(c)){chainSelectedLights();return;}
   // 2026-08-29: 겹친 조명 — dup 은 찾기, 'dup fix' 는 전부 정리
   const dupM=c.match(/^(?:dup|중복)(?:\s+(fix|정리))?$/i);
   if(dupM){ if(dupM[1]) cleanDuplicateLights(); else reportDuplicateLights(); return; }

@@ -2468,6 +2468,154 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('공간이동·칼라인쇄: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-29: 여러 조명 한 번에 연결 + 범례 규격 표기 (대표 지시) ===
+  try{
+    const _bakLK={lights:STATE.lights.slice(),electric:STATE.electric.slice(),
+      furniture:STATE.furniture.slice(),selK:STATE.selectedKind,selI:STATE.selectedId,
+      box:STATE.boxSelection.slice(),cl:window._circuitLink,jl:window._jumpLink,ca:window._circuitAttach};
+    const KX=3300000;
+    STATE.lights=[];STATE.electric=[];STATE.boxSelection=[];
+    STATE.selectedKind=null;STATE.selectedId=null;
+    window._circuitLink=null;window._jumpLink=null;window._circuitAttach=null;
+
+    const L4=[0,1,2,3].map(i=>{const o={id:makeId('li'),type:'downlight',x:KX+i*900,y:KX,angle:0,inch:3};
+      STATE.lights.push(o);return o;});
+    const far={id:makeId('li'),type:'downlight',x:KX+9000,y:KX,angle:0,inch:3};
+    STATE.lights.push(far);
+    const sw={id:makeId('e'),type:'switch_2',x:KX,y:KX+2000,angle:0};
+    const outlet={id:makeId('e'),type:'outlet_2',x:KX+2000,y:KX+2000,angle:0};
+    STATE.electric.push(sw,outlet);
+
+    // [C1] 드래그로 고른 조명만 추려낸다
+    STATE.boxSelection=L4.map(o=>({kind:'lights',id:o.id})).concat([{kind:'electric',id:sw.id}]);
+    const picked=selectedLightIds();
+    assert('조명연결: 선택에서 조명만 추림',picked.length===4&&picked.indexOf(sw.id)<0,'n='+picked.length);
+
+    // [C2] 한 번에 붙인다 — 중복은 무시
+    let n=attachLightsToSwitch(sw.id,picked);
+    assert('조명연결: 4개 한 번에 연결',n===4&&sw.lightIds.length===4,'n='+n+'/'+sw.lightIds.length);
+    n=attachLightsToSwitch(sw.id,picked);
+    assert('조명연결: 이미 연결된 것은 다시 안 붙음',n===0&&sw.lightIds.length===4);
+
+    // [C3] 스위치가 아닌 전기기구는 거부
+    const before=(outlet.lightIds||[]).length;
+    attachLightsToSwitch(outlet.id,picked);
+    assert('조명연결: 콘센트에는 연결 불가',(outlet.lightIds||[]).length===before);
+
+    // [C4] 박스 안 조명만
+    const inBox=lightsInBoxMm(KX-400,KX-400,KX+2200,KX+400);
+    assert('조명연결: 박스 안 조명만 집는다',inBox.length===3&&inBox.indexOf(far.id)<0,'n='+inBox.length);
+
+    // [C5] 스위치 먼저 — 연결 모드에서 박스로 쓸어 담기
+    sw.lightIds=[];
+    window._circuitLink={switchId:sw.id};
+    const n5=circuitBoxConnect('circuit',KX-400,KX-400,KX+2200,KX+400);
+    assert('조명연결: 연결 모드 박스로 한꺼번에',n5===3&&sw.lightIds.length===3,'n='+n5);
+    assert('조명연결: 박스 연결 후에도 모드 유지',!!window._circuitLink);
+    window._circuitLink=null;
+
+    // [C6] 점핑도 박스로
+    STATE.lights.forEach(l=>{delete l.jumpIds;});
+    window._jumpLink={lightId:L4[0].id};
+    const n6=circuitBoxConnect('jump',KX+400,KX-400,KX+2800,KX+400);
+    assert('조명연결: 점핑 박스 연결',n6>=2&&jumpNeighbors(L4[0].id).length>=2,'n='+n6);
+    window._jumpLink=null;
+
+    // [C7] 고른 조명끼리 체인 — 연결 수는 n-1
+    STATE.lights.forEach(l=>{delete l.jumpIds;});
+    STATE.boxSelection=L4.map(o=>({kind:'lights',id:o.id}));
+    const n7=chainSelectedLights();
+    assert('조명연결: 체인은 n-1개',n7===3,'n='+n7);
+    const ends=L4.filter(o=>jumpNeighbors(o.id).length===1).length;
+    assert('조명연결: 한 줄로 이어짐 (양 끝 2개)',ends===2,'ends='+ends);
+    const n7b=chainSelectedLights();
+    assert('조명연결: 이미 이어졌으면 그대로',n7b===0);
+    assert('조명연결: 1개만 고르면 거절',chainSelectedLights([L4[0].id])===0);
+
+    // [C8] 조명 먼저 모드 — 시작·취소
+    STATE.boxSelection=L4.map(o=>({kind:'lights',id:o.id}));
+    startCircuitAttach();
+    assert('조명연결: 조명 먼저 모드 시작',!!window._circuitAttach&&
+      window._circuitAttach.lightIds.length===4);
+    assert('조명연결: 안내 배너 표시',!!document.getElementById('circuit-link-banner'));
+    endCircuitAttach(true);
+    assert('조명연결: 모드 취소',!window._circuitAttach&&!document.getElementById('circuit-link-banner'));
+
+    // [C9] 다중 선택 패널 — 종전엔 박스 선택만으로는 빈 패널이었다
+    STATE.selectedKind=null;STATE.selectedId=null;
+    STATE.boxSelection=L4.map(o=>({kind:'lights',id:o.id}));
+    refreshUI();
+    assert('조명연결: 다중 선택 패널 표시',
+      document.getElementById('sp-detail').style.display!=='none'&&
+      !!document.getElementById('d-ms-attach'),'패널 없음');
+    assert('조명연결: 점핑 버튼도 제공',!!document.getElementById('d-ms-chain'));
+
+    // [C10] 명령어
+    STATE.boxSelection=L4.map(o=>({kind:'lights',id:o.id}));
+    if(STATE.cmdMode&&typeof exitCmdMode==='function') exitCmdMode();
+    processCommand('link');
+    assert('조명연결: link 명령',!!window._circuitAttach);
+    endCircuitAttach(true);
+    STATE.lights.forEach(l=>{delete l.jumpIds;});
+    STATE.boxSelection=L4.map(o=>({kind:'lights',id:o.id}));
+    processCommand('chain');
+    assert('조명연결: chain 명령',jumpNeighbors(L4[0].id).length>=1);
+
+    // [C11] 사라진 조명은 붙지 않는다
+    sw.lightIds=[];
+    const n11=attachLightsToSwitch(sw.id,[L4[0].id,'li_없는거']);
+    assert('조명연결: 없는 조명은 무시',n11===1&&sw.lightIds.length===1);
+
+    // --- 범례 규격 표기 ---
+    STATE.lights=[];
+    const d2={id:makeId('li'),type:'downlight',x:KX,y:KX+9000,angle:0,inch:2};
+    const d3a={id:makeId('li'),type:'downlight',x:KX+800,y:KX+9000,angle:0,inch:3};
+    const d3b={id:makeId('li'),type:'downlight',x:KX+1600,y:KX+9000,angle:0,inch:3};
+    const d6={id:makeId('li'),type:'downlight',x:KX+2400,y:KX+9000,angle:0,inch:6};
+    const cv={id:makeId('li'),type:'cove',x:KX,y:KX+11000,angle:0,length_mm:3600};
+    STATE.lights.push(d2,d3a,d3b,d6,cv);
+
+    const it2=legendItemOf('lights',d2), it3=legendItemOf('lights',d3a), it6=legendItemOf('lights',d6);
+    assert('범례: 품명에 인치 표기',it2.name.indexOf('2"')>=0&&it3.name.indexOf('3"')>=0&&
+      it6.name.indexOf('6"')>=0,[it2.name,it3.name,it6.name].join(' / '));
+    assert('범례: 규격에 타공경',it2.spec.indexOf('55')>=0&&it6.spec.indexOf('150')>=0,
+      it2.spec+' / '+it6.spec);
+    assert('범례: 인치가 다르면 이름도 다르다',it2.name!==it3.name&&it3.name!==it6.name);
+    const itC=legendItemOf('lights',cv);
+    assert('범례: 라인·간접은 길이(m)',itC.spec==='3.6m',itC.spec);
+    // 다른 분류도 한글 품명이 나와야 한다 (생으로 'sofa3' 가 찍히던 회귀)
+    const itF=legendItemOf('furniture',{id:'x',type:'sofa3',x:0,y:0});
+    assert('범례: 가구도 한글 품명',itF.name===FURNITURE_LIB.sofa3.name,itF.name);
+    const itE=legendItemOf('electric',{id:'y',type:'switch_2',x:0,y:0});
+    assert('범례: 전기도 한글 품명',itE.name===ELECTRIC_LIB.switch_2.name,itE.name);
+
+    // 2페이지 범례표에 실제로 찍히는지 (종전엔 전부 '다운라이트' 한 줄이었다)
+    const bbL=printRegionBBox(printCfg());
+    if(bbL){
+      const LL=choosePrintLayout(bbL,printCfg());
+      const p2=buildPrintPage2(LL,_printInfo());
+      // 품명은 escapeHtml 을 거치므로 인치 따옴표는 &quot; 로 나온다
+      const _has=t=>p2.indexOf('다운라이트 '+t+'&quot;')>=0;
+      assert('범례: 2페이지에 인치 표기',_has(2)&&_has(3)&&_has(6),
+        '2:'+_has(2)+' 3:'+_has(3)+' 6:'+_has(6));
+      assert('범례: 2페이지에 타공경',p2.indexOf('타공')>=0);
+      assert('범례: 규격 열 추가',p2.indexOf('규격')>=0);
+      // 3인치 2개는 한 줄에 수량 2로 합쳐진다
+      const m3=p2.match(/다운라이트 3&quot;/g);
+      assert('범례: 같은 인치는 한 줄로 합산 (3" ×2)',
+        !!m3&&m3.length===1&&/다운라이트 3&quot;[\s\S]{0,160}?<td class="r">2<\/td>/.test(p2),
+        'rows='+(m3?m3.length:0));
+    }
+
+    STATE.lights=_bakLK.lights;STATE.electric=_bakLK.electric;STATE.furniture=_bakLK.furniture;
+    STATE.selectedKind=_bakLK.selK;STATE.selectedId=_bakLK.selI;STATE.boxSelection=_bakLK.box;
+    window._circuitLink=_bakLK.cl;window._jumpLink=_bakLK.jl;window._circuitAttach=_bakLK.ca;
+    if(typeof _circuitBanner==='function') _circuitBanner();
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('조명연결·범례: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),
