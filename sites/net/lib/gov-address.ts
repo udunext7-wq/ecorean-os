@@ -109,6 +109,24 @@ async function searchKakao(key: string, q: string, limit: number): Promise<AddrH
     });
 }
 
+/** 연동 상태 실측 — 키 보유가 아니라 '실제로 검색되는가'로 판정한다. (대표 지시 기준) */
+export async function probeAddress(): Promise<{
+  provider: AddrProvider | null;
+  state: 'NO_PROVIDER' | 'READY' | 'DENIED' | 'ERROR';
+  message?: string;
+}> {
+  const provider = addressProvider();
+  if (!provider) return { provider: null, state: 'NO_PROVIDER' };
+  try {
+    const found = await searchAddress('서울특별시 중구 세종대로 110', 1);
+    if (!found) return { provider, state: 'NO_PROVIDER' };
+    return { provider, state: 'READY' };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { provider, state: /권한|승인|KEY|401|403/i.test(message) ? 'DENIED' : 'ERROR', message };
+  }
+}
+
 /** 주소 문자열 → 조회 파라미터 후보. 공급자 미설정이면 null 을 돌려준다. */
 export async function searchAddress(q: string, limit = 10): Promise<{ provider: AddrProvider; hits: AddrHit[] } | null> {
   const provider = addressProvider();

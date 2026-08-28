@@ -2,9 +2,12 @@
 // data.go.kr 은 계정 키 1개를 서비스마다 별도 '활용신청' 해야 쓸 수 있어,
 // 키가 있어도 미신청이면 SERVICE_KEY_IS_NOT_REGISTERED_ERROR 가 난다. (키 값은 절대 노출하지 않음)
 // 2026-08-28: 주소 검색 공급자(JUSO/KAKAO) 상태도 함께 알려 화면이 안내를 바꾸도록 한다.
+// 주의: 프로덕션(vercel.json 수동 routes)에서는 /api/* 에 미들웨어가 걸리지 않는다.
+// 실측 결과 이 경로가 미인증으로 열려 있었다 → 라우트에서 직접 로그인 여부를 확인한다. (2026-08-29)
 import { NextResponse } from 'next/server';
+import { createServerSupabase } from '@/core/db/server';
 import { APPLY_URL, CODE_URL, MY_KEY_URL, govKey } from '@/sites/net/lib/gov-building';
-import { JUSO_APPLY_URL, KAKAO_APPLY_URL, addressProvider } from '@/sites/net/lib/gov-address';
+import { JUSO_APPLY_URL, KAKAO_APPLY_URL, probeAddress } from '@/sites/net/lib/gov-address';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,9 +16,16 @@ const PROBE =
   '?sigunguCd=11680&bjdongCd=10300&bun=0012&ji=0000&numOfRows=1&pageNo=1&_type=json';
 
 export async function GET() {
+  const supabase = createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+
   const key = govKey();
+  // 주소 검색도 실제 호출로 판정한다 (키가 있어도 카카오 로컬 권한이 닫혀 있을 수 있음)
   const address = {
-    provider: addressProvider(),
+    ...(await probeAddress()),
     jusoApplyUrl: JUSO_APPLY_URL,
     kakaoApplyUrl: KAKAO_APPLY_URL,
   };

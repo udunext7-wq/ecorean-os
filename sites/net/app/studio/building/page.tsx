@@ -123,7 +123,13 @@ export default function BuildingPage() {
     message?: string;
     applyUrl?: string;
     myKeyUrl?: string;
-    address?: { provider: 'JUSO' | 'KAKAO' | null; jusoApplyUrl: string; kakaoApplyUrl: string };
+    address?: {
+      provider: 'JUSO' | 'KAKAO' | null;
+      state: 'NO_PROVIDER' | 'READY' | 'DENIED' | 'ERROR';
+      message?: string;
+      jusoApplyUrl: string;
+      kakaoApplyUrl: string;
+    };
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const locRef = useRef(loc);
@@ -365,6 +371,7 @@ export default function BuildingPage() {
     : '/studio/schedule';
 
   const provider = status?.address?.provider ?? null;
+  const addrState = status?.address?.state ?? 'NO_PROVIDER';
 
   return (
     <main className={`${noto.className} min-h-screen bg-[#04070c] p-6 text-[#e6edf2]`}>
@@ -448,10 +455,25 @@ export default function BuildingPage() {
         {status?.state === 'READY' ? (
           <p className="mb-4 text-xs text-[#86efac]">
             공공데이터포털 연결됨 · 조회 가능
-            {provider ? (
-              <span className="ml-2 text-[#9BC9D8]/70">주소 검색: {provider === 'JUSO' ? '도로명주소 API' : '카카오 로컬'}</span>
-            ) : (
+            {addrState === 'READY' ? (
+              <span className="ml-2 text-[#9BC9D8]/70">
+                주소 검색 가능: {provider === 'JUSO' ? '도로명주소 API' : '카카오 로컬'}
+              </span>
+            ) : addrState === 'NO_PROVIDER' ? (
               <span className="ml-2 text-[#e8c99b]/80">주소 검색 키 미등록 — 코드 직접 입력으로 조회하세요</span>
+            ) : (
+              <span className="ml-2 text-[#e8c99b]">
+                주소 검색 불가 ({provider === 'JUSO' ? '도로명주소 API' : '카카오 로컬'}) —{' '}
+                {status.address?.message ?? '권한을 확인해 주세요'}{' '}
+                <a
+                  href={provider === 'JUSO' ? status.address?.jusoApplyUrl : status.address?.kakaoApplyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#9BC9D8] underline"
+                >
+                  설정 열기
+                </a>
+              </span>
             )}
           </p>
         ) : null}
