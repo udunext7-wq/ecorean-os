@@ -8,6 +8,9 @@ const STATE={
   // 2026-08-28: 기호 이름 라벨 표시 모드 (대표 지시 — 다운라이트를 넣을수록 같은 글씨가 도배되고 렉이 걸린다)
   //  smart = 같은 공간의 같은 종류는 대표 1개만 '이름 ×개수' / off = 선택한 것만 / all = 전부
   symbolLabelMode:'smart',
+  // 2026-08-28: 인쇄 설정 (대표 지시 — 원하는 포인트만 뽑게). 문서와 함께 저장된다
+  printConfig:null,   // {region,rect,spaceIds,paper,orientation,scale,preset,layers,symbolLabels,titleBlock,scaleBar,north,page2}
+  printLabels:false,  // 인쇄 중 기호 이름을 찍을지 (조명·전기 도면용)
   symbolBoost:false, // 2026-08-24: 기호는 실척 유지(대표 지시 — 크기 확대 금지), 'sym' 명령으로만 확대 가능. 판독은 고정 글씨 라벨로
   bgImage:null, // {filename, dataURL, x_mm, y_mm, scale, opacity, locked, naturalWidth, naturalHeight}
   // v5.9: 벽 정렬 (interior=내벽 / center=중심 / exterior=외벽). 시작 시 중심선

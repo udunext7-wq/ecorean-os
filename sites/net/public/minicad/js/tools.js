@@ -8,6 +8,9 @@ let _libLastPos=null;       // 마지막 마우스 위치 (회전 후 즉시 미
 // v5.9: 스케일 보정 모드 (배경 이미지 픽셀↔mm 비율 결정)
 let _scaleCalActive=false;
 let _scaleCalP1=null;
+// 2026-08-28: 인쇄 영역 드래그 지정 (대표 지시 — 원하는 포인트만 뽑기). ui.js 의 인쇄 설정창과 짝을 이룬다.
+let _printRectActive=false;
+let _printRectP1=null;
 // ===== 추가 =====
 // v5.3: 레이어 명명 헬퍼 (DXF 표준 + 공간 ID)
 function makeLayerName(element,space){
@@ -2288,6 +2291,8 @@ stage.on('mousedown touchstart',e=>{
   // v5.9: 우클릭은 mousedown 처리 스킵 (contextmenu 핸들러가 처리하도록)
   if(e.evt&&e.evt.button===2) return;
   mouseDownPos=pos;isMouseDown=true;
+  // 2026-08-28: 인쇄 영역 지정 중에는 다른 도구 동작을 모두 가로채다
+  if(_printRectActive){_printRectP1={x:pos.x,y:pos.y};if(e.evt&&e.evt.preventDefault)e.evt.preventDefault();return;}
   const isMiddleClick=e.evt&&e.evt.button===1; // v5.5: 휠클릭 패닝
   if(isMiddleClick||STATE.selectedTool==='pan'){isPanning=true;panStart={x:pos.x,y:pos.y};if(e.evt) e.evt.preventDefault();return;}
   if(STATE.selectedTool==='rect') startRect(pos);
@@ -2945,6 +2950,23 @@ stage.on('mousemove touchmove',e=>{
   const pos=stage.getPointerPosition();if(!pos) return;
   const mm=getMm(pos);
   document.getElementById('cursor-pos').textContent=mm.x+','+mm.y;
+  // 2026-08-28: 인쇄 영역 드래그 미리보기 — 누른 지점부터 현재까지 사각형
+  if(_printRectActive){
+    drawGroup.destroyChildren();
+    if(_printRectP1){
+      const x=Math.min(_printRectP1.x,pos.x), y=Math.min(_printRectP1.y,pos.y);
+      const w=Math.abs(pos.x-_printRectP1.x), h=Math.abs(pos.y-_printRectP1.y);
+      drawGroup.add(new Konva.Rect({x,y,width:w,height:h,fill:'rgba(212,184,114,0.12)',
+        stroke:'#D4B872',strokeWidth:1.6,dash:[8,5],listening:false}));
+      const mm1=getMm({x:_printRectP1.x,y:_printRectP1.y}), mm2=mm;
+      drawGroup.add(new Konva.Text({x:x,y:y-20,width:Math.max(w,120),align:'center',
+        text:Math.abs(mm2.x-mm1.x)+' × '+Math.abs(mm2.y-mm1.y)+'mm',
+        fontSize:12,fontFamily:'JetBrains Mono',fontStyle:'700',
+        fill:'#FFFFFF',stroke:'#000000',strokeWidth:3,fillAfterStrokeEnabled:true,listening:false}));
+    }
+    previewLayer.batchDraw();
+    return;
+  }
   if(isPanning&&panStart){
     beginViewTransform(); /* PERF: 이동 전 기준 뷰 캡처 */
     const dx=pos.x-panStart.x,dy=pos.y-panStart.y;
@@ -3171,6 +3193,17 @@ stage.on('mouseup touchend',e=>{
   isMouseDown=false;isPanning=false;panStart=null;
   /* PERF: 팬 종료 — 레이어 변환을 실좌표 재구성으로 확정 (1회) */
   if(_wasPanning){endViewTransform();}
+  // 2026-08-28: 인쇄 영역 확정
+  if(_printRectActive){
+    const pos=stage.getPointerPosition();
+    drawGroup.destroyChildren();previewLayer.batchDraw();
+    if(_printRectP1&&pos){
+      const p1=_printRectP1;
+      _printRectActive=false;_printRectP1=null;
+      if(typeof finishPrintRegionPick==='function') finishPrintRegionPick(getMm(p1),getMm(pos));
+    }
+    return;
+  }
   // v5.9: 스케일 보정 모드 — 일반 도구 동작 무시
   if(_scaleCalActive){
     const pos=stage.getPointerPosition();
@@ -3826,7 +3859,11 @@ document.addEventListener('keydown',e=>{
     document.getElementById('canvas-help')?.classList.remove('visible'); // 2026-08-22: 단축키 모달
     if(typeof hideTextModal==='function') hideTextModal();               // 2026-08-22: ? 도움말 모달
     if(_scaleCalActive){_scaleCalActive=false;_scaleCalP1=null;showStatus('스케일 보정 취소');}
+    if(_printRectActive&&typeof cancelPrintRegionPick==='function') cancelPrintRegionPick(); // 2026-08-28
+    if(typeof closePrintDialog==='function') closePrintDialog();                             // 2026-08-28
   }
+  // 2026-08-28: 인쇄 설정창이 열려 있으면 도면 단축키를 가로채지 않는다 (버튼 클릭 후 키 입력이 도구를 바꾸던 문제)
+  if(typeof _printDlgEl!=='undefined'&&_printDlgEl&&e.key!=='Escape') return;
   // 입력창에 포커스가 있으면 단축키 가로채지 않음 (명령어 입력 우선)
   // 방향키만 예외 — 미세이동 가능하도록 통과 (단, cmd-input에 값이 있으면 텍스트 커서 이동)
   if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA'){

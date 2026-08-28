@@ -2287,7 +2287,9 @@ function symbolLabelTextFor(kind,o,def){
   return symbolLabelPlan().rep.get(o.id)||null;
 }
 function addSymbolLabel(group,xPx,yPx,def,kind,id,o){
-  if(_pm()) return; // 2026-08-27: 인쇄에서는 심볼 라벨 대신 범례 사용 (라벨이 심볼보다 커서 도면을 덮음)
+  // 2026-08-27: 인쇄에서는 기본적으로 범례를 쓴다 (라벨이 심볼보다 커서 도면을 덮음).
+  // 2026-08-28: 다만 조명·전기 도면은 이름이 있어야 읽힌다 — 인쇄 설정에서 켜면 찍는다
+  if(_pm()&&!STATE.printLabels) return;
   if(STATE.zoom<0.3) return; // 극축소 시 겹침 방지
   const text=symbolLabelTextFor(kind,o||{id:id},def);
   if(!text) return;
@@ -2902,7 +2904,8 @@ function renderAll(){
     sSpaces=J(STATE.spaces);
     const theme=document.body?document.body.getAttribute('data-theme')||'':'';
     gk=[STATE.offsetX,STATE.offsetY,STATE.zoom,theme,STATE.plus2D?1:0,STATE.selectedTool,
-        symbolLabelMode()].join('|')+'§'; // 2026-08-28: 라벨 모드 — 토글 즉시 반영
+        symbolLabelMode(),(STATE.printMode?'P':'')+(STATE.printLabels?'L':'')
+       ].join('|')+'§'; // 2026-08-28: 라벨 모드·인쇄 모드 — 토글 즉시 반영
   }catch(e){J=null;}
   const selK=k=>{
     if(!J)return '';

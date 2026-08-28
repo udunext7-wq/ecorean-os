@@ -2429,6 +2429,8 @@ function buildDocSettings(){
     layers:STATE.layers?{...STATE.layers}:null,
     wallAlignment:STATE.wallAlignment||'center',
     downlightInch:STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT,
+    printConfig:STATE.printConfig?{...STATE.printConfig}:null, // 2026-08-28: 인쇄 범위·용지·표시요소
+    symbolLabelMode:STATE.symbolLabelMode||'smart',
     snap:{grid:!!STATE.snap.grid,endpoint:!!STATE.snap.endpoint,ghost:!!STATE.snap.ghost,ortho:!!STATE.snap.ortho},
   };
 }
@@ -2487,6 +2489,12 @@ function applyLoadedData(d){
     if('videoSequenceOrder' in _set) STATE.videoSequenceOrder=_set.videoSequenceOrder||null;
     if(_set.layers&&typeof _set.layers==='object') STATE.layers={...STATE.layers,..._set.layers};
     if(_set.downlightInch&&DOWNLIGHT_INCH[_set.downlightInch]) STATE.downlightInch=_set.downlightInch;
+    // 2026-08-28: 인쇄 설정·라벨 모드 복원
+    if(_set.printConfig&&typeof _set.printConfig==='object') STATE.printConfig={..._set.printConfig};
+    if(typeof SYMBOL_LABEL_MODES!=='undefined'&&SYMBOL_LABEL_MODES.indexOf(_set.symbolLabelMode)>=0){
+      STATE.symbolLabelMode=_set.symbolLabelMode;
+      if(typeof updateSymbolLabelBtn==='function') updateSymbolLabelBtn();
+    }
     if(_set.snap&&typeof _set.snap==='object'){
       ['grid','endpoint','ghost','ortho'].forEach(k=>{if(typeof _set.snap[k]==='boolean') STATE.snap[k]=_set.snap[k];});
       if(typeof buildSnapUI==='function') buildSnapUI();
@@ -2562,7 +2570,9 @@ function _paletteCommands(){
   return [
     {label:'📏 전체 자동 치수 생성/제거',kw:'dim auto da 치수 자동 전체',run:dimAllSpaces},
     {label:'⚡ AI 자동 가구 배치 (선택 공간)',kw:'auto furnish af ai 자동 배치 가구',run:()=>autoFurnish()},
-    {label:'🖨 인쇄 — 표제란·면적표·범례 포함',kw:'print 인쇄 출력 표제란 범례',run:printPlan},
+    {label:'🖨 인쇄 설정 — 범위·용지·축척 미리보기',kw:'print 인쇄 출력 미리보기 범위 용지 축척 설정',run:openPrintDialog},
+    {label:'🖨 바로 인쇄 (직전 설정으로)',kw:'print 인쇄 바로 출력',run:()=>printPlan()},
+    {label:'⬚ 인쇄 영역 드래그로 지정',kw:'print 인쇄 영역 범위 부분 확대 crop',run:startPrintRegionPick},
     {label:'💾 JSON 저장',kw:'save json 저장 파일',run:saveJSON},
     {label:'📂 JSON 불러오기',kw:'load open 불러오기 열기',run:loadJSON},
     {label:'🤖 AI 번들 내보내기',kw:'ai bundle export 번들 내보내기',run:exportAIBundle},
@@ -2665,6 +2675,95 @@ const PRINT_MARGIN=8;    // 용지 가장자리 여백 mm
 const PRINT_TB_H=30;     // 표제란 띠 높이 mm
 const PRINT_DPI=300;
 
+// ===== 2026-08-28: 인쇄 설정 + 미리보기 (대표 지시 — "내가 원하는 포인트를 인쇄하기가 힘들다") =====
+//  종전엔 [인쇄]를 누르면 도면 전체가 자동으로 한 장에 들어가게만 나왔다. 그래서
+//  주방만, 천장만, 이 구석만 뽑고 싶을 때 방법이 없었다.
+//  이제 인쇄 전에 ① 범위 ② 용지·축척 ③ 표시 요소 를 정하고, 나올 종이를 그대로 미리 본다.
+const PRINT_LAYER_KEYS=['walls','spaces','openings','furniture','fixtures','lights','electric','hvac',
+                        'dimensions','text','circles','arcs','curves','leaders','pillars','xlines'];
+const PRINT_LAYER_NAMES={walls:'벽',spaces:'공간',openings:'문·창',furniture:'가구',fixtures:'위생/주방',
+  lights:'조명',electric:'전기',hvac:'공조/소방',dimensions:'치수',text:'텍스트',circles:'원',
+  arcs:'아크',curves:'곡선',leaders:'지시선',pillars:'기둥',xlines:'안내선'};
+// 프리셋 — 현장에서 실제로 따로 뽑는 도면 4종
+const PRINT_PRESETS=[
+  {key:'full',name:'전체 도면',desc:'모든 요소 + 치수',
+   on:['walls','spaces','openings','furniture','fixtures','lights','electric','hvac','dimensions','text','circles','arcs','curves','leaders','pillars'],
+   symbolLabels:'off'},
+  {key:'construct',name:'시공 도면',desc:'벽·문창·치수 (가구 제외)',
+   on:['walls','spaces','openings','dimensions','text','circles','arcs','curves','leaders','pillars'],
+   symbolLabels:'off'},
+  {key:'mep',name:'조명·전기',desc:'천장기구·스위치 + 이름',
+   on:['walls','spaces','openings','lights','electric','hvac','text','leaders','pillars'],
+   symbolLabels:'smart'},
+  {key:'furniture',name:'가구 배치도',desc:'가구·위생기구 중심',
+   on:['walls','spaces','openings','furniture','fixtures','text','pillars'],
+   symbolLabels:'off'},
+];
+function printPresetLayers(key){
+  const p=PRINT_PRESETS.find(x=>x.key===key)||PRINT_PRESETS[0];
+  const out={};
+  PRINT_LAYER_KEYS.forEach(k=>{out[k]=p.on.indexOf(k)>=0;});
+  return out;
+}
+function printCfg(){
+  if(!STATE.printConfig||typeof STATE.printConfig!=='object') STATE.printConfig={};
+  const c=STATE.printConfig;
+  if(!c.region) c.region='all';
+  if(!c.paper) c.paper='auto';
+  if(!c.orientation) c.orientation='auto';
+  if(!c.scale) c.scale='auto';
+  if(!c.preset) c.preset='full';
+  if(!c.layers) c.layers=printPresetLayers(c.preset);
+  if(!c.symbolLabels) c.symbolLabels='off';
+  if(!Array.isArray(c.spaceIds)) c.spaceIds=[];
+  ['titleBlock','scaleBar','north','page2'].forEach(k=>{if(typeof c[k]!=='boolean') c[k]=true;});
+  return c;
+}
+function applyPrintPreset(key){
+  const c=printCfg(), p=PRINT_PRESETS.find(x=>x.key===key);
+  if(!p) return c;
+  c.preset=key;
+  c.layers=printPresetLayers(key);
+  c.symbolLabels=p.symbolLabels||'off';
+  return c;
+}
+// 인쇄할 범위 (mm) — 여기가 "원하는 포인트"를 정하는 곳
+function printRegionBBox(cfg){
+  cfg=cfg||printCfg();
+  const box=(minX,minY,maxX,maxY,pad)=>{
+    pad=pad||0;
+    return {minX:minX-pad,minY:minY-pad,maxX:maxX+pad,maxY:maxY+pad,
+            w:(maxX-minX)+pad*2,h:(maxY-minY)+pad*2};
+  };
+  if(cfg.region==='rect'&&cfg.rect){
+    const r=cfg.rect;
+    return box(Math.min(r.x1,r.x2),Math.min(r.y1,r.y2),Math.max(r.x1,r.x2),Math.max(r.y1,r.y2),300);
+  }
+  if(cfg.region==='space'&&cfg.spaceIds.length){
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    (STATE.spaces||[]).forEach(sp=>{
+      if(cfg.spaceIds.indexOf(sp.id)<0) return;
+      (sp.polygon||[]).forEach(p=>{
+        if(p.x<minX)minX=p.x;if(p.y<minY)minY=p.y;
+        if(p.x>maxX)maxX=p.x;if(p.y>maxY)maxY=p.y;});
+    });
+    if(isFinite(minX)) return box(minX,minY,maxX,maxY,900); // 벽 두께·실명 라벨 여유
+  }
+  if(cfg.region==='view'){
+    const x1=pxToMm(0-STATE.offsetX), y1=pxToMm(0-STATE.offsetY);
+    const x2=pxToMm(stage.width()-STATE.offsetX), y2=pxToMm(stage.height()-STATE.offsetY);
+    if(x2>x1&&y2>y1) return box(x1,y1,x2,y2,0);
+  }
+  return planBBoxMm();
+}
+function printRegionLabel(cfg){
+  cfg=cfg||printCfg();
+  if(cfg.region==='rect'&&cfg.rect) return '선택 영역';
+  if(cfg.region==='space'&&cfg.spaceIds.length) return '공간 '+cfg.spaceIds.length+'개';
+  if(cfg.region==='view') return '현재 화면';
+  return '전체 도면';
+}
+
 // 도면 전체 범위 (mm) — 치수선·치수글씨까지 포함
 function planBBoxMm(){
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
@@ -2694,27 +2793,36 @@ function planBBoxMm(){
           w:(maxX-minX)+pad*2,h:(maxY-minY)+pad*2};
 }
 
-// 용지·방향·축척 자동 결정 — 도면이 가장 크게 들어가는 조합
+// 용지·방향·축척 결정 — opts 가 'auto' 가 아니면 그 값을 강제한다 (대표가 고른 대로 나온다)
 function choosePrintLayout(bbox,opts){
   opts=opts||{};
+  const fixedPaper=(opts.paper&&opts.paper!=='auto')?opts.paper:null;
+  const fixedOri=(opts.orientation&&opts.orientation!=='auto')?opts.orientation:null;
+  const fixedScale=(opts.scale&&opts.scale!=='auto')?parseInt(opts.scale,10):null;
+  const TB=(opts.titleBlock===false)?0:PRINT_TB_H; // 표제란을 끄면 그만큼 도면이 커진다
   // 용지는 작은 것부터 — A4 로 읽을 만하면 A4 로 낸다 (큰 종이를 먼저 고르지 않는다)
-  const papers=opts.paper?[opts.paper]:['A4','A3','A2'];
+  const papers=fixedPaper?[fixedPaper]:['A4','A3','A2'];
   const MAX_OK_SCALE=opts.maxScale||200; // 이보다 작은 축척이 되면 한 단계 큰 용지로
+  const mk=(pk,ori,pw,ph,S,fill)=>({paper:pk,orientation:ori,pw,ph,tbH:TB,
+    availW:pw-PRINT_MARGIN*2,availH:ph-PRINT_MARGIN*2-TB,scale:S,fill:fill||0});
   let best=null, fallback=null;
   for(let pi=0;pi<papers.length;pi++){
     const pk=papers[pi], P=PRINT_PAPERS[pk];
     if(!P) continue;
+    const oris=fixedOri
+      ? [[fixedOri, fixedOri==='landscape'?P.w:P.h, fixedOri==='landscape'?P.h:P.w]]
+      : [['landscape',P.w,P.h],['portrait',P.h,P.w]];
     let onPaper=null;
-    [['landscape',P.w,P.h],['portrait',P.h,P.w]].forEach(([ori,pw,ph])=>{
-      const availW=pw-PRINT_MARGIN*2, availH=ph-PRINT_MARGIN*2-PRINT_TB_H;
+    oris.forEach(([ori,pw,ph])=>{
+      const availW=pw-PRINT_MARGIN*2, availH=ph-PRINT_MARGIN*2-TB;
       if(availW<=0||availH<=0) return;
-      const cands=opts.scale?[opts.scale]:PRINT_SCALES;
+      const cands=fixedScale?[fixedScale]:PRINT_SCALES;
       for(let i=0;i<cands.length;i++){
         const S=cands[i];
         if(bbox.w/S<=availW*0.985 && bbox.h/S<=availH*0.985){
           const fill=(bbox.w/S)*(bbox.h/S)/(availW*availH);
           if(!onPaper||S<onPaper.scale||(S===onPaper.scale&&fill>onPaper.fill))
-            onPaper={paper:pk,orientation:ori,pw,ph,availW,availH,scale:S,fill};
+            onPaper=mk(pk,ori,pw,ph,S,fill);
           break;
         }
       }
@@ -2724,11 +2832,14 @@ function choosePrintLayout(bbox,opts){
     if(onPaper.scale<=MAX_OK_SCALE){best=onPaper;break;}
   }
   if(!best) best=fallback;
-  if(!best){ // 어떤 표준 축척에도 안 들어가면 A2 가로 최대 축척
-    const P=PRINT_PAPERS.A2;
-    best={paper:'A2',orientation:'landscape',pw:P.w,ph:P.h,
-          availW:P.w-PRINT_MARGIN*2,availH:P.h-PRINT_MARGIN*2-PRINT_TB_H,
-          scale:PRINT_SCALES[PRINT_SCALES.length-1],fill:0};
+  if(!best){
+    // 고른 축척이 어떤 용지에도 안 들어가면 — 지정한 대로 내고 넘치는 부분은 잘린다.
+    //  (대표가 축척을 직접 고른 경우, 자동으로 축척을 바꿔버리지 않는다)
+    const pk=fixedPaper||'A2', P=PRINT_PAPERS[pk]||PRINT_PAPERS.A2;
+    const ori=fixedOri||'landscape';
+    const pw=ori==='landscape'?P.w:P.h, ph=ori==='landscape'?P.h:P.w;
+    best=mk(pk,ori,pw,ph,fixedScale||PRINT_SCALES[PRINT_SCALES.length-1],0);
+    best.overflow=true;
   }
   return best;
 }
@@ -2761,9 +2872,14 @@ function _northHTML(){
     '</svg></div>';
 }
 
-// 인쇄 시트 HTML
-function buildPrintSheet(dataURL,L,info){
+// 인쇄 시트 HTML — 미리보기와 실제 인쇄가 같은 함수를 쓴다
+function buildPrintSheet(dataURL,L,info,cfg,opts){
+  cfg=cfg||printCfg();opts=opts||{};
+  // dataURL 은 문자열(옵지 가득) 또는 {url,wMm,hMm}(고른 범위 실치수)
+  const im=(dataURL&&typeof dataURL==='object')?dataURL:{url:dataURL||'',wMm:L.availW,hMm:L.availH};
+  const TB=L.tbH!==undefined?L.tbH:PRINT_TB_H;
   const drawH=L.availH, drawW=L.availW;
+  const onlyPage=opts.onlyPage||0;
   const css=
     '@page{size:'+L.pw+'mm '+L.ph+'mm;margin:0}'+
     '*{box-sizing:border-box}'+
@@ -2773,18 +2889,19 @@ function buildPrintSheet(dataURL,L,info){
     '.sheet{width:'+L.pw+'mm;height:'+L.ph+'mm;position:relative;overflow:hidden;page-break-after:always}'+
     '.frame{position:absolute;left:'+PRINT_MARGIN+'mm;top:'+PRINT_MARGIN+'mm;'+
       'width:'+drawW+'mm;height:'+(L.ph-PRINT_MARGIN*2)+'mm;border:0.6mm solid #000}'+
-    '.draw{position:absolute;left:0;top:0;width:'+drawW+'mm;height:'+drawH+'mm;overflow:hidden}'+
-    '.draw img{display:block;width:'+drawW+'mm;height:'+drawH+'mm}'+
-    '.tb{position:absolute;left:0;bottom:0;width:'+drawW+'mm;height:'+PRINT_TB_H+'mm;'+
+    '.draw{position:absolute;left:0;top:0;width:'+drawW+'mm;height:'+drawH+'mm;overflow:hidden;'+
+      'display:flex;align-items:center;justify-content:center}'+
+    '.draw img{display:block;width:'+im.wMm.toFixed(3)+'mm;height:'+im.hMm.toFixed(3)+'mm}'+
+    '.tb{position:absolute;left:0;bottom:0;width:'+drawW+'mm;height:'+TB+'mm;'+
       'border-top:0.6mm solid #000;display:flex;align-items:stretch}'+
     '.tb .cell{border-left:0.25mm solid #000;padding:1.2mm 2mm;display:flex;flex-direction:column;justify-content:center}'+
     '.tb .cell:first-child{border-left:none}'+
     '.tb .k{font-size:2.1mm;letter-spacing:0.3mm;color:#444}'+
     '.tb .v{font-size:3.1mm;font-weight:700;margin-top:0.5mm}'+
     '.tb .big{font-size:4.4mm;font-weight:800;letter-spacing:0.2mm}'+
-    '.sbar{position:absolute;left:2mm;bottom:'+(PRINT_TB_H+2)+'mm;background:rgba(255,255,255,0.9);padding:0.8mm}'+
+    '.sbar{position:absolute;left:2mm;bottom:'+(TB+2)+'mm;background:rgba(255,255,255,0.9);padding:0.8mm}'+
     '.north{position:absolute;right:3mm;top:3mm}'+
-    '.note{position:absolute;right:2mm;bottom:'+(PRINT_TB_H+2)+'mm;font-size:2.2mm;color:#333;'+
+    '.note{position:absolute;right:2mm;bottom:'+(TB+2)+'mm;font-size:2.2mm;color:#333;'+
       'background:rgba(255,255,255,0.9);padding:0.6mm 1mm;border:0.2mm solid #999}'+
     // 2페이지 (면적표·범례)
     '.p2{width:'+L.pw+'mm;height:'+L.ph+'mm;padding:'+PRINT_MARGIN+'mm;position:relative}'+
@@ -2794,11 +2911,11 @@ function buildPrintSheet(dataURL,L,info){
     'table.dt th{background:#EEE;border:0.25mm solid #000;padding:1mm 2mm;font-weight:700}'+
     'table.dt td{border:0.25mm solid #666;padding:0.9mm 2mm}'+
     'table.dt td.r{text-align:right;font-family:monospace}';
-  const tb=
+  const tb=cfg.titleBlock===false?'':
     '<div class="tb">'+
       '<div class="cell" style="flex:2.2"><div class="k">PROJECT</div>'+
         '<div class="big">'+escapeHtml(STATE.projectName||'')+'</div></div>'+
-      '<div class="cell" style="flex:1"><div class="k">DRAWING</div><div class="v">평 면 도</div></div>'+
+      '<div class="cell" style="flex:1"><div class="k">DRAWING</div><div class="v">'+escapeHtml(printDrawingTitle(cfg))+'</div></div>'+
       '<div class="cell" style="flex:0.9"><div class="k">SCALE</div><div class="big">1 / '+L.scale+'</div></div>'+
       '<div class="cell" style="flex:0.9"><div class="k">PAPER</div><div class="v">'+L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+'</div></div>'+
       '<div class="cell" style="flex:1"><div class="k">바닥면적</div><div class="v">'+info.area+'㎡ ('+info.py+'py)</div></div>'+
@@ -2806,18 +2923,27 @@ function buildPrintSheet(dataURL,L,info){
       '<div class="cell" style="flex:0.9"><div class="k">천장고</div><div class="v">'+info.ch+'mm</div></div>'+
       '<div class="cell" style="flex:1"><div class="k">DATE</div><div class="v">'+info.date+'</div></div>'+
     '</div>';
-  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">'+
-    '<title>'+escapeHtml(STATE.projectName||'MiniCAD')+' — 평면도 1/'+L.scale+'</title>'+
-    '<style>'+css+'</style></head><body>'+
+  const page1=(onlyPage===2)?'':
     '<div class="sheet"><div class="frame">'+
-      '<div class="draw"><img src="'+dataURL+'"></div>'+
-      _northHTML()+_scaleBarHTML(L.scale)+
+      '<div class="draw"><img alt="평면도" src="'+im.url+'"></div>'+
+      (cfg.north===false?'':_northHTML())+
+      (cfg.scaleBar===false?'':_scaleBarHTML(L.scale))+
       '<div class="note">축척 정확 인쇄 — 프린터 배율 100%(실제 크기)로 출력</div>'+
       tb+
-    '</div></div>'+
-    buildPrintPage2(L,info)+
-    '<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>'+
+    '</div></div>';
+  const page2=(onlyPage===1||cfg.page2===false)?'':buildPrintPage2(L,info);
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">'+
+    '<title>'+escapeHtml(STATE.projectName||'MiniCAD')+' — '+escapeHtml(printDrawingTitle(cfg))+' 1/'+L.scale+'</title>'+
+    '<style>'+css+'</style></head><body>'+
+    page1+page2+
+    (opts.preview?'':'<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>')+
     '</body></html>';
+}
+// 표제란 도면명 — 프리셋에 따라 (조명·전기 도면을 '평면도'로 내보내지 않는다)
+function printDrawingTitle(cfg){
+  cfg=cfg||printCfg();
+  const m={full:'평 면 도',construct:'시 공 도',mep:'전기·조명 평면도',furniture:'가구 배치도'};
+  return m[cfg.preset]||'평 면 도';
 }
 
 // 2페이지 — 공간 면적표 / 범례 / 개구부 리스트
@@ -2856,61 +2982,404 @@ function buildPrintPage2(L,info){
 }
 
 // v5.7: 인쇄 시 2.5D 강제 OFF (시공 도면은 평면 모드만 허용)
+// 2026-08-28: 설정창에서 정한 범위·용지·표시요소로 인쇄 (opts 로 덮어쓸 수 있음)
 function printPlan(opts){
-  opts=opts||{};
-  const bbox=planBBoxMm();
+  const cfg=printCfg();
+  if(opts&&typeof opts==='object') Object.assign(cfg,opts);
+  const bbox=printRegionBBox(cfg);
   if(!bbox){alert('인쇄할 도면이 없습니다 — 공간을 먼저 그려주세요');return;}
-  const L=choosePrintLayout(bbox,opts);
-  // --- 화면 상태 백업 ---
+  const L=choosePrintLayout(bbox,cfg);
+  let img;
+  try{
+    img=_printCapture(bbox,L,cfg,PRINT_DPI);
+  }catch(err){
+    alert('인쇄 이미지 생성 실패: '+(err.message||err));
+    refreshUI();return;
+  }
+  const html=buildPrintSheet(img,L,_printInfo(),cfg,{});
+  const w=window.open('','_blank');
+  if(!w){alert('팝업이 차단되었습니다 — 팝업 허용 후 다시 인쇄하세요');refreshUI();return;}
+  w.document.write(html);
+  w.document.close();
+  cmdToast('인쇄: '+printRegionLabel(cfg)+' · '+L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+
+    ' · 1/'+L.scale+(L.overflow?' (지정 축척 — 일부 잘림)':''));
+  refreshUI();
+}
+
+// 인쇄용 캡처 — 미리보기와 실제 인쇄가 같은 경로를 쓴다 (미리 본 그대로 나온다)
+function _printCapture(bbox,L,cfg,dpi){
+  cfg=cfg||printCfg();
   const bak={zoom:STATE.zoom,ox:STATE.offsetX,oy:STATE.offsetY,plus2D:STATE.plus2D,
     theme:document.body.getAttribute('data-theme'),grid:STATE.showGrid,
     selKind:STATE.selectedKind,selId:STATE.selectedId,box:STATE.boxSelection,
-    w:stage.width(),h:stage.height()};
+    w:stage.width(),h:stage.height(),
+    layers:{...STATE.layers},labelMode:STATE.symbolLabelMode,dims:STATE.showDimensions};
   try{
     STATE.plus2D=false;STATE.showGrid=false;
     STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];
     document.body.setAttribute('data-theme','architect'); // 내력벽 등 테마 의존 색을 흑색 계열로
     STATE.printMode=true;
-    // 축척 1/S 을 96dpi 기준으로 배치 → 캡처 때 pixelRatio 로 300dpi 승격
-    //  mmToPx(1mm)=0.0378*zoom 이므로 zoom = (96/25.4/S)/0.0378
+    // 표시 요소 — 화면 레이어와 별개로, 이 인쇄에만 적용
+    PRINT_LAYER_KEYS.forEach(k=>{if(k in STATE.layers) STATE.layers[k]=!!cfg.layers[k];});
+    STATE.showDimensions=!!cfg.layers.dimensions;
+    // 기호 이름 라벨 — 조명·전기 도면은 이름이 있어야 읽힌다 (묶음 대표만)
+    STATE.printLabels=(cfg.symbolLabels&&cfg.symbolLabels!=='off');
+    if(STATE.printLabels) STATE.symbolLabelMode=cfg.symbolLabels;
+    // 축척 1/S 을 96dpi 기준으로 배치 → 캡처 때 pixelRatio 로 승격
     const zoom=(96/25.4/L.scale)/(STATE.scale/1000);
-    const outW=Math.round(L.availW/25.4*96), outH=Math.round(L.availH/25.4*96);
     STATE.zoom=zoom;
-    // 도면 중심을 인쇄 영역 중심에
+    // 2026-08-28: 고른 범위만 딱 떠서 종이에 올린다.
+    //  종전엔 용지 전체를 떠서 늘였기 때문에, 거실만 골라도 옆방까지 따라 찍혔다.
+    const maxW=Math.round(L.availW/25.4*96), maxH=Math.round(L.availH/25.4*96);
+    const wantW=Math.round(bbox.w/L.scale/25.4*96), wantH=Math.round(bbox.h/L.scale/25.4*96);
+    const outW=Math.max(8,Math.min(wantW,maxW)), outH=Math.max(8,Math.min(wantH,maxH));
     const cx=(bbox.minX+bbox.maxX)/2, cy=(bbox.minY+bbox.maxY)/2;
     STATE.offsetX=outW/2-mmToPx(cx);
     STATE.offsetY=outH/2-mmToPx(cy);
     if(stage.width()<outW||stage.height()<outH) stage.size({width:outW,height:outH});
     drawGrid();renderAll();
     applyPrintInk();
-    const dataURL=stage.toDataURL({x:0,y:0,width:outW,height:outH,
-      pixelRatio:PRINT_DPI/96,mimeType:'image/png'});
-    const t=new Date();
-    const info={
-      date:t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'),
-      area:(document.getElementById('t-floor')||{textContent:'0.00'}).textContent,
-      py:(document.getElementById('t-floor-pyeong')||{textContent:'0.0'}).textContent,
-      doorN:(STATE.openings||[]).filter(o=>o.type==='DOOR').length,
-      winN:(STATE.openings||[]).filter(o=>o.type==='WINDOW').length,
-      ch:STATE.ceilingHeight,
-    };
-    const html=buildPrintSheet(dataURL,L,info);
-    const w=window.open('','_blank');
-    if(!w){alert('팝업이 차단되었습니다 — 팝업 허용 후 다시 인쇄하세요');return;}
-    w.document.write(html);
-    w.document.close();
-    cmdToast('인쇄: '+L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+' · 축척 1/'+L.scale);
+    return {url:stage.toDataURL({x:0,y:0,width:outW,height:outH,
+              pixelRatio:(dpi||PRINT_DPI)/96,mimeType:'image/png'}),
+            wMm:outW/96*25.4, hMm:outH/96*25.4};
   }finally{
-    // --- 화면 상태 복구 ---
-    STATE.printMode=false;
+    STATE.printMode=false;STATE.printLabels=false;
+    STATE.layers=bak.layers;STATE.symbolLabelMode=bak.labelMode;STATE.showDimensions=bak.dims;
     STATE.plus2D=bak.plus2D;STATE.showGrid=bak.grid;
     STATE.zoom=bak.zoom;STATE.offsetX=bak.ox;STATE.offsetY=bak.oy;
     STATE.selectedKind=bak.selKind;STATE.selectedId=bak.selId;STATE.boxSelection=bak.box||[];
     if(bak.theme) document.body.setAttribute('data-theme',bak.theme);
     else document.body.removeAttribute('data-theme');
     if(stage.width()!==bak.w||stage.height()!==bak.h) stage.size({width:bak.w,height:bak.h});
-    drawGrid();renderAll();refreshUI();
+    drawGrid();renderAll();
   }
+}
+function _printInfo(){
+  const t=new Date();
+  return {
+    date:t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'),
+    area:(document.getElementById('t-floor')||{textContent:'0.00'}).textContent,
+    py:(document.getElementById('t-floor-pyeong')||{textContent:'0.0'}).textContent,
+    doorN:(STATE.openings||[]).filter(o=>o.type==='DOOR').length,
+    winN:(STATE.openings||[]).filter(o=>o.type==='WINDOW').length,
+    ch:STATE.ceilingHeight,
+  };
+}
+
+// ===== 인쇄 설정 창 =====
+let _printDlgEl=null,_printPreviewPage=1,_printPreviewTimer=null,_printThumbToken=0;
+function closePrintDialog(){
+  if(_printPreviewTimer){clearTimeout(_printPreviewTimer);_printPreviewTimer=null;}
+  _printThumbToken++;
+  if(_printDlgEl){_printDlgEl.remove();_printDlgEl=null;}
+}
+function _pdSection(title,inner){
+  return '<div style="margin-bottom:12px">'+
+    '<div style="font-size:10.5px;letter-spacing:0.06em;color:var(--gold,#C9A961);margin-bottom:6px;font-weight:700">'+title+'</div>'+
+    inner+'</div>';
+}
+function _pdLeftHTML(cfg){
+  const radio=(name,val,cur,label,extra)=>
+    '<label style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;cursor:pointer;font-size:12px'+
+      (cur===val?';background:rgba(201,169,97,0.16);outline:1px solid var(--gold,#C9A961)':'')+'">'+
+    '<input type="radio" name="'+name+'" value="'+val+'"'+(cur===val?' checked':'')+' style="accent-color:#C9A961">'+
+    '<span>'+label+'</span>'+(extra?'<span style="margin-left:auto;color:var(--text-tertiary,#7B82B5);font-size:10.5px">'+extra+'</span>':'')+
+    '</label>';
+  const rectTxt=cfg.rect?(Math.abs(cfg.rect.x2-cfg.rect.x1)+'×'+Math.abs(cfg.rect.y2-cfg.rect.y1)+'mm'):'미지정';
+  const region=_pdSection('인쇄 범위 — 어디를 뽑을지',
+    '<div style="display:flex;flex-direction:column;gap:2px">'+
+    radio('pd-region','all',cfg.region,'전체 도면')+
+    radio('pd-region','rect',cfg.region,'선택 영역',rectTxt)+
+    radio('pd-region','space',cfg.region,'공간 지정',cfg.spaceIds.length?cfg.spaceIds.length+'개':'미지정')+
+    radio('pd-region','view',cfg.region,'현재 화면 그대로')+
+    '</div>'+
+    '<button type="button" class="btn sm" id="pd-pick-rect" style="width:100%;margin-top:6px">⬚ 도면에서 영역 드래그로 지정</button>');
+
+  const spaceChips=(STATE.spaces||[]).length
+    ? '<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:96px;overflow-y:auto">'+
+      (STATE.spaces||[]).map(sp=>{
+        const on=cfg.spaceIds.indexOf(sp.id)>=0;
+        const nm=escapeHtml(sp.name||((SPACE_TYPES[sp.type]&&SPACE_TYPES[sp.type].name)||sp.type));
+        return '<button type="button" class="btn sm pd-space" data-id="'+sp.id+'" style="padding:3px 8px;font-size:11px'+
+          (on?';background:rgba(201,169,97,0.25);border-color:#C9A961;color:#C9A961':'')+'">'+nm+'</button>';
+      }).join('')+'</div>'
+    : '<div style="font-size:11px;color:var(--text-tertiary,#7B82B5)">공간이 없습니다</div>';
+
+  const sel=(id,cur,opts)=>'<select id="'+id+'" style="width:100%;font-size:12px">'+
+    opts.map(o=>'<option value="'+o[0]+'"'+(String(cur)===String(o[0])?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';
+  const paper=_pdSection('용지 · 축척',
+    '<div style="display:flex;gap:5px">'+
+    '<div style="flex:1">'+sel('pd-paper',cfg.paper,[['auto','용지 자동'],['A4','A4'],['A3','A3'],['A2','A2']])+'</div>'+
+    '<div style="flex:1">'+sel('pd-ori',cfg.orientation,[['auto','방향 자동'],['landscape','가로'],['portrait','세로']])+'</div>'+
+    '</div>'+
+    '<div style="margin-top:5px">'+sel('pd-scale',cfg.scale,
+      [['auto','축척 자동 (가장 크게)']].concat(PRINT_SCALES.map(s=>[s,'1 / '+s])))+'</div>');
+
+  const chk=(k,label,on)=>'<label style="display:flex;align-items:center;gap:5px;font-size:11.5px;cursor:pointer;padding:2px 0">'+
+    '<input type="checkbox" class="pd-layer" data-k="'+k+'"'+(on?' checked':'')+' style="accent-color:#C9A961">'+label+'</label>';
+  const layers=_pdSection('표시 요소',
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">'+
+    PRINT_LAYER_KEYS.filter(k=>k!=='xlines').map(k=>chk(k,PRINT_LAYER_NAMES[k],!!cfg.layers[k])).join('')+
+    '</div>'+
+    '<div style="margin-top:6px">'+
+    '<div style="font-size:11px;color:var(--text-secondary,#A9B0C9);margin-bottom:3px">기호 이름</div>'+
+    sel('pd-symlabel',cfg.symbolLabels,[['off','표기 없음'],['smart','묶음 대표만 (이름 ×개수)'],['all','전부 표기']])+
+    '</div>');
+
+  const chk2=(id,label,on)=>'<label style="display:flex;align-items:center;gap:5px;font-size:11.5px;cursor:pointer;padding:2px 0">'+
+    '<input type="checkbox" class="pd-opt" data-k="'+id+'"'+(on?' checked':'')+' style="accent-color:#C9A961">'+label+'</label>';
+  const sheet=_pdSection('도면 양식',
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">'+
+    chk2('titleBlock','표제란',cfg.titleBlock)+chk2('scaleBar','축척바',cfg.scaleBar)+
+    chk2('north','방위표',cfg.north)+chk2('page2','2페이지 부속표',cfg.page2)+
+    '</div>');
+
+  return region+
+    (cfg.region==='space'?_pdSection('인쇄할 공간 (여러 개 선택 가능)',spaceChips):'')+
+    paper+layers+sheet;
+}
+function _pdThumbsHTML(cfg){
+  return '<div style="display:flex;gap:8px">'+PRINT_PRESETS.map(p=>
+    '<button type="button" class="pd-preset" data-key="'+p.key+'" style="flex:1;min-width:0;text-align:left;cursor:pointer;'+
+      'background:'+(cfg.preset===p.key?'rgba(201,169,97,0.16)':'transparent')+';'+
+      'border:1px solid '+(cfg.preset===p.key?'var(--gold,#C9A961)':'var(--border,#3D4466)')+';border-radius:7px;padding:6px">'+
+    '<div class="pd-thumb" data-key="'+p.key+'" style="width:100%;aspect-ratio:1.414;background:#fff;border:1px solid #999;'+
+      'display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:2px">'+
+      '<span style="font-size:10px;color:#999">…</span></div>'+
+    '<div style="font-size:11.5px;font-weight:700;color:var(--text-primary,#F5F1EB);margin-top:5px">'+p.name+'</div>'+
+    '<div style="font-size:10px;color:var(--text-tertiary,#7B82B5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.desc+'</div>'+
+    '</button>').join('')+'</div>';
+}
+function openPrintDialog(){
+  closePrintDialog();
+  const cfg=printCfg();
+  if(cfg.region==='space'&&!cfg.spaceIds.length){
+    // 선택 중인 공간이 있으면 그걸 기본값으로 (한 번 더 고르게 하지 않는다)
+    const sels=[];
+    if(STATE.selectedKind==='space'&&STATE.selectedId) sels.push(STATE.selectedId);
+    (STATE.boxSelection||[]).forEach(b=>{if(b.kind==='space')sels.push(b.id);});
+    cfg.spaceIds=[...new Set(sels)];
+  }
+  const wrap=document.createElement('div');
+  wrap.id='print-dialog';
+  wrap.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.6);display:flex;'+
+    'justify-content:center;align-items:center;padding:14px';
+  const box=document.createElement('div');
+  box.style.cssText='width:min(1140px,97vw);height:min(780px,94vh);background:var(--bg-card,#1A1B2E);'+
+    'border:1px solid var(--gold,#C9A961);border-radius:10px;box-shadow:0 12px 48px rgba(0,0,0,0.6);'+
+    'display:flex;flex-direction:column;overflow:hidden';
+  box.innerHTML=
+    '<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border,#3D4466)">'+
+      '<div style="font-size:14px;font-weight:700;color:var(--text-primary,#F5F1EB)">🖨 인쇄 설정</div>'+
+      '<div id="pd-info" style="font-size:11.5px;color:var(--text-secondary,#A9B0C9)"></div>'+
+      '<button type="button" class="btn sm" id="pd-x" style="margin-left:auto">닫기 (Esc)</button>'+
+    '</div>'+
+    '<div style="flex:1;display:flex;min-height:0">'+
+      '<div id="pd-left" style="width:310px;flex:none;overflow-y:auto;padding:12px 13px;'+
+        'border-right:1px solid var(--border,#3D4466)"></div>'+
+      '<div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:10px 12px">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">'+
+          '<button type="button" class="btn sm" id="pd-pg1">1페이지 · 도면</button>'+
+          '<button type="button" class="btn sm" id="pd-pg2">2페이지 · 부속표</button>'+
+          '<div id="pd-busy" style="margin-left:auto;font-size:11px;color:var(--gold,#C9A961)"></div>'+
+        '</div>'+
+        '<div id="pd-preview" style="flex:1;min-height:0;background:#6B6F7E;border-radius:6px;'+
+          'display:flex;align-items:center;justify-content:center;overflow:hidden;padding:8px"></div>'+
+        '<div style="margin-top:9px">'+
+          '<div style="font-size:10.5px;letter-spacing:0.06em;color:var(--gold,#C9A961);margin-bottom:5px;font-weight:700">'+
+            '용도별 프리셋 — 눌러서 비교</div>'+
+          '<div id="pd-thumbs"></div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:7px;padding:10px 14px;border-top:1px solid var(--border,#3D4466)">'+
+      '<div id="pd-hint" style="font-size:11px;color:var(--text-tertiary,#7B82B5);align-self:center"></div>'+
+      '<button type="button" class="btn sm" id="pd-close" style="margin-left:auto">닫기</button>'+
+      '<button type="button" class="btn sm gold" id="pd-print" style="font-weight:700">🖨 인쇄하기</button>'+
+    '</div>';
+  wrap.appendChild(box);
+  wrap.addEventListener('pointerdown',e=>{if(e.target===wrap)closePrintDialog();});
+  document.body.appendChild(wrap);
+  _printDlgEl=wrap;
+  _printPreviewPage=1;
+  document.getElementById('pd-x').addEventListener('click',closePrintDialog);
+  document.getElementById('pd-close').addEventListener('click',closePrintDialog);
+  document.getElementById('pd-print').addEventListener('click',()=>{closePrintDialog();printPlan();});
+  document.getElementById('pd-pg1').addEventListener('click',()=>{_printPreviewPage=1;_pdSyncPageBtns();_pdPreview();});
+  document.getElementById('pd-pg2').addEventListener('click',()=>{_printPreviewPage=2;_pdSyncPageBtns();_pdPreview();});
+  _pdRenderLeft();
+  _pdSyncPageBtns();
+  _pdPreview();
+  _pdThumbs();
+}
+function _pdSyncPageBtns(){
+  const c=printCfg();
+  const b1=document.getElementById('pd-pg1'),b2=document.getElementById('pd-pg2');
+  if(b1) b1.classList.toggle('gold',_printPreviewPage===1);
+  if(b2){b2.classList.toggle('gold',_printPreviewPage===2);b2.disabled=!c.page2;b2.style.opacity=c.page2?'1':'0.45';}
+}
+function _pdRenderLeft(){
+  const cfg=printCfg();
+  const left=document.getElementById('pd-left');
+  if(!left) return;
+  left.innerHTML=_pdLeftHTML(cfg);
+  const thumbs=document.getElementById('pd-thumbs');
+  if(thumbs&&!thumbs.innerHTML) thumbs.innerHTML=_pdThumbsHTML(cfg);
+  left.querySelectorAll('input[name="pd-region"]').forEach(r=>r.addEventListener('change',()=>{
+    cfg.region=r.value;
+    if(cfg.region==='rect'&&!cfg.rect){startPrintRegionPick();return;}
+    _pdRenderLeft();_pdPreview();_pdThumbs();
+  }));
+  const pick=document.getElementById('pd-pick-rect');
+  if(pick) pick.addEventListener('click',startPrintRegionPick);
+  left.querySelectorAll('.pd-space').forEach(b=>b.addEventListener('click',()=>{
+    const id=b.dataset.id, i=cfg.spaceIds.indexOf(id);
+    if(i>=0) cfg.spaceIds.splice(i,1); else cfg.spaceIds.push(id);
+    cfg.region='space';
+    _pdRenderLeft();_pdPreview();_pdThumbs();
+  }));
+  ['pd-paper','pd-ori','pd-scale','pd-symlabel'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('change',()=>{
+      const v=el.value;
+      if(id==='pd-paper') cfg.paper=v;
+      else if(id==='pd-ori') cfg.orientation=v;
+      else if(id==='pd-scale') cfg.scale=(v==='auto')?'auto':parseInt(v,10);
+      else cfg.symbolLabels=v;
+      _pdPreview();
+    });
+  });
+  left.querySelectorAll('.pd-layer').forEach(c=>c.addEventListener('change',()=>{
+    cfg.layers[c.dataset.k]=c.checked;
+    cfg.preset='custom';
+    _pdMarkPreset();_pdPreview();
+  }));
+  left.querySelectorAll('.pd-opt').forEach(c=>c.addEventListener('change',()=>{
+    cfg[c.dataset.k]=c.checked;
+    _pdSyncPageBtns();
+    if(c.dataset.k==='page2'&&!cfg.page2&&_printPreviewPage===2){_printPreviewPage=1;_pdSyncPageBtns();}
+    _pdPreview();
+  }));
+  _pdBindPresets();
+}
+function _pdBindPresets(){
+  const host=document.getElementById('pd-thumbs');
+  if(!host) return;
+  host.querySelectorAll('.pd-preset').forEach(b=>{
+    if(b._bound) return; b._bound=true;
+    b.addEventListener('click',()=>{
+      applyPrintPreset(b.dataset.key);
+      _pdRenderLeft();_pdMarkPreset();_pdPreview();
+    });
+  });
+}
+function _pdMarkPreset(){
+  const cfg=printCfg(),host=document.getElementById('pd-thumbs');
+  if(!host) return;
+  host.querySelectorAll('.pd-preset').forEach(b=>{
+    const on=cfg.preset===b.dataset.key;
+    b.style.background=on?'rgba(201,169,97,0.16)':'transparent';
+    b.style.borderColor=on?'var(--gold,#C9A961)':'var(--border,#3D4466)';
+  });
+}
+// 미리보기 — 실제 인쇄와 같은 시트 HTML 을 그대로 축소해 보여준다
+function _pdPreview(){
+  if(_printPreviewTimer) clearTimeout(_printPreviewTimer);
+  const busy=document.getElementById('pd-busy');
+  if(busy) busy.textContent='미리보기 생성 중…';
+  _printPreviewTimer=setTimeout(()=>{
+    _printPreviewTimer=null;
+    const host=document.getElementById('pd-preview');
+    if(!host||!_printDlgEl) return;
+    const cfg=printCfg();
+    const bbox=printRegionBBox(cfg);
+    const info=document.getElementById('pd-info');
+    if(!bbox){
+      host.innerHTML='<div style="color:#fff;font-size:12px">인쇄할 도면이 없습니다 — 공간을 먼저 그려주세요</div>';
+      if(info) info.textContent='';
+      if(busy) busy.textContent='';
+      return;
+    }
+    const L=choosePrintLayout(bbox,cfg);
+    if(info) info.textContent=printRegionLabel(cfg)+' · '+L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+
+      ' · 1/'+L.scale+' · '+Math.round(bbox.w)+'×'+Math.round(bbox.h)+'mm';
+    let html;
+    try{
+      const img=(_printPreviewPage===2&&cfg.page2)?null:_printCapture(bbox,L,cfg,60);
+      html=buildPrintSheet(img,L,_printInfo(),cfg,{preview:true,onlyPage:_printPreviewPage});
+    }catch(err){
+      host.innerHTML='<div style="color:#fff;font-size:12px">미리보기 실패: '+escapeHtml(err.message||'')+'</div>';
+      if(busy) busy.textContent='';
+      return;
+    }
+    const MM=96/25.4;
+    const sw=L.pw*MM, sh=L.ph*MM;
+    const bw=Math.max(80,host.clientWidth-16), bh=Math.max(80,host.clientHeight-16);
+    const k=Math.min(bw/sw,bh/sh);
+    host.innerHTML='';
+    const holder=document.createElement('div');
+    holder.style.cssText='width:'+(sw*k)+'px;height:'+(sh*k)+'px;box-shadow:0 4px 18px rgba(0,0,0,0.45);background:#fff';
+    const fr=document.createElement('iframe');
+    fr.setAttribute('title','인쇄 미리보기');
+    fr.style.cssText='width:'+sw+'px;height:'+sh+'px;border:none;transform:scale('+k+');transform-origin:top left;background:#fff';
+    holder.appendChild(fr);host.appendChild(holder);
+    fr.srcdoc=html;
+    if(busy) busy.textContent='';
+  },130);
+}
+// 프리셋 썸네일 — 같은 범위·용지로 4종을 나란히 (눌러서 비교)
+function _pdThumbs(){
+  const host=document.getElementById('pd-thumbs');
+  if(!host) return;
+  if(!host.innerHTML) host.innerHTML=_pdThumbsHTML(printCfg());
+  _pdBindPresets();_pdMarkPreset();
+  const token=++_printThumbToken;
+  const cfg=printCfg();
+  const bbox=printRegionBBox(cfg);
+  if(!bbox) return;
+  const queue=PRINT_PRESETS.slice();
+  const step=()=>{
+    if(token!==_printThumbToken||!_printDlgEl) return;
+    const p=queue.shift();
+    if(!p) return;
+    const cell=host.querySelector('.pd-thumb[data-key="'+p.key+'"]');
+    if(cell){
+      try{
+        const tcfg={...cfg,preset:p.key,layers:printPresetLayers(p.key),symbolLabels:p.symbolLabels||'off'};
+        const L=choosePrintLayout(bbox,tcfg);
+        const img=_printCapture(bbox,L,tcfg,22);
+        cell.innerHTML='<img alt="'+p.name+'" src="'+img.url+'" style="width:100%;height:100%;object-fit:contain">';
+      }catch(err){cell.innerHTML='<span style="font-size:10px;color:#c33">실패</span>';}
+    }
+    setTimeout(step,0); // 한 장씩 — 창이 멈춘 것처럼 보이지 않게
+  };
+  setTimeout(step,0);
+}
+// 도면에서 인쇄 영역을 드래그로 지정 (tools.js 의 _printRectActive 와 짝)
+function startPrintRegionPick(){
+  closePrintDialog();
+  _printRectActive=true;_printRectP1=null;
+  const c=printCfg();c.region='rect';
+  showStatus('인쇄 영역: 도면에서 드래그해 사각형을 그리세요 (Esc 취소)');
+  cmdToast('⬚ 인쇄할 영역을 드래그하세요');
+}
+function finishPrintRegionPick(mm1,mm2){
+  const c=printCfg();
+  if(Math.abs(mm2.x-mm1.x)<200||Math.abs(mm2.y-mm1.y)<200){
+    cmdToast('영역이 너무 작습니다 — 다시 드래그하세요');
+    _printRectActive=true;_printRectP1=null;
+    return;
+  }
+  c.region='rect';
+  c.rect={x1:Math.round(mm1.x),y1:Math.round(mm1.y),x2:Math.round(mm2.x),y2:Math.round(mm2.y)};
+  showStatus('인쇄 영역 지정: '+Math.abs(c.rect.x2-c.rect.x1)+'×'+Math.abs(c.rect.y2-c.rect.y1)+'mm');
+  openPrintDialog();
+}
+function cancelPrintRegionPick(){
+  _printRectActive=false;_printRectP1=null;
+  drawGroup.destroyChildren();previewLayer.batchDraw();
+  showStatus('인쇄 영역 지정 취소');
 }
 
 // ===== v5.7: AI 생성 파이프라인 SSoT 번들 export =====
@@ -3405,7 +3874,10 @@ function uploadPlanToCloud(payload,silent){
   });
 }
 document.getElementById('btn-send-estimate').addEventListener('click',()=>sendToEstimateOS());
-document.getElementById('btn-print').addEventListener('click',printPlan);
+// 2026-08-28: [인쇄] = 설정·미리보기 창. Shift+클릭은 직전 설정으로 바로 인쇄
+document.getElementById('btn-print').addEventListener('click',e=>{
+  if(e&&e.shiftKey) printPlan(); else openPrintDialog();
+});
 // v5.8 Task 3: DXF
 document.getElementById('btn-dxf-export').addEventListener('click',exportDXF);
 document.getElementById('btn-dxf-import').addEventListener('click',()=>document.getElementById('dxf-file-input').click());
@@ -4018,6 +4490,15 @@ function processCommand(rawCmd){
   if(/^(k|palette|팔레트)$/i.test(c)){openCmdPalette();return;}
   // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
+  // 2026-08-28: 인쇄 — 기본은 설정창, 'print now' 는 바로, 'print area' 는 영역 지정
+  const prM=c.match(/^(?:print|인쇄|prn)(?:\s+(now|area|바로|영역))?$/i);
+  if(prM){
+    const v=(prM[1]||'').toLowerCase();
+    if(v==='now'||v==='바로') printPlan();
+    else if(v==='area'||v==='영역') startPrintRegionPick();
+    else openPrintDialog();
+    return;
+  }
   // 2026-08-28: 기호 이름 라벨 — lab 은 순환, 'lab off/smart/all' 은 직접 지정
   const labM=c.match(/^(?:lab|label|라벨)(?:\s+(smart|off|all|묶음|끕|전부))?$/i);
   if(labM){

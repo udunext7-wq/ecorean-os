@@ -1911,6 +1911,191 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('라벨: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-28: 인쇄 설정 + 미리보기 (대표 지시 — "원하는 포인트를 인쇄하기가 힘들다") ===
+  try{
+    const _bakPR={spaces:STATE.spaces.slice(),vertices:STATE.vertices.slice(),walls:STATE.walls.slice(),
+      lights:STATE.lights.slice(),cfg:STATE.printConfig,zoom:STATE.zoom,ox:STATE.offsetX,oy:STATE.offsetY,
+      layers:{...STATE.layers},theme:document.body.getAttribute('data-theme'),
+      selK:STATE.selectedKind,selI:STATE.selectedId,mode:STATE.symbolLabelMode};
+    const PX=1200000;
+    STATE.printConfig=null;
+    // 4×3m 방 하나 + 다운라이트 4개 (인쇄 대상)
+    const pv=polygonToVertexIds([{x:PX,y:PX},{x:PX+4000,y:PX},{x:PX+4000,y:PX+3000},{x:PX,y:PX+3000}]);
+    const psp=makeSpaceVEF(pv,{name:'인쇄검증',type:'ROOM',typeIndex:94,layerName:'A-AREA-ROOM-94'});
+    STATE.spaces.push(psp);
+    const pl=[0,1,2,3].map(i=>{const o={id:makeId('li'),type:'downlight',x:PX+800+i*800,y:PX+1500,angle:0,inch:3};
+      STATE.lights.push(o);return o;});
+
+    // [PR1] 기본 설정
+    let c=printCfg();
+    assert('인쇄: 기본 설정 — 전체·자동·전체도면',c.region==='all'&&c.paper==='auto'&&c.scale==='auto'&&c.preset==='full',
+      [c.region,c.paper,c.scale,c.preset].join('/'));
+    assert('인쇄: 기본 표시요소 채워짐',!!c.layers&&c.layers.walls===true&&c.layers.furniture===true);
+
+    // [PR2] 프리셋 — 시공 도면은 가구·조명을 뺀다
+    c=applyPrintPreset('construct');
+    assert('인쇄: 시공 프리셋 — 가구·조명 제외',c.layers.furniture===false&&c.layers.lights===false&&c.layers.electric===false);
+    assert('인쇄: 시공 프리셋 — 벽·치수 유지',c.layers.walls===true&&c.layers.dimensions===true);
+    // [PR3] 조명·전기 프리셋은 기호 이름을 켠다
+    c=applyPrintPreset('mep');
+    assert('인쇄: 조명 프리셋 — 기호 이름 묶음',c.symbolLabels==='smart'&&c.layers.lights===true&&c.layers.furniture===false);
+    assert('인쇄: 프리셋별 도면명',printDrawingTitle({preset:'mep'}).indexOf('전기')>=0&&
+      printDrawingTitle({preset:'furniture'}).indexOf('가구')>=0,printDrawingTitle({preset:'mep'}));
+    c=applyPrintPreset('full');
+
+    // [PR4] 범위 — 드래그 사각형
+    c.region='rect';c.rect={x1:PX+1000,y1:PX+500,x2:PX+3000,y2:PX+2500};
+    let bb=printRegionBBox(c);
+    assert('인쇄: 선택 영역 범위',Math.round(bb.minX)===PX+700&&Math.round(bb.maxX)===PX+3300&&
+      Math.round(bb.w)===2600,[bb.minX-PX,bb.maxX-PX,bb.w].join('/'));
+    assert('인쇄: 범위 이름 — 선택 영역',printRegionLabel(c)==='선택 영역');
+    // [PR5] 범위 — 공간 지정
+    c.region='space';c.spaceIds=[psp.id];
+    bb=printRegionBBox(c);
+    assert('인쇄: 공간 지정 범위',Math.round(bb.minX)===PX-900&&Math.round(bb.maxX)===PX+4900,
+      [bb.minX-PX,bb.maxX-PX].join('/'));
+    // [PR6] 범위 — 현재 화면
+    c.region='view';
+    bb=printRegionBBox(c);
+    const vw=pxToMm(stage.width()-STATE.offsetX)-pxToMm(0-STATE.offsetX);
+    assert('인쇄: 현재 화면 범위',Math.abs(bb.w-vw)<2,bb.w+' vs '+vw);
+    c.region='all';c.spaceIds=[];
+
+    // [PR7] 용지·방향·축척 강제
+    const bbAll=printRegionBBox(c);
+    let L=choosePrintLayout(bbAll,{paper:'A3',orientation:'auto',scale:'auto',titleBlock:true});
+    assert('인쇄: 용지 강제 A3',L.paper==='A3',L.paper);
+    L=choosePrintLayout(bbAll,{paper:'auto',orientation:'portrait',scale:'auto',titleBlock:true});
+    assert('인쇄: 방향 강제 세로',L.orientation==='portrait'&&L.ph>L.pw,L.orientation+' '+L.pw+'x'+L.ph);
+    L=choosePrintLayout(bbAll,{paper:'A4',orientation:'landscape',scale:20,titleBlock:true});
+    assert('인쇄: 축척 강제 유지 (자동 변경 금지)',L.scale===20,'scale '+L.scale);
+    assert('인쇄: 넘치면 잘림 표시',L.overflow===true);
+    // [PR8] 표제란을 끄면 도면 영역이 그만큼 커진다
+    const La=choosePrintLayout(bbAll,{paper:'A3',orientation:'landscape',scale:'auto',titleBlock:true});
+    const Lb=choosePrintLayout(bbAll,{paper:'A3',orientation:'landscape',scale:'auto',titleBlock:false});
+    assert('인쇄: 표제란 OFF → 도면 영역 확대',Math.abs((Lb.availH-La.availH)-PRINT_TB_H)<0.01&&Lb.tbH===0,
+      La.availH+' → '+Lb.availH);
+
+    // [PR9] 시트 HTML — 미리보기에는 자동 인쇄 스크립트가 없다
+    const info=_printInfo();
+    const hPrev=buildPrintSheet({url:'data:,',wMm:100,hMm:80},La,info,c,{preview:true,onlyPage:1});
+    const hReal=buildPrintSheet('data:,',La,info,c,{});
+    assert('인쇄: 미리보기는 자동인쇄 안 함',hPrev.indexOf('window.print')<0&&hReal.indexOf('window.print')>=0);
+    assert('인쇄: 1페이지만 보기 — 부속표 제외',hPrev.indexOf('공간 면적표')<0&&hReal.indexOf('공간 면적표')>=0);
+    const h2=buildPrintSheet('data:,',La,info,c,{preview:true,onlyPage:2});
+    assert('인쇄: 2페이지만 보기 — 도면 제외',h2.indexOf('공간 면적표')>=0&&h2.indexOf('class="draw"')<0);
+    // [PR10] 양식 옵션
+    const cOff={...c,titleBlock:false,scaleBar:false,north:false,page2:false};
+    const hOff=buildPrintSheet('data:,',Lb,info,cOff,{preview:true});
+    assert('인쇄: 표제란 OFF 반영',hOff.indexOf('PROJECT')<0);
+    assert('인쇄: 축척바·방위표 OFF 반영',hOff.indexOf('SCALE BAR')<0&&hOff.indexOf('>N<')<0);
+    assert('인쇄: 2페이지 OFF 반영',hOff.indexOf('공간 면적표')<0);
+
+    // [PR11] 캡처 — 끝나면 화면 상태가 원래대로 돌아온다
+    const z0=STATE.zoom,ox0=STATE.offsetX,th0=document.body.getAttribute('data-theme');
+    const cCap={...c,preset:'construct',layers:printPresetLayers('construct'),symbolLabels:'off'};
+    const Lcap=choosePrintLayout(bbAll,cCap);
+    const url1=_printCapture(bbAll,Lcap,cCap,24);
+    assert('인쇄: 캡처 결과 PNG',!!url1&&typeof url1.url==='string'&&url1.url.indexOf('data:image/png')===0);
+    // 고른 범위만 딱 떠야 한다 — 종전엔 용지 전체를 떠서 옆방까지 따라 찍혔다
+    assert('인쇄: 이미지 = 범위 ÷ 축척',
+      Math.abs(url1.wMm-bbAll.w/Lcap.scale)<0.5&&Math.abs(url1.hMm-bbAll.h/Lcap.scale)<0.5,
+      url1.wMm.toFixed(1)+'×'+url1.hMm.toFixed(1)+' vs '+(bbAll.w/Lcap.scale).toFixed(1)+'×'+(bbAll.h/Lcap.scale).toFixed(1));
+    assert('인쇄: 이미지가 도면 영역 안에 들어간다',
+      url1.wMm<=Lcap.availW+0.5&&url1.hMm<=Lcap.availH+0.5);
+    assert('인쇄: 캡처 후 화면 원복',STATE.zoom===z0&&STATE.offsetX===ox0&&STATE.printMode===false&&
+      STATE.printLabels===false&&document.body.getAttribute('data-theme')===th0);
+    assert('인쇄: 캡처 후 레이어 원복',STATE.layers.furniture===_bakPR.layers.furniture&&
+      STATE.layers.lights===_bakPR.layers.lights);
+    // [PR12] 표시 요소가 실제로 그림을 바꾼다 (조명 포함/제외)
+    const cMep={...c,preset:'mep',layers:printPresetLayers('mep'),symbolLabels:'off'};
+    const url2=_printCapture(bbAll,choosePrintLayout(bbAll,cMep),cMep,24);
+    assert('인쇄: 표시 요소가 결과에 반영',url1.url!==url2.url,'같은 이미지');
+    // 선택 영역은 그 범위만 — 전체보다 작은 이미지가 나와야 한다
+    const cRect={...c,region:'rect',rect:{x1:PX+1000,y1:PX+500,x2:PX+3000,y2:PX+2500}};
+    const bbRect=printRegionBBox(cRect);
+    const Lr=choosePrintLayout(bbRect,cRect);
+    const url3=_printCapture(bbRect,Lr,cRect,24);
+    assert('인쇄: 선택 영역만 담긴다',
+      Math.abs(url3.wMm-bbRect.w/Lr.scale)<0.5&&Math.abs(url3.hMm/url3.wMm-bbRect.h/bbRect.w)<0.02,
+      url3.wMm.toFixed(1)+'×'+url3.hMm.toFixed(1));
+
+    // [PR13] 인쇄 중 기호 이름 — 기본은 안 찍고, 켜면 찍는다
+    const cntLabels=()=>{let n=0;groups.lights.getChildren().forEach(x=>{
+      if(x.getClassName&&x.getClassName()==='Text')n++;});return n;};
+    const _z=STATE.zoom;STATE.zoom=1;
+    STATE.printMode=true;STATE.printLabels=false;renderLights();
+    assert('인쇄: 기본은 기호 이름 없음',cntLabels()===0,'n='+cntLabels());
+    STATE.printLabels=true;STATE.symbolLabelMode='smart';renderLights();
+    assert('인쇄: 이름 켜면 묶음 대표만',cntLabels()===1,'n='+cntLabels());
+    STATE.printMode=false;STATE.printLabels=false;STATE.zoom=_z;renderLights();
+
+    // [PR14] 설정창 — 열림·프리셋 4개·닫힘
+    openPrintDialog();
+    const dlg=document.getElementById('print-dialog');
+    assert('인쇄: 설정창 열림',!!dlg&&!!document.getElementById('pd-preview'));
+    assert('인쇄: 프리셋 썸네일 4종',dlg&&dlg.querySelectorAll('.pd-preset').length===PRINT_PRESETS.length,
+      dlg?dlg.querySelectorAll('.pd-preset').length:0);
+    assert('인쇄: 범위 라디오 4종',dlg&&dlg.querySelectorAll('input[name="pd-region"]').length===4);
+    assert('인쇄: 표시요소 체크박스',dlg&&dlg.querySelectorAll('.pd-layer').length>=10);
+    // 체크 상태가 설정과 일치해야 한다 (표제란이 켜져 있는데 체크가 비어 보이던 문제)
+    const optOf=k=>dlg&&dlg.querySelector('.pd-opt[data-k="'+k+'"]');
+    assert('인쇄: 양식 체크 상태 일치',
+      ['titleBlock','scaleBar','north','page2'].every(k=>optOf(k)&&optOf(k).checked===!!printCfg()[k]),
+      ['titleBlock','scaleBar','north','page2'].map(k=>k+'='+(optOf(k)&&optOf(k).checked)).join(' '));
+    const layOf=k=>dlg&&dlg.querySelector('.pd-layer[data-k="'+k+'"]');
+    assert('인쇄: 표시요소 체크 상태 일치',
+      !!layOf('furniture')&&layOf('furniture').checked===!!printCfg().layers.furniture);
+    closePrintDialog();
+    // 양식을 끔 다음 다시 열면 꺼진 채로 보여야 한다
+    printCfg().titleBlock=false;
+    openPrintDialog();
+    const dlg2=document.getElementById('print-dialog');
+    const tb2=dlg2&&dlg2.querySelector('.pd-opt[data-k="titleBlock"]');
+    assert('인쇄: 표제란 OFF 상태 유지',!!tb2&&tb2.checked===false);
+    printCfg().titleBlock=true;
+    closePrintDialog();
+    assert('인쇄: 설정창 닫힘',!document.getElementById('print-dialog'));
+
+    // [PR15] 영역 드래그 확정 / 너무 작은 영역 거부
+    _printRectActive=false;
+    STATE.printConfig.region='all';STATE.printConfig.rect=null;
+    finishPrintRegionPick({x:PX+500,y:PX+500},{x:PX+600,y:PX+600}); // 100mm — 거부
+    assert('인쇄: 너무 작은 영역 거부',!STATE.printConfig.rect&&_printRectActive===true);
+    _printRectActive=false;_printRectP1=null;
+    finishPrintRegionPick({x:PX+500,y:PX+500},{x:PX+3500,y:PX+2500});
+    assert('인쇄: 영역 확정 저장',!!STATE.printConfig.rect&&STATE.printConfig.region==='rect'&&
+      STATE.printConfig.rect.x2===PX+3500);
+    closePrintDialog(); // finishPrintRegionPick 이 설정창을 다시 열어둔다
+
+    // [PR16] 명령어
+    if(STATE.cmdMode&&typeof exitCmdMode==='function') exitCmdMode();
+    processCommand('print');
+    assert('인쇄: print 명령 → 설정창',!!document.getElementById('print-dialog'));
+    closePrintDialog();
+    processCommand('print area');
+    assert('인쇄: print area 명령 → 영역 지정 모드',_printRectActive===true);
+    if(typeof cancelPrintRegionPick==='function') cancelPrintRegionPick();
+
+    // [PR17] 저장 → 불러오기 왕복 보존
+    STATE.printConfig.paper='A3';STATE.printConfig.preset='mep';
+    const rawPR=JSON.stringify(buildJSON());
+    STATE.printConfig=null;
+    applyLoadedData(JSON.parse(rawPR));
+    assert('인쇄: 설정 왕복 보존',!!STATE.printConfig&&STATE.printConfig.paper==='A3'&&
+      STATE.printConfig.preset==='mep',JSON.stringify(STATE.printConfig&&[STATE.printConfig.paper,STATE.printConfig.preset]));
+
+    STATE.spaces=_bakPR.spaces;STATE.vertices=_bakPR.vertices;STATE.walls=_bakPR.walls;
+    STATE.lights=_bakPR.lights;STATE.printConfig=_bakPR.cfg;STATE.layers=_bakPR.layers;
+    STATE.zoom=_bakPR.zoom;STATE.offsetX=_bakPR.ox;STATE.offsetY=_bakPR.oy;
+    STATE.selectedKind=_bakPR.selK;STATE.selectedId=_bakPR.selI;STATE.symbolLabelMode=_bakPR.mode;
+    if(_bakPR.theme) document.body.setAttribute('data-theme',_bakPR.theme);
+    else document.body.removeAttribute('data-theme');
+    if(typeof invalidateSymbolLabelPlan==='function') invalidateSymbolLabelPlan();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('인쇄: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),
