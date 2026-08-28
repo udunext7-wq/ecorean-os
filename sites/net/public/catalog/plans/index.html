@@ -246,12 +246,13 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       });
     });
   }
-  // 도면 성격 구분 — 실제 단지 도면인지, 유형 기준 재작도인지 이용자가 바로 알 수 있게
-  // (재작도는 공공데이터의 면적구간으로 표준 유형을 고른 것이라 단지별 실제 구조가 아니다)
+  // 도면 성격 구분 — 이 라이브러리에는 실제 도면만 올린다 (2026-08-28 대표 지시).
+  // 재작도·표준 유형은 전량 폐기했고, 아래 두 분기는 옛 행이 남아 있을 때 이용자에게 경고하려는 안전장치다.
   function planKind(r){
     var note=r.source_note||'';
     if(/재작도/.test(note))return{cls:'redraw',label:'유형 재작도 · 실도면 아님'};
-    if(r.source==='minicad')return{cls:'minicad',label:'ECOREAN 표준 유형'};
+    if(r.source==='minicad')return{cls:'redraw',label:'표준 유형 · 실도면 아님'};
+    if(/건설사 분양홈페이지/.test(note))return{cls:'realplan',label:'실도면 · 건설사 원본'};
     if(r.source==='survey'||r.source==='customer')return{cls:'realplan',label:SRC_LABEL[r.source]};
     return{cls:r.source,label:SRC_LABEL[r.source]||r.source};
   }
@@ -617,13 +618,17 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       bgBtn.textContent='📐 MiniCAD 밑그림으로 열기';
       bgBtn.href=bgHref;
     }
-    // 재작도 도면은 단지별 실제 구조가 아니므로 견적 전 실측이 필수임을 상단에 명시
+    // 실도면이 아닌 옛 행은 폐기 대상임을, 면적 미확정 행은 검수가 남았음을 상단에 명시
     var kind=planKind(r);
+    var note=r.source_note||'';
     document.getElementById('dtWarn').innerHTML = kind.cls==='redraw'
       ? '<div class="warn-redraw"><b>⚠ 이 도면은 「'+esc(r.complex_name)+'」의 실제 평면도가 아닙니다.</b><br>'+
-        '공공데이터의 전용면적 구간으로 같은 평형대의 표준 유형을 골라 그린 참고용 도면입니다. '+
-        '방 배치·벽 위치가 실제와 다를 수 있으니 <b>견적·시공 기준으로 쓰지 마시고 반드시 현장 실측</b>을 거치세요.<br>'+
-        '단지명·주소·전용면적·좌표는 공공데이터 기반 사실 정보입니다.</div>'
+        '유형 기준으로 그린 참고용 도면이라 방 배치·벽 위치가 실제와 다릅니다. '+
+        '<b>폐기 대상 행</b>이니 견적·시공 기준으로 쓰지 마세요.</div>'
+      : /검수 필요/.test(note)
+      ? '<div class="warn-redraw"><b>⚠ 도면은 건설사 원본이지만 평형·전용면적 표기가 미확정입니다.</b><br>'+
+        '원본 파일명이 순번(unit01…)뿐이라 주택형을 순서로 대응시킨 상태입니다. '+
+        '도면 안에 적힌 전용면적을 기준으로 삼고, 목록의 평형 표기는 검수 전까지 신뢰하지 마세요.</div>'
       : '';
     var rows=[['지역',[r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' ')],
               ['평형/타입',[r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · ')],

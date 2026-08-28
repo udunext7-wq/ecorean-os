@@ -15,3 +15,6 @@ logs/
 
 # 분양 평면도 원본 — 재작도 근거자료(내부 참조용). 공개 저장소에 재배포하지 않는다.
 assets/plan-sources/
+
+# 분양 실도면 정규화본 — Supabase Storage 로만 배포한다 (공개 저장소에 두지 않음)
+assets/plan-staging/
