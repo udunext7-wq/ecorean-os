@@ -115,6 +115,7 @@ export default function BuildingPage() {
   const [floors, setFloors] = useState<Record<string, FloorGroup> | null>(null);
   const [floorLoading, setFloorLoading] = useState(false);
   const [floorError, setFloorError] = useState<string | null>(null);
+  const [floorMeta, setFloorMeta] = useState<{ source: string; fetchedAt: string | null } | null>(null);
 
   const [recent, setRecent] = useState<Bld[]>([]);
   const [status, setStatus] = useState<{
@@ -201,6 +202,7 @@ export default function BuildingPage() {
     setError(null);
     setFloors(null);
     setFloorError(null);
+    setFloorMeta(null);
     setDongQ('');
     try {
       const qs = new URLSearchParams({
@@ -236,7 +238,7 @@ export default function BuildingPage() {
     }
   }, []);
 
-  async function loadFloors() {
+  async function loadFloors(fresh = false) {
     const l = locRef.current;
     setFloorLoading(true);
     setFloorError(null);
@@ -249,6 +251,7 @@ export default function BuildingPage() {
         platGbCd: l.plat,
         op: 'floors',
       });
+      if (fresh) qs.set('fresh', '1');
       const res = await fetch(`/api/gov/building?${qs.toString()}`);
       const j = await res.json();
       if (!res.ok) {
@@ -256,6 +259,7 @@ export default function BuildingPage() {
         return;
       }
       setFloors(j.byDong as Record<string, FloorGroup>);
+      setFloorMeta({ source: j.source, fetchedAt: j.fetchedAt ?? null });
     } catch (e) {
       setFloorError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -730,16 +734,30 @@ export default function BuildingPage() {
                 {!floors ? (
                   <button
                     type="button"
-                    onClick={loadFloors}
+                    onClick={() => loadFloors()}
                     disabled={floorLoading}
                     className="rounded-full border border-[#9BC9D8]/35 px-4 py-1 text-xs text-[#c8e4ee] hover:bg-[#9BC9D8]/10 disabled:opacity-40"
                   >
                     {floorLoading ? '불러오는 중…' : '층별 용도·면적 불러오기'}
                   </button>
                 ) : (
-                  <span className="text-xs text-[#94aab8]">
-                    {selFloors ? `${selFloors.floors.length}개 층` : '이 동의 층 정보가 없습니다'}
-                  </span>
+                  <>
+                    <span className="text-xs text-[#94aab8]">
+                      {selFloors ? `${selFloors.floors.length}개 층` : '이 동의 층 정보가 없습니다'}
+                    </span>
+                    <span className="text-[10px] text-[#9BC9D8]/60">
+                      {floorMeta?.source === 'cache' ? '캐시' : '실시간 조회'}
+                      {floorMeta?.fetchedAt ? ` · ${new Date(floorMeta.fetchedAt).toLocaleDateString('ko-KR')}` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => loadFloors(true)}
+                      disabled={floorLoading}
+                      className="rounded-full border border-[#9BC9D8]/25 px-2.5 py-0.5 text-[10px] text-[#94aab8] hover:text-[#c8e4ee] disabled:opacity-40"
+                    >
+                      {floorLoading ? '갱신 중…' : '새로 받기'}
+                    </button>
+                  </>
                 )}
               </div>
               {floorError ? <p className="mt-2 text-xs text-[#E5726A]">{floorError}</p> : null}

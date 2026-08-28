@@ -72,6 +72,12 @@ async function searchKakao(key: string, q: string, limit: number): Promise<AddrH
     'https://dapi.kakao.com/v2/local/search/address.json?' +
     new URLSearchParams({ query: q, size: String(limit) }).toString();
   const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` }, cache: 'no-store' });
+  if (res.status === 401 || res.status === 403) {
+    // 알림용 REST 키라도 로컬(주소) API 는 카카오 개발자센터에서 별도로 열어야 하는 경우가 있다.
+    throw new Error(
+      '카카오 로컬(주소) API 권한이 없습니다. 카카오 개발자센터 → 내 앱 → 카카오맵(로컬) 활성화, 또는 도로명주소 API 키(JUSO_KEY)를 등록해 주세요.',
+    );
+  }
   if (!res.ok) throw new Error(`카카오 로컬 API ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const json = (await res.json()) as {
     documents?: Array<{
