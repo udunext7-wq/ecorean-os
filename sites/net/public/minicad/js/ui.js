@@ -321,7 +321,8 @@ function saveSnapPrefs(){
   try{localStorage.setItem(SNAP_LS_KEY,JSON.stringify({
     grid:!!STATE.snap.grid,endpoint:!!STATE.snap.endpoint,
     ghost:!!STATE.snap.ghost,ortho:!!STATE.snap.ortho,gridSize:STATE.gridSize,
-    showCircuits:!!STATE.showCircuits}));}catch(_){}
+    showCircuits:!!STATE.showCircuits,
+    symbolLabelMode:STATE.symbolLabelMode}));}catch(_){} // 2026-08-28: 라벨 모드도 유지
 }
 function loadSnapPrefs(){
   try{
@@ -329,6 +330,11 @@ function loadSnapPrefs(){
     if(!p) return false;
     ['grid','endpoint','ghost','ortho'].forEach(k=>{if(typeof p[k]==='boolean') STATE.snap[k]=p[k];});
     if(typeof p.showCircuits==='boolean'){STATE.showCircuits=p.showCircuits;if(typeof updateCircuitsBtn==='function')updateCircuitsBtn();}
+    // 2026-08-28: 기호 이름 라벨 모드 복원
+    if(typeof SYMBOL_LABEL_MODES!=='undefined'&&SYMBOL_LABEL_MODES.indexOf(p.symbolLabelMode)>=0){
+      STATE.symbolLabelMode=p.symbolLabelMode;
+      if(typeof updateSymbolLabelBtn==='function') updateSymbolLabelBtn();
+    }
     if(p.gridSize&&isFinite(p.gridSize)){
       STATE.gridSize=p.gridSize;
       const g=document.getElementById('snap-unit'); if(g) g.value=String(p.gridSize);
@@ -704,6 +710,25 @@ function refreshDetail(){
         '<button type="button" class="btn sm" id="d-dl-apply-all" style="width:100%;margin-top:4px">같은 공간 다운라이트 전체 적용</button>'+
         '</div>';
     }
+    // 2026-08-28: 객체별 이름 글씨 표기 (대표 지시 — 평소엔 꺼두고 필요한 것만 켜둔다)
+    const canLabel=!!obj&&['lights','electric','hvac','fixtures'].indexOf(STATE.selectedKind)>=0
+      &&typeof symbolLabelEligible==='function'&&typeof symbolDefOf==='function'
+      &&symbolLabelEligible(STATE.selectedKind,symbolDefOf(STATE.selectedKind,obj));
+    let labelHtml='';
+    if(canLabel){
+      const _st=(obj.showLabel===true)?'on':(obj.showLabel===false)?'off':'auto';
+      labelHtml=
+        '<div style="margin-top:8px;padding:8px;background:rgba(123,160,91,0.08);border:1px solid rgba(123,160,91,0.35);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#7BA05B">이름 글씨 표기</div>'+
+        '<div style="display:flex;gap:4px">'+
+        [['auto','기본'],['on','항상 ON'],['off','숨김']].map(function(kv){
+          return '<button type="button" class="btn sm d-sym-lab" data-v="'+kv[0]+'" style="flex:1'+
+            (_st===kv[0]?';background:rgba(123,160,91,0.25);border-color:#7BA05B;color:#7BA05B':'')+'">'+kv[1]+'</button>';
+        }).join('')+
+        '</div>'+
+        '<div class="hint" style="margin-top:4px">기본 = 상단 [🏷 라벨] 설정을 따름 (지금: <b>'+
+        SYMBOL_LABEL_DESC[symbolLabelMode()]+'</b>) · 선택 중인 기호는 언제나 이름이 보입니다</div></div>';
+    }
     // 2026-08-27: 조명 점핑 패널 (대표 지시) — 조명↔조명 연결
     const isLightSel=STATE.selectedKind==='lights'&&obj;
     let jumpHtml='';
@@ -750,7 +775,7 @@ function refreshDetail(){
         '</div>';
     }
     dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      lenHtml+inchHtml+jumpHtml+circuitHtml+extraHtml+
+      lenHtml+inchHtml+labelHtml+jumpHtml+circuitHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -761,6 +786,14 @@ function refreshDetail(){
       document.getElementById('d-rot-90').addEventListener('click',()=>{obj.angle=((obj.angle||0)+90)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-m90').addEventListener('click',()=>{obj.angle=((obj.angle||0)-90+360)%360;saveHistory();renderAll();refreshUI();});
       document.getElementById('d-rot-180').addEventListener('click',()=>{obj.angle=((obj.angle||0)+180)%360;saveHistory();renderAll();refreshUI();});
+    }
+    if(canLabel){
+      document.querySelectorAll('.d-sym-lab').forEach(b=>b.addEventListener('click',()=>{
+        const v=b.dataset.v;
+        if(v==='auto') delete obj.showLabel; else obj.showLabel=(v==='on');
+        saveHistory();renderAll();refreshUI();
+        showStatus('이름 글씨: '+(v==='auto'?'기본 (상단 라벨 설정을 따름)':v==='on'?'항상 표시':'숨김'));
+      }));
     }
     if(isLightSel){
       const jb=document.getElementById('d-jump-link');
@@ -1869,6 +1902,29 @@ function toggleCircuits(){
         + (STATE.lights||[]).reduce((a,l)=>a+((l.jumpIds||[]).length),0);
   showStatus('배선 전체 보기: '+(STATE.showCircuits?('ON — 연결 '+n+'개'):'OFF'));
 }
+// 2026-08-28: 기호 이름 라벨 표시 모드 (대표 지시 — 다운라이트 글씨 도배·렉)
+const SYMBOL_LABEL_BTN={smart:'🏷 라벨·묶음',off:'🏷 라벨·끕',all:'🏷 라벨·전부'};
+const SYMBOL_LABEL_DESC={smart:'묶음 대표만 — 같은 공간·같은 종류는 1개 + ×개수',
+                         off:'끕 — 선택한 것만 표시',all:'전부 표시'};
+function updateSymbolLabelBtn(){
+  const b=document.getElementById('btn-symlabel');
+  if(!b) return;
+  const m=symbolLabelMode();
+  b.textContent=SYMBOL_LABEL_BTN[m];
+  b.classList.toggle('gold',m!=='off');
+  b.title='기호 이름 글씨 — '+SYMBOL_LABEL_DESC[m]+' (클릭 = 묶음 → 끕 → 전부, 명령: lab)';
+}
+function setSymbolLabelMode(m){
+  if(SYMBOL_LABEL_MODES.indexOf(m)<0) return;
+  STATE.symbolLabelMode=m;
+  updateSymbolLabelBtn();renderAll();refreshUI();
+  if(typeof saveSnapPrefs==='function') saveSnapPrefs();
+  showStatus('기호 이름 라벨: '+SYMBOL_LABEL_DESC[m]);
+}
+function cycleSymbolLabelMode(){
+  const i=SYMBOL_LABEL_MODES.indexOf(symbolLabelMode());
+  setSymbolLabelMode(SYMBOL_LABEL_MODES[(i+1)%SYMBOL_LABEL_MODES.length]);
+}
 // v5.7: 2.5D 영업 모드 토글 — 인쇄/JSON/AI번들 시 강제 OFF
 function toggle2_5D(){
   STATE.plus2D=!STATE.plus2D;
@@ -2531,6 +2587,9 @@ function _paletteCommands(){
     {label:'◐ 2.5D 영업 모드 토글',kw:'2.5d 영업',run:toggle2_5D},
     {label:'🔣 기호 확대 표시 토글 (전기·감지기 비축척)',kw:'symbol sym 기호 확대 비축척',run:()=>{STATE.symbolBoost=STATE.symbolBoost===false?true:false;renderAll();cmdToast('기호 확대 표시 '+(STATE.symbolBoost!==false?'ON':'OFF'));}},
     {label:'⚡ 배선 전체 보기 토글 (회로·점핑)',kw:'circuit wiring cir 배선 회로 점핑 엣지 연결선',run:()=>toggleCircuits()},
+    {label:'🏷 기호 이름 라벨 — 묶음 대표만',kw:'label 라벨 이름 글씨 묶음 다운라이트 smart',run:()=>setSymbolLabelMode('smart')},
+    {label:'🏷 기호 이름 라벨 — 끕 (선택한 것만)',kw:'label 라벨 이름 글씨 끕 off 숨김 깔끔',run:()=>setSymbolLabelMode('off')},
+    {label:'🏷 기호 이름 라벨 — 전부 표시',kw:'label 라벨 이름 글씨 전부 all',run:()=>setSymbolLabelMode('all')},
     {label:'🛠 도구 — 선택',kw:'tool select 선택 v',run:()=>setTool('select')},
     {label:'🛠 도구 — 벽',kw:'tool wall 벽 b',run:()=>setTool('wall')},
     {label:'🛠 도구 — 선 (참조선/분할)',kw:'tool line 선 l',run:()=>setTool('line')},
@@ -3268,6 +3327,7 @@ document.getElementById('btn-redo').addEventListener('click',redo);
 document.getElementById('btn-grid').addEventListener('click',toggleGrid);
 document.getElementById('btn-dim').addEventListener('click',toggleDim);
 document.getElementById('btn-circuits').addEventListener('click',toggleCircuits); // 2026-08-27
+(function(){const b=document.getElementById('btn-symlabel');if(b)b.addEventListener('click',cycleSymbolLabelMode);})(); // 2026-08-28
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
 // v5.9.2: 통합견적 OS 브리지 — estimate 프로파일 JSON을 localStorage로 전송.
@@ -3958,6 +4018,14 @@ function processCommand(rawCmd){
   if(/^(k|palette|팔레트)$/i.test(c)){openCmdPalette();return;}
   // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
+  // 2026-08-28: 기호 이름 라벨 — lab 은 순환, 'lab off/smart/all' 은 직접 지정
+  const labM=c.match(/^(?:lab|label|라벨)(?:\s+(smart|off|all|묶음|끕|전부))?$/i);
+  if(labM){
+    const map={'묶음':'smart','끕':'off','전부':'all'};
+    const v=labM[1]?(map[labM[1]]||labM[1].toLowerCase()):null;
+    if(v) setSymbolLabelMode(v); else cycleSymbolLabelMode();
+    return;
+  }
   if(/^(sym|기호)$/i.test(c)){STATE.symbolBoost=STATE.symbolBoost===false?true:false;renderAll();cmdToast('기호 확대 표시 '+(STATE.symbolBoost!==false?'ON (비축척)':'OFF (실척)'));return;}
   const alM=c.match(/^al\s+(l|r|t|b|ch|cv)$/i);
   if(alM){alignSelection({l:'left',r:'right',t:'top',b:'bottom',ch:'centerh',cv:'centerv'}[alM[1].toLowerCase()]);return;}
@@ -4617,6 +4685,7 @@ buildSpaceTypeUI();buildLayerUI();buildSnapUI();
 drawGrid();saveHistory();refreshUI();
 document.getElementById('btn-grid').classList.add('gold');
 if(typeof updateCircuitsBtn==='function') updateCircuitsBtn(); // 2026-08-27: 저장된 배선 보기 상태 반영
+if(typeof updateSymbolLabelBtn==='function') updateSymbolLabelBtn(); // 2026-08-28: 라벨 모드 버튼 표시
 document.getElementById('btn-dim').classList.add('gold');
 setTimeout(handleResize,100);setTimeout(handleResize,500);
 document.getElementById('cmd-hint').textContent=CMD_HINTS.select;

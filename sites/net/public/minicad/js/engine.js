@@ -2200,15 +2200,105 @@ function _symbolLabelClick(kind,id){
     if(STATE.selectedTool==='select'&&typeof selectObj==='function') selectObj(kind,id);
   };
 }
-function addSymbolLabel(group,xPx,yPx,def,kind,id){
+// ===== 2026-08-28: 기호 이름 라벨 표시 모드 (대표 지시 — 다운라이트를 넣을수록 같은 글씨가 도배되고 렉이 걸린다) =====
+//  종전엔 소형 기호마다 이름 글씨를 하나씩 붙였다. 다운라이트를 수십 개 깔면 같은 글씨가 도면을
+//  덮고, 글씨마다 그림자(Konva shadow)가 붙어 렌더도 눈에 띄게 느려졌다.
+//   · smart(기본) : 같은 공간 안의 같은 종류는 대표 1개만 「다운라이트 3\" ×8」 로 표시
+//   · off        : 선택한 것만 표시
+//   · all        : 전부 표시 (종전 동작)
+//  객체별 o.showLabel(true/false)는 모드보다 우선 — 속성 패널에서 그 하나만 켜고 끕 수 있다.
+const SYMBOL_LABEL_MODES=['smart','off','all'];
+const SYMBOL_LABEL_KINDS=['lights','electric','hvac','fixtures'];
+function symbolLabelMode(){
+  return SYMBOL_LABEL_MODES.indexOf(STATE.symbolLabelMode)>=0?STATE.symbolLabelMode:'smart';
+}
+// 이름 라벨을 붙일 '작은 점형 기호'인지 — 종전 렌더 조건들을 한 곳으로 모은 것
+function symbolLabelEligible(kind,def){
+  if(!def) return false;
+  if(kind==='electric') return true;
+  if(kind==='lights')   return (def.size||0)<=400;   // 라인·간접조명(길이 가변)은 제외
+  if(kind==='hvac')     return (def.size||0)<=600;
+  if(kind==='fixtures') return Math.max(def.w||0,def.h||0)<=300; // 바닥 배수구 등
+  return false;
+}
+// 종류별 정의 조회 (다운라이트 인치·라인조명 길이 반영)
+function symbolDefOf(kind,o){
+  if(!o) return null;
+  if(kind==='lights') return (o.type==='downlight')?downlightDef(o)
+    :(isLinearLight(o.type)?linearLightDef(o):LIGHT_LIB[o.type]);
+  const lib=(kind==='electric')?ELECTRIC_LIB:(kind==='hvac')?HVAC_FIRE_LIB
+           :(kind==='fixtures')?FIXTURE_LIB:null;
+  return lib?lib[o.type]:null;
+}
+// 점이 들어있는 공간 id (없으면 null) — 묶음의 기준. 거실 8개·주방 4개가 따로 세어진다.
+function spaceIdAtMm(x,y){
+  if(typeof pointInPolygon!=='function') return null;
+  const ss=STATE.spaces||[];
+  for(let i=ss.length-1;i>=0;i--){
+    const poly=ss[i].polygon;
+    if(poly&&poly.length>2&&pointInPolygon({x:x,y:y},poly)) return ss[i].id;
+  }
+  return null;
+}
+// 묶음 계획: 대표 객체 id → 찍을 글자. 서명이 같으면 다시 계산하지 않는다.
+let _symLabelPlan=null,_symLabelPlanSig=null;
+function symbolLabelPlan(){
+  let sig;
+  try{
+    sig=JSON.stringify((STATE.spaces||[]).map(sp=>[sp.id,sp.polygon]))+'§'
+       +SYMBOL_LABEL_KINDS.map(k=>JSON.stringify((STATE[k]||[]).map(o=>[o.id,o.type,o.x,o.y,o.inch||0,o.length_mm||0]))).join('§');
+  }catch(_){sig=null;}
+  if(sig!==null&&_symLabelPlan&&_symLabelPlanSig===sig) return _symLabelPlan;
+  const buckets=new Map();
+  SYMBOL_LABEL_KINDS.forEach(kind=>{
+    (STATE[kind]||[]).forEach(o=>{
+      const def=symbolDefOf(kind,o);
+      if(!symbolLabelEligible(kind,def)) return;
+      const key=kind+'|'+(def.name||o.type)+'|'+(spaceIdAtMm(o.x,o.y)||'-');
+      let arr=buckets.get(key); if(!arr){arr=[];buckets.set(key,arr);}
+      arr.push({o:o,def:def});
+    });
+  });
+  const rep=new Map();
+  buckets.forEach(list=>{
+    // 대표 = 묶음 무게중심에 가장 가까운 것 (글씨가 그 무리의 한가운데에 농인다)
+    let cx=0,cy=0;
+    list.forEach(it=>{cx+=it.o.x;cy+=it.o.y;});
+    cx/=list.length;cy/=list.length;
+    let best=list[0],bd=Infinity;
+    list.forEach(it=>{const dx=it.o.x-cx,dy=it.o.y-cy,d=dx*dx+dy*dy;if(d<bd){bd=d;best=it;}});
+    rep.set(best.o.id,(best.def.name||'')+(list.length>1?' ×'+list.length:''));
+  });
+  _symLabelPlan={rep:rep};_symLabelPlanSig=sig;
+  return _symLabelPlan;
+}
+function invalidateSymbolLabelPlan(){_symLabelPlan=null;_symLabelPlanSig=null;}
+// 이 객체에 지금 찍을 글자 (없으면 null)
+function symbolLabelTextFor(kind,o,def){
+  if(!def||!o) return null;
+  const sel=(STATE.selectedKind===kind&&STATE.selectedId===o.id)
+          ||(STATE.boxSelection||[]).some(b=>b.kind===kind&&b.id===o.id);
+  if(sel) return def.name||null;                 // 선택한 것은 모드와 무관하게 항상 보여준다
+  if(o.showLabel===false) return null;           // 이 하나만 숨김
+  if(o.showLabel===true)  return def.name||null; // 이 하나만 항상 표시
+  const m=symbolLabelMode();
+  if(m==='all') return def.name||null;
+  if(m==='off') return null;
+  return symbolLabelPlan().rep.get(o.id)||null;
+}
+function addSymbolLabel(group,xPx,yPx,def,kind,id,o){
   if(_pm()) return; // 2026-08-27: 인쇄에서는 심볼 라벨 대신 범례 사용 (라벨이 심볼보다 커서 도면을 덮음)
   if(STATE.zoom<0.3) return; // 극축소 시 겹침 방지
+  const text=symbolLabelTextFor(kind,o||{id:id},def);
+  if(!text) return;
   const halfPx=mmToPx((def.size||Math.max(def.w||0,def.h||0)||200))/2;
+  // 2026-08-28: 글씨가 작아 안 읽힌다는 지적 — 개수가 줄어든 만큼 키우고,
+  //  그림자 대신 외곽선으로 가독성을 낸다 (Konva 그림자가 라벨 수만큼 느려지던 주범)
   const t=new Konva.Text({
-    x:xPx-60,y:yPx+halfPx+3,width:120,align:'center',
-    text:def.name,fontSize:9.5,fontFamily:'Inter',fontStyle:'600',
+    x:xPx-75,y:yPx+halfPx+4,width:150,align:'center',
+    text:text,fontSize:11.5,fontFamily:'Inter',fontStyle:'700',
     fill:def.c||'#9aa0b5',listening:!!kind,
-    shadowColor:'#000000',shadowBlur:2,shadowOpacity:0.7,
+    stroke:'#0A0A0A',strokeWidth:2.6,fillAfterStrokeEnabled:true,lineJoin:'round',
   });
   if(kind){t.on('click tap',_symbolLabelClick(kind,id));t.on('mouseenter',()=>{document.body.style.cursor='pointer';});t.on('mouseleave',()=>{document.body.style.cursor='';});}
   group.add(t);
@@ -2345,8 +2435,8 @@ function renderRect(arr,group,lib,kind){
     if(o.locked) g.opacity(0.30);
     group.add(g);
     // 2026-08-24: 소형 점형 기호(감지기·스프링클러 등)는 이름 라벨 고정 표시
-    if(kind==='hvac'&&(def.size||0)<=600) addSymbolLabel(group,x,y,def,kind,o.id);
-    if(kind==='fixtures'&&Math.max(def.w||0,def.h||0)<=300) addSymbolLabel(group,x,y,def,kind,o.id); // 2026-08-24: 바닥 배수구 등 소형 위생
+    // 2026-08-28: 라벨 표시 조건은 symbolLabelEligible 한 곳으로 통일 (묶음 계획과 어긋나지 않도록)
+    if((kind==='hvac'||kind==='fixtures')&&symbolLabelEligible(kind,def)) addSymbolLabel(group,x,y,def,kind,o.id,o);
   });
 }
 
@@ -2527,7 +2617,7 @@ function renderLights(){
       if(window._jumpLink&&typeof toggleJumpLink==='function'){toggleJumpLink(window._jumpLink.lightId,o.id);return;}
       if(STATE.selectedTool==='select') selectObj('lights',o.id);
     });
-    if((def.size||0)<=400) addSymbolLabel(groups.lights,x,y,def,'lights',o.id); // 2026-08-24: 소형 조명 라벨 (클릭 = 선택/회로 연결)
+    if(symbolLabelEligible('lights',def)) addSymbolLabel(groups.lights,x,y,def,'lights',o.id,o); // 2026-08-24: 소형 조명 라벨 (클릭 = 선택/회로 연결)
     if(o.locked) g.opacity(0.30);
     groups.lights.add(g);
   });
@@ -2542,7 +2632,7 @@ function renderElectric(){
     const _boost=symbolBoostFactor('electric',def); // v6.1: 비축척 확대 — 기본 OFF ('sym' 명령으로만)
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:_boost,scaleY:_boost,id:o.id});
     addSymbolPickArea(g,def,_boost); // 2026-08-26: 픽 어퍼처 — 작은 기호도 쉽게 선택
-    addSymbolLabel(groups.electric,x,y,def,'electric',o.id); // 2026-08-24: 이름 라벨 (클릭 = 선택)
+    addSymbolLabel(groups.electric,x,y,def,'electric',o.id,o); // 2026-08-24: 이름 라벨 (클릭 = 선택)
     // 2026-08-26: 스위치 회로 — ON 배지 + (선택/연결 모드 시) 조명 연결 곡선
     if(isSwitchType(o.type)){
       if(o.circuitOn){
@@ -2811,7 +2901,8 @@ function renderAll(){
     J=JSON.stringify;
     sSpaces=J(STATE.spaces);
     const theme=document.body?document.body.getAttribute('data-theme')||'':'';
-    gk=[STATE.offsetX,STATE.offsetY,STATE.zoom,theme,STATE.plus2D?1:0,STATE.selectedTool].join('|')+'§';
+    gk=[STATE.offsetX,STATE.offsetY,STATE.zoom,theme,STATE.plus2D?1:0,STATE.selectedTool,
+        symbolLabelMode()].join('|')+'§'; // 2026-08-28: 라벨 모드 — 토글 즉시 반영
   }catch(e){J=null;}
   const selK=k=>{
     if(!J)return '';

@@ -5,6 +5,9 @@ const STATE={
   scale:37.8,gridSize:1,ceilingHeight:2400,wallThickness:50,bearingWallThickness:200,projectName:'신규 인테리어',
   // v5.9: 배경 이미지 (PNG/JPG/SVG 트레이싱용) — null이면 비활성
   downlightInch:3, // 2026-08-25: 다운라이트 배치 기본 인치 (대표 지시) — 문서 설정으로 저장
+  // 2026-08-28: 기호 이름 라벨 표시 모드 (대표 지시 — 다운라이트를 넣을수록 같은 글씨가 도배되고 렉이 걸린다)
+  //  smart = 같은 공간의 같은 종류는 대표 1개만 '이름 ×개수' / off = 선택한 것만 / all = 전부
+  symbolLabelMode:'smart',
   symbolBoost:false, // 2026-08-24: 기호는 실척 유지(대표 지시 — 크기 확대 금지), 'sym' 명령으로만 확대 가능. 판독은 고정 글씨 라벨로
   bgImage:null, // {filename, dataURL, x_mm, y_mm, scale, opacity, locked, naturalWidth, naturalHeight}
   // v5.9: 벽 정렬 (interior=내벽 / center=중심 / exterior=외벽). 시작 시 중심선

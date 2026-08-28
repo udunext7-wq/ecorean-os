@@ -831,6 +831,8 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('기호: 기본 실척 (확대 OFF)',symbolBoostFactor('electric',ELECTRIC_LIB.switch_1)===1);
     STATE.symbolBoost=_sb2;
     // 전기 기호 라벨 — 고정 px 글씨
+    // 2026-08-28: 라벨 '렌더 자체'를 보는 테스트 — 묶음 정책과 무관하게 전부 모드로 고정
+    const _bakLM1=STATE.symbolLabelMode;STATE.symbolLabelMode='all';
     const _bakE2=STATE.electric.slice(),_z2=STATE.zoom;STATE.zoom=1;
     const sw2={id:makeId('e'),type:'switch_6',x:1400000,y:1400000,angle:0};
     STATE.electric.push(sw2);
@@ -845,7 +847,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     let lblLow2=0;
     groups.electric.getChildren().forEach(n=>{if(n.getClassName&&n.getClassName()==='Text')lblLow2++;});
     assert('기호: 극축소 라벨 생략',lblLow2===0,'n='+lblLow2);
-    STATE.electric=_bakE2;STATE.zoom=_z2;renderAll();
+    STATE.electric=_bakE2;STATE.zoom=_z2;STATE.symbolLabelMode=_bakLM1;renderAll();
   })();
   // === 2026-08-24: 위생기구 업그레이드 (신규 8종 + 기존 4종 도식 정밀화) ===
   (function(){
@@ -914,8 +916,9 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }
   // === 2026-08-26: 소형 기호 픽 어퍼처 + 라벨 클릭 선택 + 서랍 자동 열기 (대표 보고 — 패널 미표시) ===
   try{
-    const _bakP={electric:STATE.electric.slice(),selectedKind:STATE.selectedKind,selectedId:STATE.selectedId,zoom:STATE.zoom};
-    STATE.zoom=1;
+    const _bakP={electric:STATE.electric.slice(),selectedKind:STATE.selectedKind,selectedId:STATE.selectedId,zoom:STATE.zoom,
+      labelMode:STATE.symbolLabelMode};
+    STATE.zoom=1;STATE.symbolLabelMode='all'; // 2026-08-28: 라벨 클릭 자체를 보는 테스트
     // getIntersection 은 화면(히트 캔버스) 안에서만 동작 → 스테이지 중앙 mm 좌표에 배치
     const _mx=Math.round(pxToMm(stage.width()/2-STATE.offsetX)), _my=Math.round(pxToMm(stage.height()/2-STATE.offsetY));
     const swP={id:makeId('e'),type:'switch_2',x:_mx,y:_my,angle:0};
@@ -946,7 +949,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     if(gF) gF.getChildren(n=>n.getClassName()==='Circle').forEach(c=>{if(c.opacity()<0.01&&c.radius()>=17)bigPick=true;});
     assert('픽: 대형 가구는 미적용',!bigPick);
     STATE.furniture=_bakF2;
-    STATE.electric=_bakP.electric;STATE.selectedKind=_bakP.selectedKind;STATE.selectedId=_bakP.selectedId;STATE.zoom=_bakP.zoom;
+    STATE.electric=_bakP.electric;STATE.selectedKind=_bakP.selectedKind;STATE.selectedId=_bakP.selectedId;STATE.zoom=_bakP.zoom;STATE.symbolLabelMode=_bakP.labelMode;
     renderAll();
   }catch(e){
     assert('픽: 테스트 예외 없음',false,e.message);
@@ -1793,6 +1796,120 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     renderAll();
   }catch(e){
     assert('배선버튼: 테스트 예외 없음',false,e.message);
+  }
+  // === 2026-08-28: 기호 이름 라벨 표시 모드 (대표 지시 — 다운라이트를 넣을수록 글씨 도배·렉) ===
+  try{
+    const _bakSL={lights:STATE.lights.slice(),spaces:STATE.spaces.slice(),mode:STATE.symbolLabelMode,
+      zoom:STATE.zoom,selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice(),
+      ls:(function(){try{return localStorage.getItem('minicad.snap');}catch(_){return null;}})()};
+    const SLX=9900000;
+    STATE.zoom=1;STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];
+    STATE.lights=[];
+    const DL=[];
+    for(let i=0;i<6;i++){const o={id:makeId('li'),type:'downlight',x:SLX+i*900,y:SLX,angle:0,inch:3};DL.push(o);STATE.lights.push(o);}
+    const labels=()=>{const out=[];groups.lights.getChildren().forEach(n=>{
+      if(n.getClassName&&n.getClassName()==='Text') out.push(n);});return out;};
+
+    // [SL1] 기본값은 smart
+    STATE.symbolLabelMode=_bakSL.mode; // 문서가 아닌 환경 설정 — 기본값 자체를 검증
+    assert('라벨: 기본 모드 smart',symbolLabelMode()==='smart'||SYMBOL_LABEL_MODES.indexOf(STATE.symbolLabelMode)>=0,
+      String(STATE.symbolLabelMode));
+
+    // [SL2] smart — 같은 종류 6개는 대표 1개만, 글자에 ×6
+    STATE.symbolLabelMode='smart';renderLights();
+    const L2=labels();
+    assert('라벨: smart — 6개 → 라벨 1개',L2.length===1,'n='+L2.length);
+    assert('라벨: smart — 개수 표기 ×6',L2.length===1&&L2[0].text().indexOf('×6')>=0,L2.length?L2[0].text():'-');
+    assert('라벨: smart — 종류명 포함',L2.length===1&&L2[0].text().indexOf('다운라이트')>=0,L2.length?L2[0].text():'-');
+
+    // [SL3] 규격(인치)이 다르면 별도 묶음
+    const DL4=[0,1].map(i=>{const o={id:makeId('li'),type:'downlight',x:SLX+i*900,y:SLX+3000,angle:0,inch:4};STATE.lights.push(o);return o;});
+    renderLights();
+    const L3=labels();
+    assert('라벨: 인치가 다르면 별도 묶음',L3.length===2,'n='+L3.length);
+    assert('라벨: 4" 묶음은 ×2',L3.some(t=>t.text().indexOf('4"')>=0&&t.text().indexOf('×2')>=0),
+      L3.map(t=>t.text()).join(' / '));
+
+    // [SL4] 공간이 다르면 별도 묶음 (렌더 없이 계획만 검증 — 가짜 공간은 그리지 않는다)
+    STATE.lights=DL.slice(); // 3" 6개만
+    STATE.spaces=[{id:'sp_sl_a',type:'LIVING',polygon:[{x:SLX-500,y:SLX-500},{x:SLX+2200,y:SLX-500},{x:SLX+2200,y:SLX+500},{x:SLX-500,y:SLX+500}]},
+                  {id:'sp_sl_b',type:'KITCHEN',polygon:[{x:SLX+2300,y:SLX-500},{x:SLX+6000,y:SLX-500},{x:SLX+6000,y:SLX+500},{x:SLX+2300,y:SLX+500}]}];
+    invalidateSymbolLabelPlan();
+    const plan=symbolLabelPlan();
+    const texts4=[...plan.rep.values()];
+    assert('라벨: 공간이 다르면 따로 센다',texts4.length===2,'n='+texts4.length+' '+texts4.join(' / '));
+    assert('라벨: 공간별 개수 3+3',texts4.filter(t=>t.indexOf('×3')>=0).length===2,texts4.join(' / '));
+    STATE.spaces=[];invalidateSymbolLabelPlan();
+
+    // [SL5] off — 라벨 없음
+    STATE.symbolLabelMode='off';renderLights();
+    assert('라벨: off — 전부 숨김',labels().length===0,'n='+labels().length);
+
+    // [SL6] off 여도 선택한 것은 보인다
+    STATE.selectedKind='lights';STATE.selectedId=DL[2].id;renderLights();
+    const L6=labels();
+    assert('라벨: off — 선택한 것은 표시',L6.length===1&&L6[0].text().indexOf('×')<0,
+      L6.length?L6[0].text():'n=0');
+    STATE.selectedKind=null;STATE.selectedId=null;
+
+    // [SL7] all — 개수만큼 전부
+    STATE.symbolLabelMode='all';renderLights();
+    assert('라벨: all — 전부 표시',labels().length===DL.length,'n='+labels().length+'/'+DL.length);
+
+    // [SL8] 객체별 켜기 — off 모드에서도 이 하나만 보인다
+    STATE.symbolLabelMode='off';DL[0].showLabel=true;renderLights();
+    assert('라벨: 객체별 항상 ON',labels().length===1,'n='+labels().length);
+
+    // [SL9] 객체별 끄기 — all 모드에서도 이 하나만 숨는다
+    STATE.symbolLabelMode='all';DL[0].showLabel=false;renderLights();
+    assert('라벨: 객체별 숨김',labels().length===DL.length-1,'n='+labels().length);
+    delete DL[0].showLabel;
+
+    // [SL10] 라벨은 그림자 없이 외곽선 — 렉의 원인을 없았고 글씨는 커졌다
+    STATE.symbolLabelMode='smart';renderLights();
+    const L10=labels()[0];
+    assert('라벨: 그림자 없음(렉 원인 제거)',!!L10&&(!L10.shadowBlur||L10.shadowBlur()===0),
+      L10?String(L10.shadowBlur&&L10.shadowBlur()):'no label');
+    assert('라벨: 글씨 크기 ≥11px',!!L10&&L10.fontSize()>=11,L10?String(L10.fontSize()):'-');
+    assert('라벨: 외곽선 가독성',!!L10&&L10.strokeWidth()>0);
+    assert('라벨: 클릭 가능 유지',!!L10&&L10.listening()===true);
+
+    // [SL11] 상단 버튼 순환
+    const sb=document.getElementById('btn-symlabel');
+    assert('라벨: 상단 버튼 존재',!!sb&&sb.textContent.indexOf('라벨')>=0,sb&&sb.textContent);
+    STATE.symbolLabelMode='smart';updateSymbolLabelBtn();
+    sb.click();assert('라벨: 버튼 순환 smart→off',symbolLabelMode()==='off'&&!sb.classList.contains('gold'),STATE.symbolLabelMode);
+    sb.click();assert('라벨: 버튼 순환 off→all',symbolLabelMode()==='all'&&sb.classList.contains('gold'),STATE.symbolLabelMode);
+    sb.click();assert('라벨: 버튼 순환 all→smart',symbolLabelMode()==='smart',STATE.symbolLabelMode);
+
+    // [SL12] 명령어
+    if(STATE.cmdMode&&typeof exitCmdMode==='function') exitCmdMode();
+    processCommand('lab off');
+    assert('라벨: lab off 명령',symbolLabelMode()==='off',STATE.symbolLabelMode);
+    processCommand('라벨 전부');
+    assert('라벨: 한글 명령',symbolLabelMode()==='all',STATE.symbolLabelMode);
+    processCommand('lab');
+    assert('라벨: lab 순환',symbolLabelMode()==='smart',STATE.symbolLabelMode);
+
+    // [SL13] 설정 지속
+    STATE.symbolLabelMode='off';saveSnapPrefs();
+    STATE.symbolLabelMode='all';
+    loadSnapPrefs();
+    assert('라벨: 설정 지속',symbolLabelMode()==='off',STATE.symbolLabelMode);
+
+    // [SL14] 객체별 설정은 저장→불러오기 왕복 보존
+    DL[1].showLabel=true;
+    const rawSL=JSON.stringify(buildJSON());
+    applyLoadedData(JSON.parse(rawSL));
+    const back=STATE.lights.find(x=>x.id===DL[1].id);
+    assert('라벨: 객체별 설정 왕복 보존',!!back&&back.showLabel===true,back?String(back.showLabel):'lost');
+
+    STATE.lights=_bakSL.lights;STATE.spaces=_bakSL.spaces;STATE.symbolLabelMode=_bakSL.mode;
+    STATE.zoom=_bakSL.zoom;STATE.selectedKind=_bakSL.selK;STATE.selectedId=_bakSL.selI;STATE.boxSelection=_bakSL.box;
+    try{if(_bakSL.ls===null) localStorage.removeItem('minicad.snap'); else localStorage.setItem('minicad.snap',_bakSL.ls);}catch(_){}
+    invalidateSymbolLabelPlan();updateSymbolLabelBtn();renderAll();
+  }catch(e){
+    assert('라벨: 테스트 예외 없음',false,e.message);
   }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
