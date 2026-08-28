@@ -731,6 +731,20 @@ function refreshDetail(){
     }
     // 2026-08-27: 조명 점핑 패널 (대표 지시) — 조명↔조명 연결
     const isLightSel=STATE.selectedKind==='lights'&&obj;
+    // 2026-08-29: 같은 자리에 겹친 조명 경고 + 한 번에 정리 (대표 지시)
+    let dupHtml='';
+    if(isLightSel&&typeof duplicateLightPeers==='function'){
+      const _peers=duplicateLightPeers(obj.id);
+      if(_peers.length>1){
+        dupHtml=
+          '<div style="margin-top:8px;padding:8px;background:rgba(255,59,48,0.10);'+
+          'border:1px solid rgba(255,59,48,0.55);border-radius:4px">'+
+          '<div class="field-label" style="margin-bottom:6px;color:#FF6B60">'+
+          '⚠ 중복 — 이 자리에 조명 <b>'+_peers.length+'개</b>가 겹쳐 있습니다</div>'+
+          '<button type="button" class="btn sm" id="d-dup-fix" style="width:100%">겹친 것 정리 — '+(_peers.length-1)+'개 삭제</button>'+
+          '<div class="hint" style="margin-top:4px">하나만 남기고 나머지를 지욵니다 · 잠금된 것은 지우지 않습니다</div></div>';
+      }
+    }
     let jumpHtml='';
     if(isLightSel){
       const nb=(typeof jumpNeighbors==='function')?jumpNeighbors(obj.id):[];
@@ -775,7 +789,7 @@ function refreshDetail(){
         '</div>';
     }
     dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      lenHtml+inchHtml+labelHtml+jumpHtml+circuitHtml+extraHtml+
+      dupHtml+lenHtml+inchHtml+labelHtml+jumpHtml+circuitHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -794,6 +808,10 @@ function refreshDetail(){
         saveHistory();renderAll();refreshUI();
         showStatus('이름 글씨: '+(v==='auto'?'기본 (상단 라벨 설정을 따름)':v==='on'?'항상 표시':'숨김'));
       }));
+    }
+    if(isLightSel){
+      const dfx=document.getElementById('d-dup-fix');
+      if(dfx) dfx.addEventListener('click',()=>cleanDuplicateLights(obj.id));
     }
     if(isLightSel){
       const jb=document.getElementById('d-jump-link');
@@ -1902,6 +1920,45 @@ function toggleCircuits(){
         + (STATE.lights||[]).reduce((a,l)=>a+((l.jumpIds||[]).length),0);
   showStatus('배선 전체 보기: '+(STATE.showCircuits?('ON — 연결 '+n+'개'):'OFF'));
 }
+// ===== 2026-08-29: 겹친 조명 찾기·정리 (대표 지시 — "다운라이트가 중복되면 빨간색으로") =====
+function reportDuplicateLights(){
+  const d=duplicateLightGroups();
+  if(!d.ids.size){cmdToast('✅ 겹친 조명 없음');showStatus('겹친 조명 없음');return 0;}
+  // 첫 번째 중복을 골라 둔다 — 속성 패널에서 바로 정리할 수 있게
+  const first=[...d.rep.keys()][0];
+  if(first&&typeof selectObj==='function') selectObj('lights',first);
+  renderAll();refreshUI();
+  cmdToast('⚠ 겹친 조명 '+d.rep.size+'곳 · '+d.ids.size+'개 — 전부 정리는 dup fix');
+  showStatus('겹친 조명 '+d.rep.size+'곳 ('+d.ids.size+'개) — 빨간 점선 표시');
+  return d.rep.size;
+}
+// onlyId 가 있으면 그 무리만, 없으면 도면 전체
+function cleanDuplicateLights(onlyId){
+  const d=duplicateLightGroups();
+  if(!d.ids.size){cmdToast('겹친 조명 없음');return 0;}
+  const reps=onlyId?[onlyId]:[...d.rep.keys()];
+  const remove=new Set();
+  reps.forEach(rid=>{
+    const mem=duplicateLightPeers(rid).map(id=>STATE.lights.find(l=>l.id===id)).filter(Boolean);
+    if(mem.length<2) return;
+    // 잠금된 것이 있으면 그걸 남긴다 (잠금은 지우지 않는다는 규칙)
+    const locked=mem.filter(l=>l.locked);
+    const survivor=locked[0]||(onlyId?(mem.find(l=>l.id===onlyId)||mem[0]):mem[0]);
+    mem.forEach(l=>{if(l===survivor||l.locked) return;remove.add(l.id);});
+  });
+  if(!remove.size){cmdToast('지울 것 없음 — 겹친 조명이 모두 잠금 상태입니다');return 0;}
+  STATE.lights=STATE.lights.filter(l=>!remove.has(l.id));
+  // 회로·점핑 참조도 함께 정리 (사라진 id 가 남지 않게)
+  const live=new Set(STATE.lights.map(l=>l.id));
+  (STATE.electric||[]).forEach(e=>{if(Array.isArray(e.lightIds)) e.lightIds=e.lightIds.filter(id=>live.has(id));});
+  (STATE.lights||[]).forEach(l=>{if(Array.isArray(l.jumpIds)) l.jumpIds=l.jumpIds.filter(id=>live.has(id));});
+  if(STATE.selectedKind==='lights'&&!live.has(STATE.selectedId)){STATE.selectedKind=null;STATE.selectedId=null;}
+  STATE.boxSelection=(STATE.boxSelection||[]).filter(b=>b.kind!=='lights'||live.has(b.id));
+  if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+  saveHistory();renderAll();refreshUI();
+  cmdToast('겹친 조명 정리 — '+remove.size+'개 삭제 (Ctrl+Z 취소)');
+  return remove.size;
+}
 // 2026-08-28: 기호 이름 라벨 표시 모드 (대표 지시 — 다운라이트 글씨 도배·렉)
 const SYMBOL_LABEL_BTN={smart:'🏷 라벨·묶음',off:'🏷 라벨·끕',all:'🏷 라벨·전부'};
 const SYMBOL_LABEL_DESC={smart:'묶음 대표만 — 같은 공간·같은 종류는 1개 + ×개수',
@@ -2574,6 +2631,8 @@ function _paletteCommands(){
     {label:'🖨 바로 인쇄 (직전 설정으로)',kw:'print 인쇄 바로 출력',run:()=>printPlan()},
     {label:'⬚ 인쇄 영역 드래그로 지정',kw:'print 인쇄 영역 범위 부분 확대 crop',run:startPrintRegionPick},
     {label:'🖥 인쇄 영역 — 화면에서 잡기 (pf)',kw:'print 인쇄 영역 틀 화면 잡기 frame pf',run:()=>togglePrintFrame()},
+    {label:'⚠ 겹친 조명 찾기 (dup)',kw:'duplicate 중복 겹침 다운라이트 조명 경고 dup',run:()=>reportDuplicateLights()},
+    {label:'⚠ 겹친 조명 전부 정리 (dup fix)',kw:'duplicate 중복 정리 삭제 조명 dup fix',run:()=>cleanDuplicateLights()},
     {label:'💾 JSON 저장',kw:'save json 저장 파일',run:saveJSON},
     {label:'📂 JSON 불러오기',kw:'load open 불러오기 열기',run:loadJSON},
     {label:'🤖 AI 번들 내보내기',kw:'ai bundle export 번들 내보내기',run:exportAIBundle},
@@ -4592,6 +4651,9 @@ function processCommand(rawCmd){
   // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
   if(/^(pf|인쇄영역)$/i.test(c)){togglePrintFrame();return;} // 2026-08-28
+  // 2026-08-29: 겹친 조명 — dup 은 찾기, 'dup fix' 는 전부 정리
+  const dupM=c.match(/^(?:dup|중복)(?:\s+(fix|정리))?$/i);
+  if(dupM){ if(dupM[1]) cleanDuplicateLights(); else reportDuplicateLights(); return; }
   // 2026-08-28: 인쇄 — 기본은 설정창, 'print now' 는 바로, 'print area' 는 영역 지정
   const prM=c.match(/^(?:print|인쇄|prn)(?:\s+(now|area|frame|바로|영역|틀|화면))?$/i);
   if(prM){

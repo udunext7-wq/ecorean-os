@@ -2215,6 +2215,151 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('인쇄틀: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-29: 겹친 조명 경고 + 간접조명 점등 표현·길이 주기 (대표 지시) ===
+  try{
+    const _bakLT={lights:STATE.lights.slice(),electric:STATE.electric.slice(),zoom:STATE.zoom,
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice(),mode:STATE.symbolLabelMode};
+    const LX=7700000;
+    STATE.zoom=1;STATE.lights=[];STATE.electric=[];STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];
+
+    // --- 겹친 조명 ---
+    // 같은 자리에 3" 다운라이트 2개(중복) + 멀리 떨어진 정상 1개 + 촘촘하지만 안 겹치는 1개
+    const dA={id:makeId('li'),type:'downlight',x:LX,y:LX,angle:0,inch:3};
+    const dB={id:makeId('li'),type:'downlight',x:LX+20,y:LX+15,angle:0,inch:3}; // 25mm — 외경 95mm 안, 중복
+    const dC={id:makeId('li'),type:'downlight',x:LX+3000,y:LX,angle:0,inch:3};  // 정상
+    const dD={id:makeId('li'),type:'downlight',x:LX+3300,y:LX,angle:0,inch:3};  // 300mm 간격 — 촘촘하지만 정상
+    STATE.lights.push(dA,dB,dC,dD);
+    invalidateDuplicateLights();
+    let dg=duplicateLightGroups();
+    assert('중복조명: 겹친 2개만 잡는다',dg.ids.has(dA.id)&&dg.ids.has(dB.id)&&
+      !dg.ids.has(dC.id)&&!dg.ids.has(dD.id),'n='+dg.ids.size);
+    assert('중복조명: 300mm 간격은 중복 아님',!dg.ids.has(dD.id));
+    assert('중복조명: 무리 1곳·대표 1개',dg.rep.size===1&&[...dg.rep.values()][0]===2,
+      'rep='+dg.rep.size+' cnt='+[...dg.rep.values()].join(','));
+    assert('중복조명: 같은 자리 목록',duplicateLightPeers(dA.id).length===2);
+
+    // 종류가 다르면 중복으로 보지 않는다 (의도적으로 겹쳐 쓰는 설계)
+    const dE={id:makeId('li'),type:'ceiling',x:LX+6000,y:LX,angle:0};
+    const dF={id:makeId('li'),type:'downlight',x:LX+6000,y:LX,angle:0,inch:3};
+    STATE.lights.push(dE,dF);invalidateDuplicateLights();
+    dg=duplicateLightGroups();
+    assert('중복조명: 종류가 다르면 제외',!dg.ids.has(dE.id)&&!dg.ids.has(dF.id));
+    STATE.lights=STATE.lights.filter(l=>l!==dE&&l!==dF);invalidateDuplicateLights();
+
+    // 빨간 경고 링이 실제로 그려진다
+    renderLights();
+    const redOf=id=>{let n=0;groups.lights.getChildren().forEach(g=>{if(g.id&&g.id()===id&&g.getChildren)
+      g.getChildren(x=>x.getClassName()==='Circle').forEach(cc=>{if((cc.stroke&&cc.stroke())==='#FF3B30')n++;});});return n;};
+    assert('중복조명: 빨간 경고 링 표시',redOf(dA.id)===1&&redOf(dB.id)===1,redOf(dA.id)+'/'+redOf(dB.id));
+    assert('중복조명: 정상 조명엔 경고 없음',redOf(dC.id)===0&&redOf(dD.id)===0);
+    let warnTxt=0;
+    groups.lights.getChildren().forEach(n=>{if(n.getClassName&&n.getClassName()==='Text'&&
+      n.text().indexOf('중복')>=0)warnTxt++;});
+    assert('중복조명: ⚠ 글씨는 무리당 1개',warnTxt===1,'n='+warnTxt);
+
+    // 인쇄에는 경고가 나가지 않는다
+    STATE.printMode=true;renderLights();
+    assert('중복조명: 인쇄에는 미포함',redOf(dA.id)===0);
+    STATE.printMode=false;renderLights();
+
+    // 정리 — 하나만 남는다
+    const beforeN=STATE.lights.length;
+    const removed=cleanDuplicateLights(dA.id);
+    assert('중복조명: 정리 1개 삭제',removed===1&&STATE.lights.length===beforeN-1,
+      'removed='+removed+' n='+STATE.lights.length);
+    assert('중복조명: 고른 것이 남는다',STATE.lights.some(l=>l.id===dA.id)&&!STATE.lights.some(l=>l.id===dB.id));
+    invalidateDuplicateLights();
+    assert('중복조명: 정리 후 경고 사라짐',duplicateLightGroups().ids.size===0);
+
+    // 잠금된 것은 지우지 않는다
+    const kA={id:makeId('li'),type:'downlight',x:LX+9000,y:LX,angle:0,inch:3,locked:true};
+    const kB={id:makeId('li'),type:'downlight',x:LX+9010,y:LX,angle:0,inch:3,locked:true};
+    STATE.lights.push(kA,kB);invalidateDuplicateLights();
+    const n2=cleanDuplicateLights();
+    assert('중복조명: 잠금은 지우지 않음',n2===0&&STATE.lights.some(l=>l.id===kA.id)&&STATE.lights.some(l=>l.id===kB.id));
+    STATE.lights=STATE.lights.filter(l=>l!==kA&&l!==kB);invalidateDuplicateLights();
+
+    // 회로 참조도 함께 정리된다
+    const gA={id:makeId('li'),type:'downlight',x:LX+12000,y:LX,angle:0,inch:3};
+    const gB={id:makeId('li'),type:'downlight',x:LX+12010,y:LX,angle:0,inch:3};
+    const sw={id:makeId('e'),type:'switch_1',x:LX+12000,y:LX+2000,angle:0,lightIds:[gA.id,gB.id],circuitOn:true};
+    STATE.lights.push(gA,gB);STATE.electric.push(sw);invalidateDuplicateLights();
+    cleanDuplicateLights();
+    assert('중복조명: 회로 참조도 정리',sw.lightIds.length===1&&STATE.lights.some(l=>l.id===sw.lightIds[0]),
+      JSON.stringify(sw.lightIds));
+
+    // --- 간접·라인조명 ---
+    STATE.lights=[];STATE.electric=[];invalidateDuplicateLights();
+    const cove={id:makeId('li'),type:'cove',x:LX,y:LX+20000,angle:0,length_mm:3000};
+    const dl={id:makeId('li'),type:'downlight',x:LX+5000,y:LX+20000,angle:0,inch:3};
+    const sw2={id:makeId('e'),type:'switch_1',x:LX,y:LX+22000,angle:0,lightIds:[cove.id,dl.id],circuitOn:true};
+    STATE.lights.push(cove,dl);STATE.electric.push(sw2);
+    renderLights();
+    const nodeOf=id=>{let g=null;groups.lights.getChildren().forEach(c=>{if(c.id&&c.id()===id)g=c;});return g;};
+    const gCove=nodeOf(cove.id), gDl=nodeOf(dl.id);
+    // [간접1] 점등 표현이 원이 아니라 띠
+    const coveGlowRect=gCove&&gCove.getChildren(n=>n.getClassName()==='Rect'&&
+      typeof n.fillLinearGradientColorStops==='function'&&(n.fillLinearGradientColorStops()||[]).length>0)[0];
+    assert('간접: 점등이 원이 아니라 띠',!!coveGlowRect,'띠 없음');
+    const coveGlowCircle=gCove&&gCove.getChildren(n=>n.getClassName()==='Circle'&&
+      typeof n.fillRadialGradientEndRadius==='function'&&n.fillRadialGradientEndRadius()>0).length;
+    assert('간접: 동그란 광원 안 씀',coveGlowCircle===0,'n='+coveGlowCircle);
+    // [간접2] 종전 계산(길이×1.35)보다 훨씬 좁다
+    const oldR=mmToPx(3000)*1.35+16;
+    assert('간접: 퍼짐 폭이 종전보다 좁다',!!coveGlowRect&&coveGlowRect.height()<oldR,
+      coveGlowRect?(coveGlowRect.height().toFixed(0)+' vs 종전 반지름 '+oldR.toFixed(0)):'-');
+    // [간접3] 띠는 길이 방향으로 길다 (선광원)
+    assert('간접: 길이 방향으로 긴 띠',!!coveGlowRect&&coveGlowRect.width()>coveGlowRect.height(),
+      coveGlowRect?(coveGlowRect.width().toFixed(0)+'×'+coveGlowRect.height().toFixed(0)):'-');
+    // [간접4] 다운라이트(점광원)는 그대로 원
+    const dlCircle=gDl&&gDl.getChildren(n=>n.getClassName()==='Circle'&&
+      typeof n.fillRadialGradientEndRadius==='function'&&n.fillRadialGradientEndRadius()>0).length;
+    assert('간접: 점광원은 원 유지',dlCircle===1,'n='+dlCircle);
+
+    // [간접5] 도면에 간접 표기 + 길이(m)
+    const tagOf=txt=>{let f=false;groups.lights.getChildren().forEach(n=>{
+      if(n.getClassName&&n.getClassName()==='Text'&&n.text().indexOf(txt)>=0)f=true;});return f;};
+    assert('간접: 도면에 종류 표기',tagOf('간접'),'표기 없음');
+    assert('간접: 길이 m 표기',tagOf('3.0m'),'길이 없음');
+    assert('간접: 표기 문구',linearLightTagText(cove,linearLightDef(cove))==='간접 3.0m',
+      linearLightTagText(cove,linearLightDef(cove)));
+    // 길이를 바꾸면 표기도 따라온다
+    cove.length_mm=4500;renderLights();
+    assert('간접: 길이 변경 반영',tagOf('4.5m'));
+    // 종류별 이름
+    const t5={id:makeId('li'),type:'line_t5',x:LX,y:LX+24000,angle:0,length_mm:1200};
+    assert('간접: T5 라인 표기',linearLightTagText(t5,linearLightDef(t5))==='T5 라인 1.2m',
+      linearLightTagText(t5,linearLightDef(t5)));
+    // [간접6] 라벨 모드가 '끔'이어도 간접 표기는 남는다 (도면 판독에 필수)
+    STATE.symbolLabelMode='off';renderLights();
+    assert('간접: 라벨 끔에도 표기 유지',tagOf('간접'));
+    STATE.symbolLabelMode='smart';
+    // [간접7] 개별로는 끌 수 있다
+    cove.showLabel=false;renderLights();
+    assert('간접: 개별 끄기 가능',!tagOf('간접'));
+    delete cove.showLabel;
+
+    // [명령] dup / dup fix
+    STATE.lights.push({id:makeId('li'),type:'downlight',x:LX+30000,y:LX,angle:0,inch:3},
+                      {id:makeId('li'),type:'downlight',x:LX+30015,y:LX,angle:0,inch:3});
+    invalidateDuplicateLights();
+    if(STATE.cmdMode&&typeof exitCmdMode==='function') exitCmdMode();
+    processCommand('dup');
+    assert('중복조명: dup 명령이 겹친 것을 고른다',STATE.selectedKind==='lights'&&
+      duplicateLightGroups().ids.has(STATE.selectedId));
+    processCommand('dup fix');
+    invalidateDuplicateLights();
+    assert('중복조명: dup fix 명령으로 정리',duplicateLightGroups().ids.size===0);
+
+    STATE.lights=_bakLT.lights;STATE.electric=_bakLT.electric;STATE.zoom=_bakLT.zoom;
+    STATE.selectedKind=_bakLT.selK;STATE.selectedId=_bakLT.selI;STATE.boxSelection=_bakLT.box;
+    STATE.symbolLabelMode=_bakLT.mode;
+    invalidateDuplicateLights();
+    if(typeof invalidateSymbolLabelPlan==='function') invalidateSymbolLabelPlan();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('조명경고: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),

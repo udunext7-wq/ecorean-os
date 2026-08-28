@@ -2525,9 +2525,99 @@ function downlightDef(o){
       {type:'circle',cx:0,cy:0,r:d.bore/2,fill:'#F5E5B8',stroke:'#D4B872',sw:2},
     ]};
 }
+// ===== 2026-08-29: 간접·라인조명 점등 표현 + 길이 주기 (대표 지시) =====
+//  대표 질문 — "간접이 그렇게 불이 들어오는지 생각해봐라."
+//  맞다. 종전엔 기구 길이를 반지름으로 삼아 동그란 빛을 그렸다(반지름 = 길이×1.35).
+//  3m 코브면 지름 8m짜리 원이 뜬다. 간접조명은 점광원이 아니라 선광원이고,
+//  코브에서 천장·벽을 타고 '기구를 따라 띠 모양으로' 은은하게 퍼진다.
+//  그래서 길이 방향으로 길고 폭은 좁은 띠 + 낮은 밝기(간접은 직부보다 은은)로 바꾼다.
+const LINEAR_GLOW_SPREAD={cove:900,line_t5:450,magnet_track:600,fluorescent:700,pendant_linear:800};
+// 평면도에서 이게 간접인지 라인인지 읽히게 — 도면 위 주기 (길이 m 포함)
+const LINEAR_LIGHT_TAG={cove:'간접',line_t5:'T5 라인',magnet_track:'마그넷',
+                        fluorescent:'형광',pendant_linear:'펜던트'};
+function linearLightTagText(o,def){
+  const nm=LINEAR_LIGHT_TAG[o.type]||(def&&def.name)||o.type;
+  const L=(def&&def.size)||linearLightLen(o);
+  return nm+' '+(L/1000).toFixed(1)+'m';
+}
+// 기구를 따라 붙는 주기 — 회전해도 글씨는 눕지 않게 수평으로, 기구 옆으로 비켜서
+function addLinearLightTag(group,xPx,yPx,def,o){
+  if(STATE.zoom<0.3) return;
+  if(o&&o.showLabel===false) return; // 개별 끄기는 존중
+  const ang=((o&&o.angle)||0)*Math.PI/180;
+  const off=mmToPx((def.crossH||80)/2)+15;
+  const px=xPx-Math.sin(ang)*off, py=yPx+Math.cos(ang)*off;
+  const t=new Konva.Text({
+    x:px-80,y:py-7,width:160,align:'center',
+    text:linearLightTagText(o,def),
+    fontSize:11.5,fontFamily:'Inter',fontStyle:'700',
+    fill:'#FFE9A8',stroke:'#0A0A0A',strokeWidth:2.8,
+    fillAfterStrokeEnabled:true,lineJoin:'round',listening:!!o,
+  });
+  if(o){
+    t.on('click tap',_symbolLabelClick('lights',o.id));
+    t.on('mouseenter',()=>{document.body.style.cursor='pointer';});
+    t.on('mouseleave',()=>{document.body.style.cursor='';});
+  }
+  group.add(t);
+}
+
+// ===== 2026-08-29: 조명 중복 경고 (대표 지시 — "다운라이트가 중복되면 빨간색으로") =====
+//  같은 종류를 같은 자리에 두 번 놓으면(더블클릭·복제 실수) 도면상 구분이 안 된다.
+//  기구가 물리적으로 겹치는 것만 잡는다 — 간격이 촘촘한 배치를 중복으로 몰지 않기 위해.
+function lightOuterMm(o){
+  if(!o) return 200;
+  if(o.type==='downlight'){const d=downlightDef(o);return d.size||200;}
+  const b=LIGHT_LIB[o.type];
+  return (b&&b.size)||200;
+}
+const DUP_LIGHT_SCAN_MM=600; // 정렬 스캔 폭 — 이보다 멀면 겹칠 수 없다
+let _dupLightCache=null,_dupLightSig=null;
+function duplicateLightGroups(){
+  let sig;
+  try{sig=JSON.stringify((STATE.lights||[]).map(o=>[o.id,o.type,o.x,o.y,o.inch||0]));}catch(_){sig=null;}
+  if(sig!==null&&_dupLightCache&&_dupLightSig===sig) return _dupLightCache;
+  const arr=(STATE.lights||[]).filter(o=>!isLinearLight(o.type)).slice().sort((p,q)=>p.x-q.x);
+  const adj=new Map();
+  const link=(a,b)=>{if(!adj.has(a))adj.set(a,new Set());adj.get(a).add(b);};
+  for(let i=0;i<arr.length;i++){
+    for(let j=i+1;j<arr.length;j++){
+      const a=arr[i],b=arr[j];
+      if(b.x-a.x>DUP_LIGHT_SCAN_MM) break;
+      if(a.type!==b.type) continue; // 종류가 다르면 의도적으로 겹쳐 쓰는 설계일 수 있다
+      const lim=Math.max(80,(lightOuterMm(a)+lightOuterMm(b))/2*0.9);
+      const dx=a.x-b.x,dy=a.y-b.y;
+      if(dx*dx+dy*dy<lim*lim){link(a.id,b.id);link(b.id,a.id);}
+    }
+  }
+  const ids=new Set(adj.keys());
+  // 무리별 대표 1개에만 ⚠ 글씨 (겹친 것마다 글씨를 쓰면 오히려 안 읽힌다)
+  const seen=new Set(), rep=new Map(), members=new Map();
+  ids.forEach(id=>{
+    if(seen.has(id)) return;
+    const stack=[id], mem=[];
+    seen.add(id);
+    while(stack.length){
+      const cur=stack.pop();mem.push(cur);
+      (adj.get(cur)||[]).forEach(n=>{if(!seen.has(n)){seen.add(n);stack.push(n);}});
+    }
+    rep.set(mem[0],mem.length);
+    mem.forEach(m=>members.set(m,mem));
+  });
+  _dupLightCache={ids,rep,members};_dupLightSig=sig;
+  return _dupLightCache;
+}
+function invalidateDuplicateLights(){_dupLightCache=null;_dupLightSig=null;}
+// 이 조명과 같은 자리에 겹친 조명들 (자기 자신 포함)
+function duplicateLightPeers(id){
+  const d=duplicateLightGroups();
+  return (d.members.get(id)||[]).slice();
+}
+
 function renderLights(){
   groups.lights.destroyChildren();
   const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합 (2026-08-27: 점핑 연쇄 포함)
+  const _dup=_pm()?{ids:new Set(),rep:new Map()}:duplicateLightGroups(); // 2026-08-29: 겹친 조명 — 경고는 화면에만
   // 2026-08-27: 조명↔조명 점핑선 (중복 방지 위해 id 사전순 한 번만)
   const _jvis=jumpVisibleSet();
   const _drawn=new Set();
@@ -2558,11 +2648,23 @@ function renderLights(){
     addSymbolPickArea(g,def,_boost); // 2026-08-26: 픽 어퍼처
     // 2026-08-26: 회로 점등 — 연결된 스위치가 ON이면 빛 퍼짐(글로우) 표시
     if(_litSet.has(o.id)){
-      const gr=mmToPx(def.size||300)*1.35+16;
-      g.add(new Konva.Circle({radius:gr,listening:false,
-        fillRadialGradientStartPoint:{x:0,y:0},fillRadialGradientEndPoint:{x:0,y:0},
-        fillRadialGradientStartRadius:0,fillRadialGradientEndRadius:gr,
-        fillRadialGradientColorStops:[0,'rgba(255,233,168,0.60)',0.55,'rgba(255,233,168,0.22)',1,'rgba(255,233,168,0)']}));
+      if(isLinearLight(o.type)){
+        // 2026-08-29: 선광원 — 기구를 따라 띄로 퍼진다. 간접은 직부보다 은은해 밝기도 낮게.
+        const Lpx=mmToPx(def.size||1200);
+        const sp=mmToPx(LINEAR_GLOW_SPREAD[o.type]||600);
+        const gw=Lpx+sp*0.5, gh=sp*2;
+        g.add(new Konva.Rect({x:-gw/2,y:-gh/2,width:gw,height:gh,cornerRadius:sp*0.5,listening:false,
+          fillLinearGradientStartPoint:{x:0,y:-gh/2},fillLinearGradientEndPoint:{x:0,y:gh/2},
+          fillLinearGradientColorStops:[0,'rgba(255,233,168,0)',0.34,'rgba(255,233,168,0.20)',
+                                        0.5,'rgba(255,233,168,0.38)',0.66,'rgba(255,233,168,0.20)',
+                                        1,'rgba(255,233,168,0)']}));
+      }else{
+        const gr=mmToPx(def.size||300)*1.35+16;
+        g.add(new Konva.Circle({radius:gr,listening:false,
+          fillRadialGradientStartPoint:{x:0,y:0},fillRadialGradientEndPoint:{x:0,y:0},
+          fillRadialGradientStartRadius:0,fillRadialGradientEndRadius:gr,
+          fillRadialGradientColorStops:[0,'rgba(255,233,168,0.60)',0.55,'rgba(255,233,168,0.22)',1,'rgba(255,233,168,0)']}));
+      }
     }
     if(def.shape){
       drawShape(def.shape).forEach(n=>g.add(n));
@@ -2621,9 +2723,28 @@ function renderLights(){
       if(window._jumpLink&&typeof toggleJumpLink==='function'){toggleJumpLink(window._jumpLink.lightId,o.id);return;}
       if(STATE.selectedTool==='select') selectObj('lights',o.id);
     });
+    // 2026-08-29: 같은 자리에 겹친 조명 — 빨간 점선 링으로 경고
+    if(_dup.ids.has(o.id)){
+      const rr=mmToPx(def.size||200)/2+7;
+      g.add(new Konva.Circle({radius:rr,stroke:'#FF3B30',strokeWidth:2.6,dash:[5,4],listening:false,
+        shadowColor:'#FF3B30',shadowBlur:9,shadowOpacity:0.75}));
+      g.add(new Konva.Line({points:[-rr*0.62,-rr*0.62,rr*0.62,rr*0.62],stroke:'#FF3B30',
+        strokeWidth:2.2,listening:false}));
+    }
     if(symbolLabelEligible('lights',def)) addSymbolLabel(groups.lights,x,y,def,'lights',o.id,o); // 2026-08-24: 소형 조명 라벨 (클릭 = 선택/회로 연결)
+    // 2026-08-29: 라인·간접은 평면에서 구분이 안 된다 — 종류와 길이(m)를 도면에 적는다
+    if(isLinearLight(o.type)) addLinearLightTag(groups.lights,x,y,def,o);
     if(o.locked) g.opacity(0.30);
     groups.lights.add(g);
+    // 겹친 무리당 글씨는 한 번만 (겹친 것마다 쓰면 오히려 안 읽힐다)
+    if(_dup.rep.has(o.id)&&STATE.zoom>=0.3){
+      const n=_dup.rep.get(o.id);
+      const rr=mmToPx(def.size||200)/2+9;
+      groups.lights.add(new Konva.Text({x:x-90,y:y-rr-19,width:180,align:'center',
+        text:'⚠ 중복 '+n+'개',fontSize:11.5,fontFamily:'Inter',fontStyle:'700',
+        fill:'#FF6B60',stroke:'#0A0A0A',strokeWidth:2.8,fillAfterStrokeEnabled:true,
+        lineJoin:'round',listening:false}));
+    }
   });
 }
 function renderElectric(){
