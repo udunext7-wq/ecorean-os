@@ -2595,40 +2595,263 @@ document.addEventListener('keydown',e=>{
 });
 
 // ===== 인쇄 =====
-// v5.7: 인쇄 시 2.5D 강제 OFF (시공 도면은 평면 모드만 허용)
-// v5.9: 인쇄 시 라이트 테마 강제 (내력벽이 검정으로 인쇄되도록), 캡처 후 원복
-function printPlan(){
-  const wasPlus2D=STATE.plus2D;
-  const wasTheme=document.body.getAttribute('data-theme');
-  const isAlreadyLight=wasTheme==='architect';
-  if(wasPlus2D) STATE.plus2D=false;
-  if(!isAlreadyLight) document.body.setAttribute('data-theme','architect');
-  renderAll();
-  const dataURL=stage.toDataURL({pixelRatio:2,mimeType:'image/png'});
-  // 원복
-  if(wasPlus2D) STATE.plus2D=true;
-  if(!isAlreadyLight){
-    if(wasTheme) document.body.setAttribute('data-theme',wasTheme);
-    else document.body.removeAttribute('data-theme');
+// 2026-08-27 v6.2: 인쇄 도면 전면 재작성 (대표 지시 — "도면으로써 명확하게 안 보인다")
+//  이전에는 '화면 스크린샷'을 그대로 종이에 붙였다. 그래서
+//   · 화면에 보이는 범위만 나오고(줌/스크롤에 따라 잘림)  · 축척이 실제와 달랐고
+//   · 어두운 화면용 색이 옅은 색면으로 찍혀 선과 글씨가 묻혔다.
+//  이제는 용지·축척을 먼저 정하고, 그 축척으로 도면 전체를 다시 그려 종이에 1:1로 얹는다.
+const PRINT_SCALES=[20,25,30,40,50,60,75,100,125,150,200,250,300,400,500,600,800,1000];
+const PRINT_PAPERS={A4:{w:297,h:210},A3:{w:420,h:297},A2:{w:594,h:420}};
+const PRINT_MARGIN=8;    // 용지 가장자리 여백 mm
+const PRINT_TB_H=30;     // 표제란 띠 높이 mm
+const PRINT_DPI=300;
+
+// 도면 전체 범위 (mm) — 치수선·치수글씨까지 포함
+function planBBoxMm(){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  const put=(x,y)=>{if(!isFinite(x)||!isFinite(y))return;
+    if(x<minX)minX=x;if(y<minY)minY=y;if(x>maxX)maxX=x;if(y>maxY)maxY=y;};
+  (STATE.spaces||[]).forEach(sp=>(sp.polygon||[]).forEach(pt=>put(pt.x,pt.y)));
+  (STATE.walls||[]).forEach(w=>{put(w.x1,w.y1);put(w.x2,w.y2);});
+  [[STATE.furniture,typeof FURNITURE_LIB!=='undefined'?FURNITURE_LIB:null],
+   [STATE.fixtures,typeof FIXTURE_LIB!=='undefined'?FIXTURE_LIB:null],
+   [STATE.lights,typeof LIGHT_LIB!=='undefined'?LIGHT_LIB:null],
+   [STATE.electric,typeof ELECTRIC_LIB!=='undefined'?ELECTRIC_LIB:null],
+   [STATE.hvac,typeof HVAC_FIRE_LIB!=='undefined'?HVAC_FIRE_LIB:null]].forEach(([arr,lib])=>{
+    (arr||[]).forEach(o=>{
+      const d=lib&&lib[o.type];
+      const r=Math.max((d&&(d.w||d.size))||400,(d&&(d.h||d.size))||400)/2+80;
+      put(o.x-r,o.y-r);put(o.x+r,o.y+r);
+    });
+  });
+  (STATE.measures||[]).forEach(m=>{put(m.x1,m.y1);put(m.x2,m.y2);});
+  (STATE.circles||[]).forEach(c=>{const r=Math.max(c.rx_mm||c.radius_mm||0,c.ry_mm||c.radius_mm||0);put(c.x-r,c.y-r);put(c.x+r,c.y+r);});
+  (STATE.pillars||[]).forEach(o=>{const r=Math.max(o.w||500,o.h||500);put(o.x-r,o.y-r);put(o.x+r,o.y+r);});
+  (STATE.texts||[]).forEach(t=>put(t.x,t.y));
+  (STATE.openings||[]).forEach(o=>put(o.x,o.y));
+  if(!isFinite(minX)) return null;
+  const pad=1500; // 자동 치수선·치수글씨가 도면 밖으로 나가는 여유
+  return {minX:minX-pad,minY:minY-pad,maxX:maxX+pad,maxY:maxY+pad,
+          w:(maxX-minX)+pad*2,h:(maxY-minY)+pad*2};
+}
+
+// 용지·방향·축척 자동 결정 — 도면이 가장 크게 들어가는 조합
+function choosePrintLayout(bbox,opts){
+  opts=opts||{};
+  // 용지는 작은 것부터 — A4 로 읽을 만하면 A4 로 낸다 (큰 종이를 먼저 고르지 않는다)
+  const papers=opts.paper?[opts.paper]:['A4','A3','A2'];
+  const MAX_OK_SCALE=opts.maxScale||200; // 이보다 작은 축척이 되면 한 단계 큰 용지로
+  let best=null, fallback=null;
+  for(let pi=0;pi<papers.length;pi++){
+    const pk=papers[pi], P=PRINT_PAPERS[pk];
+    if(!P) continue;
+    let onPaper=null;
+    [['landscape',P.w,P.h],['portrait',P.h,P.w]].forEach(([ori,pw,ph])=>{
+      const availW=pw-PRINT_MARGIN*2, availH=ph-PRINT_MARGIN*2-PRINT_TB_H;
+      if(availW<=0||availH<=0) return;
+      const cands=opts.scale?[opts.scale]:PRINT_SCALES;
+      for(let i=0;i<cands.length;i++){
+        const S=cands[i];
+        if(bbox.w/S<=availW*0.985 && bbox.h/S<=availH*0.985){
+          const fill=(bbox.w/S)*(bbox.h/S)/(availW*availH);
+          if(!onPaper||S<onPaper.scale||(S===onPaper.scale&&fill>onPaper.fill))
+            onPaper={paper:pk,orientation:ori,pw,ph,availW,availH,scale:S,fill};
+          break;
+        }
+      }
+    });
+    if(!onPaper) continue;
+    if(!fallback) fallback=onPaper;
+    if(onPaper.scale<=MAX_OK_SCALE){best=onPaper;break;}
   }
-  renderAll();
-  const w=window.open('','_blank');
-  if(!w){alert('팝업 차단');return;}
-  // 2026-08-24 v6.0: 표제란·공간 면적표·범례 포함 (대표 지시 — 실무 도면력)
-  w.document.write('<html><head><title>'+STATE.projectName+'</title>'+
-    '<style>body{margin:0;padding:20px;background:white;font-family:sans-serif;text-align:center}'+
-    'h1{font-size:18px;margin-bottom:8px}p{font-size:11px;color:#666}img{max-width:100%;border:1px solid #ddd}'+
-    '.tb-wrap{display:flex;gap:10px;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin-top:14px;text-align:left}'+
-    'table{border-collapse:collapse;font-size:10.5px}'+
-    '.tb-main th,.tb-side th{background:#1A1B2E;color:#C9A961;padding:6px 10px;border:1px solid #444;letter-spacing:1px}'+
-    '.tb-main td,.tb-side td{border:1px solid #999;padding:4px 10px;color:#222}'+
-    '.tb-main .k{background:#EFEAE0;font-weight:700;color:#555;white-space:nowrap}'+
-    '.tb-side td.r{text-align:right;font-family:monospace}'+
-    '@media print{body{padding:0}h1{font-size:14px}.tb-wrap{page-break-inside:avoid}}</style></head>'+
-    '<body><h1>'+STATE.projectName+'</h1>'+
-    '<p>면적: '+document.getElementById('t-floor').textContent+'㎡ · 평수: '+document.getElementById('t-floor-pyeong').textContent+'py · 평면 모드 (시공 도면)</p>'+
-    '<img src="'+dataURL+'" onload="setTimeout(()=>window.print(),300)">'+
-    buildPrintTitleBlock()+'</body></html>');
+  if(!best) best=fallback;
+  if(!best){ // 어떤 표준 축척에도 안 들어가면 A2 가로 최대 축척
+    const P=PRINT_PAPERS.A2;
+    best={paper:'A2',orientation:'landscape',pw:P.w,ph:P.h,
+          availW:P.w-PRINT_MARGIN*2,availH:P.h-PRINT_MARGIN*2-PRINT_TB_H,
+          scale:PRINT_SCALES[PRINT_SCALES.length-1],fill:0};
+  }
+  return best;
+}
+
+// 축척 바 (종이 위 실제 길이로 그린다)
+function _scaleBarHTML(S){
+  // 한 칸이 종이 위에서 8mm 이상 되도록 실제 길이 단위를 고른다
+  const steps=[500,1000,2000,5000,10000];
+  let unit=steps[steps.length-1];
+  for(let i=0;i<steps.length;i++){ if(steps[i]/S>=8){unit=steps[i];break;} }
+  const segMm=unit/S, N=4, totMm=segMm*N;
+  let cells='';
+  for(let i=0;i<N;i++)
+    cells+='<div style="width:'+segMm.toFixed(3)+'mm;height:1.8mm;border:0.25mm solid #000;'+
+           'background:'+(i%2?'#000':'#fff')+';box-sizing:border-box"></div>';
+  let ticks='';
+  for(let i=0;i<=N;i++)
+    ticks+='<div style="position:absolute;left:'+(segMm*i).toFixed(3)+'mm;top:0;'+
+           'transform:translateX(-50%);font-size:2.1mm;white-space:nowrap">'+
+           (unit*i/1000)+'</div>';
+  return '<div class="sbar">'+
+    '<div style="display:flex;width:'+totMm.toFixed(3)+'mm">'+cells+'</div>'+
+    '<div style="position:relative;height:3mm;width:'+totMm.toFixed(3)+'mm;margin-top:0.4mm">'+ticks+'</div>'+
+    '<div style="font-size:2.1mm">SCALE BAR (m) · 1/'+S+'</div></div>';
+}
+function _northHTML(){
+  return '<div class="north"><svg viewBox="0 0 40 52" width="9mm" height="11.7mm">'+
+    '<polygon points="20,2 30,44 20,35 10,44" fill="#000"/>'+
+    '<text x="20" y="52" font-size="12" text-anchor="middle" fill="#000" font-family="sans-serif">N</text>'+
+    '</svg></div>';
+}
+
+// 인쇄 시트 HTML
+function buildPrintSheet(dataURL,L,info){
+  const drawH=L.availH, drawW=L.availW;
+  const css=
+    '@page{size:'+L.pw+'mm '+L.ph+'mm;margin:0}'+
+    '*{box-sizing:border-box}'+
+    'body{margin:0;background:#fff;color:#000;'+
+      "font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;"+
+      '-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    '.sheet{width:'+L.pw+'mm;height:'+L.ph+'mm;position:relative;overflow:hidden;page-break-after:always}'+
+    '.frame{position:absolute;left:'+PRINT_MARGIN+'mm;top:'+PRINT_MARGIN+'mm;'+
+      'width:'+drawW+'mm;height:'+(L.ph-PRINT_MARGIN*2)+'mm;border:0.6mm solid #000}'+
+    '.draw{position:absolute;left:0;top:0;width:'+drawW+'mm;height:'+drawH+'mm;overflow:hidden}'+
+    '.draw img{display:block;width:'+drawW+'mm;height:'+drawH+'mm}'+
+    '.tb{position:absolute;left:0;bottom:0;width:'+drawW+'mm;height:'+PRINT_TB_H+'mm;'+
+      'border-top:0.6mm solid #000;display:flex;align-items:stretch}'+
+    '.tb .cell{border-left:0.25mm solid #000;padding:1.2mm 2mm;display:flex;flex-direction:column;justify-content:center}'+
+    '.tb .cell:first-child{border-left:none}'+
+    '.tb .k{font-size:2.1mm;letter-spacing:0.3mm;color:#444}'+
+    '.tb .v{font-size:3.1mm;font-weight:700;margin-top:0.5mm}'+
+    '.tb .big{font-size:4.4mm;font-weight:800;letter-spacing:0.2mm}'+
+    '.sbar{position:absolute;left:2mm;bottom:'+(PRINT_TB_H+2)+'mm;background:rgba(255,255,255,0.9);padding:0.8mm}'+
+    '.north{position:absolute;right:3mm;top:3mm}'+
+    '.note{position:absolute;right:2mm;bottom:'+(PRINT_TB_H+2)+'mm;font-size:2.2mm;color:#333;'+
+      'background:rgba(255,255,255,0.9);padding:0.6mm 1mm;border:0.2mm solid #999}'+
+    // 2페이지 (면적표·범례)
+    '.p2{width:'+L.pw+'mm;height:'+L.ph+'mm;padding:'+PRINT_MARGIN+'mm;position:relative}'+
+    '.p2 h2{font-size:4.5mm;margin:0 0 3mm 0;border-bottom:0.5mm solid #000;padding-bottom:1.5mm}'+
+    '.p2 .cols{display:flex;gap:6mm;align-items:flex-start;flex-wrap:wrap}'+
+    'table.dt{border-collapse:collapse;font-size:2.8mm}'+
+    'table.dt th{background:#EEE;border:0.25mm solid #000;padding:1mm 2mm;font-weight:700}'+
+    'table.dt td{border:0.25mm solid #666;padding:0.9mm 2mm}'+
+    'table.dt td.r{text-align:right;font-family:monospace}';
+  const tb=
+    '<div class="tb">'+
+      '<div class="cell" style="flex:2.2"><div class="k">PROJECT</div>'+
+        '<div class="big">'+escapeHtml(STATE.projectName||'')+'</div></div>'+
+      '<div class="cell" style="flex:1"><div class="k">DRAWING</div><div class="v">평 면 도</div></div>'+
+      '<div class="cell" style="flex:0.9"><div class="k">SCALE</div><div class="big">1 / '+L.scale+'</div></div>'+
+      '<div class="cell" style="flex:0.9"><div class="k">PAPER</div><div class="v">'+L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+'</div></div>'+
+      '<div class="cell" style="flex:1"><div class="k">바닥면적</div><div class="v">'+info.area+'㎡ ('+info.py+'py)</div></div>'+
+      '<div class="cell" style="flex:0.8"><div class="k">문/창</div><div class="v">'+info.doorN+' / '+info.winN+'</div></div>'+
+      '<div class="cell" style="flex:0.9"><div class="k">천장고</div><div class="v">'+info.ch+'mm</div></div>'+
+      '<div class="cell" style="flex:1"><div class="k">DATE</div><div class="v">'+info.date+'</div></div>'+
+    '</div>';
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">'+
+    '<title>'+escapeHtml(STATE.projectName||'MiniCAD')+' — 평면도 1/'+L.scale+'</title>'+
+    '<style>'+css+'</style></head><body>'+
+    '<div class="sheet"><div class="frame">'+
+      '<div class="draw"><img src="'+dataURL+'"></div>'+
+      _northHTML()+_scaleBarHTML(L.scale)+
+      '<div class="note">축척 정확 인쇄 — 프린터 배율 100%(실제 크기)로 출력</div>'+
+      tb+
+    '</div></div>'+
+    buildPrintPage2(L,info)+
+    '<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>'+
+    '</body></html>';
+}
+
+// 2페이지 — 공간 면적표 / 범례 / 개구부 리스트
+function buildPrintPage2(L,info){
+  const spaceRows=(STATE.spaces||[]).map(sp=>
+    '<tr><td>'+((SPACE_TYPES[sp.type]&&SPACE_TYPES[sp.type].name)||sp.type)+'</td>'+
+    '<td>'+escapeHtml(sp.name||'')+'</td>'+
+    '<td class="r">'+spArea(sp).toFixed(2)+'</td>'+
+    '<td class="r">'+(spArea(sp)/3.3058).toFixed(1)+'</td></tr>').join('');
+  const legend=[];
+  const cnt=(arr,lib,label)=>{
+    const m={};(arr||[]).forEach(o=>{const d=lib&&lib[o.type];if(d)m[d.name]=(m[d.name]||0)+1;});
+    Object.keys(m).forEach(nm=>legend.push([label,nm,m[nm]]));
+  };
+  cnt(STATE.furniture,typeof FURNITURE_LIB!=='undefined'?FURNITURE_LIB:null,'가구');
+  cnt(STATE.fixtures,typeof FIXTURE_LIB!=='undefined'?FIXTURE_LIB:null,'위생/주방');
+  cnt(STATE.lights,typeof LIGHT_LIB!=='undefined'?LIGHT_LIB:null,'조명');
+  cnt(STATE.electric,typeof ELECTRIC_LIB!=='undefined'?ELECTRIC_LIB:null,'전기');
+  cnt(STATE.hvac,typeof HVAC_FIRE_LIB!=='undefined'?HVAC_FIRE_LIB:null,'공조/소방');
+  const legendRows=legend.map(r=>'<tr><td>'+r[0]+'</td><td>'+escapeHtml(r[1])+'</td><td class="r">'+r[2]+'</td></tr>').join('');
+  const opRows=(STATE.openings||[]).map((o,i)=>
+    '<tr><td class="r">'+(i+1)+'</td><td>'+(o.type==='DOOR'?'문':'창')+'</td>'+
+    '<td>'+escapeHtml((o.doorType&&DOOR_TYPES&&DOOR_TYPES[o.doorType]?DOOR_TYPES[o.doorType].name:(o.subType||''))||'-')+'</td>'+
+    '<td class="r">'+(o.width_mm||o.w||0)+'×'+(o.height_mm||o.h||0)+'</td></tr>').join('');
+  return '<div class="p2">'+
+    '<h2>'+escapeHtml(STATE.projectName||'')+' — 도면 부속표 (평면도 1/'+L.scale+')</h2>'+
+    '<div class="cols">'+
+      '<table class="dt"><tr><th colspan="4">공간 면적표</th></tr>'+
+        '<tr><th>구분</th><th>실명</th><th>㎡</th><th>평</th></tr>'+spaceRows+
+        '<tr><th colspan="2">합계</th><th class="r">'+info.area+'</th><th class="r">'+info.py+'</th></tr></table>'+
+      (legendRows?'<table class="dt"><tr><th colspan="3">범례 (수량)</th></tr>'+
+        '<tr><th>분류</th><th>품명</th><th>수량</th></tr>'+legendRows+'</table>':'')+
+      (opRows?'<table class="dt"><tr><th colspan="4">개구부 리스트</th></tr>'+
+        '<tr><th>NO</th><th>종별</th><th>형식</th><th>W×H</th></tr>'+opRows+'</table>':'')+
+    '</div></div>';
+}
+
+// v5.7: 인쇄 시 2.5D 강제 OFF (시공 도면은 평면 모드만 허용)
+function printPlan(opts){
+  opts=opts||{};
+  const bbox=planBBoxMm();
+  if(!bbox){alert('인쇄할 도면이 없습니다 — 공간을 먼저 그려주세요');return;}
+  const L=choosePrintLayout(bbox,opts);
+  // --- 화면 상태 백업 ---
+  const bak={zoom:STATE.zoom,ox:STATE.offsetX,oy:STATE.offsetY,plus2D:STATE.plus2D,
+    theme:document.body.getAttribute('data-theme'),grid:STATE.showGrid,
+    selKind:STATE.selectedKind,selId:STATE.selectedId,box:STATE.boxSelection,
+    w:stage.width(),h:stage.height()};
+  try{
+    STATE.plus2D=false;STATE.showGrid=false;
+    STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];
+    document.body.setAttribute('data-theme','architect'); // 내력벽 등 테마 의존 색을 흑색 계열로
+    STATE.printMode=true;
+    // 축척 1/S 을 96dpi 기준으로 배치 → 캡처 때 pixelRatio 로 300dpi 승격
+    //  mmToPx(1mm)=0.0378*zoom 이므로 zoom = (96/25.4/S)/0.0378
+    const zoom=(96/25.4/L.scale)/(STATE.scale/1000);
+    const outW=Math.round(L.availW/25.4*96), outH=Math.round(L.availH/25.4*96);
+    STATE.zoom=zoom;
+    // 도면 중심을 인쇄 영역 중심에
+    const cx=(bbox.minX+bbox.maxX)/2, cy=(bbox.minY+bbox.maxY)/2;
+    STATE.offsetX=outW/2-mmToPx(cx);
+    STATE.offsetY=outH/2-mmToPx(cy);
+    if(stage.width()<outW||stage.height()<outH) stage.size({width:outW,height:outH});
+    drawGrid();renderAll();
+    applyPrintInk();
+    const dataURL=stage.toDataURL({x:0,y:0,width:outW,height:outH,
+      pixelRatio:PRINT_DPI/96,mimeType:'image/png'});
+    const t=new Date();
+    const info={
+      date:t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'),
+      area:(document.getElementById('t-floor')||{textContent:'0.00'}).textContent,
+      py:(document.getElementById('t-floor-pyeong')||{textContent:'0.0'}).textContent,
+      doorN:(STATE.openings||[]).filter(o=>o.type==='DOOR').length,
+      winN:(STATE.openings||[]).filter(o=>o.type==='WINDOW').length,
+      ch:STATE.ceilingHeight,
+    };
+    const html=buildPrintSheet(dataURL,L,info);
+    const w=window.open('','_blank');
+    if(!w){alert('팝업이 차단되었습니다 — 팝업 허용 후 다시 인쇄하세요');return;}
+    w.document.write(html);
+    w.document.close();
+    cmdToast('인쇄: '+L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+' · 축척 1/'+L.scale);
+  }finally{
+    // --- 화면 상태 복구 ---
+    STATE.printMode=false;
+    STATE.plus2D=bak.plus2D;STATE.showGrid=bak.grid;
+    STATE.zoom=bak.zoom;STATE.offsetX=bak.ox;STATE.offsetY=bak.oy;
+    STATE.selectedKind=bak.selKind;STATE.selectedId=bak.selId;STATE.boxSelection=bak.box||[];
+    if(bak.theme) document.body.setAttribute('data-theme',bak.theme);
+    else document.body.removeAttribute('data-theme');
+    if(stage.width()!==bak.w||stage.height()!==bak.h) stage.size({width:bak.w,height:bak.h});
+    drawGrid();renderAll();refreshUI();
+  }
 }
 
 // ===== v5.7: AI 생성 파이프라인 SSoT 번들 export =====

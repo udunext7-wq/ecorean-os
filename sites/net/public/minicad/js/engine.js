@@ -582,8 +582,68 @@ function ensureBgImageNode(){
   return _bgImageNode;
 }
 
+// ===== 2026-08-27: 인쇄 도면 모드 (대표 지시 — 인쇄물이 도면으로 안 읽히는 문제) =====
+//  화면은 어두운 배경에 네온색이 잘 읽히지만, 종이에서는 그 색이 그대로 옅은 색면이 되어
+//  선·글씨가 묻힌다. 인쇄 때는 도면 관례대로 '흰 바탕 + 검정 선화'로 바꾼다.
+function _pm(){return !!STATE.printMode;}
+// 채움색 → 아주 밝은 무채색 (선과 글씨가 살아나도록). 투명도는 보존.
+function _inkFill(c){
+  if(!c||typeof c!=='string'||c==='transparent') return c;
+  let r,g,b,a=1;
+  if(c.charAt(0)==='#'){
+    let h=c.slice(1);
+    if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    if(h.length===8){a=parseInt(h.slice(6,8),16)/255;h=h.slice(0,6);}
+    if(h.length!==6) return '#F2F2F2';
+    r=parseInt(h.slice(0,2),16);g=parseInt(h.slice(2,4),16);b=parseInt(h.slice(4,6),16);
+  }else if(/^rgba?\(/i.test(c)){
+    const m=c.match(/[\d.]+/g)||[];
+    r=+m[0]||0;g=+m[1]||0;b=+m[2]||0;a=(m[3]!==undefined)?+m[3]:1;
+  }else return '#F2F2F2';
+  const L=(0.299*r+0.587*g+0.114*b)/255;
+  const v=Math.round(255*(0.82+0.18*L));
+  if(a<0.55) return 'transparent'; // 화면용 글로우/헤일로 — 종이에서는 회색 얼룩이 된다
+  if(a>=0.999){const hx=v.toString(16).padStart(2,'0');return '#'+hx+hx+hx;}
+  return 'rgba('+v+','+v+','+v+','+a.toFixed(3)+')';
+}
+// 렌더가 끝난 장면 전체를 인쇄용 잉크로 환산 (sceneFunc 로 그린 내력벽은 이미 검정)
+function applyPrintInk(){
+  try{
+    mainLayer.find('Shape').forEach(n=>{
+      try{
+        if(n.shadowBlur&&n.shadowBlur()){n.shadowBlur(0);n.shadowOpacity(0);}
+        const cls=n.getClassName?n.getClassName():'';
+        if(cls==='Text'){
+          n.fill('#000000');
+          if(n.stroke&&n.stroke()) n.stroke('#FFFFFF'); // 헤일로는 흰색 (겹침 가독)
+          return;
+        }
+        // 화면 전용 투명 클릭영역(opacity 0.001)은 인쇄에서 숨긴다
+        const op=n.opacity?n.opacity():1;
+        if(op<0.05){n.visible(false);return;}
+        if(n.fill&&n.fill()) n.fill(_inkFill(n.fill()));
+        if(n.stroke&&n.stroke()) n.stroke('#000000');
+        if(op<1) n.opacity(1); // 잠금 등으로 흐려진 객체도 도면에는 또렷하게
+      }catch(_){}
+    });
+    mainLayer.draw();
+  }catch(_){}
+}
+// 명시 치수(전체 자동치수 포함)와 같은 변인지 — 인쇄 시 같은 치수가 2중으로 찍히던 문제
+function _hasExplicitDim(a,b){
+  const ms=STATE.measures;
+  if(!ms||!ms.length) return false;
+  const T=80, nr=(u,v)=>Math.abs(u-v)<T;
+  for(let i=0;i<ms.length;i++){
+    const m=ms[i];
+    if((nr(m.x1,a.x)&&nr(m.y1,a.y)&&nr(m.x2,b.x)&&nr(m.y2,b.y))||
+       (nr(m.x1,b.x)&&nr(m.y1,b.y)&&nr(m.x2,a.x)&&nr(m.y2,a.y))) return true;
+  }
+  return false;
+}
 function drawGrid(){
   bgLayer.destroyChildren();
+  if(_pm()){bgLayer.batchDraw();return;} // 2026-08-27: 인쇄 도면에는 그리드/배경 트레이싱 없음
   // v5.9: 배경 이미지 (그리드보다 뒤에 깔림)
   const bgImg=ensureBgImageNode();
   if(bgImg) bgLayer.add(bgImg);
@@ -956,12 +1016,31 @@ function renderSpaces(){
   /* v5.9.4 PERF: 치수 보조선(공간당 변×5개 미세 Line)을 굵기별 통합 Shape 3개로 일괄 드로잉
      — 수백 공간에서 노드 수 대폭 감소. 색·굵기·시각 결과 동일 */
   const _dimSegs={w05:[],w07:[],w11:[]};
+  // 2026-08-27: 공유 변은 한 번만 치수 표기 (VEF 라 두 공간이 같은 좌표를 공유)
+  const _dimDone=new Set();
+  // 2026-08-27: 인쇄에서는 다른 공간과 맞닿은 변(=내부 칸막이)의 자동치수를 생략한다.
+  //  실마다 사방 치수를 넣으면 옆방 안쪽으로 같은 숫자가 겹쳐 들어가 도면이 지저분해진다.
+  //  종이에는 도면 바깥 치수 체인만 남기고, 실내 치수가 필요하면 치수 도구로 직접 넣는다.
+  const _sharedEdge=new Set();
+  if(_pm()){
+    const seen=new Set();
+    STATE.spaces.forEach(sp=>{
+      const pg=sp.polygon||[];
+      for(let i=0;i<pg.length;i++){
+        const a=pg[i], b=pg[(i+1)%pg.length];
+        const ka=Math.round(a.x)+','+Math.round(a.y), kb=Math.round(b.x)+','+Math.round(b.y);
+        const k=(ka<kb)?(ka+'|'+kb):(kb+'|'+ka);
+        if(seen.has(k)) _sharedEdge.add(k); else seen.add(k);
+      }
+    });
+  }
   STATE.spaces.forEach(s=>{
     const td=SPACE_TYPES[s.type];
     const pts=[];
     s.polygon.forEach(p=>{pts.push(STATE.offsetX+mmToPx(p.x),STATE.offsetY+mmToPx(p.y));});
     const sel=STATE.selectedKind==='space'&&STATE.selectedId===s.id||STATE.boxSelection.some(b=>b.kind==='space'&&b.id===s.id);
-    const fillColor=s.materialColor||td.color+'33';
+    // 2026-08-27: 인쇄는 흰 바탕 (색면이 선·글씨를 덮던 문제)
+    const fillColor=_pm()?'#FFFFFF':(s.materialColor||td.color+'33');
     let poly;
     if(s.holes&&s.holes.length){
       // v5.9: 도넛 (hole 있음) — Konva.Shape sceneFunc로 even-odd 채우기
@@ -1008,10 +1087,11 @@ function renderSpaces(){
       });
     }else{
       poly=new Konva.Line({
-        points:pts,fill:fillColor,stroke:sel?'#E2725B':td.color,
-        strokeWidth:sel?3.5:2.2,closed:true,id:s.id,
+        points:pts,fill:fillColor,stroke:_pm()?'#000000':(sel?'#E2725B':td.color),
+        strokeWidth:_pm()?0.9:(sel?3.5:2.2),closed:true,id:s.id,
         shadowColor:sel?'#E2725B':'transparent',shadowBlur:sel?12:0,shadowOpacity:sel?0.6:0,
-        opacity:s.locked?0.30:1, dash:s.locked?[8,5]:null, // v5.9: 잠금 시 반투명+점선
+        // 2026-08-27: 잠금 표시(반투명·점선)는 작업 보조 — 인쇄에는 내지 않는다
+        opacity:(!_pm()&&s.locked)?0.30:1, dash:(!_pm()&&s.locked)?[8,5]:null,
       });
     }
     poly.on('click tap',e=>{if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('space',s.id);});
@@ -1087,10 +1167,11 @@ function renderSpaces(){
     // 공간명 라벨
     const c=spCenter(s);
     const lg=new Konva.Group({x:STATE.offsetX+mmToPx(c.x),y:STATE.offsetY+mmToPx(c.y),listening:false});
-    const t1=new Konva.Text({text:s.name,fontSize:13,fontFamily:'Inter',fontStyle:'500',fill:'#F5F1EB'});
+    // 2026-08-27: 아이보리 글씨는 흰 종이에서 사라진다 — 인쇄는 검정
+    const t1=new Konva.Text({text:s.name,fontSize:13,fontFamily:'Inter',fontStyle:'500',fill:_pm()?'#000000':'#F5F1EB'});
     t1.offsetX(t1.width()/2);t1.offsetY(15);
     lg.add(t1);
-    const t2=new Konva.Text({text:spArea(s).toFixed(1)+' ㎡',fontSize:10,fontFamily:'JetBrains Mono',fill:td.color});
+    const t2=new Konva.Text({text:spArea(s).toFixed(1)+' ㎡',fontSize:10,fontFamily:'JetBrains Mono',fill:_pm()?'#333333':td.color});
     t2.offsetX(t2.width()/2);t2.offsetY(0);
     lg.add(t2);
     labelSpacesGroup.add(lg);
@@ -1104,6 +1185,13 @@ function renderSpaces(){
         const dx=p2.x-p1.x,dy=p2.y-p1.y;
         const lenmm=Math.sqrt(dx*dx+dy*dy);
         if(lenmm<200) continue;
+        // 2026-08-27: '전체 자동치수'로 만든 치수와 같은 변이면 자동 표시는 생략 (인쇄 2중 치수)
+        if(_hasExplicitDim(p1,p2)) continue;
+        const _ka=Math.round(p1.x)+','+Math.round(p1.y), _kb=Math.round(p2.x)+','+Math.round(p2.y);
+        const _dk1=_ka+'|'+_kb, _dk2=_kb+'|'+_ka;
+        if(_dimDone.has(_dk1)||_dimDone.has(_dk2)) continue; // 공유 변 중복 표기 방지
+        if(_pm()&&_sharedEdge.has(_ka<_kb?_dk1:_dk2)) continue; // 인쇄: 내부 칸막이 치수 생략
+        _dimDone.add(_dk1);
         const ux=dx/lenmm, uy=dy/lenmm;
         // 외부 방향 노말 (공간 바깥쪽)
         const nx=cw?-uy:uy;
@@ -1467,7 +1555,8 @@ function renderWalls(){
     const sel=STATE.selectedKind==='wall'&&STATE.selectedId===w.id||STATE.boxSelection.some(b=>b.kind==='wall'&&b.id===w.id);
     const isOW=overlapsWall.has(w.id);
     const isOS=overlapsSpace.has(w.id);
-    const overlapColor=isOS?'#3D9DE2':(isOW?'#E03030':null);
+    // 2026-08-27: 중첩 경고는 작업 보조 표시 — 인쇄물에는 내지 않는다
+    const overlapColor=_pm()?null:(isOS?'#3D9DE2':(isOW?'#E03030':null));
     const isLine=!!w.isLine;
     const isPartition=w.wallType==='bearing';
     const lineSp=isLine&&w.spaceId?STATE.spaces.find(s=>s.id===w.spaceId):null;
@@ -1523,7 +1612,8 @@ function renderWalls(){
     }else{
       // 기존 표준벽/선 렌더링
       const _isConnectedFree=_connectedFreeWallIds.has(w.id);
-      const _baseStroke=isLine?lineBaseColor:(_isConnectedFree?'#5BA0D4':'#3E3E3E');
+      // 2026-08-27: 인쇄는 벽을 검정 실선으로 (화면의 하늘색은 종이에서 벽으로 안 읽힘)
+      const _baseStroke=_pm()?'#000000':(isLine?lineBaseColor:(_isConnectedFree?'#5BA0D4':'#3E3E3E'));
       const line=new Konva.Line({
         points:[x1,y1,x2,y2],
         stroke:sel?'#E2725B':(overlapColor||_baseStroke),
@@ -1541,7 +1631,7 @@ function renderWalls(){
       groups.walls.add(line);
     }
     // 경고 마크
-    if(isOW&&!sel){
+    if(isOW&&!sel&&!_pm()){
       const mx=(x1+x2)/2, my=(y1+y2)/2;
       groups.walls.add(new Konva.Text({x:mx-10,y:my-14,text:'⚠',fontSize:28,fontFamily:'Inter',fill:'#E03030',shadowColor:'#000',shadowBlur:3}));
     }
@@ -1748,7 +1838,7 @@ function renderOpenings(){
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const w=mmToPx(o.width_mm);
     const isDoor=o.type==='DOOR';
-    const color=isDoor?'#D4A05B':'#5BA0D4';
+    const color=_pm()?'#000000':(isDoor?'#D4A05B':'#5BA0D4');
     const sel=STATE.selectedKind==='opening'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='opening'&&b.id===o.id);
     const g=new Konva.Group({x,y,rotation:o.angle||0,scaleX:o.flipped?-1:1,id:o.id});
     // v5.9: depth_mm가 클수록 jamb(벽 단면) 사각형 시각 두께 증가
@@ -2093,6 +2183,7 @@ function symbolBoostFactor(kind,def){
 //  화면 표시 크기는 실척 그대로 두고, 클릭 판정 영역만 최소 34px 로 확대 (CAD 픽 어퍼처 관례)
 const SYM_PICK_PX=17; // 반경
 function addSymbolPickArea(g,def,boost){
+  if(_pm()) return; // 2026-08-27: 클릭 편의용 영역 — 인쇄에는 만들지 않는다
   const wMm=def.w||def.size||200, hMm=def.h||def.size||200;
   const maxPx=Math.max(mmToPx(wMm),mmToPx(hMm));
   if(maxPx>=SYM_PICK_PX*2) return; // 충분히 크면 불필요
@@ -2110,6 +2201,7 @@ function _symbolLabelClick(kind,id){
   };
 }
 function addSymbolLabel(group,xPx,yPx,def,kind,id){
+  if(_pm()) return; // 2026-08-27: 인쇄에서는 심볼 라벨 대신 범례 사용 (라벨이 심볼보다 커서 도면을 덮음)
   if(STATE.zoom<0.3) return; // 극축소 시 겹침 방지
   const halfPx=mmToPx((def.size||Math.max(def.w||0,def.h||0)||200))/2;
   const t=new Konva.Text({
@@ -2206,7 +2298,8 @@ function renderRect(arr,group,lib,kind){
       nodes.forEach(n=>g.add(n));
       // v5.9: 영문 이름 라벨 — 객체 중앙. 흰 글자 + 검정 외곽선으로 모든 배경에서 가독성 확보
       // 2026-08-24 v6.0: LOD — 45% 미만 축소 시 라벨 생략 (대형 도면 렌더 부하·글자 뭉침 방지)
-      if(def.nameEn&&STATE.zoom>=0.45){
+      // 2026-08-27: 도면 위 영문명 대형 라벨은 인쇄 제외 — 2페이지 범례로 대신한다
+      if(def.nameEn&&STATE.zoom>=0.45&&!_pm()){
         const w=mmToPx(defW),h=mmToPx(defH);
         const minDim=Math.min(w,h);
         const fontSize=Math.max(10,Math.min(18,minDim*0.14));
