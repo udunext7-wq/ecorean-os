@@ -2639,6 +2639,112 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('조명연결·범례: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-29: 여러 조명 한 번에 해제 (대표 지시 — "해제할 때도 여러 개를 선택하고") ===
+  try{
+    const _bakUL={lights:STATE.lights.slice(),electric:STATE.electric.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice(),
+      cl:window._circuitLink,jl:window._jumpLink,ca:window._circuitAttach};
+    const UX=4400000;
+    STATE.lights=[];STATE.electric=[];STATE.boxSelection=[];
+    STATE.selectedKind=null;STATE.selectedId=null;
+    window._circuitLink=null;window._jumpLink=null;window._circuitAttach=null;
+
+    const U=[0,1,2,3].map(i=>{const o={id:makeId('li'),type:'downlight',x:UX+i*900,y:UX,angle:0,inch:3};
+      STATE.lights.push(o);return o;});
+    const swA={id:makeId('e'),type:'switch_1',x:UX,y:UX+2000,angle:0,lightIds:[U[0].id,U[1].id],circuitOn:true};
+    const swB={id:makeId('e'),type:'switch_1',x:UX+3000,y:UX+2000,angle:0,lightIds:[U[2].id,U[3].id],circuitOn:true};
+    STATE.electric.push(swA,swB);
+
+    // [U1] 걸려 있는 스위치 찾기
+    assert('해제: 걸린 스위치 조회',switchesOfLight(U[0].id).length===1&&
+      switchesOfLight(U[0].id)[0].id===swA.id);
+
+    // [U2] 여러 스위치에 걸친 조명들을 한 번에 뺀다
+    STATE.boxSelection=[U[0],U[2]].map(o=>({kind:'lights',id:o.id}));
+    const n2=detachSelectedLights();
+    assert('해제: 두 스위치에서 한 번에',n2===2&&swA.lightIds.length===1&&swB.lightIds.length===1,
+      'n='+n2+' A='+swA.lightIds.length+' B='+swB.lightIds.length);
+    assert('해제: 남은 것은 그대로',swA.lightIds[0]===U[1].id&&swB.lightIds[0]===U[3].id);
+
+    // [U3] 마지막 하나까지 빼면 점등도 꺼진다 (켠 채로 남으면 유령 점등이 된다)
+    STATE.boxSelection=[{kind:'lights',id:U[1].id}];
+    detachSelectedLights();
+    assert('해제: 마지막까지 빼면 소등',swA.lightIds.length===0&&swA.circuitOn===false);
+
+    // [U4] 뺄 게 없으면 아무 일도 안 한다
+    assert('해제: 연결 없으면 0',detachSelectedLights([U[0].id])===0);
+
+    // [U5] 점핑 해제 — 나가는 연결과 들어오는 연결 모두
+    U[0].jumpIds=[U[1].id];U[1].jumpIds=[U[2].id];U[2].jumpIds=[U[3].id];
+    STATE.boxSelection=[{kind:'lights',id:U[1].id}];
+    const n5=unchainSelectedLights();
+    assert('해제: 점핑 양방향 해제',n5===2&&jumpNeighbors(U[1].id).length===0,
+      'n='+n5+' left='+jumpNeighbors(U[1].id).length);
+    assert('해제: 관계없는 점핑은 유지',jumpNeighbors(U[2].id).indexOf(U[3].id)>=0);
+    STATE.lights.forEach(l=>{delete l.jumpIds;});
+
+    // [U6] 스위치 먼저 — 그 스위치에서만 뺀다
+    swA.lightIds=[U[0].id,U[1].id];swA.circuitOn=true;
+    swB.lightIds=[U[0].id];swB.circuitOn=true;
+    const n6=detachLightsFromSwitch(swA.id,[U[0].id]);
+    assert('해제: 지정한 스위치에서만',n6===1&&swA.lightIds.length===1&&swB.lightIds.length===1,
+      'A='+swA.lightIds.length+' B='+swB.lightIds.length);
+
+    // [U7] 연결 모드 Alt+드래그 = 박스 해제
+    swA.lightIds=[U[0].id,U[1].id,U[2].id];swA.circuitOn=true;
+    window._circuitLink={switchId:swA.id};
+    const n7=circuitBoxConnect('circuit',UX-400,UX-400,UX+1300,UX+400,true);
+    assert('해제: 연결 모드 박스 해제',n7===2&&swA.lightIds.length===1&&swA.lightIds[0]===U[2].id,
+      'n='+n7+' left='+swA.lightIds.length);
+    // 같은 박스에 detach 없이 부르면 다시 붙는다 (연결/해제가 한 경로)
+    const n7b=circuitBoxConnect('circuit',UX-400,UX-400,UX+1300,UX+400,false);
+    assert('해제: 같은 경로로 다시 연결',n7b===2&&swA.lightIds.length===3);
+    window._circuitLink=null;
+
+    // [U8] 점핑 모드 박스 해제
+    STATE.lights.forEach(l=>{delete l.jumpIds;});
+    U[0].jumpIds=[U[1].id,U[2].id];
+    window._jumpLink={lightId:U[0].id};
+    const n8=circuitBoxConnect('jump',UX+500,UX-400,UX+2200,UX+400,true);
+    assert('해제: 점핑 박스 해제',n8===2&&jumpNeighbors(U[0].id).length===0,'n='+n8);
+    window._jumpLink=null;
+    STATE.lights.forEach(l=>{delete l.jumpIds;});
+
+    // [U9] 패널 — 연결된 게 있으면 해제 버튼이 살아 있고, 없으면 꺼져 있다
+    swA.lightIds=[U[0].id];swB.lightIds=[];
+    U[0].jumpIds=[U[1].id];
+    STATE.selectedKind=null;STATE.selectedId=null;
+    STATE.boxSelection=[U[0],U[1]].map(o=>({kind:'lights',id:o.id}));
+    refreshUI();
+    const dx=document.getElementById('d-ms-detach'), ux=document.getElementById('d-ms-unchain');
+    assert('해제: 패널에 회로 해제 버튼',!!dx&&dx.disabled===false,dx?('disabled='+dx.disabled):'없음');
+    assert('해제: 패널에 점핑 해제 버튼',!!ux&&ux.disabled===false);
+    swA.lightIds=[];STATE.lights.forEach(l=>{delete l.jumpIds;});
+    refreshUI();
+    const dx2=document.getElementById('d-ms-detach'), ux2=document.getElementById('d-ms-unchain');
+    assert('해제: 뺄 게 없으면 비활성',!!dx2&&dx2.disabled===true&&!!ux2&&ux2.disabled===true,
+      dx2?('d='+dx2.disabled+' u='+ux2.disabled):'없음');
+
+    // [U10] 명령어
+    swA.lightIds=[U[0].id,U[1].id];swA.circuitOn=true;
+    STATE.boxSelection=[U[0],U[1]].map(o=>({kind:'lights',id:o.id}));
+    if(STATE.cmdMode&&typeof exitCmdMode==='function') exitCmdMode();
+    processCommand('unlink');
+    assert('해제: unlink 명령',swA.lightIds.length===0);
+    U[0].jumpIds=[U[1].id];
+    STATE.boxSelection=[U[0],U[1]].map(o=>({kind:'lights',id:o.id}));
+    processCommand('unchain');
+    assert('해제: unchain 명령',jumpNeighbors(U[0].id).length===0);
+
+    STATE.lights=_bakUL.lights;STATE.electric=_bakUL.electric;
+    STATE.selectedKind=_bakUL.selK;STATE.selectedId=_bakUL.selI;STATE.boxSelection=_bakUL.box;
+    window._circuitLink=_bakUL.cl;window._jumpLink=_bakUL.jl;window._circuitAttach=_bakUL.ca;
+    if(typeof _circuitBanner==='function') _circuitBanner();
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('해제: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),

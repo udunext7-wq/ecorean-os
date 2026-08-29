@@ -443,18 +443,34 @@ function refreshDetail(){
         Object.keys(_cnt).map(k=>'<span style="font-size:11px;padding:2px 7px;border-radius:10px;'+
           'background:rgba(201,169,97,0.15);color:var(--text-primary)">'+(_kn[k]||k)+' '+_cnt[k]+'</span>').join('')+
       '</div>'+
-      (_lit.length?
-        '<div style="padding:8px;background:rgba(123,160,91,0.08);border:1px solid rgba(123,160,91,0.35);border-radius:4px">'+
-        '<div class="field-label" style="margin-bottom:6px;color:#7BA05B">조명 <b>'+_lit.length+'개</b> — 한 번에 연결</div>'+
-        '<button type="button" class="btn sm" id="d-ms-attach" style="width:100%">🔌 스위치에 연결</button>'+
-        (_lit.length>1?'<button type="button" class="btn sm" id="d-ms-chain" style="width:100%;margin-top:4px">🔗 서로 점핑 연결</button>':'')+
-        '<div class="hint" style="margin-top:4px">스위치에 연결 → 버튼을 누르고 스위치를 클릭하세요</div></div>'
-        :'<div class="hint">조명을 드래그로 고르면 한 번에 회로에 연결할 수 있습니다</div>')+
+      (_lit.length?(function(){
+        // 2026-08-29: 붙이기만 있으면 반쪽이다 — 때기도 같은 자리에
+        const _cn=_lit.filter(id=>switchesOfLight(id).length>0).length;
+        const _jn=_lit.filter(id=>(typeof jumpNeighbors==='function')&&jumpNeighbors(id).length>0).length;
+        const _b=(id,label,on)=>'<button type="button" class="btn sm" id="'+id+'"'+(on?'':' disabled')+
+          ' style="flex:1;min-width:0'+(on?'':';opacity:0.4;cursor:default')+'">'+label+'</button>';
+        return '<div style="padding:8px;background:rgba(123,160,91,0.08);border:1px solid rgba(123,160,91,0.35);border-radius:4px">'+
+          '<div class="field-label" style="margin-bottom:6px;color:#7BA05B">조명 <b>'+_lit.length+'개</b> — 한 번에 연결·해제</div>'+
+          '<div style="display:flex;gap:4px">'+
+            _b('d-ms-attach','🔌 스위치에 연결',true)+
+            _b('d-ms-detach','🔌 회로 해제'+(_cn?' ('+_cn+')':''),_cn>0)+
+          '</div>'+
+          '<div style="display:flex;gap:4px;margin-top:4px">'+
+            _b('d-ms-chain','🔗 서로 점핑',_lit.length>1)+
+            _b('d-ms-unchain','🔗 점핑 해제'+(_jn?' ('+_jn+')':''),_jn>0)+
+          '</div>'+
+          '<div class="hint" style="margin-top:4px">연결은 버튼 후 스위치 클릭 · 해제는 걸려 있는 스위치에서 바로 빠진다</div></div>';
+      })()
+        :'<div class="hint">조명을 드래그로 고르면 한 번에 연결·해제할 수 있습니다</div>')+
       '<button class="btn danger sm" id="d-ms-del" style="width:100%;margin-top:8px">삭제 (Del)</button>';
     const _ab=document.getElementById('d-ms-attach');
     if(_ab) _ab.addEventListener('click',()=>startCircuitAttach(_lit));
     const _cb=document.getElementById('d-ms-chain');
     if(_cb) _cb.addEventListener('click',()=>chainSelectedLights(_lit));
+    const _xb=document.getElementById('d-ms-detach');
+    if(_xb) _xb.addEventListener('click',()=>detachSelectedLights(_lit));
+    const _ub=document.getElementById('d-ms-unchain');
+    if(_ub) _ub.addEventListener('click',()=>unchainSelectedLights(_lit));
     const _db=document.getElementById('d-ms-del');
     if(_db) _db.addEventListener('click',deleteSelected);
     return;
@@ -2310,7 +2326,8 @@ function _circuitBanner(){
   const t=document.getElementById('circuit-link-text');
   if(t) t.textContent=attach
     ? ('🔌 조명 '+n+'개 — 연결할 스위치를 클릭하세요')
-    : ((jump?'🔗 점핑 연결 모드 — 이어 붙일 조명 클릭·드래그':'🔌 조명 연결 모드 — 조명 클릭·드래그로 한꺼번에')+' (연결 '+n+'개)');
+    : ((jump?'🔗 점핑 연결 모드 — 클릭·드래그':'🔌 조명 연결 모드 — 클릭·드래그')+
+       ' · Alt+드래그=해제 (연결 '+n+'개)');
   if(el) el.style.background=attach?'rgba(91,160,212,0.96)':(jump?'rgba(212,184,114,0.96)':'rgba(123,160,91,0.95)');
 }
 function toggleCircuitLink(switchId,lightId){
@@ -2407,14 +2424,97 @@ function chainSelectedLights(ids){
   cmdToast('🔗 점핑 '+n+'개 연결 — 조명 '+order.length+'개를 한 줄로');
   return n;
 }
+// ===== 2026-08-29: 여러 조명 한 번에 해제 (대표 지시 — "해제할 때도 여러 개를 선택하고") =====
+//  붙이는 길만 열어 두면 반쪽이다. 12개를 쓸어 담아 붙였는데 4개를 빼려면 다시 하나씩 눌러야 했다.
+//  연결과 같은 두 방향으로 해제도 연다.
+// 이 조명이 걸려 있는 스위치들
+function switchesOfLight(lightId){
+  return (STATE.electric||[]).filter(e=>Array.isArray(e.lightIds)&&e.lightIds.indexOf(lightId)>=0);
+}
+// A. 조명 먼저 — 고른 조명을 걸려 있는 모든 스위치에서 뺀다 (스위치를 다시 고를 필요 없이)
+function detachSelectedLights(ids){
+  const lightIds=(ids&&ids.length)?ids:selectedLightIds();
+  if(!lightIds.length){cmdToast('먼저 조명을 선택하세요');return 0;}
+  const set=new Set(lightIds);
+  let removed=0, swN=0;
+  (STATE.electric||[]).forEach(e=>{
+    if(!Array.isArray(e.lightIds)||!e.lightIds.length) return;
+    const before=e.lightIds.length;
+    e.lightIds=e.lightIds.filter(id=>!set.has(id));
+    const d=before-e.lightIds.length;
+    if(d){removed+=d;swN++;if(!e.lightIds.length) e.circuitOn=false;}
+  });
+  if(!removed){cmdToast('연결된 회로가 없습니다');return 0;}
+  saveHistory();renderAll();refreshUI();_circuitBanner();
+  cmdToast('🔌 회로 해제 — 조명 '+removed+'개 (스위치 '+swN+'개에서)');
+  return removed;
+}
+// 고른 조명들의 점핑을 푼다 — 나가는 연결과 들어오는 연결 모두
+function unchainSelectedLights(ids){
+  const lightIds=(ids&&ids.length)?ids:selectedLightIds();
+  if(!lightIds.length){cmdToast('먼저 조명을 선택하세요');return 0;}
+  const set=new Set(lightIds);
+  let n=0;
+  (STATE.lights||[]).forEach(l=>{
+    if(!Array.isArray(l.jumpIds)||!l.jumpIds.length) return;
+    const before=l.jumpIds.length;
+    if(set.has(l.id)) l.jumpIds=[];                       // 고른 조명에서 나가는 연결
+    else l.jumpIds=l.jumpIds.filter(id=>!set.has(id));    // 고른 조명으로 들어오는 연결
+    n+=before-l.jumpIds.length;
+  });
+  if(!n){cmdToast('점핑 연결이 없습니다');return 0;}
+  saveHistory();renderAll();refreshUI();_circuitBanner();
+  cmdToast('🔗 점핑 해제 — 연결 '+n+'개');
+  return n;
+}
+// B. 스위치 먼저 — 이 스위치에서만 뺀다 (연결 모드에서 Alt+드래그)
+function detachLightsFromSwitch(switchId,lightIds){
+  const sw=(STATE.electric||[]).find(e=>e.id===switchId);
+  if(!sw||!Array.isArray(sw.lightIds)){cmdToast('연결된 조명이 없습니다');return 0;}
+  const set=new Set(lightIds||[]);
+  const before=sw.lightIds.length;
+  sw.lightIds=sw.lightIds.filter(id=>!set.has(id));
+  const n=before-sw.lightIds.length;
+  if(!n){cmdToast('박스 안에 이 스위치에 걸린 조명이 없습니다');return 0;}
+  if(!sw.lightIds.length) sw.circuitOn=false;
+  saveHistory();
+  STATE.selectedKind='electric';STATE.selectedId=switchId;STATE.boxSelection=[];
+  renderAll();refreshUI();_circuitBanner();
+  cmdToast('🔌 해제 '+n+'개 — 이 스위치 총 '+sw.lightIds.length+'개');
+  return n;
+}
+// 점핑 모드에서 기준 조명과의 연결만 끊는다
+function unjumpFromLight(fromId,ids){
+  const from=(STATE.lights||[]).find(l=>l.id===fromId);
+  if(!from) return 0;
+  const set=new Set(ids||[]);
+  let n=0;
+  if(Array.isArray(from.jumpIds)){
+    const b=from.jumpIds.length;
+    from.jumpIds=from.jumpIds.filter(id=>!set.has(id));
+    n+=b-from.jumpIds.length;
+  }
+  (STATE.lights||[]).forEach(l=>{
+    if(!set.has(l.id)||!Array.isArray(l.jumpIds)) return;
+    const b=l.jumpIds.length;
+    l.jumpIds=l.jumpIds.filter(id=>id!==fromId);
+    n+=b-l.jumpIds.length;
+  });
+  if(!n){cmdToast('박스 안에 이 조명과 점핑된 것이 없습니다');return 0;}
+  saveHistory();renderAll();refreshUI();_circuitBanner();
+  cmdToast('🔗 점핑 해제 '+n+'개');
+  return n;
+}
 // B. 스위치 먼저 — 연결 모드에서 박스로 쓸어 담는다
-function circuitBoxConnect(mode,x1,y1,x2,y2){
+function circuitBoxConnect(mode,x1,y1,x2,y2,detach){
   const ids=lightsInBoxMm(x1,y1,x2,y2);
   if(!ids.length){cmdToast('박스 안에 조명이 없습니다');return 0;}
   if(mode==='circuit'&&window._circuitLink){
+    if(detach) return detachLightsFromSwitch(window._circuitLink.switchId,ids); // 2026-08-29: Alt+드래그
     return attachLightsToSwitch(window._circuitLink.switchId,ids,{keepMode:true});
   }
   if(mode==='jump'&&window._jumpLink){
+    if(detach) return unjumpFromLight(window._jumpLink.lightId,ids); // 2026-08-29
     const from=STATE.lights.find(l=>l.id===window._jumpLink.lightId);
     if(!from) return 0;
     if(!Array.isArray(from.jumpIds)) from.jumpIds=[];
@@ -2779,6 +2879,8 @@ function _paletteCommands(){
     {label:'🖥 인쇄 영역 — 화면에서 잡기 (pf)',kw:'print 인쇄 영역 틀 화면 잡기 frame pf',run:()=>togglePrintFrame()},
     {label:'🔌 선택한 조명을 스위치에 연결 (link)',kw:'circuit link 연결 조명 스위치 회로 다중',run:()=>startCircuitAttach()},
     {label:'🔗 선택한 조명끼리 점핑 연결 (chain)',kw:'jump chain 점핑 조명 연결 데이지체인',run:()=>chainSelectedLights()},
+    {label:'🔌 선택한 조명 회로 해제 (unlink)',kw:'unlink 해제 연결해제 회로 조명 스위치',run:()=>detachSelectedLights()},
+    {label:'🔗 선택한 조명 점핑 해제 (unchain)',kw:'unchain 점핑해제 해제 조명 jump',run:()=>unchainSelectedLights()},
     {label:'⚠ 겹친 조명 찾기 (dup)',kw:'duplicate 중복 겹침 다운라이트 조명 경고 dup',run:()=>reportDuplicateLights()},
     {label:'⚠ 겹친 조명 전부 정리 (dup fix)',kw:'duplicate 중복 정리 삭제 조명 dup fix',run:()=>cleanDuplicateLights()},
     {label:'💾 JSON 저장',kw:'save json 저장 파일',run:saveJSON},
@@ -4818,6 +4920,8 @@ function processCommand(rawCmd){
   // 2026-08-29: 고른 조명들을 한 번에 — link=스위치에, chain=서로 점핑
   if(/^(link|연결)$/i.test(c)){startCircuitAttach();return;}
   if(/^(chain|점핑)$/i.test(c)){chainSelectedLights();return;}
+  if(/^(unlink|연결해제)$/i.test(c)){detachSelectedLights();return;}
+  if(/^(unchain|점핑해제)$/i.test(c)){unchainSelectedLights();return;}
   // 2026-08-29: 겹친 조명 — dup 은 찾기, 'dup fix' 는 전부 정리
   const dupM=c.match(/^(?:dup|중복)(?:\s+(fix|정리))?$/i);
   if(dupM){ if(dupM[1]) cleanDuplicateLights(); else reportDuplicateLights(); return; }

@@ -2176,9 +2176,10 @@ function updatePreview(){
     drawGroup.add(new Konva.Rect({
       x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),
       // 2026-08-27: AutoCAD 관례 — Crossing(우→좌)=초록 점선 / Window(좌→우)=파랑 실선
-      fill:isCrossing?'#7BA05B1F':'#5BA0D414',
-      stroke:isCrossing?'#7BA05B':'#5BA0D4',
-      strokeWidth:1.4,dash:isCrossing?[6,4]:[]
+      // 2026-08-29: 연결 모드 박스는 색으로 구분 — 금색=연결 / 적색=해제
+      fill:drawState.linkBox?(drawState.linkDetach?'#E2725B22':'#D4B87222'):(isCrossing?'#7BA05B1F':'#5BA0D414'),
+      stroke:drawState.linkBox?(drawState.linkDetach?'#E2725B':'#D4B872'):(isCrossing?'#7BA05B':'#5BA0D4'),
+      strokeWidth:drawState.linkBox?1.8:1.4,dash:drawState.linkBox?[]:(isCrossing?[6,4]:[])
     }));
     previewLayer.batchDraw();return;
   }
@@ -2309,7 +2310,10 @@ stage.on('mousedown touchstart',e=>{
       //  (종전엔 빈 곳을 누르면 모드만 유지하고 끝나, 조명을 하나씩 클릭해야 했다)
       if(window._circuitLink||window._jumpLink){
         drawState={type:'box',start:mm,current:mm,startPx:{x:pos.x,y:pos.y},
-                   linkBox:window._circuitLink?'circuit':'jump'};
+                   linkBox:window._circuitLink?'circuit':'jump',
+                   // 2026-08-29: Alt+드래그 = 해제 (태블릿은 퀵바 ⎇ 고정)
+                   linkDetach:!!(e.evt&&e.evt.altKey)||!!STATE.altLatched};
+        if(STATE.altLatched){STATE.altLatched=false;if(typeof refreshTouchQuickBar==='function') refreshTouchQuickBar();}
         return;
       }
       drawState={type:'box',start:mm,current:mm};
@@ -3378,8 +3382,10 @@ stage.on('mouseup touchend',e=>{
     const _lu=stage.getPointerPosition(), _lp=drawState.startPx;
     const _ld=(_lu&&_lp)?(Math.abs(_lu.x-_lp.x)+Math.abs(_lu.y-_lp.y)):0;
     const _mode=drawState.linkBox, _s=drawState.start, _c=drawState.current;
+    const drawStateDetachFlag=drawState.linkDetach;
     drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
-    if(_ld>=6&&typeof circuitBoxConnect==='function') circuitBoxConnect(_mode,_s.x,_s.y,_c.x,_c.y);
+    const _det=!!drawStateDetachFlag;
+    if(_ld>=6&&typeof circuitBoxConnect==='function') circuitBoxConnect(_mode,_s.x,_s.y,_c.x,_c.y,_det);
     else{ // 단순 클릭 — 모드만 유지
       if(window._circuitLink){STATE.selectedKind='electric';STATE.selectedId=window._circuitLink.switchId;}
       else if(window._jumpLink){STATE.selectedKind='lights';STATE.selectedId=window._jumpLink.lightId;}
