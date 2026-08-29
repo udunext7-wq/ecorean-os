@@ -206,7 +206,9 @@ function showLibPopup(tool,lib){
   // 2026-08-24 v6.0: 최근 사용 (도구별 최대 6개, localStorage)
   let _recent=[];
   try{_recent=JSON.parse(localStorage.getItem('minicad.recent.'+tool)||'[]');}catch(_){_recent=[];}
-  _recent=_recent.filter(k=>lib[k]&&!lib[k].hidden);
+  // 2026-08-30: 'downlight#3' 같은 규격 키도 유효하다 — 베이스 타입으로 판정한다
+  const _libOk=k=>{const b=(typeof libBaseType==='function')?libBaseType(k):k;return !!(lib[b]&&!lib[b].hidden);};
+  _recent=_recent.filter(_libOk);
   const _pushRecent=key=>{
     try{
       let r=JSON.parse(localStorage.getItem('minicad.recent.'+tool)||'[]');
@@ -223,9 +225,11 @@ function showLibPopup(tool,lib){
   const _sections=[];
   if(_recent.length) _sections.push(['★ 최근 사용',_recent.slice()]);
   ((typeof LIB_GROUPS!=='undefined'&&LIB_GROUPS[tool])||[]).forEach(([gname,keys])=>{
-    const ks=keys.filter(k=>lib[k]&&!lib[k].hidden&&!_placed.has(k));
+    const ks=keys.filter(k=>_libOk(k)&&!_placed.has(k));
     if(!ks.length) return;
-    ks.forEach(k=>_placed.add(k));
+    // 규격 항목을 넣었으면 맨 타입은 '기타'에 다시 나오지 않게 한다
+    ks.forEach(k=>{_placed.add(k);
+      if(typeof libBaseType==='function') _placed.add(libBaseType(k));});
     _sections.push([gname,ks]);
   });
   const _rest=_visible.map(e=>e[0]).filter(k=>!_placed.has(k));
@@ -233,7 +237,10 @@ function showLibPopup(tool,lib){
   const _entries=[];
   _sections.forEach(([gname,keys])=>{
     _entries.push({group:gname,count:keys.length});
-    keys.forEach(k=>_entries.push({key:k,def:lib[k],isRecent:_recentSet.has(k)}));
+    // 2026-08-30: 'type#규격' 키는 규격이 반영된 정의로 그린다
+    keys.forEach(k=>_entries.push({key:k,
+      def:(typeof libDefForKey==='function')?libDefForKey(lib,k):lib[k],
+      isRecent:_recentSet.has(k)}));
   });
   _entries.forEach(item=>{
     if(item.group){
@@ -244,6 +251,7 @@ function showLibPopup(tool,lib){
       return;
     }
     const key=item.key, def=item.def, isRecent=item.isRecent;
+    if(!def) return; // 정의를 못 찾는 키는 건너뛴다
     const btn=document.createElement('button');
     btn.className='lib-thumb-btn'+(STATE.selectedLib===key?' active':'');
     btn.type='button';

@@ -558,17 +558,23 @@ function placeLibAt(pos){
     if(typeof setLibCategory==='function') setLibCategory(tool,{keepOpen:true});
     return false;
   }
-  addLibObject(pos,kind,STATE.selectedLib);
+  addLibObject(pos,kind,STATE.selectedLib); // 2026-08-30: 'type#규격' 키도 그대로 넘긴다
   return true;
 }
 function addLibObject(pos,kind,type){
+  // 2026-08-30: 팔레트 키가 'downlight#3' 처럼 규격을 단 경우 — 타입과 규격을 분리
+  const _libKey=type;
+  if(typeof libBaseType==='function') type=libBaseType(_libKey);
   const mm=getMm(pos);
   const sp=findNearestSpace(mm);
   const elem={fixtures:'FIXT',furniture:'FURN',lights:'LITE',electric:'ELEC',hvac:'HVAC'}[kind]||'OBJ';
   const o={id:makeId(kind.charAt(0)),type,x:mm.x,y:mm.y,angle:_libPlaceAngle||0,flipped:!!_libPlaceFlipped,
     layerName:makeLayerName(elem,sp),spaceId:sp?sp.id:null};
-  // 2026-08-25: 다운라이트는 마지막에 고른 인치로 배치 (대표 지시 — 2인치·3인치 혼용)
+  // 2026-08-25: 다운라이트는 마지막에 고른 인치로 배치 (팔레트에서 규격을 골랐으면 그걸 우선)
   if(type==='downlight') o.inch=Math.round(STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT);
+  if(typeof applyLibVariant==='function') applyLibVariant(o,_libKey);
+  if(type==='downlight'&&typeof libVariantVal==='function'&&libVariantVal(_libKey)!==null)
+    STATE.downlightInch=o.inch; // 다음 배치도 같은 인치로
   // 2026-08-25: 라인·간접조명은 길이 속성으로 배치 (이후 입력/드래그로 늘림)
   if(typeof isLinearLight==='function'&&isLinearLight(type)) o.length_mm=linearLightLen({type});
   if(kind==='fixtures') STATE.fixtures.push(o);
@@ -2880,11 +2886,14 @@ function updateLibPlacementPreview(pos){
     if(_libPreviewActive){drawGroup.destroyChildren();previewLayer.batchDraw();_libPreviewActive=false;}
     return;
   }
-  let def=lib[STATE.selectedLib];
+  // 2026-08-30: 팔레트에서 고른 규격 그대로 미리보기
+  const _baseKey=(typeof libBaseType==='function')?libBaseType(STATE.selectedLib):STATE.selectedLib;
+  let def=(typeof libDefForKey==='function')?libDefForKey(lib,STATE.selectedLib):lib[STATE.selectedLib];
   if(!def) return;
-  // 2026-08-25: 다운라이트 고스트도 선택 인치 크기로 미리보기
-  if(STATE.selectedLib==='downlight'&&typeof downlightDef==='function') def=downlightDef({inch:STATE.downlightInch});
-  if(typeof isLinearLight==='function'&&isLinearLight(STATE.selectedLib)) def=linearLightDef({type:STATE.selectedLib});
+  // 2026-08-25: 규격을 고르지 않은 다운라이트는 마지막에 쓴 인치로
+  if(_baseKey==='downlight'&&libVariantVal(STATE.selectedLib)===null&&typeof downlightDef==='function')
+    def=downlightDef({inch:STATE.downlightInch});
+  if(typeof isLinearLight==='function'&&isLinearLight(_baseKey)) def=linearLightDef({type:_baseKey});
   drawGroup.destroyChildren();
   _libPreviewActive=true;
 

@@ -2301,7 +2301,8 @@ function symbolLabelEligible(kind,def){
 function symbolDefOf(kind,o){
   if(!o) return null;
   if(kind==='lights') return (o.type==='downlight')?downlightDef(o)
-    :(isLinearLight(o.type)?linearLightDef(o):LIGHT_LIB[o.type]);
+    :(o.type==='bath_light'?bathLightDef(o)
+    :(isLinearLight(o.type)?linearLightDef(o):LIGHT_LIB[o.type]));
   const lib=(kind==='electric')?ELECTRIC_LIB:(kind==='hvac')?HVAC_FIRE_LIB
            :(kind==='fixtures')?FIXTURE_LIB
            :(kind==='furniture')?FURNITURE_LIB:null; // 2026-08-29: 범례가 가구 한글명을 쓰도록
@@ -2316,6 +2317,10 @@ function legendItemOf(kind,o){
   if(kind==='lights'&&o&&o.type==='downlight'){
     const d=downlightDef(o);
     return {name:d.name, spec:'외경 Ø'+d.size+' · 타공 Ø'+d.boreDia_mm};
+  }
+  if(kind==='lights'&&o&&o.type==='bath_light'){
+    const d=bathLightDef(o);
+    return {name:d.name, spec:'\u00D8'+d.size};
   }
   if(kind==='lights'&&o&&typeof isLinearLight==='function'&&isLinearLight(o.type)){
     const L=linearLightLen(o);
@@ -2684,6 +2689,66 @@ function linearLightDef(o){
   return {...base,size:L,length_mm:L,crossH:LINEAR_LIGHT_CROSS[o.type]||80,
     name:base.name+' '+L+'mm',shape:linearLightShape(o.type,L)};
 }
+// ===== 2026-08-30: 라이브러리 규격 변형 (대표 지시 — 방습등·다운라이트를 사이즈별로) =====
+//  팔레트 키에 '#'로 규격을 붙인다: downlight#3 / bath_light#300
+//  타입 자체는 하나로 두고(downlight, bath_light) 규격은 객체 속성으로 간다 —
+//  타입을 쪼개면 견적·범례·기존 문서가 전부 갈라진다.
+function libBaseType(key){
+  const k=String(key||''); const i=k.indexOf('#');
+  return i<0?k:k.slice(0,i);
+}
+function libVariantVal(key){
+  const k=String(key||''); const i=k.indexOf('#');
+  if(i<0) return null;
+  const v=parseInt(k.slice(i+1),10);
+  return isFinite(v)?v:null;
+}
+// 규격 변형을 객체에 실어준다 (배치 시점)
+function applyLibVariant(o,key){
+  const v=libVariantVal(key);
+  if(v===null||!o) return o;
+  const t=libBaseType(key);
+  if(t==='downlight') o.inch=v;
+  else if(t==='bath_light') o.size_mm=v;
+  return o;
+}
+// 팔레트 키('downlight#3')로 정의를 가져온다 — 썸네일·고스트·이름이 규격을 따른다
+function libDefForKey(lib,key){
+  const t=libBaseType(key), v=libVariantVal(key);
+  const base=lib&&lib[t];
+  if(!base) return null;
+  if(v===null) return base;
+  if(t==='downlight'&&typeof downlightDef==='function') return downlightDef({type:t,inch:v});
+  if(t==='bath_light') return bathLightDef({type:t,size_mm:v});
+  return base;
+}
+// 도형 전체를 비율로 키우고 줄인다 (각도는 건드리지 않는다)
+const SHAPE_SCALE_FIELDS=['x','y','w','h','r','cx','cy','x1','y1','x2','y2','sw','rx','ry'];
+function scaleShape(shape,k){
+  if(!Array.isArray(shape)||!isFinite(k)||k===1) return shape;
+  return shape.map(c=>{
+    const o={...c};
+    SHAPE_SCALE_FIELDS.forEach(f=>{ if(typeof o[f]==='number') o[f]=o[f]*k; });
+    if(Array.isArray(o.dash)) o.dash=o.dash.map(v=>v*k);
+    if(Array.isArray(o.points)) o.points=o.points.map(v=>v*k);
+    return o;
+  });
+}
+// 방습등 규격 — 욕실 크기에 따라 흔히 쓰는 지름
+const BATH_LIGHT_SIZES=[250,300,350,400];
+const BATH_LIGHT_DEFAULT=350;
+function bathLightSizeOf(o){
+  const n=Math.round((o&&o.size_mm)||0);
+  return BATH_LIGHT_SIZES.indexOf(n)>=0?n:BATH_LIGHT_DEFAULT;
+}
+function bathLightDef(o){
+  const base=LIGHT_LIB.bath_light;
+  const sz=bathLightSizeOf(o);
+  const k=sz/(base.size||BATH_LIGHT_DEFAULT);
+  return {...base, size:sz, size_mm:sz,
+    name:'방습등 \u00D8'+sz, nameEn:sz+'mm moisture-proof bath light',
+    shape:scaleShape(base.shape,k)};
+}
 // 2026-08-25: 다운라이트 인치별 도식 (대표 지시) — 외경/타공경 실치수로 그린다
 function downlightInchOf(o){
   const n=Math.round((o&&o.inch)||DOWNLIGHT_INCH_DEFAULT);
@@ -2709,7 +2774,6 @@ function downlightDef(o){
 //  3m 코브면 지름 8m짜리 원이 뜬다. 간접조명은 점광원이 아니라 선광원이고,
 //  코브에서 천장·벽을 타고 '기구를 따라 띠 모양으로' 은은하게 퍼진다.
 //  그래서 길이 방향으로 길고 폭은 좁은 띠 + 낮은 밝기(간접은 직부보다 은은)로 바꾼다.
-const LINEAR_GLOW_SPREAD={cove:900,line_t5:450,magnet_track:600,fluorescent:700,pendant_linear:800};
 // 평면도에서 이게 간접인지 라인인지 읽히게 — 도면 위 주기 (길이 m 포함)
 const LINEAR_LIGHT_TAG={cove:'간접',line_t5:'T5 라인',magnet_track:'마그넷',
                         fluorescent:'형광',pendant_linear:'펜던트'};
@@ -2792,6 +2856,54 @@ function duplicateLightPeers(id){
   return (d.members.get(id)||[]).slice();
 }
 
+// ===== 2026-08-30: 조명 종류별 '켜졌을 때' 표현 (대표 지시 — 라인과 간접이 똑같아 구분이 안 된다) =====
+//  기구가 다르면 빛의 성질이 다르다. 도면에서도 그게 보여야 한다.
+//   · 간접(코브) : 천장·벽에 부딪혀 되돌아오는 빛. 넓게 퍼지고 가장자리가 거의 없다. 어둡다.
+//   · 라인 T5    : 직부 선광원. 기구 바로 아래를 좁고 또렷하게 비춘다. 밝다.
+//   · 형광등     : 확산 커버가 있는 면광원. 중간 폭으로 고르게.
+//   · 리니어 펜던트 : 아래로 내려 달아 식탁 등을 집중해서 비춘다. 좁고 진하게.
+//   · 마그넷 트랙 : 레일에 스팟이 여러 개. 띠가 아니라 '점이 줄지어' 켜진다.
+//  spread=편측 퍼짐(mm) · peak=한가운데 밝기 · soft=가장자리 흐림(0 또렷 ~ 1 아주 부드럽게)
+const LINEAR_GLOW={
+  cove:          {spread:1100, peak:0.26, soft:0.90},
+  fluorescent:   {spread:700,  peak:0.42, soft:0.55},
+  line_t5:       {spread:340,  peak:0.60, soft:0.28},
+  pendant_linear:{spread:480,  peak:0.55, soft:0.35},
+  magnet_track:  {spots:true, spread:420, peak:0.62},
+};
+const LINEAR_GLOW_DEFAULT={spread:600, peak:0.45, soft:0.5};
+function linearGlowOf(type){return LINEAR_GLOW[type]||LINEAR_GLOW_DEFAULT;}
+// 점광원의 빛 반경(mm) — 기구 크기가 아니라 '바닥을 얼마나 밝히나'로 잡는다.
+//  종전엔 기구 외경×1.35 라, 95mm 다운라이트는 빛이 거의 안 보이고
+//  350mm 방습등은 이유 없이 더 넓었다. 배광각이 다른 것이지 하우징 크기 문제가 아니다.
+const POINT_GLOW={
+  ceiling:{r:1700,peak:0.50}, bath_light:{r:1300,peak:0.50},
+  sensor_light:{r:1500,peak:0.44}, kitchen_flat:{r:1200,peak:0.52},
+  edge_flat_600:{r:1400,peak:0.50},
+  spot_cyl:{r:620,peak:0.64}, spot_bar_3:{r:950,peak:0.58},
+  pendant:{r:900,peak:0.52}, pendant_cluster:{r:1200,peak:0.52}, chandelier:{r:1800,peak:0.50},
+  wall_lamp:{r:700,peak:0.42}, step_light:{r:420,peak:0.36},
+  floor_lamp:{r:900,peak:0.44}, table_lamp:{r:700,peak:0.44},
+};
+const POINT_GLOW_DEFAULT={r:1000,peak:0.50};
+function pointGlowOf(o){
+  if(!o) return POINT_GLOW_DEFAULT;
+  // 다운라이트는 인치가 커질수록 배광이 넓어진다 (2"≈1.4m / 6"≈4.2m 지름)
+  if(o.type==='downlight') return {r:350*downlightInchOf(o), peak:0.56};
+  return POINT_GLOW[o.type]||POINT_GLOW_DEFAULT;
+}
+const GLOW_RGB='255,233,168';
+function _ga(a){return 'rgba('+GLOW_RGB+','+Math.max(0,Math.min(1,a)).toFixed(3)+')';}
+// 선광원 띠 — soft 가 클수록 일찍부터 서서히 밝아진다(가장자리가 흐리다)
+function linearGlowStops(peak,soft){
+  const inner=0.5-(0.06+soft*0.34);
+  return [0,_ga(0),
+          inner,_ga(peak*0.45),
+          0.5,_ga(peak),
+          1-inner,_ga(peak*0.45),
+          1,_ga(0)];
+}
+
 function renderLights(){
   groups.lights.destroyChildren();
   const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합 (2026-08-27: 점핑 연쇄 포함)
@@ -2825,8 +2937,7 @@ function renderLights(){
     });
   });
   STATE.lights.forEach(o=>{
-    const def=(o.type==='downlight')?downlightDef(o)
-             :(isLinearLight(o.type)?linearLightDef(o):LIGHT_LIB[o.type]); // 2026-08-25: 인치 규격 / 길이 가변
+    const def=symbolDefOf('lights',o); // 2026-08-30: 정의 조회를 한 곳으로 (인치·방습등 규격·길이 가변)
     if(!def) return;
     const x=STATE.offsetX+mmToPx(o.x),y=STATE.offsetY+mmToPx(o.y);
     const sel=STATE.selectedKind==='lights'&&STATE.selectedId===o.id||STATE.boxSelection.some(b=>b.kind==='lights'&&b.id===o.id);
@@ -2835,22 +2946,34 @@ function renderLights(){
     addSymbolPickArea(g,def,_boost); // 2026-08-26: 픽 어퍼처
     // 2026-08-26: 회로 점등 — 연결된 스위치가 ON이면 빛 퍼짐(글로우) 표시
     if(_litSet.has(o.id)){
-      if(isLinearLight(o.type)){
-        // 2026-08-29: 선광원 — 기구를 따라 띄로 퍼진다. 간접은 직부보다 은은해 밝기도 낮게.
+      // 2026-08-30: 종류별로 다르게 켜진다 — 간접과 라인이 같아 보이던 문제
+      const gp=isLinearLight(o.type)?linearGlowOf(o.type):null;
+      if(gp&&gp.spots){
+        // 마그넷 트랙 — 레일에 스팟이 줄지어 달린다. 띄가 아니라 점이 여러 개.
+        const L=def.size||1500, Lpx=mmToPx(L);
+        const nMod=Math.max(2,Math.round(L/450));
+        const seg=Lpx/nMod, gr=mmToPx(gp.spread);
+        for(let i=0;i<nMod;i+=2){
+          const cx=-Lpx/2+(i+0.5)*seg;
+          g.add(new Konva.Circle({x:cx,radius:gr,listening:false,
+            fillRadialGradientStartPoint:{x:0,y:0},fillRadialGradientEndPoint:{x:0,y:0},
+            fillRadialGradientStartRadius:0,fillRadialGradientEndRadius:gr,
+            fillRadialGradientColorStops:[0,_ga(gp.peak),0.5,_ga(gp.peak*0.34),1,_ga(0)]}));
+        }
+      }else if(gp){
         const Lpx=mmToPx(def.size||1200);
-        const sp=mmToPx(LINEAR_GLOW_SPREAD[o.type]||600);
+        const sp=mmToPx(gp.spread);
         const gw=Lpx+sp*0.5, gh=sp*2;
         g.add(new Konva.Rect({x:-gw/2,y:-gh/2,width:gw,height:gh,cornerRadius:sp*0.5,listening:false,
           fillLinearGradientStartPoint:{x:0,y:-gh/2},fillLinearGradientEndPoint:{x:0,y:gh/2},
-          fillLinearGradientColorStops:[0,'rgba(255,233,168,0)',0.34,'rgba(255,233,168,0.20)',
-                                        0.5,'rgba(255,233,168,0.38)',0.66,'rgba(255,233,168,0.20)',
-                                        1,'rgba(255,233,168,0)']}));
+          fillLinearGradientColorStops:linearGlowStops(gp.peak,gp.soft)}));
       }else{
-        const gr=mmToPx(def.size||300)*1.35+16;
+        const pg=pointGlowOf(o);
+        const gr=Math.max(mmToPx(def.size||200)/2+10, mmToPx(pg.r));
         g.add(new Konva.Circle({radius:gr,listening:false,
           fillRadialGradientStartPoint:{x:0,y:0},fillRadialGradientEndPoint:{x:0,y:0},
           fillRadialGradientStartRadius:0,fillRadialGradientEndRadius:gr,
-          fillRadialGradientColorStops:[0,'rgba(255,233,168,0.60)',0.55,'rgba(255,233,168,0.22)',1,'rgba(255,233,168,0)']}));
+          fillRadialGradientColorStops:[0,_ga(pg.peak),0.55,_ga(pg.peak*0.36),1,_ga(0)]}));
       }
     }
     if(def.shape){

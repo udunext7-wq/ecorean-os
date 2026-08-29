@@ -1055,6 +1055,8 @@ function libForTool(tool){
            hvac:typeof HVAC_FIRE_LIB!=='undefined'?HVAC_FIRE_LIB:null})[tool]||null;
 }
 function libHasKey(tool,key){
+  // 2026-08-30: 'downlight#3' 처럼 규격을 달은 팔레트 키도 유효하다
+  if(typeof libBaseType==='function'&&typeof key==='string'&&key.indexOf('#')>=0) key=libBaseType(key);
   const lib=libForTool(tool);
   if(!lib||!key||!lib[key]||lib[key].hidden) return false;
   // '1 가구' 팝업은 픽스가구를 제외하므로 배치 판정도 같은 기준
@@ -1093,8 +1095,11 @@ const LIB_GROUPS={
     ['배수·다용도',['floor_drain','utility_sink']],
   ],
   light:[
-    ['천장 매입',['downlight','edge_flat_600','kitchen_flat','spot_cyl']],
-    ['천장 직부',['ceiling','ceiling_fan','spot_bar_3','fluorescent','sensor_light','bath_light']],
+    // 2026-08-30: 다운라이트를 인치별로 골라 바로 배치 (대표 지시)
+    ['천장 매입',['downlight#2','downlight#3','downlight#4','downlight#5','downlight#6',
+                  'edge_flat_600','kitchen_flat','spot_cyl']],
+    ['천장 직부',['ceiling','ceiling_fan','spot_bar_3','fluorescent','sensor_light',
+                  'bath_light#250','bath_light#300','bath_light#350','bath_light#400']],
     ['라인·간접 (길이 조절)',['line_t5','cove','magnet_track','pendant_linear']],
     ['펜던트·장식',['pendant','pendant_cluster','chandelier']],
     ['벽·스탠드',['wall_lamp','step_light','floor_lamp','table_lamp']],

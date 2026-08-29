@@ -1148,9 +1148,14 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     const cnt={};btns.forEach(b=>{cnt[b.dataset.libKey]=(cnt[b.dataset.libKey]||0)+1;});
     const dupK=Object.keys(cnt).filter(k=>cnt[k]>1);
     assert('중복: 팔레트 항목 유일',dupK.length===0,'중복 '+dupK.join(','));
-    // [D2] 개수 = 숨김 제외 라이브러리 수
-    const visible=Object.entries(LIGHT_LIB).filter(([k,d])=>!d.hidden).length;
-    assert('중복: 팔레트 수 = 표시 대상 수',btns.length===visible,btns.length+' vs '+visible);
+    // [D2] 2026-08-30: 규격 항목 때문에 개수는 더 많을 수 있다 —
+    //  모든 표시 대상이 최소 한 번은 나오는지(누락 없음)로 본다
+    const visibleKeys=Object.entries(LIGHT_LIB).filter(([k,d])=>!d.hidden).map(e=>e[0]);
+    const baseSeen={};btns.forEach(b=>{const bk=libBaseType(b.dataset.libKey);baseSeen[bk]=1;});
+    assert('중복: 표시 대상 누락 없음',visibleKeys.every(k=>baseSeen[k]),
+      visibleKeys.filter(k=>!baseSeen[k]).join(','));
+    assert('중복: 팔레트가 라이브러리보다 적지 않다',btns.length>=visibleKeys.length,
+      btns.length+' vs '+visibleKeys.length);
     // [D3] 최근 사용은 앞으로 정렬 (첫 항목이 최근)
     assert('중복: 최근 사용 우선 정렬',btns[0]&&btns[0].dataset.libKey==='downlight',btns[0]&&btns[0].dataset.libKey);
     // [D4] 레거시 중복 항목은 숨김 + 대체 지정
@@ -1207,12 +1212,22 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     Object.entries(LIB_GROUPS).forEach(([tool,gs])=>{
       const lb=LIBMAP[tool]||{}, used={};
       gs.forEach(([gn,keys])=>keys.forEach(k=>{
-        if(!lb[k]) badRef.push(tool+':'+k);
+        // 2026-08-30: 'downlight#3' 같은 규격 키는 베이스 타입이 실재하면 된다
+        const bk=(typeof libBaseType==='function')?libBaseType(k):k;
+        if(!lb[bk]) badRef.push(tool+':'+k);
         used[k]=(used[k]||0)+1;
         if(used[k]>1) dupInGroup.push(tool+':'+k);
       }));
     });
     assert('분류: 분류표 키 실재',badRef.length===0,badRef.join(', '));
+    // 규격 키를 쓰면 맨 타입은 팔레트에서 뺀다 — 둘이 같이 떴 있으면 뭐가 다른지 모른다
+    const mixRef=[];
+    Object.entries(LIB_GROUPS).forEach(([tool,gs])=>{
+      const all=gs.map(g=>g[1]).reduce((a,b)=>a.concat(b),[]);
+      const bases=new Set(all.filter(k=>String(k).indexOf('#')>=0).map(k=>libBaseType(k)));
+      bases.forEach(b=>{if(all.indexOf(b)>=0) mixRef.push(tool+':'+b);});
+    });
+    assert('분류: 규격 키와 맨 타입을 섮지 않는다',mixRef.length===0,mixRef.join(', '));
     assert('분류: 분류표 내 중복 없음',dupInGroup.length===0,dupInGroup.join(', '));
     // [G4] 팔레트 — 모든 표시 대상이 정확히 한 번 등장 + 섹션 헤더 존재
     ['furniture','furniture2','fixture','light','electric','hvac'].forEach(t=>{
@@ -1222,9 +1237,13 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       const cnt={};bs.forEach(b=>{cnt[b.dataset.libKey]=(cnt[b.dataset.libKey]||0)+1;});
       const lb=LIBMAP[t];
       const visible=Object.entries(lb).filter(([k,d])=>!d.hidden&&!(t==='furniture'&&FIXFURN_LIB[k])).map(e=>e[0]);
-      assert('분류: '+t+' 항목 1회씩',bs.length===visible.length&&Object.values(cnt).every(v=>v===1),
-        bs.length+' vs '+visible.length);
-      assert('분류: '+t+' 누락 없음',visible.every(k=>cnt[k]===1),visible.filter(k=>!cnt[k]).join(','));
+      // 2026-08-30: 규격 항목(downlight#3 등)이 생기면서 '개수 = 라이브러리 수'는
+      //  더 이상 성립하지 않는다. 진짜 지키려던 것은 '중복 없음'과 '누락 없음'이다.
+      assert('분류: '+t+' 항목 중복 없음',Object.values(cnt).every(v=>v===1),
+        Object.keys(cnt).filter(k=>cnt[k]>1).join(','));
+      const _base={};bs.forEach(b=>{const bk=libBaseType(b.dataset.libKey);_base[bk]=(_base[bk]||0)+1;});
+      assert('분류: '+t+' 누락 없음 (규격 항목 포함)',visible.every(k=>_base[k]>=1),
+        visible.filter(k=>!_base[k]).join(','));
       assert('분류: '+t+' 섹션 헤더 표시',hs.length>=2,'headers '+hs.length);
     });
     hideLibPopup();
@@ -2978,6 +2997,137 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     renderAll();refreshUI();
   }catch(e){
     assert('구별점등·점핑선: 테스트 예외 없음',false,e.message);
+  }
+  // === 2026-08-30: 조명 종류별 점등 표현 + 규격별 라이브러리 (대표 지시) ===
+  try{
+    const _bakGL={lights:STATE.lights.slice(),electric:STATE.electric.slice(),zoom:STATE.zoom,
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice(),
+      sel:STATE.selectedLib,dl:STATE.downlightInch,sc:STATE.showCircuits};
+    const WX=6600000;
+    STATE.lights=[];STATE.electric=[];STATE.boxSelection=[];
+    STATE.selectedKind=null;STATE.selectedId=null;STATE.zoom=1;
+
+    // --- 켜졌을 때의 모습이 종류마다 달라야 한다 ---
+    const mk=(t,extra)=>{const o=Object.assign({id:makeId('li'),type:t,x:WX,y:WX,angle:0},extra||{});
+      STATE.lights.push(o);return o;};
+    const cove=mk('cove',{length_mm:3000});
+    const t5=mk('line_t5',{x:WX+6000,length_mm:3000});
+    const trk=mk('magnet_track',{x:WX+12000,length_mm:2700});
+    const flu=mk('fluorescent',{x:WX+18000,length_mm:1200});
+    const dl3=mk('downlight',{x:WX,y:WX+6000,inch:3});
+    const dl6=mk('downlight',{x:WX+3000,y:WX+6000,inch:6});
+    const bath=mk('bath_light',{x:WX+6000,y:WX+6000});
+    const sw=({id:makeId('e'),type:'switch_1',x:WX,y:WX+9000,angle:0,
+      lightIds:STATE.lights.map(l=>l.id),gangOn:[true],circuitOn:true});
+    STATE.electric.push(sw);
+    renderLights();
+    const nodeOf=id=>{let g=null;groups.lights.getChildren().forEach(c=>{if(c.id&&c.id()===id)g=c;});return g;};
+    const bandOf=id=>{const g=nodeOf(id);if(!g)return null;
+      const r=g.getChildren(n=>n.getClassName()==='Rect'&&typeof n.fillLinearGradientColorStops==='function'&&
+        (n.fillLinearGradientColorStops()||[]).length>0);return r[0]||null;};
+    const spotsOf=id=>{const g=nodeOf(id);if(!g)return 0;
+      return g.getChildren(n=>n.getClassName()==='Circle'&&typeof n.fillRadialGradientEndRadius==='function'&&
+        n.fillRadialGradientEndRadius()>0).length;};
+    const peakOf=st=>{ // 색상 스톱에서 가장 진한 알파
+      let mx=0;(st||[]).forEach(v=>{if(typeof v==='string'){const m=v.match(/,([0-9.]+)\)$/);if(m)mx=Math.max(mx,+m[1]);}});
+      return mx;};
+
+    const bCove=bandOf(cove.id), bT5=bandOf(t5.id), bFlu=bandOf(flu.id);
+    assert('점등표현: 간접·라인 모두 띠로 그려진다',!!bCove&&!!bT5);
+    assert('점등표현: 간접이 라인보다 넓다',!!bCove&&!!bT5&&bCove.height()>bT5.height()*2,
+      (bCove?bCove.height().toFixed(0):'-')+' vs '+(bT5?bT5.height().toFixed(0):'-'));
+    assert('점등표현: 간접이 라인보다 은은하다',
+      peakOf(bCove.fillLinearGradientColorStops())<peakOf(bT5.fillLinearGradientColorStops()),
+      peakOf(bCove.fillLinearGradientColorStops())+' vs '+peakOf(bT5.fillLinearGradientColorStops()));
+    assert('점등표현: 형광등은 그 사이',!!bFlu&&bFlu.height()<bCove.height()&&bFlu.height()>bT5.height(),
+      bFlu?bFlu.height().toFixed(0):'-');
+    // 가장자리 흐림 — 간접은 더 일찍부터 밝아진다(안쪽 스톱 위치가 작다)
+    const innerOf=st=>{for(let i=0;i<st.length;i+=2){if(typeof st[i]==='number'&&st[i]>0&&st[i]<0.5) return st[i];}return 0.5;};
+    assert('점등표현: 간접이 가장자리가 더 흐리다',
+      innerOf(bCove.fillLinearGradientColorStops())<innerOf(bT5.fillLinearGradientColorStops()),
+      innerOf(bCove.fillLinearGradientColorStops())+' vs '+innerOf(bT5.fillLinearGradientColorStops()));
+
+    // 마그넷 트랙 — 띠가 아니라 스팟 여러 개
+    assert('점등표현: 마그넷 트랙은 띠가 아니다',!bandOf(trk.id));
+    assert('점등표현: 마그넷 트랙은 스팟 여러 개',spotsOf(trk.id)>=2,'n='+spotsOf(trk.id));
+
+    // 점광원 — 배광표 기준, 기구 크기가 아니다
+    const rOf=id=>{const g=nodeOf(id);if(!g)return 0;let r=0;
+      g.getChildren(n=>n.getClassName()==='Circle').forEach(c=>{
+        if(typeof c.fillRadialGradientEndRadius==='function'&&c.fillRadialGradientEndRadius()>r)
+          r=c.fillRadialGradientEndRadius();});return r;};
+    assert('점등표현: 6인치가 3인치보다 넓게 비춘다',rOf(dl6.id)>rOf(dl3.id)*1.5,
+      rOf(dl3.id).toFixed(0)+' vs '+rOf(dl6.id).toFixed(0));
+    assert('점등표현: 방습등은 욕실을 넓게',rOf(bath.id)>rOf(dl3.id),
+      rOf(bath.id).toFixed(0)+' vs '+rOf(dl3.id).toFixed(0));
+    assert('점등표현: 빛 반경은 배광표에서 온다',
+      Math.abs(rOf(dl3.id)-mmToPx(pointGlowOf(dl3).r))<1.5,
+      rOf(dl3.id).toFixed(1)+' vs '+mmToPx(pointGlowOf(dl3).r).toFixed(1));
+
+    // --- 규격별 라이브러리 ---
+    assert('규격: 팔레트 키 분해',libBaseType('downlight#6')==='downlight'&&libVariantVal('downlight#6')===6&&
+      libBaseType('ceiling')==='ceiling'&&libVariantVal('ceiling')===null);
+    const d6=libDefForKey(LIGHT_LIB,'downlight#6');
+    const b250=libDefForKey(LIGHT_LIB,'bath_light#250');
+    const b400=libDefForKey(LIGHT_LIB,'bath_light#400');
+    assert('규격: 다운라이트 인치별 정의',!!d6&&d6.name.indexOf('6"')>=0&&d6.size===175,d6&&d6.name);
+    assert('규격: 방습등 지름별 정의',!!b250&&b250.size===250&&!!b400&&b400.size===400&&
+      b250.name.indexOf('250')>=0,b250&&b250.name);
+    // 도형이 비율로 줄고 커진다
+    const r250=b250.shape[0].r, r400=b400.shape[0].r;
+    assert('규격: 방습등 도형도 비율로',Math.abs(r250/r400-250/400)<0.01,r250+'/'+r400);
+    assert('규격: 각도는 그대로',b250.shape[3]&&b250.shape[3].start===LIGHT_LIB.bath_light.shape[3].start);
+
+    // 배치하면 규격이 객체에 붙는다
+    const o1={id:'x1',type:'downlight'};applyLibVariant(o1,'downlight#5');
+    const o2={id:'x2',type:'bath_light'};applyLibVariant(o2,'bath_light#300');
+    assert('규격: 배치 시 객체에 반영',o1.inch===5&&o2.size_mm===300);
+    assert('규격: 잘못된 지름은 기본값',bathLightSizeOf({size_mm:999})===350);
+
+    // 팔레트 목록·검증
+    const lightGroups=LIB_GROUPS.light.map(g=>g[1]).reduce((a,b)=>a.concat(b),[]);
+    assert('규격: 팔레트에 인치별 다운라이트',[2,3,4,5,6].every(i=>lightGroups.indexOf('downlight#'+i)>=0));
+    assert('규격: 팔레트에 지름별 방습등',[250,300,350,400].every(v=>lightGroups.indexOf('bath_light#'+v)>=0));
+    assert('규격: 규격 키도 유효한 선택',libHasKey('light','downlight#6')===true&&
+      libHasKey('light','bath_light#250')===true);
+
+    // 팔레트 DOM — 규격 항목이 실제로 그려지고, 맨 타입이 '기타'로 새지 않는다
+    //  (2026-08-30: lib[k] 조회가 규격 키를 걸러내 팔레트에 안 나오던 버그)
+    const _bakTool=STATE.selectedTool, _bakSel=STATE.selectedLib;
+    let _bakRecent=null;
+    try{_bakRecent=localStorage.getItem('minicad.recent.light');
+        localStorage.removeItem('minicad.recent.light');}catch(_){}
+    setTool('light');
+    if(typeof setLibCategory==='function') setLibCategory('light',{keepOpen:true});
+    const _keys=[...document.querySelectorAll('.lib-thumb-btn[data-lib-kind="lights"]')]
+      .map(b=>b.dataset.libKey);
+    assert('규격: 팔레트에 인치별 항목이 그려진다',
+      [2,3,4,5,6].every(i=>_keys.indexOf('downlight#'+i)>=0),_keys.length+'개');
+    assert('규격: 팔레트에 지름별 방습등',
+      [250,300,350,400].every(v=>_keys.indexOf('bath_light#'+v)>=0));
+    assert('규격: 맨 타입은 중복으로 나오지 않는다',
+      _keys.indexOf('downlight')<0&&_keys.indexOf('bath_light')<0,
+      'dl='+_keys.indexOf('downlight')+' bl='+_keys.indexOf('bath_light'));
+    // 규격 항목의 이름도 규격을 따른다
+    const _b6=document.querySelector('.lib-thumb-btn[data-lib-key="downlight#6"] .lib-thumb-name');
+    assert('규격: 팔레트 이름에 규격 표기',!!_b6&&_b6.textContent.indexOf('6"')>=0,
+      _b6?_b6.textContent:'없음');
+    STATE.selectedTool=_bakTool;STATE.selectedLib=_bakSel;
+    try{if(_bakRecent===null) localStorage.removeItem('minicad.recent.light');
+        else localStorage.setItem('minicad.recent.light',_bakRecent);}catch(_){}
+
+    // 범례에도 방습등 규격이 나온다
+    const lb=legendItemOf('lights',{id:'z',type:'bath_light',size_mm:300,x:0,y:0});
+    assert('규격: 범례에 방습등 지름',lb.name.indexOf('300')>=0&&lb.spec.indexOf('300')>=0,
+      lb.name+' / '+lb.spec);
+
+    STATE.lights=_bakGL.lights;STATE.electric=_bakGL.electric;STATE.zoom=_bakGL.zoom;
+    STATE.selectedKind=_bakGL.selK;STATE.selectedId=_bakGL.selI;STATE.boxSelection=_bakGL.box;
+    STATE.selectedLib=_bakGL.sel;STATE.downlightInch=_bakGL.dl;STATE.showCircuits=_bakGL.sc;
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('점등표현·규격: 테스트 예외 없음',false,e.message);
   }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
