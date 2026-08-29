@@ -2552,6 +2552,24 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       document.getElementById('sp-detail').style.display!=='none'&&
       !!document.getElementById('d-ms-attach'),'패널 없음');
     assert('조명연결: 점핑 버튼도 제공',!!document.getElementById('d-ms-chain'));
+    // 2026-08-29: Shift+클릭 은 boxSelection 과 단일 선택을 동시에 남긴다(selectObj).
+    //  그때도 다중 패널이 뗴야 한다 — 종전엔 단일 패널만 떠서 연결 버튼을 못 찾았다
+    STATE.boxSelection=L4.slice(0,3).map(o=>({kind:'lights',id:o.id}));
+    STATE.selectedKind='lights';STATE.selectedId=L4[2].id; // Shift+클릭 직후 상태
+    refreshUI();
+    assert('조명연결: Shift+클릭 여러 개도 다중 패널',
+      !!document.getElementById('d-ms-chain')&&!!document.getElementById('d-ms-attach'),
+      'chain='+!!document.getElementById('d-ms-chain'));
+    assert('조명연결: Shift 선택도 전부 집힌다',selectedLightIds().length===3,
+      'n='+selectedLightIds().length);
+    // 하나만 고른 상태에서는 개별 속성 패널이 그대로 떠야 한다
+    STATE.boxSelection=[{kind:'lights',id:L4[0].id}];
+    STATE.selectedKind='lights';STATE.selectedId=L4[0].id;
+    refreshUI();
+    assert('조명연결: 1개만 고르면 개별 패널',
+      !document.getElementById('d-ms-chain')&&!!document.getElementById('d-jump-link'),
+      'ms='+!!document.getElementById('d-ms-chain'));
+    STATE.selectedKind=null;STATE.selectedId=null;
 
     // [C10] 명령어
     STATE.boxSelection=L4.map(o=>({kind:'lights',id:o.id}));

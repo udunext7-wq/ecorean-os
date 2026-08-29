@@ -426,8 +426,12 @@ function refreshDetail(){
   const detail=document.getElementById('sp-detail');
   const stats=document.getElementById('detail-stats-card');
   const warn=document.getElementById('detail-warn-card');
-  // 2026-08-29: 박스로만 골랐을 때도 할 수 있는 일을 보여준다 (종전엔 빈 패널)
-  if((!STATE.selectedKind||!STATE.selectedId)&&(STATE.boxSelection||[]).length>0){
+  // 2026-08-29: 여러 개를 골랐을 때는 다중 작업 패널을 보여준다.
+  //  Shift+클릭 은 boxSelection 을 채우면서 **단일 선택도 그대로 남긴다**(selectObj).
+  //  종전 조건은 '단일 선택이 없을 때'만이라, Shift 로 골라도 단일 패널만 떠서
+  //  연결·해제 버튼을 못 찾았다 (대표 보고). 2개 이상이면 무조건 다중 패널.
+  const _bsel=STATE.boxSelection||[];
+  if(_bsel.length>1||(_bsel.length>0&&(!STATE.selectedKind||!STATE.selectedId))){
     empty.style.display='none';detail.style.display='block';
     stats.style.display='none';warn.style.display='none';
     const _kn={space:'공간',wall:'벽',opening:'문·창',furniture:'가구',fixtures:'위생/주방',
@@ -462,7 +466,8 @@ function refreshDetail(){
           '<div class="hint" style="margin-top:4px">연결은 버튼 후 스위치 클릭 · 해제는 걸려 있는 스위치에서 바로 빠진다</div></div>';
       })()
         :'<div class="hint">조명을 드래그로 고르면 한 번에 연결·해제할 수 있습니다</div>')+
-      '<button class="btn danger sm" id="d-ms-del" style="width:100%;margin-top:8px">삭제 (Del)</button>';
+      '<div class="hint" style="margin-top:8px">개별 속성(인치·길이 등)은 Shift 없이 하나만 클릭하세요</div>'+
+      '<button class="btn danger sm" id="d-ms-del" style="width:100%;margin-top:6px">삭제 (Del)</button>';
     const _ab=document.getElementById('d-ms-attach');
     if(_ab) _ab.addEventListener('click',()=>startCircuitAttach(_lit));
     const _cb=document.getElementById('d-ms-chain');
