@@ -1604,9 +1604,12 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('즉시반영: 연결선 2개',curveCount()===2,'curves '+curveCount());
     gl2.x=G+4000;
     renderAll();
+    // 2026-08-29: 종전엔 연결선 끝의 '점'으로 확인했다. 그 점이 다운라이트처럼 보여 없앨으므로,
+    //  연결선 노드가 들고 있는 끝점 좌표로 직접 확인한다
     let far=false;
     groups.electric.getChildren().forEach(nd=>{
-      if(nd.getClassName()==='Circle'&&Math.abs(nd.x()-(STATE.offsetX+mmToPx(G+4000)))<2) far=true;
+      if(nd.getClassName()==='Shape'&&nd.name&&nd.name()==='circuit-curve'&&
+         Math.abs(nd.getAttr('endX')-(STATE.offsetX+mmToPx(G+4000)))<2) far=true;
     });
     assert('즉시반영: 조명 이동 시 연결선 갱신',far);
     STATE.lights=_bakIM.lights;STATE.electric=_bakIM.electric;
@@ -2560,6 +2563,26 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     STATE.boxSelection=L4.map(o=>({kind:'lights',id:o.id}));
     processCommand('chain');
     assert('조명연결: chain 명령',jumpNeighbors(L4[0].id).length>=1);
+
+    // [C11b] 2026-08-29: 연결선은 점 없는 일정한 실선 (대표 지시 — 점이 다운라이트로 보였다)
+    STATE.lights.forEach(l=>{delete l.jumpIds;});
+    sw.lightIds=[L4[0].id,L4[1].id];sw.circuitOn=true;
+    L4[0].jumpIds=[L4[1].id];
+    const _bakSC=STATE.showCircuits;STATE.showCircuits=true;
+    renderAll();
+    const jl=groups.lights.getChildren(n=>n.getClassName()==='Line'&&n.name&&n.name()==='jump-line');
+    assert('연결선: 점핑선이 그려진다',jl.length>=1,'n='+jl.length);
+    assert('연결선: 점핑선은 실선',jl.every(n=>{const d=n.dash&&n.dash();return !d||d.length===0;}),
+      JSON.stringify(jl[0]&&jl[0].dash&&jl[0].dash()));
+    const midDots=groups.lights.getChildren(n=>n.getClassName()==='Circle'&&n.name&&n.name()==='jump-mid');
+    assert('연결선: 중간 점 없음',midDots.length===0,'n='+midDots.length);
+    // 회로선 끝에 붙던 점도 없어야 한다 — 조명 위치에 겹쳐 다운라이트처럼 보였다
+    const endDots=groups.electric.getChildren(n=>n.getClassName()==='Circle'&&n.radius&&n.radius()===4);
+    assert('연결선: 회로선 끝 점 없음',endDots.length===0,'n='+endDots.length);
+    const curves=groups.electric.getChildren(n=>n.getClassName()==='Shape');
+    assert('연결선: 회로선은 그대로 그려진다',curves.length>=1,'n='+curves.length);
+    STATE.showCircuits=_bakSC;sw.circuitOn=false;sw.lightIds=[];
+    STATE.lights.forEach(l=>{delete l.jumpIds;});
 
     // [C11] 사라진 조명은 붙지 않는다
     sw.lightIds=[];

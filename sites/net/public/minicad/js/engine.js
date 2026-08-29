@@ -2726,10 +2726,11 @@ function renderLights(){
       const x1=STATE.offsetX+mmToPx(l.x),y1=STATE.offsetY+mmToPx(l.y);
       const x2=STATE.offsetX+mmToPx(t.x),y2=STATE.offsetY+mmToPx(t.y);
       const on=_litSet.has(l.id)&&_litSet.has(nid);
+      // 2026-08-29: 연결선은 일정한 실선 하나로 (대표 지시)
+      //  중간 점·끝 점이 다운라이트처럼 보여 기구와 구분이 안 됐고,
+      //  점선의 끈기도 점으로 읽혔다. 배선은 실선이 도면 관례이기도 하다.
       groups.lights.add(new Konva.Line({points:[x1,y1,x2,y2],stroke:on?'#D4B872':'#7BA05B',
-        strokeWidth:1.6,dash:[5,4],opacity:0.95,listening:false,name:'jump-line'}));
-      groups.lights.add(new Konva.Circle({x:(x1+x2)/2,y:(y1+y2)/2,radius:3.2,
-        fill:on?'#D4B872':'#7BA05B',listening:false,name:'jump-mid'}));
+        strokeWidth:1.6,opacity:0.95,listening:false,name:'jump-line'}));
     });
   });
   STATE.lights.forEach(o=>{
@@ -2868,11 +2869,14 @@ function renderElectric(){
           const mx=(x+x2)/2,my=(y+y2)/2;
           const dx=x2-x,dy=y2-y,len=Math.hypot(dx,dy)||1;
           const cx=mx-dy/len*Math.min(60,len*0.25),cy=my+dx/len*Math.min(60,len*0.25);
-          groups.electric.add(new Konva.Shape({listening:false,sceneFunc:(ctx,shp)=>{
+          // 끝점 좌표를 노드에 실어 둔다 — 점을 없앱으니 선이 조명을 따라오는지 확인할 수단이 필요
+          groups.electric.add(new Konva.Shape({listening:false,
+            name:'circuit-curve',lightId:lid,endX:x2,endY:y2,
+            sceneFunc:(ctx,shp)=>{
             ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(cx,cy,x2,y2);
-            ctx.setLineDash([6,5]);ctx.strokeStyle=o.circuitOn?'#D4B872':'#7BA05B';ctx.lineWidth=1.6;ctx.stroke();
+            // 2026-08-29: 점선·끝점 점 제거 — 일정한 실선만 (대표 지시)
+            ctx.setLineDash([]);ctx.strokeStyle=o.circuitOn?'#D4B872':'#7BA05B';ctx.lineWidth=1.6;ctx.stroke();
           }}));
-          groups.electric.add(new Konva.Circle({x:x2,y:y2,radius:4,fill:o.circuitOn?'#D4B872':'#7BA05B',listening:false}));
         });
       }
       // 더블클릭/더블탭 = 점등 토글 (연결된 조명이 켜진 것처럼 표시)
