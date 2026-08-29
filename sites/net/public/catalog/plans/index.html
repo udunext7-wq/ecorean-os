@@ -32,6 +32,22 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 .badge.redraw{background:#fdf0e4;color:#b5651d}
 .badge.realplan{background:#e8f3ea;color:#2c8544}
 /* 실도면 아님 경고 (상세) */
+.cx-panel{position:absolute;top:14px;right:14px;width:330px;max-height:calc(100% - 28px);z-index:6;
+  background:rgba(255,253,248,.97);border:1px solid #e2dccc;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.22);
+  display:none;flex-direction:column;overflow:hidden;backdrop-filter:blur(6px)}
+.cx-panel.open{display:flex}
+.cx-head{padding:13px 15px;border-bottom:1px solid #eee6d6}
+.cx-head .nm{font-weight:800;font-size:14.5px;color:#1A1814;line-height:1.4;padding-right:22px}
+.cx-head .ad{font-size:11.5px;color:#8a8375;margin-top:4px;line-height:1.5}
+.cx-x{position:absolute;top:10px;right:12px;border:0;background:none;font-size:17px;color:#8a8375;cursor:pointer;line-height:1}
+.cx-list{overflow:auto;padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.cx-item{border:1px solid #eee6d6;border-radius:9px;overflow:hidden;cursor:pointer;background:#fff;transition:border-color .15s}
+.cx-item:hover{border-color:#B8965A}
+.cx-item img{width:100%;height:88px;object-fit:contain;background:#faf8f3;display:block}
+.cx-item .t{padding:6px 8px;font-size:11.5px;color:#3a352c;line-height:1.45}
+.cx-item .v{display:inline-block;margin-top:3px;font-size:9.5px;padding:1px 6px;border-radius:20px;background:#e8f0f8;color:#3a6ac2}
+@media(max-width:720px){.cx-panel{top:auto;left:10px;right:10px;bottom:10px;width:auto;max-height:56%}
+  .cx-list{grid-template-columns:1fr 1fr 1fr}}
 .warn-redraw{background:#fdf6ec;border:1px solid #f0dcc0;border-left:4px solid #d99a3e;border-radius:8px;padding:11px 14px;margin:0 0 14px;font-size:12.5px;line-height:1.75;color:#7a5a22}
 .warn-redraw b{color:#a8701c}
 .empty{padding:90px 20px;text-align:center;color:#999;grid-column:1/-1}
@@ -101,7 +117,17 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   <div id="grid"><div class="grid"><div class="empty">불러오는 중…</div></div></div>
 </div>
 <div class="wrap" id="mapWrap" style="display:none">
-  <div id="map" style="height:72vh;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);background:#e8e6e0"></div>
+  <div style="position:relative">
+    <div id="map" style="height:72vh;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);background:#e8e6e0"></div>
+    <div class="cx-panel" id="cxPanel">
+      <div class="cx-head">
+        <button type="button" class="cx-x" id="cxClose">✕</button>
+        <div class="nm" id="cxName"></div>
+        <div class="ad" id="cxAddr"></div>
+      </div>
+      <div class="cx-list" id="cxList"></div>
+    </div>
+  </div>
   <p style="font-size:11.5px;color:#999;margin-top:8px">※ 리얼 3D 지도 — 위성 실사 텍스처 + 실지형(산악 기복) + 건물 입체. <b>우클릭 드래그</b>(모바일: 두 손가락)로 회전·기울기, 휠로 확대. 좌상단 버튼으로 위성↔벡터 전환. 마커 팝업의 "🏙 3D로 보기"로 단지 상공 뷰. 검색·지역 필터가 지도에도 적용됩니다.<br>
   <b style="color:#b5651d">※ 마커 위치는 도로명주소 기반 개략 좌표</b>로, 단지 정문·동 위치와 수백 m 차이가 날 수 있습니다. 좌표를 찾지 못한 단지는 지도에 표시되지 않고 목록·검색에서만 조회됩니다.</p>
 </div>
@@ -183,7 +209,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   var PUB=STORE+'/object/public/floor-plans/';
   var ANON='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
   var SRC_LABEL={customer:'고객 제공',public:'공공 자료',survey:'현장 실측',minicad:'MiniCAD'};
-  var LIST_LIMIT=500; // 지역별 묶음 표시라 한 번에 더 많이 받는다 (전국 1천건대)
+  var LIST_LIMIT=1000; // 지도가 첫 화면이라 전국 단지가 한 번에 다 나와야 한다 (PostgREST 상한)
   var state={rows:[],current:null,regionCount:null,regionComplexes:null};
 
   function token(){var s=window.ECOREAN_AUTH&&window.ECOREAN_AUTH.session;return s&&s.access_token?s.access_token:null;}
@@ -213,7 +239,15 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     var rooms=document.getElementById('rooms').value;
     if(rooms)f.push(rooms==='5'?'rooms=gte.5':'rooms=eq.'+rooms);
     return api('/floor_plans?select=*&order=region_sido.asc,region_gugun.asc,complex_name.asc,area_type.asc&limit='+LIST_LIMIT+(f.length?'&'+f.join('&'):''))
-      .then(function(rows){state.rows=rows||[];render();})
+      .then(function(rows){
+        state.rows=rows||[];render();
+        if(mapOn&&mapReady){
+          placeMarkers(true);
+          // "검색하면 해당 아파트가 나오고" — 한 단지로 좁혀졌으면 자동으로 그 단지를 연다
+          var q2=document.getElementById('q').value.trim();
+          if(q2&&state.complexes&&state.complexes.length===1)openComplex(state.complexes[0],true);
+        }
+      })
       .catch(function(e){
         document.getElementById('grid').innerHTML='<div class="empty">불러오기 실패 — '+esc(e.message)+'<br><span style="font-size:12px">DB 마이그레이션(floor_plans)이 아직 적용되지 않았을 수 있습니다</span></div>';
       });
@@ -307,7 +341,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 
   // ── 🗺 3D 지도 뷰 (MapLibre GL + OpenFreeMap 벡터 타일 — 키 불필요) ──
   // 건물 입체(fill-extrusion)·회전·기울기 지원. 실패 시 사용자에게 안내.
-  var map=null, planPopup=null, mapOn=false, mapReady=false;
+  var map=null, planPopup=null, mapOn=true, mapReady=false, camAnimating=false, terrainBusy=false;
   function ensureMapLibre(){
     if(window.maplibregl)return Promise.resolve();
     return new Promise(function(res,rej){
@@ -355,16 +389,19 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   // 광역(≤z15.5)에서만 지형을 적용하고, 확대하면 평면으로 되돌린다.
   // 히스테리시스: 켜짐 임계(14.2)와 꺼짐 임계(15.2)를 벌려, 경계에서 확대·축소를 반복해도
   // setTerrain 이 연속 호출되며 전체 타일이 재렌더(흰 화면 깜빡임)되지 않게 한다.
-  var TERRAIN_ON_ZOOM=14.2, TERRAIN_OFF_ZOOM=15.2, terrainOn=false;
+  var TERRAIN_ON_ZOOM=13.5, TERRAIN_OFF_ZOOM=15.8, terrainOn=false;
   function syncTerrain(){
     if(!map||!map.getSource('ec-dem'))return;
+    if(camAnimating||terrainBusy)return;      // 애니메이션 중·전환 중에는 건드리지 않는다
     var z=map.getZoom(), want=terrainOn;
     if(terrainOn&&z>TERRAIN_OFF_ZOOM)want=false;
     else if(!terrainOn&&z<TERRAIN_ON_ZOOM)want=true;
     if(want===terrainOn)return;
-    terrainOn=want;
+    terrainOn=want;terrainBusy=true;
     try{map.setTerrain(want?{source:'ec-dem',exaggeration:1.25}:null);}
     catch(e){if(console&&console.warn)console.warn('terrain:',e.message);}
+    // setTerrain 이 유발한 줌 변화로 곧바로 되돌아오는 것을 막는다
+    setTimeout(function(){terrainBusy=false;},450);
   }
   // 실지형(산악 기복)·하늘 대기 — 스타일이 바뀔 때마다 재적용 (style.load)
   function enhanceRealism(){
@@ -382,14 +419,29 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   }
   // 마커는 GeoJSON 소스 + GPU 레이어로 그린다.
   // (DOM 마커는 확대·이동 프레임마다 수백 개를 재배치해 심한 렉·흰 화면을 유발했다 — 2026-08-27 수정)
-  function planGeoJSON(){
-    var feats=[],seen={};
+  // 단지 묶음 — 같은 단지의 평형들을 점 하나로 모은다.
+  // (평형마다 점을 찍고 0.0006° 씩 밀어내던 방식은 실제로 없는 위치에 점을 만들어 냈다)
+  function complexKey(r){return (r.complex_name||'')+'|'+(r.address||'');}
+  function buildComplexes(){
+    var m={},order=[];
     state.rows.forEach(function(r,i){
-      if(r.lat==null||r.lng==null)return;
-      var key=r.lat+','+r.lng,n=seen[key]||0;seen[key]=n+1; // 같은 좌표(복수 평형)는 살짝 비켜 배치
-      feats.push({type:'Feature',
-        geometry:{type:'Point',coordinates:[r.lng+(n?0.0006*n:0),r.lat+(n?0.0006*n:0)]},
-        properties:{i:i}});
+      var k=complexKey(r);
+      if(!m[k]){m[k]={key:k,name:r.complex_name,address:r.address,sido:r.region_sido,gugun:r.region_gugun,
+        lat:r.lat,lng:r.lng,rows:[]};order.push(k);}
+      if(m[k].lat==null&&r.lat!=null){m[k].lat=r.lat;m[k].lng=r.lng;}
+      m[k].rows.push(i);
+    });
+    state.complexes=order.map(function(k){return m[k];});
+    state.complexByKey=m;
+    return state.complexes;
+  }
+  function planGeoJSON(){
+    var feats=[];
+    buildComplexes().forEach(function(c,ci){
+      if(c.lat==null||c.lng==null)return;
+      feats.push({type:'Feature',geometry:{type:'Point',coordinates:[c.lng,c.lat]},
+        properties:{ci:ci,name:c.name,n:c.rows.length,
+          vec:c.rows.some(function(i){return !!state.rows[i].plan_path;})?1:0}});
     });
     return {type:'FeatureCollection',features:feats};
   }
@@ -404,7 +456,17 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       layout:{'text-field':['get','point_count_abbreviated'],'text-size':12,'text-font':['Noto Sans Bold']},
       paint:{'text-color':'#F8F4EE'}});
     map.addLayer({id:'ec-pt',type:'circle',source:'ec-plans',filter:['!',['has','point_count']],
-      paint:{'circle-color':'#B8965A','circle-radius':7,'circle-stroke-color':'#1A1814','circle-stroke-width':2}});
+      paint:{
+        'circle-color':['case',['==',['get','vec'],1],'#4a7fb5','#B8965A'], // 파랑 = MiniCAD 벡터 보유
+        'circle-radius':['interpolate',['linear'],['get','n'],1,7,4,10,12,14],
+        'circle-stroke-color':'#1A1814','circle-stroke-width':2}});
+    map.addLayer({id:'ec-pt-n',type:'symbol',source:'ec-plans',filter:['all',['!',['has','point_count']],['>',['get','n'],1]],
+      layout:{'text-field':['to-string',['get','n']],'text-size':11,'text-font':['Noto Sans Bold'],'text-allow-overlap':true},
+      paint:{'text-color':'#F8F4EE'}});
+    map.addLayer({id:'ec-pt-label',type:'symbol',source:'ec-plans',filter:['!',['has','point_count']],minzoom:12.5,
+      layout:{'text-field':['get','name'],'text-size':12,'text-font':['Noto Sans Regular'],
+        'text-offset':[0,1.4],'text-anchor':'top','text-max-width':11},
+      paint:{'text-color':'#2a251d','text-halo-color':'#fff','text-halo-width':1.6}});
     if(planHandlersBound)return;
     planHandlersBound=true;
     map.on('click','ec-cluster',function(e){
@@ -413,27 +475,39 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     });
     map.on('click','ec-pt',function(e){
       var f=e.features&&e.features[0];if(!f)return;
-      var r=state.rows[f.properties.i],c=f.geometry.coordinates.slice();
-      if(!r)return;
-      if(planPopup)planPopup.remove();
-      planPopup=new maplibregl.Popup({offset:14}).setLngLat(c).setHTML(
-        '<b>'+esc(r.complex_name)+'</b> '+esc(r.area_type||'')+'<br>'+
-        esc([r.region_sido,r.region_gugun,r.address].filter(Boolean).join(' '))+'<br>'+
-        '<a href="#" class="mk-open" style="font-weight:700;color:#8a713f">평면도 보기 →</a>'+
-        ' &nbsp;<a href="#" class="mk-fly" style="font-weight:700;color:#4a7fb5">🏙 3D로 보기</a>').addTo(map);
-      var el=planPopup.getElement();
-      var a=el.querySelector('.mk-open');
-      if(a)a.addEventListener('click',function(ev){ev.preventDefault();openDetail(r);});
-      var fl=el.querySelector('.mk-fly'); // 단지 상공으로 급강하 — 건물 입체가 보이는 줌·기울기
-      if(fl)fl.addEventListener('click',function(ev){
-        ev.preventDefault();
-        map.flyTo({center:c,zoom:16.6,pitch:66,bearing:-24,duration:2200,essential:true});
-      });
+      var c=state.complexes[f.properties.ci];
+      if(c)openComplex(c,true);
     });
     ['ec-pt','ec-cluster'].forEach(function(id){
       map.on('mouseenter',id,function(){map.getCanvas().style.cursor='pointer';});
       map.on('mouseleave',id,function(){map.getCanvas().style.cursor='';});
     });
+  }
+  // 단지 선택 — 지도를 그 단지 상공으로 날아가게 하고(요청한 확대 애니메이션),
+  // 옆 패널에 그 단지의 평형들을 펼친다. 평형을 누르면 기존 상세 모달로 이어진다.
+  function openComplex(c,fly){
+    if(!c)return;
+    state.currentComplex=c;
+    document.getElementById('cxName').textContent=c.name||'';
+    document.getElementById('cxAddr').textContent=[c.sido,c.gugun,c.address].filter(Boolean).join(' ');
+    var list=document.getElementById('cxList');
+    list.innerHTML=c.rows.map(function(i){
+      var r=state.rows[i];
+      var meta=[r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · ');
+      return '<div class="cx-item" data-i="'+i+'">'+
+        '<img loading="lazy" src="'+imgUrl(r)+'" alt="'+esc(r.complex_name)+'">'+
+        '<div class="t">'+esc(meta||'평면도')+(r.plan_path?'<br><span class="v">MiniCAD 벡터</span>':'')+'</div></div>';
+    }).join('');
+    list.querySelectorAll('.cx-item').forEach(function(el){
+      el.addEventListener('click',function(){openDetail(state.rows[+el.dataset.i]);});
+    });
+    document.getElementById('cxPanel').classList.add('open');
+    if(fly&&map&&c.lat!=null){
+      // 지형이 켜졌다 꺼지는 구간을 지나며 흔들리지 않도록, 날아가는 동안은 지형 전환을 멈춘다
+      camAnimating=true;
+      map.flyTo({center:[c.lng,c.lat],zoom:16.4,pitch:62,bearing:-20,duration:2000,curve:1.5,essential:true});
+      map.once('moveend',function(){camAnimating=false;syncTerrain();});
+    }
   }
   function placeMarkers(fit){
     if(!map||!mapReady)return;
@@ -469,12 +543,15 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
         style:satStyle(), // 기본 = 위성 실사 텍스처
         center:[127.8,36.5],zoom:6.2,pitch:55,bearing:-12,maxPitch:78, // 전국 부감 뷰
         maxZoom:19, // Esri 위성 원본 한계(z19) — 넘기면 늘려 찍어 이미지가 깨진다
-        antialias:true
+        antialias:false // 벡터 스타일에서 확대 시 프레임 비용이 급증하던 원인 중 하나
       });
       map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
       map.addControl(new maplibregl.FullscreenControl(),'top-right');
       map.on('style.load',enhanceRealism); // 최초 + 토글로 스타일 바뀔 때마다
-      map.on('zoom',syncTerrain);          // 확대 시 지형 해제 → 위성 이미지 왜곡 방지
+      // 매 프레임(zoom) 이 아니라 멈춘 뒤(zoomend/moveend)에만 지형을 전환한다 — 위 주석 참조
+      map.on('movestart',function(){camAnimating=true;});
+      map.on('moveend',function(){camAnimating=false;syncTerrain();});
+      map.on('zoomend',syncTerrain);
       map.on('load',function(){mapReady=true;placeMarkers();applyStyleToggleUI();});
       map.on('error',function(e){ // 타일/스타일 로드 실패는 콘솔만 (지도 자체는 유지)
         if(console&&console.warn)console.warn('map:',e&&e.error&&e.error.message||e);
@@ -656,8 +733,27 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       .catch(function(e){alert('삭제 실패: '+e.message);});
   });
 
+  // 첫 화면을 지도로 연다 (대표 지시) — 목록은 상단 버튼으로 전환
+  document.getElementById('cxClose').addEventListener('click',function(){
+    document.getElementById('cxPanel').classList.remove('open');
+  });
+  document.getElementById('mapWrap').style.display='';
+  document.querySelector('.wrap:not(#mapWrap)').style.display='none';
+  document.getElementById('mapBtn').textContent='📋 목록';
   loadRegionIndex();
-  load();
+  load().then(function(){
+    ensureMapLibre().then(function(){
+      renderMap();
+      setTimeout(function(){if(map)map.resize();},60);
+    }).catch(function(e){
+      // 지도를 못 열면 목록으로 되돌린다 — 빈 화면을 보여주지 않는다
+      mapOn=false;
+      document.getElementById('mapWrap').style.display='none';
+      document.querySelector('.wrap:not(#mapWrap)').style.display='';
+      document.getElementById('mapBtn').textContent='🗺 지도';
+      if(console&&console.warn)console.warn('map:',e.message);
+    });
+  });
 })();
 </script>
 </body>
