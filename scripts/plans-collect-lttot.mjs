@@ -72,8 +72,10 @@ async function allowed(url) {
 // 파일명이 평면도임을 강하게 시사하는 패턴만 채택한다.
 //  · 84a.jpg / 59B.png  (평형+타입)   · unit_84a.jpg / plan-84.png / type84a.jpg
 // 커뮤니티·조경·투시도 사진이 unit/type 을 포함해 오검출되던 문제로 화이트리스트 방식으로 전환.
-const PLAN_FILE = /(?:^|\/)(?:\d{2,3}\s*[a-z]?|(?:unit|plan|pyeong|hotype|type|pyung)[-_]?\d{0,3}\s*[a-z]?)\.(?:jpg|jpeg|png)$/i;
-const SKIP_HINT = /(icon|btn|logo|banner|blank|bg|arrow|thumb|sprite|_m_|\/m\/|community|커뮤니티|facility|조경|gallery|visual|main|view|cctv|map|premium|brand)/i;
+const PLAN_FILE = /(?:^|\/)(?:\d{2,3}\s*[a-z]?|(?:unit|plan|pyeong|hotype|type|pyung)[-_]?\d{0,3}\s*[a-z]?)(?:[-_](?:0?\d|big|large|org|origin|ex|expand|basic|kr|view|img))?\.(?:jpg|jpeg|png)$/i;
+// 경로 자체가 평면도 폴더면 파일명이 일반적이어도 후보로 본다 (/plan/01.jpg 같은 구조)
+const PLAN_DIR = /\/(?:plans?|units?|types?|pyeong|pyung|floorplan)\//i;
+const SKIP_HINT = /(icon|btn|logo|banner|blank|bg|arrow|thumb|sprite|_m_|\/m\/|community|커뮤니티|facility|조경|gallery|visual|main|view|cctv|map|premium|brand|\/theme\/|\/skin\/|\/tpl\/|\/common\/|\/layout\/)/i;
 
 async function findPlanImages(home) {
   const pages = new Set([home]);
@@ -83,14 +85,27 @@ async function findPlanImages(home) {
     if (!r.ok) return { skipped: `HTTP ${r.status}`, imgs: [] };
     const baseUrl = r.url;
     const html = await r.text();
-    // 평면/세대 안내 메뉴 링크 추가 탐색
-    for (const m of html.matchAll(/<a[^>]*href="([^"]+)"[^>]*>\s*([^<]{2,24})\s*<\/a>/g)) {
-      if (/평면|세대안내|주택형|타입/.test(m[2])) {
-        try { pages.add(new URL(m[1], baseUrl).href); } catch { }
+    // 평면/세대 안내 메뉴 링크 추가 탐색 — 링크 텍스트뿐 아니라 href 도 본다.
+    // 분양 사이트 상당수가 메뉴를 이미지로 깔아, 텍스트 매칭만으론 평면 페이지를 못 찾았다.
+    for (const m of html.matchAll(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]{0,80}?)<\/a>/g)) {
+      const href = m[1], text = m[2].replace(/<[^>]*>/g, '');
+      if (/평면|세대안내|주택형|타입/.test(text) || /(plan|unit|type|pyeong|pyung|house)/i.test(href)) {
+        try { pages.add(new URL(href, baseUrl).href); } catch { }
       }
     }
+    // 링크가 스크립트로만 열리는 사이트 대비 — 흔한 평면 페이지 경로를 직접 찔러본다
+    for (const g of ['plan.html', 'plan.php', 'unit.html', 'type.html', 'sub/plan.html', 'plan/', 'unit/']) {
+      try { pages.add(new URL(g, baseUrl).href); } catch { }
+    }
+    // SPA 사이트는 이미지 목록이 번들 js 안에 있다 — 같은 도메인 스크립트도 훑는다
+    for (const m of [...html.matchAll(/<script[^>]+src="([^"]+\.js[^"]*)"/gi)].slice(0, 6)) {
+      try {
+        const ju = new URL(m[1], baseUrl);
+        if (ju.origin === new URL(baseUrl).origin) pages.add(ju.href);
+      } catch { }
+    }
     const found = new Map();
-    for (const p of [...pages].slice(0, 4)) {
+    for (const p of [...pages].slice(0, 12)) {
       if (!await allowed(p)) continue;
       let t;
       try { const pr = await fetch(p, { headers: { ...UA, Referer: baseUrl } }); if (!pr.ok) continue; t = await pr.text(); }
@@ -103,7 +118,9 @@ async function findPlanImages(home) {
         ...[...t.matchAll(/['"]([^'"\s]+\.(?:jpg|jpeg|png))['"]/gi)].map(m => m[1]),
       ];
       for (const raw of cands) {
-        if (SKIP_HINT.test(raw) || !PLAN_FILE.test(raw.split('?')[0])) continue;
+        const clean = raw.split('?')[0];
+        if (SKIP_HINT.test(raw)) continue;
+        if (!PLAN_FILE.test(clean) && !PLAN_DIR.test(clean)) continue;
         try { found.set(new URL(raw, p).href, true); } catch { }
       }
       await sleep(500);

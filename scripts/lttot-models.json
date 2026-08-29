@@ -1,102 +1,4106 @@
 {
- "2020000227": [],
- "2020001004": [],
- "2020001127": [],
- "2020001454": [],
- "2021000028": [],
- "2021000030": [],
- "2021000413": [],
- "2021000847": [],
- "2021000897": [],
- "2021000926": [],
- "2021000938": [],
- "2021000991": [],
- "2021520005": [],
- "2022000030": [],
- "2022000381": [],
- "2022000506": [],
- "2022000544": [],
- "2022000580": [],
- "2022000648": [],
- "2022000674": [],
- "2022000675": [],
- "2022000719": [],
- "2022000804": [],
- "2022000874": [],
- "2022520041": [],
- "2023000099": [],
- "2023000117": [],
- "2023000178": [],
- "2023000181": [],
- "2023000232": [],
- "2023000406": [],
- "2023000407": [],
- "2023000623": [],
- "2023000658": [],
- "2023000707": [],
- "2024000216": [],
- "2024000387": [],
- "2024000472": [],
- "2024000546": [],
- "2024000557": [],
- "2024000572": [],
- "2024000573": [],
- "2024000602": [],
- "2024000609": [],
- "2024000621": [],
- "2024000637": [],
- "2024000649": [],
- "2024000660": [],
- "2025000047": [],
- "2025000063": [],
- "2025000081": [],
- "2025000114": [],
- "2025000115": [],
- "2025000164": [],
- "2025000194": [],
- "2025000203": [],
- "2025000206": [],
- "2025000207": [],
- "2025000242": [],
- "2025000252": [],
- "2025000338": [],
- "2025000340": [],
- "2025000364": [],
- "2025000365": [],
- "2025000370": [],
- "2025000380": [],
- "2025000412": [],
- "2025000425": [],
- "2025000431": [],
- "2025000448": [],
- "2025000450": [],
- "2025000464": [],
- "2025000498": [],
- "2025000537": [],
- "2025000542": [],
- "2025000553": [],
- "2025000554": [],
- "2025000573": [],
- "2025000581": [],
- "2025000582": [],
- "2026000009": [],
- "2026000030": [],
- "2026000043": [],
- "2026000044": [],
- "2026000047": [],
- "2026000066": [],
- "2026000073": [],
- "2026000087": [],
- "2026000098": [],
- "2026000170": [],
- "2026000253": [],
- "2026000260": [],
- "2026000261": [],
- "2026000271": [],
- "2026000273": [],
- "2026000275": [],
- "2026000282": [],
- "2026000364": [],
- "2026000383": [],
- "2026000404": []
+ "2020000227": [
+  {
+   "model_no": "01",
+   "house_ty": "084.8927 ",
+   "area": 84.8927,
+   "letter": "",
+   "supply_ar": 112.7206,
+   "hshld": 143
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.8927P",
+   "area": 84.8927,
+   "letter": "P",
+   "supply_ar": 112.7206,
+   "hshld": 19
+  }
+ ],
+ "2020001004": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9300A",
+   "area": 59.93,
+   "letter": "A",
+   "supply_ar": 79.2775,
+   "hshld": 66
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9100B",
+   "area": 59.91,
+   "letter": "B",
+   "supply_ar": 79.251,
+   "hshld": 26
+  },
+  {
+   "model_no": "03",
+   "house_ty": "059.9200C",
+   "area": 59.92,
+   "letter": "C",
+   "supply_ar": 79.2642,
+   "hshld": 11
+  },
+  {
+   "model_no": "04",
+   "house_ty": "059.9300D",
+   "area": 59.93,
+   "letter": "D",
+   "supply_ar": 79.2775,
+   "hshld": 25
+  }
+ ],
+ "2020001127": [
+  {
+   "model_no": "01",
+   "house_ty": "036.9800T",
+   "area": 36.98,
+   "letter": "T",
+   "supply_ar": 50.1341,
+   "hshld": 53
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9900A",
+   "area": 59.99,
+   "letter": "A",
+   "supply_ar": 81.472,
+   "hshld": 449
+  },
+  {
+   "model_no": "03",
+   "house_ty": "059.9500T",
+   "area": 59.95,
+   "letter": "T",
+   "supply_ar": 82.6819,
+   "hshld": 3
+  },
+  {
+   "model_no": "04",
+   "house_ty": "074.9600A",
+   "area": 74.96,
+   "letter": "A",
+   "supply_ar": 100.4206,
+   "hshld": 532
+  },
+  {
+   "model_no": "05",
+   "house_ty": "074.9500B",
+   "area": 74.95,
+   "letter": "B",
+   "supply_ar": 100.338,
+   "hshld": 33
+  },
+  {
+   "model_no": "06",
+   "house_ty": "084.9600A",
+   "area": 84.96,
+   "letter": "A",
+   "supply_ar": 113.3647,
+   "hshld": 84
+  },
+  {
+   "model_no": "07",
+   "house_ty": "084.9200B",
+   "area": 84.92,
+   "letter": "B",
+   "supply_ar": 113.3746,
+   "hshld": 34
+  },
+  {
+   "model_no": "08",
+   "house_ty": "108.8900A",
+   "area": 108.89,
+   "letter": "A",
+   "supply_ar": 149.5149,
+   "hshld": 38
+  },
+  {
+   "model_no": "09",
+   "house_ty": "108.2900B",
+   "area": 108.29,
+   "letter": "B",
+   "supply_ar": 150.4534,
+   "hshld": 5
+  }
+ ],
+ "2020001454": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9295 ",
+   "area": 59.9295,
+   "letter": "",
+   "supply_ar": 79.3377,
+   "hshld": 66
+  },
+  {
+   "model_no": "02",
+   "house_ty": "075.7933A",
+   "area": 75.7933,
+   "letter": "A",
+   "supply_ar": 99.4525,
+   "hshld": 8
+  },
+  {
+   "model_no": "03",
+   "house_ty": "075.9806B",
+   "area": 75.9806,
+   "letter": "B",
+   "supply_ar": 100.5211,
+   "hshld": 29
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.7978 ",
+   "area": 84.7978,
+   "letter": "",
+   "supply_ar": 110.7167,
+   "hshld": 27
+  }
+ ],
+ "2021000028": [
+  {
+   "model_no": "01",
+   "house_ty": "059.5251A",
+   "area": 59.5251,
+   "letter": "A",
+   "supply_ar": 78.3528,
+   "hshld": 37
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.6207B",
+   "area": 59.6207,
+   "letter": "B",
+   "supply_ar": 78.662,
+   "hshld": 4
+  },
+  {
+   "model_no": "03",
+   "house_ty": "073.1700 ",
+   "area": 73.17,
+   "letter": "",
+   "supply_ar": 96.5963,
+   "hshld": 51
+  },
+  {
+   "model_no": "04",
+   "house_ty": "074.4741 ",
+   "area": 74.4741,
+   "letter": "",
+   "supply_ar": 97.1189,
+   "hshld": 38
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.2063 ",
+   "area": 84.2063,
+   "letter": "",
+   "supply_ar": 109.5259,
+   "hshld": 5
+  }
+ ],
+ "2021000030": [
+  {
+   "model_no": "01",
+   "house_ty": "078.0321 ",
+   "area": 78.0321,
+   "letter": "",
+   "supply_ar": 100.5394,
+   "hshld": 43
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9675 ",
+   "area": 84.9675,
+   "letter": "",
+   "supply_ar": 109.4752,
+   "hshld": 127
+  },
+  {
+   "model_no": "03",
+   "house_ty": "113.6606 ",
+   "area": 113.6606,
+   "letter": "",
+   "supply_ar": 146.4445,
+   "hshld": 31
+  }
+ ],
+ "2021000413": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9424A",
+   "area": 59.9424,
+   "letter": "A",
+   "supply_ar": 79.5485,
+   "hshld": 134
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9940B",
+   "area": 59.994,
+   "letter": "B",
+   "supply_ar": 81.7367,
+   "hshld": 73
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9624A",
+   "area": 84.9624,
+   "letter": "A",
+   "supply_ar": 112.0146,
+   "hshld": 43
+  }
+ ],
+ "2021000847": [
+  {
+   "model_no": "01",
+   "house_ty": "080.9397 ",
+   "area": 80.9397,
+   "letter": "",
+   "supply_ar": 99.8485,
+   "hshld": 52
+  },
+  {
+   "model_no": "02",
+   "house_ty": "082.2524 ",
+   "area": 82.2524,
+   "letter": "",
+   "supply_ar": 102.7077,
+   "hshld": 54
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9489A",
+   "area": 84.9489,
+   "letter": "A",
+   "supply_ar": 107.7299,
+   "hshld": 16
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9489T",
+   "area": 84.9489,
+   "letter": "T",
+   "supply_ar": 107.7299,
+   "hshld": 8
+  }
+ ],
+ "2021000897": [
+  {
+   "model_no": "01",
+   "house_ty": "084.6853A",
+   "area": 84.6853,
+   "letter": "A",
+   "supply_ar": 111.0965,
+   "hshld": 81
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.7341B",
+   "area": 84.7341,
+   "letter": "B",
+   "supply_ar": 110.976,
+   "hshld": 84
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.3391C",
+   "area": 84.3391,
+   "letter": "C",
+   "supply_ar": 111.3867,
+   "hshld": 71
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.1579D",
+   "area": 84.1579,
+   "letter": "D",
+   "supply_ar": 111.5425,
+   "hshld": 71
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.6853P",
+   "area": 84.6853,
+   "letter": "P",
+   "supply_ar": 111.0965,
+   "hshld": 27
+  }
+ ],
+ "2021000926": [
+  {
+   "model_no": "01",
+   "house_ty": "039.9863 ",
+   "area": 39.9863,
+   "letter": "",
+   "supply_ar": 51.8244,
+   "hshld": 8
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9992 ",
+   "area": 59.9992,
+   "letter": "",
+   "supply_ar": 77.2942,
+   "hshld": 90
+  },
+  {
+   "model_no": "03",
+   "house_ty": "075.8737 ",
+   "area": 75.8737,
+   "letter": "",
+   "supply_ar": 97.1338,
+   "hshld": 150
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9432A",
+   "area": 84.9432,
+   "letter": "A",
+   "supply_ar": 109.3212,
+   "hshld": 43
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.9741B",
+   "area": 84.9741,
+   "letter": "B",
+   "supply_ar": 109.8121,
+   "hshld": 150
+  },
+  {
+   "model_no": "06",
+   "house_ty": "111.2848 ",
+   "area": 111.2848,
+   "letter": "",
+   "supply_ar": 141.355,
+   "hshld": 4
+  }
+ ],
+ "2021000938": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9393A",
+   "area": 84.9393,
+   "letter": "A",
+   "supply_ar": 113.0277,
+   "hshld": 59
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.8504B",
+   "area": 84.8504,
+   "letter": "B",
+   "supply_ar": 113.0068,
+   "hshld": 41
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8384C",
+   "area": 84.8384,
+   "letter": "C",
+   "supply_ar": 113.4976,
+   "hshld": 55
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9470D",
+   "area": 84.947,
+   "letter": "D",
+   "supply_ar": 113.6673,
+   "hshld": 15
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.9521E",
+   "area": 84.9521,
+   "letter": "E",
+   "supply_ar": 113.097,
+   "hshld": 76
+  },
+  {
+   "model_no": "06",
+   "house_ty": "084.9521F",
+   "area": 84.9521,
+   "letter": "F",
+   "supply_ar": 113.097,
+   "hshld": 74
+  },
+  {
+   "model_no": "07",
+   "house_ty": "099.9017 ",
+   "area": 99.9017,
+   "letter": "",
+   "supply_ar": 132.4394,
+   "hshld": 191
+  }
+ ],
+ "2021000991": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9929A",
+   "area": 84.9929,
+   "letter": "A",
+   "supply_ar": 112.9577,
+   "hshld": 57
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9929B",
+   "area": 84.9929,
+   "letter": "B",
+   "supply_ar": 112.9577,
+   "hshld": 21
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9610C",
+   "area": 84.961,
+   "letter": "C",
+   "supply_ar": 113.2025,
+   "hshld": 19
+  },
+  {
+   "model_no": "04",
+   "house_ty": "117.0757 ",
+   "area": 117.0757,
+   "letter": "",
+   "supply_ar": 154.5311,
+   "hshld": 121
+  },
+  {
+   "model_no": "05",
+   "house_ty": "148.7580 ",
+   "area": 148.758,
+   "letter": "",
+   "supply_ar": 197.1992,
+   "hshld": 1
+  },
+  {
+   "model_no": "06",
+   "house_ty": "165.3210 ",
+   "area": 165.321,
+   "letter": "",
+   "supply_ar": 219.4704,
+   "hshld": 2
+  },
+  {
+   "model_no": "07",
+   "house_ty": "199.6477 ",
+   "area": 199.6477,
+   "letter": "",
+   "supply_ar": 262.9529,
+   "hshld": 2
+  }
+ ],
+ "2021520005": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9815A",
+   "area": 84.9815,
+   "letter": "A",
+   "supply_ar": 111.1442,
+   "hshld": 95
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9718B",
+   "area": 84.9718,
+   "letter": "B",
+   "supply_ar": 111.0939,
+   "hshld": 32
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8495C",
+   "area": 84.8495,
+   "letter": "C",
+   "supply_ar": 110.7322,
+   "hshld": 15
+  },
+  {
+   "model_no": "04",
+   "house_ty": "115.7953A",
+   "area": 115.7953,
+   "letter": "A",
+   "supply_ar": 149.2702,
+   "hshld": 88
+  },
+  {
+   "model_no": "05",
+   "house_ty": "115.9391B",
+   "area": 115.9391,
+   "letter": "B",
+   "supply_ar": 149.2792,
+   "hshld": 63
+  }
+ ],
+ "2022000030": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9200A",
+   "area": 84.92,
+   "letter": "A",
+   "supply_ar": 123.1467,
+   "hshld": 32
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9700B",
+   "area": 84.97,
+   "letter": "B",
+   "supply_ar": 123.2192,
+   "hshld": 35
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8500C",
+   "area": 84.85,
+   "letter": "C",
+   "supply_ar": 123.0452,
+   "hshld": 32
+  },
+  {
+   "model_no": "04",
+   "house_ty": "153.5500 ",
+   "area": 153.55,
+   "letter": "",
+   "supply_ar": 222.6705,
+   "hshld": 2
+  }
+ ],
+ "2022000381": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9993A",
+   "area": 84.9993,
+   "letter": "A",
+   "supply_ar": 112.5809,
+   "hshld": 175
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9919B",
+   "area": 84.9919,
+   "letter": "B",
+   "supply_ar": 112.6703,
+   "hshld": 55
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9942C",
+   "area": 84.9942,
+   "letter": "C",
+   "supply_ar": 113.9348,
+   "hshld": 26
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9993P",
+   "area": 84.9993,
+   "letter": "P",
+   "supply_ar": 112.5809,
+   "hshld": 3
+  }
+ ],
+ "2022000506": [
+  {
+   "model_no": "01",
+   "house_ty": "084.8617A",
+   "area": 84.8617,
+   "letter": "A",
+   "supply_ar": 115.848,
+   "hshld": 234
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9485B",
+   "area": 84.9485,
+   "letter": "B",
+   "supply_ar": 117.9348,
+   "hshld": 81
+  },
+  {
+   "model_no": "03",
+   "house_ty": "102.9187 ",
+   "area": 102.9187,
+   "letter": "",
+   "supply_ar": 140.5934,
+   "hshld": 85
+  }
+ ],
+ "2022000544": [
+  {
+   "model_no": "01",
+   "house_ty": "059.6414 ",
+   "area": 59.6414,
+   "letter": "",
+   "supply_ar": 84.0413,
+   "hshld": 13
+  },
+  {
+   "model_no": "02",
+   "house_ty": "065.5986 ",
+   "area": 65.5986,
+   "letter": "",
+   "supply_ar": 88.6748,
+   "hshld": 8
+  },
+  {
+   "model_no": "03",
+   "house_ty": "083.7308 ",
+   "area": 83.7308,
+   "letter": "",
+   "supply_ar": 112.3457,
+   "hshld": 7
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9697A",
+   "area": 84.9697,
+   "letter": "A",
+   "supply_ar": 111.6555,
+   "hshld": 12
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.7006B",
+   "area": 84.7006,
+   "letter": "B",
+   "supply_ar": 113.8625,
+   "hshld": 13
+  }
+ ],
+ "2022000580": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9951A",
+   "area": 84.9951,
+   "letter": "A",
+   "supply_ar": 109.5266,
+   "hshld": 119
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9639B",
+   "area": 84.9639,
+   "letter": "B",
+   "supply_ar": 109.9607,
+   "hshld": 53
+  },
+  {
+   "model_no": "03",
+   "house_ty": "116.9947 ",
+   "area": 116.9947,
+   "letter": "",
+   "supply_ar": 149.7549,
+   "hshld": 68
+  }
+ ],
+ "2022000648": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9595A",
+   "area": 84.9595,
+   "letter": "A",
+   "supply_ar": 111.1485,
+   "hshld": 29
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9712B",
+   "area": 84.9712,
+   "letter": "B",
+   "supply_ar": 110.7752,
+   "hshld": 77
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9650C",
+   "area": 84.965,
+   "letter": "C",
+   "supply_ar": 111.3389,
+   "hshld": 41
+  },
+  {
+   "model_no": "04",
+   "house_ty": "110.9850 ",
+   "area": 110.985,
+   "letter": "",
+   "supply_ar": 143.344,
+   "hshld": 70
+  },
+  {
+   "model_no": "05",
+   "house_ty": "116.9850 ",
+   "area": 116.985,
+   "letter": "",
+   "supply_ar": 150.5626,
+   "hshld": 32
+  }
+ ],
+ "2022000674": [
+  {
+   "model_no": "01",
+   "house_ty": "059.5855A",
+   "area": 59.5855,
+   "letter": "A",
+   "supply_ar": 84.0634,
+   "hshld": 50
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9772B",
+   "area": 59.9772,
+   "letter": "B",
+   "supply_ar": 84.5691,
+   "hshld": 56
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.2340A",
+   "area": 84.234,
+   "letter": "A",
+   "supply_ar": 108.6438,
+   "hshld": 32
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.8869B",
+   "area": 84.8869,
+   "letter": "B",
+   "supply_ar": 109.4245,
+   "hshld": 33
+  }
+ ],
+ "2022000675": [
+  {
+   "model_no": "01",
+   "house_ty": "084.2340A",
+   "area": 84.234,
+   "letter": "A",
+   "supply_ar": 110.1658,
+   "hshld": 75
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.8869B",
+   "area": 84.8869,
+   "letter": "B",
+   "supply_ar": 110.9584,
+   "hshld": 60
+  },
+  {
+   "model_no": "03",
+   "house_ty": "101.4786 ",
+   "area": 101.4786,
+   "letter": "",
+   "supply_ar": 126.4064,
+   "hshld": 119
+  }
+ ],
+ "2022000719": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9295 ",
+   "area": 59.9295,
+   "letter": "",
+   "supply_ar": 79.3377,
+   "hshld": 30
+  },
+  {
+   "model_no": "02",
+   "house_ty": "075.7933A",
+   "area": 75.7933,
+   "letter": "A",
+   "supply_ar": 99.4525,
+   "hshld": 6
+  },
+  {
+   "model_no": "03",
+   "house_ty": "075.9806B",
+   "area": 75.9806,
+   "letter": "B",
+   "supply_ar": 100.5211,
+   "hshld": 6
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.7978 ",
+   "area": 84.7978,
+   "letter": "",
+   "supply_ar": 110.7167,
+   "hshld": 13
+  }
+ ],
+ "2022000804": [
+  {
+   "model_no": "01",
+   "house_ty": "095.7334 ",
+   "area": 95.7334,
+   "letter": "",
+   "supply_ar": 122.9714,
+   "hshld": 62
+  },
+  {
+   "model_no": "02",
+   "house_ty": "115.6720A",
+   "area": 115.672,
+   "letter": "A",
+   "supply_ar": 148.5829,
+   "hshld": 183
+  },
+  {
+   "model_no": "03",
+   "house_ty": "115.6304B",
+   "area": 115.6304,
+   "letter": "B",
+   "supply_ar": 148.5295,
+   "hshld": 92
+  }
+ ],
+ "2022000874": [
+  {
+   "model_no": "01",
+   "house_ty": "098.8893 ",
+   "area": 98.8893,
+   "letter": "",
+   "supply_ar": 126.8889,
+   "hshld": 21
+  },
+  {
+   "model_no": "02",
+   "house_ty": "100.5970A",
+   "area": 100.597,
+   "letter": "A",
+   "supply_ar": 128.492,
+   "hshld": 44
+  },
+  {
+   "model_no": "03",
+   "house_ty": "100.9349B",
+   "area": 100.9349,
+   "letter": "B",
+   "supply_ar": 129.1413,
+   "hshld": 121
+  },
+  {
+   "model_no": "04",
+   "house_ty": "108.9548 ",
+   "area": 108.9548,
+   "letter": "",
+   "supply_ar": 139.2132,
+   "hshld": 76
+  }
+ ],
+ "2022520041": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9646A",
+   "area": 84.9646,
+   "letter": "A",
+   "supply_ar": 111.2333,
+   "hshld": 124
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9288B",
+   "area": 84.9288,
+   "letter": "B",
+   "supply_ar": 111.3989,
+   "hshld": 41
+  },
+  {
+   "model_no": "03",
+   "house_ty": "107.9411 ",
+   "area": 107.9411,
+   "letter": "",
+   "supply_ar": 140.5922,
+   "hshld": 68
+  }
+ ],
+ "2023000099": [
+  {
+   "model_no": "01",
+   "house_ty": "152.2638 ",
+   "area": 152.2638,
+   "letter": "",
+   "supply_ar": 182.2012,
+   "hshld": 25
+  },
+  {
+   "model_no": "02",
+   "house_ty": "160.5280 ",
+   "area": 160.528,
+   "letter": "",
+   "supply_ar": 195.0086,
+   "hshld": 24
+  }
+ ],
+ "2023000117": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9530A",
+   "area": 84.953,
+   "letter": "A",
+   "supply_ar": 111.5374,
+   "hshld": 130
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.4280B",
+   "area": 84.428,
+   "letter": "B",
+   "supply_ar": 111.0267,
+   "hshld": 59
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9866C",
+   "area": 84.9866,
+   "letter": "C",
+   "supply_ar": 112.5102,
+   "hshld": 36
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9530P",
+   "area": 84.953,
+   "letter": "P",
+   "supply_ar": 111.5374,
+   "hshld": 118
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.9530T",
+   "area": 84.953,
+   "letter": "T",
+   "supply_ar": 111.5374,
+   "hshld": 3
+  },
+  {
+   "model_no": "06",
+   "house_ty": "106.4226 ",
+   "area": 106.4226,
+   "letter": "",
+   "supply_ar": 132.1595,
+   "hshld": 176
+  },
+  {
+   "model_no": "07",
+   "house_ty": "106.4226P",
+   "area": 106.4226,
+   "letter": "P",
+   "supply_ar": 132.1595,
+   "hshld": 71
+  }
+ ],
+ "2023000178": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9243 ",
+   "area": 84.9243,
+   "letter": "",
+   "supply_ar": 116.3103,
+   "hshld": 49
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.7367 ",
+   "area": 84.7367,
+   "letter": "",
+   "supply_ar": 115.8963,
+   "hshld": 27
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8902 ",
+   "area": 84.8902,
+   "letter": "",
+   "supply_ar": 116.9561,
+   "hshld": 27
+  },
+  {
+   "model_no": "04",
+   "house_ty": "111.8417 ",
+   "area": 111.8417,
+   "letter": "",
+   "supply_ar": 151.5525,
+   "hshld": 90
+  },
+  {
+   "model_no": "05",
+   "house_ty": "111.9744 ",
+   "area": 111.9744,
+   "letter": "",
+   "supply_ar": 151.2319,
+   "hshld": 90
+  },
+  {
+   "model_no": "06",
+   "house_ty": "130.8820 ",
+   "area": 130.882,
+   "letter": "",
+   "supply_ar": 175.8883,
+   "hshld": 125
+  },
+  {
+   "model_no": "07",
+   "house_ty": "130.8330 ",
+   "area": 130.833,
+   "letter": "",
+   "supply_ar": 175.8586,
+   "hshld": 61
+  }
+ ],
+ "2023000181": [
+  {
+   "model_no": "01",
+   "house_ty": "084.1568A",
+   "area": 84.1568,
+   "letter": "A",
+   "supply_ar": 117.0435,
+   "hshld": 15
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.3137B",
+   "area": 84.3137,
+   "letter": "B",
+   "supply_ar": 117.4735,
+   "hshld": 15
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.2133C",
+   "area": 84.2133,
+   "letter": "C",
+   "supply_ar": 117.1771,
+   "hshld": 15
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.2759D",
+   "area": 84.2759,
+   "letter": "D",
+   "supply_ar": 117.9466,
+   "hshld": 15
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.5677E",
+   "area": 84.5677,
+   "letter": "E",
+   "supply_ar": 119.2111,
+   "hshld": 15
+  }
+ ],
+ "2023000232": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9556A",
+   "area": 84.9556,
+   "letter": "A",
+   "supply_ar": 111.0126,
+   "hshld": 413
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9484B",
+   "area": 84.9484,
+   "letter": "B",
+   "supply_ar": 111.8961,
+   "hshld": 83
+  },
+  {
+   "model_no": "03",
+   "house_ty": "103.8578 ",
+   "area": 103.8578,
+   "letter": "",
+   "supply_ar": 135.169,
+   "hshld": 149
+  }
+ ],
+ "2023000406": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9777A",
+   "area": 59.9777,
+   "letter": "A",
+   "supply_ar": 81.7794,
+   "hshld": 50
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9712B",
+   "area": 59.9712,
+   "letter": "B",
+   "supply_ar": 83.0186,
+   "hshld": 16
+  },
+  {
+   "model_no": "03",
+   "house_ty": "075.9981A",
+   "area": 75.9981,
+   "letter": "A",
+   "supply_ar": 102.7434,
+   "hshld": 152
+  },
+  {
+   "model_no": "04",
+   "house_ty": "075.9922B",
+   "area": 75.9922,
+   "letter": "B",
+   "supply_ar": 104.5858,
+   "hshld": 47
+  },
+  {
+   "model_no": "05",
+   "house_ty": "075.8814C",
+   "area": 75.8814,
+   "letter": "C",
+   "supply_ar": 102.682,
+   "hshld": 64
+  },
+  {
+   "model_no": "06",
+   "house_ty": "084.8179A",
+   "area": 84.8179,
+   "letter": "A",
+   "supply_ar": 113.8765,
+   "hshld": 32
+  },
+  {
+   "model_no": "07",
+   "house_ty": "084.7162B",
+   "area": 84.7162,
+   "letter": "B",
+   "supply_ar": 115.8638,
+   "hshld": 16
+  },
+  {
+   "model_no": "08",
+   "house_ty": "084.4461C",
+   "area": 84.4461,
+   "letter": "C",
+   "supply_ar": 114.6045,
+   "hshld": 16
+  }
+ ],
+ "2023000407": [
+  {
+   "model_no": "01",
+   "house_ty": "075.9981A",
+   "area": 75.9981,
+   "letter": "A",
+   "supply_ar": 98.8359,
+   "hshld": 101
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.8179A",
+   "area": 84.8179,
+   "letter": "A",
+   "supply_ar": 109.5155,
+   "hshld": 18
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.7162B",
+   "area": 84.7162,
+   "letter": "B",
+   "supply_ar": 111.508,
+   "hshld": 61
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.4461C",
+   "area": 84.4461,
+   "letter": "C",
+   "supply_ar": 110.2626,
+   "hshld": 105
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.8081D",
+   "area": 84.8081,
+   "letter": "D",
+   "supply_ar": 111.1654,
+   "hshld": 2
+  }
+ ],
+ "2023000623": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9890A",
+   "area": 84.989,
+   "letter": "A",
+   "supply_ar": 109.8283,
+   "hshld": 270
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9276B",
+   "area": 84.9276,
+   "letter": "B",
+   "supply_ar": 110.7228,
+   "hshld": 133
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8718C",
+   "area": 84.8718,
+   "letter": "C",
+   "supply_ar": 111.9254,
+   "hshld": 71
+  }
+ ],
+ "2023000658": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9884A",
+   "area": 84.9884,
+   "letter": "A",
+   "supply_ar": 110.6131,
+   "hshld": 332
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9916B",
+   "area": 84.9916,
+   "letter": "B",
+   "supply_ar": 111.5065,
+   "hshld": 161
+  }
+ ],
+ "2023000707": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9815A",
+   "area": 84.9815,
+   "letter": "A",
+   "supply_ar": 111.1442,
+   "hshld": 74
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9718B",
+   "area": 84.9718,
+   "letter": "B",
+   "supply_ar": 111.0939,
+   "hshld": 28
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8495C",
+   "area": 84.8495,
+   "letter": "C",
+   "supply_ar": 110.7322,
+   "hshld": 11
+  },
+  {
+   "model_no": "04",
+   "house_ty": "115.7953A",
+   "area": 115.7953,
+   "letter": "A",
+   "supply_ar": 149.2702,
+   "hshld": 70
+  },
+  {
+   "model_no": "05",
+   "house_ty": "115.9391B",
+   "area": 115.9391,
+   "letter": "B",
+   "supply_ar": 149.2792,
+   "hshld": 44
+  }
+ ],
+ "2024000216": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9600A",
+   "area": 84.96,
+   "letter": "A",
+   "supply_ar": 112.5794,
+   "hshld": 172
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.7800B",
+   "area": 84.78,
+   "letter": "B",
+   "supply_ar": 112.6475,
+   "hshld": 150
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9500C",
+   "area": 84.95,
+   "letter": "C",
+   "supply_ar": 112.3271,
+   "hshld": 57
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.7300D",
+   "area": 84.73,
+   "letter": "D",
+   "supply_ar": 112.7359,
+   "hshld": 125
+  }
+ ],
+ "2024000387": [
+  {
+   "model_no": "01",
+   "house_ty": "059.8951 ",
+   "area": 59.8951,
+   "letter": "",
+   "supply_ar": 82.1095,
+   "hshld": 47
+  },
+  {
+   "model_no": "02",
+   "house_ty": "078.8636A",
+   "area": 78.8636,
+   "letter": "A",
+   "supply_ar": 103.3932,
+   "hshld": 36
+  },
+  {
+   "model_no": "03",
+   "house_ty": "078.2765B",
+   "area": 78.2765,
+   "letter": "B",
+   "supply_ar": 104.2425,
+   "hshld": 52
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9514A",
+   "area": 84.9514,
+   "letter": "A",
+   "supply_ar": 110.5671,
+   "hshld": 36
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.8923B",
+   "area": 84.8923,
+   "letter": "B",
+   "supply_ar": 111.8011,
+   "hshld": 114
+  }
+ ],
+ "2024000472": [
+  {
+   "model_no": "01",
+   "house_ty": "045.7233 ",
+   "area": 45.7233,
+   "letter": "",
+   "supply_ar": 61.9833,
+   "hshld": 47
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9398A",
+   "area": 59.9398,
+   "letter": "A",
+   "supply_ar": 80.6122,
+   "hshld": 3
+  },
+  {
+   "model_no": "03",
+   "house_ty": "059.7660B",
+   "area": 59.766,
+   "letter": "B",
+   "supply_ar": 81.39,
+   "hshld": 2
+  },
+  {
+   "model_no": "04",
+   "house_ty": "059.7267D",
+   "area": 59.7267,
+   "letter": "D",
+   "supply_ar": 80.7186,
+   "hshld": 3
+  },
+  {
+   "model_no": "05",
+   "house_ty": "065.9129 ",
+   "area": 65.9129,
+   "letter": "",
+   "supply_ar": 89.0384,
+   "hshld": 18
+  }
+ ],
+ "2024000546": [
+  {
+   "model_no": "01",
+   "house_ty": "045.9900 ",
+   "area": 45.99,
+   "letter": "",
+   "supply_ar": 62.0444,
+   "hshld": 8
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9600A",
+   "area": 59.96,
+   "letter": "A",
+   "supply_ar": 81.1798,
+   "hshld": 21
+  },
+  {
+   "model_no": "03",
+   "house_ty": "059.9600B",
+   "area": 59.96,
+   "letter": "B",
+   "supply_ar": 80.9427,
+   "hshld": 6
+  },
+  {
+   "model_no": "04",
+   "house_ty": "059.9000C",
+   "area": 59.9,
+   "letter": "C",
+   "supply_ar": 82.0502,
+   "hshld": 4
+  }
+ ],
+ "2024000557": [
+  {
+   "model_no": "01",
+   "house_ty": "059.8539 ",
+   "area": 59.8539,
+   "letter": "",
+   "supply_ar": 77.8595,
+   "hshld": 25
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9850A",
+   "area": 84.985,
+   "letter": "A",
+   "supply_ar": 107.9737,
+   "hshld": 138
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8349B",
+   "area": 84.8349,
+   "letter": "B",
+   "supply_ar": 108.0122,
+   "hshld": 75
+  },
+  {
+   "model_no": "04",
+   "house_ty": "113.7801A",
+   "area": 113.7801,
+   "letter": "A",
+   "supply_ar": 143.6894,
+   "hshld": 56
+  },
+  {
+   "model_no": "05",
+   "house_ty": "113.4179B",
+   "area": 113.4179,
+   "letter": "B",
+   "supply_ar": 143.8274,
+   "hshld": 23
+  }
+ ],
+ "2024000572": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9968A",
+   "area": 59.9968,
+   "letter": "A",
+   "supply_ar": 84.2807,
+   "hshld": 113
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9194B",
+   "area": 59.9194,
+   "letter": "B",
+   "supply_ar": 85.4895,
+   "hshld": 29
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8543A",
+   "area": 84.8543,
+   "letter": "A",
+   "supply_ar": 118.1609,
+   "hshld": 22
+  }
+ ],
+ "2024000573": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9968A",
+   "area": 59.9968,
+   "letter": "A",
+   "supply_ar": 80.1589,
+   "hshld": 125
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.8543A",
+   "area": 84.8543,
+   "letter": "A",
+   "supply_ar": 112.3314,
+   "hshld": 75
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8270B",
+   "area": 84.827,
+   "letter": "B",
+   "supply_ar": 113.1323,
+   "hshld": 65
+  },
+  {
+   "model_no": "04",
+   "house_ty": "110.4441 ",
+   "area": 110.4441,
+   "letter": "",
+   "supply_ar": 144.7239,
+   "hshld": 22
+  }
+ ],
+ "2024000602": [
+  {
+   "model_no": "01",
+   "house_ty": "083.4952A",
+   "area": 83.4952,
+   "letter": "A",
+   "supply_ar": 107.9059,
+   "hshld": 101
+  },
+  {
+   "model_no": "02",
+   "house_ty": "083.3183B",
+   "area": 83.3183,
+   "letter": "B",
+   "supply_ar": 108.5409,
+   "hshld": 68
+  },
+  {
+   "model_no": "03",
+   "house_ty": "083.7468C",
+   "area": 83.7468,
+   "letter": "C",
+   "supply_ar": 108.4757,
+   "hshld": 14
+  },
+  {
+   "model_no": "04",
+   "house_ty": "093.6147 ",
+   "area": 93.6147,
+   "letter": "",
+   "supply_ar": 121.0698,
+   "hshld": 74
+  }
+ ],
+ "2024000609": [
+  {
+   "model_no": "01",
+   "house_ty": "059.7622A",
+   "area": 59.7622,
+   "letter": "A",
+   "supply_ar": 82.8092,
+   "hshld": 158
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.7484B",
+   "area": 59.7484,
+   "letter": "B",
+   "supply_ar": 82.3994,
+   "hshld": 54
+  }
+ ],
+ "2024000621": [
+  {
+   "model_no": "01",
+   "house_ty": "075.8553 ",
+   "area": 75.8553,
+   "letter": "",
+   "supply_ar": 102.3694,
+   "hshld": 40
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9247A",
+   "area": 84.9247,
+   "letter": "A",
+   "supply_ar": 111.0373,
+   "hshld": 241
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9871B",
+   "area": 84.9871,
+   "letter": "B",
+   "supply_ar": 110.9397,
+   "hshld": 104
+  }
+ ],
+ "2024000637": [
+  {
+   "model_no": "01",
+   "house_ty": "059.8372A",
+   "area": 59.8372,
+   "letter": "A",
+   "supply_ar": 79.6138,
+   "hshld": 78
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9050A",
+   "area": 84.905,
+   "letter": "A",
+   "supply_ar": 111.2657,
+   "hshld": 123
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9876B",
+   "area": 84.9876,
+   "letter": "B",
+   "supply_ar": 111.5537,
+   "hshld": 44
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9264C",
+   "area": 84.9264,
+   "letter": "C",
+   "supply_ar": 111.3056,
+   "hshld": 47
+  }
+ ],
+ "2024000649": [
+  {
+   "model_no": "01",
+   "house_ty": "075.9937 ",
+   "area": 75.9937,
+   "letter": "",
+   "supply_ar": 99.914,
+   "hshld": 100
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9804A",
+   "area": 84.9804,
+   "letter": "A",
+   "supply_ar": 111.6335,
+   "hshld": 69
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9998B",
+   "area": 84.9998,
+   "letter": "B",
+   "supply_ar": 112.2711,
+   "hshld": 26
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9843C",
+   "area": 84.9843,
+   "letter": "C",
+   "supply_ar": 111.5795,
+   "hshld": 20
+  }
+ ],
+ "2024000660": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9076A",
+   "area": 59.9076,
+   "letter": "A",
+   "supply_ar": 81.7125,
+   "hshld": 9
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.8741C",
+   "area": 59.8741,
+   "letter": "C",
+   "supply_ar": 81.6686,
+   "hshld": 39
+  },
+  {
+   "model_no": "03",
+   "house_ty": "059.9657D",
+   "area": 59.9657,
+   "letter": "D",
+   "supply_ar": 81.9375,
+   "hshld": 17
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9894A",
+   "area": 84.9894,
+   "letter": "A",
+   "supply_ar": 113.6916,
+   "hshld": 25
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.8182C",
+   "area": 84.8182,
+   "letter": "C",
+   "supply_ar": 114.6212,
+   "hshld": 77
+  },
+  {
+   "model_no": "06",
+   "house_ty": "114.8005A",
+   "area": 114.8005,
+   "letter": "A",
+   "supply_ar": 157.2327,
+   "hshld": 2
+  },
+  {
+   "model_no": "07",
+   "house_ty": "114.4170B",
+   "area": 114.417,
+   "letter": "B",
+   "supply_ar": 156.5132,
+   "hshld": 3
+  },
+  {
+   "model_no": "08",
+   "house_ty": "114.2433D",
+   "area": 114.2433,
+   "letter": "D",
+   "supply_ar": 156.0163,
+   "hshld": 2
+  }
+ ],
+ "2025000047": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9961A",
+   "area": 84.9961,
+   "letter": "A",
+   "supply_ar": 112.0683,
+   "hshld": 207
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9745B",
+   "area": 84.9745,
+   "letter": "B",
+   "supply_ar": 112.3162,
+   "hshld": 130
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9211C",
+   "area": 84.9211,
+   "letter": "C",
+   "supply_ar": 112.6179,
+   "hshld": 22
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9991T",
+   "area": 84.9991,
+   "letter": "T",
+   "supply_ar": 114.5335,
+   "hshld": 5
+  }
+ ],
+ "2025000063": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9786A",
+   "area": 84.9786,
+   "letter": "A",
+   "supply_ar": 111.8186,
+   "hshld": 48
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9681B",
+   "area": 84.9681,
+   "letter": "B",
+   "supply_ar": 111.8644,
+   "hshld": 23
+  }
+ ],
+ "2025000081": [
+  {
+   "model_no": "01",
+   "house_ty": "070.2587 ",
+   "area": 70.2587,
+   "letter": "",
+   "supply_ar": 101.6094,
+   "hshld": 128
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.7979 ",
+   "area": 84.7979,
+   "letter": "",
+   "supply_ar": 122.2067,
+   "hshld": 129
+  },
+  {
+   "model_no": "03",
+   "house_ty": "101.4116 ",
+   "area": 101.4116,
+   "letter": "",
+   "supply_ar": 145.3243,
+   "hshld": 123
+  }
+ ],
+ "2025000114": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9756A",
+   "area": 59.9756,
+   "letter": "A",
+   "supply_ar": 80.2068,
+   "hshld": 277
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9825B",
+   "area": 59.9825,
+   "letter": "B",
+   "supply_ar": 79.9066,
+   "hshld": 146
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9993A",
+   "area": 84.9993,
+   "letter": "A",
+   "supply_ar": 112.1759,
+   "hshld": 203
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9942B",
+   "area": 84.9942,
+   "letter": "B",
+   "supply_ar": 111.8574,
+   "hshld": 187
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.9901C",
+   "area": 84.9901,
+   "letter": "C",
+   "supply_ar": 112.0565,
+   "hshld": 12
+  }
+ ],
+ "2025000115": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9993A",
+   "area": 84.9993,
+   "letter": "A",
+   "supply_ar": 112.7047,
+   "hshld": 62
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9942B",
+   "area": 84.9942,
+   "letter": "B",
+   "supply_ar": 112.3862,
+   "hshld": 21
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9901C",
+   "area": 84.9901,
+   "letter": "C",
+   "supply_ar": 112.5853,
+   "hshld": 30
+  }
+ ],
+ "2025000164": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9816A",
+   "area": 59.9816,
+   "letter": "A",
+   "supply_ar": 83.1365,
+   "hshld": 12
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9969B",
+   "area": 59.9969,
+   "letter": "B",
+   "supply_ar": 82.6638,
+   "hshld": 142
+  },
+  {
+   "model_no": "03",
+   "house_ty": "059.9509C",
+   "area": 59.9509,
+   "letter": "C",
+   "supply_ar": 83.292,
+   "hshld": 47
+  },
+  {
+   "model_no": "04",
+   "house_ty": "059.9689D",
+   "area": 59.9689,
+   "letter": "D",
+   "supply_ar": 82.9465,
+   "hshld": 4
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.9349A",
+   "area": 84.9349,
+   "letter": "A",
+   "supply_ar": 110.7225,
+   "hshld": 43
+  },
+  {
+   "model_no": "06",
+   "house_ty": "084.9471B",
+   "area": 84.9471,
+   "letter": "B",
+   "supply_ar": 110.5943,
+   "hshld": 10
+  },
+  {
+   "model_no": "07",
+   "house_ty": "084.8751C",
+   "area": 84.8751,
+   "letter": "C",
+   "supply_ar": 110.6743,
+   "hshld": 4
+  }
+ ],
+ "2025000194": [
+  {
+   "model_no": "01",
+   "house_ty": "084.8857A",
+   "area": 84.8857,
+   "letter": "A",
+   "supply_ar": 111.3861,
+   "hshld": 61
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9595B",
+   "area": 84.9595,
+   "letter": "B",
+   "supply_ar": 110.9751,
+   "hshld": 44
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9353C",
+   "area": 84.9353,
+   "letter": "C",
+   "supply_ar": 110.9064,
+   "hshld": 45
+  },
+  {
+   "model_no": "04",
+   "house_ty": "101.6696 ",
+   "area": 101.6696,
+   "letter": "",
+   "supply_ar": 127.5816,
+   "hshld": 161
+  }
+ ],
+ "2025000203": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9548A",
+   "area": 84.9548,
+   "letter": "A",
+   "supply_ar": 118.0965,
+   "hshld": 98
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.7763B",
+   "area": 84.7763,
+   "letter": "B",
+   "supply_ar": 116.3229,
+   "hshld": 96
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9796C",
+   "area": 84.9796,
+   "letter": "C",
+   "supply_ar": 118.3087,
+   "hshld": 96
+  }
+ ],
+ "2025000206": [
+  {
+   "model_no": "01",
+   "house_ty": "098.7952 ",
+   "area": 98.7952,
+   "letter": "",
+   "supply_ar": 125.9618,
+   "hshld": 166
+  }
+ ],
+ "2025000207": [
+  {
+   "model_no": "01",
+   "house_ty": "084.8941A",
+   "area": 84.8941,
+   "letter": "A",
+   "supply_ar": 108.7009,
+   "hshld": 11
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.8325B",
+   "area": 84.8325,
+   "letter": "B",
+   "supply_ar": 108.7484,
+   "hshld": 59
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.8977C",
+   "area": 84.8977,
+   "letter": "C",
+   "supply_ar": 109.5055,
+   "hshld": 12
+  }
+ ],
+ "2025000242": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9036A",
+   "area": 84.9036,
+   "letter": "A",
+   "supply_ar": 113.385,
+   "hshld": 147
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9021B",
+   "area": 84.9021,
+   "letter": "B",
+   "supply_ar": 113.2601,
+   "hshld": 132
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.7631C",
+   "area": 84.7631,
+   "letter": "C",
+   "supply_ar": 112.998,
+   "hshld": 20
+  },
+  {
+   "model_no": "04",
+   "house_ty": "115.1395 ",
+   "area": 115.1395,
+   "letter": "",
+   "supply_ar": 151.8967,
+   "hshld": 53
+  }
+ ],
+ "2025000252": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9214 ",
+   "area": 84.9214,
+   "letter": "",
+   "supply_ar": 108.6296,
+   "hshld": 190
+  },
+  {
+   "model_no": "02",
+   "house_ty": "126.8432 ",
+   "area": 126.8432,
+   "letter": "",
+   "supply_ar": 160.4345,
+   "hshld": 79
+  }
+ ],
+ "2025000338": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9986 ",
+   "area": 84.9986,
+   "letter": "",
+   "supply_ar": 112.0902,
+   "hshld": 111
+  }
+ ],
+ "2025000340": [
+  {
+   "model_no": "01",
+   "house_ty": "084.3608A",
+   "area": 84.3608,
+   "letter": "A",
+   "supply_ar": 111.8682,
+   "hshld": 77
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.7812B",
+   "area": 84.7812,
+   "letter": "B",
+   "supply_ar": 114.6251,
+   "hshld": 66
+  },
+  {
+   "model_no": "03",
+   "house_ty": "122.1085 ",
+   "area": 122.1085,
+   "letter": "",
+   "supply_ar": 159.8948,
+   "hshld": 124
+  },
+  {
+   "model_no": "04",
+   "house_ty": "131.7346A",
+   "area": 131.7346,
+   "letter": "A",
+   "supply_ar": 171.7319,
+   "hshld": 119
+  },
+  {
+   "model_no": "05",
+   "house_ty": "131.8835B",
+   "area": 131.8835,
+   "letter": "B",
+   "supply_ar": 174.9442,
+   "hshld": 38
+  },
+  {
+   "model_no": "06",
+   "house_ty": "131.1618C",
+   "area": 131.1618,
+   "letter": "C",
+   "supply_ar": 174.6299,
+   "hshld": 63
+  },
+  {
+   "model_no": "07",
+   "house_ty": "131.7346T",
+   "area": 131.7346,
+   "letter": "T",
+   "supply_ar": 171.7318,
+   "hshld": 8
+  },
+  {
+   "model_no": "08",
+   "house_ty": "131.8835T",
+   "area": 131.8835,
+   "letter": "T",
+   "supply_ar": 174.9442,
+   "hshld": 6
+  },
+  {
+   "model_no": "09",
+   "house_ty": "136.7396A",
+   "area": 136.7396,
+   "letter": "A",
+   "supply_ar": 178.0186,
+   "hshld": 9
+  },
+  {
+   "model_no": "10",
+   "house_ty": "136.7396B",
+   "area": 136.7396,
+   "letter": "B",
+   "supply_ar": 178.0186,
+   "hshld": 9
+  },
+  {
+   "model_no": "11",
+   "house_ty": "136.6995C",
+   "area": 136.6995,
+   "letter": "C",
+   "supply_ar": 180.9937,
+   "hshld": 9
+  },
+  {
+   "model_no": "12",
+   "house_ty": "136.6995D",
+   "area": 136.6995,
+   "letter": "D",
+   "supply_ar": 180.9937,
+   "hshld": 9
+  },
+  {
+   "model_no": "13",
+   "house_ty": "147.7718 ",
+   "area": 147.7718,
+   "letter": "",
+   "supply_ar": 196.1401,
+   "hshld": 146
+  }
+ ],
+ "2025000364": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9025A",
+   "area": 84.9025,
+   "letter": "A",
+   "supply_ar": 109.1481,
+   "hshld": 111
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9747B",
+   "area": 84.9747,
+   "letter": "B",
+   "supply_ar": 110.4951,
+   "hshld": 59
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9134C",
+   "area": 84.9134,
+   "letter": "C",
+   "supply_ar": 109.3418,
+   "hshld": 66
+  },
+  {
+   "model_no": "04",
+   "house_ty": "099.8274 ",
+   "area": 99.8274,
+   "letter": "",
+   "supply_ar": 128.7506,
+   "hshld": 55
+  },
+  {
+   "model_no": "05",
+   "house_ty": "109.9121 ",
+   "area": 109.9121,
+   "letter": "",
+   "supply_ar": 140.2926,
+   "hshld": 129
+  },
+  {
+   "model_no": "06",
+   "house_ty": "166.9637 ",
+   "area": 166.9637,
+   "letter": "",
+   "supply_ar": 217.1261,
+   "hshld": 2
+  }
+ ],
+ "2025000365": [
+  {
+   "model_no": "01",
+   "house_ty": "062.6526 ",
+   "area": 62.6526,
+   "letter": "",
+   "supply_ar": 88.0158,
+   "hshld": 21
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.1327A",
+   "area": 84.1327,
+   "letter": "A",
+   "supply_ar": 116.9186,
+   "hshld": 76
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.1327B",
+   "area": 84.1327,
+   "letter": "B",
+   "supply_ar": 116.9186,
+   "hshld": 63
+  },
+  {
+   "model_no": "04",
+   "house_ty": "100.8688A",
+   "area": 100.8688,
+   "letter": "A",
+   "supply_ar": 138.79,
+   "hshld": 172
+  },
+  {
+   "model_no": "05",
+   "house_ty": "100.3826B",
+   "area": 100.3826,
+   "letter": "B",
+   "supply_ar": 139.378,
+   "hshld": 61
+  }
+ ],
+ "2025000370": [
+  {
+   "model_no": "01",
+   "house_ty": "049.9922 ",
+   "area": 49.9922,
+   "letter": "",
+   "supply_ar": 67.951,
+   "hshld": 32
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9740A",
+   "area": 84.974,
+   "letter": "A",
+   "supply_ar": 115.1667,
+   "hshld": 261
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9870B",
+   "area": 84.987,
+   "letter": "B",
+   "supply_ar": 115.3136,
+   "hshld": 135
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.8338C",
+   "area": 84.8338,
+   "letter": "C",
+   "supply_ar": 114.672,
+   "hshld": 51
+  },
+  {
+   "model_no": "05",
+   "house_ty": "122.8858A",
+   "area": 122.8858,
+   "letter": "A",
+   "supply_ar": 164.3836,
+   "hshld": 134
+  },
+  {
+   "model_no": "06",
+   "house_ty": "122.8925B",
+   "area": 122.8925,
+   "letter": "B",
+   "supply_ar": 164.5335,
+   "hshld": 134
+  }
+ ],
+ "2025000380": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9944 ",
+   "area": 59.9944,
+   "letter": "",
+   "supply_ar": 80.3071,
+   "hshld": 9
+  },
+  {
+   "model_no": "02",
+   "house_ty": "064.9972 ",
+   "area": 64.9972,
+   "letter": "",
+   "supply_ar": 86.9456,
+   "hshld": 3
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9773 ",
+   "area": 84.9773,
+   "letter": "",
+   "supply_ar": 112.1115,
+   "hshld": 5
+  }
+ ],
+ "2025000412": [
+  {
+   "model_no": "01",
+   "house_ty": "074.9682 ",
+   "area": 74.9682,
+   "letter": "",
+   "supply_ar": 102.6336,
+   "hshld": 16
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.8777A",
+   "area": 84.8777,
+   "letter": "A",
+   "supply_ar": 116.1193,
+   "hshld": 1
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.3593B",
+   "area": 84.3593,
+   "letter": "B",
+   "supply_ar": 116.0836,
+   "hshld": 1
+  }
+ ],
+ "2025000425": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9355A",
+   "area": 84.9355,
+   "letter": "A",
+   "supply_ar": 117.2913,
+   "hshld": 97
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9450B",
+   "area": 84.945,
+   "letter": "B",
+   "supply_ar": 116.4571,
+   "hshld": 233
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9856G",
+   "area": 84.9856,
+   "letter": "G",
+   "supply_ar": 117.634,
+   "hshld": 22
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9373H",
+   "area": 84.9373,
+   "letter": "H",
+   "supply_ar": 117.0286,
+   "hshld": 14
+  },
+  {
+   "model_no": "05",
+   "house_ty": "101.8981 ",
+   "area": 101.8981,
+   "letter": "",
+   "supply_ar": 139.7359,
+   "hshld": 148
+  }
+ ],
+ "2025000431": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9900 ",
+   "area": 84.99,
+   "letter": "",
+   "supply_ar": 111.3447,
+   "hshld": 234
+  }
+ ],
+ "2025000448": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9936A",
+   "area": 84.9936,
+   "letter": "A",
+   "supply_ar": 111.7735,
+   "hshld": 54
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9936B",
+   "area": 84.9936,
+   "letter": "B",
+   "supply_ar": 111.826,
+   "hshld": 49
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9911C",
+   "area": 84.9911,
+   "letter": "C",
+   "supply_ar": 111.5227,
+   "hshld": 96
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9933D",
+   "area": 84.9933,
+   "letter": "D",
+   "supply_ar": 112.126,
+   "hshld": 49
+  },
+  {
+   "model_no": "05",
+   "house_ty": "101.9980A",
+   "area": 101.998,
+   "letter": "A",
+   "supply_ar": 132.9631,
+   "hshld": 376
+  },
+  {
+   "model_no": "06",
+   "house_ty": "154.7503A",
+   "area": 154.7503,
+   "letter": "A",
+   "supply_ar": 204.1113,
+   "hshld": 3
+  }
+ ],
+ "2025000450": [
+  {
+   "model_no": "01",
+   "house_ty": "059.5377A",
+   "area": 59.5377,
+   "letter": "A",
+   "supply_ar": 78.7047,
+   "hshld": 66
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9940B",
+   "area": 59.994,
+   "letter": "B",
+   "supply_ar": 79.9724,
+   "hshld": 18
+  },
+  {
+   "model_no": "03",
+   "house_ty": "059.5377C",
+   "area": 59.5377,
+   "letter": "C",
+   "supply_ar": 77.4691,
+   "hshld": 25
+  },
+  {
+   "model_no": "04",
+   "house_ty": "059.9940D",
+   "area": 59.994,
+   "letter": "D",
+   "supply_ar": 78.7274,
+   "hshld": 4
+  },
+  {
+   "model_no": "05",
+   "house_ty": "059.5377G",
+   "area": 59.5377,
+   "letter": "G",
+   "supply_ar": 77.4691,
+   "hshld": 2
+  },
+  {
+   "model_no": "06",
+   "house_ty": "059.9940G",
+   "area": 59.994,
+   "letter": "G",
+   "supply_ar": 78.7274,
+   "hshld": 1
+  },
+  {
+   "model_no": "07",
+   "house_ty": "059.5377T",
+   "area": 59.5377,
+   "letter": "T",
+   "supply_ar": 78.7047,
+   "hshld": 2
+  },
+  {
+   "model_no": "08",
+   "house_ty": "059.9940T",
+   "area": 59.994,
+   "letter": "T",
+   "supply_ar": 79.9724,
+   "hshld": 3
+  },
+  {
+   "model_no": "09",
+   "house_ty": "084.9759A",
+   "area": 84.9759,
+   "letter": "A",
+   "supply_ar": 110.8336,
+   "hshld": 64
+  },
+  {
+   "model_no": "10",
+   "house_ty": "084.6563B",
+   "area": 84.6563,
+   "letter": "B",
+   "supply_ar": 110.6423,
+   "hshld": 22
+  },
+  {
+   "model_no": "11",
+   "house_ty": "084.9759C",
+   "area": 84.9759,
+   "letter": "C",
+   "supply_ar": 109.0702,
+   "hshld": 43
+  },
+  {
+   "model_no": "12",
+   "house_ty": "084.6563D",
+   "area": 84.6563,
+   "letter": "D",
+   "supply_ar": 108.8855,
+   "hshld": 25
+  },
+  {
+   "model_no": "13",
+   "house_ty": "084.9759G",
+   "area": 84.9759,
+   "letter": "G",
+   "supply_ar": 109.0702,
+   "hshld": 3
+  },
+  {
+   "model_no": "14",
+   "house_ty": "084.6563G",
+   "area": 84.6563,
+   "letter": "G",
+   "supply_ar": 108.8855,
+   "hshld": 2
+  },
+  {
+   "model_no": "15",
+   "house_ty": "084.9759T",
+   "area": 84.9759,
+   "letter": "T",
+   "supply_ar": 110.8336,
+   "hshld": 5
+  },
+  {
+   "model_no": "16",
+   "house_ty": "084.6563T",
+   "area": 84.6563,
+   "letter": "T",
+   "supply_ar": 110.6423,
+   "hshld": 4
+  }
+ ],
+ "2025000464": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9722 ",
+   "area": 59.9722,
+   "letter": "",
+   "supply_ar": 83.3473,
+   "hshld": 4
+  },
+  {
+   "model_no": "02",
+   "house_ty": "068.8390A",
+   "area": 68.839,
+   "letter": "A",
+   "supply_ar": 93.5062,
+   "hshld": 28
+  },
+  {
+   "model_no": "03",
+   "house_ty": "068.9016B",
+   "area": 68.9016,
+   "letter": "B",
+   "supply_ar": 93.6717,
+   "hshld": 5
+  },
+  {
+   "model_no": "04",
+   "house_ty": "077.9854 ",
+   "area": 77.9854,
+   "letter": "",
+   "supply_ar": 102.6978,
+   "hshld": 24
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.9542A",
+   "area": 84.9542,
+   "letter": "A",
+   "supply_ar": 109.8627,
+   "hshld": 114
+  },
+  {
+   "model_no": "06",
+   "house_ty": "084.9852B",
+   "area": 84.9852,
+   "letter": "B",
+   "supply_ar": 109.811,
+   "hshld": 20
+  },
+  {
+   "model_no": "07",
+   "house_ty": "084.8992C",
+   "area": 84.8992,
+   "letter": "C",
+   "supply_ar": 110.091,
+   "hshld": 18
+  },
+  {
+   "model_no": "08",
+   "house_ty": "084.9542D",
+   "area": 84.9542,
+   "letter": "D",
+   "supply_ar": 109.8627,
+   "hshld": 13
+  },
+  {
+   "model_no": "09",
+   "house_ty": "110.9716A",
+   "area": 110.9716,
+   "letter": "A",
+   "supply_ar": 138.7933,
+   "hshld": 113
+  },
+  {
+   "model_no": "10",
+   "house_ty": "110.8623B",
+   "area": 110.8623,
+   "letter": "B",
+   "supply_ar": 138.8774,
+   "hshld": 49
+  },
+  {
+   "model_no": "11",
+   "house_ty": "110.7222C",
+   "area": 110.7222,
+   "letter": "C",
+   "supply_ar": 138.7035,
+   "hshld": 49
+  },
+  {
+   "model_no": "12",
+   "house_ty": "110.9716D",
+   "area": 110.9716,
+   "letter": "D",
+   "supply_ar": 138.7933,
+   "hshld": 24
+  },
+  {
+   "model_no": "13",
+   "house_ty": "135.8916 ",
+   "area": 135.8916,
+   "letter": "",
+   "supply_ar": 171.181,
+   "hshld": 17
+  }
+ ],
+ "2025000498": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9851A",
+   "area": 84.9851,
+   "letter": "A",
+   "supply_ar": 112.065,
+   "hshld": 289
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9803B",
+   "area": 84.9803,
+   "letter": "B",
+   "supply_ar": 112.4486,
+   "hshld": 82
+  },
+  {
+   "model_no": "03",
+   "house_ty": "098.8709 ",
+   "area": 98.8709,
+   "letter": "",
+   "supply_ar": 129.9227,
+   "hshld": 193
+  },
+  {
+   "model_no": "04",
+   "house_ty": "110.9923 ",
+   "area": 110.9923,
+   "letter": "",
+   "supply_ar": 145.028,
+   "hshld": 69
+  },
+  {
+   "model_no": "05",
+   "house_ty": "128.1583 ",
+   "area": 128.1583,
+   "letter": "",
+   "supply_ar": 167.543,
+   "hshld": 43
+  }
+ ],
+ "2025000537": [
+  {
+   "model_no": "01",
+   "house_ty": "084.4484A",
+   "area": 84.4484,
+   "letter": "A",
+   "supply_ar": 111.6991,
+   "hshld": 60
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9330B",
+   "area": 84.933,
+   "letter": "B",
+   "supply_ar": 111.9714,
+   "hshld": 26
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.6066C",
+   "area": 84.6066,
+   "letter": "C",
+   "supply_ar": 112.4495,
+   "hshld": 24
+  }
+ ],
+ "2025000542": [
+  {
+   "model_no": "01",
+   "house_ty": "083.1404A",
+   "area": 83.1404,
+   "letter": "A",
+   "supply_ar": 108.6275,
+   "hshld": 142
+  },
+  {
+   "model_no": "02",
+   "house_ty": "083.1679B",
+   "area": 83.1679,
+   "letter": "B",
+   "supply_ar": 108.9878,
+   "hshld": 12
+  }
+ ],
+ "2025000553": [
+  {
+   "model_no": "01",
+   "house_ty": "074.9800 ",
+   "area": 74.98,
+   "letter": "",
+   "supply_ar": 100.3479,
+   "hshld": 34
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9100A",
+   "area": 84.91,
+   "letter": "A",
+   "supply_ar": 113.0247,
+   "hshld": 26
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9900B",
+   "area": 84.99,
+   "letter": "B",
+   "supply_ar": 115.2232,
+   "hshld": 19
+  },
+  {
+   "model_no": "04",
+   "house_ty": "103.9500A",
+   "area": 103.95,
+   "letter": "A",
+   "supply_ar": 137.9677,
+   "hshld": 21
+  },
+  {
+   "model_no": "05",
+   "house_ty": "103.6500B",
+   "area": 103.65,
+   "letter": "B",
+   "supply_ar": 138.578,
+   "hshld": 41
+  },
+  {
+   "model_no": "06",
+   "house_ty": "117.9800 ",
+   "area": 117.98,
+   "letter": "",
+   "supply_ar": 158.0769,
+   "hshld": 1
+  }
+ ],
+ "2025000554": [
+  {
+   "model_no": "01",
+   "house_ty": "074.9800 ",
+   "area": 74.98,
+   "letter": "",
+   "supply_ar": 102.6575,
+   "hshld": 40
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9100A",
+   "area": 84.91,
+   "letter": "A",
+   "supply_ar": 115.6401,
+   "hshld": 19
+  },
+  {
+   "model_no": "03",
+   "house_ty": "103.9500A",
+   "area": 103.95,
+   "letter": "A",
+   "supply_ar": 141.1696,
+   "hshld": 43
+  }
+ ],
+ "2025000573": [
+  {
+   "model_no": "01",
+   "house_ty": "066.9500 ",
+   "area": 66.95,
+   "letter": "",
+   "supply_ar": 88.5046,
+   "hshld": 86
+  },
+  {
+   "model_no": "02",
+   "house_ty": "066.9695 ",
+   "area": 66.9695,
+   "letter": "",
+   "supply_ar": 88.9774,
+   "hshld": 50
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9582 ",
+   "area": 84.9582,
+   "letter": "",
+   "supply_ar": 111.1135,
+   "hshld": 93
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.7529 ",
+   "area": 84.7529,
+   "letter": "",
+   "supply_ar": 112.1308,
+   "hshld": 26
+  },
+  {
+   "model_no": "05",
+   "house_ty": "104.7405 ",
+   "area": 104.7405,
+   "letter": "",
+   "supply_ar": 140.08,
+   "hshld": 9
+  },
+  {
+   "model_no": "06",
+   "house_ty": "104.9590 ",
+   "area": 104.959,
+   "letter": "",
+   "supply_ar": 140.8241,
+   "hshld": 3
+  },
+  {
+   "model_no": "07",
+   "house_ty": "127.4605 ",
+   "area": 127.4605,
+   "letter": "",
+   "supply_ar": 169.1577,
+   "hshld": 6
+  },
+  {
+   "model_no": "08",
+   "house_ty": "127.7132 ",
+   "area": 127.7132,
+   "letter": "",
+   "supply_ar": 171.1277,
+   "hshld": 2
+  }
+ ],
+ "2025000581": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9870A",
+   "area": 59.987,
+   "letter": "A",
+   "supply_ar": 80.1853,
+   "hshld": 107
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.9870B",
+   "area": 59.987,
+   "letter": "B",
+   "supply_ar": 80.1735,
+   "hshld": 25
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.7884A",
+   "area": 84.7884,
+   "letter": "A",
+   "supply_ar": 111.4967,
+   "hshld": 169
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9970B",
+   "area": 84.997,
+   "letter": "B",
+   "supply_ar": 112.9281,
+   "hshld": 39
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.9665C",
+   "area": 84.9665,
+   "letter": "C",
+   "supply_ar": 112.2044,
+   "hshld": 23
+  }
+ ],
+ "2025000582": [
+  {
+   "model_no": "01",
+   "house_ty": "084.0352A",
+   "area": 84.0352,
+   "letter": "A",
+   "supply_ar": 108.6941,
+   "hshld": 85
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.0236B",
+   "area": 84.0236,
+   "letter": "B",
+   "supply_ar": 108.9094,
+   "hshld": 16
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.0158C",
+   "area": 84.0158,
+   "letter": "C",
+   "supply_ar": 109.2429,
+   "hshld": 59
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.0044D",
+   "area": 84.0044,
+   "letter": "D",
+   "supply_ar": 110.9814,
+   "hshld": 22
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.0000P",
+   "area": 84,
+   "letter": "P",
+   "supply_ar": 113.1772,
+   "hshld": 4
+  }
+ ],
+ "2026000009": [
+  {
+   "model_no": "01",
+   "house_ty": "105.9866A",
+   "area": 105.9866,
+   "letter": "A",
+   "supply_ar": 145.6411,
+   "hshld": 111
+  },
+  {
+   "model_no": "02",
+   "house_ty": "105.9836B",
+   "area": 105.9836,
+   "letter": "B",
+   "supply_ar": 145.5551,
+   "hshld": 55
+  },
+  {
+   "model_no": "03",
+   "house_ty": "105.9664C",
+   "area": 105.9664,
+   "letter": "C",
+   "supply_ar": 145.002,
+   "hshld": 38
+  },
+  {
+   "model_no": "04",
+   "house_ty": "105.9789D",
+   "area": 105.9789,
+   "letter": "D",
+   "supply_ar": 147.6434,
+   "hshld": 38
+  },
+  {
+   "model_no": "05",
+   "house_ty": "105.9698E",
+   "area": 105.9698,
+   "letter": "E",
+   "supply_ar": 146.1842,
+   "hshld": 38
+  },
+  {
+   "model_no": "06",
+   "house_ty": "119.1374A",
+   "area": 119.1374,
+   "letter": "A",
+   "supply_ar": 162.5362,
+   "hshld": 6
+  },
+  {
+   "model_no": "07",
+   "house_ty": "119.9800B",
+   "area": 119.98,
+   "letter": "B",
+   "supply_ar": 163.4193,
+   "hshld": 5
+  },
+  {
+   "model_no": "08",
+   "house_ty": "119.8374C",
+   "area": 119.8374,
+   "letter": "C",
+   "supply_ar": 163.442,
+   "hshld": 6
+  }
+ ],
+ "2026000030": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9944 ",
+   "area": 59.9944,
+   "letter": "",
+   "supply_ar": 80.3071,
+   "hshld": 3
+  },
+  {
+   "model_no": "02",
+   "house_ty": "064.9972 ",
+   "area": 64.9972,
+   "letter": "",
+   "supply_ar": 86.9456,
+   "hshld": 4
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9773 ",
+   "area": 84.9773,
+   "letter": "",
+   "supply_ar": 112.1115,
+   "hshld": 2
+  }
+ ],
+ "2026000043": [
+  {
+   "model_no": "01",
+   "house_ty": "052.1088 ",
+   "area": 52.1088,
+   "letter": "",
+   "supply_ar": 66.8907,
+   "hshld": 11
+  },
+  {
+   "model_no": "02",
+   "house_ty": "055.0641 ",
+   "area": 55.0641,
+   "letter": "",
+   "supply_ar": 70.6016,
+   "hshld": 11
+  },
+  {
+   "model_no": "03",
+   "house_ty": "064.5397A",
+   "area": 64.5397,
+   "letter": "A",
+   "supply_ar": 81.7967,
+   "hshld": 11
+  },
+  {
+   "model_no": "04",
+   "house_ty": "064.2641B",
+   "area": 64.2641,
+   "letter": "B",
+   "supply_ar": 82.251,
+   "hshld": 9
+  },
+  {
+   "model_no": "05",
+   "house_ty": "067.0840 ",
+   "area": 67.084,
+   "letter": "",
+   "supply_ar": 85.4867,
+   "hshld": 1
+  }
+ ],
+ "2026000044": [
+  {
+   "model_no": "01",
+   "house_ty": "084.6802A",
+   "area": 84.6802,
+   "letter": "A",
+   "supply_ar": 112.405,
+   "hshld": 36
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.6968B",
+   "area": 84.6968,
+   "letter": "B",
+   "supply_ar": 112.4226,
+   "hshld": 18
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.6402C",
+   "area": 84.6402,
+   "letter": "C",
+   "supply_ar": 112.2647,
+   "hshld": 8
+  },
+  {
+   "model_no": "04",
+   "house_ty": "103.8844A",
+   "area": 103.8844,
+   "letter": "A",
+   "supply_ar": 129.3125,
+   "hshld": 9
+  },
+  {
+   "model_no": "05",
+   "house_ty": "103.8844B",
+   "area": 103.8844,
+   "letter": "B",
+   "supply_ar": 129.3125,
+   "hshld": 2
+  },
+  {
+   "model_no": "06",
+   "house_ty": "116.6358 ",
+   "area": 116.6358,
+   "letter": "",
+   "supply_ar": 143.7164,
+   "hshld": 18
+  },
+  {
+   "model_no": "07",
+   "house_ty": "119.1573A",
+   "area": 119.1573,
+   "letter": "A",
+   "supply_ar": 147.0145,
+   "hshld": 36
+  },
+  {
+   "model_no": "08",
+   "house_ty": "119.1573B",
+   "area": 119.1573,
+   "letter": "B",
+   "supply_ar": 147.0145,
+   "hshld": 18
+  }
+ ],
+ "2026000047": [
+  {
+   "model_no": "01",
+   "house_ty": "073.1594 ",
+   "area": 73.1594,
+   "letter": "",
+   "supply_ar": 93.6199,
+   "hshld": 12
+  },
+  {
+   "model_no": "02",
+   "house_ty": "074.8544 ",
+   "area": 74.8544,
+   "letter": "",
+   "supply_ar": 95.4861,
+   "hshld": 6
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9453A",
+   "area": 84.9453,
+   "letter": "A",
+   "supply_ar": 107.8634,
+   "hshld": 3
+  }
+ ],
+ "2026000066": [
+  {
+   "model_no": "01",
+   "house_ty": "059.9714 ",
+   "area": 59.9714,
+   "letter": "",
+   "supply_ar": 83.3251,
+   "hshld": 67
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9995 ",
+   "area": 84.9995,
+   "letter": "",
+   "supply_ar": 113.8005,
+   "hshld": 26
+  },
+  {
+   "model_no": "03",
+   "house_ty": "101.6522 ",
+   "area": 101.6522,
+   "letter": "",
+   "supply_ar": 136.2613,
+   "hshld": 7
+  },
+  {
+   "model_no": "04",
+   "house_ty": "115.8350 ",
+   "area": 115.835,
+   "letter": "",
+   "supply_ar": 154.1875,
+   "hshld": 1
+  }
+ ],
+ "2026000073": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9939 ",
+   "area": 84.9939,
+   "letter": "",
+   "supply_ar": 110.7946,
+   "hshld": 178
+  },
+  {
+   "model_no": "02",
+   "house_ty": "105.2083 ",
+   "area": 105.2083,
+   "letter": "",
+   "supply_ar": 134.4757,
+   "hshld": 112
+  }
+ ],
+ "2026000087": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9904A",
+   "area": 84.9904,
+   "letter": "A",
+   "supply_ar": 108.4053,
+   "hshld": 246
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9263B",
+   "area": 84.9263,
+   "letter": "B",
+   "supply_ar": 108.8719,
+   "hshld": 85
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9403C",
+   "area": 84.9403,
+   "letter": "C",
+   "supply_ar": 108.4551,
+   "hshld": 86
+  },
+  {
+   "model_no": "04",
+   "house_ty": "114.9039A",
+   "area": 114.9039,
+   "letter": "A",
+   "supply_ar": 145.6152,
+   "hshld": 276
+  },
+  {
+   "model_no": "05",
+   "house_ty": "114.9508B",
+   "area": 114.9508,
+   "letter": "B",
+   "supply_ar": 146.2126,
+   "hshld": 91
+  },
+  {
+   "model_no": "06",
+   "house_ty": "114.7078C",
+   "area": 114.7078,
+   "letter": "C",
+   "supply_ar": 145.427,
+   "hshld": 95
+  }
+ ],
+ "2026000098": [
+  {
+   "model_no": "01",
+   "house_ty": "074.9682 ",
+   "area": 74.9682,
+   "letter": "",
+   "supply_ar": 102.6336,
+   "hshld": 5
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.8777A",
+   "area": 84.8777,
+   "letter": "A",
+   "supply_ar": 116.1193,
+   "hshld": 6
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.3593B",
+   "area": 84.3593,
+   "letter": "B",
+   "supply_ar": 116.0836,
+   "hshld": 1
+  }
+ ],
+ "2026000170": [
+  {
+   "model_no": "01",
+   "house_ty": "066.9412 ",
+   "area": 66.9412,
+   "letter": "",
+   "supply_ar": 89.7412,
+   "hshld": 20
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9644A",
+   "area": 84.9644,
+   "letter": "A",
+   "supply_ar": 114.0591,
+   "hshld": 47
+  },
+  {
+   "model_no": "03",
+   "house_ty": "084.9697B",
+   "area": 84.9697,
+   "letter": "B",
+   "supply_ar": 114.3423,
+   "hshld": 78
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9689C",
+   "area": 84.9689,
+   "letter": "C",
+   "supply_ar": 114.4586,
+   "hshld": 23
+  },
+  {
+   "model_no": "05",
+   "house_ty": "117.5756 ",
+   "area": 117.5756,
+   "letter": "",
+   "supply_ar": 155.6668,
+   "hshld": 92
+  }
+ ],
+ "2026000253": [
+  {
+   "model_no": "01",
+   "house_ty": "084.6886 ",
+   "area": 84.6886,
+   "letter": "",
+   "supply_ar": 112.2001,
+   "hshld": 120
+  },
+  {
+   "model_no": "02",
+   "house_ty": "105.1765 ",
+   "area": 105.1765,
+   "letter": "",
+   "supply_ar": 134.6108,
+   "hshld": 29
+  },
+  {
+   "model_no": "03",
+   "house_ty": "107.4383 ",
+   "area": 107.4383,
+   "letter": "",
+   "supply_ar": 136.3024,
+   "hshld": 106
+  }
+ ],
+ "2026000260": [
+  {
+   "model_no": "01",
+   "house_ty": "055.1200A",
+   "area": 55.12,
+   "letter": "A",
+   "supply_ar": 77.5142,
+   "hshld": 44
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.1900A",
+   "area": 59.19,
+   "letter": "A",
+   "supply_ar": 83.2377,
+   "hshld": 22
+  },
+  {
+   "model_no": "03",
+   "house_ty": "059.8700B",
+   "area": 59.87,
+   "letter": "B",
+   "supply_ar": 84.194,
+   "hshld": 41
+  }
+ ],
+ "2026000261": [
+  {
+   "model_no": "01",
+   "house_ty": "074.9400 ",
+   "area": 74.94,
+   "letter": "",
+   "supply_ar": 101.9582,
+   "hshld": 6
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9600 ",
+   "area": 84.96,
+   "letter": "",
+   "supply_ar": 115.5907,
+   "hshld": 21
+  }
+ ],
+ "2026000271": [
+  {
+   "model_no": "01",
+   "house_ty": "084.9478A",
+   "area": 84.9478,
+   "letter": "A",
+   "supply_ar": 110.7859,
+   "hshld": 74
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9643B",
+   "area": 84.9643,
+   "letter": "B",
+   "supply_ar": 111.1775,
+   "hshld": 52
+  },
+  {
+   "model_no": "03",
+   "house_ty": "112.9359A",
+   "area": 112.9359,
+   "letter": "A",
+   "supply_ar": 146.7712,
+   "hshld": 70
+  },
+  {
+   "model_no": "04",
+   "house_ty": "112.9215B",
+   "area": 112.9215,
+   "letter": "B",
+   "supply_ar": 146.6118,
+   "hshld": 28
+  },
+  {
+   "model_no": "05",
+   "house_ty": "155.7796P",
+   "area": 155.7796,
+   "letter": "P",
+   "supply_ar": 203.7823,
+   "hshld": 1
+  },
+  {
+   "model_no": "06",
+   "house_ty": "217.1294P",
+   "area": 217.1294,
+   "letter": "P",
+   "supply_ar": 282.5476,
+   "hshld": 1
+  }
+ ],
+ "2026000273": [
+  {
+   "model_no": "01",
+   "house_ty": "084.8315A",
+   "area": 84.8315,
+   "letter": "A",
+   "supply_ar": 113.9,
+   "hshld": 108
+  },
+  {
+   "model_no": "02",
+   "house_ty": "084.9186B",
+   "area": 84.9186,
+   "letter": "B",
+   "supply_ar": 113.2098,
+   "hshld": 104
+  },
+  {
+   "model_no": "03",
+   "house_ty": "115.5495A",
+   "area": 115.5495,
+   "letter": "A",
+   "supply_ar": 152.6652,
+   "hshld": 286
+  },
+  {
+   "model_no": "04",
+   "house_ty": "115.5735B",
+   "area": 115.5735,
+   "letter": "B",
+   "supply_ar": 153.5486,
+   "hshld": 122
+  },
+  {
+   "model_no": "05",
+   "house_ty": "123.7307A",
+   "area": 123.7307,
+   "letter": "A",
+   "supply_ar": 163.6066,
+   "hshld": 117
+  },
+  {
+   "model_no": "06",
+   "house_ty": "123.3693B",
+   "area": 123.3693,
+   "letter": "B",
+   "supply_ar": 163.4123,
+   "hshld": 118
+  },
+  {
+   "model_no": "07",
+   "house_ty": "132.9336A",
+   "area": 132.9336,
+   "letter": "A",
+   "supply_ar": 172.4037,
+   "hshld": 99
+  },
+  {
+   "model_no": "08",
+   "house_ty": "137.5630B",
+   "area": 137.563,
+   "letter": "B",
+   "supply_ar": 181.0645,
+   "hshld": 78
+  },
+  {
+   "model_no": "09",
+   "house_ty": "137.8565C",
+   "area": 137.8565,
+   "letter": "C",
+   "supply_ar": 181.3047,
+   "hshld": 160
+  },
+  {
+   "model_no": "10",
+   "house_ty": "152.3788A",
+   "area": 152.3788,
+   "letter": "A",
+   "supply_ar": 198.7251,
+   "hshld": 51
+  },
+  {
+   "model_no": "11",
+   "house_ty": "152.3629B",
+   "area": 152.3629,
+   "letter": "B",
+   "supply_ar": 198.4418,
+   "hshld": 51
+  }
+ ],
+ "2026000275": [
+  {
+   "model_no": "01",
+   "house_ty": "039.7700A",
+   "area": 39.77,
+   "letter": "A",
+   "supply_ar": 55.2374,
+   "hshld": 34
+  },
+  {
+   "model_no": "02",
+   "house_ty": "039.6200B",
+   "area": 39.62,
+   "letter": "B",
+   "supply_ar": 55.743,
+   "hshld": 16
+  },
+  {
+   "model_no": "03",
+   "house_ty": "046.8700 ",
+   "area": 46.87,
+   "letter": "",
+   "supply_ar": 65.3382,
+   "hshld": 6
+  },
+  {
+   "model_no": "04",
+   "house_ty": "051.6500A",
+   "area": 51.65,
+   "letter": "A",
+   "supply_ar": 72.7725,
+   "hshld": 1
+  },
+  {
+   "model_no": "05",
+   "house_ty": "051.9100C",
+   "area": 51.91,
+   "letter": "C",
+   "supply_ar": 73.0794,
+   "hshld": 5
+  },
+  {
+   "model_no": "06",
+   "house_ty": "059.9200A",
+   "area": 59.92,
+   "letter": "A",
+   "supply_ar": 83.7195,
+   "hshld": 70
+  },
+  {
+   "model_no": "07",
+   "house_ty": "059.9600B",
+   "area": 59.96,
+   "letter": "B",
+   "supply_ar": 84.2513,
+   "hshld": 56
+  },
+  {
+   "model_no": "08",
+   "house_ty": "059.8800C",
+   "area": 59.88,
+   "letter": "C",
+   "supply_ar": 83.8277,
+   "hshld": 27
+  },
+  {
+   "model_no": "09",
+   "house_ty": "059.9500D",
+   "area": 59.95,
+   "letter": "D",
+   "supply_ar": 84.3084,
+   "hshld": 33
+  },
+  {
+   "model_no": "10",
+   "house_ty": "059.8800E",
+   "area": 59.88,
+   "letter": "E",
+   "supply_ar": 83.6077,
+   "hshld": 9
+  },
+  {
+   "model_no": "11",
+   "house_ty": "074.8700A",
+   "area": 74.87,
+   "letter": "A",
+   "supply_ar": 103.633,
+   "hshld": 30
+  },
+  {
+   "model_no": "12",
+   "house_ty": "074.7500B",
+   "area": 74.75,
+   "letter": "B",
+   "supply_ar": 104.3575,
+   "hshld": 25
+  },
+  {
+   "model_no": "13",
+   "house_ty": "084.8600A",
+   "area": 84.86,
+   "letter": "A",
+   "supply_ar": 116.9289,
+   "hshld": 42
+  },
+  {
+   "model_no": "14",
+   "house_ty": "084.8700B",
+   "area": 84.87,
+   "letter": "B",
+   "supply_ar": 118.4918,
+   "hshld": 115
+  },
+  {
+   "model_no": "15",
+   "house_ty": "084.9000C",
+   "area": 84.9,
+   "letter": "C",
+   "supply_ar": 119.0207,
+   "hshld": 10
+  },
+  {
+   "model_no": "16",
+   "house_ty": "084.7500D",
+   "area": 84.75,
+   "letter": "D",
+   "supply_ar": 117.9963,
+   "hshld": 24
+  },
+  {
+   "model_no": "17",
+   "house_ty": "101.7400 ",
+   "area": 101.74,
+   "letter": "",
+   "supply_ar": 139.7934,
+   "hshld": 5
+  },
+  {
+   "model_no": "18",
+   "house_ty": "114.2100 ",
+   "area": 114.21,
+   "letter": "",
+   "supply_ar": 159.9031,
+   "hshld": 2
+  }
+ ],
+ "2026000282": [
+  {
+   "model_no": "01",
+   "house_ty": "038.0314A",
+   "area": 38.0314,
+   "letter": "A",
+   "supply_ar": 50.5513,
+   "hshld": 9
+  },
+  {
+   "model_no": "02",
+   "house_ty": "046.9070A",
+   "area": 46.907,
+   "letter": "A",
+   "supply_ar": 61.7248,
+   "hshld": 6
+  },
+  {
+   "model_no": "03",
+   "house_ty": "059.9783A",
+   "area": 59.9783,
+   "letter": "A",
+   "supply_ar": 79.9937,
+   "hshld": 6
+  },
+  {
+   "model_no": "04",
+   "house_ty": "074.9730A",
+   "area": 74.973,
+   "letter": "A",
+   "supply_ar": 98.0497,
+   "hshld": 95
+  },
+  {
+   "model_no": "05",
+   "house_ty": "074.9705B",
+   "area": 74.9705,
+   "letter": "B",
+   "supply_ar": 98.433,
+   "hshld": 31
+  },
+  {
+   "model_no": "06",
+   "house_ty": "084.9692A",
+   "area": 84.9692,
+   "letter": "A",
+   "supply_ar": 111.3885,
+   "hshld": 156
+  },
+  {
+   "model_no": "07",
+   "house_ty": "084.9734B",
+   "area": 84.9734,
+   "letter": "B",
+   "supply_ar": 111.1783,
+   "hshld": 7
+  },
+  {
+   "model_no": "08",
+   "house_ty": "084.9704C",
+   "area": 84.9704,
+   "letter": "C",
+   "supply_ar": 112.4817,
+   "hshld": 114
+  },
+  {
+   "model_no": "09",
+   "house_ty": "101.9695A",
+   "area": 101.9695,
+   "letter": "A",
+   "supply_ar": 132.4938,
+   "hshld": 66
+  },
+  {
+   "model_no": "10",
+   "house_ty": "101.9772B",
+   "area": 101.9772,
+   "letter": "B",
+   "supply_ar": 132.5471,
+   "hshld": 64
+  },
+  {
+   "model_no": "11",
+   "house_ty": "136.5534A",
+   "area": 136.5534,
+   "letter": "A",
+   "supply_ar": 181.0037,
+   "hshld": 3
+  },
+  {
+   "model_no": "12",
+   "house_ty": "136.9291B",
+   "area": 136.9291,
+   "letter": "B",
+   "supply_ar": 181.0314,
+   "hshld": 1
+  }
+ ],
+ "2026000364": [
+  {
+   "model_no": "01",
+   "house_ty": "044.9631A",
+   "area": 44.9631,
+   "letter": "A",
+   "supply_ar": 68.3143,
+   "hshld": 7
+  },
+  {
+   "model_no": "02",
+   "house_ty": "044.5894B",
+   "area": 44.5894,
+   "letter": "B",
+   "supply_ar": 67.8879,
+   "hshld": 4
+  },
+  {
+   "model_no": "03",
+   "house_ty": "049.9779 ",
+   "area": 49.9779,
+   "letter": "",
+   "supply_ar": 67.2775,
+   "hshld": 5
+  },
+  {
+   "model_no": "04",
+   "house_ty": "059.9025A",
+   "area": 59.9025,
+   "letter": "A",
+   "supply_ar": 80.8783,
+   "hshld": 5
+  },
+  {
+   "model_no": "05",
+   "house_ty": "059.9030B",
+   "area": 59.903,
+   "letter": "B",
+   "supply_ar": 80.9371,
+   "hshld": 12
+  },
+  {
+   "model_no": "06",
+   "house_ty": "059.8890C",
+   "area": 59.889,
+   "letter": "C",
+   "supply_ar": 81.284,
+   "hshld": 20
+  },
+  {
+   "model_no": "07",
+   "house_ty": "059.9245D",
+   "area": 59.9245,
+   "letter": "D",
+   "supply_ar": 80.7724,
+   "hshld": 30
+  }
+ ],
+ "2026000383": [
+  {
+   "model_no": "01",
+   "house_ty": "059.6771A",
+   "area": 59.6771,
+   "letter": "A",
+   "supply_ar": 87.5303,
+   "hshld": 63
+  },
+  {
+   "model_no": "02",
+   "house_ty": "059.7292B",
+   "area": 59.7292,
+   "letter": "B",
+   "supply_ar": 88.6031,
+   "hshld": 8
+  },
+  {
+   "model_no": "03",
+   "house_ty": "072.8120A",
+   "area": 72.812,
+   "letter": "A",
+   "supply_ar": 101.1787,
+   "hshld": 30
+  },
+  {
+   "model_no": "04",
+   "house_ty": "072.9569B",
+   "area": 72.9569,
+   "letter": "B",
+   "supply_ar": 102.3339,
+   "hshld": 34
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.9944A",
+   "area": 84.9944,
+   "letter": "A",
+   "supply_ar": 111.522,
+   "hshld": 21
+  },
+  {
+   "model_no": "06",
+   "house_ty": "084.9331B",
+   "area": 84.9331,
+   "letter": "B",
+   "supply_ar": 112.3229,
+   "hshld": 26
+  }
+ ],
+ "2026000404": [
+  {
+   "model_no": "01",
+   "house_ty": "060.9495A",
+   "area": 60.9495,
+   "letter": "A",
+   "supply_ar": 81.2964,
+   "hshld": 2
+  },
+  {
+   "model_no": "02",
+   "house_ty": "060.6527B",
+   "area": 60.6527,
+   "letter": "B",
+   "supply_ar": 81.6293,
+   "hshld": 11
+  },
+  {
+   "model_no": "03",
+   "house_ty": "060.9646C",
+   "area": 60.9646,
+   "letter": "C",
+   "supply_ar": 81.858,
+   "hshld": 16
+  },
+  {
+   "model_no": "04",
+   "house_ty": "084.9079A",
+   "area": 84.9079,
+   "letter": "A",
+   "supply_ar": 112.0261,
+   "hshld": 63
+  },
+  {
+   "model_no": "05",
+   "house_ty": "084.4783B",
+   "area": 84.4783,
+   "letter": "B",
+   "supply_ar": 111.9587,
+   "hshld": 10
+  },
+  {
+   "model_no": "06",
+   "house_ty": "084.9219C",
+   "area": 84.9219,
+   "letter": "C",
+   "supply_ar": 112.5411,
+   "hshld": 3
+  }
+ ]
 }

@@ -3928,5 +3928,181 @@
     "kb": 115
    }
   ]
+ },
+ {
+  "house_manage_no": "2026000301",
+  "name": "의왕역 SK VIEW",
+  "slug": "의왕역-SK-VIEW",
+  "address": "경기도 의왕시 삼동 192-244번지 일원",
+  "builder": "에스케이에코플랜트 주식회사",
+  "pblanc_de": "2026-07-10",
+  "homepage": "https://uws.skview.co.kr",
+  "pblanc_url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000301&pblancNo=2026000301",
+  "images": [
+   {
+    "file": "unit01.jpg",
+    "url": "https://uws.skview.co.kr/sub/unit01.jpg",
+    "w": 1100,
+    "h": 1600,
+    "kb": 104
+   },
+   {
+    "file": "unit02.jpg",
+    "url": "https://uws.skview.co.kr/sub/unit02.jpg",
+    "w": 1100,
+    "h": 1600,
+    "kb": 106
+   },
+   {
+    "file": "unit03.jpg",
+    "url": "https://uws.skview.co.kr/sub/unit03.jpg",
+    "w": 1100,
+    "h": 1600,
+    "kb": 122
+   },
+   {
+    "file": "unit04.jpg",
+    "url": "https://uws.skview.co.kr/sub/unit04.jpg",
+    "w": 1100,
+    "h": 1600,
+    "kb": 122
+   },
+   {
+    "file": "unit05.jpg",
+    "url": "https://uws.skview.co.kr/sub/unit05.jpg",
+    "w": 1100,
+    "h": 1600,
+    "kb": 162
+   },
+   {
+    "file": "unit06.jpg",
+    "url": "https://uws.skview.co.kr/sub/unit06.jpg",
+    "w": 1100,
+    "h": 1600,
+    "kb": 141
+   },
+   {
+    "file": "unit07.jpg",
+    "url": "https://uws.skview.co.kr/sub/unit07.jpg",
+    "w": 1100,
+    "h": 1600,
+    "kb": 128
+   }
+  ]
+ },
+ {
+  "house_manage_no": "2026000310",
+  "name": "남양주 진접 서한이다음(S1BL)",
+  "slug": "남양주-진접-서한이다음-S1BL",
+  "address": "경기도 남양주시 진접2 공공주택지구 S1BL",
+  "builder": "(주)서한",
+  "pblanc_de": "2026-07-09",
+  "homepage": "https://nj-seohan.com",
+  "pblanc_url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000310&pblancNo=2026000310",
+  "images": [
+   {
+    "file": "plan1.jpg",
+    "url": "https://nj-seohan.com/images/complex-info/plan1.jpg",
+    "w": 1300,
+    "h": 2250,
+    "kb": 1104
+   }
+  ]
+ },
+ {
+  "house_manage_no": "2026000241",
+  "name": "드파인 아르티아",
+  "slug": "드파인-아르티아",
+  "address": "서울특별시 동작구 노량진동 312-75번지 일대",
+  "builder": "에스케이에코플랜트 주식회사",
+  "pblanc_de": "2026-06-19",
+  "homepage": "https://altia.skdefine.com",
+  "pblanc_url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000241&pblancNo=2026000241",
+  "images": [
+   {
+    "file": "unit01.jpg",
+    "url": "https://altia.skdefine.com/sub/unit01.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 150
+   },
+   {
+    "file": "unit02.jpg",
+    "url": "https://altia.skdefine.com/sub/unit02.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 152
+   },
+   {
+    "file": "unit03.jpg",
+    "url": "https://altia.skdefine.com/sub/unit03.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 152
+   },
+   {
+    "file": "unit04.jpg",
+    "url": "https://altia.skdefine.com/sub/unit04.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 152
+   },
+   {
+    "file": "unit05.jpg",
+    "url": "https://altia.skdefine.com/sub/unit05.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 154
+   },
+   {
+    "file": "unit06.jpg",
+    "url": "https://altia.skdefine.com/sub/unit06.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 153
+   },
+   {
+    "file": "unit07.jpg",
+    "url": "https://altia.skdefine.com/sub/unit07.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 161
+   },
+   {
+    "file": "unit08.jpg",
+    "url": "https://altia.skdefine.com/sub/unit08.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 160
+   },
+   {
+    "file": "unit09.jpg",
+    "url": "https://altia.skdefine.com/sub/unit09.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 157
+   },
+   {
+    "file": "unit10.jpg",
+    "url": "https://altia.skdefine.com/sub/unit10.jpg",
+    "w": 1100,
+    "h": 1142,
+    "kb": 158
+   },
+   {
+    "file": "unit11.jpg",
+    "url": "https://altia.skdefine.com/sub/unit11.jpg",
+    "w": 1100,
+    "h": 1104,
+    "kb": 149
+   },
+   {
+    "file": "unit12.jpg",
+    "url": "https://altia.skdefine.com/sub/unit12.jpg",
+    "w": 1100,
+    "h": 1104,
+    "kb": 150
+   }
+  ]
  }
 ]

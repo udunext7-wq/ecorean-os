@@ -7,7 +7,7 @@
 // 출력: assets/plan-staging/<slug>/<code>.webp  (최대 1600px webp — 원본 그대로, 재작도 아님)
 //       scripts/lttot-plans.json                (업로드·시드용 행 목록)
 // 사용: node scripts/plans-lttot-build.mjs [--limit N]
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp from 'sharp';
 
@@ -18,6 +18,7 @@ const MAX_W = 1600, QUALITY = 82;
 
 const ARG = process.argv.slice(2);
 const LIMIT = ARG.includes('--limit') ? +ARG[ARG.indexOf('--limit') + 1] : Infinity;
+const FORCE = ARG.includes('--force');   // 이미 만든 webp 를 다시 인코딩
 
 const SIDO_SHORT = { '서울특별시':'서울','부산광역시':'부산','대구광역시':'대구','인천광역시':'인천','광주광역시':'광주','대전광역시':'대전','울산광역시':'울산','세종특별자치시':'세종','경기도':'경기','강원특별자치도':'강원','강원도':'강원','충청북도':'충북','충청남도':'충남','전북특별자치도':'전북','전라북도':'전북','전라남도':'전남','경상북도':'경북','경상남도':'경남','제주특별자치도':'제주' };
 
@@ -56,6 +57,9 @@ for (const c of manifest) {
   if (!files.length) { skipped++; continue; }
   const { sido, gugun } = parseRegion(c.address);
   const mdl = models[c.house_manage_no] || [];
+  // 파일명이 순번뿐이면 "이미지 수 = 주택형 수" 일 때만 순서 대응을 믿는다.
+  // 수가 어긋나면 어느 도면이 어느 주택형인지 알 수 없으므로 면적을 붙이지 않는다.
+  const aligned = files.length === mdl.length;
   mkdirSync(join(OUT_DIR, c.slug), { recursive: true });
 
   for (const f of files) {
@@ -69,23 +73,32 @@ for (const c of manifest) {
       if (match) confidence = p.letter && match.letter === p.letter ? 'exact' : 'area';
     } else if (p.seq != null && mdl.length) {
       match = mdl[p.seq - 1] || null;
-      if (match) confidence = 'order';                    // 순번 대응은 검수 대상
+      if (match) confidence = aligned ? 'order' : 'order-loose';   // 순번 대응은 검수 대상
     }
 
     const code = p.raw.replace(/[^a-z0-9]+/g, '-');
     const outRel = `${c.slug}/${code}.webp`;
     const outAbs = join(OUT_DIR, outRel);
-    const meta = await sharp(join(dir, f))
-      .resize({ width: MAX_W, withoutEnlargement: true })
-      .webp({ quality: QUALITY })
-      .toFile(outAbs);
+    let meta;
+    if (!FORCE && existsSync(outAbs)) {
+      const m = await sharp(outAbs).metadata();
+      meta = { width: m.width, height: m.height, size: statSync(outAbs).size };
+    } else {
+      meta = await sharp(join(dir, f))
+        .resize({ width: MAX_W, withoutEnlargement: true })
+        .webp({ quality: QUALITY })
+        .toFile(outAbs);
+    }
 
     rows.push({
       slug: c.slug, file: f, out: outRel,
+      // Storage 오브젝트 키는 ASCII 만 허용한다(한글 슬러그 거부) → 공고번호로 경로를 만든다
+      house_manage_no: c.house_manage_no,
+      store_path: `${c.house_manage_no}/${code}.webp`,
       complex_name: c.name, address: c.address, region_sido: sido, region_gugun: gugun,
-      area_type: p.letter ? `${p.py}${p.letter}` : (p.py != null ? String(p.py) : (match ? match.house_ty : null)),
-      exclusive_area_m2: match ? match.area : null,       // 청약홈 실측치만. 추정값을 넣지 않는다
-      supply_area_m2: match ? match.supply_ar : null,
+      area_type: p.letter ? `${p.py}${p.letter}` : (p.py != null ? String(p.py) : (confidence === 'order' ? match.house_ty : null)),
+      exclusive_area_m2: confidence === 'order-loose' ? null : (match ? match.area : null), // 청약홈 실측치만. 추정값을 넣지 않는다
+      supply_area_m2: confidence === 'order-loose' ? null : (match ? match.supply_ar : null),
       match_confidence: confidence,
       builder: c.builder, homepage: c.homepage, pblanc_url: c.pblanc_url, pblanc_de: c.pblanc_de,
       src_url: (c.images.find(i => i.file === f) || {}).url || null,
