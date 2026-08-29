@@ -2572,8 +2572,16 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     renderAll();
     const jl=groups.lights.getChildren(n=>n.getClassName()==='Line'&&n.name&&n.name()==='jump-line');
     assert('연결선: 점핑선이 그려진다',jl.length>=1,'n='+jl.length);
-    assert('연결선: 점핑선은 실선',jl.every(n=>{const d=n.dash&&n.dash();return !d||d.length===0;}),
+    // 2026-08-29: 대표 지시 — 배선은 가는 점선. 문제였던 건 둥근 마커였지 끈기가 아니었다
+    assert('연결선: 점핑선은 점선',jl.every(n=>{const d=n.dash&&n.dash();return !!d&&d.length>0;}),
       JSON.stringify(jl[0]&&jl[0].dash&&jl[0].dash()));
+    assert('연결선: 가는 선',jl.every(n=>n.strokeWidth()<=1.2),
+      String(jl[0]&&jl[0].strokeWidth()));
+    assert('연결선: 회로선·점핑선 규격 공유',
+      typeof CIRCUIT_LINE_W==='number'&&CIRCUIT_LINE_W<=1.2&&
+      Array.isArray(CIRCUIT_LINE_DASH)&&CIRCUIT_LINE_DASH.length>0&&
+      jl[0].strokeWidth()===CIRCUIT_LINE_W,
+      'w='+CIRCUIT_LINE_W+' dash='+JSON.stringify(CIRCUIT_LINE_DASH));
     const midDots=groups.lights.getChildren(n=>n.getClassName()==='Circle'&&n.name&&n.name()==='jump-mid');
     assert('연결선: 중간 점 없음',midDots.length===0,'n='+midDots.length);
     // 회로선 끝에 붙던 점도 없어야 한다 — 조명 위치에 겹쳐 다운라이트처럼 보였다

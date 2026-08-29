@@ -2402,6 +2402,10 @@ function addSymbolLabel(group,xPx,yPx,def,kind,id,o){
   if(kind){t.on('click tap',_symbolLabelClick(kind,id));t.on('mouseenter',()=>{document.body.style.cursor='pointer';});t.on('mouseleave',()=>{document.body.style.cursor='';});}
   group.add(t);
 }
+// 2026-08-29: 배선 선 규격 — 회로선·점핑선이 따로 놀지 않게 한 곳에서 정한다
+//  가는 점선 — 기구(다운라이트)보다 약하게 보여야 도면이 읽힌다
+const CIRCUIT_LINE_W=1.0;
+const CIRCUIT_LINE_DASH=[5,4];
 // 2026-08-26: 스위치→조명 회로 연동 (대표 지시) — 스위치 ON 시 연결된 조명 점등 표시
 function isSwitchType(t){return /^switch|^dimmer/.test(t||'');}
 // 2026-08-27: 실무 배선 반영 — 조명끼리 '점핑(데이지 체인)'으로 이어지면 스위치 ON 시 연쇄 점등 (대표 지시)
@@ -2726,11 +2730,10 @@ function renderLights(){
       const x1=STATE.offsetX+mmToPx(l.x),y1=STATE.offsetY+mmToPx(l.y);
       const x2=STATE.offsetX+mmToPx(t.x),y2=STATE.offsetY+mmToPx(t.y);
       const on=_litSet.has(l.id)&&_litSet.has(nid);
-      // 2026-08-29: 연결선은 일정한 실선 하나로 (대표 지시)
-      //  중간 점·끝 점이 다운라이트처럼 보여 기구와 구분이 안 됐고,
-      //  점선의 끈기도 점으로 읽혔다. 배선은 실선이 도면 관례이기도 하다.
+      // 2026-08-29: 배선은 가는 점선 (대표 지시). 문제였던 건 선의 끈기가 아니라
+      //  선 위에 박힌 둥근 마커들이었다 — 그건 없았고, 굵기만 얼파 두께 기구를 덮지 않게 한다.
       groups.lights.add(new Konva.Line({points:[x1,y1,x2,y2],stroke:on?'#D4B872':'#7BA05B',
-        strokeWidth:1.6,opacity:0.95,listening:false,name:'jump-line'}));
+        strokeWidth:CIRCUIT_LINE_W,dash:CIRCUIT_LINE_DASH,opacity:0.95,listening:false,name:'jump-line'}));
     });
   });
   STATE.lights.forEach(o=>{
@@ -2874,8 +2877,9 @@ function renderElectric(){
             name:'circuit-curve',lightId:lid,endX:x2,endY:y2,
             sceneFunc:(ctx,shp)=>{
             ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(cx,cy,x2,y2);
-            // 2026-08-29: 점선·끝점 점 제거 — 일정한 실선만 (대표 지시)
-            ctx.setLineDash([]);ctx.strokeStyle=o.circuitOn?'#D4B872':'#7BA05B';ctx.lineWidth=1.6;ctx.stroke();
+            // 2026-08-29: 끝점 마커만 없애고 — 선은 점핑선과 같은 가는 점선
+            ctx.setLineDash(CIRCUIT_LINE_DASH);ctx.strokeStyle=o.circuitOn?'#D4B872':'#7BA05B';
+            ctx.lineWidth=CIRCUIT_LINE_W;ctx.stroke();
           }}));
         });
       }
