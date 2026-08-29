@@ -2858,8 +2858,16 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('구별점등: 빈 구는 점등 불가',!!g3btn&&g3btn.disabled===true);
     // 1구 스위치는 종전 UI (구 줄 1개 + 조명 연결 버튼)
     STATE.selectedId=s1.id;refreshUI();
-    assert('구별점등: 1구는 한 줄',document.querySelectorAll('.gang-on').length===1&&
-      !!document.getElementById('d-circuit-link'));
+    assert('구별점등: 1구는 버튼 하나',document.querySelectorAll('.gang-on').length===1&&
+      document.querySelectorAll('.gang-link').length===1);
+    // 2026-08-30: 점등과 배선이 각각 제 박스로 나뉘어 있어야 한다 (대표 지시)
+    STATE.selectedId=s6.id;refreshUI();
+    const _dc=document.getElementById('detail-content').innerHTML;
+    assert('구별점등: 점등 테스트 박스 별도',_dc.indexOf('점등 테스트')>=0);
+    assert('구별점등: 배선 연결 박스 별도',_dc.indexOf('배선 연결')>=0);
+    assert('구별점등: 점등 박스가 배선보다 위',
+      _dc.indexOf('점등 테스트')<_dc.indexOf('배선 연결'));
+    assert('구별점등: 켜진 구 수 표시',_dc.indexOf('구 켜짐')>=0||_dc.indexOf('전부 꺼짐')>=0);
     STATE.selectedKind=null;STATE.selectedId=null;
 
     // --- 점핑선 정리 ---

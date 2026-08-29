@@ -826,39 +826,65 @@ function refreshDetail(){
       const _gn=switchGangCount(obj.type);
       const _on=switchGangOn(obj);
       const _target=(linking&&typeof window._circuitLink.gang==='number')?window._circuitLink.gang:-1;
-      const rows=[];
+      // 2026-08-30: 대표 지시 — 점등(테스트)과 배선(연결)을 각각 제 박스로 나눈다.
+      //  한 줄에 섞여 있어 "지금 몇 구가 켜져 있나"를 한눈에 볼 수가 없었다.
+      const _litN=_on.filter((v,i2)=>v&&gangLightIds(obj,i2).filter(_live).length>0).length;
+      // ── 1) 점등 테스트 — 실제 스위치 조작판처럼
+      const _cols=(_gn<=3)?_gn:((_gn===4)?2:3);
+      const plate=[];
       for(let gi=0;gi<_gn;gi++){
         const gl=gangLightIds(obj,gi).filter(_live).length;
         const lit=_on[gi]&&gl>0;
-        rows.push(
+        plate.push(
+          '<button type="button" class="gang-on" data-g="'+gi+'"'+(gl?'':' disabled')+
+          ' title="'+(gi+1)+'구 — 조명 '+gl+'개"'+
+          ' style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;'+
+            'padding:7px 2px;border-radius:5px;cursor:'+(gl?'pointer':'default')+';'+
+            'font-family:Inter,sans-serif;line-height:1.1;'+
+            'border:1px solid '+(lit?'#D4B872':'var(--border,#3D4466)')+';'+
+            'background:'+(lit?'rgba(212,184,114,0.28)':'rgba(255,255,255,0.03)')+';'+
+            'color:'+(lit?'#D4B872':'var(--text-secondary,#A9B0C9)')+';'+
+            (gl?'':'opacity:0.35;')+'">'+
+          '<span style="font-size:13px;font-weight:800">'+(gi+1)+'</span>'+
+          '<span style="font-size:9.5px;letter-spacing:0.02em">'+(gl?(lit?'ON':'OFF'):'미연결')+'</span>'+
+          '</button>');
+      }
+      const litBox=
+        '<div style="margin-top:8px;padding:9px;background:rgba(212,184,114,0.07);'+
+          'border:1px solid rgba(212,184,114,0.45);border-radius:5px">'+
+        '<div class="field-label" style="margin-bottom:7px;color:#D4B872">'+
+          '\uD83D\uDCA1 점등 테스트 — '+_gn+'구'+
+          (_litN?' <b>'+_litN+'구 켜짐</b>':' <span style="color:var(--text-tertiary)">전부 꺼짐</span>')+'</div>'+
+        '<div style="display:grid;grid-template-columns:repeat('+_cols+',1fr);gap:5px">'+plate.join('')+'</div>'+
+        (_gn>1?'<div style="display:flex;gap:4px;margin-top:6px">'+
+          '<button type="button" class="btn sm" id="d-gang-all-on" style="flex:1;font-size:11px">모두 켜기</button>'+
+          '<button type="button" class="btn sm" id="d-gang-all-off" style="flex:1;font-size:11px">모두 끄기</button>'+
+          '</div>':'')+
+        '<div class="hint" style="margin-top:5px">누르면 도면의 해당 조명이 켜집니다 · 스위치 더블클릭 = 전체 토글</div>'+
+        '</div>';
+      // ── 2) 배선 연결 — 어느 구에 어떤 조명이 걸렸나
+      const wire=[];
+      for(let gi=0;gi<_gn;gi++){
+        const gl=gangLightIds(obj,gi).filter(_live).length;
+        wire.push(
           '<div style="display:flex;align-items:center;gap:4px;margin-top:3px'+
             (_target===gi?';outline:1px solid #7BA05B;border-radius:4px;padding:2px':'')+'">'+
-          '<span style="width:34px;font-size:11px;font-weight:700;color:'+(lit?'#D4B872':'var(--text-secondary)')+'">'+(gi+1)+'구</span>'+
+          '<span style="width:34px;font-size:11px;font-weight:700;color:var(--text-secondary)">'+(gi+1)+'구</span>'+
           '<span style="width:46px;font-size:10.5px;color:var(--text-tertiary)">'+gl+'개</span>'+
-          '<button type="button" class="btn sm gang-on" data-g="'+gi+'"'+(gl?'':' disabled')+
-            ' style="flex:1;padding:3px 6px;font-size:11px'+
-            (lit?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
-            (gl?'':';opacity:0.4;cursor:default')+'">'+(lit?'💡 ON':'○ OFF')+'</button>'+
           '<button type="button" class="btn sm gang-link" data-g="'+gi+'"'+
             ' style="flex:1;padding:3px 6px;font-size:11px'+
             (_target===gi?';background:rgba(123,160,91,0.25);border-color:#7BA05B;color:#7BA05B':'')+'">'+
-            (_target===gi?'연결 중…':'🔌 연결')+'</button>'+
-          (gl?'<button type="button" class="btn sm gang-clear" data-g="'+gi+'" style="padding:3px 7px;font-size:11px" title="'+(gi+1)+'구 연결 해제">✕</button>':'')+
+            (_target===gi?'연결 중…':'\uD83D\uDD0C 연결')+'</button>'+
+          (gl?'<button type="button" class="btn sm gang-clear" data-g="'+gi+'" style="padding:3px 7px;font-size:11px" title="'+(gi+1)+'구 연결 해제">\u2715</button>':'')+
           '</div>');
       }
       circuitHtml=
+        litBox+
         '<div style="margin-top:8px;padding:8px;background:rgba(123,160,91,0.08);border:1px solid rgba(123,160,91,0.35);border-radius:4px">'+
-        '<div class="field-label" style="margin-bottom:2px;color:#7BA05B">회로 — '+_gn+'구 · 연결 조명 <b>'+n+'</b>개</div>'+
-        rows.join('')+
-        (_gn>1?'<div style="display:flex;gap:4px;margin-top:5px">'+
-          '<button type="button" class="btn sm" id="d-gang-all-on" style="flex:1;font-size:11px">모두 켜기</button>'+
-          '<button type="button" class="btn sm" id="d-gang-all-off" style="flex:1;font-size:11px">모두 끄기</button>'+
-          '</div>':
-          '<div style="display:flex;gap:4px;margin-top:5px">'+
-          '<button type="button" class="btn sm" id="d-circuit-link" style="flex:1'+(linking?';background:rgba(123,160,91,0.25);border-color:#7BA05B;color:#7BA05B':'')+'">'+(linking?'연결 모드 종료 (Esc)':'🔌 조명 연결')+'</button>'+
-          '</div>')+
-        (n?'<button type="button" class="btn sm" id="d-circuit-clear" style="width:100%;margin-top:4px">연결 전체 해제</button>':'')+
-        '<div class="hint" style="margin-top:4px">구별로 켜고 끔어 조명을 확인하세요 · 도면에서 스위치 더블클릭 = 전체 토글</div></div>';
+        '<div class="field-label" style="margin-bottom:2px;color:#7BA05B">\uD83D\uDD0C 배선 연결 — 조명 <b>'+n+'</b>개</div>'+
+        wire.join('')+
+        (n?'<button type="button" class="btn sm" id="d-circuit-clear" style="width:100%;margin-top:5px">연결 전체 해제</button>':'')+
+        '<div class="hint" style="margin-top:4px">[연결]을 누르고 도면에서 조명을 클릭·드래그하세요</div></div>';
     }
     let extraHtml='';
     if(hasAngle){
@@ -944,11 +970,6 @@ function refreshDetail(){
       });
     }
     if(isSwitch){
-      const lb=document.getElementById('d-circuit-link');
-      if(lb) lb.addEventListener('click',()=>{
-        if(window._circuitLink&&window._circuitLink.switchId===obj.id) endCircuitLink();
-        else startCircuitLink(obj.id,0);
-      });
       // 2026-08-30: 구별 점등 토글 — 조명 테스트의 핵심
       document.querySelectorAll('.gang-on').forEach(b=>b.addEventListener('click',()=>{
         const gi=parseInt(b.dataset.g,10);
