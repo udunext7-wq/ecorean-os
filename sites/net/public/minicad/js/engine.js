@@ -2429,10 +2429,80 @@ function expandJumpChain(seedIds){
   }
   return seen;
 }
+// ===== 2026-08-30: 스위치 구(gang)별 점등 (대표 지시 — 6구면 1~6번을 따로 켜고 꺼서 조명 테스트) =====
+//  종전엔 스위치 하나에 lightIds 한 묶음 + circuitOn 하나뿐이라, 6구 스위치라도
+//  전부 켜지거나 전부 꺼지는 두 상태만 있었다. 실제 현장은 구마다 회로가 다르다.
+//  · sw.lightGang = {lightId: 구번호(0-based)}  — 없으면 1구(0)
+//  · sw.gangOn    = [bool × 구수]               — 구별 점등
+//  · sw.circuitOn 은 '하나라도 켜졌나'로 유지 (기존 문서·코드 호환)
+const SWITCH_GANGS={switch_1:1,switch_2:2,switch_3:3,switch_4:4,switch_5:5,switch_6:6,
+                    switch_3way:1,dimmer:1};
+function switchGangCount(t){return SWITCH_GANGS[t]||1;}
+function switchGangOn(sw){
+  const n=switchGangCount(sw&&sw.type);
+  if(!sw) return [];
+  if(!Array.isArray(sw.gangOn)) sw.gangOn=[];
+  // 예전 문서: circuitOn 하나로 전체가 켜져 있었다 → 1구에 몰아넣지 말고 전 구에 반영
+  while(sw.gangOn.length<n) sw.gangOn.push(!!sw.circuitOn);
+  if(sw.gangOn.length>n) sw.gangOn.length=n;
+  // 2026-08-30: circuitOn 을 그냥 대입하는 경로(구형 코드·불러온 문서)가 살아있다.
+  //  마지막으로 맞춘 값과 달라졌으면 밖에서 건드린 것 — 전 구에 그대로 반영한다.
+  if(sw._gangSync!==!!sw.circuitOn){
+    const any=sw.gangOn.some(v=>v);
+    if(!!sw.circuitOn!==any){ for(let i=0;i<n;i++) sw.gangOn[i]=!!sw.circuitOn; }
+    sw._gangSync=!!sw.circuitOn;
+  }
+  return sw.gangOn;
+}
+function lightGangOf(sw,lightId){
+  const g=sw&&sw.lightGang&&sw.lightGang[lightId];
+  const n=switchGangCount(sw&&sw.type);
+  const i=Math.round(g||0);
+  return (i>=0&&i<n)?i:0;
+}
+function setLightGang(sw,lightId,gangIdx){
+  if(!sw) return;
+  if(!sw.lightGang||typeof sw.lightGang!=='object') sw.lightGang={};
+  const n=switchGangCount(sw.type);
+  sw.lightGang[lightId]=Math.max(0,Math.min(n-1,Math.round(gangIdx||0)));
+}
+// 이 구에 걸린 조명들
+function gangLightIds(sw,gangIdx){
+  if(!sw||!Array.isArray(sw.lightIds)) return [];
+  return sw.lightIds.filter(id=>lightGangOf(sw,id)===gangIdx);
+}
+// circuitOn 을 구 상태에서 다시 계산 (배지·기존 코드가 이 값을 본다)
+function syncSwitchCircuitOn(sw){
+  if(!sw) return false;
+  const on=switchGangOn(sw).some((v,i)=>v&&gangLightIds(sw,i).length>0);
+  sw.circuitOn=on;sw._gangSync=on;
+  return on;
+}
+function toggleSwitchGang(switchId,gangIdx,force){
+  const sw=(STATE.electric||[]).find(e=>e.id===switchId);
+  if(!sw) return false;
+  const arr=switchGangOn(sw);
+  const n=switchGangCount(sw.type);
+  if(gangIdx<0||gangIdx>=n) return false;
+  arr[gangIdx]=(typeof force==='boolean')?force:!arr[gangIdx];
+  syncSwitchCircuitOn(sw);
+  return arr[gangIdx];
+}
+function setAllSwitchGangs(switchId,on){
+  const sw=(STATE.electric||[]).find(e=>e.id===switchId);
+  if(!sw) return 0;
+  const arr=switchGangOn(sw);
+  for(let i=0;i<arr.length;i++) arr[i]=!!on;
+  syncSwitchCircuitOn(sw);
+  return arr.length;
+}
 function litLightIds(){
   const seeds=[];
   (STATE.electric||[]).forEach(sw=>{
-    if(sw.circuitOn&&isSwitchType(sw.type)&&Array.isArray(sw.lightIds)) sw.lightIds.forEach(id=>seeds.push(id));
+    if(!isSwitchType(sw.type)||!Array.isArray(sw.lightIds)) return;
+    // 2026-08-30: 구별로 따진다 — 6구 스위치의 2번만 켜면 2번 조명만 점등
+    const on=switchGangOn(sw);
+    sw.lightIds.forEach(id=>{ if(on[lightGangOf(sw,id)]) seeds.push(id); });
   });
   return expandJumpChain(seeds); // 점핑 연쇄 포함
 }
@@ -2727,8 +2797,17 @@ function renderLights(){
       if(!(_jvis.has(l.id)||_jvis.has(nid))) return;
       _drawn.add(key);
       const t=lightById(nid); if(!t) return;
-      const x1=STATE.offsetX+mmToPx(l.x),y1=STATE.offsetY+mmToPx(l.y);
-      const x2=STATE.offsetX+mmToPx(t.x),y2=STATE.offsetY+mmToPx(t.y);
+      let x1=STATE.offsetX+mmToPx(l.x),y1=STATE.offsetY+mmToPx(l.y);
+      let x2=STATE.offsetX+mmToPx(t.x),y2=STATE.offsetY+mmToPx(t.y);
+      // 2026-08-30: 기구 밖에서 시작하고 끝난다 — 선이 심볼을 관통하면 지저분해 보인다
+      (function(){
+        const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);
+        if(len<1) return;
+        const r1=mmToPx(lightOuterMm(l))/2+2, r2=mmToPx(lightOuterMm(t))/2+2;
+        if(r1+r2>=len-4) return; // 너무 가까우면 그대로
+        const ux=dx/len, uy=dy/len;
+        x1+=ux*r1; y1+=uy*r1; x2-=ux*r2; y2-=uy*r2;
+      })();
       const on=_litSet.has(l.id)&&_litSet.has(nid);
       // 2026-08-29: 배선은 가는 점선 (대표 지시). 문제였던 건 선의 끈기가 아니라
       //  선 위에 박힌 둥근 마커들이었다 — 그건 없았고, 굵기만 얼파 두께 기구를 덮지 않게 한다.
@@ -2859,14 +2938,39 @@ function renderElectric(){
     addSymbolLabel(groups.electric,x,y,def,'electric',o.id,o); // 2026-08-24: 이름 라벨 (클릭 = 선택)
     // 2026-08-26: 스위치 회로 — ON 배지 + (선택/연결 모드 시) 조명 연결 곡선
     if(isSwitchType(o.type)){
-      if(o.circuitOn){
-        g.add(new Konva.Circle({x:mmToPx((def.size||200))/2*0.9,y:-mmToPx((def.size||200))/2*0.9,radius:6/Math.max(_boost,0.001),
+      // 2026-08-30: 구별 점등 — 켜진 구가 하나라도 있으면 배지, 여러 구면 숫자로
+      const _gOn=switchGangOn(o).filter((v,i)=>v&&gangLightIds(o,i).length>0).length;
+      if(_gOn>0){
+        const _bx=mmToPx((def.size||200))/2*0.9, _by=-mmToPx((def.size||200))/2*0.9;
+        const _br=6/Math.max(_boost,0.001);
+        g.add(new Konva.Circle({x:_bx,y:_by,radius:_br,
           fill:'#7BA05B',stroke:'#3B4032',strokeWidth:1.5,listening:false}));
+        if(switchGangCount(o.type)>1){
+          g.add(new Konva.Text({x:_bx-_br,y:_by-_br*0.78,width:_br*2,align:'center',
+            text:String(_gOn),fontSize:_br*1.25,fontFamily:'Inter',fontStyle:'700',
+            fill:'#0A0A0A',listening:false}));
+        }
       }
       const showCurves=(STATE.selectedKind==='electric'&&STATE.selectedId===o.id)
         ||(window._circuitLink&&window._circuitLink.switchId===o.id)||STATE.showCircuits;
       if(showCurves&&Array.isArray(o.lightIds)&&o.lightIds.length){
+        // 2026-08-30: 점핑으로 이미 이어진 무리에는 급전선을 하나만 그린다 (대표 지시).
+        //  종전엔 연결된 조명 수만큼 부챗살처럼 뻗어 서로 교차했다.
+        //  실제 배선도 스위치→첫 기구 한 가닥이고, 나머지는 기구끼리 점핑한다.
+        const _feed=[], _seen=new Set();
         o.lightIds.forEach(lid=>{
+          if(_seen.has(lid)) return;
+          const gi=lightGangOf(o,lid);
+          const grp=[...expandJumpChain([lid])]
+            .filter(id=>o.lightIds.indexOf(id)>=0&&lightGangOf(o,id)===gi);
+          if(!grp.length){_seen.add(lid);_feed.push(lid);return;}
+          grp.forEach(id=>_seen.add(id));
+          let best=grp[0],bd=Infinity;
+          grp.forEach(id=>{const lt=STATE.lights.find(l=>l.id===id);if(!lt)return;
+            const dd=(lt.x-o.x)*(lt.x-o.x)+(lt.y-o.y)*(lt.y-o.y);if(dd<bd){bd=dd;best=id;}});
+          _feed.push(best);
+        });
+        _feed.forEach(lid=>{
           const lt=STATE.lights.find(l=>l.id===lid);if(!lt)return;
           const x2=STATE.offsetX+mmToPx(lt.x),y2=STATE.offsetY+mmToPx(lt.y);
           const mx=(x+x2)/2,my=(y+y2)/2;
@@ -2878,7 +2982,9 @@ function renderElectric(){
             sceneFunc:(ctx,shp)=>{
             ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(cx,cy,x2,y2);
             // 2026-08-29: 끝점 마커만 없애고 — 선은 점핑선과 같은 가는 점선
-            ctx.setLineDash(CIRCUIT_LINE_DASH);ctx.strokeStyle=o.circuitOn?'#D4B872':'#7BA05B';
+            // 2026-08-30: 이 조명이 매달린 구가 켜졌을 때만 금색
+            ctx.setLineDash(CIRCUIT_LINE_DASH);
+            ctx.strokeStyle=(switchGangOn(o)[lightGangOf(o,lid)])?'#D4B872':'#7BA05B';
             ctx.lineWidth=CIRCUIT_LINE_W;ctx.stroke();
           }}));
         });
@@ -2887,9 +2993,11 @@ function renderElectric(){
       g.on('dblclick dbltap',e=>{
         e.cancelBubble=true;
         if(!Array.isArray(o.lightIds)||!o.lightIds.length){if(typeof cmdToast==='function')cmdToast('연결된 조명 없음 — 스위치 선택 후 [조명 연결]');return;}
-        o.circuitOn=!o.circuitOn;
+        // 2026-08-30: 더블클릭은 전체 구를 한 번에 — 구별 토글은 속성 패널에서
+        const _anyOn=switchGangOn(o).some(v=>v);
+        setAllSwitchGangs(o.id,!_anyOn);
         saveHistory();renderAll();refreshUI();
-        if(typeof cmdToast==='function')cmdToast('💡 회로 '+(o.circuitOn?'ON — 조명 '+o.lightIds.length+'개 점등':'OFF'));
+        if(typeof cmdToast==='function')cmdToast('💡 회로 전체 '+(!_anyOn?'ON — 조명 '+o.lightIds.length+'개 점등':'OFF'));
       });
     }
     if(def.shape){
@@ -3157,7 +3265,10 @@ function renderAll(){
       circuitSig='§'+J((STATE.electric||[]).map(e=>[e.id,e.circuitOn?1:0,(e.lightIds||[]).join('.')]))
                 +'§'+J((STATE.lights||[]).map(l=>[l.id,(l.jumpIds||[]).join('.')]))
                 +(STATE.showCircuits?'C':'')+(window._jumpLink?'J':'');
-      lightPosSig='§'+J((STATE.lights||[]).map(l=>[l.id,l.x,l.y]))+(STATE.showCircuits?'C':'');
+      // 2026-08-30: 급전선을 '점핑 무리당 하나'로 그리면서 전기 레이어가 점핑 관계에도 의존한다.
+      //  jumpIds 를 서명에 넣지 않으면 점핑을 끊어도 급전선이 그대로 남는다.
+      lightPosSig='§'+J((STATE.lights||[]).map(l=>[l.id,l.x,l.y,(l.jumpIds||[]).join('.')]))
+                 +(STATE.showCircuits?'C':'');
     }
   }catch(e){circuitSig='';lightPosSig='';}
 

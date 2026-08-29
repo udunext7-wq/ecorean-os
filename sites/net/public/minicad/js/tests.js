@@ -2771,6 +2771,180 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('해제: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-30: 스위치 구별 점등 + 점핑선 정리 (대표 지시) ===
+  try{
+    const _bakGG={lights:STATE.lights.slice(),electric:STATE.electric.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice(),
+      cl:window._circuitLink,jl:window._jumpLink,zoom:STATE.zoom};
+    const GX=5500000;
+    STATE.lights=[];STATE.electric=[];STATE.boxSelection=[];
+    STATE.selectedKind=null;STATE.selectedId=null;
+    window._circuitLink=null;window._jumpLink=null;STATE.zoom=1;
+
+    const G6=[0,1,2,3,4,5].map(i=>{const o={id:makeId('li'),type:'downlight',x:GX+i*800,y:GX,angle:0,inch:3};
+      STATE.lights.push(o);return o;});
+    const s6={id:makeId('e'),type:'switch_6',x:GX,y:GX+2500,angle:0};
+    const s1={id:makeId('e'),type:'switch_1',x:GX+5000,y:GX+2500,angle:0};
+    STATE.electric.push(s6,s1);
+
+    // [G1] 구 수는 타입에서
+    assert('구별점등: 타입별 구 수',switchGangCount('switch_6')===6&&switchGangCount('switch_1')===1&&
+      switchGangCount('switch_3')===3&&switchGangCount('dimmer')===1);
+    assert('구별점등: gangOn 길이 = 구 수',switchGangOn(s6).length===6&&switchGangOn(s1).length===1);
+
+    // [G2] 구를 지정해 연결한다
+    startCircuitLink(s6.id,0);
+    attachLightsToSwitch(s6.id,[G6[0].id,G6[1].id],{keepMode:true});
+    startCircuitLink(s6.id,1);
+    attachLightsToSwitch(s6.id,[G6[2].id,G6[3].id],{keepMode:true});
+    startCircuitLink(s6.id,5);
+    attachLightsToSwitch(s6.id,[G6[4].id],{keepMode:true});
+    endCircuitLink&&endCircuitLink();
+    window._circuitLink=null;
+    assert('구별점등: 1구에 2개',gangLightIds(s6,0).length===2,'n='+gangLightIds(s6,0).length);
+    assert('구별점등: 2구에 2개',gangLightIds(s6,1).length===2);
+    assert('구별점등: 6구에 1개',gangLightIds(s6,5).length===1);
+    assert('구별점등: 빈 구는 0개',gangLightIds(s6,2).length===0&&gangLightIds(s6,3).length===0);
+
+    // [G3] 구별로 따로 켜진다 — 이게 대표가 원한 테스트
+    setAllSwitchGangs(s6.id,false);
+    toggleSwitchGang(s6.id,1,true);
+    let lit=litLightIds();
+    assert('구별점등: 2구만 켜면 그 조명만',
+      lit.has(G6[2].id)&&lit.has(G6[3].id)&&!lit.has(G6[0].id)&&!lit.has(G6[4].id),
+      'lit='+lit.size);
+    toggleSwitchGang(s6.id,0,true);
+    lit=litLightIds();
+    assert('구별점등: 1구를 더 켜면 4개',lit.size===4,'lit='+lit.size);
+    toggleSwitchGang(s6.id,1,false);
+    lit=litLightIds();
+    assert('구별점등: 2구만 끄면 2개 남는다',lit.size===2&&lit.has(G6[0].id)&&!lit.has(G6[2].id));
+
+    // [G4] circuitOn 은 '하나라도 켜졌나'로 유지 (기존 코드·배지 호환)
+    assert('구별점등: circuitOn 동기화',s6.circuitOn===true);
+    setAllSwitchGangs(s6.id,false);
+    assert('구별점등: 전부 끄면 circuitOn false',s6.circuitOn===false&&litLightIds().size===0);
+    setAllSwitchGangs(s6.id,true);
+    assert('구별점등: 모두 켜기',litLightIds().size===5,'lit='+litLightIds().size);
+
+    // [G5] 옛 문서 호환 — circuitOn 만 있고 gangOn 이 없던 데이터
+    const old={id:makeId('e'),type:'switch_2',x:GX,y:GX+5000,angle:0,
+      lightIds:[G6[0].id,G6[1].id],circuitOn:true};
+    STATE.electric.push(old);
+    const og=switchGangOn(old);
+    assert('구별점등: 옛 문서는 전 구 ON 으로 승계',og.length===2&&og[0]===true&&og[1]===true,
+      JSON.stringify(og));
+    assert('구별점등: 옛 문서 조명은 1구 기본',lightGangOf(old,G6[0].id)===0);
+    STATE.electric=STATE.electric.filter(e=>e!==old);
+
+    // [G6] 구별 해제
+    const beforeN=s6.lightIds.length;
+    detachLightsFromSwitch(s6.id,gangLightIds(s6,1));
+    assert('구별점등: 2구만 해제',s6.lightIds.length===beforeN-2&&gangLightIds(s6,1).length===0&&
+      gangLightIds(s6,0).length===2,'n='+s6.lightIds.length);
+    assert('구별점등: 해제하면 구 배정도 지워진다',
+      !s6.lightGang||s6.lightGang[G6[2].id]===undefined);
+
+    // [G7] 속성 패널 — 6구면 6줄, 각 줄에 점등·연결 버튼
+    STATE.selectedKind='electric';STATE.selectedId=s6.id;STATE.boxSelection=[];
+    refreshUI();
+    assert('구별점등: 패널에 6줄',document.querySelectorAll('.gang-on').length===6,
+      'n='+document.querySelectorAll('.gang-on').length);
+    assert('구별점등: 구별 연결 버튼',document.querySelectorAll('.gang-link').length===6);
+    assert('구별점등: 모두 켜기·끄기',!!document.getElementById('d-gang-all-on')&&
+      !!document.getElementById('d-gang-all-off'));
+    // 조명이 없는 구의 점등 버튼은 비활성
+    const g3btn=document.querySelector('.gang-on[data-g="3"]');
+    assert('구별점등: 빈 구는 점등 불가',!!g3btn&&g3btn.disabled===true);
+    // 1구 스위치는 종전 UI (구 줄 1개 + 조명 연결 버튼)
+    STATE.selectedId=s1.id;refreshUI();
+    assert('구별점등: 1구는 한 줄',document.querySelectorAll('.gang-on').length===1&&
+      !!document.getElementById('d-circuit-link'));
+    STATE.selectedKind=null;STATE.selectedId=null;
+
+    // --- 점핑선 정리 ---
+    // [G8] 기구를 관통하지 않는다 — 선 끝이 심볼 밖에서 시작한다
+    STATE.lights=[];
+    const j1={id:makeId('li'),type:'downlight',x:GX,y:GX+9000,angle:0,inch:6};
+    const j2={id:makeId('li'),type:'downlight',x:GX+3000,y:GX+9000,angle:0,inch:6};
+    j1.jumpIds=[j2.id];
+    STATE.lights.push(j1,j2);
+    STATE.showCircuits=true;renderAll();
+    const jline=groups.lights.getChildren(n=>n.getClassName()==='Line'&&n.name&&n.name()==='jump-line')[0];
+    assert('점핑선: 선이 그려진다',!!jline);
+    if(jline){
+      const pts=jline.points();
+      const cx1=STATE.offsetX+mmToPx(j1.x);
+      const r=mmToPx(lightOuterMm(j1))/2;
+      assert('점핑선: 기구 밖에서 시작 (관통하지 않음)',pts[0]>=cx1+r-0.5,
+        'start='+pts[0].toFixed(1)+' need>='+(cx1+r).toFixed(1));
+      const cx2=STATE.offsetX+mmToPx(j2.x);
+      assert('점핑선: 기구 앞에서 끝난다',pts[2]<=cx2-r+0.5,
+        'end='+pts[2].toFixed(1)+' need<='+(cx2-r).toFixed(1));
+    }
+
+    // [G8b] 점핑으로 이어진 무리는 급전선 하나만 — 부첓살처럼 뻗치지 않게
+    STATE.lights=[];STATE.electric=[];
+    const F=[0,1,2].map(i=>{const o={id:'lf'+i,type:'downlight',x:GX+1000+i*1000,y:GX+15000,angle:0,inch:3};
+      STATE.lights.push(o);return o;});
+    F[0].jumpIds=[F[1].id];F[1].jumpIds=[F[2].id];
+    const fs={id:'swf',type:'switch_1',x:GX,y:GX+16500,angle:0,
+      lightIds:[F[0].id,F[1].id,F[2].id],lightGang:{},gangOn:[true]};
+    STATE.electric.push(fs);
+    STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];
+    STATE.showCircuits=true;renderAll();
+    const feeds=groups.electric.getChildren(n=>n.getClassName()==='Shape'&&n.name&&n.name()==='circuit-curve');
+    assert('점핑선: 이어진 무리는 급전선 1가닥',feeds.length===1,'n='+feeds.length);
+    // 스위치에서 가장 가까운 조명으로 들어간다
+    assert('점핑선: 가장 가까운 기구로 급전',feeds.length===1&&feeds[0].getAttr('lightId')===F[0].id,
+      feeds.length?String(feeds[0].getAttr('lightId')):'-');
+    // 점핑을 끊으면 각자 급전선을 받는다
+    F.forEach(o=>{delete o.jumpIds;});renderAll();
+    assert('점핑선: 끊으면 각자 급전',
+      groups.electric.getChildren(n=>n.getClassName()==='Shape'&&n.name&&n.name()==='circuit-curve').length===3);
+
+    // [G9] 체인 순서 — 교차가 남지 않는다 (2-opt)
+    //  최근접만으로는 엇갈리는 배치: 사각형 네 귀퉁이를 지그재그 순서로 준다
+    STATE.lights=[];
+    const Q=[[0,0],[4000,0],[0,3000],[4000,3000]].map((p,i)=>{
+      const o={id:'lq'+i,type:'downlight',x:GX+p[0],y:GX+12000+p[1],angle:0,inch:3};
+      STATE.lights.push(o);return o;});
+    STATE.boxSelection=Q.map(o=>({kind:'lights',id:o.id}));
+    STATE.selectedKind=null;STATE.selectedId=null;
+    chainSelectedLights();
+    // 이어진 변들이 서로 교차하면 안 된다
+    const segs=[];
+    STATE.lights.forEach(a=>{(a.jumpIds||[]).forEach(bid=>{
+      const b=STATE.lights.find(l=>l.id===bid);
+      if(b) segs.push([a.x,a.y,b.x,b.y]);});});
+    const cross=(p,q)=>{
+      const d=(ax,ay,bx,by,cx,cy)=>(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);
+      const [x1,y1,x2,y2]=p,[x3,y3,x4,y4]=q;
+      // 끝점을 공유하면 교차로 보지 않는다
+      const same=(a,b,c,d2)=>Math.abs(a-c)<1&&Math.abs(b-d2)<1;
+      if(same(x1,y1,x3,y3)||same(x1,y1,x4,y4)||same(x2,y2,x3,y3)||same(x2,y2,x4,y4)) return false;
+      const d1=d(x1,y1,x2,y2,x3,y3), d2v=d(x1,y1,x2,y2,x4,y4);
+      const d3=d(x3,y3,x4,y4,x1,y1), d4=d(x3,y3,x4,y4,x2,y2);
+      return ((d1>0)!==(d2v>0))&&((d3>0)!==(d4>0));
+    };
+    let nCross=0;
+    for(let i=0;i<segs.length;i++)for(let k=i+1;k<segs.length;k++) if(cross(segs[i],segs[k])) nCross++;
+    assert('점핑선: 체인 3개',segs.length===3,'n='+segs.length);
+    assert('점핑선: 교차 없음 (2-opt)',nCross===0,'교차 '+nCross+'개');
+    // 총 길이도 대각선을 타지 않는다 (4점 사각형이면 4000+3000+4000)
+    const total=segs.reduce((a,g)=>a+Math.hypot(g[2]-g[0],g[3]-g[1]),0);
+    // 짧은 변(3m)을 먼저 타면 3+4+3=10m — 둘레(4+3+4=11m)보다 짧다
+    assert('점핑선: 최단 경로(10.0m)로 이어진다',Math.abs(total-10000)<50,'len='+Math.round(total));
+
+    STATE.lights=_bakGG.lights;STATE.electric=_bakGG.electric;
+    STATE.selectedKind=_bakGG.selK;STATE.selectedId=_bakGG.selI;STATE.boxSelection=_bakGG.box;
+    window._circuitLink=_bakGG.cl;window._jumpLink=_bakGG.jl;STATE.zoom=_bakGG.zoom;
+    if(typeof _circuitBanner==='function') _circuitBanner();
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('구별점등·점핑선: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),

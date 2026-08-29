@@ -819,17 +819,46 @@ function refreshDetail(){
     const isSwitch=STATE.selectedKind==='electric'&&obj&&/^switch|^dimmer/.test(obj.type||'');
     let circuitHtml='';
     if(isSwitch){
-      const n=Array.isArray(obj.lightIds)?obj.lightIds.filter(id=>STATE.lights.some(l=>l.id===id)).length:0;
+      // 2026-08-30: 구(gang)별 행 — 6구면 6줄. 구마다 연결·점등을 따로 다룬다 (대표 지시)
+      const _live=id=>STATE.lights.some(l=>l.id===id);
+      const n=Array.isArray(obj.lightIds)?obj.lightIds.filter(_live).length:0;
       const linking=!!(window._circuitLink&&window._circuitLink.switchId===obj.id);
+      const _gn=switchGangCount(obj.type);
+      const _on=switchGangOn(obj);
+      const _target=(linking&&typeof window._circuitLink.gang==='number')?window._circuitLink.gang:-1;
+      const rows=[];
+      for(let gi=0;gi<_gn;gi++){
+        const gl=gangLightIds(obj,gi).filter(_live).length;
+        const lit=_on[gi]&&gl>0;
+        rows.push(
+          '<div style="display:flex;align-items:center;gap:4px;margin-top:3px'+
+            (_target===gi?';outline:1px solid #7BA05B;border-radius:4px;padding:2px':'')+'">'+
+          '<span style="width:34px;font-size:11px;font-weight:700;color:'+(lit?'#D4B872':'var(--text-secondary)')+'">'+(gi+1)+'구</span>'+
+          '<span style="width:46px;font-size:10.5px;color:var(--text-tertiary)">'+gl+'개</span>'+
+          '<button type="button" class="btn sm gang-on" data-g="'+gi+'"'+(gl?'':' disabled')+
+            ' style="flex:1;padding:3px 6px;font-size:11px'+
+            (lit?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
+            (gl?'':';opacity:0.4;cursor:default')+'">'+(lit?'💡 ON':'○ OFF')+'</button>'+
+          '<button type="button" class="btn sm gang-link" data-g="'+gi+'"'+
+            ' style="flex:1;padding:3px 6px;font-size:11px'+
+            (_target===gi?';background:rgba(123,160,91,0.25);border-color:#7BA05B;color:#7BA05B':'')+'">'+
+            (_target===gi?'연결 중…':'🔌 연결')+'</button>'+
+          (gl?'<button type="button" class="btn sm gang-clear" data-g="'+gi+'" style="padding:3px 7px;font-size:11px" title="'+(gi+1)+'구 연결 해제">✕</button>':'')+
+          '</div>');
+      }
       circuitHtml=
         '<div style="margin-top:8px;padding:8px;background:rgba(123,160,91,0.08);border:1px solid rgba(123,160,91,0.35);border-radius:4px">'+
-        '<div class="field-label" style="margin-bottom:6px;color:#7BA05B">회로 — 연결 조명 <b>'+n+'</b>개</div>'+
-        '<div style="display:flex;gap:4px">'+
-        '<button type="button" class="btn sm" id="d-circuit-link" style="flex:1'+(linking?';background:rgba(123,160,91,0.25);border-color:#7BA05B;color:#7BA05B':'')+'">'+(linking?'연결 모드 종료 (Esc)':'🔌 조명 연결')+'</button>'+
-        '<button type="button" class="btn sm" id="d-circuit-on" style="flex:1'+(obj.circuitOn?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+'">'+(obj.circuitOn?'💡 점등 중 (끄기)':'💡 점등 테스트')+'</button>'+
-        '</div>'+
+        '<div class="field-label" style="margin-bottom:2px;color:#7BA05B">회로 — '+_gn+'구 · 연결 조명 <b>'+n+'</b>개</div>'+
+        rows.join('')+
+        (_gn>1?'<div style="display:flex;gap:4px;margin-top:5px">'+
+          '<button type="button" class="btn sm" id="d-gang-all-on" style="flex:1;font-size:11px">모두 켜기</button>'+
+          '<button type="button" class="btn sm" id="d-gang-all-off" style="flex:1;font-size:11px">모두 끄기</button>'+
+          '</div>':
+          '<div style="display:flex;gap:4px;margin-top:5px">'+
+          '<button type="button" class="btn sm" id="d-circuit-link" style="flex:1'+(linking?';background:rgba(123,160,91,0.25);border-color:#7BA05B;color:#7BA05B':'')+'">'+(linking?'연결 모드 종료 (Esc)':'🔌 조명 연결')+'</button>'+
+          '</div>')+
         (n?'<button type="button" class="btn sm" id="d-circuit-clear" style="width:100%;margin-top:4px">연결 전체 해제</button>':'')+
-        '<div class="hint" style="margin-top:4px">도면에서 스위치 더블클릭 = 점등 토글</div></div>';
+        '<div class="hint" style="margin-top:4px">구별로 켜고 끔어 조명을 확인하세요 · 도면에서 스위치 더블클릭 = 전체 토글</div></div>';
     }
     let extraHtml='';
     if(hasAngle){
@@ -918,15 +947,42 @@ function refreshDetail(){
       const lb=document.getElementById('d-circuit-link');
       if(lb) lb.addEventListener('click',()=>{
         if(window._circuitLink&&window._circuitLink.switchId===obj.id) endCircuitLink();
-        else startCircuitLink(obj.id);
+        else startCircuitLink(obj.id,0);
       });
-      const ob=document.getElementById('d-circuit-on');
-      if(ob) ob.addEventListener('click',()=>{
-        if(!Array.isArray(obj.lightIds)||!obj.lightIds.length){cmdToast('연결된 조명 없음 — 먼저 [조명 연결]');return;}
-        obj.circuitOn=!obj.circuitOn;saveHistory();renderAll();refreshUI();
+      // 2026-08-30: 구별 점등 토글 — 조명 테스트의 핵심
+      document.querySelectorAll('.gang-on').forEach(b=>b.addEventListener('click',()=>{
+        const gi=parseInt(b.dataset.g,10);
+        const now=toggleSwitchGang(obj.id,gi);
+        saveHistory();renderAll();refreshUI();
+        cmdToast('💡 '+(gi+1)+'구 '+(now?'ON — 조명 '+gangLightIds(obj,gi).length+'개':'OFF'));
+      }));
+      document.querySelectorAll('.gang-link').forEach(b=>b.addEventListener('click',()=>{
+        const gi=parseInt(b.dataset.g,10);
+        if(window._circuitLink&&window._circuitLink.switchId===obj.id&&window._circuitLink.gang===gi) endCircuitLink();
+        else startCircuitLink(obj.id,gi);
+      }));
+      document.querySelectorAll('.gang-clear').forEach(b=>b.addEventListener('click',()=>{
+        const gi=parseInt(b.dataset.g,10);
+        const ids=gangLightIds(obj,gi);
+        if(!ids.length) return;
+        detachLightsFromSwitch(obj.id,ids);
+      }));
+      const aon=document.getElementById('d-gang-all-on');
+      if(aon) aon.addEventListener('click',()=>{
+        if(!Array.isArray(obj.lightIds)||!obj.lightIds.length){cmdToast('연결된 조명 없음 — 먼저 [연결]');return;}
+        setAllSwitchGangs(obj.id,true);saveHistory();renderAll();refreshUI();
+        cmdToast('💡 전체 구 ON');
+      });
+      const aoff=document.getElementById('d-gang-all-off');
+      if(aoff) aoff.addEventListener('click',()=>{
+        setAllSwitchGangs(obj.id,false);saveHistory();renderAll();refreshUI();
+        cmdToast('전체 구 OFF');
       });
       const cb=document.getElementById('d-circuit-clear');
-      if(cb) cb.addEventListener('click',()=>{obj.lightIds=[];obj.circuitOn=false;saveHistory();renderAll();refreshUI();cmdToast('회로 연결 전체 해제');});
+      if(cb) cb.addEventListener('click',()=>{
+        obj.lightIds=[];obj.lightGang={};
+        setAllSwitchGangs(obj.id,false); // 2026-08-30: 구 상태까지 정리
+        saveHistory();renderAll();refreshUI();cmdToast('회로 연결 전체 해제');});
     }
     document.getElementById('d-dup').addEventListener('click',duplicateSelected);
     document.getElementById('d-del').addEventListener('click',deleteSelected);
@@ -2340,8 +2396,15 @@ function toggleCircuitLink(switchId,lightId){
   if(!sw){window._circuitLink=null;_circuitBanner();return;}
   if(!Array.isArray(sw.lightIds)) sw.lightIds=[];
   const i=sw.lightIds.indexOf(lightId);
-  if(i>=0){sw.lightIds.splice(i,1);cmdToast('조명 연결 해제 — 총 '+sw.lightIds.length+'개');}
-  else{sw.lightIds.push(lightId);cmdToast('조명 연결 — 총 '+sw.lightIds.length+'개 (계속 클릭, Esc 종료)');}
+  if(i>=0){sw.lightIds.splice(i,1);if(sw.lightGang) delete sw.lightGang[lightId];
+    cmdToast('조명 연결 해제 — 총 '+sw.lightIds.length+'개');}
+  else{
+    sw.lightIds.push(lightId);
+    // 2026-08-30: 지금 고른 구에 배정
+    const _g=(window._circuitLink&&window._circuitLink.switchId===switchId)?(window._circuitLink.gang||0):0;
+    setLightGang(sw,lightId,_g);
+    cmdToast('조명 연결 — '+(switchGangCount(sw.type)>1?((_g+1)+'구 '):'')+'총 '+gangLightIds(sw,_g).length+'개');
+  }
   // 2026-08-27: 연결 후에도 모드·선택을 그대로 유지 (종료 전까지 계속 작동)
   STATE.selectedKind='electric';STATE.selectedId=switchId;STATE.boxSelection=[];
   saveHistory();renderAll();refreshUI();_circuitBanner();
@@ -2371,11 +2434,15 @@ function attachLightsToSwitch(switchId,lightIds,opts){
   }
   if(!Array.isArray(sw.lightIds)) sw.lightIds=[];
   let added=0;
+  // 2026-08-30: 연결 모드에서 고른 구로 들어간다 (없으면 1구)
+  const gIdx=(opts&&typeof opts.gang==='number')?opts.gang
+    :((window._circuitLink&&window._circuitLink.switchId===switchId)?(window._circuitLink.gang||0):0);
   (lightIds||[]).forEach(id=>{
     if(!STATE.lights.some(l=>l.id===id)) return;
-    if(sw.lightIds.indexOf(id)>=0) return;
-    sw.lightIds.push(id);added++;
+    if(sw.lightIds.indexOf(id)>=0){setLightGang(sw,id,gIdx);return;}
+    sw.lightIds.push(id);setLightGang(sw,id,gIdx);added++;
   });
+  syncSwitchCircuitOn(sw);
   if(!added){cmdToast('이미 모두 연결돼 있습니다 — 총 '+sw.lightIds.length+'개');}
   else{
     saveHistory();
@@ -2408,7 +2475,7 @@ function chainSelectedLights(ids){
   if(lightIds.length<2){cmdToast('조명을 2개 이상 선택하세요');return 0;}
   const pts=lightIds.map(id=>STATE.lights.find(l=>l.id===id)).filter(Boolean);
   if(pts.length<2) return 0;
-  // 최근접 이웃 순서로 정렬 — 도면상 지그재그로 배선되지 않게
+  // 최근접 이웃 순서로 일단 이어붙이고
   const order=[pts.shift()];
   while(pts.length){
     const cur=order[order.length-1];
@@ -2416,6 +2483,28 @@ function chainSelectedLights(ids){
     pts.forEach((p,i)=>{const d=(p.x-cur.x)**2+(p.y-cur.y)**2;if(d<bd){bd=d;bi=i;}});
     order.push(pts.splice(bi,1)[0]);
   }
+  // 2026-08-30: 2-opt 로 교차를 개다 (대표 지시 — 점핑선을 최대한 깔끔하게).
+  //  최근접 순서만으로는 마지막에 먼 점으로 되돌아오며 선이 서로 엇갈린다.
+  //  두 변을 바꿔 총 길이가 줄면 교차가 품린다 — 평면에서 교차는 항상 더 길기 때문.
+  (function(){
+    const D=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+    let improved=true, guard=0;
+    while(improved&&guard++<40){
+      improved=false;
+      for(let i=0;i<order.length-2;i++){
+        for(let k=i+2;k<=order.length-1;k++){
+          const a=order[i], b=order[i+1], c=order[k], d=order[k+1];
+          const before=D(a,b)+(d?D(c,d):0);
+          const after =D(a,c)+(d?D(b,d):0);
+          if(after<before-1){
+            const seg=order.slice(i+1,k+1).reverse();
+            order.splice(i+1,k-i,...seg);
+            improved=true;
+          }
+        }
+      }
+    }
+  })();
   let n=0;
   for(let i=0;i<order.length-1;i++){
     const a=order[i],b=order[i+1];
@@ -2447,7 +2536,9 @@ function detachSelectedLights(ids){
     const before=e.lightIds.length;
     e.lightIds=e.lightIds.filter(id=>!set.has(id));
     const d=before-e.lightIds.length;
-    if(d){removed+=d;swN++;if(!e.lightIds.length) e.circuitOn=false;}
+    if(d){removed+=d;swN++;
+      if(e.lightGang) set.forEach(id=>{delete e.lightGang[id];});
+      if(typeof syncSwitchCircuitOn==='function') syncSwitchCircuitOn(e);}
   });
   if(!removed){cmdToast('연결된 회로가 없습니다');return 0;}
   saveHistory();renderAll();refreshUI();_circuitBanner();
@@ -2481,7 +2572,8 @@ function detachLightsFromSwitch(switchId,lightIds){
   sw.lightIds=sw.lightIds.filter(id=>!set.has(id));
   const n=before-sw.lightIds.length;
   if(!n){cmdToast('박스 안에 이 스위치에 걸린 조명이 없습니다');return 0;}
-  if(!sw.lightIds.length) sw.circuitOn=false;
+  if(sw.lightGang) set.forEach(id=>{delete sw.lightGang[id];});
+  if(typeof syncSwitchCircuitOn==='function') syncSwitchCircuitOn(sw);
   saveHistory();
   STATE.selectedKind='electric';STATE.selectedId=switchId;STATE.boxSelection=[];
   renderAll();refreshUI();_circuitBanner();
@@ -2538,11 +2630,14 @@ function circuitBoxConnect(mode,x1,y1,x2,y2,detach){
   }
   return 0;
 }
-function startCircuitLink(switchId){
-  window._circuitLink={switchId};
+function startCircuitLink(switchId,gangIdx){
+  // 2026-08-30: 어느 구에 붙일지를 들고 다닌다 (기본 1구)
+  window._circuitLink={switchId,gang:Math.max(0,Math.round(gangIdx||0))};
   STATE.selectedKind='electric';STATE.selectedId=switchId;STATE.boxSelection=[];
   renderAll();refreshUI();_circuitBanner();
-  cmdToast('🔌 조명 연결 모드 — 연결할 조명을 계속 클릭 (다시 클릭=해제, Esc·배너 버튼=종료)');
+  const _sw=(STATE.electric||[]).find(e=>e.id===switchId);
+  const _gl=(_sw&&switchGangCount(_sw.type)>1)?((window._circuitLink.gang+1)+'구 — '):'';
+  cmdToast('🔌 '+_gl+'조명 연결 모드 — 조명 클릭·드래그 (다시 클릭=해제, Esc=종료)');
 }
 // 2026-08-27: 조명↔조명 점핑 연결 (대표 지시 — 실무는 조명에서 조명으로 점핑하는 경우가 더 많다)
 function toggleJumpLink(fromId,toId){
