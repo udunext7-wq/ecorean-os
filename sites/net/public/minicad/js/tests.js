@@ -2820,6 +2820,32 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     lit=litLightIds();
     assert('구별점등: 2구만 끄면 2개 남는다',lit.size===2&&lit.has(G6[0].id)&&!lit.has(G6[2].id));
 
+    // [G3b] 2026-08-30 대표 보고: 전체 토글은 반응하는데 구별 토글은 즉시 안 보였다.
+    //  circuitOn 이 그대로라 렌더 캐시가 조명 레이어를 다시 그리지 않았다.
+    //  renderAll() 만으로 화면이 따라오는지 글로우 개수로 확인한다.
+    const _glow=()=>{let k=0;groups.lights.getChildren().forEach(g=>{
+      if(!g.getChildren) return;
+      g.getChildren(x=>x.getClassName()==='Circle').forEach(c=>{
+        if(typeof c.fillRadialGradientEndRadius==='function'&&c.fillRadialGradientEndRadius()>0)k++;});});
+      return k;};
+    const _bz2=STATE.zoom;STATE.zoom=1;
+    setAllSwitchGangs(s6.id,false);renderAll();
+    assert('구별점등: 전부 끔 상태 글로우 0',_glow()===0,'glow='+_glow());
+    toggleSwitchGang(s6.id,0,true);renderAll();
+    const _g1=_glow();
+    assert('구별점등: 1구 켜면 바로 보인다',_g1===2,'glow='+_g1);
+    toggleSwitchGang(s6.id,1,true);renderAll();
+    const _g2=_glow();
+    assert('구별점등: 2구를 더 켜도 즉시 반영',_g2===4,'glow='+_g1+'→'+_g2);
+    toggleSwitchGang(s6.id,0,false);renderAll();
+    const _g3=_glow();
+    assert('구별점등: 1구만 꺼도 즉시 반영',_g3===2,'glow='+_g2+'→'+_g3);
+    // 구 배정을 바꿔도 화면이 따라온다
+    setLightGang(s6,G6[4].id,1);renderAll();
+    assert('구별점등: 구 재배정도 즉시 반영',_glow()===3,'glow='+_glow());
+    setLightGang(s6,G6[4].id,5);
+    STATE.zoom=_bz2;
+
     // [G4] circuitOn 은 '하나라도 켜졌나'로 유지 (기존 코드·배지 호환)
     assert('구별점등: circuitOn 동기화',s6.circuitOn===true);
     setAllSwitchGangs(s6.id,false);

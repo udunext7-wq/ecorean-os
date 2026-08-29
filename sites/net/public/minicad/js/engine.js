@@ -2496,6 +2496,15 @@ function setAllSwitchGangs(switchId,on){
   syncSwitchCircuitOn(sw);
   return arr.length;
 }
+// ===== 2026-08-30: 조명 점등에 영향을 주는 스위치 상태 서명 =====
+//  ⚠ 스위치에 '어느 조명이 켜지나'를 바꾸는 필드를 추가하면 반드시 여기에도 넣을 것.
+//  빠뜨리면 값은 바뀌는데 화면이 그대로다 — 렌더 캐시가 서명으로 재렌더를 판단하기 때문.
+//  (2026-08-30 대표 보고: gangOn 을 빠뜨려 '전체 토글은 되는데 구별 토글은 즉시 안 보임')
+function switchLightingSig(e){
+  return [e.id, e.circuitOn?1:0, (e.lightIds||[]).join('.'),
+          (e.gangOn||[]).map(v=>v?1:0).join(''),
+          e.lightGang?Object.keys(e.lightGang).sort().map(k=>k+':'+e.lightGang[k]).join(','):''];
+}
 function litLightIds(){
   const seeds=[];
   (STATE.electric||[]).forEach(sw=>{
@@ -3262,7 +3271,7 @@ function renderAll(){
   try{
     if(J){
       // 2026-08-27: 점핑 연결·배선 전체보기도 조명 레이어에 영향 → 서명에 포함 (토글 즉시 반영)
-      circuitSig='§'+J((STATE.electric||[]).map(e=>[e.id,e.circuitOn?1:0,(e.lightIds||[]).join('.')]))
+      circuitSig='§'+J((STATE.electric||[]).map(switchLightingSig))
                 +'§'+J((STATE.lights||[]).map(l=>[l.id,(l.jumpIds||[]).join('.')]))
                 +(STATE.showCircuits?'C':'')+(window._jumpLink?'J':'');
       // 2026-08-30: 급전선을 '점핑 무리당 하나'로 그리면서 전기 레이어가 점핑 관계에도 의존한다.
