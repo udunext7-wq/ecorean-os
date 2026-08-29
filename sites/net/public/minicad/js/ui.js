@@ -2782,6 +2782,7 @@ function applyLoadedData(d){
   STATE.fixtures=d.fixtures||[];STATE.lights=d.lights||[];
   STATE.electric=d.electric||[];STATE.texts=d.texts||[];
   STATE.measures=d.measures||[];
+  if(d.bgImage&&d.bgImage.dataURL) STATE.bgImage=d.bgImage;   // 저장본의 배경 이미지 복원
   STATE.circles=d.circles||[];STATE.arcs=d.arcs||[];STATE.hvac=d.hvac||[];
   STATE.leaders=d.leaders||[];STATE.xlines=d.xlines||[];STATE.curves=d.curves||[];STATE.pillars=d.pillars||[];
   if(d.meta&&d.meta.aiPromptHints) STATE.aiPromptHints={...STATE.aiPromptHints,...d.meta.aiPromptHints};
@@ -4343,6 +4344,36 @@ function importSVG(svgText,filename){
 }
 
 // v5.9: 배경 이미지 설정 (PNG/JPG/SVG 트레이싱용)
+// 도면 JSON(meta.background)의 배경을 실제 치수로 배치한다.
+//  · mm_per_px : 이미지 1px 이 몇 mm 인지 → bgImage.scale 로 환산 (mmToPx 와 같은 기준)
+//  · crop      : 원본 이미지에서 평면도 그림이 시작하는 위치 → 벽 좌표 원점(0,0)에 맞춰 이미지를 밀어 놓는다
+function applyPlanBackground(bgMeta,filename){
+  if(!bgMeta||!bgMeta.url) return;
+  fetch(bgMeta.url)
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
+    .then(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}))
+    .then(dataURL=>{
+      const img=new Image();
+      img.onload=()=>{
+        const mmpp=Number(bgMeta.mm_per_px)||0;
+        const crop=bgMeta.crop||{left:0,top:0};
+        STATE.bgImage={
+          filename:filename||'평면도 원본',
+          dataURL,
+          x_mm:mmpp?-Math.round((crop.left||0)*mmpp):0,
+          y_mm:mmpp?-Math.round((crop.top||0)*mmpp):0,
+          scale:mmpp?(mmpp/1000)*STATE.scale:1,
+          opacity:bgMeta.opacity!=null?bgMeta.opacity:0.45,
+          locked:true,
+          naturalWidth:img.width,naturalHeight:img.height,
+        };
+        drawGrid();renderAll();
+        if(typeof refreshBgImageUI==='function') refreshBgImageUI();
+      };
+      img.src=dataURL;
+    })
+    .catch(err=>showStatus('원본 도면 이미지 로드 실패: '+err.message));
+}
 function setBgImage(dataURL,filename){
   const img=new Image();
   img.onload=()=>{
@@ -5739,7 +5770,15 @@ window.addEventListener('load',()=>{
         if(!d||!d.schema||!String(d.schema).startsWith('ECOREAN.FloorPlan'))throw new Error('MiniCAD 도면 JSON이 아닙니다');
         whenReady(()=>{
           applyLoadedData(d);
-          showStatus('표준 평면도 로드 — '+((d.meta&&d.meta.project)||'')+' · 공간 '+STATE.spaces.length+'개 (실측 아님 · 실측 후 수정)');
+          // 벡터와 원본 이미지를 함께 보여준다 — 벽이 도면과 맞는지 눈으로 대조할 수 있어야 한다
+          const bgMeta=(d.meta&&d.meta.background)||null;
+          if(bgMeta&&ok(bgMeta.url)) applyPlanBackground(bgMeta,(d.meta&&d.meta.project)||'평면도 원본');
+          else if(ok(bg)) fetch(bg).then(r=>r.blob())
+            .then(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}))
+            .then(u=>setBgImage(u,name)).catch(()=>{});
+          const nW=STATE.walls.length,nS=STATE.spaces.length;
+          showStatus('실도면 로드 — '+((d.meta&&d.meta.project)||'')+' · 벽 '+nW+'개'+(nS?' · 공간 '+nS+'개':'')+
+            ((d.meta&&d.meta.verified)?' (전용면적 기준 스케일 · 시공 전 실측 확인)':' (스케일 미검증 — 배경만 참고)'));
         });
       })
       .catch(err=>showStatus('표준 평면도 로드 실패: '+err.message));

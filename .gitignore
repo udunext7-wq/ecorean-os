@@ -18,3 +18,6 @@ assets/plan-sources/
 
 # 분양 실도면 정규화본 — Supabase Storage 로만 배포한다 (공개 저장소에 두지 않음)
 assets/plan-staging/
+
+# 변환 산출물 — Storage 로만 배포한다
+assets/plan-minicad/

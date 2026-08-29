@@ -553,6 +553,8 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   function renderParsePreview(d){
     var xs=[],ys=[];
     (d.spaces||[]).forEach(function(s){s.polygon.forEach(function(p){xs.push(p.x);ys.push(p.y);});});
+    // 분양 실도면 변환본은 벽만 있고 공간이 없을 수 있다 — 벽 끝점으로도 범위를 잡는다
+    (d.walls||[]).forEach(function(w){xs.push(w.x1,w.x2);ys.push(w.y1,w.y2);});
     if(!xs.length)return '';
     var pad=400;
     var minX=Math.min.apply(null,xs)-pad, maxX=Math.max.apply(null,xs)+pad;
@@ -593,23 +595,24 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     document.getElementById('dtName').textContent=r.complex_name;
     document.getElementById('dtImg').src=url;
     document.getElementById('dtOrig').href=url;
-    // 표준 평면도(/catalog/plans/img/std-*.svg)는 MiniCAD 공간·벽 데이터(JSON)가 함께 있음
-    //  → 기본 버튼은 실제 공간 생성(?plan=), 사진·스캔 도면은 밑그림(?bg=)만 가능
+    // MiniCAD 연동 — 벡터 변환본이 있으면 '벽 + 원본 이미지'를 함께 연다.
+    // 변환본이 없는 도면은 원본 이미지를 밑그림으로만 깐다 (2026-08-29 대표 지시: 이미지는 항상 남긴다).
     var bgHref='/minicad/?bg='+encodeURIComponent(url)+'&bgname='+encodeURIComponent(r.complex_name+(r.area_type?' '+r.area_type:''));
-    var planMatch=/^\/catalog\/plans\/img\/((?:std|cx)-[a-z0-9-]+)\.svg$/.exec(r.image_path||'');
     var cadBtn=document.getElementById('dtCad'), bgBtn=document.getElementById('dtBg');
     var parseWrap=document.getElementById('dtParseWrap'), parseBox=document.getElementById('dtParse');
     parseWrap.style.display='none';parseBox.innerHTML='';
-    if(planMatch){
+    if(r.plan_path){
+      var planUrl=PUB+r.plan_path.split('/').map(encodeURIComponent).join('/');
       cadBtn.style.display='';
-      cadBtn.href='/minicad/?plan='+encodeURIComponent('/catalog/plans/data/'+planMatch[1]+'.json');
+      cadBtn.textContent='📐 MiniCAD로 열기 (벽 + 원본 도면)';
+      cadBtn.href='/minicad/?plan='+encodeURIComponent(planUrl);
       bgBtn.textContent='🖼 밑그림으로만 열기';
       bgBtn.href=bgHref;
-      // 파싱 미리보기 (내부 검수용) — 도면 이미지와 파싱 구조를 눈으로 대조
-      fetch('/catalog/plans/data/'+planMatch[1]+'.json')
+      // 변환 결과 미리보기 — 뽑아낸 벽이 도면과 맞는지 열기 전에 대조한다
+      fetch(planUrl)
         .then(function(res){return res.ok?res.json():null;})
         .then(function(d){
-          if(!d||state.current!==r)return; // 다른 항목으로 이동했으면 무시
+          if(!d||state.current!==r)return;
           var svg=renderParsePreview(d);
           if(svg){parseBox.innerHTML=svg;parseWrap.style.display='';}
         }).catch(function(){});

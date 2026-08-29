@@ -1,0 +1,5047 @@
+[
+ {
+  "store_path": "2026000404/unit-60a.webp",
+  "json": "2026000404/unit-60a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 29.67632111384371,
+  "thickMm": 385.7921744799682,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 26%)"
+  ]
+ },
+ {
+  "store_path": "2026000404/unit-60b.webp",
+  "json": "2026000404/unit-60b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 33.44269460364295,
+  "thickMm": 367.8696406400724,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 10%)"
+  ]
+ },
+ {
+  "store_path": "2026000404/unit-60c.webp",
+  "json": "2026000404/unit-60c.json",
+  "ok": true,
+  "verified": true,
+  "walls": 46,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 20.97730560877141,
+  "thickMm": 251.72766730525692,
+  "warn": []
+ },
+ {
+  "store_path": "2026000404/unit-84a.webp",
+  "json": "2026000404/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 33.70276610494318,
+  "thickMm": 404.43319325931816,
+  "warn": [
+   "벽두께 404mm",
+   "벽두께 분포 이상(실벽 구간 21%)"
+  ]
+ },
+ {
+  "store_path": "2026000404/unit-84b.webp",
+  "json": "2026000404/unit-84b.json",
+  "ok": true,
+  "verified": true,
+  "walls": 44,
+  "spaces": 0,
+  "spaceFound": 7,
+  "mm_per_px": 22.031955024943876,
+  "thickMm": 242.35150527438265,
+  "warn": []
+ },
+ {
+  "store_path": "2026000404/unit-84c.webp",
+  "json": "2026000404/unit-84c.json",
+  "ok": true,
+  "verified": true,
+  "walls": 47,
+  "spaces": 0,
+  "spaceFound": 7,
+  "mm_per_px": 20.975053178661742,
+  "thickMm": 209.75053178661742,
+  "warn": []
+ },
+ {
+  "store_path": "2026000383/unit-59a.webp",
+  "json": "2026000383/unit-59a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 43.648090348682,
+  "thickMm": 785.6656262762759,
+  "warn": [
+   "벽두께 786mm",
+   "벽두께 분포 이상(실벽 구간 5%)"
+  ]
+ },
+ {
+  "store_path": "2026000383/unit-59b.webp",
+  "json": "2026000383/unit-59b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 29.095742925653568,
+  "thickMm": 349.1489151078428,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 16%)"
+  ]
+ },
+ {
+  "store_path": "2026000383/unit-72a.webp",
+  "json": "2026000383/unit-72a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 51.07655083445935,
+  "thickMm": 612.9186100135122,
+  "warn": [
+   "벽두께 613mm",
+   "벽두께 분포 이상(실벽 구간 4%)"
+  ]
+ },
+ {
+  "store_path": "2026000383/unit-72b.webp",
+  "json": "2026000383/unit-72b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 42.44505710188711,
+  "thickMm": 212.22528550943554,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 18%)"
+  ]
+ },
+ {
+  "store_path": "2026000383/unit-84a.webp",
+  "json": "2026000383/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 39.94570715539008,
+  "thickMm": 439.4027787092909,
+  "warn": [
+   "벽두께 439mm",
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2026000383/unit-84b.webp",
+  "json": "2026000383/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 45.24024047285062,
+  "thickMm": 407.1621642556556,
+  "warn": [
+   "벽두께 407mm",
+   "벽두께 분포 이상(실벽 구간 27%)"
+  ]
+ },
+ {
+  "store_path": "2026000364/84a.webp",
+  "ok": false,
+  "reason": "평면도 영역 없음"
+ },
+ {
+  "store_path": "2026000364/84b.webp",
+  "json": "2026000364/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2026000282/unit01.webp",
+  "json": "2026000282/unit01.json",
+  "ok": true,
+  "verified": true,
+  "walls": 112,
+  "spaces": 0,
+  "spaceFound": 1,
+  "mm_per_px": 22.912524530296714,
+  "thickMm": 183.30019624237372,
+  "warn": []
+ },
+ {
+  "store_path": "2026000282/unit02.webp",
+  "json": "2026000282/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 27.847602195492907,
+  "thickMm": 278.4760219549291,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2026000282/unit03.webp",
+  "json": "2026000282/unit03.json",
+  "ok": true,
+  "verified": true,
+  "walls": 123,
+  "spaces": 0,
+  "spaceFound": 2,
+  "mm_per_px": 19.65518227221858,
+  "thickMm": 176.8966404499672,
+  "warn": []
+ },
+ {
+  "store_path": "2026000282/unit04.webp",
+  "json": "2026000282/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 20.58858901629493,
+  "thickMm": 205.8858901629493,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2026000282/unit05.webp",
+  "json": "2026000282/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 18.063674638111934,
+  "thickMm": 289.01879420979094,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2026000282/unit06.webp",
+  "json": "2026000282/unit06.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 20.852730408685105,
+  "thickMm": 229.38003449553617,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2026000282/unit07.webp",
+  "json": "2026000282/unit07.json",
+  "ok": true,
+  "verified": true,
+  "walls": 61,
+  "spaces": 0,
+  "spaceFound": 2,
+  "mm_per_px": 18.416839179210353,
+  "thickMm": 257.83574850894496,
+  "warn": []
+ },
+ {
+  "store_path": "2026000282/unit08.webp",
+  "json": "2026000282/unit08.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.4501806129806,
+  "thickMm": 257.4021673557672,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2026000282/unit09.webp",
+  "json": "2026000282/unit09.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 25.698220943121036,
+  "thickMm": 308.3786513174524,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2026000282/unit10.webp",
+  "json": "2026000282/unit10.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 22.96176896710102,
+  "thickMm": 344.4265345065153,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 22%)"
+  ]
+ },
+ {
+  "store_path": "2026000282/unit11.webp",
+  "json": "2026000282/unit11.json",
+  "ok": true,
+  "verified": true,
+  "walls": 74,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 25.455696481916227,
+  "thickMm": 178.1898753734136,
+  "warn": []
+ },
+ {
+  "store_path": "2026000282/unit12.webp",
+  "json": "2026000282/unit12.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 33.472441988265466,
+  "thickMm": 267.7795359061237,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2026000253/unit-105.webp",
+  "json": "2026000253/unit-105.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 29.91281445445244,
+  "thickMm": 269.215330090072,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 8%)"
+  ]
+ },
+ {
+  "store_path": "2026000253/unit-107.webp",
+  "json": "2026000253/unit-107.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.964767234753385,
+  "thickMm": 278.6829051127805,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 12%)"
+  ]
+ },
+ {
+  "store_path": "2026000253/unit-84.webp",
+  "json": "2026000253/unit-84.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 27.063781713459385,
+  "thickMm": 270.63781713459383,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 19%)"
+  ]
+ },
+ {
+  "store_path": "2026000271/unit-155p.webp",
+  "json": "2026000271/unit-155p.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 29.366564199681186,
+  "thickMm": 264.2990777971307,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 18%)"
+  ]
+ },
+ {
+  "store_path": "2026000271/unit-217p.webp",
+  "json": "2026000271/unit-217p.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 31.153435066854247,
+  "thickMm": 155.76717533427123,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2026000275/unit-39a.webp",
+  "json": "2026000275/unit-39a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 48,
+  "spaces": 0,
+  "spaceFound": 2,
+  "mm_per_px": 19.23202830021982,
+  "thickMm": 115.39216980131891,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit01.webp",
+  "json": "2026000273/unit01.json",
+  "ok": true,
+  "verified": true,
+  "walls": 145,
+  "spaces": 0,
+  "spaceFound": 3,
+  "mm_per_px": 23.00609827923683,
+  "thickMm": 115.03049139618415,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit02.webp",
+  "json": "2026000273/unit02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 150,
+  "spaces": 0,
+  "spaceFound": 8,
+  "mm_per_px": 24.044330505514598,
+  "thickMm": 120.22165252757299,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit03.webp",
+  "json": "2026000273/unit03.json",
+  "ok": true,
+  "verified": true,
+  "walls": 157,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 27.010833084110196,
+  "thickMm": 135.054165420551,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit04.webp",
+  "json": "2026000273/unit04.json",
+  "ok": true,
+  "verified": true,
+  "walls": 182,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 23.846963514691843,
+  "thickMm": 119.23481757345922,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit05.webp",
+  "json": "2026000273/unit05.json",
+  "ok": true,
+  "verified": true,
+  "walls": 158,
+  "spaces": 0,
+  "spaceFound": 10,
+  "mm_per_px": 27.13516073926285,
+  "thickMm": 135.67580369631426,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit06.webp",
+  "json": "2026000273/unit06.json",
+  "ok": true,
+  "verified": true,
+  "walls": 179,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 25.557987831743738,
+  "thickMm": 127.78993915871868,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit07.webp",
+  "json": "2026000273/unit07.json",
+  "ok": true,
+  "verified": true,
+  "walls": 143,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 26.818221687163746,
+  "thickMm": 160.90933012298248,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit08.webp",
+  "json": "2026000273/unit08.json",
+  "ok": true,
+  "verified": true,
+  "walls": 164,
+  "spaces": 0,
+  "spaceFound": 2,
+  "mm_per_px": 27.094424526397965,
+  "thickMm": 135.47212263198983,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit09.webp",
+  "json": "2026000273/unit09.json",
+  "ok": true,
+  "verified": true,
+  "walls": 169,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 26.15732581424098,
+  "thickMm": 156.9439548854459,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit10.webp",
+  "json": "2026000273/unit10.json",
+  "ok": true,
+  "verified": true,
+  "walls": 136,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 28.252139895509302,
+  "thickMm": 226.01711916407442,
+  "warn": []
+ },
+ {
+  "store_path": "2026000273/unit11.webp",
+  "json": "2026000273/unit11.json",
+  "ok": true,
+  "verified": true,
+  "walls": 168,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 27.005725123151727,
+  "thickMm": 162.03435073891035,
+  "warn": []
+ },
+ {
+  "store_path": "2026000261/unit01.webp",
+  "json": "2026000261/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2026000261/unit02.webp",
+  "json": "2026000261/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2026000261/unit03.webp",
+  "json": "2026000261/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2026000260/unit01.webp",
+  "json": "2026000260/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 24.044318683969294,
+  "thickMm": 216.39886815572365,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 28%)"
+  ]
+ },
+ {
+  "store_path": "2026000260/unit02.webp",
+  "json": "2026000260/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 24.270935599431766,
+  "thickMm": 194.16748479545413,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2026000260/unit03.webp",
+  "json": "2026000260/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 51.26242819836151,
+  "thickMm": 307.5745691901691,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 25%)"
+  ]
+ },
+ {
+  "store_path": "2026000098/unit-74.webp",
+  "json": "2026000098/unit-74.json",
+  "ok": true,
+  "verified": true,
+  "walls": 62,
+  "spaces": 0,
+  "spaceFound": 3,
+  "mm_per_px": 20.870929828832466,
+  "thickMm": 229.58022811715713,
+  "warn": []
+ },
+ {
+  "store_path": "2026000098/unit-84a.webp",
+  "json": "2026000098/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.99215287976045,
+  "thickMm": 247.9372230380836,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 19%)"
+  ]
+ },
+ {
+  "store_path": "2026000098/unit-84b.webp",
+  "json": "2026000098/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.84538715536688,
+  "thickMm": 240.29925870903566,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2026000170/66.webp",
+  "json": "2026000170/66.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.88074464283649,
+  "thickMm": 196.9267017855284,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2026000087/unit01.webp",
+  "json": "2026000087/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2026000087/unit04.webp",
+  "json": "2026000087/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2026000087/unit06.webp",
+  "json": "2026000087/unit06.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2026000073/unit01.webp",
+  "json": "2026000073/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 16.834513781657673,
+  "thickMm": 101.00708268994603,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 23%)"
+  ]
+ },
+ {
+  "store_path": "2026000073/unit02.webp",
+  "json": "2026000073/unit02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 78,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 13.68210692185884,
+  "thickMm": 109.45685537487071,
+  "warn": []
+ },
+ {
+  "store_path": "2026000047/unit-73.webp",
+  "json": "2026000047/unit-73.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 28.22357585399588,
+  "thickMm": 310.4593343939547,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2026000047/unit-74.webp",
+  "json": "2026000047/unit-74.json",
+  "ok": true,
+  "verified": true,
+  "walls": 99,
+  "spaces": 0,
+  "spaceFound": 1,
+  "mm_per_px": 16.906002061078613,
+  "thickMm": 202.87202473294337,
+  "warn": []
+ },
+ {
+  "store_path": "2026000047/unit-84a.webp",
+  "json": "2026000047/unit-84a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 101,
+  "spaces": 0,
+  "spaceFound": 3,
+  "mm_per_px": 21.848145521516045,
+  "thickMm": 174.78516417212836,
+  "warn": []
+ },
+ {
+  "store_path": "2026000066/unit-101.webp",
+  "json": "2026000066/unit-101.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 35.273834964911,
+  "thickMm": 70.547669929822,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 8%)"
+  ]
+ },
+ {
+  "store_path": "2026000066/unit-115.webp",
+  "json": "2026000066/unit-115.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 38.17700905431412,
+  "thickMm": 76.35401810862824,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 3%)"
+  ]
+ },
+ {
+  "store_path": "2026000066/unit-59.webp",
+  "json": "2026000066/unit-59.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 27.87476830128233,
+  "thickMm": 55.74953660256466,
+  "warn": [
+   "벽두께 56mm",
+   "벽두께 분포 이상(실벽 구간 4%)"
+  ]
+ },
+ {
+  "store_path": "2026000066/unit-84.webp",
+  "json": "2026000066/unit-84.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 33.28974768864136,
+  "thickMm": 66.57949537728273,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 8%)"
+  ]
+ },
+ {
+  "store_path": "2026000044/103a.webp",
+  "json": "2026000044/103a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 130,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 18.725567737119416,
+  "thickMm": 187.25567737119417,
+  "warn": []
+ },
+ {
+  "store_path": "2026000044/103b.webp",
+  "json": "2026000044/103b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 18.757695402936413,
+  "thickMm": 187.57695402936412,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2026000044/116.webp",
+  "json": "2026000044/116.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 18.692115628156213,
+  "thickMm": 224.30538753787454,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2026000044/119a.webp",
+  "json": "2026000044/119a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 91,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 18.279161137321918,
+  "thickMm": 274.18741705982876,
+  "warn": []
+ },
+ {
+  "store_path": "2026000044/119b.webp",
+  "json": "2026000044/119b.json",
+  "ok": true,
+  "verified": true,
+  "walls": 86,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 18.217327915543034,
+  "thickMm": 255.04259081760247,
+  "warn": []
+ },
+ {
+  "store_path": "2026000044/84a.webp",
+  "json": "2026000044/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.910914654223443,
+  "thickMm": 250.7528051591282,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 22%)"
+  ]
+ },
+ {
+  "store_path": "2026000044/84b.webp",
+  "json": "2026000044/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.759462498176326,
+  "thickMm": 213.1135499781159,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 28%)"
+  ]
+ },
+ {
+  "store_path": "2026000044/84c.webp",
+  "json": "2026000044/84c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 18.7481446495274,
+  "thickMm": 206.22959114480142,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 28%)"
+  ]
+ },
+ {
+  "store_path": "2026000043/unit1.webp",
+  "json": "2026000043/unit1.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 15.762618470308018,
+  "thickMm": 315.25236940616037,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2026000043/unit2.webp",
+  "json": "2026000043/unit2.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 16.33097462893933,
+  "thickMm": 130.64779703151464,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 27%)"
+  ]
+ },
+ {
+  "store_path": "2026000043/unit3.webp",
+  "json": "2026000043/unit3.json",
+  "ok": true,
+  "verified": true,
+  "walls": 45,
+  "spaces": 0,
+  "spaceFound": 7,
+  "mm_per_px": 15.904808744150259,
+  "thickMm": 127.23846995320207,
+  "warn": []
+ },
+ {
+  "store_path": "2026000043/unit4.webp",
+  "json": "2026000043/unit4.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 16.154398965561533,
+  "thickMm": 145.3895906900538,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2026000043/unit5.webp",
+  "json": "2026000043/unit5.json",
+  "ok": true,
+  "verified": true,
+  "walls": 52,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 16.57069145752781,
+  "thickMm": 132.5655316602225,
+  "warn": []
+ },
+ {
+  "store_path": "2026000030/01.webp",
+  "json": "2026000030/01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.12251366804973,
+  "thickMm": 68.49005467219892,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 26%)"
+  ]
+ },
+ {
+  "store_path": "2026000030/02.webp",
+  "json": "2026000030/02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 152,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 17.15795373681469,
+  "thickMm": 120.10567615770283,
+  "warn": []
+ },
+ {
+  "store_path": "2026000030/03.webp",
+  "ok": false,
+  "reason": "평면도 영역 없음"
+ },
+ {
+  "store_path": "2026000009/unit01.webp",
+  "json": "2026000009/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000581/unit-59a.webp",
+  "json": "2025000581/unit-59a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 276,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 20.533849730492513,
+  "thickMm": 123.20309838295508,
+  "warn": []
+ },
+ {
+  "store_path": "2025000582/unit-84a.webp",
+  "json": "2025000582/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 18.12711714365824,
+  "thickMm": 108.76270286194944,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 26%)"
+  ]
+ },
+ {
+  "store_path": "2025000554/unit-1.webp",
+  "json": "2025000554/unit-1.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000554/unit-2.webp",
+  "json": "2025000554/unit-2.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000554/unit-3.webp",
+  "json": "2025000554/unit-3.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000554/unit-4.webp",
+  "json": "2025000554/unit-4.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000554/unit-5.webp",
+  "json": "2025000554/unit-5.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000554/unit-6.webp",
+  "json": "2025000554/unit-6.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000553/unit-1.webp",
+  "json": "2025000553/unit-1.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 20.152159098467767,
+  "thickMm": 141.06511368927437,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2025000553/unit-2.webp",
+  "json": "2025000553/unit-2.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 27.381935931770307,
+  "thickMm": 191.67355152239216,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2025000553/unit-3.webp",
+  "json": "2025000553/unit-3.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 16.91511615639101,
+  "thickMm": 101.49069693834608,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2025000553/unit-4.webp",
+  "json": "2025000553/unit-4.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.44581990222089,
+  "thickMm": 214.4581990222089,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 23%)"
+  ]
+ },
+ {
+  "store_path": "2025000553/unit-5.webp",
+  "json": "2025000553/unit-5.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 24.901692421214996,
+  "thickMm": 373.52538631822495,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 35%)"
+  ]
+ },
+ {
+  "store_path": "2025000553/unit-6.webp",
+  "json": "2025000553/unit-6.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 31.56210768209409,
+  "thickMm": 157.81053841047046,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 28%)"
+  ]
+ },
+ {
+  "store_path": "2025000573/66a.webp",
+  "json": "2025000573/66a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000573/66b.webp",
+  "json": "2025000573/66b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000573/84a.webp",
+  "json": "2025000573/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000573/84b.webp",
+  "json": "2025000573/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000542/unit-83a.webp",
+  "json": "2025000542/unit-83a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.266879361080175,
+  "thickMm": 233.93567297188193,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 25%)"
+  ]
+ },
+ {
+  "store_path": "2025000537/unit-1.webp",
+  "json": "2025000537/unit-1.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 18.74839153697525,
+  "thickMm": 149.987132295802,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 27%)"
+  ]
+ },
+ {
+  "store_path": "2025000537/unit-2.webp",
+  "json": "2025000537/unit-2.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.899223358561432,
+  "thickMm": 161.0930102270529,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2025000537/unit-3.webp",
+  "json": "2025000537/unit-3.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 18.24300638198624,
+  "thickMm": 127.70104467390368,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-1.webp",
+  "json": "2025000464/unit-1.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 61.75410823797953,
+  "thickMm": 555.7869741418158,
+  "warn": [
+   "벽두께 556mm",
+   "벽두께 분포 이상(실벽 구간 13%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-10.webp",
+  "json": "2025000464/unit-10.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 81.7538134839693,
+  "thickMm": 572.276694387785,
+  "warn": [
+   "벽두께 572mm",
+   "벽두께 분포 이상(실벽 구간 25%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-11.webp",
+  "json": "2025000464/unit-11.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 39.313580189899696,
+  "thickMm": 78.62716037979939,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 8%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-12.webp",
+  "json": "2025000464/unit-12.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 36.81726181377835,
+  "thickMm": 331.3553563240052,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-13.webp",
+  "json": "2025000464/unit-13.json",
+  "ok": true,
+  "verified": true,
+  "walls": 84,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 37.25199327980808,
+  "thickMm": 149.00797311923233,
+  "warn": []
+ },
+ {
+  "store_path": "2025000464/unit-2.webp",
+  "json": "2025000464/unit-2.json",
+  "ok": true,
+  "verified": true,
+  "walls": 18,
+  "spaces": 0,
+  "spaceFound": 3,
+  "mm_per_px": 61.137522038159986,
+  "thickMm": 305.68761019079994,
+  "warn": []
+ },
+ {
+  "store_path": "2025000464/unit-3.webp",
+  "json": "2025000464/unit-3.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.45846001449888,
+  "thickMm": 121.83384005799552,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-4.webp",
+  "json": "2025000464/unit-4.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 72.33612348707905,
+  "thickMm": 506.3528644095534,
+  "warn": [
+   "벽두께 506mm",
+   "벽두께 분포 이상(실벽 구간 13%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-5.webp",
+  "json": "2025000464/unit-5.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 68.18852064186731,
+  "thickMm": 545.5081651349385,
+  "warn": [
+   "벽두께 546mm",
+   "벽두께 분포 이상(실벽 구간 10%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-6.webp",
+  "json": "2025000464/unit-6.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 64.3551003990237,
+  "thickMm": 450.4857027931659,
+  "warn": [
+   "벽두께 450mm"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-7.webp",
+  "json": "2025000464/unit-7.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 34.26349008447707,
+  "thickMm": 68.52698016895414,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 11%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-8.webp",
+  "json": "2025000464/unit-8.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 65.03154581750137,
+  "thickMm": 455.2208207225096,
+  "warn": [
+   "벽두께 455mm",
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2025000464/unit-9.webp",
+  "json": "2025000464/unit-9.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 37.25021635263646,
+  "thickMm": 74.50043270527291,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2025000425/unit-101.webp",
+  "json": "2025000425/unit-101.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 22.44998706237913,
+  "thickMm": 202.04988356141217,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2025000498/unit01.webp",
+  "json": "2025000498/unit01.json",
+  "ok": true,
+  "verified": true,
+  "walls": 58,
+  "spaces": 0,
+  "spaceFound": 9,
+  "mm_per_px": 25.537155700075232,
+  "thickMm": 178.76008990052662,
+  "warn": []
+ },
+ {
+  "store_path": "2025000498/unit02.webp",
+  "json": "2025000498/unit02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 59,
+  "spaces": 0,
+  "spaceFound": 7,
+  "mm_per_px": 23.843765881952248,
+  "thickMm": 166.90636117366574,
+  "warn": []
+ },
+ {
+  "store_path": "2025000498/unit03.webp",
+  "json": "2025000498/unit03.json",
+  "ok": true,
+  "verified": true,
+  "walls": 59,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 25.522888948862324,
+  "thickMm": 153.13733369317396,
+  "warn": []
+ },
+ {
+  "store_path": "2025000498/unit04.webp",
+  "json": "2025000498/unit04.json",
+  "ok": true,
+  "verified": true,
+  "walls": 56,
+  "spaces": 0,
+  "spaceFound": 7,
+  "mm_per_px": 27.94683158501935,
+  "thickMm": 167.6809895101161,
+  "warn": []
+ },
+ {
+  "store_path": "2025000498/unit05.webp",
+  "json": "2025000498/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.65903906353404,
+  "thickMm": 153.2951953176702,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2025000412/unit-74.webp",
+  "json": "2025000412/unit-74.json",
+  "ok": true,
+  "verified": true,
+  "walls": 62,
+  "spaces": 0,
+  "spaceFound": 3,
+  "mm_per_px": 20.870929828832466,
+  "thickMm": 229.58022811715713,
+  "warn": []
+ },
+ {
+  "store_path": "2025000412/unit-84a.webp",
+  "json": "2025000412/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.99215287976045,
+  "thickMm": 247.9372230380836,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 19%)"
+  ]
+ },
+ {
+  "store_path": "2025000412/unit-84b.webp",
+  "json": "2025000412/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.84538715536688,
+  "thickMm": 240.29925870903566,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2025000450/unit01.webp",
+  "json": "2025000450/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000450/unit02.webp",
+  "json": "2025000450/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000450/unit03.webp",
+  "json": "2025000450/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000450/unit04.webp",
+  "json": "2025000450/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000448/unit-101a.webp",
+  "json": "2025000448/unit-101a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 38.18307738401184,
+  "thickMm": 381.83077384011835,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2025000448/unit-154a.webp",
+  "json": "2025000448/unit-154a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 171,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 33.13012959456819,
+  "thickMm": 231.91090716197732,
+  "warn": []
+ },
+ {
+  "store_path": "2025000448/unit-84a.webp",
+  "json": "2025000448/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 35.28066931294361,
+  "thickMm": 388.0873624423797,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 32%)"
+  ]
+ },
+ {
+  "store_path": "2025000448/unit-84b.webp",
+  "json": "2025000448/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 33.78945438362717,
+  "thickMm": 304.1050894526445,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 32%)"
+  ]
+ },
+ {
+  "store_path": "2025000448/unit-84c.webp",
+  "json": "2025000448/unit-84c.json",
+  "ok": true,
+  "verified": true,
+  "walls": 40,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 34.15709199727605,
+  "thickMm": 273.2567359782084,
+  "warn": []
+ },
+ {
+  "store_path": "2025000448/unit-84d.webp",
+  "json": "2025000448/unit-84d.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 35.22005315104125,
+  "thickMm": 352.2005315104125,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 27%)"
+  ]
+ },
+ {
+  "store_path": "2025000431/unit-84.webp",
+  "json": "2025000431/unit-84.json",
+  "ok": true,
+  "verified": true,
+  "walls": 53,
+  "spaces": 0,
+  "spaceFound": 8,
+  "mm_per_px": 18.73277965098937,
+  "thickMm": 224.79335581187246,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/type01.webp",
+  "json": "2025000364/type01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/type02.webp",
+  "json": "2025000364/type02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/type03.webp",
+  "json": "2025000364/type03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/type04.webp",
+  "json": "2025000364/type04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/type05.webp",
+  "json": "2025000364/type05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/type06.webp",
+  "json": "2025000364/type06.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/unit01.webp",
+  "json": "2025000364/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/unit02.webp",
+  "json": "2025000364/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/unit03.webp",
+  "json": "2025000364/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/unit04.webp",
+  "json": "2025000364/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/unit05.webp",
+  "json": "2025000364/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000364/unit06.webp",
+  "json": "2025000364/unit06.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000380/01.webp",
+  "json": "2025000380/01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.12251366804973,
+  "thickMm": 68.49005467219892,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 26%)"
+  ]
+ },
+ {
+  "store_path": "2025000380/02.webp",
+  "json": "2025000380/02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 152,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 17.15795373681469,
+  "thickMm": 120.10567615770283,
+  "warn": []
+ },
+ {
+  "store_path": "2025000380/03.webp",
+  "ok": false,
+  "reason": "평면도 영역 없음"
+ },
+ {
+  "store_path": "2025000365/unit-100b.webp",
+  "json": "2025000365/unit-100b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 20.42934888874812,
+  "thickMm": 286.0108844424737,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2025000365/unit-62.webp",
+  "json": "2025000365/unit-62.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 26.987788979498298,
+  "thickMm": 53.975577958996595,
+  "warn": [
+   "벽두께 54mm",
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2025000365/unit-84a.webp",
+  "json": "2025000365/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 33.69469951726346,
+  "thickMm": 67.38939903452692,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 10%)"
+  ]
+ },
+ {
+  "store_path": "2025000370/unit-49.webp",
+  "json": "2025000370/unit-49.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 31.002091797991906,
+  "thickMm": 155.01045898995952,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 23%)"
+  ]
+ },
+ {
+  "store_path": "2025000340/unit-122.webp",
+  "json": "2025000340/unit-122.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 41.62717850303064,
+  "thickMm": 582.780499042429,
+  "warn": [
+   "벽두께 583mm",
+   "전체폭 41627mm",
+   "벽두께 분포 이상(실벽 구간 11%)"
+  ]
+ },
+ {
+  "store_path": "2025000340/unit-131a.webp",
+  "json": "2025000340/unit-131a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 43.7555973386035,
+  "thickMm": 612.578362740449,
+  "warn": [
+   "벽두께 613mm",
+   "전체폭 43756mm",
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2025000340/unit-131b.webp",
+  "json": "2025000340/unit-131b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 43.63911518076394,
+  "thickMm": 610.9476125306951,
+  "warn": [
+   "벽두께 611mm",
+   "전체폭 43639mm",
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2025000340/unit-131c.webp",
+  "json": "2025000340/unit-131c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 43.78142915113094,
+  "thickMm": 656.7214372669641,
+  "warn": [
+   "벽두께 657mm",
+   "전체폭 43781mm",
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2025000340/unit-136a.webp",
+  "json": "2025000340/unit-136a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 44.2440242051554,
+  "thickMm": 575.1723146670201,
+  "warn": [
+   "벽두께 575mm",
+   "전체폭 44244mm",
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2025000340/unit-136b.webp",
+  "json": "2025000340/unit-136b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 26.48411913390836,
+  "thickMm": 397.26178700862545,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2025000340/unit-136c.webp",
+  "json": "2025000340/unit-136c.json",
+  "ok": true,
+  "verified": true,
+  "walls": 73,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 24.645584930989386,
+  "thickMm": 221.8102643789045,
+  "warn": []
+ },
+ {
+  "store_path": "2025000340/unit-136d.webp",
+  "json": "2025000340/unit-136d.json",
+  "ok": true,
+  "verified": true,
+  "walls": 79,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 24.59297048012973,
+  "thickMm": 221.33673432116757,
+  "warn": []
+ },
+ {
+  "store_path": "2025000340/unit-147.webp",
+  "json": "2025000340/unit-147.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 46.41608921482727,
+  "thickMm": 742.6574274372363,
+  "warn": [
+   "벽두께 743mm",
+   "전체폭 46416mm",
+   "벽두께 분포 이상(실벽 구간 12%)"
+  ]
+ },
+ {
+  "store_path": "2025000340/unit-84a.webp",
+  "json": "2025000340/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 34.704674485365224,
+  "thickMm": 451.16076830974794,
+  "warn": [
+   "벽두께 451mm",
+   "벽두께 분포 이상(실벽 구간 20%)"
+  ]
+ },
+ {
+  "store_path": "2025000340/unit-84b.webp",
+  "json": "2025000340/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 34.9123721545714,
+  "thickMm": 523.685582318571,
+  "warn": [
+   "벽두께 524mm",
+   "벽두께 분포 이상(실벽 구간 16%)"
+  ]
+ },
+ {
+  "store_path": "2025000338/unit84.webp",
+  "json": "2025000338/unit84.json",
+  "ok": true,
+  "verified": true,
+  "walls": 49,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 18.254548144726424,
+  "thickMm": 164.2909333025378,
+  "warn": []
+ },
+ {
+  "store_path": "2025000252/unit01.webp",
+  "json": "2025000252/unit01.json",
+  "ok": true,
+  "verified": true,
+  "walls": 49,
+  "spaces": 0,
+  "spaceFound": 7,
+  "mm_per_px": 24.35264636203959,
+  "thickMm": 194.82117089631672,
+  "warn": []
+ },
+ {
+  "store_path": "2025000252/unit02.webp",
+  "json": "2025000252/unit02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 98,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.90764145245388,
+  "thickMm": 125.35349016717717,
+  "warn": []
+ },
+ {
+  "store_path": "2025000242/unit-1.webp",
+  "json": "2025000242/unit-1.json",
+  "ok": true,
+  "verified": true,
+  "walls": 60,
+  "spaces": 0,
+  "spaceFound": 7,
+  "mm_per_px": 25.562007837228578,
+  "thickMm": 178.93405486060004,
+  "warn": []
+ },
+ {
+  "store_path": "2025000242/unit-2.webp",
+  "json": "2025000242/unit-2.json",
+  "ok": true,
+  "verified": true,
+  "walls": 59,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 24.278687082297125,
+  "thickMm": 194.229496658377,
+  "warn": []
+ },
+ {
+  "store_path": "2025000242/unit-3.webp",
+  "json": "2025000242/unit-3.json",
+  "ok": true,
+  "verified": true,
+  "walls": 92,
+  "spaces": 0,
+  "spaceFound": 7,
+  "mm_per_px": 21.062752253924916,
+  "thickMm": 126.3765135235495,
+  "warn": []
+ },
+ {
+  "store_path": "2025000242/unit-4.webp",
+  "json": "2025000242/unit-4.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 28.103391148286676,
+  "thickMm": 309.13730263115343,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 28%)"
+  ]
+ },
+ {
+  "store_path": "2025000207/unit01.webp",
+  "json": "2025000207/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000207/unit02.webp",
+  "json": "2025000207/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000207/unit03.webp",
+  "json": "2025000207/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000207/unit04.webp",
+  "json": "2025000207/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000206/unit01.webp",
+  "json": "2025000206/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000206/unit02.webp",
+  "json": "2025000206/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000206/unit03.webp",
+  "json": "2025000206/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000206/unit04.webp",
+  "json": "2025000206/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000203/unit01.webp",
+  "json": "2025000203/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000194/unit01.webp",
+  "json": "2025000194/unit01.json",
+  "ok": true,
+  "verified": true,
+  "walls": 55,
+  "spaces": 0,
+  "spaceFound": 3,
+  "mm_per_px": 24.26505746448359,
+  "thickMm": 266.9156321093195,
+  "warn": []
+ },
+ {
+  "store_path": "2025000194/unit02.webp",
+  "json": "2025000194/unit02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 75,
+  "spaces": 0,
+  "spaceFound": 1,
+  "mm_per_px": 18.686338408359322,
+  "thickMm": 149.49070726687458,
+  "warn": []
+ },
+ {
+  "store_path": "2025000194/unit03.webp",
+  "json": "2025000194/unit03.json",
+  "ok": true,
+  "verified": true,
+  "walls": 60,
+  "spaces": 0,
+  "spaceFound": 2,
+  "mm_per_px": 24.63414487490129,
+  "thickMm": 197.0731589992103,
+  "warn": []
+ },
+ {
+  "store_path": "2025000194/unit04.webp",
+  "json": "2025000194/unit04.json",
+  "ok": true,
+  "verified": true,
+  "walls": 73,
+  "spaces": 0,
+  "spaceFound": 3,
+  "mm_per_px": 20.172886658920106,
+  "thickMm": 161.38309327136085,
+  "warn": []
+ },
+ {
+  "store_path": "2025000164/unit-59a.webp",
+  "json": "2025000164/unit-59a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 40,
+  "spaces": 0,
+  "spaceFound": 8,
+  "mm_per_px": 19.08756711406964,
+  "thickMm": 286.31350671104457,
+  "warn": []
+ },
+ {
+  "store_path": "2025000164/unit-59c.webp",
+  "json": "2025000164/unit-59c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 19.80481613280198,
+  "thickMm": 316.8770581248317,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2025000164/unit-59d.webp",
+  "json": "2025000164/unit-59d.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 23.55038291199121,
+  "thickMm": 329.7053607678769,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2025000164/unit-84a.webp",
+  "json": "2025000164/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 22.999030748303912,
+  "thickMm": 298.98739972795084,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2025000164/unit-84b.webp",
+  "json": "2025000164/unit-84b.json",
+  "ok": true,
+  "verified": true,
+  "walls": 54,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 20.500744533307774,
+  "thickMm": 287.01042346630885,
+  "warn": []
+ },
+ {
+  "store_path": "2025000164/unit-84c.webp",
+  "json": "2025000164/unit-84c.json",
+  "ok": true,
+  "verified": true,
+  "walls": 52,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 20.351026501982194,
+  "thickMm": 284.9143710277507,
+  "warn": []
+ },
+ {
+  "store_path": "2025000115/unit-59a.webp",
+  "json": "2025000115/unit-59a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000115/unit-59b.webp",
+  "json": "2025000115/unit-59b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2025000115/unit-84a.webp",
+  "json": "2025000115/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 24.09507247384356,
+  "thickMm": 265.0457972122792,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 21%)"
+  ]
+ },
+ {
+  "store_path": "2025000115/unit-84b.webp",
+  "json": "2025000115/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.269639764807568,
+  "thickMm": 605.3927952961513,
+  "warn": [
+   "벽두께 605mm",
+   "벽두께 분포 이상(실벽 구간 11%)"
+  ]
+ },
+ {
+  "store_path": "2025000115/unit-84c.webp",
+  "json": "2025000115/unit-84c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 23.24381365053109,
+  "thickMm": 418.3886457095596,
+  "warn": [
+   "벽두께 418mm",
+   "벽두께 분포 이상(실벽 구간 23%)"
+  ]
+ },
+ {
+  "store_path": "2025000114/unit-59a.webp",
+  "json": "2025000114/unit-59a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 26.695753156068562,
+  "thickMm": 320.34903787282275,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 11%)"
+  ]
+ },
+ {
+  "store_path": "2025000114/unit-59b.webp",
+  "json": "2025000114/unit-59b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 22.526437815519813,
+  "thickMm": 292.84369160175754,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 7%)"
+  ]
+ },
+ {
+  "store_path": "2025000114/unit-84a.webp",
+  "json": "2025000114/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 24.09507247384356,
+  "thickMm": 265.0457972122792,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 21%)"
+  ]
+ },
+ {
+  "store_path": "2025000114/unit-84b.webp",
+  "json": "2025000114/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.269639764807568,
+  "thickMm": 605.3927952961513,
+  "warn": [
+   "벽두께 605mm",
+   "벽두께 분포 이상(실벽 구간 11%)"
+  ]
+ },
+ {
+  "store_path": "2025000114/unit-84c.webp",
+  "json": "2025000114/unit-84c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 23.24381365053109,
+  "thickMm": 418.3886457095596,
+  "warn": [
+   "벽두께 418mm",
+   "벽두께 분포 이상(실벽 구간 23%)"
+  ]
+ },
+ {
+  "store_path": "2025000081/unit-101.webp",
+  "json": "2025000081/unit-101.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 23.54720361170488,
+  "thickMm": 353.2080541755732,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 21%)"
+  ]
+ },
+ {
+  "store_path": "2025000081/unit-70.webp",
+  "json": "2025000081/unit-70.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 28.071461554235782,
+  "thickMm": 393.00046175930095,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 19%)"
+  ]
+ },
+ {
+  "store_path": "2025000081/unit-84.webp",
+  "json": "2025000081/unit-84.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 29.240800280853698,
+  "thickMm": 409.37120393195175,
+  "warn": [
+   "벽두께 409mm",
+   "벽두께 분포 이상(실벽 구간 14%)"
+  ]
+ },
+ {
+  "store_path": "2025000063/unit-84b.webp",
+  "json": "2025000063/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.737819615897365,
+  "thickMm": 319.2807530861526,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 25%)"
+  ]
+ },
+ {
+  "store_path": "2025000047/unit01.webp",
+  "json": "2025000047/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 23.82845323431348,
+  "thickMm": 285.9414388117617,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 27%)"
+  ]
+ },
+ {
+  "store_path": "2025000047/unit02.webp",
+  "json": "2025000047/unit02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 66,
+  "spaces": 0,
+  "spaceFound": 14,
+  "mm_per_px": 23.5001240352511,
+  "thickMm": 258.5013643877621,
+  "warn": []
+ },
+ {
+  "store_path": "2025000047/unit03.webp",
+  "json": "2025000047/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 24.933728424000506,
+  "thickMm": 324.13846951200657,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2025000047/unit04.webp",
+  "json": "2025000047/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 19.72600285083325,
+  "thickMm": 276.1640399116655,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2024000660/unit-59a.webp",
+  "json": "2024000660/unit-59a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 68,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 16.702382265905374,
+  "thickMm": 183.72620492495912,
+  "warn": []
+ },
+ {
+  "store_path": "2024000546/unit-59a.webp",
+  "json": "2024000546/unit-59a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.83040136234682,
+  "thickMm": 213.96481634816183,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 20%)"
+  ]
+ },
+ {
+  "store_path": "2024000546/unit-59b.webp",
+  "json": "2024000546/unit-59b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 18.395223997595807,
+  "thickMm": 331.1140319567245,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 22%)"
+  ]
+ },
+ {
+  "store_path": "2024000649/unit-75.webp",
+  "json": "2024000649/unit-75.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 26.93184943859554,
+  "thickMm": 323.1821932631465,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2024000637/unit01.webp",
+  "json": "2024000637/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 13.392958284810499,
+  "thickMm": 147.3225411329155,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2024000637/unit02.webp",
+  "json": "2024000637/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 23.526624215758012,
+  "thickMm": 211.7396179418221,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2024000637/unit03.webp",
+  "json": "2024000637/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 38.19082148499033,
+  "thickMm": 267.3357503949323,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2024000637/unit04.webp",
+  "json": "2024000637/unit04.json",
+  "ok": true,
+  "verified": true,
+  "walls": 76,
+  "spaces": 0,
+  "spaceFound": 8,
+  "mm_per_px": 20.4899861333562,
+  "thickMm": 204.899861333562,
+  "warn": []
+ },
+ {
+  "store_path": "2024000609/59a.webp",
+  "json": "2024000609/59a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 32.93944841924535,
+  "thickMm": 263.5155873539628,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 32%)"
+  ]
+ },
+ {
+  "store_path": "2024000609/59b.webp",
+  "json": "2024000609/59b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 29.809350737560102,
+  "thickMm": 268.28415663804094,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2024000602/unit-83a.webp",
+  "json": "2024000602/unit-83a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 15.477784742816716,
+  "thickMm": 139.30006268535044,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 25%)"
+  ]
+ },
+ {
+  "store_path": "2024000621/75.webp",
+  "json": "2024000621/75.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 16.73513988631734,
+  "thickMm": 234.29195840844278,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2024000621/84b.webp",
+  "json": "2024000621/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.09266849594245,
+  "thickMm": 393.1313754066764,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 20%)"
+  ]
+ },
+ {
+  "store_path": "2024000573/unit01.webp",
+  "json": "2024000573/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000573/unit02.webp",
+  "json": "2024000573/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000573/unit03.webp",
+  "json": "2024000573/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000573/unit04.webp",
+  "json": "2024000573/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000573/unit05.webp",
+  "json": "2024000573/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000572/unit01.webp",
+  "json": "2024000572/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000572/unit02.webp",
+  "json": "2024000572/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000572/unit03.webp",
+  "json": "2024000572/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000572/unit04.webp",
+  "json": "2024000572/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000572/unit05.webp",
+  "json": "2024000572/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2024000557/unit-113a.webp",
+  "json": "2024000557/unit-113a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 65,
+  "spaces": 0,
+  "spaceFound": 2,
+  "mm_per_px": 15.152632863709025,
+  "thickMm": 212.13686009192634,
+  "warn": []
+ },
+ {
+  "store_path": "2024000557/unit-113b.webp",
+  "json": "2024000557/unit-113b.json",
+  "ok": true,
+  "verified": true,
+  "walls": 64,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 16.046239392375504,
+  "thickMm": 240.69359088563257,
+  "warn": []
+ },
+ {
+  "store_path": "2024000557/unit-59.webp",
+  "json": "2024000557/unit-59.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 15.061109947615764,
+  "thickMm": 135.5499895285419,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2024000557/unit-84a.webp",
+  "json": "2024000557/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.964093324716153,
+  "thickMm": 143.71274659772922,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 28%)"
+  ]
+ },
+ {
+  "store_path": "2024000557/unit-84b.webp",
+  "json": "2024000557/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 20.127969906706788,
+  "thickMm": 181.1517291603611,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2024000387/unit01.webp",
+  "json": "2024000387/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 26.721526170813135,
+  "thickMm": 267.2152617081314,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2024000387/unit02.webp",
+  "json": "2024000387/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 29.18272017235528,
+  "thickMm": 233.46176137884223,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2024000387/unit03.webp",
+  "json": "2024000387/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.804375955610126,
+  "thickMm": 246.435007644881,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2024000387/unit04.webp",
+  "json": "2024000387/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 33.207239199029765,
+  "thickMm": 232.45067439320835,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2024000387/unit05.webp",
+  "json": "2024000387/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 28.078551064905902,
+  "thickMm": 308.86406171396493,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2024000472/unit01.webp",
+  "json": "2024000472/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 37.65804732068496,
+  "thickMm": 414.23852052753455,
+  "warn": [
+   "벽두께 414mm",
+   "벽두께 분포 이상(실벽 구간 9%)"
+  ]
+ },
+ {
+  "store_path": "2024000472/unit02.webp",
+  "ok": false,
+  "reason": "평면도 영역 없음"
+ },
+ {
+  "store_path": "2024000472/unit03.webp",
+  "json": "2024000472/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 43.86088966118671,
+  "thickMm": 87.72177932237342,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2024000472/unit04.webp",
+  "ok": false,
+  "reason": "평면도 영역 없음"
+ },
+ {
+  "store_path": "2024000472/unit05.webp",
+  "json": "2024000472/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 53.5422767552817,
+  "thickMm": 107.0845535105634,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 14%)"
+  ]
+ },
+ {
+  "store_path": "2024000216/84a.webp",
+  "json": "2024000216/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 25.861625131478338,
+  "thickMm": 387.9243769721751,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2024000216/84b.webp",
+  "json": "2024000216/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.037672628232908,
+  "thickMm": 294.5274167952607,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 32%)"
+  ]
+ },
+ {
+  "store_path": "2024000216/84c.webp",
+  "json": "2024000216/84c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 23.574003486172735,
+  "thickMm": 330.0360488064183,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2024000216/84d.webp",
+  "json": "2024000216/84d.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 22.10537127292166,
+  "thickMm": 265.2644552750599,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2023000707/unit01.webp",
+  "json": "2023000707/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 27.31350646415894,
+  "thickMm": 109.25402585663576,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 18%)"
+  ]
+ },
+ {
+  "store_path": "2023000707/unit02.webp",
+  "json": "2023000707/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 25.900045309680422,
+  "thickMm": 181.30031716776296,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2023000707/unit03.webp",
+  "json": "2023000707/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.32155085176571,
+  "thickMm": 277.18016107295426,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 22%)"
+  ]
+ },
+ {
+  "store_path": "2023000707/unit04.webp",
+  "json": "2023000707/unit04.json",
+  "ok": true,
+  "verified": true,
+  "walls": 190,
+  "spaces": 0,
+  "spaceFound": 1,
+  "mm_per_px": 21.599630772512292,
+  "thickMm": 107.99815386256145,
+  "warn": []
+ },
+ {
+  "store_path": "2023000707/unit05.webp",
+  "json": "2023000707/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 19.134977648740712,
+  "thickMm": 287.0246647311107,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2023000658/unit-84a.webp",
+  "json": "2023000658/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.896488497342517,
+  "thickMm": 143.17190797874014,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 23%)"
+  ]
+ },
+ {
+  "store_path": "2023000658/unit-84b.webp",
+  "json": "2023000658/unit-84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.606028672713233,
+  "thickMm": 264.0904300906985,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 18%)"
+  ]
+ },
+ {
+  "store_path": "2023000623/unit-84a.webp",
+  "json": "2023000623/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.513072830226253,
+  "thickMm": 387.2353109440726,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 16%)"
+  ]
+ },
+ {
+  "store_path": "2023000623/unit-84b.webp",
+  "json": "2023000623/unit-84b.json",
+  "ok": true,
+  "verified": true,
+  "walls": 55,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 15.463359136842243,
+  "thickMm": 231.95038705263363,
+  "warn": []
+ },
+ {
+  "store_path": "2023000623/unit-84c.webp",
+  "json": "2023000623/unit-84c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 20.01427205907437,
+  "thickMm": 420.29971324056174,
+  "warn": [
+   "벽두께 420mm",
+   "벽두께 분포 이상(실벽 구간 21%)"
+  ]
+ },
+ {
+  "store_path": "2023000407/unit01.webp",
+  "json": "2023000407/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000407/unit02.webp",
+  "json": "2023000407/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000407/unit03.webp",
+  "json": "2023000407/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000407/unit04.webp",
+  "json": "2023000407/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000407/unit05.webp",
+  "json": "2023000407/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000407/unit06.webp",
+  "json": "2023000407/unit06.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000407/unit07.webp",
+  "json": "2023000407/unit07.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000407/unit08.webp",
+  "json": "2023000407/unit08.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000407/unit09.webp",
+  "json": "2023000407/unit09.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000406/unit01.webp",
+  "json": "2023000406/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000406/unit02.webp",
+  "json": "2023000406/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000406/unit03.webp",
+  "json": "2023000406/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000406/unit04.webp",
+  "json": "2023000406/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000406/unit05.webp",
+  "json": "2023000406/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000406/unit06.webp",
+  "json": "2023000406/unit06.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000406/unit07.webp",
+  "json": "2023000406/unit07.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000406/unit08.webp",
+  "json": "2023000406/unit08.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000406/unit09.webp",
+  "json": "2023000406/unit09.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000232/unit01.webp",
+  "json": "2023000232/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 44.643549337422485,
+  "thickMm": 625.0096907239148,
+  "warn": [
+   "벽두께 625mm",
+   "전체폭 44644mm",
+   "벽두께 분포 이상(실벽 구간 18%)"
+  ]
+ },
+ {
+  "store_path": "2023000232/unit02.webp",
+  "json": "2023000232/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 45.92840829362785,
+  "thickMm": 642.9977161107898,
+  "warn": [
+   "벽두께 643mm",
+   "전체폭 45928mm",
+   "벽두께 분포 이상(실벽 구간 32%)"
+  ]
+ },
+ {
+  "store_path": "2023000232/unit03.webp",
+  "json": "2023000232/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 53.85242585810859,
+  "thickMm": 430.8194068648687,
+  "warn": [
+   "벽두께 431mm",
+   "전체폭 53852mm",
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2023000181/unit-84a.webp",
+  "json": "2023000181/unit-84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 23.678582889258568,
+  "thickMm": 355.1787433388785,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 27%)"
+  ]
+ },
+ {
+  "store_path": "2023000178/111a.webp",
+  "json": "2023000178/111a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000178/111b.webp",
+  "json": "2023000178/111b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000178/130a.webp",
+  "json": "2023000178/130a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000178/84a.webp",
+  "json": "2023000178/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000178/84b.webp",
+  "json": "2023000178/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000178/84c.webp",
+  "json": "2023000178/84c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000117/unit01.webp",
+  "json": "2023000117/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 43.08089045464024,
+  "thickMm": 258.48534272784144,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 19%)"
+  ]
+ },
+ {
+  "store_path": "2023000117/unit02.webp",
+  "json": "2023000117/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 29.374282965101326,
+  "thickMm": 205.6199807557093,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2023000117/unit03.webp",
+  "json": "2023000117/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 28.469824969315976,
+  "thickMm": 284.69824969315977,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 30%)"
+  ]
+ },
+ {
+  "store_path": "2023000117/unit04.webp",
+  "json": "2023000117/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 43.00485618372193,
+  "thickMm": 258.02913710233156,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2023000117/unit05.webp",
+  "json": "2023000117/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 41.97355530176424,
+  "thickMm": 251.84133181058547,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 25%)"
+  ]
+ },
+ {
+  "store_path": "2023000117/unit06.webp",
+  "json": "2023000117/unit06.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 28.722155388848492,
+  "thickMm": 315.9437092773334,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 26%)"
+  ]
+ },
+ {
+  "store_path": "2023000117/unit07.webp",
+  "json": "2023000117/unit07.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 26.892573993070336,
+  "thickMm": 322.71088791684406,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 25%)"
+  ]
+ },
+ {
+  "store_path": "2023000099/84a.webp",
+  "json": "2023000099/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000099/84b.webp",
+  "json": "2023000099/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2023000099/99.webp",
+  "json": "2023000099/99.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2022000874/unit01.webp",
+  "json": "2022000874/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 56.53096839606864,
+  "thickMm": 339.18581037641184,
+  "warn": [
+   "전체폭 56531mm",
+   "벽두께 분포 이상(실벽 구간 27%)"
+  ]
+ },
+ {
+  "store_path": "2022000874/unit02.webp",
+  "json": "2022000874/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 50.12585005981542,
+  "thickMm": 300.7551003588925,
+  "warn": [
+   "전체폭 50126mm",
+   "벽두께 분포 이상(실벽 구간 25%)"
+  ]
+ },
+ {
+  "store_path": "2022000874/unit03.webp",
+  "json": "2022000874/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 54.770600745078184,
+  "thickMm": 766.7884104310946,
+  "warn": [
+   "벽두께 767mm",
+   "전체폭 54771mm",
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2022000874/unit04.webp",
+  "json": "2022000874/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 58.36740356579128,
+  "thickMm": 583.6740356579128,
+  "warn": [
+   "벽두께 584mm",
+   "전체폭 58367mm",
+   "벽두께 분포 이상(실벽 구간 22%)"
+  ]
+ },
+ {
+  "store_path": "2022000804/unit-95.webp",
+  "json": "2022000804/unit-95.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.09856560551903,
+  "thickMm": 210.9856560551903,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2022520041/unit01.webp",
+  "json": "2022520041/unit01.json",
+  "ok": true,
+  "verified": true,
+  "walls": 34,
+  "spaces": 0,
+  "spaceFound": 7,
+  "mm_per_px": 30.88245671706415,
+  "thickMm": 247.0596537365132,
+  "warn": []
+ },
+ {
+  "store_path": "2022520041/unit02.webp",
+  "json": "2022520041/unit02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 40,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 29.91221881417111,
+  "thickMm": 269.20996932753997,
+  "warn": []
+ },
+ {
+  "store_path": "2022520041/unit03.webp",
+  "json": "2022520041/unit03.json",
+  "ok": true,
+  "verified": true,
+  "walls": 56,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 37.475380834255766,
+  "thickMm": 224.8522850055346,
+  "warn": []
+ },
+ {
+  "store_path": "2022000675/101.webp",
+  "json": "2022000675/101.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 48.549021400846854,
+  "thickMm": 339.84314980592796,
+  "warn": [
+   "전체폭 48549mm",
+   "벽두께 분포 이상(실벽 구간 14%)"
+  ]
+ },
+ {
+  "store_path": "2022000675/59a.webp",
+  "json": "2022000675/59a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2022000675/59b.webp",
+  "json": "2022000675/59b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2022000675/84a.webp",
+  "json": "2022000675/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 41.215841780573655,
+  "thickMm": 494.59010136688386,
+  "warn": [
+   "벽두께 495mm",
+   "전체폭 41216mm",
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2022000675/84b.webp",
+  "json": "2022000675/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 43.405907431030855,
+  "thickMm": 651.0886114654628,
+  "warn": [
+   "벽두께 651mm",
+   "전체폭 43406mm",
+   "벽두께 분포 이상(실벽 구간 0%)"
+  ]
+ },
+ {
+  "store_path": "2022000674/101.webp",
+  "json": "2022000674/101.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2022000674/59a.webp",
+  "json": "2022000674/59a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 36.05079385843855,
+  "thickMm": 288.4063508675084,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 23%)"
+  ]
+ },
+ {
+  "store_path": "2022000674/59b.webp",
+  "json": "2022000674/59b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 36.266522169203604,
+  "thickMm": 290.13217735362883,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 21%)"
+  ]
+ },
+ {
+  "store_path": "2022000674/84a.webp",
+  "json": "2022000674/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 41.215841780573655,
+  "thickMm": 494.59010136688386,
+  "warn": [
+   "벽두께 495mm",
+   "전체폭 41216mm",
+   "벽두께 분포 이상(실벽 구간 6%)"
+  ]
+ },
+ {
+  "store_path": "2022000674/84b.webp",
+  "json": "2022000674/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 43.405907431030855,
+  "thickMm": 651.0886114654628,
+  "warn": [
+   "벽두께 651mm",
+   "전체폭 43406mm",
+   "벽두께 분포 이상(실벽 구간 0%)"
+  ]
+ },
+ {
+  "store_path": "2022000719/59.webp",
+  "json": "2022000719/59.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 19.28148605303041,
+  "thickMm": 424.192693166669,
+  "warn": [
+   "벽두께 424mm",
+   "벽두께 분포 이상(실벽 구간 20%)"
+  ]
+ },
+ {
+  "store_path": "2022000648/unit01.webp",
+  "json": "2022000648/unit01.json",
+  "ok": true,
+  "verified": true,
+  "walls": 73,
+  "spaces": 0,
+  "spaceFound": 12,
+  "mm_per_px": 21.98329728502386,
+  "thickMm": 197.84967556521474,
+  "warn": []
+ },
+ {
+  "store_path": "2022000648/unit02.webp",
+  "json": "2022000648/unit02.json",
+  "ok": true,
+  "verified": true,
+  "walls": 70,
+  "spaces": 0,
+  "spaceFound": 10,
+  "mm_per_px": 21.99288132584793,
+  "thickMm": 219.9288132584793,
+  "warn": []
+ },
+ {
+  "store_path": "2022000648/unit03.webp",
+  "json": "2022000648/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.923857890596366,
+  "thickMm": 219.23857890596366,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2022000648/unit04.webp",
+  "json": "2022000648/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 25.081417657112606,
+  "thickMm": 225.73275891401346,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2022000648/unit05.webp",
+  "json": "2022000648/unit05.json",
+  "ok": true,
+  "verified": true,
+  "walls": 79,
+  "spaces": 0,
+  "spaceFound": 8,
+  "mm_per_px": 25.807942086570833,
+  "thickMm": 206.46353669256666,
+  "warn": []
+ },
+ {
+  "store_path": "2022000580/116.webp",
+  "json": "2022000580/116.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 35.647278653251966,
+  "thickMm": 213.8836719195118,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2022000580/84a.webp",
+  "json": "2022000580/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.02958659036447,
+  "thickMm": 180.17751954218681,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2022000580/84b.webp",
+  "json": "2022000580/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 29.70989100359622,
+  "thickMm": 178.2593460215773,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2022000544/59.webp",
+  "json": "2022000544/59.json",
+  "ok": true,
+  "verified": true,
+  "walls": 82,
+  "spaces": 0,
+  "spaceFound": 2,
+  "mm_per_px": 30.931995104872936,
+  "thickMm": 216.52396573411056,
+  "warn": []
+ },
+ {
+  "store_path": "2022000544/65.webp",
+  "json": "2022000544/65.json",
+  "ok": true,
+  "verified": true,
+  "walls": 82,
+  "spaces": 0,
+  "spaceFound": 2,
+  "mm_per_px": 33.13018213743777,
+  "thickMm": 265.04145709950217,
+  "warn": []
+ },
+ {
+  "store_path": "2022000544/83.webp",
+  "json": "2022000544/83.json",
+  "ok": true,
+  "verified": true,
+  "walls": 85,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 23.29778049509914,
+  "thickMm": 209.68002445589227,
+  "warn": []
+ },
+ {
+  "store_path": "2022000544/84a.webp",
+  "json": "2022000544/84a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 120,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 19.016777451305664,
+  "thickMm": 152.1342196104453,
+  "warn": []
+ },
+ {
+  "store_path": "2022000544/84b.webp",
+  "json": "2022000544/84b.json",
+  "ok": true,
+  "verified": true,
+  "walls": 116,
+  "spaces": 0,
+  "spaceFound": 1,
+  "mm_per_px": 17.510493602547285,
+  "thickMm": 192.61542962802014,
+  "warn": []
+ },
+ {
+  "store_path": "2022000506/unit01.webp",
+  "json": "2022000506/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2022000381/84a.webp",
+  "json": "2022000381/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 19.25588226676226,
+  "thickMm": 57.767646800286784,
+  "warn": [
+   "벽두께 58mm",
+   "벽두께 분포 이상(실벽 구간 15%)"
+  ]
+ },
+ {
+  "store_path": "2022000381/84p.webp",
+  "json": "2022000381/84p.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 25.224485986351514,
+  "thickMm": 75.67345795905455,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 23%)"
+  ]
+ },
+ {
+  "store_path": "2022000030/153.webp",
+  "json": "2022000030/153.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 30.75626132921454,
+  "thickMm": 276.8063519629309,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2022000030/84a.webp",
+  "json": "2022000030/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 40.98967592742809,
+  "thickMm": 245.93805556456851,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 17%)"
+  ]
+ },
+ {
+  "store_path": "2022000030/84b.webp",
+  "json": "2022000030/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 36.6217365488417,
+  "thickMm": 622.5695213303089,
+  "warn": [
+   "벽두께 623mm",
+   "벽두께 분포 이상(실벽 구간 12%)"
+  ]
+ },
+ {
+  "store_path": "2022000030/84c.webp",
+  "json": "2022000030/84c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 45.818818502397434,
+  "thickMm": 366.5505480191795,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 12%)"
+  ]
+ },
+ {
+  "store_path": "2021520005/unit01.webp",
+  "json": "2021520005/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 27.31350646415894,
+  "thickMm": 109.25402585663576,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 18%)"
+  ]
+ },
+ {
+  "store_path": "2021520005/unit02.webp",
+  "json": "2021520005/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 25.900045309680422,
+  "thickMm": 181.30031716776296,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2021520005/unit03.webp",
+  "json": "2021520005/unit03.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.32155085176571,
+  "thickMm": 277.18016107295426,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 22%)"
+  ]
+ },
+ {
+  "store_path": "2021520005/unit04.webp",
+  "json": "2021520005/unit04.json",
+  "ok": true,
+  "verified": true,
+  "walls": 190,
+  "spaces": 0,
+  "spaceFound": 1,
+  "mm_per_px": 21.599630772512292,
+  "thickMm": 107.99815386256145,
+  "warn": []
+ },
+ {
+  "store_path": "2021520005/unit05.webp",
+  "json": "2021520005/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 19.134977648740712,
+  "thickMm": 287.0246647311107,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2021000991/117.webp",
+  "json": "2021000991/117.json",
+  "ok": true,
+  "verified": true,
+  "walls": 116,
+  "spaces": 0,
+  "spaceFound": 3,
+  "mm_per_px": 18.79654800860163,
+  "thickMm": 206.76202809461793,
+  "warn": []
+ },
+ {
+  "store_path": "2021000991/148.webp",
+  "json": "2021000991/148.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 22.194681531807298,
+  "thickMm": 199.7521337862657,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 32%)"
+  ]
+ },
+ {
+  "store_path": "2021000991/165.webp",
+  "json": "2021000991/165.json",
+  "ok": true,
+  "verified": true,
+  "walls": 76,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 22.604486826321573,
+  "thickMm": 226.04486826321573,
+  "warn": []
+ },
+ {
+  "store_path": "2021000991/199.webp",
+  "json": "2021000991/199.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 31.185256183422585,
+  "thickMm": 187.11153710053551,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2021000991/84a.webp",
+  "json": "2021000991/84a.json",
+  "ok": true,
+  "verified": true,
+  "walls": 123,
+  "spaces": 0,
+  "spaceFound": 1,
+  "mm_per_px": 18.478052371663985,
+  "thickMm": 166.30247134497586,
+  "warn": []
+ },
+ {
+  "store_path": "2021000991/84b.webp",
+  "json": "2021000991/84b.json",
+  "ok": true,
+  "verified": true,
+  "walls": 191,
+  "spaces": 0,
+  "spaceFound": 1,
+  "mm_per_px": 19.016581340316066,
+  "thickMm": 152.13265072252852,
+  "warn": []
+ },
+ {
+  "store_path": "2021000991/84c.webp",
+  "json": "2021000991/84c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 27.542952344461533,
+  "thickMm": 275.4295234446153,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 25%)"
+  ]
+ },
+ {
+  "store_path": "2021000926/111.webp",
+  "json": "2021000926/111.json",
+  "ok": true,
+  "verified": true,
+  "walls": 73,
+  "spaces": 0,
+  "spaceFound": 3,
+  "mm_per_px": 36.8953290488535,
+  "thickMm": 147.581316195414,
+  "warn": []
+ },
+ {
+  "store_path": "2021000926/39.webp",
+  "json": "2021000926/39.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 32.23242182704267,
+  "thickMm": 193.39453096225603,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 29%)"
+  ]
+ },
+ {
+  "store_path": "2021000926/59.webp",
+  "json": "2021000926/59.json",
+  "ok": true,
+  "verified": true,
+  "walls": 56,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 31.661903750463384,
+  "thickMm": 158.30951875231693,
+  "warn": []
+ },
+ {
+  "store_path": "2021000926/75.webp",
+  "json": "2021000926/75.json",
+  "ok": true,
+  "verified": true,
+  "walls": 55,
+  "spaces": 0,
+  "spaceFound": 8,
+  "mm_per_px": 32.654720569942505,
+  "thickMm": 195.92832341965504,
+  "warn": []
+ },
+ {
+  "store_path": "2021000926/84a.webp",
+  "json": "2021000926/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 36.17973511318521,
+  "thickMm": 217.07841067911124,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 31%)"
+  ]
+ },
+ {
+  "store_path": "2021000926/84b.webp",
+  "json": "2021000926/84b.json",
+  "ok": true,
+  "verified": true,
+  "walls": 62,
+  "spaces": 0,
+  "spaceFound": 5,
+  "mm_per_px": 34.92446259390781,
+  "thickMm": 209.5467755634469,
+  "warn": []
+ },
+ {
+  "store_path": "2021000938/unit01.webp",
+  "json": "2021000938/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2021000897/unit01.webp",
+  "json": "2021000897/unit01.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 31.750942174436993,
+  "thickMm": 127.00376869774797,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 34%)"
+  ]
+ },
+ {
+  "store_path": "2021000897/unit02.webp",
+  "json": "2021000897/unit02.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 24.098557460360787,
+  "thickMm": 216.88701714324708,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 24%)"
+  ]
+ },
+ {
+  "store_path": "2021000897/unit03.webp",
+  "json": "2021000897/unit03.json",
+  "ok": true,
+  "verified": true,
+  "walls": 71,
+  "spaces": 0,
+  "spaceFound": 4,
+  "mm_per_px": 37.64257909189412,
+  "thickMm": 188.2128954594706,
+  "warn": []
+ },
+ {
+  "store_path": "2021000897/unit04.webp",
+  "json": "2021000897/unit04.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 21.035758329955556,
+  "thickMm": 189.32182496960002,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 26%)"
+  ]
+ },
+ {
+  "store_path": "2021000897/unit05.webp",
+  "json": "2021000897/unit05.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 34.57325088930898,
+  "thickMm": 103.71975266792694,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2021000847/84a.webp",
+  "json": "2021000847/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 28.43071962763387,
+  "thickMm": 653.906551435579,
+  "warn": [
+   "벽두께 654mm",
+   "벽두께 분포 이상(실벽 구간 10%)"
+  ]
+ },
+ {
+  "store_path": "2021000847/84b.webp",
+  "json": "2021000847/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2021000413/117.webp",
+  "json": "2021000413/117.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2021000413/84.webp",
+  "json": "2021000413/84.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 27.44800720292993,
+  "thickMm": 384.272100841019,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 27%)"
+  ]
+ },
+ {
+  "store_path": "2021000028/843.webp",
+  "json": "2021000028/843.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2021000030/107a.webp",
+  "json": "2021000030/107a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2021000030/107b.webp",
+  "json": "2021000030/107b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2021000030/84a.webp",
+  "json": "2021000030/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 28.404926883132028,
+  "thickMm": 113.61970753252811,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 33%)"
+  ]
+ },
+ {
+  "store_path": "2021000030/84b.webp",
+  "json": "2021000030/84b.json",
+  "ok": true,
+  "verified": true,
+  "walls": 55,
+  "spaces": 0,
+  "spaceFound": 6,
+  "mm_per_px": 29.278294400501224,
+  "thickMm": 146.39147200250613,
+  "warn": []
+ },
+ {
+  "store_path": "2020001454/59.webp",
+  "json": "2020001454/59.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 19.28148605303041,
+  "thickMm": 424.192693166669,
+  "warn": [
+   "벽두께 424mm",
+   "벽두께 분포 이상(실벽 구간 20%)"
+  ]
+ },
+ {
+  "store_path": "2020001127/128a.webp",
+  "json": "2020001127/128a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2020001127/128b.webp",
+  "json": "2020001127/128b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2020001127/84a.webp",
+  "json": "2020001127/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 25.34868244651561,
+  "thickMm": 228.1381420186405,
+  "warn": [
+   "벽두께 분포 이상(실벽 구간 8%)"
+  ]
+ },
+ {
+  "store_path": "2020001127/84b.webp",
+  "json": "2020001127/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": 17.319365997828726,
+  "thickMm": 432.9841499457182,
+  "warn": [
+   "벽두께 433mm",
+   "벽두께 분포 이상(실벽 구간 14%)"
+  ]
+ },
+ {
+  "store_path": "2020001004/153.webp",
+  "json": "2020001004/153.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2020001004/156.webp",
+  "json": "2020001004/156.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2020001004/160.webp",
+  "json": "2020001004/160.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2020001004/244.webp",
+  "json": "2020001004/244.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2020000227/84a.webp",
+  "json": "2020000227/84a.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2020000227/84b.webp",
+  "json": "2020000227/84b.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2020000227/84c.webp",
+  "json": "2020000227/84c.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ },
+ {
+  "store_path": "2020000227/84d.webp",
+  "json": "2020000227/84d.json",
+  "ok": true,
+  "verified": false,
+  "walls": 0,
+  "spaces": 0,
+  "spaceFound": 0,
+  "mm_per_px": null,
+  "thickMm": null,
+  "warn": []
+ }
+]
