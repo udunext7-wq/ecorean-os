@@ -90,6 +90,18 @@
   .hud-sync.offline{color:var(--gold)} .hud-sync.offline .sdot{background:var(--gold)}
   @media(max-width:400px){ .hudbar{flex-wrap:wrap;gap:6px} .hud-sync{order:3} }
 
+  .hintline{font-size:11px;color:var(--muted-2);margin-top:6px;line-height:1.5}
+  .attrow{display:flex;flex-wrap:wrap;gap:8px}
+  .attrow:empty{display:none}
+  .attchip{position:relative;width:62px;height:62px;border-radius:10px;overflow:hidden;border:1px solid var(--border);
+    background:rgba(255,255,255,.04);display:grid;place-items:center;font-size:20px;cursor:pointer}
+  .attchip img{width:100%;height:100%;object-fit:cover}
+  .attchip .x{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);
+    color:#fff;font-size:11px;display:grid;place-items:center;line-height:1}
+  .attchip.busy{opacity:.5}
+  .clip{font-size:10.5px;color:var(--blue);margin-left:4px}
+  .odue{color:var(--coral);font-weight:600}
+
   .monthnav{display:flex;align-items:center;justify-content:center;gap:18px;margin:2px 0 18px}
   .monthnav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--glass);
     color:var(--text);cursor:pointer;font-size:16px;display:grid;place-items:center;transition:.2s}
@@ -491,6 +503,8 @@
     <div class="card" id="catStat"></div>
     <div class="sec-t">부가세 예상 · VAT (이번 분기)</div>
     <div class="card" id="vatCard"></div>
+    <div class="sec-t">자금 예측 · CASH FLOW (앞으로 90일)</div>
+    <div class="card" id="cashCard"></div>
     <div class="sec-t">현장별 손익 · SITE P&L (누적)</div>
     <div class="card" id="siteStat"></div>
     <div class="sec-t">거래처 TOP · VENDORS (최근 3개월)</div>
@@ -561,6 +575,7 @@
       <div class="srow" id="goBiz"><div class="si">🏛️</div><div class="st"><div class="a">정책자금 연동</div><div class="b">기업마당 인증키 설정</div></div><div class="arr">›</div></div>
 
       <h3>데이터 · DATA</h3>
+      <div class="srow" id="importCsv"><div class="si">📥</div><div class="st"><div class="a">카드 · 통장 내역 가져오기</div><div class="b">CSV 를 올리면 카테고리를 추정해 거래로 넣습니다 (중복 자동 제외)</div></div><div class="arr">›</div></div>
       <div class="srow" id="exportCsv"><div class="si">📤</div><div class="st"><div class="a">CSV 내보내기</div><div class="b">노션·엑셀 가져오기용</div></div><div class="arr">›</div></div>
       <div class="srow" id="backupJson"><div class="si">💾</div><div class="st"><div class="a">전체 백업 (JSON)</div><div class="b">파일로 저장</div></div><div class="arr">›</div></div>
       <div class="srow" id="restoreJson"><div class="si">📥</div><div class="st"><div class="a">백업 복원</div><div class="b">JSON에서 불러오기</div></div><div class="arr">›</div></div>
@@ -601,6 +616,13 @@
     <div class="field"><label>증빙</label><select id="evidSel"><option value="세금계산서">세금계산서</option><option value="카드">카드</option><option value="현금영수증">현금영수증</option><option value="간이영수증">간이영수증</option><option value="">없음</option></select></div>
   </div>
   <div class="field bizfield"><label>대금 상태</label><div class="pills" id="crPills"><div class="pill sel" data-cr="0">✅ 결제 완료</div><div class="pill" data-cr="1">⏳ 외상 (미수·미지급)</div></div></div>
+  <div class="field bizfield hidden" id="dueField"><label id="dueLabel">수금 예정일</label><input id="dueInput" type="date">
+    <div class="hintline">언제 받기로(주기로) 했는지 넣으면 연체 알림과 자금계획에 잡힙니다</div></div>
+  <div class="field bizfield"><label>영수증 · 증빙</label>
+    <div class="attrow" id="attRow"></div>
+    <button type="button" class="btn btn-ghost" id="attBtn" style="margin-top:8px;padding:11px">📷 사진 · PDF 첨부</button>
+    <input type="file" id="attInput" accept="image/*,application/pdf" multiple class="hidden">
+  </div>
   <div class="field"><label>메모</label><input id="memoInput" type="text" placeholder="예: 욕실 벽타일 300×600 20박스" list="memoSugg"><datalist id="memoSugg"></datalist></div>
   <div class="field"><label>날짜</label><input id="dateInput" type="date"></div>
   <button class="btn btn-primary" id="saveTx">기록하기</button>
@@ -655,6 +677,36 @@
   <div class="field"><label>날짜</label><input id="eDate" type="date"></div>
   <div class="field"><label>시간 (선택)</label><input id="eTime" type="time"></div>
   <button class="btn btn-primary" id="saveEvt">일정 등록</button>
+</div>
+
+<!-- 미수 · 미지급 SHEET -->
+<div class="overlay" id="ovDue"></div>
+<div class="sheet" id="shDue">
+  <div class="grab"></div><h2 id="dueTitle">받을 돈</h2><div class="desc" id="dueDesc">예정일이 지난 건이 위에 옵니다. 받으면 ✅ 를 눌러 결제 완료로 넘기세요</div>
+  <div class="ins-grid" id="dueSummary" style="margin-bottom:14px"></div>
+  <div id="dueList" style="max-height:52vh;overflow:auto;-webkit-overflow-scrolling:touch"></div>
+</div>
+
+<!-- CSV IMPORT SHEET -->
+<div class="overlay" id="ovImp"></div>
+<div class="sheet" id="shImp">
+  <div class="grab"></div><h2>카드 · 통장 내역 가져오기</h2><div class="desc">은행·카드사에서 받은 CSV 를 그대로 올리면 거래로 바꿔 넣습니다</div>
+  <div id="impStep1">
+    <button class="btn btn-primary" id="impPick" style="padding:15px">📄 CSV 파일 고르기</button>
+    <div class="note" style="margin-top:12px"><b>어디서 받나요</b><br>· 은행: 인터넷뱅킹 › 거래내역 조회 › 엑셀(CSV) 내려받기<br>· 카드: 카드사 홈페이지 › 이용대금 명세 › 엑셀 내려받기<br>날짜·금액·적요(가맹점) 열만 있으면 됩니다. 한글(EUC-KR) 파일도 읽습니다.</div>
+  </div>
+  <div id="impStep2" class="hidden">
+    <div class="field"><label>넣을 계좌</label><div class="pills" id="impAcctPills"></div></div>
+    <div class="field"><label>현장 (선택 · 전체 일괄 지정)</label><div class="pills" id="impSitePills"></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px">
+      <div style="font-family:var(--font-d);font-size:11px;letter-spacing:1.5px;color:var(--muted)" id="impCount">0건</div>
+      <span class="act" id="impToggleAll">전체 선택/해제</span>
+    </div>
+    <div id="impList" style="max-height:46vh;overflow:auto;-webkit-overflow-scrolling:touch"></div>
+    <button class="btn btn-primary" id="impConfirm" style="margin-top:14px">선택한 내역 가져오기</button>
+    <button class="btn btn-ghost" id="impBack" style="margin-top:9px">다른 파일 고르기</button>
+  </div>
+  <input type="file" id="csvInput" accept=".csv,text/csv,text/plain" class="hidden">
 </div>
 
 <!-- KAKAO SHEET -->
@@ -805,7 +857,7 @@ function snapshot(){
 
 let state=load();
 let view=new Date(); view.setDate(1);
-let form={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name,acct2:'',editId:null,site:'',vatm:'none',evid:'세금계산서',cr:0};
+let form={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name,acct2:'',editId:null,site:'',vatm:'none',evid:'세금계산서',cr:0,due:'',att:[]};
 let rform={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name};
 let filter={q:'',type:'all',range:'month'};
 
@@ -825,6 +877,13 @@ function toast(m,act,fn){const t=$('#toast');
   else t.style.pointerEvents='none';
   clearTimeout(t._t);t._t=setTimeout(()=>{t.classList.remove('on');t.style.pointerEvents='none';},act?4500:2300);}
 function monthTx(d){const k=ym(d);return state.tx.filter(t=>t.date.slice(0,7)===k);}
+/* 외상 + 예정일이 지난 건만 연체. 예정일을 안 넣은 외상은 연체로 치지 않는다(약속 자체가 없음) */
+function overdueDays(t){
+  if(!t||!t.cr||!t.due||t.tf)return 0;
+  const d=new Date(t.due+'T00:00'),now=new Date();now.setHours(0,0,0,0);
+  return Math.max(0,Math.round((now-d)/864e5));
+}
+function creditList(type){return state.tx.filter(t=>t.cr&&!t.tf&&(!type||t.type===type));}
 function listSource(){return filter.range==='all'?state.tx:monthTx(view);}
 
 /* ============ 실시간 타이머 ============ */
@@ -884,15 +943,19 @@ function renderInsight(list,inc,exp){
   const margin=inc?((inc-exp)/inc*100):null;
   const recv=state.tx.filter(t=>t.cr&&t.type==='in'&&!t.tf).reduce((a,b)=>a+b.amount,0);
   const pay=state.tx.filter(t=>t.cr&&t.type==='out'&&!t.tf).reduce((a,b)=>a+b.amount,0);
+  const odRecv=creditList('in').filter(t=>overdueDays(t)>0).length;
+  const odPay=creditList('out').filter(t=>overdueDays(t)>0).length;
   const labor=list.filter(t=>t.type==='out'&&!t.tf&&(t.cat==='인건비'||t.cat==='외주비')).reduce((a,b)=>a+b.amount,0);
   const delta=pinc?((inc-pinc)/pinc*100):null;
   c.innerHTML=`<div class="ins-grid">
     <div class="ins"><div class="k">이익률 (순이익/매출)</div><div class="v" style="color:${margin==null?'var(--muted)':margin>=0?'var(--teal)':'var(--coral)'}">${margin==null?'—':margin.toFixed(0)+'%'}<br><small>전월 매출 대비 ${delta==null?'—':(delta>0?'▲+':'▼')+Math.abs(delta).toFixed(0)+'%'}</small></div></div>
     <div class="ins"><div class="k">인건비·외주 비중</div><div class="v">${exp?Math.round(labor/exp*100)+'%':'—'}<br><small>${won(labor)}원</small></div></div>
-    <div class="ins"><div class="k">받을 돈 · 미수금</div><div class="v" style="color:${recv?'var(--gold)':'var(--muted)'}">${won(recv)}<small> 원</small></div></div>
-    <div class="ins"><div class="k">줄 돈 · 미지급금</div><div class="v" style="color:${pay?'var(--coral)':'var(--muted)'}">${won(pay)}<small> 원</small></div></div>
+    <div class="ins" id="insRecv" style="cursor:pointer"><div class="k">받을 돈 · 미수금 ${odRecv?`<span class="odue">🔴${odRecv}</span>`:''}</div><div class="v" style="color:${recv?'var(--gold)':'var(--muted)'}">${won(recv)}<small> 원</small></div></div>
+    <div class="ins" id="insPay" style="cursor:pointer"><div class="k">줄 돈 · 미지급금 ${odPay?`<span class="odue">🔴${odPay}</span>`:''}</div><div class="v" style="color:${pay?'var(--coral)':'var(--muted)'}">${won(pay)}<small> 원</small></div></div>
   </div>
-  <div style="font-size:11px;color:var(--muted-2);margin-top:9px">* 미수·미지급은 전체 기간 외상 거래 합계 · 수금·지급 완료 시 거래를 눌러 '결제 완료'로 바꾸세요</div>`;
+  <div style="font-size:11px;color:var(--muted-2);margin-top:9px">* 🔴는 예정일이 지난 건수 · <b style="color:var(--teal)">받을 돈·줄 돈을 눌러</b> 예정일 관리와 수금·지급 처리를 하세요</div>`;
+  $('#insRecv').onclick=()=>openDue('in');
+  $('#insPay').onclick=()=>openDue('out');
 }
 function updateProjection(){
   if(!state.budgets.total)return;
@@ -938,7 +1001,7 @@ function renderList(list){
     items.forEach(t=>{const acct=t.acct||state.accounts[0].name,isIn=t.type==='in';
       const kind=t.tf?'tf':t.type;
       html+=`<div class="tx t-${kind}" data-txid="${t.id}"><div class="ico">${t.ico||icoOf(t.type,t.cat)}</div>
-      <div class="meta"><div class="c"><span class="badge ${kind}">${t.tf?'이체':isIn?'매출':'매입'}</span>${esc(t.cat)}${t.rid?' <span style="color:var(--violet);font-size:11px">↻</span>':''}${t.cr?` <span style="color:var(--gold);font-size:11px">⏳${isIn?'미수':'미지급'}</span>`:''}${t.vat?' <span style="color:var(--muted-2);font-size:10px">VAT</span>':''}</div>
+      <div class="meta"><div class="c"><span class="badge ${kind}">${t.tf?'이체':isIn?'매출':'매입'}</span>${esc(t.cat)}${t.rid?' <span style="color:var(--violet);font-size:11px">↻</span>':''}${t.cr?` <span style="color:var(--gold);font-size:11px">⏳${isIn?'미수':'미지급'}</span>`:''}${overdueDays(t)>0?` <span class="odue" style="font-size:11px">🔴 ${overdueDays(t)}일 연체</span>`:''}${t.vat?' <span style="color:var(--muted-2);font-size:10px">VAT</span>':''}${(t.att&&t.att.length)?` <span class="clip">📎${t.att.length}</span>`:''}</div>
       <div class="m">${t.site?`<span style="color:var(--violet)">🏗️${esc(t.site)}</span> · `:''}${t.vendor?`<span style="color:var(--gold)">${esc(t.vendor)}</span> · `:''}<span class="ac">${acctIco(acct)} ${esc(acct)}</span> · ${esc(t.memo||'-')}</div></div>
       <div class="amt2"><div class="col dr">${!isIn?won(t.amount):'<span class="ph">·</span>'}</div><div class="col crd">${isIn?won(t.amount):'<span class="ph">·</span>'}</div></div></div>`;});
     html+='</div>';
@@ -961,7 +1024,7 @@ $('#list').addEventListener('click',e=>{
 });
 
 /* ============ 렌더 : 통계 ============ */
-function renderStats(){renderBars();renderCatStat();renderVat();renderSiteStat();renderVendorStat();renderGoals();}
+function renderStats(){renderBars();renderCatStat();renderVat();renderCashflow();renderSiteStat();renderVendorStat();renderGoals();}
 function renderVat(){
   const c=$('#vatCard'),now=new Date(),q=Math.floor(now.getMonth()/3);
   const s=new Date(now.getFullYear(),q*3,1),e=new Date(now.getFullYear(),q*3+3,1);
@@ -1116,7 +1179,41 @@ function renderSitePills(){
 }
 function renderCrPills(){
   $$('#crPills .pill').forEach(p=>{p.classList.toggle('sel',+p.dataset.cr===form.cr);p.onclick=()=>{form.cr=+p.dataset.cr;renderCrPills();};});
+  /* 외상일 때만 예정일을 묻는다 — 결제 완료 건에 예정일은 뜻이 없다 */
+  const df=$('#dueField');if(df){
+    df.classList.toggle('hidden',!form.cr);
+    $('#dueLabel').textContent=form.type==='in'?'수금 예정일 (언제 받기로 했나)':'지급 예정일 (언제 주기로 했나)';
+    $('#dueInput').value=form.due||'';
+  }
 }
+/* ── 영수증 첨부 ── */
+function renderAtt(){
+  const el=$('#attRow');if(!el)return;
+  el.innerHTML=form.att.map((a,i)=>
+    `<div class="attchip" data-i="${i}" title="${esc(a.name||'')}">${/pdf/i.test(a.type||'')?'📄':'🧾'}<span class="x" data-x="${i}">✕</span></div>`).join('');
+  el.querySelectorAll('.attchip').forEach(c=>{
+    const i=+c.dataset.i,a=form.att[i];
+    if(!/pdf/i.test(a.type||'')&&window.BIZDB)BIZDB.signedUrl(a.path,600).then(u=>{if(u)c.insertAdjacentHTML('afterbegin',`<img src="${u}" alt="">`);}).catch(()=>{});
+    c.onclick=e=>{
+      if(e.target.dataset.x!==undefined){
+        const k=+e.target.dataset.x;form.att.splice(k,1);renderAtt();return;
+      }
+      if(window.BIZDB)BIZDB.signedUrl(a.path,600).then(u=>{if(u)window.open(u,'_blank','noopener');});
+    };
+  });
+}
+$('#attBtn').onclick=()=>$('#attInput').click();
+$('#attInput').onchange=async e=>{
+  const files=[...e.target.files];e.target.value='';
+  if(!files.length)return;
+  if(!window.BIZDB){toast('서버 연결이 없어 첨부할 수 없습니다');return;}
+  toast(`영수증 ${files.length}장 올리는 중…`);
+  for(const f of files){
+    try{const meta=await BIZDB.uploadReceipt(f);form.att.push(meta);renderAtt();}
+    catch(err){toast('첨부 실패 · '+String(err.message||'').slice(0,40));}
+  }
+  toast('영수증이 첨부됐습니다');
+};
 function updateVendorSugg(){
   const freq={};state.tx.forEach(t=>{if(t.vendor)freq[t.vendor]=(freq[t.vendor]||0)+1;});
   $('#vendorSugg').innerHTML=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,30).map(([m])=>`<option value="${esc(m)}">`).join('');
@@ -1143,8 +1240,11 @@ function updateMemoSugg(){
   const freq={};state.tx.forEach(t=>{if(t.memo)freq[t.memo]=(freq[t.memo]||0)+1;});
   $('#memoSugg').innerHTML=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([m])=>`<option value="${esc(m)}">`).join('');
 }
+$('#dueInput').onchange=e=>{form.due=e.target.value||'';};
 function resetAddSheet(){
-  form.editId=null;
+  form.editId=null;form.due='';form.att=[];
+  if($('#dueInput'))$('#dueInput').value='';
+  renderAtt();
   $('#addTitle').textContent='거래 추가';$('#saveTx').textContent='기록하기';$('#delTx').classList.add('hidden');
 }
 function openEdit(id){
@@ -1153,7 +1253,8 @@ function openEdit(id){
   form.editId=t.id;
   setType(t.type);form.cat=t.cat;form.ico=t.ico||icoOf(t.type,t.cat);renderCats();
   form.acct=t.acct||state.accounts[0].name;renderAcctPills();
-  form.site=t.site||'';form.cr=t.cr?1:0;renderSitePills();renderCrPills();
+  form.site=t.site||'';form.cr=t.cr?1:0;form.due=t.due||'';form.att=(t.att||[]).slice();
+  renderSitePills();renderCrPills();renderAtt();
   $('#vendorInput').value=t.vendor||'';
   $('#vatSel').value=t.vatm||'none';
   $('#evidSel').value=t.evid!=null?t.evid:'세금계산서';
@@ -1182,7 +1283,8 @@ $('#saveTx').onclick=()=>{
   let amount=amt,supply=amt,vat=0;
   if(vatm==='incl'){supply=Math.round(amt/1.1);vat=amount-supply;}
   else if(vatm==='excl'){vat=Math.round(amt*0.1);amount=amt+vat;supply=amt;}
-  const biz={vendor,site:form.site,vatm,supply,vat,evid,cr:form.cr};
+  const biz={vendor,site:form.site,vatm,supply,vat,evid,cr:form.cr,
+             due:form.cr?(form.due||undefined):undefined, att:form.att.slice()};
   if(form.editId!=null){
     const t=state.tx.find(x=>x.id==form.editId);
     if(t){Object.assign(t,{type:form.type,cat:form.cat,ico:form.ico,amount,memo,date,acct:form.acct,synced:false},biz);}
@@ -1553,7 +1655,7 @@ $('#repPrint').onclick=()=>window.print();
 /* ============ 시트/탭 ============ */
 function openSheet(id){$('#ov'+id).classList.add('on');$('#sh'+id).classList.add('on');}
 function closeSheet(id){$('#ov'+id).classList.remove('on');$('#sh'+id).classList.remove('on');}
-['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
+['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
 $('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
 $('#prevM').onclick=()=>{view.setMonth(view.getMonth()-1);render();};
 $('#nextM').onclick=()=>{view.setMonth(view.getMonth()+1);render();};
@@ -1710,6 +1812,284 @@ $('#loadBenefit').onclick=async()=>{
       link=it.rceptEngnHmpgUrl||it.pblancUrl||it.link||'https://www.bizinfo.go.kr';
       return `<a class="ben" href="${esc(link)}" target="_blank" rel="noopener"><div class="bt">${esc(t)}</div><div class="bm">${field?`<span class="tagp">${esc(field)}</span>`:''}${org?`<span class="org">${esc(org)}</span>`:''}</div></a>`;}).join('');
   }catch(e){box.innerHTML=`<div class="note warn"><b>불러오기 실패.</b> 브라우저 보안(CORS)으로 막혔을 수 있습니다. 프록시를 설정하거나, 호스팅 환경에서 시도하세요. 지금은 위 '기업마당 ↗'로 직접 확인할 수 있습니다.</div>`;}
+};
+
+/* ============ 미수 · 미지급 관리 ============
+   외상 플래그만으로는 "언제 받기로 했는지"를 모른다 → 예정일 기준으로 연체·자금계획을 잡는다. */
+let dueType='in';
+function openDue(type){dueType=type;renderDue();openSheet('Due');}
+function bucketOf(t){
+  if(!t.due)return {k:'nodate',label:'예정일 미정',ord:4};
+  const od=overdueDays(t);
+  if(od>0)return {k:'over',label:`연체 ${od}일`,ord:0};
+  const d=Math.round((new Date(t.due+'T00:00')-new Date(new Date().toDateString()))/864e5);
+  if(d<=7)return {k:'soon',label:`D-${d}`,ord:1};
+  if(d<=30)return {k:'month',label:`D-${d}`,ord:2};
+  return {k:'later',label:`D-${d}`,ord:3};
+}
+function renderDue(){
+  const isIn=dueType==='in';
+  $('#dueTitle').textContent=isIn?'받을 돈 · 미수금':'줄 돈 · 미지급금';
+  $('#dueDesc').textContent=isIn
+    ?'예정일이 지난 건이 위에 옵니다. 입금되면 ✅ 를 눌러 결제 완료로 넘기세요'
+    :'예정일이 지난 건이 위에 옵니다. 지급하면 ✅ 를 눌러 결제 완료로 넘기세요';
+  const rows=creditList(dueType).slice().sort((a,b)=>{
+    const A=bucketOf(a),B=bucketOf(b);
+    return A.ord-B.ord||String(a.due||'9999').localeCompare(String(b.due||'9999'));
+  });
+  const total=rows.reduce((s,t)=>s+t.amount,0);
+  const over=rows.filter(t=>overdueDays(t)>0),overSum=over.reduce((s,t)=>s+t.amount,0);
+  const noDate=rows.filter(t=>!t.due).length;
+  $('#dueSummary').innerHTML=
+    `<div class="ins"><div class="k">합계 ${rows.length}건</div><div class="v" style="color:${isIn?'var(--gold)':'var(--coral)'}">${won(total)}<small> 원</small></div></div>
+     <div class="ins"><div class="k">연체 ${over.length}건</div><div class="v" style="color:${over.length?'var(--coral)':'var(--muted)'}">${won(overSum)}<small> 원</small></div></div>`+
+    (noDate?`<div class="ins" style="grid-column:1/-1"><div class="k">예정일 미정</div><div class="v" style="font-size:14px">${noDate}건 — 거래를 눌러 예정일을 넣으면 연체 관리가 됩니다</div></div>`:'');
+  if(!rows.length){$('#dueList').innerHTML=`<div class="empty" style="padding:20px 0"><span class="em">${isIn?'💰':'🧾'}</span>${isIn?'받을 돈':'줄 돈'}이 없습니다</div>`;return;}
+  $('#dueList').innerHTML=rows.map(t=>{
+    const b=bucketOf(t),od=overdueDays(t);
+    const col=b.k==='over'?'var(--coral)':b.k==='soon'?'var(--gold)':'var(--muted)';
+    return `<div class="tx t-${t.type}" data-due="${t.id}" style="cursor:pointer">
+      <div class="ico" data-settle="${t.id}" title="결제 완료 처리" style="cursor:pointer">✅</div>
+      <div class="meta"><div class="c"><span style="color:${col};font-weight:600;font-size:11.5px">${od>0?'🔴 ':''}${b.label}</span> · ${esc(t.cat)}${(t.att&&t.att.length)?` <span class="clip">📎${t.att.length}</span>`:''}</div>
+      <div class="m">${t.site?`<span style="color:var(--violet)">🏗️${esc(t.site)}</span> · `:''}${t.vendor?`<span style="color:var(--gold)">${esc(t.vendor)}</span> · `:''}${t.due?`예정 ${t.due.slice(5).replace('-','.')}`:'예정일 없음'} · ${esc(t.memo||'-')}</div></div>
+      <div class="amt2"><div class="col ${isIn?'crd':'dr'}" style="grid-column:1/-1;text-align:right">${won(t.amount)}</div></div>
+    </div>`;}).join('');
+  $$('#dueList .tx').forEach(el=>{
+    el.onclick=e=>{
+      const sid=e.target.dataset.settle;
+      if(sid!==undefined){settleTx(sid);return;}
+      closeSheet('Due');openEdit(el.dataset.due);
+    };
+  });
+}
+function settleTx(id){
+  const t=state.tx.find(x=>x.id==id);if(!t)return;
+  const was={cr:t.cr,settled:t.settled};
+  t.cr=0;t.settled=todayStr();
+  save();renderDue();render();renderStats();
+  toast(`${t.type==='in'?'수금':'지급'} 완료 처리 · ${won(t.amount)}원`,'실행취소',()=>{
+    t.cr=was.cr;t.settled=was.settled;save();renderDue();render();renderStats();
+  });
+}
+/* ── 자금 예측 : 앞으로 90일 현금흐름 ── */
+function renderCashflow(){
+  const c=$('#cashCard');if(!c)return;
+  const today=new Date();today.setHours(0,0,0,0);
+  const cash=state.accounts.reduce((s,a)=>s+balanceOf(a.name),0);
+  const weeks=[];
+  for(let w=0;w<13;w++){
+    const s0=new Date(today);s0.setDate(s0.getDate()+w*7);
+    const e0=new Date(s0);e0.setDate(e0.getDate()+7);
+    weeks.push({s:s0,e:e0,in:0,out:0});
+  }
+  let overdueIn=0,overdueOut=0;
+  creditList().forEach(t=>{
+    if(!t.due)return;
+    const d=new Date(t.due+'T00:00');
+    if(d<today){ if(t.type==='in')overdueIn+=t.amount;else overdueOut+=t.amount; return; }
+    const w=weeks.find(x=>d>=x.s&&d<x.e);
+    if(w)w[t.type==='in'?'in':'out']+=t.amount;
+  });
+  /* 고정지출·고정수입도 앞으로 3개월치를 넣는다 */
+  state.recurring.forEach(r=>{
+    for(let m=0;m<4;m++){
+      const base=new Date(today.getFullYear(),today.getMonth()+m,1);
+      const last=new Date(base.getFullYear(),base.getMonth()+1,0).getDate();
+      const d=new Date(base.getFullYear(),base.getMonth(),Math.min(r.day,last));
+      if(d<today)continue;
+      const w=weeks.find(x=>d>=x.s&&d<x.e);
+      if(w)w[r.type==='in'?'in':'out']+=r.amount;
+    }
+  });
+  let run=cash,low={v:cash,at:null};
+  const bars=weeks.map(w=>{
+    run+=w.in-w.out;
+    if(run<low.v)low={v:run,at:new Date(w.s)};
+    return {s:w.s,in:w.in,out:w.out,bal:run};
+  });
+  const maxAbs=Math.max(1,...bars.map(b=>Math.abs(b.bal)));
+  const fmtD=d=>`${d.getMonth()+1}/${d.getDate()}`;
+  c.innerHTML=`<div class="ins-grid">
+      <div class="ins"><div class="k">현재 잔액 (계좌 합계)</div><div class="v" style="color:${cash>=0?'var(--teal)':'var(--coral)'}">${won(cash)}<small> 원</small></div></div>
+      <div class="ins"><div class="k">90일 뒤 예상</div><div class="v" style="color:${run>=0?'var(--teal)':'var(--coral)'}">${won(run)}<small> 원</small></div></div>
+    </div>
+    ${(overdueIn||overdueOut)?`<div class="note warn" style="margin-top:10px">예정일이 지난 <b>미수 ${won(overdueIn)}원</b> · <b>미지급 ${won(overdueOut)}원</b> 은 언제 들어올지 알 수 없어 예측에서 뺐습니다.</div>`:''}
+    <div style="margin-top:14px">${bars.map(b=>{
+      const w=Math.abs(b.bal)/maxAbs*100,neg=b.bal<0;
+      return `<div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;font-size:11px">
+        <span style="width:38px;color:var(--muted-2);font-variant-numeric:tabular-nums">${fmtD(b.s)}</span>
+        <div style="flex:1;height:8px;border-radius:5px;background:rgba(255,255,255,.05);overflow:hidden">
+          <div style="height:100%;width:${w}%;border-radius:5px;background:${neg?'var(--coral)':'linear-gradient(90deg,var(--teal),var(--blue))'}"></div></div>
+        <span style="width:88px;text-align:right;font-family:var(--font-d);font-variant-numeric:tabular-nums;color:${neg?'var(--coral)':'var(--text)'}">${won(b.bal)}</span>
+      </div>`;}).join('')}</div>
+    ${low.at&&low.v<0?`<div class="note warn" style="margin-top:10px"><b>⚠️ ${fmtD(low.at)} 주에 잔액이 ${won(low.v)}원</b> 으로 내려갑니다. 수금 일정을 앞당기거나 지급을 미룰 항목을 찾아보세요.</div>`:''}
+    <div style="font-size:11px;color:var(--muted-2);margin-top:10px">* 예정일을 넣은 외상 거래와 고정 항목만으로 계산합니다. 아직 잡히지 않은 매출·지출은 포함되지 않습니다.</div>`;
+}
+
+/* ============ 카드 · 통장 CSV 가져오기 ============
+   국내 은행·카드 CSV 는 (1) 대개 EUC-KR (2) 헤더 앞에 안내문 몇 줄 (3) 은행마다 열 이름이 제각각.
+   → 인코딩 자동 판별 + 헤더 줄 탐색 + 열 이름 패턴 매칭으로 흡수한다. */
+function decodeCsv(buf){
+  try{return new TextDecoder('utf-8',{fatal:true}).decode(buf);}
+  catch(e){ try{return new TextDecoder('euc-kr').decode(buf);}catch(_){return new TextDecoder('utf-8').decode(buf);} }
+}
+function parseCsv(text){
+  const rows=[];let row=[],cur='',q=false;
+  text=text.replace(/^﻿/,'');
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"')q=true;
+    else if(c===','){row.push(cur);cur='';}
+    else if(c==='\n'){row.push(cur);cur='';rows.push(row);row=[];}
+    else if(c!=='\r')cur+=c;
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}
+  return rows.filter(r=>r.some(v=>String(v).trim()!==''));
+}
+const CSV_H={
+  date:/날짜|일자|거래일|승인일|이용일|매출일/,
+  out :/출금|지급|인출|사용금액|이용금액|승인금액|결제금액|출금액|사용액/,
+  inc :/입금|입금액/,
+  amt :/금액|amount/i,
+  desc:/적요|내용|가맹점|거래처|비고|메모|상호|기재|가맹점명|이용하신곳/
+};
+function findHeader(rows){
+  let best=-1,bestScore=0,bestMap=null;
+  rows.slice(0,20).forEach((r,i)=>{
+    const map={};let score=0;
+    r.forEach((cell,j)=>{
+      const v=String(cell||'').trim();
+      if(map.date===undefined&&CSV_H.date.test(v)){map.date=j;score++;return;}
+      if(map.out ===undefined&&CSV_H.out.test(v)) {map.out =j;score++;return;}
+      if(map.inc ===undefined&&CSV_H.inc.test(v)) {map.inc =j;score++;return;}
+      if(map.desc===undefined&&CSV_H.desc.test(v)){map.desc=j;score++;return;}
+      if(map.amt ===undefined&&CSV_H.amt.test(v)) {map.amt =j;score++;}
+    });
+    if(map.date!==undefined&&(map.out!==undefined||map.inc!==undefined||map.amt!==undefined)&&score>bestScore){
+      bestScore=score;best=i;bestMap=map;
+    }
+  });
+  return best<0?null:{idx:best,map:bestMap};
+}
+function normDate(v){
+  const s=String(v||'').trim();
+  let m=s.match(/(\d{4})\D{0,3}(\d{1,2})\D{0,3}(\d{1,2})/);
+  if(!m){ m=s.match(/^(\d{4})(\d{2})(\d{2})$/); }
+  if(!m)return null;
+  const y=+m[1],mo=+m[2],d=+m[3];
+  if(mo<1||mo>12||d<1||d>31)return null;
+  return `${y}-${pad(mo)}-${pad(d)}`;
+}
+function normAmt(v){const n=String(v||'').replace(/[^0-9-]/g,'');return n?Math.abs(parseInt(n,10)):0;}
+const CAT_RULES=[
+  [/주유|오일뱅크|에너지|칼텍스|현대오일|S-?OIL|충전소|하이패스|통행료|주차|정비|타이어/,'차량·유류'],
+  [/건재|자재|타일|도기|페인트|목재|합판|철물|몰딩|벽지|장판|마루|조명|위생|샤시|샷시|유리|석재|한샘|KCC|노루|삼화|대림바스|이누스/,'자재비'],
+  [/인건비|일당|노임|임금|일용|반장|기공|조공/,'인건비'],
+  [/외주|시공|설비|전기공사|도배|철거|목공|필름|줄눈|방수|미장|샤시시공|입주청소/,'외주비'],
+  [/장비|렌탈|렌털|임대|공구|사다리|리프트|비계|사다리차/,'장비·공구'],
+  [/식당|김밥|백반|국밥|해장|치킨|피자|카페|커피|스타벅스|배달|요기요|배민|편의점|GS25|CU|세븐일레븐|이마트24|분식|중국집/,'식대'],
+  [/통신|SKT|KT|유플|인터넷|우체국|택배|문구|사무|프린터|복사|오피스/,'사무·통신'],
+  [/세금|국세|지방세|4대보험|건강보험|국민연금|고용보험|산재|부가세|세무/,'세금·보험'],
+  [/이자|대출|카드론|수수료|리스|할부/,'이자·금융']
+];
+/* 카테고리 추정 : ① 같은 상호로 이미 기록한 게 있으면 그 카테고리 ② 없으면 키워드 규칙 */
+function guessCat(text,type){
+  const s=String(text||'').trim();
+  if(type==='in')return '공사수입';
+  if(s){
+    const hit={};
+    state.tx.forEach(x=>{
+      if(x.tf||x.type!=='out')return;
+      const key=String(x.vendor||'').trim();
+      if(key.length>=2&&s.indexOf(key)!==-1)hit[x.cat]=(hit[x.cat]||0)+2;
+      const mm=String(x.memo||'').trim();
+      if(mm.length>=3&&s.indexOf(mm)!==-1)hit[x.cat]=(hit[x.cat]||0)+1;
+    });
+    const top=Object.entries(hit).sort((a,b)=>b[1]-a[1])[0];
+    if(top)return top[0];
+    for(const [re,cat] of CAT_RULES)if(re.test(s))return cat;
+  }
+  return '기타';
+}
+/* 표 → 거래 후보. 이미 장부에 있는 건(같은 날·같은 금액·같은 적요)은 dup 으로 표시해 기본 해제한다. */
+function buildImpItems(rows,idx,map){
+  const seen={},out=[];
+  rows.slice(idx+1).forEach(r2=>{
+    const date=normDate(r2[map.date]);if(!date)return;
+    let amount=0,type='out';
+    if(map.out!==undefined&&normAmt(r2[map.out])){amount=normAmt(r2[map.out]);type='out';}
+    else if(map.inc!==undefined&&normAmt(r2[map.inc])){amount=normAmt(r2[map.inc]);type='in';}
+    else if(map.amt!==undefined){amount=normAmt(r2[map.amt]);type=/^\s*-/.test(String(r2[map.amt]))?'out':'out';}
+    if(!amount)return;
+    const desc=String(map.desc!==undefined?(r2[map.desc]||''):'').trim().replace(/\s+/g,' ');
+    const dup=state.tx.some(x=>!x.tf&&x.date===date&&x.amount===amount&&String(x.memo||'').slice(0,24)===desc.slice(0,24));
+    const base=`imp|${date}|${amount}|${desc.slice(0,24)}`;
+    seen[base]=(seen[base]||0)+1;
+    const cat=guessCat(desc,type);
+    out.push({date,amount,type,memo:desc,vendor:desc.slice(0,30),cat,ico:icoOf(type,cat),
+              dup,sel:!dup,dk:dup?null:base+'#'+seen[base]});
+  });
+  out.sort((a,b)=>a.date.localeCompare(b.date));
+  return out;
+}
+let impItems=[],impAcct='',impSite='';
+function openImport(){
+  $('#impStep1').classList.remove('hidden');$('#impStep2').classList.add('hidden');
+  impItems=[];impAcct=state.accounts[0]?state.accounts[0].name:'';impSite='';
+  openSheet('Imp');
+}
+$('#importCsv').onclick=openImport;
+$('#impPick').onclick=()=>$('#csvInput').click();
+$('#impBack').onclick=()=>{$('#impStep1').classList.remove('hidden');$('#impStep2').classList.add('hidden');};
+$('#csvInput').onchange=e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let rows;
+    try{rows=parseCsv(decodeCsv(r.result));}catch(err){toast('파일을 읽지 못했습니다');return;}
+    const hd=findHeader(rows);
+    if(!hd){toast('날짜·금액 열을 찾지 못했습니다. 원본 CSV 인지 확인해 주세요');return;}
+    impItems=buildImpItems(rows,hd.idx,hd.map);
+    if(!impItems.length){toast('가져올 내역이 없습니다');return;}
+    $('#impStep1').classList.add('hidden');$('#impStep2').classList.remove('hidden');
+    renderImpPills();renderImpList();
+  };
+  r.readAsArrayBuffer(f);
+};
+function renderImpPills(){
+  $('#impAcctPills').innerHTML=state.accounts.map(a=>`<div class="pill ${impAcct===a.name?'sel':''}" data-a="${esc(a.name)}">${a.ico} ${esc(a.name)}</div>`).join('');
+  $$('#impAcctPills .pill').forEach(p=>p.onclick=()=>{impAcct=p.dataset.a;renderImpPills();});
+  $('#impSitePills').innerHTML=`<div class="pill ${!impSite?'sel':''}" data-s="">지정 안 함</div>`+
+    state.sites.map(s2=>`<div class="pill ${impSite===s2?'sel':''}" data-s="${esc(s2)}">🏗️ ${esc(s2)}</div>`).join('');
+  $$('#impSitePills .pill').forEach(p=>p.onclick=()=>{impSite=p.dataset.s;renderImpPills();});
+}
+function renderImpList(){
+  const dupN=impItems.filter(i=>i.dup).length,selN=impItems.filter(i=>i.sel).length;
+  $('#impCount').textContent=`${impItems.length}건 중 ${selN}건 선택${dupN?` · 이미 있는 ${dupN}건 자동 제외`:''}`;
+  $('#impList').innerHTML=impItems.map((it,i)=>
+    `<div class="tx t-${it.type}" data-i="${i}" style="cursor:pointer;${it.sel?'':'opacity:.4'}">
+      <div class="ico">${it.sel?'☑️':'⬜'}</div>
+      <div class="meta"><div class="c"><span class="badge ${it.type}">${it.type==='in'?'매출':'매입'}</span>${esc(it.cat)}${it.dup?' <span style="color:var(--coral);font-size:10.5px">이미 있음</span>':''}</div>
+      <div class="m">${it.date.slice(5).replace('-','.')} · ${esc(it.memo||'-')}</div></div>
+      <div class="amt2"><div class="col dr">${it.type==='out'?won(it.amount):'<span class="ph">·</span>'}</div><div class="col crd">${it.type==='in'?won(it.amount):'<span class="ph">·</span>'}</div></div>
+    </div>`).join('');
+  $$('#impList .tx').forEach(el=>el.onclick=()=>{const i=+el.dataset.i;impItems[i].sel=!impItems[i].sel;renderImpList();});
+}
+$('#impToggleAll').onclick=()=>{const on=impItems.some(i=>!i.sel);impItems.forEach(i=>i.sel=on);renderImpList();};
+$('#impConfirm').onclick=()=>{
+  const picked=impItems.filter(i=>i.sel);
+  if(!picked.length){toast('가져올 내역을 선택하세요');return;}
+  let k=0;
+  picked.forEach(it=>{
+    state.tx.push({id:Date.now()+(k++)*7+Math.floor(Math.random()*999),
+      type:it.type,cat:it.cat,ico:it.ico,amount:it.amount,memo:it.memo,date:it.date,
+      acct:impAcct||state.accounts[0].name,site:impSite||'',vendor:it.vendor||'',
+      vatm:'none',supply:it.amount,vat:0,evid:it.type==='out'?'카드':'',cr:0,
+      src:'import',dk:it.dk||undefined,att:[],synced:false});
+  });
+  save();closeSheet('Imp');render();renderStats();
+  toast(`${picked.length}건을 가져왔습니다 · 카테고리를 확인해 주세요`);
 };
 
 /* ============ 시작 ============ */

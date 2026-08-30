@@ -58,6 +58,63 @@
     });
   }
   function getAll(path) { return req(path, { method: 'GET' }); }
+
+  /* ── 증빙 파일 (storage: biz-receipts, 비공개) ── */
+  var STORAGE = 'https://' + REF + '.supabase.co/storage/v1/';
+  function sreq(path, opts, _retried) {
+    return fresh(false).then(function (ss) {
+      var tk = (ss && ss.access_token) || (sess() && sess().access_token);
+      if (!tk) throw new Error('NOAUTH');
+      var o = {}, k;
+      for (k in (opts || {})) o[k] = opts[k];
+      o.headers = { apikey: ANON, Authorization: 'Bearer ' + tk };
+      for (k in ((opts || {}).headers || {})) o.headers[k] = opts.headers[k];
+      return fetch(STORAGE + path, o).then(function (r) {
+        if (r.status === 401 && !_retried) return fresh(true).then(function () { return sreq(path, opts, true); });
+        if (!r.ok) return r.text().then(function (b) { throw new Error(r.status + ' ' + String(b).slice(0, 200)); });
+        return r.text().then(function (b) { return b ? JSON.parse(b) : null; });
+      });
+    });
+  }
+  /* 현장에서 폰으로 찍은 원본은 5~10MB — 올리기 전에 긴 변 1600px, JPEG 82% 로 줄인다 */
+  function shrink(file) {
+    return new Promise(function (resolve) {
+      if (!/^image\//.test(file.type) || file.type === 'image/heic') return resolve(file);
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var max = 1600, w = img.width, h = img.height;
+        if (w <= max && h <= max && file.size < 900000) { URL.revokeObjectURL(url); return resolve(file); }
+        var sc = Math.min(1, max / Math.max(w, h));
+        var cv = document.createElement('canvas');
+        cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        cv.toBlob(function (b) { resolve(b || file); }, 'image/jpeg', 0.82);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+  function uploadReceipt(file) {
+    return shrink(file).then(function (blob) {
+      var ext = (blob.type === 'application/pdf') ? 'pdf' : (blob.type === 'image/png' ? 'png' : 'jpg');
+      var d = new Date();
+      var key = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + uuid() + '.' + ext;
+      return sreq('object/biz-receipts/' + key, {
+        method: 'POST', headers: { 'Content-Type': blob.type || 'application/octet-stream', 'x-upsert': 'true' }, body: blob
+      }).then(function () {
+        return { path: key, name: file.name || ('영수증.' + ext), size: blob.size, type: blob.type || '' };
+      });
+    });
+  }
+  function signedUrl(path, sec) {
+    return sreq('object/sign/biz-receipts/' + path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: sec || 3600 })
+    }).then(function (r) { return r && r.signedURL ? (STORAGE.replace(/\/$/, '') + r.signedURL) : null; });
+  }
+  function removeReceipt(path) {
+    return sreq('object/biz-receipts/' + path, { method: 'DELETE' }).catch(function () { return null; });
+  }
   function upsert(table, rows) {
     if (!rows.length) return Promise.resolve(null);
     return req(table, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows) });
@@ -390,6 +447,9 @@
       });
     },
     siteId: function (name) { return siteIdByName[name] || null; },
+    uploadReceipt: uploadReceipt,
+    signedUrl: signedUrl,
+    removeReceipt: removeReceipt,
     hasSynced: function () { var b = loadBase(); return !!(b.tx && Object.keys(b.tx).length); },
     resetBase: function () { try { localStorage.removeItem(BASE_KEY); } catch (e) {} },
     _req: req
