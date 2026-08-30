@@ -29,7 +29,7 @@ for (const r of rows) {
   summary.push({
     store_path: r.store_path, json: rel, ok: true, verified: res.verified,
     walls: res.walls.length, spaces: res.spaces.length, spaceFound: res.spaceFound,
-    mm_per_px: res.mm_per_px, thickMm: res.thickMm, warn: res.warn,
+    mm_per_px: res.mm_per_px, thickMm: res.thickMm, doorMed: res.doorMed, doorN: res.doorN, warn: res.warn,
   });
   if (done % 40 === 0) console.log(`  … ${done}/${rows.length} (벡터 ${vec} · 배경만 ${bgOnly})`);
 }

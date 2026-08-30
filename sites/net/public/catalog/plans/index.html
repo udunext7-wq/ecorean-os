@@ -325,6 +325,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   // 재작도·표준 유형은 전량 폐기했고, 아래 두 분기는 옛 행이 남아 있을 때 이용자에게 경고하려는 안전장치다.
   function planKind(r){
     var note=r.source_note||'';
+    if(r.plan_walls>0)return{cls:'realplan',label:'실도면 · MiniCAD 벽 '+r.plan_walls+'개'};
     if(/재작도/.test(note))return{cls:'redraw',label:'유형 재작도 · 실도면 아님'};
     if(r.source==='minicad')return{cls:'redraw',label:'표준 유형 · 실도면 아님'};
     if(/건설사 분양홈페이지/.test(note))return{cls:'realplan',label:'실도면 · 건설사 원본'};
@@ -479,7 +480,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       if(c.lat==null||c.lng==null)return;
       feats.push({type:'Feature',geometry:{type:'Point',coordinates:[c.lng,c.lat]},
         properties:{ci:ci,name:c.name,n:c.rows.length,
-          vec:c.rows.some(function(i){return !!state.rows[i].plan_path;})?1:0}});
+          vec:c.rows.some(function(i){return (state.rows[i].plan_walls||0)>0;})?1:0}});
     });
     return {type:'FeatureCollection',features:feats};
   }
@@ -495,7 +496,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       paint:{'text-color':'#F8F4EE'}});
     map.addLayer({id:'ec-pt',type:'circle',source:'ec-plans',filter:['!',['has','point_count']],
       paint:{
-        'circle-color':['case',['==',['get','vec'],1],'#4a7fb5','#B8965A'], // 파랑 = MiniCAD 벡터 보유
+        'circle-color':['case',['==',['get','vec'],1],'#4a7fb5','#B8965A'], // 파랑 = 벽 좌표 보유
         'circle-radius':['interpolate',['linear'],['get','n'],1,7,4,10,12,14],
         'circle-stroke-color':'#1A1814','circle-stroke-width':2}});
     map.addLayer({id:'ec-pt-n',type:'symbol',source:'ec-plans',filter:['all',['!',['has','point_count']],['>',['get','n'],1]],
@@ -548,7 +549,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       var meta=[r.area_type,r.exclusive_area_m2?Number(r.exclusive_area_m2)+'㎡':null].filter(Boolean).join(' · ');
       return '<div class="cx-item" data-i="'+i+'">'+
         '<img loading="lazy" src="'+imgUrl(r)+'" alt="'+esc(r.complex_name)+'">'+
-        '<div class="t">'+esc(meta||'평면도')+(r.plan_path?'<br><span class="v">MiniCAD 벡터</span>':'')+'</div></div>';
+        '<div class="t">'+esc(meta||'평면도')+((r.plan_walls||0)>0?'<br><span class="v">벽 '+r.plan_walls+'개</span>':'')+'</div></div>';
     }).join('');
     list.querySelectorAll('.cx-item').forEach(function(el){
       el.addEventListener('click',function(){openDetail(state.rows[+el.dataset.i]);});
@@ -571,7 +572,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     var noGeo=cs.filter(function(c){return c.lat==null;}).length;
     document.getElementById('cxIndexTitle').textContent='단지 '+cs.length+'곳'+(noGeo?' (좌표없음 '+noGeo+')':'');
     list.innerHTML=cs.map(function(c,ci){
-      var vec=c.rows.filter(function(i){return !!state.rows[i].plan_path;}).length;
+      var vec=c.rows.filter(function(i){return (state.rows[i].plan_walls||0)>0;}).length;
       return '<div class="ix'+(state.currentComplex&&state.currentComplex.key===c.key?' on':'')+'" data-ci="'+ci+'">'+
         '<div class="n">'+esc(c.name||'')+'</div>'+
         '<div class="a">'+esc([c.sido,c.gugun,c.address].filter(Boolean).join(' '))+'</div>'+
@@ -844,7 +845,9 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     if(r.plan_path){
       var planUrl=PUB+r.plan_path.split('/').map(encodeURIComponent).join('/');
       cadBtn.style.display='';
-      cadBtn.textContent='📐 MiniCAD로 열기 (벽 + 원본 도면)';
+      cadBtn.textContent=(r.plan_walls>0)
+        ? '📐 MiniCAD로 열기 (벽 '+r.plan_walls+'개 + 원본 도면)'
+        : '📐 MiniCAD로 열기 (원본 도면 배경 — 축척 미검증)';
       cadBtn.href='/minicad/?plan='+encodeURIComponent(planUrl);
       bgBtn.textContent='🖼 밑그림으로만 열기';
       bgBtn.href=bgHref;

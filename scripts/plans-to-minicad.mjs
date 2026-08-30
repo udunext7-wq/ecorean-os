@@ -93,7 +93,7 @@ export async function convert(file, opt = {}) {
   if (!regions.length) return { ok: false, reason: '평면도 영역 없음' };
   // 가장 큰 영역 하나만 벡터화한다 (여러 타입이 한 장에 쌓인 경우, 나머지는 배경으로 남는다)
   const r = regions[0];
-  const k = srcW / dw, pad = 6;
+  const k = srcW / dw, pad = 16;   // 여백을 넉넉히 — 좁으면 도면 가장자리가 잘려 면적·축척이 틀어진다
   const L = Math.max(0, Math.round((r.x0 - pad) * k)), T = Math.max(0, Math.round((r.y0 - pad) * k));
   const { width: sw, height: sh } = await sharp(file).metadata();
   const Wd = Math.min(sw - L, Math.round((r.bw + pad * 2) * k));
