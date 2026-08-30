@@ -757,19 +757,24 @@ function refreshDetail(){
         '</div>';
     }
     // 2026-08-25: 다운라이트 인치 선택 (대표 지시) — 2~6인치, 타공경 자동
-    const isDownlight=STATE.selectedKind==='lights'&&obj&&obj.type==='downlight';
+    // 2026-08-30: 방습등도 인치로 관리한다 (대표 지시)
+    const isBathLight=STATE.selectedKind==='lights'&&obj&&obj.type==='bath_light';
+    const isDownlight=STATE.selectedKind==='lights'&&obj&&(obj.type==='downlight'||isBathLight);
     let inchHtml='';
     if(isDownlight){
-      const cur=Math.round(obj.inch||STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT);
+      const cur=isBathLight?bathLightInchOf(obj)
+        :Math.round(obj.inch||STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT);
       const d=DOWNLIGHT_INCH[cur]||DOWNLIGHT_INCH[DOWNLIGHT_INCH_DEFAULT];
       inchHtml=
         '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.08);border:1px solid rgba(212,184,114,0.35);border-radius:4px">'+
-        '<div class="field-label" style="margin-bottom:6px;color:#D4B872">다운라이트 규격</div>'+
+        '<div class="field-label" style="margin-bottom:6px;color:#D4B872">'+(isBathLight?'방습등 규격':'다운라이트 규격')+'</div>'+
         '<div class="field"><select id="d-dl-inch">'+
-        Object.keys(DOWNLIGHT_INCH).map(k=>'<option value="'+k+'"'+(String(cur)===String(k)?' selected':'')+'>'+DOWNLIGHT_INCH[k].label+' (타공 Ø'+DOWNLIGHT_INCH[k].bore+')</option>').join('')+
+        Object.keys(DOWNLIGHT_INCH).map(k=>'<option value="'+k+'"'+(String(cur)===String(k)?' selected':'')+'>'+
+          DOWNLIGHT_INCH[k].label+(isBathLight?(' (외경 Ø'+DOWNLIGHT_INCH[k].outer+')'):(' (타공 Ø'+DOWNLIGHT_INCH[k].bore+')'))+'</option>').join('')+
         '</select></div>'+
-        '<div class="hint">외경 Ø'+d.outer+'mm · 타공 Ø'+d.bore+'mm — 선택한 인치가 다음 배치의 기본값이 됩니다</div>'+
-        '<button type="button" class="btn sm" id="d-dl-apply-all" style="width:100%;margin-top:4px">같은 공간 다운라이트 전체 적용</button>'+
+        '<div class="hint">'+(isBathLight?('외경 Ø'+d.outer+'mm — 직부형이라 타공은 없습니다')
+          :('외경 Ø'+d.outer+'mm · 타공 Ø'+d.bore+'mm — 선택한 인치가 다음 배치의 기본값이 됩니다'))+'</div>'+
+        '<button type="button" class="btn sm" id="d-dl-apply-all" style="width:100%;margin-top:4px">같은 공간 '+(isBathLight?'방습등':'다운라이트')+' 전체 적용</button>'+
         '</div>';
     }
     // 2026-08-28: 객체별 이름 글씨 표기 (대표 지시 — 평소엔 꺼두고 필요한 것만 켜둔다)
@@ -1063,16 +1068,19 @@ function refreshDetail(){
       if(sel) sel.addEventListener('change',e=>{
         const v=parseInt(e.target.value,10);
         if(!DOWNLIGHT_INCH[v]) return;
-        obj.inch=v;STATE.downlightInch=v;
+        obj.inch=v;
+        if(!isBathLight) STATE.downlightInch=v; // 방습등은 다운라이트 기본값을 건드리지 않는다
+        if(isBathLight) delete obj.size_mm;      // 예전 지름 값은 정리
         saveHistory();renderAll();refreshUI();
-        showStatus('다운라이트 '+DOWNLIGHT_INCH[v].label+' — 타공 Ø'+DOWNLIGHT_INCH[v].bore+'mm');
+        showStatus((isBathLight?'방습등 ':'다운라이트 ')+DOWNLIGHT_INCH[v].label+
+          (isBathLight?(' — 외경 Ø'+DOWNLIGHT_INCH[v].outer+'mm'):(' — 타공 Ø'+DOWNLIGHT_INCH[v].bore+'mm')));
       });
       const ab=document.getElementById('d-dl-apply-all');
       if(ab) ab.addEventListener('click',()=>{
         const v=Math.round(obj.inch||DOWNLIGHT_INCH_DEFAULT);
         let n=0;
         STATE.lights.forEach(l=>{
-          if(l.type!=='downlight'||l.locked) return;
+          if(l.type!==obj.type||l.locked) return;
           if(obj.spaceId&&l.spaceId!==obj.spaceId) return;
           l.inch=v;n++;
         });

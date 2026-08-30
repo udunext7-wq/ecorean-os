@@ -2320,7 +2320,7 @@ function legendItemOf(kind,o){
   }
   if(kind==='lights'&&o&&o.type==='bath_light'){
     const d=bathLightDef(o);
-    return {name:d.name, spec:'\u00D8'+d.size};
+    return {name:d.name, spec:'\uC678\uACBD \u00D8'+d.size}; // 직부형 — 타공경 없음
   }
   if(kind==='lights'&&o&&typeof isLinearLight==='function'&&isLinearLight(o.type)){
     const L=linearLightLen(o);
@@ -2709,8 +2709,7 @@ function applyLibVariant(o,key){
   const v=libVariantVal(key);
   if(v===null||!o) return o;
   const t=libBaseType(key);
-  if(t==='downlight') o.inch=v;
-  else if(t==='bath_light') o.size_mm=v;
+  if(t==='downlight'||t==='bath_light') o.inch=v; // 2026-08-30: 방습등도 인치
   return o;
 }
 // 팔레트 키('downlight#3')로 정의를 가져온다 — 썸네일·고스트·이름이 규격을 따른다
@@ -2720,7 +2719,7 @@ function libDefForKey(lib,key){
   if(!base) return null;
   if(v===null) return base;
   if(t==='downlight'&&typeof downlightDef==='function') return downlightDef({type:t,inch:v});
-  if(t==='bath_light') return bathLightDef({type:t,size_mm:v});
+  if(t==='bath_light') return bathLightDef({type:t,inch:v});
   return base;
 }
 // 도형 전체를 비율로 키우고 줄인다 (각도는 건드리지 않는다)
@@ -2736,18 +2735,31 @@ function scaleShape(shape,k){
   });
 }
 // 방습등 규격 — 욕실 크기에 따라 흔히 쓰는 지름
-const BATH_LIGHT_SIZES=[250,300,350,400];
-const BATH_LIGHT_DEFAULT=350;
-function bathLightSizeOf(o){
-  const n=Math.round((o&&o.size_mm)||0);
-  return BATH_LIGHT_SIZES.indexOf(n)>=0?n:BATH_LIGHT_DEFAULT;
+// 2026-08-30 대표 지시: 방습등도 다운라이트처럼 인치로 (2~6인치, 같은 규격표)
+//  직부형이라 타공경은 안 쓰고 외경만 본다.
+const BATH_LIGHT_INCH_DEFAULT=3;
+function bathLightInchOf(o){
+  const n=Math.round((o&&o.inch)||0);
+  if(DOWNLIGHT_INCH[n]) return n;
+  // 지름(mm)으로 넣어둔 예전 값은 가까운 인치로 옮긴다
+  const mm=Math.round((o&&o.size_mm)||0);
+  if(mm>0){
+    let best=BATH_LIGHT_INCH_DEFAULT,bd=Infinity;
+    Object.keys(DOWNLIGHT_INCH).forEach(k=>{
+      const d=Math.abs(DOWNLIGHT_INCH[k].outer-mm);
+      if(d<bd){bd=d;best=Math.round(+k);}
+    });
+    return best;
+  }
+  return BATH_LIGHT_INCH_DEFAULT;
 }
 function bathLightDef(o){
   const base=LIGHT_LIB.bath_light;
-  const sz=bathLightSizeOf(o);
-  const k=sz/(base.size||BATH_LIGHT_DEFAULT);
-  return {...base, size:sz, size_mm:sz,
-    name:'방습등 \u00D8'+sz, nameEn:sz+'mm moisture-proof bath light',
+  const inch=bathLightInchOf(o);
+  const d=DOWNLIGHT_INCH[inch];
+  const k=d.outer/(base.size||350);
+  return {...base, size:d.outer, inch:inch,
+    name:'방습등 '+inch+'\"', nameEn:inch+'-inch moisture-proof bath light',
     shape:scaleShape(base.shape,k)};
 }
 // 2026-08-25: 다운라이트 인치별 도식 (대표 지시) — 외경/타공경 실치수로 그린다
@@ -2865,14 +2877,18 @@ function duplicateLightPeers(id){
 //   · 리니어 펜던트 : 아래로 내려 달아 식탁 등을 집중해서 비춘다. 좁고 진하게.
 //   · 마그넷 트랙 : 레일에 스팟이 여러 개. 띠가 아니라 '점이 줄지어' 켜진다.
 //  spread=편측 퍼짐(mm) · peak=한가운데 밝기 · soft=가장자리 흐림(0 또렷 ~ 1 아주 부드럽게)
+// 2026-08-30 대표 지시: 선형 조명은 수치를 300/30 으로 고정한다.
+//  spread 는 **편측** 값 — 기구를 가운데 두고 위로 300mm, 아래로 300mm (합 600mm).
+//  가장자리 흐림(soft)만 종류별로 남긴다 — 간접은 경계가 물러지고 T5는 선명하다.
+const LINEAR_GLOW_SPREAD_FIXED=300, LINEAR_GLOW_PEAK_FIXED=0.30;
 const LINEAR_GLOW={
-  cove:          {spread:1100, peak:0.26, soft:0.90},
-  fluorescent:   {spread:700,  peak:0.42, soft:0.55},
-  line_t5:       {spread:340,  peak:0.60, soft:0.28},
-  pendant_linear:{spread:480,  peak:0.55, soft:0.35},
-  magnet_track:  {spots:true, spread:420, peak:0.62},
+  cove:          {spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.90},
+  fluorescent:   {spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.55},
+  line_t5:       {spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.28},
+  pendant_linear:{spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.35},
+  magnet_track:  {spots:true, spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED},
 };
-const LINEAR_GLOW_DEFAULT={spread:600, peak:0.45, soft:0.5};
+const LINEAR_GLOW_DEFAULT={spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.5};
 function linearGlowOf(type){return LINEAR_GLOW[type]||LINEAR_GLOW_DEFAULT;}
 // 점광원의 빛 반경(mm) — 기구 크기가 아니라 '바닥을 얼마나 밝히나'로 잡는다.
 //  종전엔 기구 외경×1.35 라, 95mm 다운라이트는 빛이 거의 안 보이고
@@ -2891,6 +2907,8 @@ function pointGlowOf(o){
   if(!o) return POINT_GLOW_DEFAULT;
   // 다운라이트는 인치가 커질수록 배광이 넓어진다 (2"≈1.4m / 6"≈4.2m 지름)
   if(o.type==='downlight') return {r:350*downlightInchOf(o), peak:0.56};
+  // 방습등도 인치에 비례 — 확산형이라 같은 인치에서 다운라이트보다 넓게 퍼진다
+  if(o.type==='bath_light') return {r:400*bathLightInchOf(o), peak:0.50};
   return POINT_GLOW[o.type]||POINT_GLOW_DEFAULT;
 }
 const GLOW_RGB='255,233,168';
@@ -3067,7 +3085,8 @@ function renderLights(){
         }
       }else if(gp){
         const Lpx=mmToPx(def.size||1200);
-        const sp=mmToPx(gp.spread);
+        const sp=mmToPx(gp.spread);   // 편측 퍼짐
+        // 기구를 가운데 두고 위아래로 같은 폭 — 한쪽으로 치우치지 않는다
         const gw=Lpx+sp*0.5, gh=sp*2;
         g.add(new Konva.Rect({x:-gw/2,y:-gh/2,width:gw,height:gh,cornerRadius:sp*0.5,listening:false,
           fillLinearGradientStartPoint:{x:0,y:-gh/2},fillLinearGradientEndPoint:{x:0,y:gh/2},

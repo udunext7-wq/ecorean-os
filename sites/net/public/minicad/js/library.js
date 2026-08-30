@@ -1099,7 +1099,7 @@ const LIB_GROUPS={
     ['천장 매입',['downlight#2','downlight#3','downlight#4','downlight#5','downlight#6',
                   'edge_flat_600','kitchen_flat','spot_cyl']],
     ['천장 직부',['ceiling','ceiling_fan','spot_bar_3','fluorescent','sensor_light',
-                  'bath_light#250','bath_light#300','bath_light#350','bath_light#400']],
+                  'bath_light#2','bath_light#3','bath_light#4','bath_light#5','bath_light#6']],
     ['라인·간접 (길이 조절)',['line_t5','cove','magnet_track','pendant_linear']],
     ['펜던트·장식',['pendant','pendant_cluster','chandelier']],
     ['벽·스탠드',['wall_lamp','step_light','floor_lamp','table_lamp']],

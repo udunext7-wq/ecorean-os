@@ -3034,13 +3034,19 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
 
     const bCove=bandOf(cove.id), bT5=bandOf(t5.id), bFlu=bandOf(flu.id);
     assert('점등표현: 간접·라인 모두 띠로 그려진다',!!bCove&&!!bT5);
-    assert('점등표현: 간접이 라인보다 넓다',!!bCove&&!!bT5&&bCove.height()>bT5.height()*2,
-      (bCove?bCove.height().toFixed(0):'-')+' vs '+(bT5?bT5.height().toFixed(0):'-'));
-    assert('점등표현: 간접이 라인보다 은은하다',
-      peakOf(bCove.fillLinearGradientColorStops())<peakOf(bT5.fillLinearGradientColorStops()),
-      peakOf(bCove.fillLinearGradientColorStops())+' vs '+peakOf(bT5.fillLinearGradientColorStops()));
-    assert('점등표현: 형광등은 그 사이',!!bFlu&&bFlu.height()<bCove.height()&&bFlu.height()>bT5.height(),
-      bFlu?bFlu.height().toFixed(0):'-');
+    // 2026-08-30 대표 지시: 선형 조명은 300/30 으로 고정 — 폭과 밝기는 같다
+    assert('점등표현: 선형은 폭이 같다 (300 고정)',
+      Math.abs(bCove.height()-bT5.height())<0.5&&Math.abs(bFlu.height()-bT5.height())<0.5,
+      [bCove.height(),bT5.height(),bFlu.height()].map(v=>v.toFixed(0)).join('/'));
+    assert('점등표현: 편측 300mm — 양쪽 합 600mm',
+      Math.abs(bT5.height()-mmToPx(300)*2)<0.5,bT5.height().toFixed(1)+' vs '+(mmToPx(300)*2).toFixed(1));
+    assert('점등표현: 세기 30% 고정',
+      Math.abs(peakOf(bT5.fillLinearGradientColorStops())-0.30)<0.005&&
+      Math.abs(peakOf(bCove.fillLinearGradientColorStops())-0.30)<0.005,
+      peakOf(bT5.fillLinearGradientColorStops())+'/'+peakOf(bCove.fillLinearGradientColorStops()));
+    // 기구를 가운데 두고 위아래로 같은 폭 — 한쪽으로 치우치지 않는다
+    assert('점등표현: 양쪽으로 대칭',
+      Math.abs(bT5.y()+bT5.height()/2)<0.01,'y='+bT5.y().toFixed(2)+' h='+bT5.height().toFixed(2));
     // 가장자리 흐림 — 간접은 더 일찍부터 밝아진다(안쪽 스톱 위치가 작다)
     const innerOf=st=>{for(let i=0;i<st.length;i+=2){if(typeof st[i]==='number'&&st[i]>0&&st[i]<0.5) return st[i];}return 0.5;};
     assert('점등표현: 간접이 가장자리가 더 흐리다',
@@ -3060,6 +3066,10 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       rOf(dl3.id).toFixed(0)+' vs '+rOf(dl6.id).toFixed(0));
     assert('점등표현: 방습등은 욕실을 넓게',rOf(bath.id)>rOf(dl3.id),
       rOf(bath.id).toFixed(0)+' vs '+rOf(dl3.id).toFixed(0));
+    // 2026-08-30: 방습등도 인치가 커지면 빛도 넓어진다 (다운라이트와 같은 이치)
+    assert('점등표현: 방습등도 인치에 비례',
+      pointGlowOf({type:'bath_light',inch:6}).r>pointGlowOf({type:'bath_light',inch:2}).r*2.5,
+      pointGlowOf({type:'bath_light',inch:2}).r+' → '+pointGlowOf({type:'bath_light',inch:6}).r);
     assert('점등표현: 빛 반경은 배광표에서 온다',
       Math.abs(rOf(dl3.id)-mmToPx(pointGlowOf(dl3).r))<1.5,
       rOf(dl3.id).toFixed(1)+' vs '+mmToPx(pointGlowOf(dl3).r).toFixed(1));
@@ -3068,28 +3078,36 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('규격: 팔레트 키 분해',libBaseType('downlight#6')==='downlight'&&libVariantVal('downlight#6')===6&&
       libBaseType('ceiling')==='ceiling'&&libVariantVal('ceiling')===null);
     const d6=libDefForKey(LIGHT_LIB,'downlight#6');
-    const b250=libDefForKey(LIGHT_LIB,'bath_light#250');
-    const b400=libDefForKey(LIGHT_LIB,'bath_light#400');
+    const b250=libDefForKey(LIGHT_LIB,'bath_light#2');
+    const b400=libDefForKey(LIGHT_LIB,'bath_light#6');
     assert('규격: 다운라이트 인치별 정의',!!d6&&d6.name.indexOf('6"')>=0&&d6.size===175,d6&&d6.name);
-    assert('규격: 방습등 지름별 정의',!!b250&&b250.size===250&&!!b400&&b400.size===400&&
-      b250.name.indexOf('250')>=0,b250&&b250.name);
+    // 2026-08-30: 방습등도 인치 — 다운라이트와 같은 규격표의 외경을 따른다
+    assert('규격: 방습등 인치별 정의',
+      !!b250&&b250.size===DOWNLIGHT_INCH[2].outer&&!!b400&&b400.size===DOWNLIGHT_INCH[6].outer&&
+      b250.name.indexOf('2\"')>=0&&b400.name.indexOf('6\"')>=0,
+      (b250&&b250.name)+' / '+(b400&&b400.name));
     // 도형이 비율로 줄고 커진다
     const r250=b250.shape[0].r, r400=b400.shape[0].r;
-    assert('규격: 방습등 도형도 비율로',Math.abs(r250/r400-250/400)<0.01,r250+'/'+r400);
+    assert('규격: 방습등 도형도 비율로',
+      Math.abs(r250/r400-DOWNLIGHT_INCH[2].outer/DOWNLIGHT_INCH[6].outer)<0.01,r250+'/'+r400);
     assert('규격: 각도는 그대로',b250.shape[3]&&b250.shape[3].start===LIGHT_LIB.bath_light.shape[3].start);
 
     // 배치하면 규격이 객체에 붙는다
     const o1={id:'x1',type:'downlight'};applyLibVariant(o1,'downlight#5');
-    const o2={id:'x2',type:'bath_light'};applyLibVariant(o2,'bath_light#300');
-    assert('규격: 배치 시 객체에 반영',o1.inch===5&&o2.size_mm===300);
-    assert('규격: 잘못된 지름은 기본값',bathLightSizeOf({size_mm:999})===350);
+    const o2={id:'x2',type:'bath_light'};applyLibVariant(o2,'bath_light#4');
+    assert('규격: 배치 시 객체에 반영',o1.inch===5&&o2.inch===4);
+    assert('규격: 잘못된 인치는 기본값',bathLightInchOf({inch:9})===3&&bathLightInchOf({})===3);
+    // 지름(mm)으로 저장된 예전 문서는 가까운 인치로 율긴다
+    assert('규격: 예전 지름 값 이전',bathLightInchOf({size_mm:250})===6&&
+      bathLightInchOf({size_mm:70})===2,
+      bathLightInchOf({size_mm:250})+'/'+bathLightInchOf({size_mm:70}));
 
     // 팔레트 목록·검증
     const lightGroups=LIB_GROUPS.light.map(g=>g[1]).reduce((a,b)=>a.concat(b),[]);
     assert('규격: 팔레트에 인치별 다운라이트',[2,3,4,5,6].every(i=>lightGroups.indexOf('downlight#'+i)>=0));
-    assert('규격: 팔레트에 지름별 방습등',[250,300,350,400].every(v=>lightGroups.indexOf('bath_light#'+v)>=0));
+    assert('규격: 팔레트에 인치별 방습등',[2,3,4,5,6].every(v=>lightGroups.indexOf('bath_light#'+v)>=0));
     assert('규격: 규격 키도 유효한 선택',libHasKey('light','downlight#6')===true&&
-      libHasKey('light','bath_light#250')===true);
+      libHasKey('light','bath_light#2')===true);
 
     // 팔레트 DOM — 규격 항목이 실제로 그려지고, 맨 타입이 '기타'로 새지 않는다
     //  (2026-08-30: lib[k] 조회가 규격 키를 걸러내 팔레트에 안 나오던 버그)
@@ -3103,8 +3121,8 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       .map(b=>b.dataset.libKey);
     assert('규격: 팔레트에 인치별 항목이 그려진다',
       [2,3,4,5,6].every(i=>_keys.indexOf('downlight#'+i)>=0),_keys.length+'개');
-    assert('규격: 팔레트에 지름별 방습등',
-      [250,300,350,400].every(v=>_keys.indexOf('bath_light#'+v)>=0));
+    assert('규격: 팔레트에 인치별 방습등',
+      [2,3,4,5,6].every(v=>_keys.indexOf('bath_light#'+v)>=0));
     assert('규격: 맨 타입은 중복으로 나오지 않는다',
       _keys.indexOf('downlight')<0&&_keys.indexOf('bath_light')<0,
       'dl='+_keys.indexOf('downlight')+' bl='+_keys.indexOf('bath_light'));
@@ -3117,9 +3135,9 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
         else localStorage.setItem('minicad.recent.light',_bakRecent);}catch(_){}
 
     // 범례에도 방습등 규격이 나온다
-    const lb=legendItemOf('lights',{id:'z',type:'bath_light',size_mm:300,x:0,y:0});
-    assert('규격: 범례에 방습등 지름',lb.name.indexOf('300')>=0&&lb.spec.indexOf('300')>=0,
-      lb.name+' / '+lb.spec);
+    const lb=legendItemOf('lights',{id:'z',type:'bath_light',inch:4,x:0,y:0});
+    assert('규격: 범례에 방습등 인치',lb.name.indexOf('4\"')>=0&&
+      lb.spec.indexOf(String(DOWNLIGHT_INCH[4].outer))>=0,lb.name+' / '+lb.spec);
 
     STATE.lights=_bakGL.lights;STATE.electric=_bakGL.electric;STATE.zoom=_bakGL.zoom;
     STATE.selectedKind=_bakGL.selK;STATE.selectedId=_bakGL.selI;STATE.boxSelection=_bakGL.box;
@@ -3275,7 +3293,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('빛설정: 숫자가 아니면 기본값',resolveGlow(gcove).spread===linearGlowOf('cove').spread);
 
     // [S4] 실제 도면에 반영된다
-    gcove.glow={spread:400};
+    gcove.glow={spread:120}; // 기본 300 보다 확실히 좁게
     renderLights();
     const bandH=id=>{let g=null;groups.lights.getChildren().forEach(c=>{if(c.id&&c.id()===id)g=c;});
       if(!g) return 0;
@@ -3296,7 +3314,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('빛설정: 선형은 흐림도 조절',!!document.getElementById('d-glow-soft'));
     assert('빛설정: 조정됐으면 기본값 버튼 살아있다',
       !!document.getElementById('d-glow-reset')&&document.getElementById('d-glow-reset').disabled===false);
-    assert('빛설정: 현재값이 칸에 들어있다',document.getElementById('d-glow-size').value==='400',
+    assert('빛설정: 현재값이 칸에 들어있다',document.getElementById('d-glow-size').value==='120',
       document.getElementById('d-glow-size').value);
     // 점광원은 흐림 칸이 없다 (선형에만 있는 개념)
     STATE.selectedId=gdl.id;refreshUI();
