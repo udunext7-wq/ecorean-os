@@ -32,6 +32,12 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 .badge.redraw{background:#fdf0e4;color:#b5651d}
 .badge.realplan{background:#e8f3ea;color:#2c8544}
 /* 실도면 아님 경고 (상세) */
+.map-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 9px}
+.map-toolbar button{background:#1A1814;color:#F8F4EE;border:1px solid #B8965A;border-radius:8px;
+  padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.map-toolbar button:hover{background:#2a251d}
+.map-toolbar .mn{font-size:11.5px;color:#8a5a1c;background:#fdf6ec;border:1px solid #f0dcc0;
+  border-radius:7px;padding:6px 11px;display:none}
 .map-shell{display:flex;gap:10px;align-items:stretch}
 .map-shell #map{flex:1 1 auto;min-width:0;position:relative}
 .cx-index{flex:0 0 258px;width:258px;
@@ -137,6 +143,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   <div id="grid"><div class="grid"><div class="empty">불러오는 중…</div></div></div>
 </div>
 <div class="wrap" id="mapWrap" style="display:none">
+  <div class="map-toolbar" id="mapToolbar"><span class="mn" id="mapNote"></span></div>
   <div class="map-shell" style="height:72vh">
     <div class="cx-index" id="cxIndex">
       <div class="ih"><span id="cxIndexTitle">단지 목록</span>
@@ -588,27 +595,24 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     el=document.createElement('button');
     el.id='mapStyleToggle';el.type='button';
     el.textContent=styleLabel();
-    el.style.cssText='position:absolute;top:10px;left:10px;z-index:5;background:rgba(26,24,20,.85);color:#F8F4EE;border:1px solid #B8965A;border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px)';
     el.addEventListener('click',function(){
       styleMode=styleMode==='sat'?'vec':'sat';
       applyStyleToggleUI();
       switchStyle();
     });
-    document.getElementById('map').appendChild(el);
+    document.getElementById('mapToolbar').insertBefore(el,document.getElementById('mapNote'));
     // 지형(산악 기복)은 기본 꺼짐 — 확대 중 멈춤의 원인이라 자동 전환을 없앴다.
     // 광역에서 지형을 보고 싶을 때만 켜도록 버튼을 둔다.
     var t=document.createElement('button');
     t.id='mapTerrainToggle';t.type='button';
     t.textContent='⛰ 지형 켜기';
-    t.style.cssText='position:absolute;top:52px;left:10px;z-index:5;background:rgba(26,24,20,.85);color:#F8F4EE;'+
-      'border:1px solid #B8965A;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px)';
     t.addEventListener('click',function(){
       terrainWanted=!terrainWanted;
       t.textContent=terrainWanted?'⛰ 지형 끄기':'⛰ 지형 켜기';
       applyTerrain(terrainWanted);
       if(terrainWanted)showMapNote('지형 켬 — 확대 시 느려지면 다시 끄십시오');
     });
-    document.getElementById('map').appendChild(t);
+    document.getElementById('mapToolbar').insertBefore(t,document.getElementById('mapNote'));
   }
   var styleSwitching=false;
   function switchStyle(){
@@ -637,15 +641,10 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   // 지도 위 짧은 안내 (실패를 콘솔에만 남기면 사용자는 왜 안 바뀌는지 알 수 없다)
   var noteTimer=null;
   function showMapNote(msg){
-    var w=document.getElementById('map');if(!w)return;
     var el=document.getElementById('mapNote');
-    if(!el){el=document.createElement('div');el.id='mapNote';
-      el.style.cssText='position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:7;'+
-        'background:rgba(26,24,20,.9);color:#F8F4EE;border:1px solid #B8965A;border-radius:8px;'+
-        'padding:8px 14px;font-size:12px;max-width:80%;text-align:center';
-      w.appendChild(el);}
-    el.textContent=msg;el.style.display='';
-    clearTimeout(noteTimer);noteTimer=setTimeout(function(){el.style.display='none';},4200);
+    if(!el)return;
+    el.textContent=msg;el.style.display='inline-block';
+    clearTimeout(noteTimer);noteTimer=setTimeout(function(){el.style.display='none';},5200);
   }
   var lastFrame=0, slowHits=0, degraded=false;
   function degrade(why){

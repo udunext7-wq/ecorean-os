@@ -33,6 +33,9 @@ setTimeout(() => {
   ck(d.querySelector('.wrap:not(#mapWrap)').style.display === 'none', '목록이 숨겨지지 않음');
   ck(d.getElementById('mapBtn').textContent === '📋 목록', '지도 버튼 라벨이 목록 전환이 아님');
   ['cxPanel', 'cxName', 'cxAddr', 'cxList', 'cxClose', 'cxIndex', 'cxIndexList', 'cxIndexMin'].forEach(id => ck(d.getElementById(id), '패널 DOM 없음: ' + id));
+  ck(d.getElementById('mapToolbar'), '지도 밖 툴바가 없음');
+  ck(d.getElementById('map').children.length === 0, '지도 캔버스 위에 얹은 요소가 있음: ' + d.getElementById('map').innerHTML.slice(0,60));
+  ck(d.querySelector('.map-shell'), '3단 배치(map-shell)가 없음');
   const ix = d.querySelectorAll('#cxIndexList .ix');
   ck(ix.length === 2, '지도 위 단지 목록이 2건이 아님: ' + ix.length);
   ck(/A아파트/.test(d.getElementById('cxIndexList').textContent), '목록에 단지명이 없음');
