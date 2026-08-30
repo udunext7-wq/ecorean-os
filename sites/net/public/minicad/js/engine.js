@@ -4536,3 +4536,139 @@ function selectObj(kind,id){
 }
 function deselect(){STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];renderAll();refreshUI();}
 
+
+// ===== 2026-08-30: 평면도 정보로 입면도 자동 생성 (대표 지시) =====
+//  새로 입력받는 것은 하나도 없다. 평면에 이미 있는 것만으로 입면이 나온다 —
+//  벽 길이, 천장고, 문·창의 위치·크기·창대 높이, 벽 마감재, 그 벽에 붙은 스위치·콘센트.
+//  그래서 평면도를 고치면 입면도가 저절로 따라 바뀐다.
+//
+//  ※ 좌우가 문제다. 평면은 위에서 내려다본 그림이고 입면은 방 안에 서서 벽을 바라본 그림이라,
+//    벽에 따라 평면의 왼쪽이 입면의 오른쪽이 된다. 방 중심에 사람을 세워 두고
+//    그 사람의 오른손 방향과 벽이 그려진 방향을 견주어 뒤집을지 정한다.
+
+// 벽에 붙는 전기 기구의 설치 높이 (바닥에서 중심, mm) — 국내 현장 표준
+//  천장에 붙는 것(디퓨저·스프링클러·감지기·시스템에어컨)은 입면에 넣지 않는다.
+const ELEV_MOUNT={
+  outlet_w:{h:300,w:200,bh:120},   outlet_w4:{h:300,w:300,bh:120},
+  outlet_wp:{h:300,w:200,bh:120},  outlet_usb:{h:300,w:200,bh:120},
+  internet:{h:300,w:200,bh:120},   outlet_220:{h:2000,w:200,bh:120},
+  switch_1:{h:1200,w:100,bh:150},  switch_2:{h:1200,w:200,bh:150},
+  switch_3:{h:1200,w:280,bh:150},  switch_4:{h:1200,w:360,bh:150},
+  switch_5:{h:1200,w:440,bh:150},  switch_6:{h:1200,w:520,bh:150},
+  switch_3way:{h:1200,w:100,bh:150}, dimmer:{h:1200,w:120,bh:150},
+  wallpad:{h:1400,w:250,bh:190},   intercom:{h:1400,w:200,bh:160},
+  doorbell:{h:1400,w:100,bh:120},  boiler_ctrl:{h:1400,w:150,bh:130},
+  dist_panel:{h:1800,w:500,bh:350},
+  ac_wall:{h:2100,w:900,bh:300},
+  emerg_bell:{h:1400,w:120,bh:120}, fire_ext:{h:200,w:200,bh:450},
+};
+function elevMountOf(e){ return ELEV_MOUNT[e&&e.type]||null; }
+// 벽에 붙는 기구는 전기(STATE.electric)와 공조·소방(STATE.hvac) 양쪽에 흩어져 있다
+function elevWallDevices(){
+  return [].concat(STATE.electric||[],STATE.hvac||[]);
+}
+function elevDevName(type){
+  const d=(typeof ELECTRIC_LIB!=='undefined'&&ELECTRIC_LIB[type])||
+          (typeof HVAC_FIRE_LIB!=='undefined'&&HVAC_FIRE_LIB[type]);
+  return d||null;
+}
+// 기구 하나는 벽 하나에만 붙는다 — 모서리에 있으면 가장 가까운 벽으로
+function elevNearestWallId(d,walls){
+  let best=null,bd=Infinity;
+  walls.forEach(w=>{
+    const t=pointToSegmentDist({x:d.x,y:d.y},{x:w.x1,y:w.y1},{x:w.x2,y:w.y2});
+    if(t<bd){bd=t;best=w.id;}
+  });
+  return {id:best,dist:bd};
+}
+
+// 그 공간의 벽 — 안내선은 벽이 아니므로 뺀다. 내력벽은 입면에 그대로 나와야 하니 넣는다.
+function elevationWallsOf(spaceId){
+  return (STATE.walls||[]).filter(w=>w.spaceId===spaceId&&!w.isLine);
+}
+function elevSpaceCentroid(sp){
+  const poly=sp&&sp.polygon;
+  if(!poly||!poly.length) return null;
+  let cx=0,cy=0;poly.forEach(p=>{cx+=p.x;cy+=p.y;});
+  return {x:cx/poly.length,y:cy/poly.length};
+}
+// 방 중심에서 벽을 바라본 방위 — 입면도 이름표에 쓴다 (도면 위쪽이 북)
+function elevCompass(dx,dy){
+  const names=['동','북동','북','북서','서','남서','남','남동'];
+  const a=Math.atan2(-dy,dx)*180/Math.PI;   // 화면은 y가 아래로 + 이므로 뒤집는다
+  return names[Math.round((((a%360)+360)%360)/45)%8]+'측';
+}
+// 문·창이 어느 벽에 붙었는지 — 놓을 때 기록된 wallId 우선, 없으면 가장 가까운 벽
+function elevWallIdOf(o){
+  if(o.wallId&&(STATE.walls||[]).some(w=>w.id===o.wallId)) return o.wallId;
+  return (typeof findNearestWallId==='function')?findNearestWallId(o):null;
+}
+// 벽 하나의 입면 자료
+function buildElevation(wall,spaceId){
+  if(!wall) return null;
+  const sp=(STATE.spaces||[]).find(x=>x.id===(spaceId||wall.spaceId))||null;
+  const L=Math.round(Math.hypot(wall.x2-wall.x1,wall.y2-wall.y1));
+  if(!(L>0)) return null;
+  const H=Math.round(wall.height_mm||(sp&&sp.ceilingHeight_mm)||STATE.ceilingHeight||2400);
+  const ux=(wall.x2-wall.x1)/L, uy=(wall.y2-wall.y1)/L;
+  const mx=(wall.x1+wall.x2)/2, my=(wall.y1+wall.y2)/2;
+  let flip=false, dirx=uy, diry=-ux;              // 중심을 모르면 법선을 방위로
+  const c=elevSpaceCentroid(sp);
+  if(c){
+    const dx=mx-c.x, dy=my-c.y;                   // 사람 → 벽 (보는 방향)
+    if(Math.hypot(dx,dy)>1){
+      dirx=dx;diry=dy;
+      flip=(ux*(-dy)+uy*dx)<0;                    // (-dy,dx) = 그 사람의 오른손 방향
+    }
+  }
+  // 벽을 따라간 거리로 바꾼다. 뒤집을 때는 반대쪽 끝에서 잰다.
+  const along=(px,py)=>{
+    const t=(px-wall.x1)*ux+(py-wall.y1)*uy;
+    return flip?(L-t):t;
+  };
+  const near=(px,py)=>pointToSegmentDist({x:px,y:py},{x:wall.x1,y:wall.y1},{x:wall.x2,y:wall.y2});
+  const ops=(STATE.openings||[]).filter(o=>elevWallIdOf(o)===wall.id).map(o=>{
+    const w=Math.max(1,Math.round(o.width_mm||900));
+    const h=Math.max(1,Math.round(o.height_mm||2100));
+    const isDoor=(o.type==='DOOR');
+    const sill=isDoor?0:Math.max(0,Math.round(o.sillHeight_mm||0));
+    const lib=isDoor?DOOR_TYPES:WINDOW_TYPES;
+    const def=lib&&lib[o.subType];
+    return {id:o.id,kind:o.type,isDoor,w,h,sill,left:Math.round(along(o.x,o.y)-w/2),
+      top:sill+h,name:(def&&def.name)||(isDoor?'문':'창')};
+  }).filter(o=>o.left+o.w>0&&o.left<L).sort((a,b)=>a.left-b.left);
+  // 그 벽에 붙은 스위치·콘센트 — 벽면에서 벗어난 것과 천장 기구는 뺀다.
+  //  모서리에 있는 기구가 두 벽에 겹쳐 나오지 않도록 '가장 가까운 벽' 하나에만 담는다.
+  const tol=Math.max(300,(wall.thickness||100)/2+250);
+  const sibs=sp?elevationWallsOf(sp.id):[wall];
+  const devs=elevWallDevices().map(e=>{
+    const m=elevMountOf(e);
+    if(!m) return null;
+    if(near(e.x,e.y)>tol) return null;
+    const nw=elevNearestWallId(e,sibs);
+    if(nw.id&&nw.id!==wall.id) return null;          // 더 가까운 벽이 따로 있다
+    const t=along(e.x,e.y);
+    if(t<-m.w/2||t>L+m.w/2) return null;
+    const def=elevDevName(e.type);
+    return {id:e.id,type:e.type,h:m.h,w:m.w,bh:m.bh,
+      left:Math.round(Math.max(0,Math.min(L-m.w,t-m.w/2))),  // 벽 안으로 밀어 넣는다
+      name:(def&&def.name)||e.type,sym:(def&&def.sym)||''};
+  }).filter(Boolean).sort((a,b)=>a.left-b.left);
+  const mat=(typeof WALL_MATERIALS!=='undefined'&&WALL_MATERIALS[wall.finishMaterial])
+    ?WALL_MATERIALS[wall.finishMaterial].name:null;
+  return {wallId:wall.id,spaceId:sp?sp.id:null,
+    spaceName:(sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||'',
+    L,H,ops,devs,flip,material:mat,
+    thickness:Math.round(wall.thickness||0),
+    bearing:wall.wallType==='bearing',
+    dir:elevCompass(dirx,diry)};
+}
+// 한 공간의 벽 전체 — 평면을 한 바퀴 도는 순서대로 A, B, C…
+function buildSpaceElevations(spaceId){
+  if(!(STATE.spaces||[]).some(s=>s.id===spaceId)) return [];
+  return elevationWallsOf(spaceId).map(w=>buildElevation(w,spaceId)).filter(Boolean)
+    .map((e,i)=>({...e,label:String.fromCharCode(65+(i%26))}));
+}
+function elevationSpaces(){
+  return (STATE.spaces||[]).filter(s=>elevationWallsOf(s.id).length>0);
+}

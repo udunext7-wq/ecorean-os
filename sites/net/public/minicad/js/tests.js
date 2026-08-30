@@ -3523,6 +3523,164 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('배열: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-30: 평면도 정보로 입면도 자동 생성 (대표 지시) ===
+  try{
+    const _bakEL={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
+      openings:STATE.openings.slice(),electric:STATE.electric.slice(),hvac:STATE.hvac.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,ch:STATE.ceilingHeight};
+    const E0=3300000;
+    // 4000×3000 방 — 시계 방향(화면 기준)으로 네 벽
+    const ev=polygonToVertexIds([{x:E0,y:E0},{x:E0+4000,y:E0},{x:E0+4000,y:E0+3000},{x:E0,y:E0+3000}]);
+    const esp=makeSpaceVEF(ev,{name:'입면시험실',type:'ROOM',typeIndex:88,layerName:'A-AREA-ROOM-88'});
+    esp.ceilingHeight_mm=2500;
+    STATE.spaces.push(esp);
+    const ew=[];
+    for(let i=0;i<4;i++){
+      const w=makeWallVEF(ev[i],ev[(i+1)%4],{spaceId:esp.id,layerName:'A-WALL-ROOM-88',
+        finishMaterial:'WP_SILK'});
+      STATE.walls.push(w);ew.push(w);
+    }
+    // [E1] 벽 길이·천장고를 평면에서 그대로 읽는다
+    const eN=buildElevation(ew[0],esp.id);
+    assert('입면: 북쪽 벽 길이 4000',eN&&eN.L===4000,eN?String(eN.L):'null');
+    assert('입면: 천장고는 공간 값',eN.H===2500,String(eN.H));
+    assert('입면: 마감재 이름',eN.material==='실크벽지',String(eN.material));
+    // [E2] 벽에 높이가 따로 있으면 그게 우선
+    ew[1].height_mm=2700;
+    assert('입면: 벽 높이가 우선',buildElevation(ew[1],esp.id).H===2700);
+    ew[1].height_mm=null;
+    // [E3] 방위 — 방 안에서 벽을 바라본 쪽
+    assert('입면: 북측',buildElevation(ew[0],esp.id).dir==='북측',buildElevation(ew[0],esp.id).dir);
+    assert('입면: 동측',buildElevation(ew[1],esp.id).dir==='동측',buildElevation(ew[1],esp.id).dir);
+    assert('입면: 남측',buildElevation(ew[2],esp.id).dir==='남측',buildElevation(ew[2],esp.id).dir);
+    assert('입면: 서측',buildElevation(ew[3],esp.id).dir==='서측',buildElevation(ew[3],esp.id).dir);
+    // [E4] 문·창이 벽 위 제자리에 — 폭·높이·창대까지
+    const edoor={id:'eop_d',type:'DOOR',subType:'swing',spaceId:esp.id,wallId:ew[0].id,
+      x:E0+1000,y:E0,width_mm:900,height_mm:2100,depth_mm:200,sillHeight_mm:null,angle:0};
+    const ewin={id:'eop_w',type:'WINDOW',subType:'casement',spaceId:esp.id,wallId:ew[0].id,
+      x:E0+3000,y:E0,width_mm:1200,height_mm:1500,depth_mm:200,sillHeight_mm:900,angle:0};
+    STATE.openings.push(ewin,edoor);   // 일부러 뒤섞어 넣는다
+    const eN2=buildElevation(ew[0],esp.id);
+    assert('입면: 문창 2개',eN2.ops.length===2,'n='+eN2.ops.length);
+    assert('입면: 왼쪽부터 차례로',eN2.ops[0].id==='eop_d'&&eN2.ops[1].id==='eop_w',
+      eN2.ops.map(o=>o.id).join(','));
+    assert('입면: 문 위치 550',eN2.ops[0].left===550,String(eN2.ops[0].left));
+    assert('입면: 문은 바닥에서',eN2.ops[0].sill===0&&eN2.ops[0].top===2100,
+      eN2.ops[0].sill+'/'+eN2.ops[0].top);
+    assert('입면: 창 위치 2400',eN2.ops[1].left===2400,String(eN2.ops[1].left));
+    assert('입면: 창대 900, 상단 2400',eN2.ops[1].sill===900&&eN2.ops[1].top===2400,
+      eN2.ops[1].sill+'/'+eN2.ops[1].top);
+    assert('입면: 문·창 이름',eN2.ops[0].name.indexOf('여닫이')===0&&eN2.ops[1].name.indexOf('여닫이')===0);
+    // [E5] 다른 벽에는 그 벽의 것만
+    assert('입면: 남쪽 벽엔 없다',buildElevation(ew[2],esp.id).ops.length===0);
+    // [E6] 방 안에서 본 그림이다 — 같은 벽을 반대 방향으로 그려도
+    //  입면은 똑같아야 한다. 평면 좌표를 그대로 베끼면 좌우가 바뀌어버린다.
+    const erev=makeWallVEF(ev[1],ev[0],{spaceId:esp.id,layerName:'A-WALL-ROOM-88'});
+    STATE.walls.push(erev);
+    edoor.wallId=erev.id;
+    const eR=buildElevation(erev,esp.id);
+    assert('입면: 반대로 그린 벽은 뒤집어 본다',eR.flip===true);
+    assert('입면: 반대로 그려도 같은 그림',eR.ops.length===1&&eR.ops[0].left===550,
+      eR.ops.length?String(eR.ops[0].left):'n=0');
+    assert('입면: 반대로 그려도 같은 방위',eR.dir==='북측',eR.dir);
+    // 보정을 빼면 좌우가 뒤집힌다는 것도 같이 확인 (보정이 실제로 일하는지)
+    assert('입면: 보정 없으면 어깋난다',
+      Math.round((edoor.x-erev.x1)*((erev.x2-erev.x1)/4000))-450===2550,
+      String(Math.round((edoor.x-erev.x1)*((erev.x2-erev.x1)/4000))-450));
+    STATE.walls.pop();edoor.wallId=ew[0].id;
+    // [E7] 스위치·콘센트는 벽에 붙은 것만, 설치 높이와 함께
+    const esw={id:'eel_s',type:'switch_3',x:E0+300,y:E0+30,angle:0,spaceId:esp.id};
+    const eot={id:'eel_o',type:'outlet_w',x:E0+2000,y:E0+40,angle:0,spaceId:esp.id};
+    const efar={id:'eel_f',type:'outlet_w',x:E0+2000,y:E0+1500,angle:0,spaceId:esp.id}; // 방 한가운데
+    STATE.electric.push(esw,eot,efar);
+    // 천장 기구와 벽걸이 에어컨은 공조/소방 쪽에 들어있다
+    const eceil={id:'ehv_c',type:'diffuser',x:E0+500,y:E0+20,angle:0,spaceId:esp.id};
+    const eac={id:'ehv_a',type:'ac_wall',x:E0+2600,y:E0+30,angle:0,spaceId:esp.id};
+    STATE.hvac.push(eceil,eac);
+    const eN3=buildElevation(ew[0],esp.id);
+    const dids=eN3.devs.map(d=>d.id);
+    assert('입면: 벽에 붙은 기구만',dids.length===3&&dids.indexOf('eel_s')>=0&&
+      dids.indexOf('eel_o')>=0&&dids.indexOf('ehv_a')>=0,dids.join(','));
+    assert('입면: 천장 기구는 제외',dids.indexOf('ehv_c')<0);
+    assert('입면: 벽에서 먼 것 제외',dids.indexOf('eel_f')<0);
+    // 공조/소방 쪽 기구도 이름이 제대로 나와야 한다 (키가 그대로 찍히면 안 된다)
+    assert('입면: 공조 기구 이름',eN3.devs.filter(d=>d.id==='ehv_a')[0].name==='벽걸이 에어컨',
+      eN3.devs.filter(d=>d.id==='ehv_a')[0].name);
+    // 모서리에 붙은 기구는 두 벽에 겹쳐 나오지 않고 가까운 벽 하나에만
+    const ecorner={id:'eel_x',type:'outlet_w',x:E0+120,y:E0+60,angle:0,spaceId:esp.id};
+    STATE.electric.push(ecorner);
+    const cnt=buildSpaceElevations(esp.id)
+      .reduce((n,e)=>n+e.devs.filter(d=>d.id==='eel_x').length,0);
+    assert('입면: 모서리 기구는 한 벽에만',cnt===1,'n='+cnt);
+    STATE.electric.pop();
+    // 벽 끝에 붙은 기구는 벽 밖으로 삐져나가지 않는다
+    const eedge={id:'ehv_e',type:'ac_wall',x:E0+3950,y:E0+30,angle:0,spaceId:esp.id};
+    STATE.hvac.push(eedge);
+    const dEdge=buildElevation(ew[0],esp.id).devs.filter(d=>d.id==='ehv_e')[0];
+    assert('입면: 벽 밖으로 안 나간다',dEdge&&dEdge.left>=0&&dEdge.left+dEdge.w<=4000,
+      dEdge?(dEdge.left+'+'+dEdge.w):'null');
+    STATE.hvac.pop();
+    const dsw=eN3.devs.filter(d=>d.id==='eel_s')[0];
+    assert('입면: 스위치 높이 1200',dsw.h===1200,String(dsw.h));
+    assert('입면: 스위치 위치 160',dsw.left===160,String(dsw.left));
+    assert('입면: 콘센트 높이 300',eN3.devs.filter(d=>d.id==='eel_o')[0].h===300);
+    // [E8] 공간 전체 — A·B·C·D 로 한 바퀴
+    const eall=buildSpaceElevations(esp.id);
+    assert('입면: 벽 4면',eall.length===4,'n='+eall.length);
+    assert('입면: A~D 이름표',eall.map(e=>e.label).join('')==='ABCD',eall.map(e=>e.label).join(''));
+    assert('입면: 공간 목록에 포함',elevationSpaces().some(x=>x.id===esp.id));
+    // [E9] 그림 — 치수와 천장고가 실제로 찍힌다
+    const svg=elevationSVG(eall[0],{devices:true});
+    assert('입면: SVG 생성',svg.indexOf('<svg')===0&&svg.indexOf('</svg>')>0);
+    assert('입면: 전체 치수 4000',svg.indexOf('>4000<')>0);
+    assert('입면: 천장고 표기',svg.indexOf('CH 2500')>0);
+    assert('입면: 창대 표기',svg.indexOf('SILL 900')>0);
+    assert('입면: 설치 높이 표기',svg.indexOf('H1200')>0&&svg.indexOf('H300')>0);
+    assert('입면: 이름표 방위',svg.indexOf('북측')>0);
+    const svgNoDev=elevationSVG(eall[0],{devices:false});
+    assert('입면: 전기 끄기',svgNoDev.indexOf('H1200')<0);
+    // [E9-2] 한 벌은 같은 축척 — 짧은 벽이 긴 벽만큼 넓게 그려지면 안 된다
+    const ewid=elevationSetWidths(eall);
+    assert('입면: 제일 긴 벽이 100%',ewid[0]==='100.00%',ewid[0]);
+    assert('입면: 짧은 벽은 좁게',parseFloat(ewid[1])<parseFloat(ewid[0]),ewid.join(' '));
+    assert('입면: 같은 길이는 같은 폭',ewid[0]===ewid[2]&&ewid[1]===ewid[3],ewid.join(' '));
+    // [E10] 창 — 열고 벽을 고르고 닫는다
+    STATE.selectedKind='spaces';STATE.selectedId=esp.id;
+    openElevationDialog(esp.id);
+    assert('입면: 창 열림',!!document.getElementById('elev-dialog'));
+    assert('입면: 공간 선택칸',!!document.getElementById('ev-space'));
+    assert('입면: 벽 목록 4줄',document.querySelectorAll('.ev-row').length===4,
+      String(document.querySelectorAll('.ev-row').length));
+    const evBody=document.getElementById('ev-body');
+    assert('입면: 미리보기 4장',(evBody.innerHTML.match(/<svg/g)||[]).length===4,
+      String((evBody.innerHTML.match(/<svg/g)||[]).length));
+    assert('입면: 미리보기도 축척을 맞춘다',evBody.innerHTML.indexOf('width:100.00%')>0&&
+      evBody.innerHTML.indexOf('width:'+ewid[1])>0,ewid.join(' '));
+    const devChk=document.getElementById('ev-dev');
+    devChk.checked=false;devChk.dispatchEvent(new Event('change'));
+    assert('입면: 전기 표기 끄기 반영',document.getElementById('ev-body').innerHTML.indexOf('H1200')<0);
+    document.getElementById('ev-dev').checked=true;
+    document.getElementById('ev-dev').dispatchEvent(new Event('change'));
+    closeElevationDialog();
+    assert('입면: 창 닫힘',!document.getElementById('elev-dialog'));
+    // [E11] 명령어로도 열린다
+    processCommand('el');
+    assert('입면: el 명령',!!document.getElementById('elev-dialog'));
+    closeElevationDialog();
+    // [E12] 평면을 고치면 입면이 따라 바뀐다 — 새로 입력받는 값이 없다는 뜻
+    const vmove=getVertex(ev[1]);
+    const _vx=vmove.x;
+    vmove.x=E0+5000;
+    assert('입면: 평면 수정이 곧 반영',buildElevation(ew[0],esp.id).L===5000,
+      String(buildElevation(ew[0],esp.id).L));
+    vmove.x=_vx;
+    STATE.spaces=_bakEL.spaces;STATE.walls=_bakEL.walls;STATE.vertices=_bakEL.vertices;
+    STATE.openings=_bakEL.openings;STATE.electric=_bakEL.electric;STATE.hvac=_bakEL.hvac;
+    STATE.selectedKind=_bakEL.selK;STATE.selectedId=_bakEL.selI;STATE.ceilingHeight=_bakEL.ch;
+    renderAll();refreshUI();
+  }catch(e){
+    assert('입면: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),

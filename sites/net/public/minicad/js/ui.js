@@ -3284,6 +3284,7 @@ function _paletteCommands(){
     {label:'🖨 바로 인쇄 (직전 설정으로)',kw:'print 인쇄 바로 출력',run:()=>printPlan()},
     {label:'⬚ 인쇄 영역 드래그로 지정',kw:'print 인쇄 영역 범위 부분 확대 crop',run:startPrintRegionPick},
     {label:'🖥 인쇄 영역 — 화면에서 잡기 (pf)',kw:'print 인쇄 영역 틀 화면 잡기 frame pf',run:()=>togglePrintFrame()},
+    {label:'📐 입면도 — 평면도에서 자동 생성 (el)',kw:'elevation 입면도 입면 el 벙 방위 단면',run:()=>openElevationDialog()},
     {label:'🔌 선택한 조명을 스위치에 연결 (link)',kw:'circuit link 연결 조명 스위치 회로 다중',run:()=>startCircuitAttach()},
     {label:'🔗 선택한 조명끼리 점핑 연결 (chain)',kw:'jump chain 점핑 조명 연결 데이지체인',run:()=>chainSelectedLights()},
     {label:'🔌 선택한 조명 회로 해제 (unlink)',kw:'unlink 해제 연결해제 회로 조명 스위치',run:()=>detachSelectedLights()},
@@ -4630,6 +4631,7 @@ document.getElementById('btn-dim').addEventListener('click',toggleDim);
 document.getElementById('btn-circuits').addEventListener('click',toggleCircuits); // 2026-08-27
 (function(){const b=document.getElementById('btn-symlabel');if(b)b.addEventListener('click',cycleSymbolLabelMode);})(); // 2026-08-28
 (function(){const b=document.getElementById('btn-printframe');if(b)b.addEventListener('click',()=>togglePrintFrame());})(); // 2026-08-28
+(function(){const b=document.getElementById('btn-elev');if(b)b.addEventListener('click',()=>openElevationDialog());})(); // 2026-08-30
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
 // v5.9.2: 통합견적 OS 브리지 — estimate 프로파일 JSON을 localStorage로 전송.
@@ -5354,6 +5356,7 @@ function processCommand(rawCmd){
   // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
   if(/^(pf|인쇄영역)$/i.test(c)){togglePrintFrame();return;} // 2026-08-28
+  if(/^(el|elev|입면|입면도)$/i.test(c)){openElevationDialog();return;} // 2026-08-30
   // 2026-08-29: 고른 조명들을 한 번에 — link=스위치에, chain=서로 점핑
   if(/^(link|연결)$/i.test(c)){startCircuitAttach();return;}
   if(/^(chain|점핑)$/i.test(c)){chainSelectedLights();return;}
@@ -6197,3 +6200,259 @@ window.addEventListener('load',()=>{
     .then(dataURL=>{whenReady(()=>setBgImage(dataURL,name));})
     .catch(err=>showStatus('평면도 밑그림 로드 실패: '+err.message));
 });
+
+// ===== 2026-08-30: 입면도 그리기 · 창 (대표 지시 — 평면도 정보로 자동 생성) =====
+//  도면 관례를 따른다: 바닥선을 제일 굵게, 벽면 외곽 실선, 문·창은 개구부 표기,
+//  아래에 구간 치수와 전체 치수 두 줄, 왼쪽에 천장고, 기구마다 설치 높이.
+const ELEV_PAD={l:260,r:130,t:110,b:620};    // 도면 여백 (좌표 단위 = mm)
+const ELEV_FS={dim:66,tag:78,title:104};
+function _eTxt(x,y,t,fs,col,anchor,extra){
+  return '<text x="'+Math.round(x)+'" y="'+Math.round(y)+'" font-size="'+fs+'" fill="'+(col||'#333')+
+    '" text-anchor="'+(anchor||'middle')+'"'+(extra||'')+'>'+escapeHtml(String(t))+'</text>';
+}
+// 가로 치수선 — 양 끝 짧은 눈금, 가운데 숫자
+function _eDimH(x1,x2,y,t,col){
+  if(!(x2-x1>0)) return '';
+  const c=col||'#666';
+  return '<g stroke="'+c+'" stroke-width="7" fill="none">'+
+    '<line x1="'+Math.round(x1)+'" y1="'+Math.round(y)+'" x2="'+Math.round(x2)+'" y2="'+Math.round(y)+'"/>'+
+    '<line x1="'+Math.round(x1)+'" y1="'+Math.round(y-32)+'" x2="'+Math.round(x1)+'" y2="'+Math.round(y+32)+'"/>'+
+    '<line x1="'+Math.round(x2)+'" y1="'+Math.round(y-32)+'" x2="'+Math.round(x2)+'" y2="'+Math.round(y+32)+'"/>'+
+    '</g>'+_eTxt((x1+x2)/2,y-26,t,ELEV_FS.dim,c);
+}
+// 세로 치수선 — 숫자를 눕혀서 적는다
+function _eDimV(x,y1,y2,t,col){
+  const a=Math.min(y1,y2), b=Math.max(y1,y2);
+  if(!(b-a>0)) return '';
+  const c=col||'#666';
+  return '<g stroke="'+c+'" stroke-width="7" fill="none">'+
+    '<line x1="'+Math.round(x)+'" y1="'+Math.round(a)+'" x2="'+Math.round(x)+'" y2="'+Math.round(b)+'"/>'+
+    '<line x1="'+Math.round(x-32)+'" y1="'+Math.round(a)+'" x2="'+Math.round(x+32)+'" y2="'+Math.round(a)+'"/>'+
+    '<line x1="'+Math.round(x-32)+'" y1="'+Math.round(b)+'" x2="'+Math.round(x+32)+'" y2="'+Math.round(b)+'"/>'+
+    '</g>'+_eTxt(x-26,(a+b)/2,t,ELEV_FS.dim,c,'middle',
+      ' transform="rotate(-90 '+Math.round(x-26)+' '+Math.round((a+b)/2)+')"');
+}
+// 입면 하나를 SVG 로. opt.color = 색을 넣을지, opt.devices = 스위치·콘센트를 그릴지
+function elevationSVG(e,opt){
+  opt=opt||{};
+  const showDev=(opt.devices!==false);
+  const P=ELEV_PAD, VW=e.L+P.l+P.r, VH=e.H+P.t+P.b;
+  const X=x=>P.l+x, Y=y=>P.t+(e.H-y);        // 바닥이 아래로 오도록 뒤집는다
+  const wallFill=opt.color?'#FAF6EE':'#FFFFFF';
+  let g='';
+  g+='<rect x="0" y="0" width="'+Math.round(VW)+'" height="'+Math.round(VH)+'" fill="#FFFFFF"/>';
+  // 벽면 · 바닥선(제일 굵게)
+  g+='<rect x="'+X(0)+'" y="'+Y(e.H)+'" width="'+e.L+'" height="'+e.H+'" fill="'+wallFill+
+     '" stroke="#111" stroke-width="10"/>';
+  g+='<line x1="'+(X(0)-70)+'" y1="'+Y(0)+'" x2="'+(X(e.L)+70)+'" y2="'+Y(0)+
+     '" stroke="#000" stroke-width="26"/>';
+  // 문·창
+  e.ops.forEach(o=>{
+    const l=Math.max(0,o.left), r=Math.min(e.L,o.left+o.w);
+    const top=Math.min(e.H,o.top), bot=Math.min(o.sill,e.H);
+    const x=X(l), w=r-l, y=Y(top), h=top-bot;
+    if(!(w>0&&h>0)) return;
+    g+='<rect x="'+Math.round(x)+'" y="'+Math.round(y)+'" width="'+Math.round(w)+'" height="'+Math.round(h)+
+       '" fill="'+(opt.color?(o.isDoor?'#F2E6CE':'#D9EAF6'):'#FFFFFF')+'" stroke="#111" stroke-width="10"/>';
+    if(o.isDoor){
+      g+='<circle cx="'+Math.round(x+w-95)+'" cy="'+Math.round(y+h/2)+'" r="30" fill="#111"/>';  // 손잡이
+    }else{
+      g+='<line x1="'+Math.round(x+w/2)+'" y1="'+Math.round(y)+'" x2="'+Math.round(x+w/2)+
+         '" y2="'+Math.round(y+h)+'" stroke="#111" stroke-width="7"/>';                          // 중간 창틀
+      g+='<rect x="'+Math.round(x+70)+'" y="'+Math.round(y+70)+'" width="'+Math.round(Math.max(0,w-140))+
+         '" height="'+Math.round(Math.max(0,h-140))+'" fill="none" stroke="#111" stroke-width="5"/>';
+      if(o.sill>0) g+=_eDimV(x+w/2,Y(0),Y(o.sill),'SILL '+o.sill,'#7A6A3A');                     // 창대 높이
+    }
+    g+=_eTxt(x+w/2,y+h/2-14,o.name,ELEV_FS.tag,'#333');
+    g+=_eTxt(x+w/2,y+h/2+ELEV_FS.tag+8,o.w+'×'+o.h,ELEV_FS.tag,'#333');
+  });
+  // 스위치·콘센트 — 설치 높이까지 같이
+  if(showDev) e.devs.forEach(d=>{
+    const x=X(d.left), y=Y(d.h+d.bh/2);
+    g+='<rect x="'+Math.round(x)+'" y="'+Math.round(y)+'" width="'+d.w+'" height="'+d.bh+
+       '" fill="'+(opt.color?'#EAF3E1':'#FFFFFF')+'" stroke="#3F6B2E" stroke-width="8"/>';
+    g+=_eTxt(x+d.w/2,y+d.bh/2+22,d.sym||'',60,'#3F6B2E');
+    g+=_eTxt(x+d.w/2,y-24,d.name,58,'#3F6B2E');
+    // 설치 높이 — 바닥까지 가는 인출선 하나, 숫자는 기구 바로 밑에.
+    //  가운데에 적으면 문·창 글씨와 겹친다 (실물 확인에서 나온 문제)
+    g+='<g stroke="#3F6B2E" stroke-width="6" fill="none">'+
+       '<line x1="'+Math.round(x+d.w/2)+'" y1="'+Math.round(Y(0))+'" x2="'+Math.round(x+d.w/2)+
+       '" y2="'+Math.round(y+d.bh)+'"/>'+
+       '<line x1="'+Math.round(x+d.w/2-30)+'" y1="'+Math.round(Y(0))+'" x2="'+Math.round(x+d.w/2+30)+
+       '" y2="'+Math.round(Y(0))+'"/></g>';
+    g+=_eTxt(x+d.w/2,y+d.bh+72,'H'+d.h,58,'#3F6B2E');
+  });
+  // 아래 치수 두 줄 — 구간(문·창 사이) + 전체
+  const yb1=Y(0)+170, yb2=Y(0)+400;
+  let cut=[0];
+  e.ops.forEach(o=>{cut.push(Math.max(0,Math.min(e.L,o.left)),Math.max(0,Math.min(e.L,o.left+o.w)));});
+  cut.push(e.L);
+  cut=[...new Set(cut.map(v=>Math.round(v)))].sort((a,b)=>a-b);
+  if(cut.length>2) for(let i=0;i<cut.length-1;i++)
+    g+=_eDimH(X(cut[i]),X(cut[i+1]),yb1,cut[i+1]-cut[i]);
+  g+=_eDimH(X(0),X(e.L),yb2,e.L,'#111');
+  // 왼쪽 천장고
+  g+=_eDimV(X(0)-130,Y(0),Y(e.H),'CH '+e.H,'#111');
+  // 이름표
+  const t1=(e.label?('['+e.label+'] '):'')+(e.spaceName||'')+' '+e.dir+' 입면도';
+  const t2=['벽 '+e.L+' × 천장고 '+e.H,(e.thickness?('두께 '+e.thickness):''),
+    (e.material||''),(e.bearing?'내력벽':''),
+    (e.ops.length?('문·창 '+e.ops.length):''),(showDev&&e.devs.length?('전기 '+e.devs.length):'')]
+    .filter(Boolean).join('  ·  ');
+  g+=_eTxt(X(0),Y(0)+P.b-140,t1,ELEV_FS.title,'#000','start',' font-weight="700"');
+  g+=_eTxt(X(0),Y(0)+P.b-40,t2,ELEV_FS.dim,'#555','start');
+  return '<svg viewBox="0 0 '+Math.round(VW)+' '+Math.round(VH)+'" width="100%" '+
+    'preserveAspectRatio="xMidYMid meet" style="display:block">'+g+'</svg>';
+}
+
+// 한 공간의 입면 여러 장은 같은 축척으로 — 짧은 벽이 긴 벽만큼 넓게 그려지면 서로 견줄 수 없다.
+//  제일 긴 벽을 100%로 두고 나머지를 그 비율만큼 좁게 놓는다.
+function elevationSetWidths(elevs){
+  const vw=elevs.map(e=>e.L+ELEV_PAD.l+ELEV_PAD.r);
+  const mx=Math.max(1,...vw);
+  return vw.map(v=>(v/mx*100).toFixed(2)+'%');
+}
+// ===== 입면도 창 =====
+let _elevDlg=null, _elevCur=null;
+const _elevOpt={devices:true,color:true};
+function closeElevationDialog(){
+  if(_elevDlg){_elevDlg.remove();_elevDlg=null;}
+  document.removeEventListener('keydown',_elevKey,true);
+}
+function _elevKey(ev){ if(ev.key==='Escape'){ev.preventDefault();closeElevationDialog();} }
+function openElevationDialog(spaceId){
+  closeElevationDialog();
+  const spaces=elevationSpaces();
+  if(!spaces.length){cmdToast('벽이 있는 공간이 없습니다 — 공간을 먼저 그려주세요');return;}
+  let sid=spaceId||(STATE.selectedKind==='spaces'?STATE.selectedId:null);
+  if(STATE.selectedKind==='walls'){
+    const w=STATE.walls.find(x=>x.id===STATE.selectedId);
+    if(w&&w.spaceId) sid=w.spaceId;
+  }
+  if(!spaces.some(x=>x.id===sid)) sid=spaces[0].id;
+  const wrap=document.createElement('div');
+  wrap.id='elev-dialog';
+  wrap.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.62);'+
+    'display:flex;justify-content:center;align-items:center;padding:14px';
+  wrap.innerHTML=
+    '<div style="width:min(1180px,97vw);height:min(800px,94vh);background:var(--bg-card,#1A1B2E);'+
+      'border:1px solid var(--gold,#C9A961);border-radius:10px;display:flex;flex-direction:column;'+
+      'overflow:hidden;box-shadow:0 14px 52px rgba(0,0,0,0.6)">'+
+      '<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;'+
+        'border-bottom:1px solid var(--border,#3D4466)">'+
+        '<div style="font-size:14px;font-weight:700;color:var(--text-primary,#F5F1EB)">📐 입면도</div>'+
+        '<div id="ev-info" style="font-size:11.5px;color:var(--text-secondary,#A9B0C9)"></div>'+
+        '<button type="button" class="btn sm" id="ev-x" style="margin-left:auto">✕</button>'+
+      '</div>'+
+      '<div style="flex:1;display:flex;min-height:0">'+
+        '<div id="ev-left" style="width:282px;flex:none;overflow-y:auto;padding:12px 13px;'+
+          'border-right:1px solid var(--border,#3D4466)"></div>'+
+        '<div id="ev-body" style="flex:1;min-width:0;overflow-y:auto;padding:12px;background:#70747F"></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:7px;align-items:center;padding:10px 14px;'+
+        'border-top:1px solid var(--border,#3D4466)">'+
+        '<div style="font-size:11px;color:var(--text-tertiary,#7B82B5)">'+
+          '평면도를 고치면 입면도도 따라 바뀝니다</div>'+
+        '<button type="button" class="btn sm" id="ev-close" style="margin-left:auto">닫기</button>'+
+        '<button type="button" class="btn sm gold" id="ev-print" style="font-weight:700">🖨 인쇄</button>'+
+      '</div>'+
+    '</div>';
+  wrap.addEventListener('pointerdown',ev=>{if(ev.target===wrap)closeElevationDialog();});
+  document.body.appendChild(wrap);
+  _elevDlg=wrap;
+  document.addEventListener('keydown',_elevKey,true);
+  document.getElementById('ev-x').addEventListener('click',closeElevationDialog);
+  document.getElementById('ev-close').addEventListener('click',closeElevationDialog);
+  document.getElementById('ev-print').addEventListener('click',()=>printElevations());
+  renderElevationDialog(sid);
+}
+function renderElevationDialog(sid){
+  const left=document.getElementById('ev-left'), body=document.getElementById('ev-body');
+  if(!left||!body) return;
+  const spaces=elevationSpaces();
+  const elevs=buildSpaceElevations(sid);
+  const sp=STATE.spaces.find(x=>x.id===sid)||null;
+  _elevCur={spaceId:sid,elevs};
+  const info=document.getElementById('ev-info');
+  if(info) info.textContent=((sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||'')+
+    ' · 벽 '+elevs.length+'면 · 천장고 '+((sp&&sp.ceilingHeight_mm)||STATE.ceilingHeight)+'mm';
+  const chk=(id,on,txt)=>'<label style="display:flex;align-items:center;gap:6px;font-size:11.5px;'+
+    'color:var(--text-secondary,#A9B0C9);margin-top:5px;cursor:pointer">'+
+    '<input type="checkbox" id="'+id+'"'+(on?' checked':'')+'>'+txt+'</label>';
+  left.innerHTML=
+    '<div style="font-size:10.5px;letter-spacing:0.06em;color:var(--gold,#C9A961);font-weight:700;'+
+      'margin-bottom:6px">공간</div>'+
+    '<select id="ev-space" style="width:100%;font-size:12px">'+
+      spaces.map(x=>'<option value="'+x.id+'"'+(x.id===sid?' selected':'')+'>'+
+        escapeHtml(x.name||((SPACE_TYPES[x.type]||{}).name)||x.type)+'</option>').join('')+'</select>'+
+    '<div style="font-size:10.5px;letter-spacing:0.06em;color:var(--gold,#C9A961);font-weight:700;'+
+      'margin:13px 0 5px">벽 '+elevs.length+'면</div>'+
+    (elevs.length?elevs.map(e=>
+      '<div class="ev-row" data-w="'+e.wallId+'" style="display:flex;align-items:center;gap:6px;'+
+        'padding:4px 6px;margin-top:2px;border-radius:4px;background:rgba(255,255,255,0.04);'+
+        'font-size:11.5px;cursor:pointer">'+
+        '<b style="color:var(--gold,#C9A961);width:15px">'+e.label+'</b>'+
+        '<span style="flex:1;color:var(--text-secondary,#A9B0C9)">'+e.dir+' · '+e.L+'</span>'+
+        '<span style="color:var(--text-tertiary,#7B82B5)">'+
+          (e.ops.length?('문창'+e.ops.length):'')+(e.devs.length?(' 전기'+e.devs.length):'')+
+          (!e.ops.length&&!e.devs.length?'—':'')+'</span>'+
+      '</div>').join(''):'<div class="hint">벽이 없습니다</div>')+
+    '<div style="font-size:10.5px;letter-spacing:0.06em;color:var(--gold,#C9A961);font-weight:700;'+
+      'margin:13px 0 2px">표기</div>'+
+    chk('ev-dev',_elevOpt.devices,'스위치·콘센트 (설치 높이)')+
+    chk('ev-col',_elevOpt.color,'화면 미리보기 색')+
+    '<div class="hint" style="margin-top:11px">벽 길이·천장고·문창 위치와 크기·창대 높이·마감재를 '+
+      '평면도에서 그대로 읽어 그립니다. 방 안에서 벽을 바라본 방향입니다.</div>';
+  const selEl=document.getElementById('ev-space');
+  if(selEl) selEl.addEventListener('change',ev=>renderElevationDialog(ev.target.value));
+  const bind=(id,key)=>{const el=document.getElementById(id);
+    if(el) el.addEventListener('change',()=>{_elevOpt[key]=el.checked;renderElevationDialog(sid);});};
+  bind('ev-dev','devices'); bind('ev-col','color');
+  const ws=elevationSetWidths(elevs);
+  body.innerHTML=elevs.length
+    ? elevs.map((e,i)=>'<div id="evc-'+e.wallId+'" style="background:#fff;border-radius:4px;'+
+        'margin-bottom:12px;padding:8px;width:'+ws[i]+'">'+
+        elevationSVG(e,{color:_elevOpt.color,devices:_elevOpt.devices})+'</div>').join('')
+    : '<div style="color:#fff;font-size:12px;padding:8px">이 공간에는 벽이 없습니다</div>';
+  document.querySelectorAll('.ev-row').forEach(r=>r.addEventListener('click',()=>{
+    const t=document.getElementById('evc-'+r.dataset.w);
+    if(t) t.scrollIntoView({behavior:'smooth',block:'start'});
+  }));
+}
+// 입면도 인쇄 — A3 가로, 한 장에 4면
+function printElevations(sel){
+  const s=sel||_elevCur;
+  if(!s||!s.elevs||!s.elevs.length){cmdToast('인쇄할 입면도가 없습니다');return;}
+  const sp=STATE.spaces.find(x=>x.id===s.spaceId)||null;
+  const spName=(sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||'';
+  const d=new Date();
+  const date=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const pages=[];
+  for(let i=0;i<s.elevs.length;i+=4) pages.push(s.elevs.slice(i,i+4));
+  const pw=elevationSetWidths(s.elevs);
+  const css='@page{size:420mm 297mm;margin:0}*{box-sizing:border-box}'+
+    "body{margin:0;background:#fff;color:#000;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;"+
+    '-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    '.sheet{width:420mm;height:297mm;padding:11mm;page-break-after:always;display:flex;flex-direction:column}'+
+    '.sheet:last-child{page-break-after:auto}'+
+    '.hd{display:flex;align-items:baseline;gap:7mm;border-bottom:0.7mm solid #000;padding-bottom:2mm;flex:none}'+
+    '.hd h1{font-size:6mm;margin:0}.hd .m{font-size:3.3mm;color:#333}.hd .p{margin-left:auto;font-size:3.3mm}'+
+    '.grid{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start;gap:5mm;margin-top:4mm}'+
+    '.cell{width:calc(50% - 2.5mm);border:0.25mm solid #999;padding:2.5mm}';
+  const html='<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>'+
+    escapeHtml((STATE.projectName||'MiniCAD')+' 입면도 '+spName)+'</title><style>'+css+'</style></head><body>'+
+    pages.map((pg,i)=>'<div class="sheet"><div class="hd">'+
+      '<h1>'+escapeHtml(STATE.projectName||'')+' — 입면도</h1>'+
+      '<div class="m">'+escapeHtml(spName)+' · 천장고 '+((sp&&sp.ceilingHeight_mm)||STATE.ceilingHeight)+
+        'mm · 단위 mm · '+date+'</div>'+
+      '<div class="p">'+(i+1)+' / '+pages.length+'</div></div>'+
+      '<div class="grid">'+pg.map(e=>'<div class="cell"><div style="width:'+
+        pw[s.elevs.indexOf(e)]+'">'+
+        elevationSVG(e,{color:false,devices:_elevOpt.devices})+'</div></div>').join('')+'</div></div>').join('')+
+    '<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},400);};</scr'+'ipt>'+
+    '</body></html>';
+  const w=window.open('','_blank');
+  if(!w){alert('팝업이 차단되었습니다 — 팝업을 허용한 뒤 다시 인쇄하세요');return;}
+  w.document.write(html);w.document.close();
+  cmdToast('입면도 인쇄 — '+spName+' '+s.elevs.length+'면');
+}
