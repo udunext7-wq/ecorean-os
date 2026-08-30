@@ -3875,7 +3875,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('절단선: 테스트 예외 없음',false,e.message);
   }
-  // === 2026-08-30: 인쇄에 입면도 붙이기 (대표 지시) ===
+  // === 2026-08-30: 인쇄에 입면도 붙이기 — 면 단위로 고르고 크기도 정한다 (대표 지시) ===
   try{
     const _bakPE={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
       openings:STATE.openings.slice(),electric:STATE.electric.slice(),
@@ -3889,91 +3889,152 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       const v=polygonToVertexIds(pts.map(p=>({x:P0+p[0],y:P0+p[1]})));
       const sp=makeSpaceVEF(v,{name,type:'ROOM',typeIndex:ti,layerName:'A-AREA-ROOM-'+ti});
       sp.ceilingHeight_mm=2400;STATE.spaces.push(sp);
-      for(let i=0;i<v.length;i++)
-        STATE.walls.push(makeWallVEF(v[i],v[(i+1)%v.length],
-          {spaceId:sp.id,layerName:'A-WALL-ROOM-'+ti,finishMaterial:'WP_SILK'}));
-      return sp;
+      const W=[];
+      for(let i=0;i<v.length;i++){
+        const w=makeWallVEF(v[i],v[(i+1)%v.length],
+          {spaceId:sp.id,layerName:'A-WALL-ROOM-'+ti,finishMaterial:'WP_SILK'});
+        STATE.walls.push(w);W.push(w);
+      }
+      return {sp,W};
     };
     const pA=mkP([[0,0],[4000,0],[4000,3000],[0,3000]],'인쇄방1',95);
     const pB=mkP([[5000,0],[8000,0],[8000,3000],[5000,3000]],'인쇄방2',96);
+    // 인쇄방1 의 한 벽에만 문, 다른 한 벽에만 스위치 — 나머지 6면은 빈 벽
+    STATE.openings.push({id:'pe_d',type:'DOOR',subType:'swing',spaceId:pA.sp.id,wallId:pA.W[0].id,
+      x:P0+2000,y:P0,width_mm:900,height_mm:2100,depth_mm:200,sillHeight_mm:null,angle:0});
+    STATE.electric.push({id:'pe_s',type:'switch_2',x:P0+3950,y:P0+1500,angle:0,spaceId:pA.sp.id});
     const pSec=addSection(P0-200,P0+1500,P0+4200,P0+1500,-1);
 
     // [P1] 기본은 꺼져 있다 — 종전 인쇄가 달라지지 않는다
     const c0=printCfg();
     assert('인쇄입면: 기본 꺼짐',c0.elevations===false);
     assert('인쇄입면: 꺼져 있으면 목록 비었다',printElevationList(c0).length===0);
+    assert('인쇄입면: 한 장에 몇 면 기본은 자동',c0.elevPerPage===0);
 
-    // [P2] 켜면 무엇을 담을지 알아서 채운다
+    // [P2] 후보는 면 하나씩 — 벽 8개 + 절단선 1
+    const cand=printElevCandidates();
+    assert('인쇄입면: 후보 9면',cand.length===9,'n='+cand.length);
+    assert('인쇄입면: 벽·절단선 구분',cand.filter(c=>c.kind==='wall').length===8&&
+      cand.filter(c=>c.kind==='section').length===1);
+    assert('인쇄입면: 공간별로 묶인다',cand.filter(c=>c.group==='인쇄방1').length===4&&
+      cand.filter(c=>c.group==='인쇄방2').length===4);
+    assert('인쇄입면: 내용 있는 면을 표시',cand.filter(c=>c.kind==='wall'&&c.busy>0).length===2,
+      String(cand.filter(c=>c.kind==='wall'&&c.busy>0).length));
+
+    // [P3] 켜면 '문창·전기 있는 면 + 절단선' 만 담는다 (빈 벽이 딸려 나오지 않게)
     c0.elevations=true;
     printElevDefaults(c0);
-    assert('인쇄입면: 공간 자동 선택',c0.elevSpaceIds.length===elevationSpaces().length,
-      c0.elevSpaceIds.length+'/'+elevationSpaces().length);
-    assert('인쇄입면: 절단선 자동 선택',c0.elevSectionIds.length===STATE.sections.length);
-    const lst=printElevationList(c0);
-    assert('인쇄입면: 벽 8면 + 절단선 1',lst.length===9,'n='+lst.length);
-    assert('인쇄입면: 절단선이 맨 뒤',lst[lst.length-1].sectionId===pSec.id,
-      String(lst[lst.length-1].sectionId));
+    assert('인쇄입면: 기본은 내용 있는 면만',printElevationList(c0).length===3,
+      'n='+printElevationList(c0).length);
+    assert('인쇄입면: 빈 벽은 안 담긴다',
+      c0.elevPick.length===3&&cand.filter(c=>c.busy===0).every(c=>c0.elevPick.indexOf(c.key)<0));
 
-    // [P3] 고른 것만 담긴다
-    c0.elevSpaceIds=[pB.id];
-    assert('인쇄입면: 한 공간만',printElevationList(c0).length===5,
-      String(printElevationList(c0).length));
-    c0.elevSectionIds=[];
-    assert('인쇄입면: 절단선 빼기',printElevationList(c0).length===4);
-    c0.elevSpaceIds=[pA.id,pB.id];c0.elevSectionIds=[pSec.id];
+    // [P4] 면 하나씩 넣고 뺀다
+    const emptyKey=cand.filter(c=>c.busy===0)[0].key;
+    c0.elevPick.push(emptyKey);
+    assert('인쇄입면: 한 면 추가',printElevationList(c0).length===4);
+    c0.elevPick=[cand[0].key];
+    assert('인쇄입면: 한 면만',printElevationList(c0).length===1);
+    c0.elevPick=[];
+    assert('인쇄입면: 다 빼면 없다',printElevationList(c0).length===0);
+    printElevDefaults(c0);
 
-    // [P4] 한 장에 몇 면 — 용지 방향을 따른다
-    assert('인쇄입면: 가로는 4면',printElevPerPage({orientation:'landscape'})===4&&
-      printElevCols({orientation:'landscape'})===2);
-    assert('인쇄입면: 세로는 2면',printElevPerPage({orientation:'portrait'})===2&&
-      printElevCols({orientation:'portrait'})===1);
+    // [P5] 한 장에 몇 면 — 적게 담을수록 크게 나온다
+    const Lland={orientation:'landscape'},Lport={orientation:'portrait'};
+    c0.elevPerPage=0;
+    assert('인쇄입면: 자동은 가로 4·세로 2',printElevPerPage(Lland,c0)===4&&printElevPerPage(Lport,c0)===2);
+    c0.elevPerPage=1;
+    assert('인쇄입면: 1면 지정',printElevPerPage(Lland,c0)===1&&printElevPerPage(Lport,c0)===1);
+    assert('인쇄입면: 1~2면은 종이 폭을 다 쓴다',printElevCols(Lland,c0)===1);
+    c0.elevPerPage=2;
+    assert('인쇄입면: 2면도 한 줄에 하나',printElevCols(Lland,c0)===1&&printElevPerPage(Lport,c0)===2);
+    c0.elevPerPage=4;
+    assert('인쇄입면: 4면은 2열',printElevCols(Lland,c0)===2);
+    c0.elevPerPage=0;
 
-    // [P5] 인쇄 시트에 실제로 붙는다
+    // [P6] 인쇄 시트에 실제로 붙는다 · 장수가 설정을 따른다
     const bboxPE=printRegionBBox(c0);
     const LPE=choosePrintLayout(bboxPE,c0);
-    const per=printElevPerPage(LPE);
-    const htmlOn=buildPrintSheet({url:'',wMm:10,hMm:10},LPE,_printInfo(),c0,{preview:true});
-    const nPage=(htmlOn.match(/class="pe"/g)||[]).length;
-    assert('인쇄입면: 뒷장이 붙는다',nPage===Math.ceil(9/per),nPage+'/'+Math.ceil(9/per));
-    assert('인쇄입면: 면마다 그림',(htmlOn.match(/<svg/g)||[]).length>=9,
-      String((htmlOn.match(/<svg/g)||[]).length));
-    assert('인쇄입면: 표제',htmlOn.indexOf('입 면 도')>0);
+    const nSel=printElevationList(c0).length;
+    const sheetOf=()=>buildPrintSheet({url:'',wMm:10,hMm:10},LPE,_printInfo(),c0,{preview:true});
+    const perAuto=printElevPerPage(LPE,c0);
+    assert('인쇄입면: 뒷장이 붙는다',
+      (sheetOf().match(/class="pe[ "]/g)||[]).length===Math.ceil(nSel/perAuto),
+      (sheetOf().match(/class="pe[ "]/g)||[]).length+'/'+Math.ceil(nSel/perAuto));
+    c0.elevPerPage=1;
+    assert('인쇄입면: 1면이면 면마다 한 장',
+      (sheetOf().match(/class="pe[ "]/g)||[]).length===nSel,
+      String((sheetOf().match(/class="pe[ "]/g)||[]).length));
+    c0.elevPerPage=0;
+    assert('인쇄입면: 표제',sheetOf().indexOf('입 면 도')>0);
     c0.elevations=false;
-    const htmlOff=buildPrintSheet({url:'',wMm:10,hMm:10},LPE,_printInfo(),c0,{preview:true});
-    assert('인쇄입면: 끄면 안 붙는다',(htmlOff.match(/class="pe"/g)||[]).length===0);
+    assert('인쇄입면: 끄면 안 붙는다',(sheetOf().match(/class="pe[ "]/g)||[]).length===0);
     c0.elevations=true;
 
-    // [P6] 미리보기 — 입면도만 (평면·부속표는 빠진다)
+    // [P6-2] 세로 용지에선 눕혀 크게 (대표 보고: 인쇄란에서 작아서 잘 보이지 않는다)
+    assert('인쇄입면: 눕히기 기본 켬',c0.elevLandscape===true);
+    assert('인쇄입면: 세로일 때만 눕힌다',
+      printElevRot(Lport,c0)===true&&printElevRot(Lland,c0)===false);
+    c0.elevLandscape=false;
+    assert('인쇄입면: 끄면 안 눕힌다',printElevRot(Lport,c0)===false);
+    c0.elevLandscape=true;
+    const rotHtml=buildPrintSheet(null,{...LPE,orientation:'portrait',pw:210,ph:297,paper:'A4',
+      scale:LPE.scale,availW:194,availH:200,tbH:30},_printInfo(),c0,
+      {preview:true,onlyPage:3,onlyElevPage:1});
+    assert('인쇄입면: 눕힌 판 표시',rotHtml.indexOf('class="pe rot"')>0);
+    assert('인쇄입면: 눕힘 CSS',rotHtml.indexOf('rotate(90deg)')>0);
+    const flatHtml=buildPrintSheet(null,{...LPE,orientation:'landscape',pw:297,ph:210,paper:'A4',
+      scale:LPE.scale,availW:281,availH:150,tbH:30},_printInfo(),c0,
+      {preview:true,onlyPage:3,onlyElevPage:1});
+    assert('인쇄입면: 가로 용지는 그대로',flatHtml.indexOf('class="pe rot"')<0);
+
+    // [P7] 미리보기 — 입면도만 (평면·부속표는 빠진다)
     const only3=buildPrintSheet(null,LPE,_printInfo(),c0,{preview:true,onlyPage:3,onlyElevPage:1});
-    assert('인쇄입면: 미리보기는 입면 한 장',(only3.match(/class="pe"/g)||[]).length===1,
-      String((only3.match(/class="pe"/g)||[]).length));
+    assert('인쇄입면: 미리보기는 입면 한 장',(only3.match(/class="pe[ "]/g)||[]).length===1,
+      String((only3.match(/class="pe[ "]/g)||[]).length));
     assert('인쇄입면: 미리보기에 평면 없음',(only3.match(/class="sheet"/g)||[]).length===0);
     assert('인쇄입면: 미리보기에 부속표 없음',(only3.match(/class="p2"/g)||[]).length===0);
 
-    // [P7] 색상 설정을 따른다
+    // [P8] 색상 설정을 따른다
     c0.colorMode='color';
     assert('인쇄입면: 칼라 표기',
       buildPrintSheet(null,LPE,_printInfo(),c0,{preview:true,onlyPage:3,onlyElevPage:1})
         .indexOf('칼라')>0);
     c0.colorMode='ink';
 
-    // [P8] 설정창 — 켜고 고르는 자리
+    // [P9] 설정창 — 면 목록에서 하나씩 고른다
     openPrintDialog();
     assert('인쇄입면: 설정창 항목',!!document.getElementById('pd-elev'));
-    assert('인쇄입면: 미리보기 버튼',!!document.getElementById('pd-pg3'));
-    assert('인쇄입면: 버튼에 면 수',document.getElementById('pd-pg3').textContent.indexOf('9면')>0,
-      document.getElementById('pd-pg3').textContent);
-    assert('인쇄입면: 공간 칩',document.querySelectorAll('.pd-evsp').length===elevationSpaces().length,
-      String(document.querySelectorAll('.pd-evsp').length));
-    assert('인쇄입면: 절단선 칩',document.querySelectorAll('.pd-evsc').length===STATE.sections.length);
-    // 칩을 누르면 빠진다
-    const chip=document.querySelectorAll('.pd-evsp')[0];
-    const cid=chip.dataset.id;
-    chip.click();
-    assert('인쇄입면: 칩으로 빼기',printCfg().elevSpaceIds.indexOf(cid)<0,
-      printCfg().elevSpaceIds.join(','));
-    document.querySelectorAll('.pd-evsp')[0].click();
-    assert('인쇄입면: 칩으로 넣기',printCfg().elevSpaceIds.indexOf(cid)>=0);
+    assert('인쇄입면: 면 목록 9줄',document.querySelectorAll('.pd-evpick').length===9,
+      String(document.querySelectorAll('.pd-evpick').length));
+    assert('인쇄입면: 한 장에 몇 면 버튼',document.querySelectorAll('.pd-evper').length===4);
+    assert('인쇄입면: 전체·해제 버튼',!!document.getElementById('pd-evall')&&
+      !!document.getElementById('pd-evbusy')&&!!document.getElementById('pd-evnone'));
+    // 전체 → 9면, 해제 → 0면, 내용 있는 면 → 3면
+    document.getElementById('pd-evall').click();
+    assert('인쇄입면: 전체 선택',printElevationList(printCfg()).length===9,
+      String(printElevationList(printCfg()).length));
+    document.getElementById('pd-evnone').click();
+    assert('인쇄입면: 전체 해제',printElevationList(printCfg()).length===0);
+    document.getElementById('pd-evbusy').click();
+    assert('인쇄입면: 내용 있는 면만',printElevationList(printCfg()).length===3,
+      String(printElevationList(printCfg()).length));
+    // 체크박스 하나를 끄면 그 면이 빠진다
+    const ck=[...document.querySelectorAll('.pd-evpick')].filter(x=>x.checked)[0];
+    const ckKey=ck.dataset.k;
+    ck.checked=false;ck.dispatchEvent(new Event('change'));
+    assert('인쇄입면: 한 면 빼기',printCfg().elevPick.indexOf(ckKey)<0&&
+      printElevationList(printCfg()).length===2,String(printElevationList(printCfg()).length));
+    // 한 장에 1면으로
+    [...document.querySelectorAll('.pd-evper')].filter(b=>b.dataset.v==='1')[0].click();
+    assert('인쇄입면: 1면 설정 적용',printCfg().elevPerPage===1);
+    // 눕히기 토글
+    const rt=document.getElementById('pd-evrot');
+    assert('인쇄입면: 눕히기 토글',!!rt&&rt.checked===true);
+    rt.checked=false;rt.dispatchEvent(new Event('change'));
+    assert('인쇄입면: 눕히기 끄기',printCfg().elevLandscape===false);
+    rt.checked=true;rt.dispatchEvent(new Event('change'));
+    assert('인쇄입면: 눕히기 다시 켜기',printCfg().elevLandscape===true);
     // 껐다 켜기
     const tgl=document.getElementById('pd-elev');
     tgl.checked=false;tgl.dispatchEvent(new Event('change'));
@@ -3983,12 +4044,10 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       document.getElementById('pd-pg3').disabled===false);
     closePrintDialog();
 
-    // [P9] 2026-08-30 대표 보고: "인쇄에서 입면도를 봐도 나오지가 않는다"
+    // [P10] 2026-08-30 대표 보고: "인쇄에서 입면도를 봐도 나오지가 않는다"
     //  꺼진 상태에서 버튼이 잠겨 있어 눌러도 아무 일이 없었다.
-    //  누른 것 자체가 보겠다는 뜻이므로, 눌리면 켜지고 담을 것도 알아서 채워야 한다.
     STATE.printConfig=null;
-    const cOff=printCfg();
-    assert('인쇄입면: 기본은 꺼짐 (재확인)',cOff.elevations===false);
+    assert('인쇄입면: 기본은 꺼짐 (재확인)',printCfg().elevations===false);
     openPrintDialog();
     const b3=document.getElementById('pd-pg3');
     assert('인쇄입면: 꺼져 있어도 버튼이 잠기지 않는다',b3.disabled===false,String(b3.disabled));
@@ -3997,15 +4056,13 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('인쇄입면: 누르면 담을 것도 채워진다',printElevationList(printCfg()).length>0,
       String(printElevationList(printCfg()).length));
     assert('인쇄입면: 누르면 입면도 쪽을 본다',_printPreviewPage===3,String(_printPreviewPage));
-    // 다 빼놓고 눌러도 다시 채워진다
-    const c9=printCfg();
-    c9.elevSpaceIds=[];c9.elevSectionIds=[];
+    printCfg().elevPick=[];
     document.getElementById('pd-pg3').click();
     assert('인쇄입면: 비어 있으면 다시 채운다',printElevationList(printCfg()).length>0,
       String(printElevationList(printCfg()).length));
     closePrintDialog();
 
-    // [P10] 뽑을 벽이 아예 없으면 그때만 잠근다
+    // [P11] 뽑을 벽이 아예 없으면 그때만 잠근다
     const _spBak=STATE.spaces,_wBak=STATE.walls,_scBak=STATE.sections;
     STATE.spaces=[];STATE.walls=[];STATE.sections=[];
     STATE.printConfig=null;
@@ -4015,7 +4072,6 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('인쇄입면: 없다고 적어준다',bNone.textContent.indexOf('없음')>0,bNone.textContent);
     closePrintDialog();
     STATE.spaces=_spBak;STATE.walls=_wBak;STATE.sections=_scBak;
-    STATE.printConfig=null;printCfg().elevations=true;printElevDefaults(printCfg());
 
     STATE.spaces=_bakPE.spaces;STATE.walls=_bakPE.walls;STATE.vertices=_bakPE.vertices;
     STATE.openings=_bakPE.openings;STATE.electric=_bakPE.electric;
