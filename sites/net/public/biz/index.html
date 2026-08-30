@@ -7,7 +7,7 @@
 <script src="/app-cloud.js"></script>
 <!-- 고칠 때마다 ?v= 를 올린다. 안 올리면 브라우저가 옛 파일을 계속 써서
      화면(HTML)과 저장 계층(JS)의 버전이 어긋난다 — 내역이 안 보이는 원인이 된다. -->
-<script src="/biz/biz-db.js?v=biz10"></script>
+<script src="/biz/biz-db.js?v=biz11"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -577,7 +577,7 @@
   </section>
 
   <section class="tab" id="tab-stats">
-    <button class="btn btn-primary" id="openRepBtn" style="display:flex;align-items:center;justify-content:center;gap:9px;font-size:15px;padding:15px;margin-bottom:4px">🖨️ 월간 결산 리포트 <span style="font-size:11px;font-weight:400;opacity:.75">인쇄 · PDF 저장</span></button>
+    <button class="btn btn-primary" id="openRepBtn" style="display:flex;align-items:center;justify-content:center;gap:9px;font-size:15px;padding:15px;margin-bottom:4px">🖨️ 내역서 인쇄 <span style="font-size:11px;font-weight:400;opacity:.75">월간결산 · 입출금 · 원가계산서</span></button>
     <div class="sec-t">월별 추이 · 6 MONTHS</div>
     <div class="card"><div class="bars" id="bars"></div>
       <div class="chart-leg"><span><i style="background:var(--teal)"></i>수입</span><span><i style="background:var(--coral)"></i>지출</span></div></div>
@@ -727,6 +727,8 @@
     <div class="field"><label>증빙</label><select id="evidSel"><option value="세금계산서">세금계산서</option><option value="카드">카드</option><option value="현금영수증">현금영수증</option><option value="간이영수증">간이영수증</option><option value="">없음</option></select></div>
   </div>
   <div class="field bizfield"><label>대금 상태</label><div class="pills" id="crPills"><div class="pill sel" data-cr="0">✅ 결제 완료</div><div class="pill" data-cr="1">⏳ 외상 (미수·미지급)</div></div></div>
+  <div class="field bizfield hidden" id="invField"><label>세금계산서 발행일 <span style="color:var(--muted-2);font-weight:400">· 비우면 미발행으로 봅니다</span></label>
+    <input id="invInput" type="date"></div>
   <div class="field bizfield hidden" id="dueField"><label id="dueLabel">수금 예정일</label><input id="dueInput" type="date">
     <div class="hintline">언제 받기로(주기로) 했는지 넣으면 연체 알림과 자금계획에 잡힙니다</div></div>
   <div class="field bizfield"><label>영수증 · 증빙</label>
@@ -796,6 +798,25 @@
   <div class="field"><label>날짜</label><input id="eDate" type="date"></div>
   <div class="field"><label>시간 (선택)</label><input id="eTime" type="time"></div>
   <button class="btn btn-primary" id="saveEvt">일정 등록</button>
+</div>
+
+<!-- 인쇄 프리셋 SHEET -->
+<div class="overlay" id="ovPrint"></div>
+<div class="sheet" id="shPrint">
+  <div class="grab"></div><h2>내역서 인쇄</h2><div class="desc">양식을 고르면 그 형식으로 만들어 인쇄하거나 PDF로 저장합니다</div>
+  <div class="field"><label>양식</label><div class="pills" id="prPreset">
+    <div class="pill sel" data-p="month">📊 월간 결산</div>
+    <div class="pill" data-p="cash">💳 현장 입출금 내역</div>
+    <div class="pill" data-p="cost">🧱 원가계산서 · 집계표</div>
+  </div></div>
+  <div class="field hidden" id="prMonthField"><label>대상 월</label><input id="prMonth" type="month"></div>
+  <div class="field hidden" id="prSiteField"><label>현장</label><div class="pills" id="prSite"></div></div>
+  <div class="row2 hidden" id="prRangeField">
+    <div class="field"><label>금회 시작일</label><input id="prFrom" type="date"></div>
+    <div class="field"><label>금회 마감일</label><input id="prTo" type="date"></div>
+  </div>
+  <button class="btn btn-primary" id="prGo">만들기</button>
+  <div class="note" id="prHint" style="margin-top:12px"></div>
 </div>
 
 <!-- 집계표(공종별 실행예산) SHEET -->
@@ -962,10 +983,11 @@
 <!-- REPORT MODAL -->
 <div class="repmodal" id="repModal">
   <div class="cm-head">
-    <div class="cm-title"><span style="color:var(--gold)">🖨️</span> 월간 결산 리포트</div>
+    <div class="cm-title" id="repTitle"><span style="color:var(--gold)">🖨️</span> 월간 결산 리포트</div>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="cm-today" id="repPrev">‹</button>
       <button class="cm-today" id="repNext">›</button>
+      <button class="cm-today" id="repBack">양식</button>
       <button class="cm-today" id="repPrint" style="color:var(--gold)">인쇄 · PDF</button>
       <div class="iconbtn" id="repClose" style="width:36px;height:36px">✕</div>
     </div>
@@ -1118,7 +1140,7 @@ function snapshot(){
 
 let state=load();
 let view=new Date(); view.setDate(1);
-let form={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name,acct2:'',editId:null,site:'',vatm:'none',evid:'세금계산서',cr:0,due:'',att:[],pc:'',ct:''};
+let form={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name,acct2:'',editId:null,site:'',vatm:'none',evid:'세금계산서',cr:0,due:'',att:[],pc:'',ct:'',inv:''};
 /* 계정과목 → 원가 비목 기본값. 표준 계약내역서의 재료비/노무비/외주비/경비 3+1 구조. */
 const COST_TYPES=['재료비','노무비','외주비','경비'];
 const COST_BY_CAT={'자재비':'재료비','인건비':'노무비','직원급여':'노무비','외주비':'외주비'};
@@ -1619,6 +1641,14 @@ function renderProcPills(){
     ps.map(p=>`<div class="pill ${form.pc===p.code?'sel':''}" data-p="${esc(p.code)}">${esc(p.name)}</div>`).join('');
   $$('#procPills .pill').forEach(x=>x.onclick=()=>{form.pc=x.dataset.p;renderProcPills();});
 }
+/* 세금계산서일 때만 발행일을 묻는다 — 미발행분을 찾아내는 근거가 된다 */
+function renderInvField(){
+  const el=$('#invField');if(!el)return;
+  const on=$('#evidSel').value==='세금계산서';
+  el.classList.toggle('hidden',!on);
+  if(!on)form.inv='';
+  $('#invInput').value=form.inv||'';
+}
 function renderCostPills(){
   const el=$('#costPills');if(!el)return;
   const cur=form.ct||costTypeOf(form.cat);
@@ -1686,10 +1716,12 @@ function updateMemoSugg(){
   $('#memoSugg').innerHTML=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([m])=>`<option value="${esc(m)}">`).join('');
 }
 $('#dueInput').onchange=e=>{form.due=e.target.value||'';};
+$('#invInput').onchange=e=>{form.inv=e.target.value||'';};
+$('#evidSel').onchange=renderInvField;
 function resetAddSheet(){
-  form.editId=null;form.due='';form.att=[];form.pc='';form.ct='';
+  form.editId=null;form.due='';form.att=[];form.pc='';form.ct='';form.inv='';
   if($('#dueInput'))$('#dueInput').value='';
-  renderAtt();renderProcPills();renderCostPills();
+  renderAtt();renderProcPills();renderCostPills();renderInvField();
   $('#addTitle').textContent='거래 추가';$('#saveTx').textContent='기록하기';$('#delTx').classList.add('hidden');
 }
 function openEdit(id){
@@ -1699,8 +1731,8 @@ function openEdit(id){
   setType(t.type);form.cat=t.cat;form.ico=t.ico||icoOf(t.type,t.cat);renderCats();
   form.acct=t.acct||state.accounts[0].name;renderAcctPills();
   form.site=t.site||'';form.cr=t.cr?1:0;form.due=t.due||'';form.att=(t.att||[]).slice();
-  form.pc=t.pc||'';form.ct=t.ct||'';
-  renderSitePills();renderCrPills();renderAtt();renderProcPills();renderCostPills();
+  form.pc=t.pc||'';form.ct=t.ct||'';form.inv=t.inv||'';
+  renderSitePills();renderCrPills();renderAtt();renderProcPills();renderCostPills();renderInvField();
   $('#vendorInput').value=t.vendor||'';
   $('#vatSel').value=t.vatm||'none';
   $('#evidSel').value=t.evid!=null?t.evid:'세금계산서';
@@ -1731,7 +1763,7 @@ $('#saveTx').onclick=()=>{
   else if(vatm==='excl'){vat=Math.round(amt*0.1);amount=amt+vat;supply=amt;}
   const biz={vendor,site:form.site,vatm,supply,vat,evid,cr:form.cr,
              due:form.cr?(form.due||undefined):undefined, att:form.att.slice(),
-             pc:form.pc||undefined, ct:form.ct||costTypeOf(form.cat)};
+             pc:form.pc||undefined, ct:form.ct||costTypeOf(form.cat), inv:form.inv||undefined};
   if(form.editId!=null){
     const t=state.tx.find(x=>x.id==form.editId);
     if(t){Object.assign(t,{type:form.type,cat:form.cat,ico:form.ico,amount,memo,date,acct:form.acct,synced:false},biz);}
@@ -2181,18 +2213,141 @@ function renderReport(){
    <tr><th colspan="2"></th><th>합계</th><th class="num">${won(exp)}</th><th class="num">${won(inc)}</th></tr></table>
    <div style="font-size:10px;color:var(--muted);margin-top:14px">ECOREAN/BOC_BIZ V2 자동 생성 리포트 · 부가세는 입력된 거래 기준 단순 집계이며 신고용 확정 수치가 아닙니다</div>`;
 }
-function openRepModal(){repView=new Date(view);repView.setDate(1);renderReport();$('#repModal').classList.add('on');}
-$('#openRepBtn').onclick=openRepModal;
+function openRepModal(){
+  repView=new Date($('#prMonth').value?($('#prMonth').value+'-01T00:00'):view);repView.setDate(1);
+  $('#repTitle').textContent='📊 월간 결산 리포트';
+  renderReport();$('#repModal').classList.add('on');
+}
+
+/* ============ 인쇄 양식(프리셋) ============
+   ① 월간 결산  ② 현장 입출금 내역  ③ 원가계산서·집계표
+   ②는 실무에서 쓰는 자금집행 보고 형식 — 전회/금회/누계 3단에 비목 열을 붙인다.
+   참고한 원본은 자재·장비외주 2열이었지만, 우리는 비목이 4개라 그대로 4열로 낸다. */
+let prPreset='month',prSite='';
+function openPrint(){
+  prSite=prSite||state.sites[0]||'';
+  $('#prMonth').value=ym(view);
+  const now=new Date();
+  if(!$('#prTo').value)$('#prTo').value=todayStr();
+  if(!$('#prFrom').value)$('#prFrom').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-01`;
+  renderPrintOpts();openSheet('Print');
+}
+function renderPrintOpts(){
+  $$('#prPreset .pill').forEach(p=>{
+    p.classList.toggle('sel',p.dataset.p===prPreset);
+    p.onclick=()=>{prPreset=p.dataset.p;renderPrintOpts();};
+  });
+  $('#prMonthField').classList.toggle('hidden',prPreset!=='month');
+  $('#prSiteField').classList.toggle('hidden',prPreset==='month');
+  $('#prRangeField').classList.toggle('hidden',prPreset!=='cash');
+  if(prPreset!=='month'){
+    $('#prSite').innerHTML=state.sites.length
+      ? state.sites.map(s=>`<div class="pill ${prSite===s?'sel':''}" data-s="${esc(s)}">🏗️ ${esc(s)}</div>`).join('')
+      : '<div style="font-size:11.5px;color:var(--muted-2)">등록된 현장이 없습니다</div>';
+    $$('#prSite .pill').forEach(p=>p.onclick=()=>{prSite=p.dataset.s;renderPrintOpts();});
+  }
+  $('#prHint').innerHTML={
+    month:'그 달의 매출·지출·부가세·미수미지급을 한 장으로 정리합니다.',
+    cash:'현장 하나의 <b>전회 / 금회 / 누계</b>를 3단으로 내고, 거래마다 재료비·노무비·외주비·경비를 나눠 적습니다. 세금계산서 발행일도 비고에 함께 나옵니다. 발주처·건축주에게 자금 집행을 보고할 때 쓰는 형식입니다.',
+    cost:'계약내역서와 같은 구성으로 <b>원가계산서</b>(법정경비 포함)와 <b>집계표</b>(공종별 예산 대비 집행)를 냅니다.'
+  }[prPreset];
+}
+$('#prGo').onclick=()=>{
+  if(prPreset!=='month'&&!prSite){toast('현장을 선택하세요');return;}
+  closeSheet('Print');
+  if(prPreset==='month'){openRepModal();return;}
+  if(prPreset==='cash')renderCashReport(prSite,$('#prFrom').value,$('#prTo').value);
+  else renderCostReport(prSite);
+  $('#repModal').classList.add('on');
+};
+
+function repHead(title,sub){
+  const o=bizOrg();
+  return `<div class="rep-h" style="text-align:center;margin-bottom:16px">
+    <div style="font-size:19px;font-weight:700;letter-spacing:4px">${esc(title)}</div>
+    <div style="font-size:12px;margin-top:8px">${esc(o.name||'')}${o.biz_reg_no?` · 사업자 ${esc(o.biz_reg_no)}`:''}${o.ceo_name?` · 대표 ${esc(o.ceo_name)}`:''}</div>
+    ${sub?`<div style="font-size:12px;color:var(--muted);margin-top:3px">${sub}</div>`:''}
+  </div>`;
+}
+/* ── ② 현장 입출금 내역 ── */
+function renderCashReport(site,from,to){
+  const all=state.tx.filter(t=>!t.tf&&t.site===site).sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
+  const prev=all.filter(t=>t.date<from);
+  const cur=all.filter(t=>t.date>=from&&t.date<=to);
+  const sum=(arr,ty)=>arr.filter(t=>t.type===ty).reduce((a,b)=>a+b.amount,0);
+  const byCt=(arr,ct)=>arr.filter(t=>t.type==='out'&&(t.ct||costTypeOf(t.cat))===ct).reduce((a,b)=>a+b.amount,0);
+  const pIn=sum(prev,'in'),pOut=sum(prev,'out');
+  const cIn=sum(cur,'in'),cOut=sum(cur,'out');
+  const CTS=['재료비','노무비','외주비','경비'];
+  const fmtD=d=>String(d).slice(2).replace(/-/g,'.');
+  const cell=v=>v?won(v):'';
+  const line=(label,inc,out,bal,cts,strong)=>
+    `<tr style="${strong?'font-weight:700;background:rgba(0,0,0,.04)':''}">
+      <td colspan="3">${label}</td><td></td>
+      <td class="num">${cell(inc)}</td><td class="num">${cell(out)}</td>
+      <td class="num">${bal===null?'':won(bal)}</td>
+      ${CTS.map(c=>`<td class="num">${cts?cell(cts[c]):''}</td>`).join('')}</tr>`;
+  const curCts={};CTS.forEach(c=>curCts[c]=byCt(cur,c));
+
+  $('#repTitle').textContent='💳 현장 입출금 내역';
+  $('#repBody').innerHTML=repHead(`입 출 금 내 역 ( ${site} )`,
+      `금회 ${from.replace(/-/g,'.')} ~ ${to.replace(/-/g,'.')}`)+
+    `<table class="rep-table" style="font-size:11px">
+      <tr><th>거래일</th><th>적요</th><th>거래처</th><th>구분</th><th class="num">입금</th><th class="num">출금</th><th class="num">잔액/비고</th>
+        ${CTS.map(c=>`<th class="num">${c}</th>`).join('')}</tr>
+      ${line('전 회 입 출 금 내 역',pIn,pOut,pIn-pOut,null,true)}
+      ${line('금 회 입 출 금 내 역',cIn,cOut,cIn-cOut,curCts,true)}
+      ${cur.length?cur.map(t=>{
+        const ct=t.ct||costTypeOf(t.cat);
+        const note=[t.inv?`세금계산서 ${fmtD(t.inv)}`:(t.evid==='세금계산서'?'미발행':''),t.cr?(t.type==='in'?'미수':'미지급'):''].filter(Boolean).join(' · ');
+        return `<tr><td>${fmtD(t.date)}</td><td>${esc(t.memo||'-')}</td><td>${esc(t.vendor||'')}</td>
+          <td>${esc(t.cat)}${t.pc?`/${esc(procName(t.pc))}`:''}</td>
+          <td class="num">${t.type==='in'?won(t.amount):''}</td>
+          <td class="num">${t.type==='out'?won(t.amount):''}</td>
+          <td style="font-size:10px">${esc(note)}</td>
+          ${CTS.map(c=>`<td class="num">${t.type==='out'&&ct===c?won(t.amount):''}</td>`).join('')}</tr>`;}).join('')
+        :`<tr><td colspan="${7+CTS.length}" style="text-align:center;color:#888;padding:14px">이 기간에 거래가 없습니다</td></tr>`}
+      ${line('누　　　계',pIn+cIn,pOut+cOut,(pIn+cIn)-(pOut+cOut),null,true)}
+    </table>
+    <div style="margin-top:14px;font-size:11.5px">
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #ddd"><span>금회 지출 합계</span><span class="num">${won(cOut)} 원</span></div>
+      ${CTS.map(c=>curCts[c]?`<div style="display:flex;justify-content:space-between;padding:4px 0;color:#555"><span>　${c}</span><span class="num">${won(curCts[c])} 원</span></div>`:'').join('')}
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-top:1px solid #ddd"><span>금회 입금(수금) 합계</span><span class="num">${won(cIn)} 원</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-weight:700"><span>누계 잔액 (입금 − 출금)</span><span class="num">${won((pIn+cIn)-(pOut+cOut))} 원</span></div>
+    </div>
+    ${(()=>{const un=cur.filter(t=>t.type==='out'&&t.evid==='세금계산서'&&!t.inv);
+      return un.length?`<div style="margin-top:12px;font-size:11px;border:1px solid #bbb;padding:9px 11px">
+        <b>세금계산서 미발행 ${un.length}건 · ${won(un.reduce((a,b)=>a+b.amount,0))}원</b> — 발행일을 넣으면 이 줄이 사라집니다.</div>`:'';})()}
+    <div style="font-size:10px;color:#888;margin-top:12px">ECOREAN/BOC_BIZ 자동 생성 · 장부에 기록된 거래 기준</div>`;
+}
+/* ── ③ 원가계산서 · 집계표 ── */
+function renderCostReport(site){
+  const o=siteSummary(site);
+  $('#repTitle').textContent='🧱 원가계산서 · 집계표';
+  $('#repBody').innerHTML=repHead('공 사 원 가 계 산 서',`공사명: ${site}${o.contract?` · 계약금액 ${won(o.contract)}원`:''}`)+
+    `<div style="margin-bottom:18px">${costSheetHtml(site)}</div>
+     <div style="font-family:var(--font-d);font-size:12px;letter-spacing:2px;margin:22px 0 10px;text-align:center;font-weight:700">집 계 표</div>
+     ${tallyHtml(site)}
+     <div style="margin-top:16px;font-size:11.5px">
+       <div style="display:flex;justify-content:space-between;padding:5px 0;border-top:1px solid #ddd"><span>계약금액</span><span class="num">${o.contract?won(o.contract):'미입력'} 원</span></div>
+       <div style="display:flex;justify-content:space-between;padding:5px 0"><span>발생 매출 (기성 누계)</span><span class="num">${won(o.billed)} 원</span></div>
+       <div style="display:flex;justify-content:space-between;padding:5px 0"><span>투입 원가</span><span class="num">${won(o.out)} 원</span></div>
+       <div style="display:flex;justify-content:space-between;padding:5px 0;font-weight:700;border-top:1px solid #ddd"><span>손익</span><span class="num">${won(o.profit)} 원</span></div>
+     </div>
+     <div style="font-size:10px;color:#888;margin-top:14px">법정경비는 설정한 요율로 노무비에서 자동 계산한 추정치입니다 · 세무조정 전 수치</div>`;
+}
+$('#openRepBtn').onclick=openPrint;
 $('#repClose').onclick=()=>$('#repModal').classList.remove('on');
 $('#repPrev').onclick=()=>{repView.setMonth(repView.getMonth()-1);renderReport();};
 $('#repNext').onclick=()=>{repView.setMonth(repView.getMonth()+1);renderReport();};
 $('#repPrint').onclick=()=>window.print();
+$('#repBack').onclick=()=>{$('#repModal').classList.remove('on');openPrint();};
 
 /* ============ 시트/탭 ============ */
 function openSheet(id){$('#ov'+id).classList.add('on');$('#sh'+id).classList.add('on');}
 function closeSheet(id){$('#ov'+id).classList.remove('on');$('#sh'+id).classList.remove('on');}
-['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member','Trash','Budget'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
-$('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;form.pc='';form.ct='';setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
+['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member','Trash','Budget','Print'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
+$('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;form.pc='';form.ct='';form.inv='';setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
 $('#prevM').onclick=()=>{view.setMonth(view.getMonth()-1);render();};
 $('#nextM').onclick=()=>{view.setMonth(view.getMonth()+1);render();};
 $('#searchInput').oninput=e=>{filter.q=e.target.value;renderList(listSource());};

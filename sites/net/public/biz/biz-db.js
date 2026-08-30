@@ -163,7 +163,7 @@
           po_id: s(t.poId),
           vendor: s(t.vendor), memo: s(t.memo),
           is_credit: !!t.cr, due_date: s(t.due), settled_on: s(t.settled),
-          cost_type: s(t.ct), process_code: s(t.pc),
+          cost_type: s(t.ct), process_code: s(t.pc), invoice_date: s(t.inv),
           recurring_id: s(t.rid), notion_synced: !!t.synced,
           source: t.src || 'manual', dedupe_key: s(t.dk),
           attachments: t.att || []
@@ -182,7 +182,7 @@
           memo: r.memo || '', cr: r.is_credit ? 1 : 0,
           due: r.due_date || undefined, settled: r.settled_on || undefined,
           rid: r.recurring_id ? (Number(r.recurring_id) || r.recurring_id) : undefined,
-          ct: r.cost_type || undefined, pc: r.process_code || undefined,
+          ct: r.cost_type || undefined, pc: r.process_code || undefined, inv: r.invoice_date || undefined,
           synced: !!r.notion_synced, src: r.source, dk: r.dedupe_key || undefined,
           att: r.attachments || [], by: r.created_by || undefined, at: r.updated_at || r.created_at
         };
