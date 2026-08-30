@@ -6,6 +6,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/ecorean-gate.js"></script>
 <script src="/app-cloud.js"></script>
+<script src="/biz/biz-db.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -79,6 +80,15 @@
   @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
   .hud-cd{font-size:11.5px;letter-spacing:1.5px;color:var(--gold);display:flex;align-items:center;gap:6px}
   .hud-cd::before{content:"⏳";font-size:11px}
+  .hud-sync{font-size:11px;letter-spacing:.6px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer;
+    padding:3px 9px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.03);transition:.2s;white-space:nowrap}
+  .hud-sync:active{transform:scale(.95)}
+  .hud-sync .sdot{width:6px;height:6px;border-radius:50%;background:var(--muted-2);flex:none}
+  .hud-sync.ok{color:var(--teal)} .hud-sync.ok .sdot{background:var(--teal);box-shadow:0 0 8px var(--teal)}
+  .hud-sync.syncing{color:var(--blue)} .hud-sync.syncing .sdot{background:var(--blue);animation:pulse 1s ease-in-out infinite}
+  .hud-sync.error{color:var(--coral)} .hud-sync.error .sdot{background:var(--coral);box-shadow:0 0 8px var(--coral)}
+  .hud-sync.offline{color:var(--gold)} .hud-sync.offline .sdot{background:var(--gold)}
+  @media(max-width:400px){ .hudbar{flex-wrap:wrap;gap:6px} .hud-sync{order:3} }
 
   .monthnav{display:flex;align-items:center;justify-content:center;gap:18px;margin:2px 0 18px}
   .monthnav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--glass);
@@ -428,6 +438,7 @@
   <div class="hudbar">
     <div class="hud-clock"><span class="live-dot"></span><span id="liveDate">----.--.--</span><span class="sep">·</span><span id="liveTime" class="t">--:--:--</span></div>
     <div class="hud-cd">마감 <span id="cdDay">D-—</span></div>
+    <div class="hud-sync" id="syncBadge" title="서버 동기화 상태 · 눌러서 지금 동기화"><span class="sdot"></span><span id="syncText">연결 중</span></div>
   </div>
 
   <!-- ================= HOME ================= -->
@@ -539,11 +550,10 @@
       <div class="srow" id="themeRow"><div class="si">🎨</div><div class="st"><div class="a">라이트 모드</div><div class="b">밝은 테마로 전환</div></div><div class="toggle" id="themeToggle"></div></div>
       <div class="srow" id="pinRow"><div class="si">🔒</div><div class="st"><div class="a">PIN 잠금</div><div class="b" id="pinState">앱 실행 시 비밀번호</div></div><div class="toggle" id="pinToggle"></div></div>
 
-      <h3>클라우드 동기화 · SUPABASE</h3>
-      <div class="srow" id="cloudSave"><div class="si">☁️</div><div class="st"><div class="a">클라우드 백업 (지금)</div><div class="b" id="cloudState">Supabase에 전체 데이터 저장</div></div><div class="arr">›</div></div>
-      <div class="srow" id="cloudLoad"><div class="si">📡</div><div class="st"><div class="a">클라우드에서 복원</div><div class="b">마지막 백업 데이터 불러오기</div></div><div class="arr">›</div></div>
-      <div class="srow" id="cloudAutoRow"><div class="si">🔄</div><div class="st"><div class="a">자동 백업</div><div class="b">기록할 때마다 자동으로 클라우드 저장</div></div><div class="toggle" id="cloudAutoToggle"></div></div>
-      <div class="srow" id="cloudKeyRow"><div class="si">🔑</div><div class="st"><div class="a">동기화 키</div><div class="b" id="cloudKeyState">다른 기기와 연결 · 탭하여 보기/변경</div></div><div class="arr">›</div></div>
+      <h3>서버 동기화 · 직원 공유</h3>
+      <div class="srow" id="syncNow"><div class="si">☁️</div><div class="st"><div class="a">지금 동기화</div><div class="b" id="syncState">연결 대기</div></div><div class="arr">›</div></div>
+      <div class="srow" id="syncPull"><div class="si">📡</div><div class="st"><div class="a">서버에서 다시 불러오기</div><div class="b">다른 직원이 입력한 최신 내용을 받아옵니다</div></div><div class="arr">›</div></div>
+      <div class="note" style="margin-top:10px">기록은 <b>자동으로 서버에 저장</b>됩니다(로그인한 직원만 열람·기록). 대표와 경리가 같은 장부를 동시에 써도 서로의 입력을 덮어쓰지 않고 <b>바뀐 항목만</b> 오갑니다. 현장 목록은 <b>직원 포털의 현장 마스터</b>와 같은 자료를 공유합니다.</div>
 
       <h3>연동 · INTEGRATIONS</h3>
       <div class="srow" id="goKakao"><div class="si">💬</div><div class="st"><div class="a">카카오톡 연동</div><div class="b">결산 공유 · 나에게 알림</div></div><div class="arr">›</div></div>
@@ -557,7 +567,7 @@
       <div class="srow" style="cursor:default"><div class="si">🕐</div><div class="st"><div class="a">자동 스냅샷 (최근 3일)</div><div class="b">매일 첫 기록 시 자동 저장 · 탭하여 복원</div><div class="chiplist" id="snapChips" style="margin-top:8px"></div></div></div>
       <div class="srow" id="resetData"><div class="si">🗑️</div><div class="st"><div class="a" style="color:var(--coral)">전체 삭제</div><div class="b">모든 데이터 초기화</div></div><div class="arr">›</div></div>
       <input type="file" id="fileInput" accept=".json" class="hidden">
-      <div class="note" style="margin-top:18px">데이터는 이 기기에 저장됩니다. 카카오 공유·정책자금·노션 실시간 동기화는 파일을 웹(깃허브 페이지·Netlify 등)에 올려 도메인이 있을 때 정상 작동합니다.</div>
+      <div class="note" style="margin-top:18px">원장(거래·현장·계좌·예산)은 <b>서버에 저장</b>되고 이 기기에는 오프라인용 사본만 남습니다. 화면 설정(테마·PIN)과 연동 키는 기기별로 따로 보관됩니다.</div>
     </div>
   </section>
 </div>
@@ -776,10 +786,12 @@ function load(){
   if(/^\d{4}$/.test(s.settings.pin||''))s.settings.pin='h'+hashPin(s.settings.pin);
   return s;
 }
-let cloudTimer=null;
+/* v2 (2026-08-30): localStorage 는 오프라인 캐시. 실제 원장은 서버(biz_* 테이블).
+   save() 는 화면 코드가 부르는 유일한 저장 진입점이라, 여기서 변경분만 서버로 밀어 올린다.
+   → 통째 덮어쓰기 사고 없이 대표·경리가 같은 장부를 동시에 쓸 수 있다. */
 function save(){
   try{localStorage.setItem(KEY,JSON.stringify(state));snapshot();}catch(e){toast('저장 공간 오류');}
-  if(state.settings.cloud&&state.settings.cloud.auto){clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>cloudSave(true),4000);}
+  if(window.BIZDB)BIZDB.schedulePush();
 }
 function snapshot(){
   const dk='bocbiz_snap_'+new Date().toISOString().slice(0,10);
@@ -1427,59 +1439,63 @@ $('#saveEvt').onclick=()=>{
   renderCal();renderDayDetail();toast('일정 등록됨');
 };
 
-/* ============ 클라우드 동기화 · Supabase ============ */
-function cloudCfg(){
-  const c=state.settings.cloud;
-  if(!c.k){c.k=[...crypto.getRandomValues(new Uint8Array(24))].map(b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem(KEY,JSON.stringify(state));}
-  return c;
+/* ============ 서버 동기화 · biz_* 테이블 (v2) ============
+   v1은 장부 전체를 블롭 1개로 올리고, 동기화 키를 아는 사람이면 누구나 읽을 수 있었다.
+   v2는 로그인 세션(직원 이상)으로 행 단위 동기화 — 키 공유 불필요, 덮어쓰기 없음. */
+function syncStateLabel(st){
+  if(st.phase==='ok'){
+    const t=st.at?st.at.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'';
+    return t?`동기화 ${t}`:'동기화됨';
+  }
+  return st.text||'대기';
 }
-async function cloudSave(silent){
-  const c=cloudCfg();
+function updateSyncBadge(st){
+  const b=$('#syncBadge');if(!b)return;
+  b.className='hud-sync '+(st.phase==='idle'?'':st.phase);
+  $('#syncText').textContent=syncStateLabel(st);
+  const row=$('#syncState');
+  if(row)row.textContent=st.phase==='ok'
+    ? `서버와 연결됨 · 마지막 ${st.at?st.at.toLocaleString('ko-KR'):'-'}`
+    : (st.phase==='error'?('오류 · '+(st.error&&st.error.message||'')).slice(0,80):st.text||'연결 대기');
+}
+function rerenderAll(){
+  renderCats();renderAcctPills();renderSitePills();
+  applyRecurring();
+  render();renderStats();renderFixedList();renderAcctChips();renderSiteChips();renderCatBudgets();
+  if($('#budgetTotal'))$('#budgetTotal').value=state.budgets.total?state.budgets.total.toLocaleString('ko-KR'):'';
+  if(typeof renderCal==='function'&&$('#calGrid'))renderCal();
+}
+async function bootCloud(){
+  if(!window.BIZDB){updateSyncBadge({phase:'offline',text:'오프라인'});return;}
+  BIZDB.configure({getState:()=>state,onChange:rerenderAll,onStatus:updateSyncBadge});
+  const hadSynced=BIZDB.hasSynced(),localN=state.tx.length;
+  /* 이 기기가 처음 서버에 붙는데 로컬 장부가 있다면 — 서버에도 데이터가 있을 때만 물어본다 */
+  if(!hadSynced&&localN){
+    try{
+      const rows=await BIZDB._req('biz_tx?select=id&limit=1',{method:'GET'});
+      if(rows&&rows.length){
+        const up=confirm(`서버에 이미 사업장부 데이터가 있습니다.\n\n[확인] 이 기기의 ${localN}건도 함께 올립니다 (같은 장부를 이미 올렸다면 중복될 수 있습니다)\n[취소] 이 기기 내역은 버리고 서버 것만 사용합니다`);
+        if(!up){state.tx=[];state.recurring=[];state.goals=[];state.events=[];state.accounts=[];state.budgets={total:0,cats:{}};}
+      }
+    }catch(e){}
+  }
   try{
-    const res=await fetch(c.url+'/rest/v1/rpc/boc_biz_save',{method:'POST',
-      headers:{'apikey':c.key,'Authorization':'Bearer '+c.key,'Content-Type':'application/json'},
-      body:JSON.stringify({sync_k:c.k,data:state})});
-    if(!res.ok)throw new Error('http '+res.status);
-    c.last=new Date().toLocaleString('ko-KR');
-    localStorage.setItem(KEY,JSON.stringify(state));
-    updateCloudUI();
-    if(!silent)toast('☁️ 클라우드 백업 완료');
-  }catch(e){if(!silent)toast('클라우드 백업 실패 · 인터넷 연결을 확인하세요');}
+    await BIZDB.boot();
+    await BIZDB.pushNow();
+    rerenderAll();
+    if(!hadSynced&&localN)toast(`☁️ 이 기기의 장부 ${localN}건을 서버에 올렸습니다`);
+  }catch(e){}
+  BIZDB.startPolling(30);
 }
-async function cloudLoad(){
-  const c=cloudCfg();
-  if(!confirm('클라우드의 마지막 백업으로 현재 데이터를 덮어쓸까요?'))return;
-  try{
-    const res=await fetch(c.url+'/rest/v1/rpc/boc_biz_load',{method:'POST',
-      headers:{'apikey':c.key,'Authorization':'Bearer '+c.key,'Content-Type':'application/json'},
-      body:JSON.stringify({sync_k:c.k})});
-    if(!res.ok)throw new Error('http '+res.status);
-    const data=await res.json();
-    if(!data||!data.tx){toast('이 동기화 키로 저장된 백업이 없습니다');return;}
-    const keep=Object.assign({},c);
-    const next=Object.assign(defaults(),data);
-    next.settings=next.settings||{};next.settings.cloud=Object.assign({},next.settings.cloud||{},keep);
-    localStorage.setItem(KEY,JSON.stringify(next));
-    location.reload();
-  }catch(e){toast('복원 실패 · 인터넷 연결을 확인하세요');}
-}
-function updateCloudUI(){
-  const c=state.settings.cloud;
-  if(!$('#cloudState'))return;
-  $('#cloudAutoToggle').classList.toggle('on',!!c.auto);
-  $('#cloudState').textContent=c.last?('마지막 백업 · '+c.last):'Supabase에 전체 데이터 저장';
-  $('#cloudKeyState').textContent=c.k?('키 '+c.k.slice(0,6)+'…'+c.k.slice(-4)+' · 탭하여 보기/변경'):'다른 기기와 연결 · 탭하여 생성';
-}
-$('#cloudSave').onclick=()=>cloudSave(false);
-$('#cloudLoad').onclick=cloudLoad;
-$('#cloudAutoRow').onclick=()=>{const c=cloudCfg();c.auto=!c.auto;save();updateCloudUI();toast(c.auto?'자동 백업 켜짐 · 기록 4초 후 저장':'자동 백업 꺼짐');};
-$('#cloudKeyRow').onclick=()=>{
-  const c=cloudCfg();
-  const v=prompt('동기화 키 · 다른 기기의 BOC_BIZ에 이 키를 넣으면 같은 데이터를 공유합니다.\n(40자 이상, 변경 시 그 키의 백업을 사용)',c.k);
-  if(v===null)return;
-  const nk=v.trim();
-  if(nk.length<40){toast('키는 40자 이상이어야 합니다');return;}
-  c.k=nk;save();updateCloudUI();toast('동기화 키 저장됨 · 클라우드에서 복원을 눌러 데이터를 가져오세요');
+if($('#syncBadge'))$('#syncBadge').onclick=()=>{
+  if(!window.BIZDB)return;
+  toast('동기화 중…');
+  BIZDB.pushNow().then(()=>BIZDB.pull()).then(()=>toast('☁️ 최신 상태입니다')).catch(()=>toast('동기화 실패 · 연결을 확인하세요'));
+};
+$('#syncNow').onclick=()=>$('#syncBadge').click();
+$('#syncPull').onclick=()=>{
+  if(!confirm('서버 내용을 다시 불러옵니다. 이 기기에서 아직 올리지 못한 변경이 있으면 함께 정리됩니다. 계속할까요?'))return;
+  BIZDB.pull().then(()=>{rerenderAll();toast('서버에서 불러왔습니다');}).catch(()=>toast('불러오기 실패'));
 };
 /* ============ 로컬 스냅샷 ============ */
 function renderSnapChips(){
@@ -1705,12 +1721,12 @@ renderCatBudgets();
 renderAcctChips();
 renderSiteChips();
 renderSnapChips();
-updateCloudUI();
 applyRecurring();
 initKakao();
 $('#dateInput').value=todayStr();
 setType('out');renderAcctPills();updateMemoSugg();
 render();
+bootCloud();
 setInterval(tickClock,1000);tickClock();
 setTimeout(()=>{
   const hot=upcomingTax(7).filter(u=>!u.monthly);
