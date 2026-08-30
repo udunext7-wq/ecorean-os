@@ -90,6 +90,37 @@
   .hud-sync.offline{color:var(--gold)} .hud-sync.offline .sdot{background:var(--gold)}
   @media(max-width:400px){ .hudbar{flex-wrap:wrap;gap:6px} .hud-sync{order:3} }
 
+  .orgchip{display:inline-flex;align-items:center;gap:6px;margin-top:3px;padding:3px 9px 3px 4px;border-radius:20px;
+    border:1px solid var(--border);background:rgba(255,255,255,.04);cursor:pointer;font-size:11.5px;color:var(--muted);
+    max-width:210px;transition:.2s}
+  .orgchip:active{transform:scale(.96)}
+  .orgchip #orgBadge{font-size:10px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:20px;
+    background:rgba(46,230,200,.16);color:var(--teal);flex:none}
+  .orgchip.corp #orgBadge{background:rgba(255,200,97,.18);color:var(--gold)}
+  .orgchip #orgName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .orgchip .cv{color:var(--muted-2);flex:none}
+  .orgrow{display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:12px;border:1px solid var(--border);
+    background:rgba(255,255,255,.03);cursor:pointer;margin-bottom:9px}
+  .orgrow.on{border-color:var(--teal);background:rgba(46,230,200,.07)}
+  .orgrow .oi{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:16px;
+    background:rgba(255,255,255,.05);flex:none}
+  .orgrow .ot{flex:1;min-width:0}
+  .orgrow .ot .a{font-size:13.5px;margin-bottom:2px}
+  .orgrow .ot .b{font-size:11px;color:var(--muted-2)}
+  .claim{display:flex;align-items:center;gap:11px;padding:11px 2px;border-top:1px solid var(--border);cursor:pointer}
+  .claim .ci{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:15px;background:rgba(255,255,255,.05);flex:none}
+  .claim .cm{flex:1;min-width:0}
+  .claim .cm .a{font-size:13px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .claim .cm .b{font-size:11px;color:var(--muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stbadge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.3px}
+  .stbadge.submitted{background:rgba(255,200,97,.16);color:var(--gold)}
+  .stbadge.approved{background:rgba(46,230,200,.16);color:var(--teal)}
+  .stbadge.rejected{background:rgba(255,93,122,.16);color:var(--coral)}
+  .stbadge.draft{background:rgba(255,255,255,.07);color:var(--muted)}
+  .stbadge.paid{background:rgba(90,167,255,.16);color:var(--blue)}
+  .memchip{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:20px;border:1px solid var(--border);
+    background:rgba(255,255,255,.04);cursor:pointer;font-size:12px;margin:0 7px 7px 0}
+  .memchip.on{border-color:var(--teal);background:rgba(46,230,200,.1);color:var(--teal)}
   .hintline{font-size:11px;color:var(--muted-2);margin-top:6px;line-height:1.5}
   .attrow{display:flex;flex-wrap:wrap;gap:8px}
   .attrow:empty{display:none}
@@ -439,7 +470,8 @@
   <header>
     <div class="brand">
       <div class="logo" style="background:#fff;box-shadow:0 0 24px rgba(255,200,97,.35),inset 0 0 0 1px rgba(0,0,0,.08);overflow:hidden;padding:4px"><img src="data:image/png;base64,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" alt="ECOREAN" style="width:100%;height:100%;object-fit:contain"></div>
-      <div><h1>ECOREAN<span style="color:var(--gold)">/</span>BOC_BIZ</h1><div class="sub" style="color:var(--gold)">사업용 · 스마트장부 V2</div></div>
+      <div><h1>ECOREAN<span style="color:var(--gold)">/</span>BOC_BIZ</h1>
+        <div class="orgchip" id="orgChip" title="장부 전환"><span id="orgBadge">개인</span><span id="orgName">사업장부</span><span class="cv">▾</span></div></div>
     </div>
     <div style="display:flex;gap:8px">
       <div class="iconbtn" id="calBtn" title="캘린더" style="border-color:rgba(255,200,97,.35)">📅</div>
@@ -501,10 +533,16 @@
       <div class="chart-leg"><span><i style="background:var(--teal)"></i>수입</span><span><i style="background:var(--coral)"></i>지출</span></div></div>
     <div class="sec-t">이번 달 카테고리 · CATEGORY</div>
     <div class="card" id="catStat"></div>
-    <div class="sec-t">부가세 예상 · VAT (이번 분기)</div>
-    <div class="card" id="vatCard"></div>
-    <div class="sec-t">자금 예측 · CASH FLOW (앞으로 90일)</div>
-    <div class="card" id="cashCard"></div>
+    <div id="mgrStats">
+      <div class="sec-t">부가세 예상 · VAT (이번 분기)</div>
+      <div class="card" id="vatCard"></div>
+      <div id="corpTaxWrap" class="hidden">
+        <div class="sec-t">법인세 추정 · CORPORATE TAX (이번 사업연도)</div>
+        <div class="card" id="corpTaxCard"></div>
+      </div>
+      <div class="sec-t">자금 예측 · CASH FLOW (앞으로 90일)</div>
+      <div class="card" id="cashCard"></div>
+    </div>
     <div class="sec-t">현장별 손익 · SITE P&L (누적)</div>
     <div class="card" id="siteStat"></div>
     <div class="sec-t">거래처 TOP · VENDORS (최근 3개월)</div>
@@ -520,7 +558,7 @@
     <div class="sec-t">다가오는 세무일정 · TAX SCHEDULE</div>
     <div id="taxUpcoming"></div>
 
-    <div class="note warn" style="margin-top:14px"><b>📌 세무사 메모</b><br>일정은 <b>개인사업자 · 일반과세자</b> 기준이며 🏗️ 표시는 건설업 특화 일정입니다. 기한이 주말·공휴일이면 다음 영업일까지 연장됩니다. 법인·간이과세자는 일정이 다르니 담당 세무사와 확인하세요.</div>
+    <div class="note warn" style="margin-top:14px" id="taxBasisNote"></div>
     <div class="note" style="margin-top:10px"><b>🧱 건설업 공사대금 세무 포인트</b><br>
     ① <b>세금계산서 발행 시기</b> — 건설용역은 기성금·중도금을 <b>받기로 약정한 날</b>이 공급시기. 수금 못 해도 약정일에 발행해야 가산세가 없습니다.<br>
     ② <b>미수 공사대금</b>도 세금계산서를 발행했다면 부가세·소득세 과세 대상 — 외상 표시로 관리하세요.<br>
@@ -530,6 +568,16 @@
 
   <!-- ================= BENEFIT ================= -->
   <section class="tab" id="tab-benefit">
+    <div class="sec-t">내 업무 · MY WORK</div>
+    <div class="card" id="myCard"></div>
+
+    <div class="sec-t">경비 청구 · EXPENSE <span class="act" id="newClaimBtn">+ 청구</span></div>
+    <div class="card" id="myClaims"></div>
+    <div class="note" style="margin-top:10px">내 돈으로 먼저 쓴 비용을 영수증과 함께 올리면 <b>대표·경리 승인 후 장부에 잡히고 정산</b>됩니다. 승인 전에는 회사 장부에 영향을 주지 않습니다.</div>
+
+    <div class="sec-t">내 담당 현장 · MY SITES</div>
+    <div class="card" id="mySitesCard"></div>
+
     <div class="sec-t">정책자금 · 지원사업</div>
     <div class="note"><b>정책자금/정부 지원사업 정보</b><br>기업마당(중기부) 공개 API로 최신 지원사업 공고를 불러옵니다. 설정 › 정책자금 연동에서 인증키를 넣으면 자동 조회되고, 키가 없으면 아래 버튼으로 공식 사이트에서 직접 확인할 수 있습니다.</div>
     <button class="btn btn-primary" id="loadBenefit">최신 지원사업 불러오기</button>
@@ -543,6 +591,9 @@
   <!-- ================= SETTINGS ================= -->
   <section class="tab" id="tab-settings">
     <div class="stab">
+      <div class="note hidden" id="staffNote" style="margin-bottom:16px"></div>
+      <div class="srow" id="goOrg"><div class="si">🏢</div><div class="st"><div class="a">장부 · 사업자 정보</div><div class="b" id="orgRowHint">개인사업자 / 법인 전환 · 결산월 · 건설업 여부</div></div><div class="arr">›</div></div>
+      <div id="mgrSettings">
       <h3>예산 · BUDGET</h3>
       <div class="field"><label>월 예산 (전체)</label><input id="budgetTotal" type="text" inputmode="numeric" placeholder="예: 1,500,000"></div>
       <div class="field"><label>카테고리별 예산 (선택 · 비우면 미설정)</label><div id="catBudgets"></div></div>
@@ -559,6 +610,7 @@
 
       <h3>고정 항목 · FIXED</h3>
       <div class="srow" id="goFixed"><div class="si">🔁</div><div class="st"><div class="a">고정지출 · 고정수입 관리</div><div class="b">매달 자동으로 기록 (월세·구독·급여 등)</div></div><div class="arr">›</div></div>
+      </div>
 
       <h3>화면 · DISPLAY</h3>
       <div class="srow" id="themeRow"><div class="si">🎨</div><div class="st"><div class="a">라이트 모드</div><div class="b">밝은 테마로 전환</div></div><div class="toggle" id="themeToggle"></div></div>
@@ -575,8 +627,10 @@
       <div class="srow" id="goBiz"><div class="si">🏛️</div><div class="st"><div class="a">정책자금 연동</div><div class="b">기업마당 인증키 설정</div></div><div class="arr">›</div></div>
 
       <h3>데이터 · DATA</h3>
+      <div id="mgrData">
       <div class="srow" id="goPO"><div class="si">🧾</div><div class="st"><div class="a">발주서에서 지출 가져오기</div><div class="b">직원 포털 발주서를 미지급 지출로 등록 (중복 없음)</div></div><div class="arr">›</div></div>
       <div class="srow" id="importCsv"><div class="si">📥</div><div class="st"><div class="a">카드 · 통장 내역 가져오기</div><div class="b">CSV 를 올리면 카테고리를 추정해 거래로 넣습니다 (중복 자동 제외)</div></div><div class="arr">›</div></div>
+      </div>
       <div class="srow" id="exportCsv"><div class="si">📤</div><div class="st"><div class="a">CSV 내보내기</div><div class="b">노션·엑셀 가져오기용</div></div><div class="arr">›</div></div>
       <div class="srow" id="backupJson"><div class="si">💾</div><div class="st"><div class="a">전체 백업 (JSON)</div><div class="b">파일로 저장</div></div><div class="arr">›</div></div>
       <div class="srow" id="restoreJson"><div class="si">📥</div><div class="st"><div class="a">백업 복원</div><div class="b">JSON에서 불러오기</div></div><div class="arr">›</div></div>
@@ -594,7 +648,7 @@
   <button class="on" data-tab="home"><span class="ni">🏠</span>홈</button>
   <button data-tab="stats"><span class="ni">📊</span>통계</button>
   <button data-tab="cal"><span class="ni">📅</span>일정</button>
-  <button data-tab="benefit"><span class="ni">🏛️</span>혜택</button>
+  <button data-tab="benefit"><span class="ni">🙋</span>내 업무</button>
   <button data-tab="settings"><span class="ni">⚙️</span>설정</button>
 </nav>
 
@@ -659,6 +713,7 @@
   <button class="btn btn-ghost" id="sdSaveContract">계약금액 저장</button>
   <div id="sdBody" style="margin-top:16px"></div>
   <button class="btn btn-primary" id="sdAddTx" style="margin-top:8px">＋ 이 현장 거래 기록</button>
+  <button class="btn btn-ghost" id="sdMembers" style="margin-top:9px">👥 현장 담당자 배정</button>
 </div>
 
 <!-- GOAL SHEET -->
@@ -678,6 +733,63 @@
   <div class="field"><label>날짜</label><input id="eDate" type="date"></div>
   <div class="field"><label>시간 (선택)</label><input id="eTime" type="time"></div>
   <button class="btn btn-primary" id="saveEvt">일정 등록</button>
+</div>
+
+<!-- 장부(사업자) 전환 SHEET -->
+<div class="overlay" id="ovOrg"></div>
+<div class="sheet" id="shOrg">
+  <div class="grab"></div><h2>장부 전환</h2><div class="desc">개인사업자와 법인은 세금계산서도 신고도 따로 나갑니다. 장부를 바꾸면 화면을 다시 불러옵니다</div>
+  <div id="orgList"></div>
+  <div id="orgEditWrap" class="hidden">
+    <h3 style="font-family:var(--font-d);font-size:11px;letter-spacing:1.5px;color:var(--muted);margin:20px 2px 10px">사업자 정보 · 이 장부</h3>
+    <div class="field"><label>상호 (장부 이름)</label><input id="oName" type="text" placeholder="예: 에코리안 주식회사"></div>
+    <div class="field"><label>구분</label><div class="pills" id="oTypePills">
+      <div class="pill" data-t="개인">개인사업자</div><div class="pill" data-t="법인">법인</div></div></div>
+    <div class="row2">
+      <div class="field"><label>사업자등록번호</label><input id="oBizNo" type="text" inputmode="numeric" placeholder="000-00-00000"></div>
+      <div class="field"><label>대표자</label><input id="oCeo" type="text" placeholder="홍길동"></div>
+    </div>
+    <div class="field hidden" id="oCorpNoField"><label>법인등록번호</label><input id="oCorpNo" type="text" placeholder="000000-0000000"></div>
+    <div class="row2">
+      <div class="field"><label id="oFiscalLabel">결산월</label><select id="oFiscal"></select></div>
+      <div class="field"><label>과세유형</label><select id="oVat"><option value="일반">일반과세</option><option value="간이">간이과세</option><option value="면세">면세</option></select></div>
+    </div>
+    <div class="srow" id="oConstRow"><div class="si">🏗️</div><div class="st"><div class="a">건설업</div><div class="b">등록면허세·고용산재 자진신고 등 건설업 일정을 표시</div></div><div class="toggle" id="oConstToggle"></div></div>
+    <button class="btn btn-primary" id="oSave" style="margin-top:14px">사업자 정보 저장</button>
+    <div class="note" style="margin-top:10px" id="oHint"></div>
+  </div>
+</div>
+
+<!-- 경비 청구 SHEET -->
+<div class="overlay" id="ovClaim"></div>
+<div class="sheet" id="shClaim">
+  <div class="grab"></div><h2 id="claimTitle">경비 청구</h2><div class="desc">내 돈으로 쓴 비용입니다. 승인되면 장부에 기록되고 정산 대상이 됩니다</div>
+  <div class="amtbox"><input id="cAmt" type="text" inputmode="numeric" placeholder="0"><div class="unit">원</div></div>
+  <div class="cats" id="cCatList"></div>
+  <div class="field"><label>현장 · 프로젝트</label><div class="pills" id="cSitePills"></div></div>
+  <div class="row2">
+    <div class="field"><label>사용처</label><input id="cVendor" type="text" placeholder="예: ○○주유소"></div>
+    <div class="field"><label>증빙</label><select id="cEvid"><option value="카드">카드</option><option value="현금영수증">현금영수증</option><option value="세금계산서">세금계산서</option><option value="간이영수증">간이영수증</option><option value="">없음</option></select></div>
+  </div>
+  <div class="field"><label>부가세</label><select id="cVat"><option value="none">없음 · 면세</option><option value="incl">포함 (총액에 10% 포함)</option></select></div>
+  <div class="field"><label>영수증 (첨부하면 승인이 빨라집니다)</label>
+    <div class="attrow" id="cAttRow"></div>
+    <button type="button" class="btn btn-ghost" id="cAttBtn" style="margin-top:8px;padding:11px">📷 사진 · PDF 첨부</button>
+    <input type="file" id="cAttInput" accept="image/*,application/pdf" multiple class="hidden">
+  </div>
+  <div class="field"><label>내용</label><input id="cMemo" type="text" placeholder="예: ○○현장 자재 픽업 주유"></div>
+  <div class="field"><label>사용일</label><input id="cDate" type="date"></div>
+  <button class="btn btn-primary" id="claimSubmit">청구 상신</button>
+  <button class="btn btn-ghost hidden" id="claimDelete" style="margin-top:10px;color:var(--coral)">이 청구 취소</button>
+  <div class="note hidden" id="claimApproveBox" style="margin-top:14px"></div>
+</div>
+
+<!-- 현장 담당자 SHEET -->
+<div class="overlay" id="ovMember"></div>
+<div class="sheet" id="shMember">
+  <div class="grab"></div><h2>현장 담당자</h2><div class="desc" id="memDesc">배정된 직원만 이 현장의 거래를 볼 수 있습니다</div>
+  <div id="memList" style="margin-bottom:14px"></div>
+  <button class="btn btn-primary" id="memSave">담당자 저장</button>
 </div>
 
 <!-- 발주서 → 지출 SHEET -->
@@ -816,12 +928,42 @@
 
 <script>
 /* ============ 상태 ============ */
-const KEY='ledger_biz_v1';
-const CATS={
+/* 장부(사업자)는 여러 개 — 개인사업자와 법인은 신고도 계산서도 따로 나간다.
+   전환하면 페이지를 다시 열어 캐시까지 갈아끼운다(두 장부가 섞이면 되돌릴 수 없다). */
+const TENANT=(function(){try{return localStorage.getItem('bocbiz_tenant')||'HQ';}catch(e){return 'HQ';}})();
+const KEY='ledger_biz_v1'+(TENANT==='HQ'?'':':'+TENANT);
+const CATS_BASE={
   out:[['자재비','🧱'],['인건비','👷'],['외주비','🤝'],['장비·공구','🛠️'],['차량·유류','🚚'],['식대','🍚'],['현장경비','🏗️'],['사무·통신','🖥️'],['세금·보험','🏛️'],['이자·금융','🏦'],['기타','💸']],
   in:[['공사수입','🏗️'],['자재판매','🧱'],['용역수입','🧾'],['기타수입','💵']]
 };
+/* 법인에서만 쓰는 계정. 가지급금·가수금은 손익이 아니라 대표와 회사 사이의 돈 이동이라
+   따로 잡아 두어야 결산 때 정리가 된다. */
+const CATS_CORP={
+  out:[['직원급여','👥'],['대표이사급여','👔'],['복리후생비','🎁'],['기업업무추진비','🤝'],['지급수수료','🧾'],['감가상각비','📉'],['가지급금(대표 대여)','↗️'],['배당금','💠']],
+  in:[['가수금(대표 차입)','↙️'],['이자수입','🏦']]
+};
+let CATS={out:CATS_BASE.out.slice(),in:CATS_BASE.in.slice()};
+function applyOrgCats(){
+  const corp=bizOrg().biz_type==='법인';
+  CATS={out:CATS_BASE.out.slice(),in:CATS_BASE.in.slice()};
+  if(corp){
+    /* 법인 계정은 '기타' 앞에 끼워 넣어 기타가 항상 마지막에 오게 한다 */
+    const etc=CATS.out.pop();
+    CATS.out=CATS.out.concat(CATS_CORP.out);CATS.out.push(etc);
+    CATS.in=CATS.in.concat(CATS_CORP.in);
+  }
+}
 const COLORS=['#2ee6c8','#5aa7ff','#ff5d7a','#ffc861','#b07bff','#4ddf8e','#ff9d5c','#5ce0e0','#e87bb0','#8a93a8'];
+
+/* 현재 장부의 사업자 정보. 서버가 아직 안 붙었으면 tenant 로 최소 추정한다. */
+function bizOrg(){
+  if(window.BIZDB&&BIZDB.org)return BIZDB.org();
+  return {id:TENANT,name:TENANT==='CORP'?'법인 장부':'개인사업자 장부',
+          biz_type:TENANT==='CORP'?'법인':'개인',fiscal_month:12,vat_type:'일반',is_construction:true};
+}
+function isCorp(){return bizOrg().biz_type==='법인';}
+/* 관리자(대표·임원·admin) 여부. 서버 확인 전에는 화면을 막지 않는다 — 실제 차단은 서버 RLS 가 한다. */
+function isMgr(){return !(window.BIZDB&&BIZDB.isManager)||BIZDB.isManager();}
 
 function hashPin(p){let h=5381;const s='LOS·'+p;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h.toString(36);}
 function defaults(){return{
@@ -1039,7 +1181,57 @@ $('#list').addEventListener('click',e=>{
 });
 
 /* ============ 렌더 : 통계 ============ */
-function renderStats(){renderBars();renderCatStat();renderVat();renderCashflow();renderSiteStat();renderVendorStat();renderGoals();}
+function renderStats(){renderBars();renderCatStat();renderVat();renderCorpTax();renderCashflow();renderSiteStat();renderVendorStat();renderGoals();}
+/* ── 법인세 추정 ──
+   장부의 현금 기준 수치를 그대로 쓴 단순 추정이다. 세무조정(감가상각·접대비 한도·
+   가지급금 인정이자 등)은 반영하지 않으므로 실제 신고세액과는 다르다. */
+function fiscalRange(d){
+  const fm=Math.min(12,Math.max(1,+bizOrg().fiscal_month||12));
+  const y=d.getFullYear();
+  const end=new Date(y,fm,0);                       // 올해 결산일
+  const s=(d<=end)?new Date(y-1,fm,1):new Date(y,fm,1);
+  const e=(d<=end)?end:new Date(y+1,fm,0);
+  return {s,e};
+}
+function corpTaxOf(base){
+  /* 법인세율: 2억 이하 9% / 2억~200억 19% / 200억~3000억 21% / 3000억 초과 24% */
+  if(base<=0)return 0;
+  const B=1e8;
+  if(base<=2*B)      return base*0.09;
+  if(base<=200*B)    return 2*B*0.09 + (base-2*B)*0.19;
+  if(base<=3000*B)   return 2*B*0.09 + 198*B*0.19 + (base-200*B)*0.21;
+  return 2*B*0.09 + 198*B*0.19 + 2800*B*0.21 + (base-3000*B)*0.24;
+}
+function renderCorpTax(){
+  const wrap=$('#corpTaxWrap');if(!wrap)return;
+  if(!isCorp()||!isMgr()){wrap.classList.add('hidden');return;}
+  const c=$('#corpTaxCard');if(!c)return;
+  wrap.classList.remove('hidden');
+  const {s,e}=fiscalRange(new Date());
+  const inR=t=>{const d=new Date(t.date+'T00:00');return d>=s&&d<=e;};
+  const rows=state.tx.filter(t=>!t.tf&&inR(t));
+  /* 공급가액 기준 — 부가세는 회사 돈이 아니다. 가지급금·가수금·배당은 손익이 아니라 뺀다 */
+  const NON_PL=['가지급금(대표 대여)','가수금(대표 차입)','배당금'];
+  const sales=rows.filter(t=>t.type==='in' &&NON_PL.indexOf(t.cat)===-1).reduce((a,b)=>a+(b.supply||b.amount),0);
+  const costs=rows.filter(t=>t.type==='out'&&NON_PL.indexOf(t.cat)===-1).reduce((a,b)=>a+(b.supply||b.amount),0);
+  const base=sales-costs;
+  const tax=Math.round(corpTaxOf(base)),local=Math.round(tax*0.1);
+  const adv=rows.filter(t=>t.type==='out'&&t.cat==='기업업무추진비').reduce((a,b)=>a+(b.supply||b.amount),0);
+  const loan=rows.filter(t=>t.cat==='가지급금(대표 대여)').reduce((a,b)=>a+b.amount,0)
+             -rows.filter(t=>t.cat==='가수금(대표 차입)').reduce((a,b)=>a+b.amount,0);
+  const fmt=d=>`${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`;
+  c.innerHTML=`<div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">사업연도 ${fmt(s)} ~ ${fmt(e)} · 거래 ${rows.length}건</div>
+    <div class="ins-grid">
+      <div class="ins"><div class="k">수익 (공급가)</div><div class="v" style="color:var(--teal)">${won(sales)}<small> 원</small></div></div>
+      <div class="ins"><div class="k">비용 (공급가)</div><div class="v" style="color:var(--coral)">${won(costs)}<small> 원</small></div></div>
+      <div class="ins"><div class="k">추정 과세표준</div><div class="v" style="color:${base>=0?'var(--text)':'var(--teal)'}">${base>=0?won(base):'결손 '+won(-base)}<small> 원</small></div></div>
+      <div class="ins"><div class="k">법인세 + 지방소득세</div><div class="v" style="color:var(--gold)">${won(tax+local)}<small> 원</small></div></div>
+    </div>
+    ${base>0?`<div style="font-size:11.5px;color:var(--muted);margin-top:9px;font-variant-numeric:tabular-nums">법인세 ${won(tax)}원 (2억 이하 9% / 초과분 19%) + 지방소득세 ${won(local)}원</div>`:''}
+    ${loan?`<div class="note warn" style="margin-top:11px"><b>⚠️ 대표 가지급금 잔액 ${won(loan)}원</b><br>회사가 대표에게 빌려준 돈으로 잡힙니다. 결산 전에 회수하거나 급여·상여로 정리하지 않으면 <b>인정이자 익금산입 + 지급이자 손금불산입</b>이 붙습니다.</div>`:''}
+    ${adv?`<div style="font-size:11.5px;color:var(--muted-2);margin-top:9px">기업업무추진비(접대비) ${won(adv)}원 — 수입금액별 한도 초과분은 손금 불산입됩니다. 3만원 초과는 반드시 적격증빙(법인카드·세금계산서).</div>`:''}
+    <div style="font-size:11px;color:var(--muted-2);margin-top:10px">* 장부의 현금 기준 수치를 그대로 계산한 <b>단순 추정</b>입니다. 감가상각·퇴직급여충당·접대비 한도 등 세무조정과 이월결손금 공제가 빠져 있어 실제 신고세액과 다릅니다. 반드시 세무사 확인이 필요합니다.</div>`;
+}
 function renderVat(){
   const c=$('#vatCard'),now=new Date(),q=Math.floor(now.getMonth()/3);
   const s=new Date(now.getFullYear(),q*3,1),e=new Date(now.getFullYear(),q*3+3,1);
@@ -1085,6 +1277,9 @@ function openSiteSheet(name){
   $('#sdTitle').textContent='🏗️ '+name;
   const con=state.contracts[name]||0;
   $('#sdContract').value=con?con.toLocaleString('ko-KR'):'';
+  $('#sdMembers').classList.toggle('hidden',!isMgr());
+  $('#sdContract').disabled=!isMgr();
+  $('#sdSaveContract').classList.toggle('hidden',!isMgr());
   renderSiteDetail();openSheet('SiteD');
   if(window.BIZDB)refreshPO().then(()=>{if($('#shSiteD').classList.contains('on'))renderSiteDetail();}).catch(()=>{});
 }
@@ -1129,6 +1324,7 @@ function renderSiteDetail(){
   b.innerHTML=html;
   const gp=$('#sdGoPO');if(gp)gp.onclick=()=>{closeSheet('SiteD');openPO();};
 }
+$('#sdMembers').onclick=()=>{closeSheet('SiteD');openMembers(curSite);};
 $('#sdSaveContract').onclick=()=>{
   const v=Number($('#sdContract').value.replace(/[^0-9]/g,''))||0;
   if(v)state.contracts[curSite]=v;else delete state.contracts[curSite];
@@ -1412,32 +1608,72 @@ $('#saveGoal').onclick=()=>{
   state.goals.push({id:Date.now(),name,target:tg,saved:0,ico:'🎯'});save();closeSheet('Goal');renderGoals();toast('목표가 생성됐어요');
 };
 
-/* ============ 세무일정 엔진 (개인사업자 · 일반과세자 기준) ============ */
+/* ============ 세무일정 엔진 ============
+   개인사업자와 법인은 일정이 다르다 — 특히
+   ① 부가세: 개인은 예정'고지'(납부만), 법인은 예정'신고'까지 분기마다 4번
+   ② 소득: 개인은 종합소득세 5/31, 법인은 법인세(결산월+3개월 말일)·지방소득세(+4개월 말일)·중간예납
+   결산월(fiscal_month)이 12월이 아닌 법인도 있으므로 월을 계산해서 만든다. */
+const monthEndDay=(y,m)=>new Date(y,m,0).getDate();          // m: 1-based
+const addMonth=(m,n)=>((m-1+n)%12)+1;
 function taxYearItems(y){
-  return [
-    {mm:1,dd:25,t:'부가가치세 2기 확정신고·납부',vat:{ps:(y-1)+'-07-01',pe:(y-1)+'-12-31'},
-     note:`대상기간 ${y-1}.7.1~${y-1}.12.31 · 준비물: ①매출 세금계산서 합계 ②매입 세금계산서 ③카드 매출·매입 ④현금영수증 ⑤수기(무증빙) 매출 — 1월 1일부터 자료 정리 시작`},
-    {mm:1,dd:31,t:'🏗️ 등록면허세 정기분 납부 (건설업 면허분)',
-     note:'1.1 기준 건설업 등록·면허 보유 사업자 · 납기 1.16~1.31 · 위택스(관할 시·군·구) 납부 · 면허 유효기간 1년 초과분 대상'},
-    {mm:3,dd:31,t:'🏗️ 고용·산재보험료 자진신고 (건설업)',
-     note:`건설업은 자진신고 사업장 — ${y-1}년 확정보험료 + ${y}년 개산보험료를 근로복지공단 토탈서비스(total.comwel.or.kr)에 신고·납부 · 기한 경과 시 가산금 10%+연체금 · 개산보험료 일시납 시 3% 공제`},
-    {mm:2,dd:10,t:'사업장현황신고 (면세사업자만)',
-     note:`면세사업자의 ${y-1}년 수입금액·사업장 현황 신고 · 일반과세자는 해당 없음`},
-    {mm:3,dd:10,t:'연말정산 환급·추가납부 반영 (직원 있는 경우)',
-     note:'2월분 원천세 신고 시 직원 연말정산 결과 반영'},
-    {mm:4,dd:25,t:'부가가치세 1기 예정고지 납부',
-     note:'1~3월분 · 국세청 고지서 금액 납부 (직전기 납부세액의 1/2) · 고지액 50만원 미만이면 고지 생략'},
-    {mm:5,dd:31,t:'종합소득세 확정신고·납부',inc:y-1,
-     note:`${y-1}년 1년치 매출·경비 종합 신고 · 준비물: ①연간 매출 자료 ②경비 증빙(자재비·인건비·차량 등) ③각종 공제서류 · 성실신고확인대상자는 6.30까지`},
-    {mm:7,dd:25,t:'부가가치세 1기 확정신고·납부',vat:{ps:y+'-01-01',pe:y+'-06-30'},
-     note:`대상기간 ${y}.1.1~${y}.6.30 · 준비물: ①매출 세금계산서 합계 ②매입 세금계산서 ③카드 매출·매입 ④현금영수증 ⑤수기 매출 — 7월 1일부터 자료 정리 시작`},
-    {mm:8,dd:31,t:'주민세 사업소분 신고·납부',
-     note:'사업장 소재지 시·군·구에 납부 (7.1 기준 사업장 보유 사업자)'},
-    {mm:10,dd:25,t:'부가가치세 2기 예정고지 납부',
-     note:'7~9월분 · 국세청 고지서 금액 납부 (직전기 납부세액의 1/2)'},
-    {mm:11,dd:30,t:'종합소득세 중간예납 납부',
-     note:'상반기 소득세 중간예납 고지분 납부 (5월 납부세액 기준 고지)'}
-  ];
+  const org=bizOrg(),corp=org.biz_type==='법인';
+  const fm=Math.min(12,Math.max(1,+org.fiscal_month||12));
+  const construction=org.is_construction!==false;
+  const items=[];
+
+  /* ── 부가가치세 (공통 기간, 개인/법인만 성격이 다름) ── */
+  items.push({mm:1,dd:25,t:'부가가치세 2기 확정신고·납부',vat:{ps:(y-1)+'-07-01',pe:(y-1)+'-12-31'},
+    note:`대상기간 ${y-1}.7.1~${y-1}.12.31 · 준비물: ①매출 세금계산서 합계 ②매입 세금계산서 ③카드 매출·매입 ④현금영수증 ⑤수기(무증빙) 매출 — 1월 1일부터 자료 정리 시작`});
+  items.push({mm:7,dd:25,t:'부가가치세 1기 확정신고·납부',vat:{ps:y+'-01-01',pe:y+'-06-30'},
+    note:`대상기간 ${y}.1.1~${y}.6.30 · 준비물: ①매출 세금계산서 합계 ②매입 세금계산서 ③카드 매출·매입 ④현금영수증 ⑤수기 매출 — 7월 1일부터 자료 정리 시작`});
+  if(corp){
+    items.push({mm:4,dd:25,t:'부가가치세 1기 예정신고·납부 (법인)',vat:{ps:y+'-01-01',pe:y+'-03-31'},
+      note:`법인은 예정신고 대상 — ${y}.1.1~3.31 실적을 직접 신고·납부합니다. 개인사업자처럼 고지서로 갈음되지 않습니다.`});
+    items.push({mm:10,dd:25,t:'부가가치세 2기 예정신고·납부 (법인)',vat:{ps:y+'-07-01',pe:y+'-09-30'},
+      note:`법인은 예정신고 대상 — ${y}.7.1~9.30 실적을 직접 신고·납부합니다.`});
+  }else{
+    items.push({mm:4,dd:25,t:'부가가치세 1기 예정고지 납부',
+      note:'1~3월분 · 국세청 고지서 금액 납부 (직전기 납부세액의 1/2) · 고지액 50만원 미만이면 고지 생략'});
+    items.push({mm:10,dd:25,t:'부가가치세 2기 예정고지 납부',
+      note:'7~9월분 · 국세청 고지서 금액 납부 (직전기 납부세액의 1/2)'});
+  }
+
+  /* ── 소득 관련 ── */
+  if(corp){
+    const mCorp=addMonth(fm,3), mLocal=addMonth(fm,4), mMid=addMonth(fm,8);
+    items.push({mm:mCorp,dd:Math.max(1,monthEndDay(y,mCorp)-6),t:'정기주주총회 · 재무제표 승인',
+      note:`사업연도(${fm}월 결산) 종료 후 3개월 이내에 주총에서 재무제표를 승인해야 법인세 신고가 가능합니다. 이사회·주총 의사록을 남겨두세요.`});
+    items.push({mm:mCorp,dd:monthEndDay(y,mCorp),t:'법인세 신고·납부',corp:y-1,
+      note:`${fm}월 결산 법인 — 사업연도 종료일이 속한 달의 말일부터 3개월 이내. 준비물: ①결산 재무제표 ②세무조정계산서 ③주주명부 ④가지급금·가수금 정리 ⑤기업업무추진비 한도 검토. 납부세액 1천만원 초과 시 분납 가능.`});
+    items.push({mm:mLocal,dd:monthEndDay(y,mLocal),t:'법인지방소득세 신고·납부',
+      note:'법인세 신고기한의 다음 달 말일까지 · 위택스(사업장 소재지 시·군·구) · 법인세액의 10% 수준'});
+    items.push({mm:mMid,dd:monthEndDay(y,mMid),t:'법인세 중간예납',
+      note:'사업연도 개시일부터 6개월을 중간예납기간으로 보고, 그 종료일부터 2개월 이내 납부 · 직전 사업연도 산출세액 기준 또는 가결산 중 선택'});
+    items.push({mm:3,dd:15,t:'4대보험 보수총액 신고',
+      note:'전년도 확정 보수총액 신고 (건강보험·국민연금·고용·산재) · 정산 보험료가 4월분에 반영됩니다'});
+  }else{
+    items.push({mm:5,dd:31,t:'종합소득세 확정신고·납부',inc:y-1,
+      note:`${y-1}년 1년치 매출·경비 종합 신고 · 준비물: ①연간 매출 자료 ②경비 증빙(자재비·인건비·차량 등) ③각종 공제서류 · 성실신고확인대상자는 6.30까지`});
+    items.push({mm:11,dd:30,t:'종합소득세 중간예납 납부',
+      note:'상반기 소득세 중간예납 고지분 납부 (5월 납부세액 기준 고지)'});
+    items.push({mm:2,dd:10,t:'사업장현황신고 (면세사업자만)',
+      note:`면세사업자의 ${y-1}년 수입금액·사업장 현황 신고 · 일반과세자는 해당 없음`});
+  }
+
+  /* ── 공통 ── */
+  items.push({mm:3,dd:10,t:'연말정산 환급·추가납부 반영 (직원 있는 경우)',
+    note:'2월분 원천세 신고 시 직원 연말정산 결과 반영'});
+  items.push({mm:8,dd:31,t:'주민세 사업소분 신고·납부',
+    note:'사업장 소재지 시·군·구에 납부 (7.1 기준 사업장 보유 사업자)'});
+
+  /* ── 건설업 ── */
+  if(construction){
+    items.push({mm:1,dd:31,t:'🏗️ 등록면허세 정기분 납부 (건설업 면허분)',
+      note:'1.1 기준 건설업 등록·면허 보유 사업자 · 납기 1.16~1.31 · 위택스(관할 시·군·구) 납부 · 면허 유효기간 1년 초과분 대상'});
+    items.push({mm:3,dd:31,t:'🏗️ 고용·산재보험료 자진신고 (건설업)',
+      note:`건설업은 자진신고 사업장 — ${y-1}년 확정보험료 + ${y}년 개산보험료를 근로복지공단 토탈서비스(total.comwel.or.kr)에 신고·납부 · 기한 경과 시 가산금 10%+연체금 · 개산보험료 일시납 시 3% 공제`});
+  }
+  return items;
 }
 function taxMonthlyItems(y,m){ // m: 0-based
   const last=new Date(y,m+1,0).getDate();
@@ -1555,7 +1791,16 @@ function renderTaxUpcoming(){
     return `<div class="taxitem"><div class="tt"><span class="dd ${u.dday<=7?'hot':''}">${u.dday===0?'오늘':'D-'+u.dday}</span>${esc(u.t)}<span style="margin-left:auto;font-family:var(--font-d);font-size:11px;color:var(--muted);flex-shrink:0">${d.getMonth()+1}.${pad(d.getDate())}</span></div><div class="tn">${esc(u.note)}</div>${taxDetailHtml(u,d.getFullYear())}</div>`;
   }).join('');
 }
-function renderCalTab(){renderTaxUpcoming();}
+function renderTaxBasis(){
+  const el=$('#taxBasisNote');if(!el)return;
+  const org=bizOrg(),corp=org.biz_type==='법인';
+  el.innerHTML=`<b>📌 세무사 메모 — ${esc(org.name||'')} · ${corp?'법인':'개인사업자'}${org.vat_type&&org.vat_type!=='일반'?' · '+esc(org.vat_type)+'과세':''}</b><br>`+
+    (corp
+      ? `${org.fiscal_month||12}월 결산 기준입니다. 법인은 <b>부가세 예정신고까지 분기마다 4번</b> 하고, 법인세는 결산월 종료 후 3개월(지방소득세는 4개월) 안에 신고합니다. 대표이사 급여는 손금이지만 <b>가지급금</b>은 인정이자·손금불산입 문제가 생기니 결산 전에 정리하세요.`
+      : `일반과세 개인사업자 기준입니다. 부가세 4월·10월은 <b>신고가 아니라 고지 납부</b>이고, 소득은 종합소득세로 5월에 신고합니다.`)+
+    `<br>🏗️ 표시는 건설업 특화 일정입니다. 기한이 주말·공휴일이면 다음 영업일까지 연장됩니다. 실제 신고는 담당 세무사와 확인하세요.`;
+}
+function renderCalTab(){renderTaxUpcoming();renderTaxBasis();}
 function openCalModal(dateStr){
   if(dateStr){calSel=dateStr;calView=new Date(dateStr+'T00:00');calView.setDate(1);}
   renderCal();renderDayDetail();
@@ -1597,9 +1842,10 @@ function updateSyncBadge(st){
     : (st.phase==='error'?('오류 · '+(st.error&&st.error.message||'')).slice(0,80):st.text||'연결 대기');
 }
 function rerenderAll(){
+  applyOrgCats();renderOrgChip();applyRoleView();
   renderCats();renderAcctPills();renderSitePills();
   applyRecurring();
-  render();renderStats();renderFixedList();renderAcctChips();renderSiteChips();renderCatBudgets();
+  render();renderStats();renderMyTab();renderTaxBasis();renderFixedList();renderAcctChips();renderSiteChips();renderCatBudgets();
   if($('#budgetTotal'))$('#budgetTotal').value=state.budgets.total?state.budgets.total.toLocaleString('ko-KR'):'';
   if(typeof renderCal==='function'&&$('#calGrid'))renderCal();
 }
@@ -1621,6 +1867,7 @@ async function bootCloud(){
     await BIZDB.boot();
     await BIZDB.pushNow();
     rerenderAll();
+    loadClaims();
     if(!hadSynced&&localN)toast(`☁️ 이 기기의 장부 ${localN}건을 서버에 올렸습니다`);
   }catch(e){}
   BIZDB.startPolling(30);
@@ -1691,7 +1938,7 @@ $('#repPrint').onclick=()=>window.print();
 /* ============ 시트/탭 ============ */
 function openSheet(id){$('#ov'+id).classList.add('on');$('#sh'+id).classList.add('on');}
 function closeSheet(id){$('#ov'+id).classList.remove('on');$('#sh'+id).classList.remove('on');}
-['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
+['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
 $('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
 $('#prevM').onclick=()=>{view.setMonth(view.getMonth()-1);render();};
 $('#nextM').onclick=()=>{view.setMonth(view.getMonth()+1);render();};
@@ -1849,6 +2096,332 @@ $('#loadBenefit').onclick=async()=>{
       return `<a class="ben" href="${esc(link)}" target="_blank" rel="noopener"><div class="bt">${esc(t)}</div><div class="bm">${field?`<span class="tagp">${esc(field)}</span>`:''}${org?`<span class="org">${esc(org)}</span>`:''}</div></a>`;}).join('');
   }catch(e){box.innerHTML=`<div class="note warn"><b>불러오기 실패.</b> 브라우저 보안(CORS)으로 막혔을 수 있습니다. 프록시를 설정하거나, 호스팅 환경에서 시도하세요. 지금은 위 '기업마당 ↗'로 직접 확인할 수 있습니다.</div>`;}
 };
+
+/* ============ 장부(사업자) 전환 · 사업자 정보 ============ */
+function renderOrgChip(){
+  const o=bizOrg(),corp=o.biz_type==='법인';
+  const chip=$('#orgChip');if(!chip)return;
+  chip.classList.toggle('corp',corp);
+  $('#orgBadge').textContent=corp?'법인':'개인';
+  $('#orgName').textContent=o.name||'사업장부';
+  const hint=$('#orgRowHint');
+  if(hint)hint.textContent=`${o.name||''} · ${corp?`법인 (${o.fiscal_month||12}월 결산)`:'개인사업자'}${o.is_construction!==false?' · 건설업':''}`;
+}
+let oform={};
+function renderOrgSheet(){
+  const cur=BIZDB&&BIZDB.tenant?BIZDB.tenant():TENANT;
+  const list=(window.BIZDB&&BIZDB.orgs)?BIZDB.orgs():[];
+  $('#orgList').innerHTML=(list.length?list:[bizOrg()]).map(o=>
+    `<div class="orgrow ${o.id===cur?'on':''}" data-org="${esc(o.id)}">
+      <div class="oi">${o.biz_type==='법인'?'🏢':'🧑‍💼'}</div>
+      <div class="ot"><div class="a">${esc(o.name||o.id)}${o.id===cur?' <span style="color:var(--teal);font-size:11px">· 보는 중</span>':''}</div>
+      <div class="b">${o.biz_type==='법인'?`법인 · ${o.fiscal_month||12}월 결산`:'개인사업자'}${o.biz_reg_no?' · '+esc(o.biz_reg_no):''}</div></div>
+      ${o.id===cur?'<div style="color:var(--teal)">✓</div>':'<div class="arr">›</div>'}
+    </div>`).join('');
+  $$('#orgList .orgrow').forEach(r=>r.onclick=()=>{
+    const id=r.dataset.org;
+    if(id===cur)return;
+    if(!confirm(`"${r.querySelector('.a').textContent.replace(' · 보는 중','')}" 장부로 바꿉니다.\n화면을 다시 불러옵니다. 계속할까요?`))return;
+    BIZDB.setTenant(id);
+  });
+  const canEdit=isMgr();
+  $('#orgEditWrap').classList.toggle('hidden',!canEdit);
+  if(!canEdit)return;
+  const o=bizOrg();
+  oform={id:o.id,biz_type:o.biz_type||'개인',is_construction:o.is_construction!==false};
+  $('#oName').value=o.name||'';
+  $('#oBizNo').value=o.biz_reg_no||'';
+  $('#oCorpNo').value=o.corp_reg_no||'';
+  $('#oCeo').value=o.ceo_name||'';
+  $('#oVat').value=o.vat_type||'일반';
+  $('#oFiscal').innerHTML=Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}월</option>`).join('');
+  $('#oFiscal').value=o.fiscal_month||12;
+  renderOrgForm();
+}
+function renderOrgForm(){
+  $$('#oTypePills .pill').forEach(p=>{
+    p.classList.toggle('sel',p.dataset.t===oform.biz_type);
+    p.onclick=()=>{oform.biz_type=p.dataset.t;renderOrgForm();};
+  });
+  const corp=oform.biz_type==='법인';
+  $('#oCorpNoField').classList.toggle('hidden',!corp);
+  $('#oFiscalLabel').textContent=corp?'결산월 (사업연도 종료월)':'결산월';
+  $('#oFiscal').disabled=!corp;
+  if(!corp)$('#oFiscal').value=12;
+  $('#oConstToggle').classList.toggle('on',!!oform.is_construction);
+  $('#oHint').innerHTML=corp
+    ?'법인으로 두면 <b>부가세 예정신고(4·10월)</b>와 <b>법인세·지방소득세·중간예납</b> 일정이 잡히고, 대표이사급여·가지급금 같은 법인 계정과 <b>법인세 추정</b>이 켜집니다.'
+    :'개인사업자는 부가세 4·10월이 <b>고지 납부</b>이고 소득은 <b>종합소득세(5월)</b>로 신고합니다. 결산월은 12월 고정입니다.';
+}
+$('#oConstRow').onclick=()=>{oform.is_construction=!oform.is_construction;renderOrgForm();};
+$('#goOrg').onclick=()=>{renderOrgSheet();openSheet('Org');};
+$('#orgChip').onclick=()=>{renderOrgSheet();openSheet('Org');};
+$('#oSave').onclick=async()=>{
+  if(!isMgr()){toast('사업자 정보는 대표·관리자만 바꿀 수 있습니다');return;}
+  const name=$('#oName').value.trim();
+  if(!name){toast('상호(장부 이름)를 입력하세요');return;}
+  const row={id:oform.id,name,biz_type:oform.biz_type,
+    biz_reg_no:$('#oBizNo').value.trim()||null,
+    corp_reg_no:oform.biz_type==='법인'?($('#oCorpNo').value.trim()||null):null,
+    ceo_name:$('#oCeo').value.trim()||null,
+    fiscal_month:oform.biz_type==='법인'?(+$('#oFiscal').value||12):12,
+    vat_type:$('#oVat').value,is_construction:!!oform.is_construction};
+  try{
+    await BIZDB.saveOrg(row);
+    await BIZDB.pull();
+    applyOrgCats();renderOrgChip();renderCats();rerenderAll();renderTaxBasis();
+    closeSheet('Org');toast('사업자 정보가 저장됐습니다');
+  }catch(e){toast('저장 실패 · '+String(e.message||'').slice(0,50));}
+};
+
+/* ============ 경비 청구 (개인 영역) ============
+   직원이 내 돈 쓰고 → 상신 → 대표·경리 승인 → 그때 비로소 장부(biz_tx)에 잡힌다.
+   승인 전 청구는 회사 손익에 섞이지 않는다. */
+let claims=[],cform={};
+async function loadClaims(){
+  if(!window.BIZDB||!BIZDB.listClaims)return;
+  try{claims=await BIZDB.listClaims()||[];}catch(e){claims=[];}
+  renderMyTab();
+}
+function claimStatusLabel(s){
+  return {draft:'작성중',submitted:'승인 대기',approved:'승인됨',rejected:'반려',paid:'지급완료'}[s]||s;
+}
+function myUid(){const m=window.BIZDB&&BIZDB.me&&BIZDB.me();return m&&m.id;}
+function staffName(uid){
+  const dir=(window.BIZDB&&BIZDB.staffDirectory)?BIZDB.staffDirectory():[];
+  const f=dir.find(x=>x.id===uid);
+  if(f)return f.display_name||f.email||'직원';
+  const me=window.BIZDB&&BIZDB.me&&BIZDB.me();
+  if(me&&me.id===uid)return me.display_name||me.email||'나';
+  return '직원';
+}
+function openClaim(id){
+  const mgr=isMgr();
+  const c=id?claims.find(x=>x.id===id):null;
+  cform={id:c?c.id:null,cat:c?c.category:'차량·유류',ico:'🚚',site:c?(c.site_name||''):'',
+         att:c?(c.attachments||[]).slice():[],status:c?c.status:'submitted',claimant:c?c.claimant:myUid()};
+  cform.ico=icoOf('out',cform.cat);
+  $('#claimTitle').textContent=c?(c.claimant===myUid()?'내 경비 청구':`${staffName(c.claimant)} 경비 청구`):'경비 청구';
+  $('#cAmt').value=c?Number(c.amount).toLocaleString('ko-KR'):'';
+  $('#cVendor').value=c?(c.vendor||''):'';
+  $('#cEvid').value=c?(c.evidence||'카드'):'카드';
+  $('#cVat').value=c&&c.vat_amount?'incl':'none';
+  $('#cMemo').value=c?(c.memo||''):'';
+  $('#cDate').value=c?c.claim_date:todayStr();
+  const locked=!!(c&&c.status!=='submitted'&&c.status!=='draft');
+  const mine=!c||c.claimant===myUid();
+  ['cAmt','cVendor','cEvid','cVat','cMemo','cDate'].forEach(k=>$('#'+k).disabled=locked||!mine);
+  $('#claimSubmit').classList.toggle('hidden',locked||!mine);
+  $('#claimSubmit').textContent=c?'청구 수정':'청구 상신';
+  $('#claimDelete').classList.toggle('hidden',!c||locked||!mine);
+  renderCClaimCats();renderCSitePills();renderCAtt();
+  /* 관리자에게만 승인/반려 */
+  const box=$('#claimApproveBox');
+  if(mgr&&c&&c.status==='submitted'){
+    box.classList.remove('hidden');
+    box.innerHTML=`<b>승인 처리</b><br><span style="font-size:11.5px;color:var(--muted)">${esc(staffName(c.claimant))} 님이 올린 ${won(c.amount)}원입니다. 승인하면 장부에 지출로 기록됩니다.</span>
+      <div class="field" style="margin-top:11px"><label>지급 계좌</label><div class="pills" id="apAcct"></div></div>
+      <div class="field"><label>지급 예정일 (비우면 바로 지급 완료로 기록)</label><input id="apDue" type="date"></div>
+      <div class="row2" style="margin-top:6px">
+        <button class="btn btn-primary" id="apOk" style="margin:0">승인 · 장부 기록</button>
+        <button class="btn btn-ghost" id="apNo" style="margin:0;color:var(--coral)">반려</button>
+      </div>`;
+    let apA=state.accounts[0]?state.accounts[0].name:'';
+    const drawA=()=>{
+      $('#apAcct').innerHTML=state.accounts.map(a=>`<div class="pill ${apA===a.name?'sel':''}" data-a="${esc(a.name)}">${a.ico} ${esc(a.name)}</div>`).join('');
+      $$('#apAcct .pill').forEach(p=>p.onclick=()=>{apA=p.dataset.a;drawA();});
+    };drawA();
+    $('#apOk').onclick=async()=>{
+      try{
+        await BIZDB.approveClaim(c.id,apA,$('#apDue').value||null);
+        await loadClaims();await BIZDB.pull();rerenderAll();
+        closeSheet('Claim');toast(`승인 완료 · ${won(c.amount)}원이 장부에 기록됐습니다`);
+      }catch(e){toast('승인 실패 · '+String(e.message||'').slice(0,60));}
+    };
+    $('#apNo').onclick=async()=>{
+      const r=prompt('반려 사유를 적어주세요 (신청자에게 보입니다)','증빙이 없습니다');
+      if(r===null)return;
+      try{await BIZDB.rejectClaim(c.id,r);await loadClaims();closeSheet('Claim');toast('반려했습니다');}
+      catch(e){toast('반려 실패');}
+    };
+  }else if(c&&c.status==='rejected'&&c.reject_reason){
+    box.classList.remove('hidden');
+    box.innerHTML=`<b style="color:var(--coral)">반려됨</b><br>${esc(c.reject_reason)}`;
+  }else if(c&&c.status==='approved'){
+    box.classList.remove('hidden');
+    box.innerHTML=`<b style="color:var(--teal)">승인됨</b><br>장부에 지출로 기록됐습니다${c.approved_at?` · ${new Date(c.approved_at).toLocaleDateString('ko-KR')}`:''}`;
+  }else box.classList.add('hidden');
+  openSheet('Claim');
+}
+function renderCClaimCats(){
+  $('#cCatList').innerHTML=CATS.out.map(([n,i])=>`<div class="cat ${cform.cat===n?'sel':''}" data-n="${n}" data-i="${i}"><div class="b">${i}</div><div class="t">${n}</div></div>`).join('');
+  $$('#cCatList .cat').forEach(c=>c.onclick=()=>{cform.cat=c.dataset.n;cform.ico=c.dataset.i;renderCClaimCats();});
+}
+function renderCSitePills(){
+  $('#cSitePills').innerHTML=`<div class="pill ${!cform.site?'sel':''}" data-s="">지정 안 함</div>`+
+    state.sites.map(s=>`<div class="pill ${cform.site===s?'sel':''}" data-s="${esc(s)}">🏗️ ${esc(s)}</div>`).join('');
+  $$('#cSitePills .pill').forEach(p=>p.onclick=()=>{cform.site=p.dataset.s;renderCSitePills();});
+}
+function renderCAtt(){
+  const el=$('#cAttRow');if(!el)return;
+  el.innerHTML=cform.att.map((a,i)=>`<div class="attchip" data-i="${i}">${/pdf/i.test(a.type||'')?'📄':'🧾'}<span class="x" data-x="${i}">✕</span></div>`).join('');
+  el.querySelectorAll('.attchip').forEach(c=>{
+    const i=+c.dataset.i,a=cform.att[i];
+    if(!/pdf/i.test(a.type||'')&&window.BIZDB)BIZDB.signedUrl(a.path,600).then(u=>{if(u)c.insertAdjacentHTML('afterbegin',`<img src="${u}" alt="">`);}).catch(()=>{});
+    c.onclick=e=>{
+      if(e.target.dataset.x!==undefined){cform.att.splice(+e.target.dataset.x,1);renderCAtt();return;}
+      if(window.BIZDB)BIZDB.signedUrl(a.path,600).then(u=>{if(u)window.open(u,'_blank','noopener');});
+    };
+  });
+}
+$('#cAttBtn').onclick=()=>$('#cAttInput').click();
+$('#cAttInput').onchange=async e=>{
+  const files=[...e.target.files];e.target.value='';
+  if(!files.length||!window.BIZDB)return;
+  toast('영수증 올리는 중…');
+  for(const f of files){
+    try{cform.att.push(await BIZDB.uploadReceipt(f));renderCAtt();}catch(err){toast('첨부 실패');}
+  }
+};
+$('#cAmt').oninput=e=>{let v=e.target.value.replace(/[^0-9]/g,'');e.target.value=v?Number(v).toLocaleString('ko-KR'):'';};
+$('#newClaimBtn').onclick=()=>openClaim(null);
+$('#claimSubmit').onclick=async()=>{
+  const amt=Number($('#cAmt').value.replace(/[^0-9]/g,''));
+  if(!amt){toast('금액을 입력하세요');return;}
+  const vat=$('#cVat').value==='incl'?Math.round(amt-amt/1.1):0;
+  const row={claim_date:$('#cDate').value||todayStr(),category:cform.cat,
+    site_id:(window.BIZDB?BIZDB.siteId(cform.site):null)||null,site_name:cform.site||null,
+    vendor:$('#cVendor').value.trim()||null,amount:amt,supply_amount:amt-vat,vat_amount:vat,
+    evidence:$('#cEvid').value||null,memo:$('#cMemo').value.trim()||null,
+    attachments:cform.att,status:'submitted'};
+  if(cform.id)row.id=cform.id; else row.claimant=myUid();
+  try{
+    await BIZDB.saveClaim(row);
+    await loadClaims();closeSheet('Claim');
+    toast(cform.id?'청구가 수정됐습니다':'청구를 올렸습니다 · 승인을 기다립니다');
+  }catch(e){toast('상신 실패 · '+String(e.message||'').slice(0,50));}
+};
+$('#claimDelete').onclick=async()=>{
+  if(!cform.id||!confirm('이 청구를 취소할까요?'))return;
+  try{await BIZDB.deleteClaim(cform.id);await loadClaims();closeSheet('Claim');toast('청구를 취소했습니다');}
+  catch(e){toast('취소 실패');}
+};
+
+/* ============ 내 업무 탭 ============ */
+function renderMyTab(){
+  const me=(window.BIZDB&&BIZDB.me)?BIZDB.me():null;
+  const mgr=isMgr();
+  const mySites=(window.BIZDB&&BIZDB.mySiteNames)?BIZDB.mySiteNames():[];
+  const uid=myUid();
+
+  /* 내 할 일 */
+  const scope=mgr?state.sites:mySites;
+  const mine=state.tx.filter(t=>!t.tf&&t.cr&&(mgr||(t.site&&scope.indexOf(t.site)!==-1)));
+  const od=mine.filter(t=>overdueDays(t)>0);
+  const soon=mine.filter(t=>{const b=t.due&&overdueDays(t)===0?Math.round((new Date(t.due+'T00:00')-new Date(new Date().toDateString()))/864e5):999;return b<=7;});
+  const pending=claims.filter(c=>c.status==='submitted');
+  const myPending=pending.filter(c=>c.claimant===uid);
+  const tax=upcomingTax(10)[0];
+  const c=$('#myCard');
+  if(c)c.innerHTML=`<div style="display:flex;align-items:center;gap:11px;margin-bottom:12px">
+      <div style="width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:17px;background:rgba(255,255,255,.06)">${mgr?'👔':'🧑‍🔧'}</div>
+      <div><div style="font-size:14px">${esc(me?(me.display_name||me.email||'나'):'로그인 확인 중')}</div>
+      <div style="font-size:11px;color:var(--muted-2)">${mgr?'대표·관리자 — 회사 전체를 봅니다':`직원 — 담당 현장 ${mySites.length}곳의 장부만 보입니다`} · ${esc(bizOrg().name||'')}</div></div></div>
+    <div class="ins-grid">
+      <div class="ins"><div class="k">연체</div><div class="v" style="color:${od.length?'var(--coral)':'var(--muted)'}">${od.length}<small> 건</small></div></div>
+      <div class="ins"><div class="k">7일 내 마감</div><div class="v" style="color:${soon.length?'var(--gold)':'var(--muted)'}">${soon.length}<small> 건</small></div></div>
+      <div class="ins"><div class="k">${mgr?'승인 대기':'내 청구 대기'}</div><div class="v" style="color:${(mgr?pending:myPending).length?'var(--gold)':'var(--muted)'}">${(mgr?pending:myPending).length}<small> 건</small></div></div>
+      <div class="ins"><div class="k">다가오는 세무</div><div class="v" style="font-size:14px">${tax?`${tax.dday===0?'오늘':'D-'+tax.dday}<br><small>${esc(String(tax.t).slice(0,16))}</small>`:'—'}</div></div>
+    </div>`;
+
+  /* 경비 청구 목록 */
+  const list=mgr?claims:claims.filter(x=>x.claimant===uid);
+  const el=$('#myClaims');
+  if(el){
+    if(!list.length)el.innerHTML=`<div class="empty" style="padding:16px 0"><span class="em">🧾</span>${mgr?'올라온 경비 청구가 없습니다':'올린 경비 청구가 없습니다'}<br><span style="color:var(--teal);font-size:12px">위 + 청구로 시작하세요</span></div>`;
+    else el.innerHTML=list.slice(0,20).map(x=>
+      `<div class="claim" data-claim="${esc(x.id)}">
+        <div class="ci">${icoOf('out',x.category)}</div>
+        <div class="cm"><div class="a">${esc(x.category)}${x.site_name?` · 🏗️${esc(x.site_name)}`:''}${(x.attachments&&x.attachments.length)?` <span class="clip">📎${x.attachments.length}</span>`:''}</div>
+        <div class="b">${String(x.claim_date).slice(5).replace('-','.')}${mgr?' · '+esc(staffName(x.claimant)):''}${x.vendor?' · '+esc(x.vendor):''}${x.memo?' · '+esc(x.memo):''}</div></div>
+        <div style="text-align:right;flex:none"><div style="font-family:var(--font-d);font-variant-numeric:tabular-nums;font-size:13px">${won(x.amount)}</div>
+        <span class="stbadge ${x.status}">${claimStatusLabel(x.status)}</span></div>
+      </div>`).join('');
+    el.querySelectorAll('.claim').forEach(r=>r.onclick=()=>openClaim(r.dataset.claim));
+  }
+
+  /* 내 담당 현장 */
+  const ms=$('#mySitesCard');
+  if(ms){
+    const names=mgr?state.sites:mySites;
+    if(!names.length)ms.innerHTML=`<div class="empty" style="padding:14px 0"><span class="em">🏗️</span>${mgr?'등록된 현장이 없습니다':'배정된 현장이 없습니다<br><span style="font-size:12px;color:var(--muted-2)">대표·관리자에게 현장 배정을 요청하세요</span>'}</div>`;
+    else ms.innerHTML=names.map((n,i)=>{
+      const o=siteSummary(n);
+      return `<div class="siterow" data-site="${esc(n)}" style="cursor:pointer;margin-bottom:11px;${i<names.length-1?'padding-bottom:10px;border-bottom:1px solid var(--border)':''}">
+        <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:3px"><span>🏗️ ${esc(n)}</span>
+        <span style="font-family:var(--font-d);font-variant-numeric:tabular-nums;color:var(--coral)">지출 ${won(o.out)}</span></div>
+        <div style="font-size:11.5px;color:var(--muted)">${o.cnt}건${o.recv?` · <span style="color:var(--gold)">미수 ${won(o.recv)}</span>`:''}${o.pay?` · <span style="color:var(--coral)">미지급 ${won(o.pay)}</span>`:''}</div>
+      </div>`;}).join('');
+    ms.querySelectorAll('.siterow').forEach(r=>r.onclick=()=>openSiteSheet(r.dataset.site));
+  }
+}
+
+/* ============ 현장 담당자 배정 (관리자) ============ */
+let memSite='',memPicked=[];
+async function openMembers(siteName){
+  if(!isMgr()){toast('담당자 배정은 대표·관리자만 할 수 있습니다');return;}
+  const sid=window.BIZDB?BIZDB.siteId(siteName):null;
+  if(!sid){toast('먼저 동기화가 끝난 뒤에 배정할 수 있습니다');return;}
+  memSite=siteName;
+  $('#memDesc').textContent=`🏗️ ${siteName} — 배정된 직원만 이 현장의 거래를 볼 수 있습니다`;
+  $('#memList').innerHTML='<div class="spin"></div>';
+  openSheet('Member');
+  try{
+    const cur=await BIZDB.listSiteMembers(sid);
+    memPicked=cur.map(m=>m.user_id);
+  }catch(e){memPicked=[];}
+  renderMemList();
+}
+function renderMemList(){
+  const dir=(window.BIZDB&&BIZDB.staffDirectory)?BIZDB.staffDirectory():[];
+  if(!dir.length){$('#memList').innerHTML=`<div class="empty" style="padding:16px 0"><span class="em">👥</span>직원 명단을 불러오지 못했습니다</div>`;return;}
+  $('#memList').innerHTML=dir.map(p=>{
+    const on=memPicked.indexOf(p.id)!==-1;
+    const mgr=['master','admin','executive'].indexOf(p.role)!==-1;
+    return `<div class="memchip ${on?'on':''}" data-u="${esc(p.id)}">${on?'✓':'＋'} ${esc(p.display_name||p.email||'직원')}${mgr?' <span style="font-size:10px;color:var(--muted-2)">(전체 열람)</span>':''}</div>`;
+  }).join('')+`<div class="hintline">대표·임원·관리자는 배정과 상관없이 전체를 봅니다. 여기서 고르는 것은 <b>직원(staff)</b>의 열람 범위입니다.</div>`;
+  $$('#memList .memchip').forEach(ch=>ch.onclick=()=>{
+    const u=ch.dataset.u,i=memPicked.indexOf(u);
+    if(i===-1)memPicked.push(u);else memPicked.splice(i,1);
+    renderMemList();
+  });
+}
+$('#memSave').onclick=async()=>{
+  const sid=window.BIZDB?BIZDB.siteId(memSite):null;
+  if(!sid)return;
+  try{
+    await BIZDB.setSiteMembers(sid,memPicked);
+    closeSheet('Member');toast(`담당자 ${memPicked.length}명 저장됨`);
+  }catch(e){toast('저장 실패 · '+String(e.message||'').slice(0,50));}
+};
+
+/* ============ 권한에 따른 화면 ============
+   직원은 담당 현장 것만 서버에서 내려오므로, 회사 전체 수치(잔액·예산·부가세·자금예측)는
+   부분값이라 보여주면 오히려 틀린 정보가 된다. 아예 감춘다. */
+function applyRoleView(){
+  const mgr=isMgr();
+  ['mgrStats','mgrSettings','mgrData'].forEach(id=>{const e=$('#'+id);if(e)e.classList.toggle('hidden',!mgr);});
+  const ac=$('#acctRow');if(ac)ac.classList.toggle('hidden',!mgr);
+  const bc=$('#budgetCard');if(bc)bc.classList.toggle('hidden',!mgr);
+  const tag=document.querySelector('.hero .tag');
+  if(tag)tag.textContent=mgr?'NET PROFIT · 이번 달 순이익':'MY SITES · 이번 달 내 현장 기준';
+  const sn=$('#staffNote');
+  if(sn){
+    sn.classList.toggle('hidden',mgr);
+    if(!mgr)sn.innerHTML='<b>직원 화면입니다.</b><br>배정된 현장의 거래와 본인이 올린 기록만 보입니다. 회사 전체 잔액·예산·세금은 대표·관리자만 볼 수 있습니다. 내 돈으로 쓴 비용은 <b>내 업무 › 경비 청구</b>로 올려주세요.';
+  }
+  renderOrgChip();
+}
 
 /* ============ 발주서 → 지출 (직원 포털 연계) ============
    발주서는 "줄 돈이 생겼다"는 뜻인데 장부와 따로 놀았다. po_id 로 묶어 두 번 기록되지 않게 한다. */
@@ -2183,6 +2756,10 @@ $('#impConfirm').onclick=()=>{
 
 /* ============ 시작 ============ */
 buildKeypad();
+applyOrgCats();
+renderOrgChip();
+applyRoleView();
+renderTaxBasis();
 applyTheme();
 updatePinUI();
 $('#budgetTotal').value=state.budgets.total?state.budgets.total.toLocaleString('ko-KR'):'';

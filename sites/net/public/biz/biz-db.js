@@ -16,8 +16,11 @@
   var REF = 'gdcfqbdgubgpzusbtftf';
   var API = 'https://' + REF + '.supabase.co/rest/v1/';
   var ANON = 'sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
-  var TENANT = 'HQ';
-  var BASE_KEY = 'bocbiz_syncbase_v2';   /* {col: {uid: hash}} — 마지막 동기화 시점 */
+  /* 장부(사업자)는 여러 개다 — 개인사업자와 법인은 신고도 계산서도 따로다.
+     전환은 페이지를 다시 여는 방식(상태가 섞이지 않게). 캐시·기준 스냅샷도 장부별로 나눈다. */
+  var TENANT = (function () { try { return localStorage.getItem('bocbiz_tenant') || 'HQ'; } catch (e) { return 'HQ'; } })();
+  var SFX = (TENANT === 'HQ' ? '' : ':' + TENANT);
+  var BASE_KEY = 'bocbiz_syncbase_v2' + SFX;   /* {col: {uid: hash}} — 마지막 동기화 시점 */
 
   /* ── 유틸 ── */
   function uuid() {
@@ -261,7 +264,7 @@
 
   /* ── 현장 : 직원 포털 work_sites 를 공유 마스터로 사용 ── */
   function pullSites() {
-    return getAll('work_sites?select=id,name,status,contract_amount&order=created_at.asc').then(function (rows) {
+    return getAll('work_sites?select=id,name,status,contract_amount&tenant_id=eq.' + TENANT + '&order=created_at.asc').then(function (rows) {
       siteIdByName = {}; siteNameById = {};
       var names = [], contracts = {};
       (rows || []).forEach(function (r) {
@@ -282,7 +285,7 @@
       if (!r) {
         ops.push(req('work_sites', {
           method: 'POST', headers: { Prefer: 'return=representation' },
-          body: JSON.stringify({ name: name, status: '진행중', contract_amount: amt })
+          body: JSON.stringify({ name: name, status: '진행중', contract_amount: amt, tenant_id: TENANT })
         }).then(function (res) { if (res && res[0]) siteIdByName[name] = res[0].id; }));
       } else if (n(r.contract_amount) !== amt || r.status === '보관') {
         ops.push(req('work_sites?id=eq.' + r.id, {
@@ -299,6 +302,73 @@
       }
     });
     return Promise.all(ops);
+  }
+
+  /* ── 나 · 장부 · 담당 현장 ── */
+  var meProfile = null, orgList = [], myMemberSites = [], staffDir = [];
+  function pullMe() {
+    var s = sess(), uid = s && s.user && s.user.id;
+    if (!uid) return Promise.resolve(null);
+    return getAll('profiles?select=id,email,display_name,role&id=eq.' + uid)
+      .then(function (r) { meProfile = (r && r[0]) || null; return meProfile; })
+      .catch(function () { return null; });
+  }
+  function isManager() {
+    return !!(meProfile && ['master', 'admin', 'executive'].indexOf(meProfile.role) !== -1);
+  }
+  function pullOrgs() {
+    return getAll('biz_orgs?select=*&active=is.true&order=sort_order.asc')
+      .then(function (r) { orgList = r || []; return orgList; }).catch(function () { return orgList; });
+  }
+  function pullMyMembership() {
+    return getAll('work_site_members?select=site_id,role')
+      .then(function (r) { myMemberSites = r || []; return myMemberSites; }).catch(function () { return myMemberSites; });
+  }
+  function pullStaffDirectory() {
+    return req('rpc/biz_staff_directory', { method: 'POST', body: '{}' })
+      .then(function (r) { staffDir = r || []; return staffDir; }).catch(function () { return staffDir; });
+  }
+  function saveOrg(row) {
+    return req('biz_orgs', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify([row]) });
+  }
+  function setSiteMembers(siteId, userIds) {
+    return req('work_site_members?site_id=eq.' + siteId, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+      .then(function () {
+        if (!userIds.length) return null;
+        return req('work_site_members', {
+          method: 'POST', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify(userIds.map(function (u) { return { site_id: siteId, user_id: u }; }))
+        });
+      });
+  }
+  function listSiteMembers(siteId) {
+    return getAll('work_site_members?select=site_id,user_id,role&site_id=eq.' + siteId).catch(function () { return []; });
+  }
+
+  /* ── 경비 청구 (개인 영역) ── */
+  function listClaims() {
+    return getAll('biz_expense_claims?select=*&tenant_id=eq.' + TENANT + '&order=claim_date.desc&limit=300')
+      .catch(function () { return []; });
+  }
+  function saveClaim(row) {
+    row.tenant_id = TENANT;
+    return req('biz_expense_claims', {
+      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify([row])
+    });
+  }
+  function approveClaim(id, account, payDate) {
+    return req('rpc/biz_approve_claim', {
+      method: 'POST', body: JSON.stringify({ p_claim: id, p_account: account || null, p_pay_date: payDate || null })
+    });
+  }
+  function rejectClaim(id, reason) {
+    return req('biz_expense_claims?id=eq.' + id, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'rejected', reject_reason: reason || null })
+    });
+  }
+  function deleteClaim(id) {
+    return req('biz_expense_claims?id=eq.' + id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
   }
 
   /* ── 거래처 명부 (직원 포털과 공유) ── */
@@ -344,7 +414,11 @@
     var state = cfg.getState();
     var base = loadBase();
     setStatus('syncing', '불러오는 중');
-    return pullSites().then(function (sites) {
+    return pullMe().then(function () {
+      return Promise.all([pullOrgs(), pullMyMembership(), isManager() ? pullStaffDirectory() : null]);
+    }).then(function () {
+      return pullSites();
+    }).then(function (sites) {
       /* 현장도 3-way 병합. 서버 목록으로 통째 교체하면 아직 못 올린 로컬 현장이 사라진다. */
       var baseS = null; try { baseS = base.sitesHash ? JSON.parse(base.sitesHash) : null; } catch (e) {}
       var prevNames = state.sites || [], prevC = state.contracts || {};
@@ -379,6 +453,16 @@
         var server = (res[i] || []).map(COLS[nm].toObj);
         state[nm] = merge(nm, state[nm] || [], server, base);
       });
+      /* 계좌 기본 3개(사업통장·현금·사업카드)는 기기마다 로컬에 미리 있다.
+         서버에 같은 이름이 이미 있으면 서버 것(uid 있는 쪽)만 남긴다 —
+         안 그러면 기기를 하나 늘릴 때마다 계좌가 두 배로 불어난다. */
+      var seenName = {}, dedup = [];
+      state.accounts.forEach(function (a) {
+        var k = String(a.name), prev = seenName[k];
+        if (!prev) { seenName[k] = a; dedup.push(a); return; }
+        if (!prev.uid && a.uid) { dedup[dedup.indexOf(prev)] = a; seenName[k] = a; }
+      });
+      state.accounts = dedup;
       if (res[5]) {
         var localB = state.budgets || { total: 0, cats: {} };
         var baseB = base.budget;
@@ -407,18 +491,26 @@
 
     /* 현장 먼저 — 거래의 site_id 가 여기서 결정된다.
        현장 목록·계약금액이 그대로면 왕복을 건너뛴다(저장 한 번에 GET 2회가 붙던 낭비). */
-    var siteHash = JSON.stringify({ s: state.sites || [], c: state.contracts || {} });
-    var sitesUnchanged = (base.sitesHash === siteHash) && Object.keys(siteIdByName).length > 0;
-    var siteStep = sitesUnchanged
-      ? Promise.resolve()
-      : pullSites().then(function (sv) { return pushSites(state, sv); })
+    /* 계좌·고정항목·목표·예산·현장은 회사 공용 자료라 서버가 관리자에게만 쓰기를 허용한다.
+       직원이 이걸 밀어 올리려다 403 을 받으면 같은 push 안의 본인 거래까지 통째로 실패한다.
+       → 관리자가 아니면 아예 보내지 않는다. */
+    var mgr = false;
+    /* 내 역할을 모르는 채로 보내면 관리자를 직원으로 오판해 회사 자료가 안 올라간다 — 먼저 확인한다 */
+    return (meProfile ? Promise.resolve() : pullMe())
+      .then(function () {
+        mgr = isManager();
+        var siteHash = JSON.stringify({ s: state.sites || [], c: state.contracts || {} });
+        var sitesUnchanged = !mgr || ((base.sitesHash === siteHash) && Object.keys(siteIdByName).length > 0);
+        if (sitesUnchanged) return null;
+        return pullSites().then(function (sv) { return pushSites(state, sv); })
           .then(function () { return pullSites(); })
           .then(function () { base.sitesHash = siteHash; });
-
-    return siteStep
+      })
       .then(function () {
         var jobs = [];
+        var MGR_ONLY = { accounts: 1, recurring: 1, goals: 1 };
         Object.keys(COLS).forEach(function (nm) {
+          if (MGR_ONLY[nm] && !mgr) return;
           var c = COLS[nm], arr = state[nm] || [], b = base[nm] || (base[nm] = {});
           var alive = {}, ins = [];
           arr.forEach(function (o, i) {
@@ -433,7 +525,7 @@
           if (gone.length) jobs.push(delRows(c.table, gone));
         });
         var bh = JSON.stringify({ total: n(state.budgets && state.budgets.total), cats: (state.budgets && state.budgets.cats) || {} });
-        if (base.budget !== bh) { jobs.push(pushBudget(state)); base.budget = bh; }
+        if (mgr && base.budget !== bh) { jobs.push(pushBudget(state)); base.budget = bh; }
         return Promise.all(jobs);
       })
       .then(function () {
@@ -468,6 +560,33 @@
         if (!document.hidden && status.phase !== 'syncing') pull().catch(function () {});
       });
     },
+    /* 공용 / 프로젝트 / 개인 3계층 */
+    tenant: function () { return TENANT; },
+    setTenant: function (id) {
+      try { localStorage.setItem('bocbiz_tenant', id); } catch (e) {}
+      location.reload();
+    },
+    orgs: function () { return orgList.slice(); },
+    org: function () {
+      for (var i = 0; i < orgList.length; i++) if (orgList[i].id === TENANT) return orgList[i];
+      return { id: TENANT, name: '사업장부', biz_type: '개인', fiscal_month: 12, vat_type: '일반', is_construction: true };
+    },
+    saveOrg: saveOrg,
+    me: function () { return meProfile; },
+    isManager: isManager,
+    mySiteIds: function () { return myMemberSites.map(function (m) { return m.site_id; }); },
+    mySiteNames: function () {
+      return myMemberSites.map(function (m) { return siteNameById[m.site_id]; }).filter(Boolean);
+    },
+    staffDirectory: function () { return staffDir.slice(); },
+    listSiteMembers: listSiteMembers,
+    setSiteMembers: setSiteMembers,
+    listClaims: listClaims,
+    saveClaim: saveClaim,
+    approveClaim: approveClaim,
+    rejectClaim: rejectClaim,
+    deleteClaim: deleteClaim,
+
     siteId: function (name) { return siteIdByName[name] || null; },
     siteName: function (id) { return siteNameById[id] || ''; },
     partners: function () { return partnerList.slice(); },
