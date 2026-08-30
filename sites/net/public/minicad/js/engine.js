@@ -3028,6 +3028,27 @@ const LIGHT_ARRAY_STEP=50;
 const LIGHT_ARRAY_MIN=150, LIGHT_ARRAY_MAX=6000;
 const LIGHT_ARRAY_MAX_N=6;
 // 현장에서 자주 쓰는 모양 — '밭 전'은 2×2
+// 2026-08-30 대표 지시: 'ㄴ' 자처럼 격자 일부만 쓰는 배치.
+//  가로×세로 격자를 만들어 두고, 어느 칸을 쓸지 마스크로 고른다.
+//  ㄴ 을 만들면서 같은 방식으로 ㄱ·ㄷ·ㅁ(테두리)도 함께 나온다 — 조명은 벽을 따라
+//  둘러 놓는 일이 잦아 테두리 배치가 특히 쓸모 있다.
+const LIGHT_ARRAY_SHAPES=[
+  {key:'grid',name:'채움'},
+  {key:'gi',  name:'ㄱ'},
+  {key:'ni',  name:'ㄴ'},
+  {key:'di',  name:'ㄷ'},
+  {key:'mi',  name:'ㅁ'},
+];
+function lightArrayCellUsed(shape,c,r,cols,rows){
+  const first=(c===0), last=(c===cols-1), top=(r===0), bot=(r===rows-1);
+  switch(shape){
+    case 'gi': return top||last;              // ㄱ — 윗줄 + 오른쪽 기둥
+    case 'ni': return first||bot;             // ㄴ — 왼쪽 기둥 + 아랫줄
+    case 'di': return first||top||bot;        // ㄷ — 왼쪽 기둥 + 위아래
+    case 'mi': return first||last||top||bot;  // ㅁ — 테두리만
+    default:   return true;                   // 채움
+  }
+}
 // 2026-08-30 대표 지시: 현장에서 많이 쓰는 간격 — 촌촌한 쪽(150~300)과 일반(600~1500)
 const LIGHT_ARRAY_GAPS=[150,200,250,300,600,900,1200,1500];
 const LIGHT_ARRAY_PRESETS=[
@@ -3049,6 +3070,7 @@ function lightArrayCfg(){
   // 2026-08-30: 배치 회전 (대표 지시) — 빗금 벽을 따라 기울여 놓을 때
   const ang=parseFloat(a.angle);
   a.angle=isFinite(ang)?((Math.round(ang)%360)+360)%360:0;
+  if(!LIGHT_ARRAY_SHAPES.some(x=>x.key===a.shape)) a.shape='grid';
   return a;
 }
 function snapArrayGap(v){
@@ -3058,8 +3080,8 @@ function snapArrayGap(v){
   return Math.max(LIGHT_ARRAY_MIN,Math.min(LIGHT_ARRAY_MAX,r));
 }
 function lightArrayActive(){
-  const a=lightArrayCfg();
-  return (a.cols*a.rows)>1;
+  lightArrayCfg();
+  return lightArrayOffsets().length>1; // 모양으로 칸이 빠질 수 있으니 실제 개수로
 }
 // 중심점(mm) 기준 배치 좌표들 — 가운데를 찍으면 그 둘레로 고르게 퍼진다
 function lightArrayOffsets(cfg){
@@ -3071,6 +3093,7 @@ function lightArrayOffsets(cfg){
   const cs=Math.cos(th), sn=Math.sin(th);
   for(let r=0;r<a.rows;r++){
     for(let c=0;c<a.cols;c++){
+      if(!lightArrayCellUsed(a.shape,c,r,a.cols,a.rows)) continue; // 모양에서 빠진 칸
       const x=-w/2+c*a.dx, y=-h/2+r*a.dy;
       out.push({dx:Math.round(x*cs-y*sn), dy:Math.round(x*sn+y*cs)});
     }

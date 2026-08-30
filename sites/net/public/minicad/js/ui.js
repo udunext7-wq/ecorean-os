@@ -277,6 +277,9 @@ function showLibPopup(tool,lib){
       grid.querySelectorAll('.lib-thumb-btn').forEach(b=>b.classList.remove('active'));
       grid.querySelectorAll('.lib-thumb-btn[data-lib-key="'+key+'"]').forEach(b=>b.classList.add('active'));
       showStatus(def.name+' 선택 — 캔버스 클릭으로 배치');
+      // 2026-08-30: 고르자마자 설정이 보여야 한다 — 종전엔 하나 놓아야 패널이 떴다
+      refreshUI();
+      if(typeof autoOpenPropsDrawer==='function') autoOpenPropsDrawer();
     });
     grid.appendChild(btn);
   });
@@ -457,7 +460,7 @@ function renderLightArrayPanel(){
   if(!dc) return;
   const a=lightArrayCfg();
   const span=lightArraySpanMm();
-  const n=a.cols*a.rows;
+  const n=lightArrayOffsets(a).length;
   const libKey=STATE.selectedLib;
   const def=(typeof libDefForKey==='function')?libDefForKey(LIGHT_LIB,libKey):LIGHT_LIB[libKey];
   const nm=(def&&def.name)||'조명';
@@ -471,6 +474,13 @@ function renderLightArrayPanel(){
     '<div style="padding:9px;background:rgba(212,184,114,0.07);border:1px solid rgba(212,184,114,0.45);border-radius:5px">'+
     '<div class="field-label" style="margin-bottom:6px;color:#D4B872">배치 모양 — 중심점 하나로 '+n+'개</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:4px">'+LIGHT_ARRAY_PRESETS.map(preset).join('')+'</div>'+
+    // 2026-08-30: 격자 중 어느 칸을 쓸지 — 채움 / ㄱ / ㄴ / ㄷ / ㅁ(테두리)
+    '<div style="display:flex;gap:3px;margin-top:5px">'+
+      LIGHT_ARRAY_SHAPES.map(sh=>'<button type="button" class="btn sm la-shape" data-s="'+sh.key+'"'+
+        ' style="flex:1;padding:4px 2px;font-size:12px;font-weight:700'+
+        ((a.shape||'grid')===sh.key?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
+        '">'+sh.name+'</button>').join('')+
+    '</div>'+
     '<div style="display:flex;gap:5px;margin-top:6px">'+
       '<div class="field" style="flex:1;margin:0"><label class="field-label">가로 개수</label>'+
       '<input type="text" inputmode="numeric" id="d-la-cols" value="'+a.cols+'"></div>'+
@@ -508,6 +518,15 @@ function renderLightArrayPanel(){
     a2.cols=parseInt(b.dataset.c,10);a2.rows=parseInt(b.dataset.r,10);
     lightArrayCfg();refreshUI();
     showStatus('배치 '+a2.cols+'×'+a2.rows+' — 도면에서 중심점 클릭');
+  }));
+  document.querySelectorAll('.la-shape').forEach(b=>b.addEventListener('click',()=>{
+    const a2=lightArrayCfg();
+    a2.shape=b.dataset.s;
+    // ㄱㄴㄷㅁ 은 2×2 부터 모양이 다른다 — 너무 작으면 키워준다
+    if(a2.shape!=='grid'){ if(a2.cols<2) a2.cols=2; if(a2.rows<2) a2.rows=2; }
+    lightArrayCfg();refreshUI();
+    showStatus('배치 모양 '+(LIGHT_ARRAY_SHAPES.find(x=>x.key===a2.shape)||{}).name+
+      ' — '+lightArrayOffsets().length+'개');
   }));
   document.querySelectorAll('.la-gap').forEach(b=>b.addEventListener('click',()=>{
     const a2=lightArrayCfg();

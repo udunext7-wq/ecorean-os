@@ -3407,8 +3407,36 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       JSON.stringify(LIGHT_ARRAY_GAPS));
     assert('배열: 150은 최소값 이상',snapArrayGap(150)===150);
 
+    // [A3c] 2026-08-30: ㄴ 자 등 모양 배치 (대표 지시)
+    STATE.lightArray={cols:3,rows:3,dx:900,dy:900,angle:0,shape:'grid'};
+    assert('모양: 채움은 9개',lightArrayOffsets().length===9);
+    STATE.lightArray={cols:3,rows:3,dx:900,dy:900,angle:0,shape:'ni'};
+    const ni=lightArrayOffsets();
+    assert('모양: ㄴ 은 5개 (왼쪽 기둥+아랫줄)',ni.length===5,'n='+ni.length);
+    // ㄴ — 왼쪽 끝에 세 줄 모두, 아랫줄에 세 칸 모두
+    const minX=Math.min(...ni.map(o=>o.dx)), maxY=Math.max(...ni.map(o=>o.dy));
+    assert('모양: ㄴ 왼쪽 기둥 3칸',ni.filter(o=>o.dx===minX).length===3,
+      String(ni.filter(o=>o.dx===minX).length));
+    assert('모양: ㄴ 아랫줄 3칸',ni.filter(o=>o.dy===maxY).length===3);
+    assert('모양: ㄴ 오른윗 칸은 비어있다',
+      !ni.some(o=>o.dx>minX&&o.dy<maxY));
+    STATE.lightArray={cols:3,rows:3,dx:900,dy:900,angle:0,shape:'gi'};
+    const gi=lightArrayOffsets();
+    assert('모양: ㄱ 은 5개',gi.length===5,'n='+gi.length);
+    STATE.lightArray={cols:3,rows:3,dx:900,dy:900,angle:0,shape:'mi'};
+    assert('모양: ㅁ 테두리는 8개 (가운데 빈다)',lightArrayOffsets().length===8,
+      String(lightArrayOffsets().length));
+    STATE.lightArray={cols:3,rows:3,dx:900,dy:900,angle:0,shape:'di'};
+    assert('모양: ㄷ 은 7개',lightArrayOffsets().length===7,String(lightArrayOffsets().length));
+    // 모양과 회전은 같이 쓴다
+    STATE.lightArray={cols:3,rows:3,dx:900,dy:900,angle:90,shape:'ni'};
+    assert('모양: 회전해도 개수는 같다',lightArrayOffsets().length===5);
+    // 이상한 모양이름은 채움으로
+    STATE.lightArray={cols:2,rows:2,dx:900,dy:900,shape:'zzz'};
+    assert('모양: 모르는 값은 채움',lightArrayCfg().shape==='grid');
+
     // [A4] 1×1 이면 배열이 아니다 (평소처럼 하나만)
-    STATE.lightArray={cols:1,rows:1,dx:900,dy:900};
+    STATE.lightArray={cols:1,rows:1,dx:900,dy:900,shape:'grid'};
     assert('배열: 1개면 배열 아님',lightArrayActive()===false);
     STATE.lightArray={cols:2,rows:1,dx:900,dy:900};
     assert('배열: 2개면 배열',lightArrayActive()===true);
@@ -3456,6 +3484,14 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('배열: 설정 패널 표시',!!document.getElementById('d-la-cols')&&
       !!document.getElementById('d-la-dx'));
     assert('배열: 견본 그림',document.getElementById('detail-content').innerHTML.indexOf('<svg')>=0);
+    assert('모양: 버튼 5개',document.querySelectorAll('.la-shape').length===LIGHT_ARRAY_SHAPES.length,
+      String(document.querySelectorAll('.la-shape').length));
+    const bNi=[...document.querySelectorAll('.la-shape')].filter(b=>b.dataset.s==='ni')[0];
+    assert('모양: ㄴ 버튼 존재',!!bNi);
+    if(bNi){bNi.click();
+      assert('모양: ㄴ 적용',lightArrayCfg().shape==='ni');
+      assert('모양: 너무 작으면 2×2 로 키운다',lightArrayCfg().cols>=2&&lightArrayCfg().rows>=2);
+      lightArrayCfg().shape='grid';refreshUI();}
     assert('배열: 회전 입력칸',!!document.getElementById('d-la-ang')&&
       document.querySelectorAll('.la-ang').length===3);
     assert('배열: 간격 버튼 8개',document.querySelectorAll('.la-gap').length===LIGHT_ARRAY_GAPS.length,
