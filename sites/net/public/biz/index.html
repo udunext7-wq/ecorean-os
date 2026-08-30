@@ -7,7 +7,7 @@
 <script src="/app-cloud.js"></script>
 <!-- 고칠 때마다 ?v= 를 올린다. 안 올리면 브라우저가 옛 파일을 계속 써서
      화면(HTML)과 저장 계층(JS)의 버전이 어긋난다 — 내역이 안 보이는 원인이 된다. -->
-<script src="/biz/biz-db.js?v=biz9"></script>
+<script src="/biz/biz-db.js?v=biz10"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -718,6 +718,10 @@
   <div class="field hidden" id="trToField"><label>입금 계좌</label><div class="pills" id="acctPills2"></div></div>
   <div class="field bizfield"><label>거래처</label><input id="vendorInput" type="text" placeholder="예: ○○건재, ○○건설" list="vendorSugg"><datalist id="vendorSugg"></datalist></div>
   <div class="field bizfield"><label>현장 · 프로젝트</label><div class="pills" id="sitePills"></div></div>
+  <div class="field bizfield"><label>공종 <span style="color:var(--muted-2);font-weight:400">· 집계표에 이 기준으로 쌓입니다</span></label>
+    <div class="pills" id="procPills"></div></div>
+  <div class="field bizfield"><label>원가 비목 <span style="color:var(--muted-2);font-weight:400">· 계정과목에서 자동 · 다르면 바꾸세요</span></label>
+    <div class="pills" id="costPills"></div></div>
   <div class="row2 bizfield">
     <div class="field"><label>부가세</label><select id="vatSel"><option value="none">없음 · 면세</option><option value="incl">포함 (총액에 10% 포함)</option><option value="excl">별도 (공급가만 입력)</option></select></div>
     <div class="field"><label>증빙</label><select id="evidSel"><option value="세금계산서">세금계산서</option><option value="카드">카드</option><option value="현금영수증">현금영수증</option><option value="간이영수증">간이영수증</option><option value="">없음</option></select></div>
@@ -766,7 +770,11 @@
   <div class="field"><label>계약금액 (공사대금 총액 · 부가세 포함)</label><input id="sdContract" type="text" inputmode="numeric" placeholder="예: 55,000,000"></div>
   <button class="btn btn-ghost" id="sdSaveContract">계약금액 저장</button>
   <div id="sdBody" style="margin-top:16px"></div>
-  <button class="btn btn-primary" id="sdAddTx" style="margin-top:8px">＋ 이 현장 거래 기록</button>
+  <div class="sec-t" style="margin-top:18px">원가계산서 · COST</div>
+  <div class="card" id="sdCost"></div>
+  <div class="sec-t" style="margin-top:16px">집계표 · 공종별 예산 대비 <span class="act" id="sdEditBudget">＋ 집계표 입력</span></div>
+  <div class="card" id="sdTally"></div>
+  <button class="btn btn-primary" id="sdAddTx" style="margin-top:14px">＋ 이 현장 거래 기록</button>
   <button class="btn btn-ghost" id="sdOnly" style="margin-top:9px">🔎 이 현장 거래만 보기</button>
   <button class="btn btn-ghost" id="sdMembers" style="margin-top:9px">👥 현장 담당자 배정</button>
 </div>
@@ -788,6 +796,16 @@
   <div class="field"><label>날짜</label><input id="eDate" type="date"></div>
   <div class="field"><label>시간 (선택)</label><input id="eTime" type="time"></div>
   <button class="btn btn-primary" id="saveEvt">일정 등록</button>
+</div>
+
+<!-- 집계표(공종별 실행예산) SHEET -->
+<div class="overlay" id="ovBudget"></div>
+<div class="sheet" id="shBudget">
+  <div class="grab"></div><h2 id="bgTitle">집계표 입력</h2>
+  <div class="desc">계약내역서의 집계표를 그대로 옮겨 담으세요. 공종별 재료비·노무비·경비를 넣으면 원가계산서와 집행률이 만들어집니다</div>
+  <div id="bgRows"></div>
+  <div class="card" id="bgTotal" style="margin-top:12px"></div>
+  <button class="btn btn-primary" id="bgSave" style="margin-top:14px">집계표 저장</button>
 </div>
 
 <!-- 휴지통 SHEET -->
@@ -817,6 +835,9 @@
       <div class="field"><label>과세유형</label><select id="oVat"><option value="일반">일반과세</option><option value="간이">간이과세</option><option value="면세">면세</option></select></div>
     </div>
     <div class="srow" id="oConstRow"><div class="si">🏗️</div><div class="st"><div class="a">건설업</div><div class="b">등록면허세·고용산재 자진신고 등 건설업 일정을 표시</div></div><div class="toggle" id="oConstToggle"></div></div>
+    <h3 style="font-family:var(--font-d);font-size:11px;letter-spacing:1.5px;color:var(--muted);margin:20px 2px 8px">원가계산 요율 · 법정경비</h3>
+    <div class="note" style="margin-bottom:10px">노무비에 곱해 원가에 얹는 항목입니다. <b>이걸 빼고 견적하면 노무비가 큰 공사일수록 적자</b>가 납니다. 요율은 매년 바뀌니 세무사·공단 고시로 확인하세요.</div>
+    <div id="rateRows"></div>
     <button class="btn btn-primary" id="oSave" style="margin-top:14px">사업자 정보 저장</button>
     <div class="note" style="margin-top:10px" id="oHint"></div>
   </div>
@@ -1097,7 +1118,11 @@ function snapshot(){
 
 let state=load();
 let view=new Date(); view.setDate(1);
-let form={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name,acct2:'',editId:null,site:'',vatm:'none',evid:'세금계산서',cr:0,due:'',att:[]};
+let form={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name,acct2:'',editId:null,site:'',vatm:'none',evid:'세금계산서',cr:0,due:'',att:[],pc:'',ct:''};
+/* 계정과목 → 원가 비목 기본값. 표준 계약내역서의 재료비/노무비/외주비/경비 3+1 구조. */
+const COST_TYPES=['재료비','노무비','외주비','경비'];
+const COST_BY_CAT={'자재비':'재료비','인건비':'노무비','직원급여':'노무비','외주비':'외주비'};
+function costTypeOf(cat){return COST_BY_CAT[cat]||'경비';}
 let rform={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name};
 let filter={q:'',type:'all',range:'month',site:''};
 /* 현장 하나만 골라 보는 상태를 눈에 보이게 — 안 보이면 "거래가 사라졌다"고 오해한다 */
@@ -1412,7 +1437,9 @@ function openSiteSheet(name){
   $('#sdSaveContract').classList.toggle('hidden',!isMgr());
   $('#sdStatusField').classList.toggle('hidden',!isMgr());
   renderSdStatus();
+  $('#sdEditBudget').style.display=isMgr()?'':'none';
   renderSiteDetail();openSheet('SiteD');
+  loadSiteBudget(name).then(()=>{if($('#shSiteD').classList.contains('on'))renderSiteDetail();}).catch(()=>{});
   if(window.BIZDB)refreshPO().then(()=>{if($('#shSiteD').classList.contains('on'))renderSiteDetail();}).catch(()=>{});
 }
 function renderSiteDetail(){
@@ -1455,6 +1482,9 @@ function renderSiteDetail(){
   }else html+=`<div class="empty" style="padding:16px 0"><span class="em">📭</span>이 현장의 거래가 아직 없습니다</div>`;
   b.innerHTML=html;
   const gp=$('#sdGoPO');if(gp)gp.onclick=()=>{closeSheet('SiteD');openPO();};
+  /* 표준 내역서의 두 장 — 원가계산서 · 집계표 */
+  const cs=$('#sdCost');if(cs)cs.innerHTML=costSheetHtml(curSite);
+  const tl=$('#sdTally');if(tl)tl.innerHTML=tallyHtml(curSite);
 }
 /* 현장 상태는 직원 포털 work_sites 와 같은 값이라 바꾸면 양쪽에 바로 반영된다 */
 function renderSdStatus(){
@@ -1484,6 +1514,7 @@ $('#sdOnly').onclick=()=>{
   render();
   toast(`🏗️ ${curSite} 거래만 보는 중 · 위 필터에서 해제`);
 };
+$('#sdEditBudget').onclick=()=>{closeSheet('SiteD');openBudget(curSite);};
 $('#sdMembers').onclick=()=>{closeSheet('SiteD');openMembers(curSite);};
 $('#sdSaveContract').onclick=()=>{
   const v=Number($('#sdContract').value.replace(/[^0-9]/g,''))||0;
@@ -1548,7 +1579,11 @@ function renderGoals(){
 /* ============ 폼 : 거래 ============ */
 function renderCats(){
   $('#catList').innerHTML=CATS[form.type].map(([n,i])=>`<div class="cat ${form.cat===n?'sel':''}" data-n="${n}" data-i="${i}"><div class="b">${i}</div><div class="t">${n}</div></div>`).join('');
-  $$('#catList .cat').forEach(c=>c.onclick=()=>{form.cat=c.dataset.n;form.ico=c.dataset.i;renderCats();});
+  $$('#catList .cat').forEach(c=>c.onclick=()=>{
+    form.cat=c.dataset.n;form.ico=c.dataset.i;
+    form.ct='';                       /* 계정을 바꾸면 비목도 그 기본값을 따라가게 */
+    renderCats();renderCostPills();
+  });
 }
 function renderAcctPills(){
   $('#acctPills').innerHTML=state.accounts.map(a=>`<div class="pill ${form.acct===a.name?'sel':''}" data-a="${esc(a.name)}">${a.ico} ${esc(a.name)}</div>`).join('');
@@ -1573,6 +1608,24 @@ function renderCrPills(){
     $('#dueInput').value=form.due||'';
   }
 }
+/* ── 공종 · 원가 비목 ── */
+function procList(){return (window.BIZDB&&BIZDB.processes)?BIZDB.processes():[];}
+function procName(code){const p=procList().find(x=>x.code===code);return p?p.name:'';}
+function renderProcPills(){
+  const el=$('#procPills');if(!el)return;
+  const ps=procList();
+  if(!ps.length){el.innerHTML='<div style="font-size:11.5px;color:var(--muted-2)">공종 목록을 불러오는 중…</div>';return;}
+  el.innerHTML=`<div class="pill ${!form.pc?'sel':''}" data-p="">지정 안 함</div>`+
+    ps.map(p=>`<div class="pill ${form.pc===p.code?'sel':''}" data-p="${esc(p.code)}">${esc(p.name)}</div>`).join('');
+  $$('#procPills .pill').forEach(x=>x.onclick=()=>{form.pc=x.dataset.p;renderProcPills();});
+}
+function renderCostPills(){
+  const el=$('#costPills');if(!el)return;
+  const cur=form.ct||costTypeOf(form.cat);
+  el.innerHTML=COST_TYPES.map(c=>`<div class="pill ${cur===c?'sel':''}" data-c="${c}">${c}</div>`).join('');
+  $$('#costPills .pill').forEach(x=>x.onclick=()=>{form.ct=x.dataset.c;renderCostPills();});
+}
+
 /* ── 영수증 첨부 ── */
 function renderAtt(){
   const el=$('#attRow');if(!el)return;
@@ -1616,7 +1669,7 @@ function setType(t){form.type=t;
   $('#trToField').classList.toggle('hidden',t!=='tr');
   $$('.bizfield').forEach(el=>el.classList.toggle('hidden',t==='tr'));
   $('#acctLabel').textContent=t==='tr'?'출금 계좌':'계좌';
-  if(t!=='tr'){form.cat=CATS[t][0][0];form.ico=CATS[t][0][1];renderCats();renderSitePills();renderCrPills();}
+  if(t!=='tr'){form.cat=CATS[t][0][0];form.ico=CATS[t][0][1];renderCats();renderSitePills();renderCrPills();renderProcPills();renderCostPills();}
   else{if(!form.acct2||form.acct2===form.acct){const other=state.accounts.find(a=>a.name!==form.acct);form.acct2=other?other.name:form.acct;}renderAcctPills2();}
 }
 $('#tOut').onclick=()=>setType('out');$('#tIn').onclick=()=>setType('in');$('#tTr').onclick=()=>setType('tr');
@@ -1634,9 +1687,9 @@ function updateMemoSugg(){
 }
 $('#dueInput').onchange=e=>{form.due=e.target.value||'';};
 function resetAddSheet(){
-  form.editId=null;form.due='';form.att=[];
+  form.editId=null;form.due='';form.att=[];form.pc='';form.ct='';
   if($('#dueInput'))$('#dueInput').value='';
-  renderAtt();
+  renderAtt();renderProcPills();renderCostPills();
   $('#addTitle').textContent='거래 추가';$('#saveTx').textContent='기록하기';$('#delTx').classList.add('hidden');
 }
 function openEdit(id){
@@ -1646,7 +1699,8 @@ function openEdit(id){
   setType(t.type);form.cat=t.cat;form.ico=t.ico||icoOf(t.type,t.cat);renderCats();
   form.acct=t.acct||state.accounts[0].name;renderAcctPills();
   form.site=t.site||'';form.cr=t.cr?1:0;form.due=t.due||'';form.att=(t.att||[]).slice();
-  renderSitePills();renderCrPills();renderAtt();
+  form.pc=t.pc||'';form.ct=t.ct||'';
+  renderSitePills();renderCrPills();renderAtt();renderProcPills();renderCostPills();
   $('#vendorInput').value=t.vendor||'';
   $('#vatSel').value=t.vatm||'none';
   $('#evidSel').value=t.evid!=null?t.evid:'세금계산서';
@@ -1676,7 +1730,8 @@ $('#saveTx').onclick=()=>{
   if(vatm==='incl'){supply=Math.round(amt/1.1);vat=amount-supply;}
   else if(vatm==='excl'){vat=Math.round(amt*0.1);amount=amt+vat;supply=amt;}
   const biz={vendor,site:form.site,vatm,supply,vat,evid,cr:form.cr,
-             due:form.cr?(form.due||undefined):undefined, att:form.att.slice()};
+             due:form.cr?(form.due||undefined):undefined, att:form.att.slice(),
+             pc:form.pc||undefined, ct:form.ct||costTypeOf(form.cat)};
   if(form.editId!=null){
     const t=state.tx.find(x=>x.id==form.editId);
     if(t){Object.assign(t,{type:form.type,cat:form.cat,ico:form.ico,amount,memo,date,acct:form.acct,synced:false},biz);}
@@ -2136,8 +2191,8 @@ $('#repPrint').onclick=()=>window.print();
 /* ============ 시트/탭 ============ */
 function openSheet(id){$('#ov'+id).classList.add('on');$('#sh'+id).classList.add('on');}
 function closeSheet(id){$('#ov'+id).classList.remove('on');$('#sh'+id).classList.remove('on');}
-['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member','Trash'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
-$('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
+['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member','Trash','Budget'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
+$('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;form.pc='';form.ct='';setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
 $('#prevM').onclick=()=>{view.setMonth(view.getMonth()-1);render();};
 $('#nextM').onclick=()=>{view.setMonth(view.getMonth()+1);render();};
 $('#searchInput').oninput=e=>{filter.q=e.target.value;renderList(listSource());};
@@ -2471,7 +2526,24 @@ function renderOrgSheet(){
   $('#oVat').value=o.vat_type||'일반';
   $('#oFiscal').innerHTML=Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}월</option>`).join('');
   $('#oFiscal').value=o.fiscal_month||12;
+  oform.rates=Object.assign({},costRates());
+  renderRateRows();
   renderOrgForm();
+}
+function renderRateRows(){
+  const el=$('#rateRows');if(!el)return;
+  el.innerHTML=Object.keys(RATE_LABEL).map(k=>{
+    const [label,base]=RATE_LABEL[k];
+    return `<div style="display:flex;align-items:center;gap:9px;padding:7px 2px;border-top:1px solid var(--border)">
+      <div style="flex:1"><div style="font-size:12.5px">${label}</div><div style="font-size:10.5px;color:var(--muted-2)">${base} 기준</div></div>
+      <input class="ratein" data-k="${k}" type="text" inputmode="decimal" style="width:78px;text-align:right"
+        value="${(oform.rates[k]*100).toFixed(3).replace(/0+$/,'').replace(/\.$/,'')}">
+      <span style="font-size:12px;color:var(--muted);flex:none">%</span></div>`;
+  }).join('');
+  $$('#rateRows .ratein').forEach(inp=>inp.oninput=e=>{
+    const v=parseFloat(String(e.target.value).replace(/[^0-9.]/g,''));
+    oform.rates[e.target.dataset.k]=isNaN(v)?0:v/100;
+  });
 }
 function renderOrgForm(){
   $$('#oTypePills .pill').forEach(p=>{
@@ -2500,7 +2572,8 @@ $('#oSave').onclick=async()=>{
     corp_reg_no:oform.biz_type==='법인'?($('#oCorpNo').value.trim()||null):null,
     ceo_name:$('#oCeo').value.trim()||null,
     fiscal_month:oform.biz_type==='법인'?(+$('#oFiscal').value||12):12,
-    vat_type:$('#oVat').value,is_construction:!!oform.is_construction};
+    vat_type:$('#oVat').value,is_construction:!!oform.is_construction,
+    cost_rates:oform.rates||costRates()};
   try{
     await BIZDB.saveOrg(row);
     await BIZDB.pull();
@@ -2700,6 +2773,191 @@ function renderMyTab(){
     ms.querySelectorAll('.siterow').forEach(r=>r.onclick=()=>openSiteSheet(r.dataset.site));
   }
 }
+
+/* ============ 원가계산서 · 집계표 ============
+   표준 계약내역서(갑지-견적조건-원가계산서-집계표-내역서) 중
+   장부가 실제로 만들어낼 수 있는 두 장을 붙인다.
+   · 원가계산서 : 재료비·노무비·외주비·경비로 나누고, 노무비에 법정요율을 곱해 보험료를 얹는다
+   · 집계표     : 공종별 예산(계약내역) 대비 실제 집행
+   법정경비를 빼고 원가를 보면 노무비가 큰 공사일수록 실제보다 싸 보인다 — 그래서 넣는다. */
+const RATE_LABEL={
+  safety_insurance:['산재보험료','노무비'],
+  employment_insurance:['고용보험료','노무비'],
+  health_insurance:['국민건강보험료','직접노무비'],
+  pension:['국민연금보험료','직접노무비'],
+  retirement_fund:['퇴직공제부금','직접노무비'],
+  safety_mgmt:['산업안전보건관리비','재료비+직접노무비'],
+  overhead:['일반관리비','순공사원가'],
+  profit:['이윤','노무비+경비+일반관리비']
+};
+function costRates(){
+  const r=(bizOrg()||{}).cost_rates;
+  return Object.assign({safety_insurance:0.0356,employment_insurance:0.0101,health_insurance:0.03595,
+    pension:0.0475,retirement_fund:0,safety_mgmt:0,overhead:0,profit:0}, r||{});
+}
+/* 공급가액 기준으로 모은다 — 부가세는 회사 돈이 아니다 */
+function siteCost(site){
+  const rows=state.tx.filter(t=>!t.tf&&t.type==='out'&&t.site===site);
+  const by={재료비:0,노무비:0,외주비:0,경비:0};
+  rows.forEach(t=>{const k=t.ct||costTypeOf(t.cat);by[k]=(by[k]||0)+(t.supply||t.amount);});
+  const R=costRates();
+  const legal={};
+  legal.safety_insurance=Math.round(by.노무비*R.safety_insurance);
+  legal.employment_insurance=Math.round(by.노무비*R.employment_insurance);
+  legal.health_insurance=Math.round(by.노무비*R.health_insurance);
+  legal.pension=Math.round(by.노무비*R.pension);
+  legal.retirement_fund=Math.round(by.노무비*R.retirement_fund);
+  legal.safety_mgmt=Math.round((by.재료비+by.노무비)*R.safety_mgmt);
+  const legalSum=Object.values(legal).reduce((a,b)=>a+b,0);
+  const expense=by.경비+legalSum;
+  const direct=by.재료비+by.노무비+by.외주비+expense;
+  const overhead=Math.round(direct*R.overhead);
+  const profit=Math.round((by.노무비+expense+overhead)*R.profit);
+  const supply=direct+overhead+profit;
+  return {by,legal,legalSum,expense,direct,overhead,profit,supply,rows:rows.length,R};
+}
+function costSheetHtml(site){
+  const c=siteCost(site);
+  const row=(label,amount,note,strong)=>
+    `<div style="display:flex;justify-content:space-between;gap:10px;padding:${strong?'9px':'6px'} 0;${strong?'border-top:1px solid var(--border);font-weight:600':''}">
+      <span style="font-size:${strong?'13':'12.5'}px">${label}${note?` <span style="color:var(--muted-2);font-size:10.5px">${note}</span>`:''}</span>
+      <span style="font-family:var(--font-d);font-variant-numeric:tabular-nums;font-size:${strong?'13.5':'12.5'}px">${won(amount)}</span></div>`;
+  let h=`<div style="font-family:var(--font-d);font-size:11px;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px">원가계산서 · 지출 ${c.rows}건 (공급가 기준)</div>`;
+  h+=row('직접재료비',c.by.재료비);
+  h+=row('직접노무비',c.by.노무비);
+  h+=row('외주비',c.by.외주비);
+  h+=row('기계·현장경비',c.by.경비);
+  Object.keys(c.legal).forEach(k=>{
+    if(!c.legal[k]&&!c.R[k])return;
+    h+=row(RATE_LABEL[k][0],c.legal[k],`${RATE_LABEL[k][1]}의 ${(c.R[k]*100).toFixed(3).replace(/0+$/,'').replace(/\.$/,'')}%`);
+  });
+  h+=row('순공사원가',c.direct,'',true);
+  if(c.R.overhead)h+=row('일반관리비',c.overhead,`순공사원가의 ${(c.R.overhead*100).toFixed(2)}%`);
+  if(c.R.profit)h+=row('이윤',c.profit,`(노무비+경비+일반관리비)의 ${(c.R.profit*100).toFixed(2)}%`);
+  h+=row('공급가액',c.supply,'',true);
+  h+=row('총공사비 (VAT 포함)',Math.round(c.supply*1.1),'',true);
+  if(!c.legalSum&&c.by.노무비)
+    h+=`<div class="hintline">노무비가 있는데 법정보험료가 0원입니다 — 설정 › 장부 · 사업자 정보에서 요율을 확인하세요.</div>`;
+  return h;
+}
+/* 집계표 : 공종별 예산(계약내역) 대비 실제 */
+let siteBudgetCache={};
+async function loadSiteBudget(site){
+  const id=window.BIZDB?BIZDB.siteId(site):null;
+  if(!id||!window.BIZDB.listSiteBudget)return [];
+  try{siteBudgetCache[site]=await BIZDB.listSiteBudget(id)||[];}catch(e){siteBudgetCache[site]=[];}
+  return siteBudgetCache[site];
+}
+function tallyHtml(site){
+  const budget=siteBudgetCache[site]||[];
+  const rows=state.tx.filter(t=>!t.tf&&t.type==='out'&&t.site===site);
+  const actual={};
+  rows.forEach(t=>{
+    const k=t.pc||'(미지정)';
+    const o=actual[k]=actual[k]||{재료비:0,노무비:0,외주비:0,경비:0,합계:0};
+    const ct=t.ct||costTypeOf(t.cat), v=t.supply||t.amount;
+    o[ct]=(o[ct]||0)+v;o.합계+=v;
+  });
+  const codes=[...new Set([...budget.map(b=>b.process_code),...Object.keys(actual).filter(k=>k!=='(미지정)')])];
+  if(!codes.length&&!actual['(미지정)']){
+    return `<div class="empty" style="padding:14px 0"><span class="em">📋</span>공종이 지정된 지출이 없습니다<br><span style="font-size:11.5px;color:var(--muted-2)">거래를 기록할 때 공종을 고르면 여기 쌓입니다</span></div>`;
+  }
+  let h=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11.5px;min-width:420px">
+    <tr style="color:var(--muted);font-family:var(--font-d);font-size:10px;letter-spacing:.5px">
+      <th style="text-align:left;padding:6px 4px">공종</th><th style="text-align:right">예산</th>
+      <th style="text-align:right">집행</th><th style="text-align:right">잔여</th><th style="text-align:right">집행률</th></tr>`;
+  let tb=0,ta=0;
+  codes.forEach(code=>{
+    const b=budget.find(x=>x.process_code===code);
+    const bud=b?(b.material_amount+b.labor_amount+b.expense_amount):0;
+    const act=(actual[code]||{}).합계||0;
+    tb+=bud;ta+=act;
+    const pct=bud?act/bud*100:null;
+    const over=pct!==null&&pct>100;
+    h+=`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:7px 4px">${esc(procName(code)||code)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)">${bud?won(bud):'—'}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${won(act)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:${bud&&bud-act<0?'var(--coral)':'var(--muted)'}">${bud?won(bud-act):'—'}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:${over?'var(--coral)':pct!==null&&pct>80?'var(--gold)':'var(--teal)'}">${pct===null?'—':pct.toFixed(0)+'%'}</td></tr>`;
+  });
+  if(actual['(미지정)']){
+    h+=`<tr style="border-top:1px solid var(--border);color:var(--muted-2)">
+      <td style="padding:7px 4px">공종 미지정</td><td style="text-align:right">—</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${won(actual['(미지정)'].합계)}</td>
+      <td style="text-align:right">—</td><td style="text-align:right">—</td></tr>`;
+    ta+=actual['(미지정)'].합계;
+  }
+  h+=`<tr style="border-top:2px solid var(--border);font-weight:600">
+      <td style="padding:8px 4px">합계</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${tb?won(tb):'—'}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${won(ta)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:${tb&&tb-ta<0?'var(--coral)':''}">${tb?won(tb-ta):'—'}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${tb?(ta/tb*100).toFixed(0)+'%':'—'}</td></tr></table></div>`;
+  if(!tb)h+=`<div class="hintline">아직 공종별 예산(계약내역 집계표)이 없습니다. <b>＋ 집계표 입력</b>으로 넣으면 예산 대비 집행률과 초과 경보가 켜집니다.</div>`;
+  return h;
+}
+
+/* ── 집계표 입력 ── */
+let bgSite='',bgRows=[];
+async function openBudget(site){
+  if(!isMgr()){toast('집계표는 대표·관리자만 입력할 수 있습니다');return;}
+  if(!window.BIZDB||!BIZDB.siteId(site)){toast('동기화가 끝난 뒤에 입력할 수 있습니다');return;}
+  bgSite=site;
+  $('#bgTitle').textContent=`집계표 · ${site}`;
+  $('#bgRows').innerHTML='<div class="spin"></div>';
+  openSheet('Budget');
+  const saved=await loadSiteBudget(site);
+  const ps=procList();
+  bgRows=ps.map((p,i)=>{
+    const s=saved.find(x=>x.process_code===p.code);
+    return {code:p.code,name:p.name,m:s?s.material_amount:0,l:s?s.labor_amount:0,e:s?s.expense_amount:0,ord:i};
+  });
+  renderBgRows();
+}
+function renderBgRows(){
+  $('#bgRows').innerHTML=bgRows.map((r,i)=>
+    `<div style="border-top:1px solid var(--border);padding:10px 2px">
+      <div style="font-size:13px;margin-bottom:7px">${esc(r.name)} <span style="color:var(--muted-2);font-size:10.5px">${r.code}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">
+        <input class="bgin" data-i="${i}" data-k="m" type="text" inputmode="numeric" placeholder="재료비" value="${r.m?r.m.toLocaleString('ko-KR'):''}">
+        <input class="bgin" data-i="${i}" data-k="l" type="text" inputmode="numeric" placeholder="노무비" value="${r.l?r.l.toLocaleString('ko-KR'):''}">
+        <input class="bgin" data-i="${i}" data-k="e" type="text" inputmode="numeric" placeholder="경비" value="${r.e?r.e.toLocaleString('ko-KR'):''}">
+      </div>
+    </div>`).join('');
+  $$('#bgRows .bgin').forEach(inp=>inp.oninput=e=>{
+    let v=e.target.value.replace(/[^0-9]/g,'');
+    e.target.value=v?Number(v).toLocaleString('ko-KR'):'';
+    bgRows[+e.target.dataset.i][e.target.dataset.k]=Number(v)||0;
+    renderBgTotal();
+  });
+  renderBgTotal();
+}
+function renderBgTotal(){
+  const m=bgRows.reduce((a,b)=>a+b.m,0),l=bgRows.reduce((a,b)=>a+b.l,0),e=bgRows.reduce((a,b)=>a+b.e,0);
+  $('#bgTotal').innerHTML=`<div class="ins-grid">
+    <div class="ins"><div class="k">재료비 계</div><div class="v">${won(m)}<small> 원</small></div></div>
+    <div class="ins"><div class="k">노무비 계</div><div class="v">${won(l)}<small> 원</small></div></div>
+    <div class="ins"><div class="k">경비 계</div><div class="v">${won(e)}<small> 원</small></div></div>
+    <div class="ins"><div class="k">합계 (공급가)</div><div class="v" style="color:var(--teal)">${won(m+l+e)}<small> 원</small></div></div>
+  </div>
+  <div class="hintline">계약금액과 맞춰보세요 — 현재 계약금액 ${won((state.contracts||{})[bgSite]||0)}원</div>`;
+}
+$('#bgSave').onclick=async()=>{
+  const sid=BIZDB.siteId(bgSite);
+  if(!sid)return;
+  const keep=bgRows.filter(r=>r.m||r.l||r.e);
+  const drop=bgRows.filter(r=>!(r.m||r.l||r.e)).map(r=>r.code);
+  try{
+    await BIZDB.saveSiteBudget(keep.map(r=>({site_id:sid,process_code:r.code,process_name:r.name,
+      material_amount:r.m,labor_amount:r.l,expense_amount:r.e,sort_order:r.ord})));
+    if(drop.length)await BIZDB.deleteSiteBudget(sid,drop);
+    await loadSiteBudget(bgSite);
+    closeSheet('Budget');
+    if($('#shSiteD').classList.contains('on'))renderSiteDetail();
+    toast(`집계표 저장됨 · 공종 ${keep.length}개`);
+  }catch(e){toast('저장 실패 · '+String(e.message||'').slice(0,50));}
+};
 
 /* ============ 현장(프로젝트) 탭 ============
    장부를 거래 나열이 아니라 "프로젝트 단위"로 본다 — 인테리어는 현장이 원가·손익의 단위다.

@@ -163,6 +163,7 @@
           po_id: s(t.poId),
           vendor: s(t.vendor), memo: s(t.memo),
           is_credit: !!t.cr, due_date: s(t.due), settled_on: s(t.settled),
+          cost_type: s(t.ct), process_code: s(t.pc),
           recurring_id: s(t.rid), notion_synced: !!t.synced,
           source: t.src || 'manual', dedupe_key: s(t.dk),
           attachments: t.att || []
@@ -181,6 +182,7 @@
           memo: r.memo || '', cr: r.is_credit ? 1 : 0,
           due: r.due_date || undefined, settled: r.settled_on || undefined,
           rid: r.recurring_id ? (Number(r.recurring_id) || r.recurring_id) : undefined,
+          ct: r.cost_type || undefined, pc: r.process_code || undefined,
           synced: !!r.notion_synced, src: r.source, dk: r.dedupe_key || undefined,
           att: r.attachments || [], by: r.created_by || undefined, at: r.updated_at || r.created_at
         };
@@ -389,6 +391,33 @@
     return req('biz_expense_claims?id=eq.' + id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
   }
 
+  /* ── 공종(집계표) · 현장 실행예산 ──
+     공종은 회사 표준(process_groups C01~C16)을 그대로 쓴다. 장부용으로 따로 만들지 않는다. */
+  var processList = [];
+  function pullProcesses() {
+    return getAll('process_groups?select=code,name,color&order=code.asc')
+      .then(function (r) { processList = r || []; return processList; })
+      .catch(function () { return processList; });
+  }
+  function listSiteBudget(siteId) {
+    return getAll('biz_site_budget?select=*&site_id=eq.' + siteId + '&order=sort_order.asc')
+      .catch(function () { return []; });
+  }
+  function saveSiteBudget(rows) {
+    if (!rows.length) return Promise.resolve(null);
+    rows.forEach(function (r) { r.tenant_id = TENANT; });
+    return req('biz_site_budget', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(rows)
+    });
+  }
+  function deleteSiteBudget(siteId, codes) {
+    if (!codes.length) return Promise.resolve(null);
+    return req('biz_site_budget?site_id=eq.' + siteId + '&process_code=in.(' + codes.join(',') + ')',
+      { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+  }
+
   /* ── 휴지통 ── */
   function listTrash() {
     return getAll('biz_tx?select=*&tenant_id=eq.' + TENANT + '&deleted_at=not.is.null&order=deleted_at.desc&limit=200')
@@ -457,12 +486,12 @@
        staffDirectory 는 서버가 관리자만 내용을 주므로 조건 없이 불러도 안전하다. */
     return Promise.all([
       pullMe(), pullOrgs(), pullMyMembership(), pullStaffDirectory(),
-      pullSites(), pullPartners(),
+      pullSites(), pullPartners(), pullProcesses(),
       getAll(COLS.tx.select), getAll(COLS.accounts.select), getAll(COLS.recurring.select),
       getAll(COLS.goals.select), getAll(COLS.events.select), pullBudget()
     ]).then(function (all) {
       var sites = all[4];
-      var res = [all[6], all[7], all[8], all[9], all[10], all[11]];
+      var res = [all[7], all[8], all[9], all[10], all[11], all[12]];
 
       /* ── 2026-08-30 중복 현장 사고 방지 ──
          첫 동기화 때 장부의 현장 이름을 그대로 새로 만드는 바람에,
@@ -696,6 +725,10 @@
     staffDirectory: function () { return staffDir.slice(); },
     listSiteMembers: listSiteMembers,
     setSiteMembers: setSiteMembers,
+    processes: function () { return processList.slice(); },
+    listSiteBudget: listSiteBudget,
+    saveSiteBudget: saveSiteBudget,
+    deleteSiteBudget: deleteSiteBudget,
     listTrash: listTrash,
     restoreTrash: restoreTrash,
     purgeTrash: purgeTrash,
