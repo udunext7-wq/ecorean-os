@@ -3875,6 +3875,122 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('절단선: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-30: 인쇄에 입면도 붙이기 (대표 지시) ===
+  try{
+    const _bakPE={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
+      openings:STATE.openings.slice(),electric:STATE.electric.slice(),
+      sections:(STATE.sections||[]).slice(),cfg:STATE.printConfig,
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice()};
+    STATE.printConfig=null;STATE.sections=[];
+    STATE.boxSelection=[];STATE.selectedKind=null;STATE.selectedId=null;
+
+    const P0=4200000;
+    const mkP=(pts,name,ti)=>{
+      const v=polygonToVertexIds(pts.map(p=>({x:P0+p[0],y:P0+p[1]})));
+      const sp=makeSpaceVEF(v,{name,type:'ROOM',typeIndex:ti,layerName:'A-AREA-ROOM-'+ti});
+      sp.ceilingHeight_mm=2400;STATE.spaces.push(sp);
+      for(let i=0;i<v.length;i++)
+        STATE.walls.push(makeWallVEF(v[i],v[(i+1)%v.length],
+          {spaceId:sp.id,layerName:'A-WALL-ROOM-'+ti,finishMaterial:'WP_SILK'}));
+      return sp;
+    };
+    const pA=mkP([[0,0],[4000,0],[4000,3000],[0,3000]],'인쇄방1',95);
+    const pB=mkP([[5000,0],[8000,0],[8000,3000],[5000,3000]],'인쇄방2',96);
+    const pSec=addSection(P0-200,P0+1500,P0+4200,P0+1500,-1);
+
+    // [P1] 기본은 꺼져 있다 — 종전 인쇄가 달라지지 않는다
+    const c0=printCfg();
+    assert('인쇄입면: 기본 꺼짐',c0.elevations===false);
+    assert('인쇄입면: 꺼져 있으면 목록 비었다',printElevationList(c0).length===0);
+
+    // [P2] 켜면 무엇을 담을지 알아서 채운다
+    c0.elevations=true;
+    printElevDefaults(c0);
+    assert('인쇄입면: 공간 자동 선택',c0.elevSpaceIds.length===elevationSpaces().length,
+      c0.elevSpaceIds.length+'/'+elevationSpaces().length);
+    assert('인쇄입면: 절단선 자동 선택',c0.elevSectionIds.length===STATE.sections.length);
+    const lst=printElevationList(c0);
+    assert('인쇄입면: 벽 8면 + 절단선 1',lst.length===9,'n='+lst.length);
+    assert('인쇄입면: 절단선이 맨 뒤',lst[lst.length-1].sectionId===pSec.id,
+      String(lst[lst.length-1].sectionId));
+
+    // [P3] 고른 것만 담긴다
+    c0.elevSpaceIds=[pB.id];
+    assert('인쇄입면: 한 공간만',printElevationList(c0).length===5,
+      String(printElevationList(c0).length));
+    c0.elevSectionIds=[];
+    assert('인쇄입면: 절단선 빼기',printElevationList(c0).length===4);
+    c0.elevSpaceIds=[pA.id,pB.id];c0.elevSectionIds=[pSec.id];
+
+    // [P4] 한 장에 몇 면 — 용지 방향을 따른다
+    assert('인쇄입면: 가로는 4면',printElevPerPage({orientation:'landscape'})===4&&
+      printElevCols({orientation:'landscape'})===2);
+    assert('인쇄입면: 세로는 2면',printElevPerPage({orientation:'portrait'})===2&&
+      printElevCols({orientation:'portrait'})===1);
+
+    // [P5] 인쇄 시트에 실제로 붙는다
+    const bboxPE=printRegionBBox(c0);
+    const LPE=choosePrintLayout(bboxPE,c0);
+    const per=printElevPerPage(LPE);
+    const htmlOn=buildPrintSheet({url:'',wMm:10,hMm:10},LPE,_printInfo(),c0,{preview:true});
+    const nPage=(htmlOn.match(/class="pe"/g)||[]).length;
+    assert('인쇄입면: 뒷장이 붙는다',nPage===Math.ceil(9/per),nPage+'/'+Math.ceil(9/per));
+    assert('인쇄입면: 면마다 그림',(htmlOn.match(/<svg/g)||[]).length>=9,
+      String((htmlOn.match(/<svg/g)||[]).length));
+    assert('인쇄입면: 표제',htmlOn.indexOf('입 면 도')>0);
+    c0.elevations=false;
+    const htmlOff=buildPrintSheet({url:'',wMm:10,hMm:10},LPE,_printInfo(),c0,{preview:true});
+    assert('인쇄입면: 끄면 안 붙는다',(htmlOff.match(/class="pe"/g)||[]).length===0);
+    c0.elevations=true;
+
+    // [P6] 미리보기 — 입면도만 (평면·부속표는 빠진다)
+    const only3=buildPrintSheet(null,LPE,_printInfo(),c0,{preview:true,onlyPage:3,onlyElevPage:1});
+    assert('인쇄입면: 미리보기는 입면 한 장',(only3.match(/class="pe"/g)||[]).length===1,
+      String((only3.match(/class="pe"/g)||[]).length));
+    assert('인쇄입면: 미리보기에 평면 없음',(only3.match(/class="sheet"/g)||[]).length===0);
+    assert('인쇄입면: 미리보기에 부속표 없음',(only3.match(/class="p2"/g)||[]).length===0);
+
+    // [P7] 색상 설정을 따른다
+    c0.colorMode='color';
+    assert('인쇄입면: 칼라 표기',
+      buildPrintSheet(null,LPE,_printInfo(),c0,{preview:true,onlyPage:3,onlyElevPage:1})
+        .indexOf('칼라')>0);
+    c0.colorMode='ink';
+
+    // [P8] 설정창 — 켜고 고르는 자리
+    openPrintDialog();
+    assert('인쇄입면: 설정창 항목',!!document.getElementById('pd-elev'));
+    assert('인쇄입면: 미리보기 버튼',!!document.getElementById('pd-pg3'));
+    assert('인쇄입면: 버튼에 면 수',document.getElementById('pd-pg3').textContent.indexOf('9면')>0,
+      document.getElementById('pd-pg3').textContent);
+    assert('인쇄입면: 공간 칩',document.querySelectorAll('.pd-evsp').length===elevationSpaces().length,
+      String(document.querySelectorAll('.pd-evsp').length));
+    assert('인쇄입면: 절단선 칩',document.querySelectorAll('.pd-evsc').length===STATE.sections.length);
+    // 칩을 누르면 빠진다
+    const chip=document.querySelectorAll('.pd-evsp')[0];
+    const cid=chip.dataset.id;
+    chip.click();
+    assert('인쇄입면: 칩으로 빼기',printCfg().elevSpaceIds.indexOf(cid)<0,
+      printCfg().elevSpaceIds.join(','));
+    document.querySelectorAll('.pd-evsp')[0].click();
+    assert('인쇄입면: 칩으로 넣기',printCfg().elevSpaceIds.indexOf(cid)>=0);
+    // 껐다 켜기
+    const tgl=document.getElementById('pd-elev');
+    tgl.checked=false;tgl.dispatchEvent(new Event('change'));
+    assert('인쇄입면: 끄면 버튼 잠금',document.getElementById('pd-pg3').disabled===true);
+    tgl.checked=true;tgl.dispatchEvent(new Event('change'));
+    assert('인쇄입면: 다시 켜기',printCfg().elevations===true&&
+      document.getElementById('pd-pg3').disabled===false);
+    closePrintDialog();
+
+    STATE.spaces=_bakPE.spaces;STATE.walls=_bakPE.walls;STATE.vertices=_bakPE.vertices;
+    STATE.openings=_bakPE.openings;STATE.electric=_bakPE.electric;
+    STATE.sections=_bakPE.sections;STATE.printConfig=_bakPE.cfg;
+    STATE.selectedKind=_bakPE.selK;STATE.selectedId=_bakPE.selI;STATE.boxSelection=_bakPE.box;
+    renderAll();refreshUI();
+  }catch(e){
+    assert('인쇄입면: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),
