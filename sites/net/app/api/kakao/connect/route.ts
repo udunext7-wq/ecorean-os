@@ -12,6 +12,7 @@ import { kakaoAuthorizeUrl, kakaoRedirectUri } from '@/sites/net/lib/kakao-notif
 export const dynamic = 'force-dynamic';
 
 function guidePage(redirectUri: string, authorizeUrl: string | null): NextResponse {
+  const keyOk = Boolean(authorizeUrl); // 값은 절대 화면에 내보내지 않는다
   const alt = redirectUri.includes('://www.')
     ? redirectUri.replace('://www.', '://')
     : redirectUri.replace('://', '://www.');
@@ -32,7 +33,9 @@ function guidePage(redirectUri: string, authorizeUrl: string | null): NextRespon
       box(redirectUri) + box(alt) +
       `<p style="font-size:14px;margin:16px 0 4px">4. <b>동의항목</b> → <b>카카오톡 메시지 전송</b>(talk_message) 을 <b>이용 중 동의</b>로 설정</p>` +
       `<p style="font-size:14px;margin:0 0 4px">5. <b>앱 설정 → 플랫폼 → Web</b> 에 사이트 도메인 등록</p>` +
-      `<p style="font-size:13px;color:#9A9285;margin:18px 0 8px">위 설정을 마친 뒤 아래 버튼을 누르세요.</p>` +
+      `<p style="font-size:13px;color:${keyOk ? '#7FBF7F' : '#E08A7A'};margin:18px 0 8px">` +
+      `서버 REST 키: <b>${keyOk ? '등록됨' : '없음 — Vercel 환경변수 KAKAO_REST_API_KEY 를 먼저 채우세요'}</b></p>` +
+      `<p style="font-size:13px;color:#9A9285;margin:0 0 8px">위 설정을 마친 뒤 아래 버튼을 누르세요.</p>` +
       (authorizeUrl
         ? `<a href="${authorizeUrl}" style="display:inline-block;background:#FEE500;color:#191600;font-weight:700;` +
           `padding:13px 20px;border-radius:10px;text-decoration:none">카카오 연동 시작하기</a>`
@@ -46,7 +49,11 @@ function guidePage(redirectUri: string, authorizeUrl: string | null): NextRespon
 export async function GET(request: Request) {
   const profile = await getSessionProfile();
   if (!profile || !hasRole(profile.role, 'admin')) {
-    return NextResponse.redirect(new URL('/login?next=%2Fapi%2Fkakao%2Fconnect', request.url));
+    // 로그인 후 원래 주소(쿼리 포함)로 돌아와야 한다 — ?show=1 이 떨어지면
+    // 안내 화면 대신 카카오로 바로 넘어가 KOE006 만 다시 보게 된다.
+    const self = new URL(request.url);
+    const back = encodeURIComponent(self.pathname + self.search);
+    return NextResponse.redirect(new URL(`/login?next=${back}`, request.url));
   }
   const redirectUri = kakaoRedirectUri(request);
   const url = kakaoAuthorizeUrl(redirectUri);

@@ -23,7 +23,11 @@ function page(title: string, body: string, ok: boolean): NextResponse {
 export async function GET(request: Request) {
   const profile = await getSessionProfile();
   if (!profile || !hasRole(profile.role, 'admin')) {
-    return NextResponse.redirect(new URL('/login?next=%2Fapi%2Fkakao%2Fconnect', request.url));
+    // 로그인 후 원래 주소(쿼리 포함)로 돌아와야 한다 — ?show=1 이 떨어지면
+    // 안내 화면 대신 카카오로 바로 넘어가 KOE006 만 다시 보게 된다.
+    const self = new URL(request.url);
+    const back = encodeURIComponent(self.pathname + self.search);
+    return NextResponse.redirect(new URL(`/login?next=${back}`, request.url));
   }
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
