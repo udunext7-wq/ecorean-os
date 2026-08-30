@@ -359,7 +359,9 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf', // 클러스터 숫자 라벨용
       sources:{
       'ec-sat':{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-        tileSize:256,maxzoom:19,attribution:'&copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, GIS User Community'},
+        // maxzoom 18 — 지역에 따라 Esri 원본이 z19 까지 없어서 "Map data not yet available" 타일이 왔다.
+        // 여기서 끊으면 그 이상은 z18 을 늘려 그린다(흐릿함 < 안내 문구).
+        tileSize:256,maxzoom:18,attribution:'&copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, GIS User Community'},
       'ec-omt':{type:'vector',url:'https://tiles.openfreemap.org/planet'}
     },layers:[{id:'ec-sat',type:'raster',source:'ec-sat'}]};
   }
@@ -521,19 +523,61 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     map.fitBounds(b,{padding:70,maxZoom:13.5}); // 지형 전환 임계(15.5)에서 충분히 떨어뜨려 껐다켜짐 방지
   }
   var styleMode='sat'; // 기본 = 하이퍼 리얼(위성 실사) · 'vec' = 벡터(라벨·도로 중심)
+  function styleLabel(){
+    // 지금 무엇을 보고 있고, 누르면 무엇으로 바뀌는지 둘 다 적는다.
+    // (예전 라벨은 이름만 적혀 있어 현재 모드로 오해하기 쉬웠다)
+    return styleMode==='sat'?'🛰 위성 · 벡터로 전환':'🗺 벡터 · 위성으로 전환';
+  }
   function applyStyleToggleUI(){
     var el=document.getElementById('mapStyleToggle');
-    if(el){el.textContent=styleMode==='sat'?'🗺 벡터 지도':'🛰 리얼 위성';return;}
+    if(el){el.textContent=styleLabel();return;}
     el=document.createElement('button');
     el.id='mapStyleToggle';el.type='button';
-    el.textContent=styleMode==='sat'?'🗺 벡터 지도':'🛰 리얼 위성';
+    el.textContent=styleLabel();
     el.style.cssText='position:absolute;top:10px;left:10px;z-index:5;background:rgba(26,24,20,.85);color:#F8F4EE;border:1px solid #B8965A;border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px)';
     el.addEventListener('click',function(){
       styleMode=styleMode==='sat'?'vec':'sat';
       applyStyleToggleUI();
-      map.setStyle(styleMode==='sat'?satStyle():'https://tiles.openfreemap.org/styles/liberty'); // style.load 에서 지형·건물 재적용
+      switchStyle();
     });
     document.getElementById('map').appendChild(el);
+  }
+  var styleSwitching=false;
+  function switchStyle(){
+    if(!map)return;
+    // 지형이 켜진 상태로 스타일을 갈아끼우면 렌더러가 멎는 사례가 있다 → 먼저 내린다
+    try{map.setTerrain(null);}catch(e){}
+    terrainOn=false;camAnimating=true;styleSwitching=true;
+    // 벡터 타일 원본은 z14 까지다. 그 위로는 늘려 그리므로 더 확대해도 정보가 늘지 않고
+    // 프레임 비용만 커진다 → 벡터일 때는 상한을 낮춘다.
+    try{
+      map.setMaxZoom(styleMode==='sat'?19:18);
+      // 기울기가 클수록 화면에 잡히는 타일·라벨이 급증한다. 라벨 레이어가 25개인 벡터에서는
+      // 최대 기울기를 낮춰 확대 시 프레임 비용이 폭주하지 않게 한다.
+      map.setMaxPitch(styleMode==='sat'?78:68);
+      if(styleMode!=='sat'&&map.getPitch()>68)map.setPitch(68);
+    }catch(e){}
+    map.once('style.load',function(){styleSwitching=false;camAnimating=false;syncTerrain();});
+    try{
+      map.setStyle(styleMode==='sat'?satStyle():'https://tiles.openfreemap.org/styles/liberty');
+    }catch(e){
+      styleSwitching=false;camAnimating=false;
+      styleMode=styleMode==='sat'?'vec':'sat';applyStyleToggleUI();
+      showMapNote('지도 스타일 전환 실패 — '+e.message);
+    }
+  }
+  // 지도 위 짧은 안내 (실패를 콘솔에만 남기면 사용자는 왜 안 바뀌는지 알 수 없다)
+  var noteTimer=null;
+  function showMapNote(msg){
+    var w=document.getElementById('map');if(!w)return;
+    var el=document.getElementById('mapNote');
+    if(!el){el=document.createElement('div');el.id='mapNote';
+      el.style.cssText='position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:7;'+
+        'background:rgba(26,24,20,.9);color:#F8F4EE;border:1px solid #B8965A;border-radius:8px;'+
+        'padding:8px 14px;font-size:12px;max-width:80%;text-align:center';
+      w.appendChild(el);}
+    el.textContent=msg;el.style.display='';
+    clearTimeout(noteTimer);noteTimer=setTimeout(function(){el.style.display='none';},4200);
   }
   function renderMap(){
     if(!mapOn||!window.maplibregl)return;
@@ -553,8 +597,15 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       map.on('moveend',function(){camAnimating=false;syncTerrain();});
       map.on('zoomend',syncTerrain);
       map.on('load',function(){mapReady=true;placeMarkers();applyStyleToggleUI();});
-      map.on('error',function(e){ // 타일/스타일 로드 실패는 콘솔만 (지도 자체는 유지)
-        if(console&&console.warn)console.warn('map:',e&&e.error&&e.error.message||e);
+      map.on('error',function(e){ // 타일 실패는 콘솔만, 스타일 실패는 되돌려서 알린다
+        var msg=(e&&e.error&&e.error.message)||'';
+        if(console&&console.warn)console.warn('map:',msg||e);
+        if(styleSwitching&&/style|Style/.test(msg)){
+          styleSwitching=false;camAnimating=false;
+          styleMode=styleMode==='sat'?'vec':'sat';applyStyleToggleUI();
+          try{map.setMaxZoom(styleMode==='sat'?19:18);}catch(e2){}
+          showMapNote('벡터 지도를 불러오지 못해 이전 지도로 되돌렸습니다');
+        }
       });
       // WebGL 컨텍스트가 날아가면 캔버스가 흰색으로 남는다 → 지도를 재생성해 복구
       map.getCanvas().addEventListener('webglcontextlost',function(ev){
