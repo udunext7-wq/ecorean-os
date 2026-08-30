@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionProfile } from '@/core/auth/session';
 import { hasRole } from '@/core/auth/roles';
-import { kakaoAuthorizeUrl, kakaoRedirectUri } from '@/sites/net/lib/kakao-notify';
+import { kakaoAuthorizeUrl, kakaoRedirectUri, restKeyHint } from '@/sites/net/lib/kakao-notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +34,10 @@ function guidePage(redirectUri: string, authorizeUrl: string | null, request: Re
       `<p style="font-size:14px;margin:16px 0 4px">4. <b>동의항목</b> → <b>카카오톡 메시지 전송</b>(talk_message) 을 <b>이용 중 동의</b>로 설정</p>` +
       `<p style="font-size:14px;margin:0 0 4px">5. <b>앱 설정 → 플랫폼 → Web</b> 에 사이트 도메인 등록</p>` +
       `<p style="font-size:13px;color:${keyOk ? '#7FBF7F' : '#E08A7A'};margin:18px 0 8px">` +
-      `서버 REST 키: <b>${keyOk ? '등록됨' : '없음 — Vercel 환경변수 KAKAO_REST_API_KEY 를 먼저 채우세요'}</b></p>` +
+      `서버 REST 키: <b>${keyOk ? (restKeyHint() ?? '등록됨') : '없음 — Vercel 환경변수 KAKAO_REST_API_KEY 를 먼저 채우세요'}</b></p>` +
+      `<p style="font-size:13px;color:#B8965A;margin:0 0 8px">` +
+      `↑ 이 값이 <b>앱 설정 → 앱 키 → REST API 키</b> 와 같은지 확인하세요. ` +
+      `JavaScript 키를 넣으면 카카오가 KOE010 으로 거부합니다.</p>` +
       `<p style="font-size:13px;color:#9A9285;margin:0 0 8px">위 설정을 마친 뒤 아래 버튼을 누르세요.</p>` +
       (authorizeUrl
         ? `<a href="${authorizeUrl}" style="display:inline-block;background:#FEE500;color:#191600;font-weight:700;` +

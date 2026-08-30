@@ -12,6 +12,19 @@ function restKey(): string | null {
   return process.env.KAKAO_REST_API_KEY?.trim() || null;
 }
 
+// 앱에서 [보안] → Client Secret 을 켜 두면 토큰 요청에 함께 보내야 한다.
+// 안 보내면 카카오가 KOE010(Bad client credentials) 으로 거부한다.
+function clientSecret(): string | null {
+  return process.env.KAKAO_CLIENT_SECRET?.trim() || null;
+}
+
+// 키가 맞는지 눈으로 대조할 수 있게 앞뒤만 (값 전체는 절대 내보내지 않는다)
+export function restKeyHint(): string | null {
+  const k = restKey();
+  if (!k) return null;
+  return k.length <= 10 ? '설정됨' : `${k.slice(0, 6)}…${k.slice(-4)} (${k.length}자)`;
+}
+
 // CSRF 방지용 state — REST 키에서 파생 (URL에 키 원문 노출 방지)
 export function kakaoState(): string {
   const key = restKey();
@@ -90,6 +103,8 @@ type KauthTokenRes = {
 };
 
 async function kauthToken(params: Record<string, string>): Promise<KauthTokenRes> {
+  const secret = clientSecret();
+  if (secret) params.client_secret = secret;
   const res = await fetch(`${KAUTH}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
