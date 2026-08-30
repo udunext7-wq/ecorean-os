@@ -126,6 +126,15 @@
     if (!uids.length) return Promise.resolve(null);
     return req(table + '?id=in.(' + uids.join(',') + ')', { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
   }
+  /* 지우는 대신 휴지통으로 — 되살릴 수 있어야 실수로 사라지지 않는다 */
+  function trashRows(table, uids) {
+    if (!uids.length) return Promise.resolve(null);
+    var me = sess(); var uid = me && me.user && me.user.id;
+    return req(table + '?id=in.(' + uids.join(',') + ')', {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ deleted_at: new Date().toISOString(), deleted_by: uid || null })
+    });
+  }
 
   /* ── 컬렉션 매퍼 : 화면이 쓰는 모양 ↔ 서버 행 ── */
   var siteIdByName = {};      /* 현장명 → work_sites.id */
@@ -137,7 +146,8 @@
   var COLS = {
     tx: {
       table: 'biz_tx',
-      select: 'biz_tx?select=*&tenant_id=eq.' + TENANT + '&order=tx_date.desc',
+      select: 'biz_tx?select=*&tenant_id=eq.' + TENANT + '&deleted_at=is.null&order=tx_date.desc',
+      softDelete: true,   /* 돈 기록은 지워도 휴지통에 남긴다 */
       toRow: function (t) {
         return {
           id: t.uid, tenant_id: TENANT, local_id: s(t.id),
@@ -379,6 +389,24 @@
     return req('biz_expense_claims?id=eq.' + id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
   }
 
+  /* ── 휴지통 ── */
+  function listTrash() {
+    return getAll('biz_tx?select=*&tenant_id=eq.' + TENANT + '&deleted_at=not.is.null&order=deleted_at.desc&limit=200')
+      .catch(function () { return []; });
+  }
+  function restoreTrash(id) {
+    return req('biz_tx?id=eq.' + id, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ deleted_at: null, deleted_by: null })
+    });
+  }
+  function purgeTrash(id) {
+    return req('biz_tx?id=eq.' + id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+  }
+  function ledgerCounts() {
+    return req('rpc/biz_ledger_counts', { method: 'POST', body: '{}' }).catch(function () { return []; });
+  }
+
   /* ── 거래처 명부 (직원 포털과 공유) ── */
   function pullPartners() {
     return getAll('partners?select=id,name,kinds,phone,biz_reg_no,status&status=eq.ACTIVE&order=name.asc')
@@ -435,6 +463,29 @@
     ]).then(function (all) {
       var sites = all[4];
       var res = [all[6], all[7], all[8], all[9], all[10], all[11]];
+
+      /* ── 2026-08-30 중복 현장 사고 방지 ──
+         첫 동기화 때 장부의 현장 이름을 그대로 새로 만드는 바람에,
+         공백 하나 차이('쌍용동1407' vs '쌍용동 1407')로 이사님이 만든 현장과 갈라졌다.
+         발주서는 저쪽에, 거래는 이쪽에 붙어 서로의 자료가 안 보였다.
+         → 서버에 사실상 같은 이름이 있으면 새로 만들지 말고 그 이름으로 맞춘다. */
+      var norm = function (s) { return String(s || '').replace(/\s+/g, '').toLowerCase(); };
+      var byNorm = {};
+      sites.names.forEach(function (nm) { byNorm[norm(nm)] = nm; });
+      var alias = {}, aliased = false;
+      (state.sites || []).forEach(function (nm) {
+        var hit = byNorm[norm(nm)];
+        if (hit && hit !== nm) { alias[nm] = hit; aliased = true; }
+      });
+      if (aliased) {
+        state.sites = (state.sites || []).map(function (nm) { return alias[nm] || nm; });
+        var cts2 = {};
+        Object.keys(state.contracts || {}).forEach(function (k) { cts2[alias[k] || k] = state.contracts[k]; });
+        state.contracts = cts2;
+        (state.tx || []).forEach(function (t) { if (t.site && alias[t.site]) t.site = alias[t.site]; });
+        (state.events || []).forEach(function (e) { if (e.site && alias[e.site]) e.site = alias[e.site]; });
+      }
+
       /* 현장도 3-way 병합. 서버 목록으로 통째 교체하면 아직 못 올린 로컬 현장이 사라진다. */
       var baseS = null; try { baseS = base.sitesHash ? JSON.parse(base.sitesHash) : null; } catch (e) {}
       var prevNames = state.sites || [], prevC = state.contracts || {};
@@ -568,7 +619,7 @@
           var gone = Object.keys(b).filter(function (u) { return !alive[u]; });
           gone.forEach(function (u) { delete b[u]; });
           if (ins.length) jobs.push(upsert(c.table, ins));
-          if (gone.length) jobs.push(delRows(c.table, gone));
+          if (gone.length) jobs.push(c.softDelete ? trashRows(c.table, gone) : delRows(c.table, gone));
         });
         var bh = JSON.stringify({ total: n(state.budgets && state.budgets.total), cats: (state.budgets && state.budgets.cats) || {} });
         if (mgr && base.budget !== bh) { jobs.push(pushBudget(state)); base.budget = bh; }
@@ -645,6 +696,10 @@
     staffDirectory: function () { return staffDir.slice(); },
     listSiteMembers: listSiteMembers,
     setSiteMembers: setSiteMembers,
+    listTrash: listTrash,
+    restoreTrash: restoreTrash,
+    purgeTrash: purgeTrash,
+    ledgerCounts: ledgerCounts,
     listClaims: listClaims,
     saveClaim: saveClaim,
     approveClaim: approveClaim,

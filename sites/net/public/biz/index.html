@@ -119,6 +119,19 @@
   .memchip{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:20px;border:1px solid var(--border);
     background:rgba(255,255,255,.04);cursor:pointer;font-size:12px;margin:0 7px 7px 0}
   .memchip.on{border-color:var(--teal);background:rgba(46,230,200,.1);color:var(--teal)}
+  .ledgerwarn{margin:0 2px 14px;padding:14px 15px;border-radius:13px;border:1px solid rgba(255,200,97,.4);
+    background:rgba(255,200,97,.09);font-size:12.5px;line-height:1.65}
+  .ledgerwarn b{color:var(--gold)}
+  .ledgerwarn .go{display:block;margin-top:11px;text-align:center;padding:11px;border-radius:10px;cursor:pointer;
+    background:var(--gold);color:#0a0e18;font-weight:700;font-size:13px}
+  .ledgerwarn .go:active{transform:scale(.98)}
+  .trashrow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--border);font-size:12.5px}
+  .trashrow .tm{flex:1;min-width:0}
+  .trashrow .tm .a{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .trashrow .tm .b{font-size:11px;color:var(--muted-2)}
+  .trashrow button{border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);
+    border-radius:8px;padding:6px 10px;font-size:11.5px;cursor:pointer;flex:none}
+  .trashrow button.rm{color:var(--coral)}
   .sitechip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 12px;padding:9px 13px;
     border-radius:11px;border:1px solid rgba(176,123,255,.35);background:rgba(176,123,255,.08);color:var(--violet);
     font-size:12px;cursor:pointer}
@@ -508,7 +521,8 @@
 
   <!-- ================= HOME ================= -->
   <section class="tab on" id="tab-home">
-    <div class="monthnav"><button id="prevM">‹</button><div class="label" id="monthLabel"></div><button id="nextM">›</button></div>
+    <div class="ledgerwarn hidden" id="ledgerWarn"></div>
+  <div class="monthnav"><button id="prevM">‹</button><div class="label" id="monthLabel"></div><button id="nextM">›</button></div>
     <div class="hero">
       <div class="tag">NET PROFIT · 이번 달 순이익</div>
       <div class="balance" id="balance">0<span class="won">원</span></div>
@@ -668,7 +682,8 @@
       <div class="srow" id="exportCsv"><div class="si">📤</div><div class="st"><div class="a">CSV 내보내기</div><div class="b">노션·엑셀 가져오기용</div></div><div class="arr">›</div></div>
       <div class="srow" id="backupJson"><div class="si">💾</div><div class="st"><div class="a">전체 백업 (JSON)</div><div class="b">파일로 저장</div></div><div class="arr">›</div></div>
       <div class="srow" id="restoreJson"><div class="si">📥</div><div class="st"><div class="a">백업 복원</div><div class="b">JSON에서 불러오기</div></div><div class="arr">›</div></div>
-      <div class="srow" style="cursor:default"><div class="si">🕐</div><div class="st"><div class="a">자동 스냅샷 (최근 3일)</div><div class="b">매일 첫 기록 시 자동 저장 · 탭하여 복원</div><div class="chiplist" id="snapChips" style="margin-top:8px"></div></div></div>
+      <div class="srow" id="goTrash"><div class="si">🗑️</div><div class="st"><div class="a">휴지통</div><div class="b" id="trashHint">지운 거래를 되살릴 수 있습니다</div></div><div class="arr">›</div></div>
+      <div class="srow" style="cursor:default"><div class="si">🕐</div><div class="st"><div class="a">자동 스냅샷 (최근 14일)</div><div class="b">매일 첫 기록 시 자동 저장 · 서버에도 보관 · 탭하여 그 시점으로 되돌리기</div><div class="chiplist" id="snapChips" style="margin-top:8px"></div></div></div>
       <div class="srow" id="resetData"><div class="si">🗑️</div><div class="st"><div class="a" style="color:var(--coral)">전체 삭제</div><div class="b">모든 데이터 초기화</div></div><div class="arr">›</div></div>
       <input type="file" id="fileInput" accept=".json" class="hidden">
       <div class="note" style="margin-top:18px">원장(거래·현장·계좌·예산)은 <b>서버에 저장</b>되고 이 기기에는 오프라인용 사본만 남습니다. 화면 설정(테마·PIN)과 연동 키는 기기별로 따로 보관됩니다.</div>
@@ -771,6 +786,13 @@
   <div class="field"><label>날짜</label><input id="eDate" type="date"></div>
   <div class="field"><label>시간 (선택)</label><input id="eTime" type="time"></div>
   <button class="btn btn-primary" id="saveEvt">일정 등록</button>
+</div>
+
+<!-- 휴지통 SHEET -->
+<div class="overlay" id="ovTrash"></div>
+<div class="sheet" id="shTrash">
+  <div class="grab"></div><h2>휴지통</h2><div class="desc">지운 거래는 바로 사라지지 않고 여기 남습니다. 되살리거나 완전히 지울 수 있습니다</div>
+  <div id="trashList" style="max-height:56vh;overflow:auto;-webkit-overflow-scrolling:touch"></div>
 </div>
 
 <!-- 장부(사업자) 전환 SHEET -->
@@ -1235,12 +1257,21 @@ function renderList(list){
   if(total>CAP)html+=`<div class="empty" style="padding:10px 0">최근 ${CAP}건만 표시 (전체 ${total}건) · 검색으로 좁혀보세요</div>`;
   el.innerHTML=html;
 }
+/* 돈 기록을 지우는 일이라 반드시 한 번 더 묻는다.
+   실제로는 서버에서 지우지 않고 휴지통으로 보낸다 — 설정 › 휴지통에서 되살릴 수 있다. */
 function deleteTx(id){
   const t=state.tx.find(x=>x.id==id);if(!t)return;
   const removed=(t.tf&&t.tid)?state.tx.filter(x=>x.tid===t.tid):[t];
+  const sum=removed.reduce((a,b)=>a+b.amount,0);
+  const what=removed.length>1
+    ? `이체 내역 ${removed.length}건 (${won(sum)}원)`
+    : `${t.date.replace(/-/g,'.')} · ${t.cat}${t.vendor?' · '+t.vendor:''} ${won(t.amount)}원`;
+  if(!confirm(`정말 삭제할까요?\n\n${what}\n\n삭제해도 휴지통에 남아 되살릴 수 있습니다.\n(설정 › 데이터 › 휴지통)`))return;
   state.tx=state.tx.filter(x=>!removed.includes(x));
-  save();render();renderStats();
-  toast(removed.length>1?'이체 내역 삭제됨':'삭제됨','실행취소',()=>{state.tx.push(...removed);save();render();renderStats();});
+  save();render();renderStats();renderSiteTab();
+  toast(removed.length>1?'이체 내역을 휴지통으로 보냈습니다':'휴지통으로 보냈습니다','실행취소',()=>{
+    state.tx.push(...removed);save();render();renderStats();renderSiteTab();
+  });
 }
 $('#list').addEventListener('click',e=>{
   const del=e.target.closest('.del');
@@ -1975,6 +2006,8 @@ async function bootCloud(){
     await BIZDB.pushNow();
     rerenderAll();
     loadClaims();
+    refreshLedgerWarn();
+    updateTrashHint();
     if(!hadSynced&&localN)toast(`☁️ 이 기기의 장부 ${localN}건을 서버에 올렸습니다`);
   }catch(e){}
   BIZDB.startPolling(30);
@@ -2019,7 +2052,8 @@ function restoreSnapshot(k){
   try{d=JSON.parse(localStorage.getItem(k)||'null');}catch(e){}
   if(!d||!Array.isArray(d.tx)){toast('이 스냅샷을 읽을 수 없습니다 (파일이 손상됨)');return;}
   const when=snapDate(k);
-  if(!confirm(`${when} 시점으로 되돌립니다.\n\n· 거래 ${d.tx.length}건으로 장부 전체가 바뀝니다\n· 서버에도 반영되어 다른 직원 화면에서도 그 시점 상태가 됩니다\n· 그 이후에 입력한 내용은 사라집니다\n\n계속할까요?`))return;
+  if(!confirm(`${when} 시점으로 되돌립니다.\n\n· 거래 ${d.tx.length}건으로 장부 전체가 바뀝니다 (지금 ${state.tx.length}건)\n· 회사 공용 장부라 다른 직원 화면에서도 그 시점 상태가 됩니다\n· 지금 내용은 백업 파일로 먼저 내려받습니다\n\n계속할까요?`))return;
+  downloadBackup('되돌리기전');
   relinkUids(d);
   try{
     localStorage.setItem(KEY,JSON.stringify(d));
@@ -2071,7 +2105,7 @@ $('#repPrint').onclick=()=>window.print();
 /* ============ 시트/탭 ============ */
 function openSheet(id){$('#ov'+id).classList.add('on');$('#sh'+id).classList.add('on');}
 function closeSheet(id){$('#ov'+id).classList.remove('on');$('#sh'+id).classList.remove('on');}
-['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
+['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member','Trash'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
 $('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
 $('#prevM').onclick=()=>{view.setMonth(view.getMonth()-1);render();};
 $('#nextM').onclick=()=>{view.setMonth(view.getMonth()+1);render();};
@@ -2161,8 +2195,51 @@ $('#exportCsv').onclick=()=>{if(!state.tx.length){toast('내보낼 데이터가 
   download('BOC_BIZ_장부_'+ym(new Date())+'.csv','\uFEFF'+head+rows,'text/csv');toast('CSV 저장됨');};
 $('#backupJson').onclick=()=>{download('BOC_BIZ_백업_'+Date.now()+'.json',JSON.stringify(state,null,2),'application/json');toast('백업 저장됨');};
 $('#restoreJson').onclick=()=>$('#fileInput').click();
-$('#fileInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.tx){state=Object.assign(defaults(),d);save();location.reload();}else toast('형식 오류');}catch(err){toast('읽기 실패');}};r.readAsText(f);};
-$('#resetData').onclick=()=>{if(confirm('모든 데이터를 삭제할까요? 되돌릴 수 없습니다.')){localStorage.removeItem(KEY);state=defaults();save();location.reload();}};
+/* 되돌릴 수 없는 작업 전에는 지금 상태를 파일로 먼저 내려받는다.
+   서버 스냅샷·휴지통이 있어도, 손에 쥔 파일 하나가 마지막 안전망이다. */
+function downloadBackup(tag){
+  try{
+    const name=`ECOREAN_사업장부_${(bizOrg().name||TENANT).replace(/[\\/:*?"<>|]/g,'')}_${todayStr()}${tag?'_'+tag:''}.json`;
+    const blob=new Blob([JSON.stringify(state,null,1)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    return true;
+  }catch(e){return false;}
+}
+$('#fileInput').onchange=e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let d=null;
+    try{d=JSON.parse(r.result);}catch(err){}
+    if(!d||!Array.isArray(d.tx)){toast('사업장부 백업 파일이 아닙니다');return;}
+    if(!confirm(`백업 파일로 되돌립니다.\n\n· 거래 ${d.tx.length}건으로 장부 전체가 바뀝니다\n· 회사 공용 장부라 다른 직원 화면에서도 바뀝니다\n· 지금 내용은 백업 파일로 먼저 내려받습니다\n\n계속할까요?`))return;
+    downloadBackup('복원전');
+    relinkUids(d);
+    try{
+      localStorage.setItem(KEY,JSON.stringify(Object.assign(defaults(),d)));
+      localStorage.setItem(RESTORE_FLAG,'1');
+    }catch(err){toast('복원 저장 실패 · 저장 공간을 확인하세요');return;}
+    location.reload();
+  };
+  r.readAsText(f);
+};
+$('#resetData').onclick=async()=>{
+  if(!isMgr()){toast('전체 삭제는 대표·관리자만 할 수 있습니다');return;}
+  const n=state.tx.length;
+  if(!confirm(`정말 전체 삭제할까요?\n\n· 거래 ${n}건이 모두 지워집니다\n· 이 장부는 회사 공용입니다 — 다른 직원 화면에서도 사라집니다\n· 먼저 백업 파일을 내려받습니다\n\n계속할까요?`))return;
+  downloadBackup('전체삭제전');
+  const answer=prompt('마지막 확인입니다.\n정말 지우려면 아래 칸에 「삭제」 라고 입력하세요.');
+  if((answer||'').trim()!=='삭제'){toast('취소했습니다 — 아무것도 지우지 않았습니다');return;}
+  state.tx=[];state.recurring=[];state.goals=[];state.events=[];
+  state.budgets={total:0,cats:{}};
+  save();
+  toast('삭제 중… 잠시만요');
+  try{if(window.BIZDB)await BIZDB.pushNow();}catch(e){}
+  toast('전체 삭제했습니다 · 거래는 휴지통에서 되살릴 수 있습니다');
+  setTimeout(()=>location.reload(),1200);
+};
 
 /* ============ 카카오 ============ */
 function summaryText(){const l=monthTx(new Date()),inc=sumIn(l),exp=sumOut(l);
@@ -2248,6 +2325,71 @@ $('#loadBenefit').onclick=async()=>{
       return `<a class="ben" href="${esc(link)}" target="_blank" rel="noopener"><div class="bt">${esc(t)}</div><div class="bm">${field?`<span class="tagp">${esc(field)}</span>`:''}${org?`<span class="org">${esc(org)}</span>`:''}</div></a>`;}).join('');
   }catch(e){box.innerHTML=`<div class="note warn"><b>불러오기 실패.</b> 브라우저 보안(CORS)으로 막혔을 수 있습니다. 프록시를 설정하거나, 호스팅 환경에서 시도하세요. 지금은 위 '기업마당 ↗'로 직접 확인할 수 있습니다.</div>`;}
 };
+
+/* ============ 휴지통 ============ */
+async function openTrash(){
+  if(!window.BIZDB||!BIZDB.listTrash){toast('서버에 연결된 상태에서만 볼 수 있습니다');return;}
+  $('#trashList').innerHTML='<div class="spin"></div>';openSheet('Trash');
+  let rows=[];
+  try{rows=await BIZDB.listTrash()||[];}catch(e){}
+  if(!rows.length){$('#trashList').innerHTML=`<div class="empty" style="padding:20px 0"><span class="em">🗑️</span>휴지통이 비어 있습니다</div>`;return;}
+  $('#trashList').innerHTML=rows.map(r=>
+    `<div class="trashrow" data-id="${esc(r.id)}">
+      <div class="tm"><div class="a">${esc(r.category)}${r.site_name?' · 🏗️'+esc(r.site_name):''}${r.vendor?' · '+esc(r.vendor):''} <b style="color:${r.type==='in'?'var(--teal)':'var(--coral)'}">${won(r.amount)}원</b></div>
+      <div class="b">${String(r.tx_date).replace(/-/g,'.')}${r.memo?' · '+esc(r.memo):''} · 지운날 ${new Date(r.deleted_at).toLocaleDateString('ko-KR')}</div></div>
+      <button class="restore">되살리기</button><button class="rm">완전삭제</button>
+    </div>`).join('');
+  $$('#trashList .trashrow').forEach(el=>{
+    const id=el.dataset.id;
+    el.querySelector('.restore').onclick=async()=>{
+      try{await BIZDB.restoreTrash(id);await BIZDB.pull();rerenderAll();openTrash();toast('되살렸습니다');}
+      catch(e){toast('되살리기 실패');}
+    };
+    el.querySelector('.rm').onclick=async()=>{
+      if(!confirm('완전히 삭제하면 되돌릴 수 없습니다.\n정말 삭제할까요?'))return;
+      try{await BIZDB.purgeTrash(id);openTrash();toast('완전히 삭제했습니다');}
+      catch(e){toast('삭제 실패');}
+    };
+  });
+}
+$('#goTrash').onclick=openTrash;
+async function updateTrashHint(){
+  const el=$('#trashHint');if(!el||!window.BIZDB||!BIZDB.listTrash)return;
+  try{
+    const rows=await BIZDB.listTrash();
+    el.textContent=rows&&rows.length?`지운 거래 ${rows.length}건 — 되살릴 수 있습니다`:'지운 거래를 되살릴 수 있습니다';
+  }catch(e){}
+}
+
+/* ============ 비어 있는 장부 안내 ============
+   장부를 바꾸면 화면이 통째로 비는데, 그게 "자료가 사라졌다"로 보인다.
+   다른 장부에 자료가 있으면 그 사실과 돌아가는 길을 홈에 크게 띄운다. */
+let ledgerCountCache=null;
+async function refreshLedgerWarn(){
+  const el=$('#ledgerWarn');if(!el)return;
+  if(!window.BIZDB||!BIZDB.ledgerCounts){el.classList.add('hidden');return;}
+  try{ledgerCountCache=await BIZDB.ledgerCounts()||[];}catch(e){return;}
+  renderLedgerWarn();
+}
+function renderLedgerWarn(){
+  const el=$('#ledgerWarn');if(!el)return;
+  const rows=ledgerCountCache;
+  if(!rows||!rows.length){el.classList.add('hidden');return;}
+  const cur=rows.find(r=>r.tenant_id===TENANT);
+  const other=rows.filter(r=>r.tenant_id!==TENANT&&Number(r.tx_count)>0)
+                  .sort((a,b)=>Number(b.tx_count)-Number(a.tx_count))[0];
+  if(!cur||Number(cur.tx_count)>0||!other){el.classList.add('hidden');return;}
+  const orgs=(BIZDB.orgs&&BIZDB.orgs())||[];
+  const nameOf=id=>{const o=orgs.find(x=>x.id===id);return o?o.name:id;};
+  el.classList.remove('hidden');
+  el.innerHTML=`<b>지금 "${esc(nameOf(TENANT))}" 장부를 보고 있습니다 — 거래 0건</b><br>
+    자료가 사라진 게 아닙니다. <b>${esc(nameOf(other.tenant_id))}</b> 장부에 거래 ${won(other.tx_count)}건${other.last_date?` (마지막 ${String(other.last_date).replace(/-/g,'.')})`:''}이 그대로 있습니다.
+    <span class="go" id="ledgerGo">${esc(nameOf(other.tenant_id))} 장부 열기</span>`;
+  $('#ledgerGo').onclick=()=>{
+    if(!confirm(`"${nameOf(other.tenant_id)}" 장부로 바꿉니다.\n화면을 다시 불러옵니다.`))return;
+    BIZDB.setTenant(other.tenant_id);
+  };
+}
 
 /* ============ 장부(사업자) 전환 · 사업자 정보 ============ */
 function renderOrgChip(){
