@@ -4566,6 +4566,17 @@ const ELEV_MOUNT={
   emerg_bell:{h:1400,w:120,bh:120}, fire_ext:{h:200,w:200,bh:450},
 };
 function elevMountOf(e){ return ELEV_MOUNT[e&&e.type]||null; }
+// 2026-08-30: 도면에 자재를 영문으로 적는다 (대표 지시) — 없으면 코드를 그대로
+function matEn(tbl,code){
+  const m=tbl&&tbl[code];
+  return m?(m.nameEn||m.name||code):null;
+}
+function elevFinishEn(wall,sp){
+  return {
+    wall:matEn(typeof WALL_MATERIALS!=='undefined'?WALL_MATERIALS:null,wall&&wall.finishMaterial),
+    floor:matEn(typeof FLOOR_MATERIALS!=='undefined'?FLOOR_MATERIALS:null,sp&&sp.floorMaterial),
+  };
+}
 // 벽에 붙는 기구는 전기(STATE.electric)와 공조·소방(STATE.hvac) 양쪽에 흩어져 있다
 function elevWallDevices(){
   return [].concat(STATE.electric||[],STATE.hvac||[]);
@@ -4662,7 +4673,8 @@ function buildElevation(wall,spaceId){
   }).filter(Boolean).sort((a,b)=>a.left-b.left);
   const mat=(typeof WALL_MATERIALS!=='undefined'&&WALL_MATERIALS[wall.finishMaterial])
     ?WALL_MATERIALS[wall.finishMaterial].name:null;
-  return {wallId:wall.id,spaceId:sp?sp.id:null, viewSide:vside,
+  const finEn=elevFinishEn(wall,sp);
+  return {wallId:wall.id,spaceId:sp?sp.id:null, viewSide:vside, finishEn:finEn,
     spaceName:(sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||'',
     L,H,ops,devs,flip,material:mat,
     thickness:Math.round(wall.thickness||0),
@@ -4828,7 +4840,18 @@ function buildSectionElevation(sec){
       name:(def&&def.name)||e.type,sym:(def&&def.sym)||''};
   }).filter(Boolean).sort((a,b)=>a.left-b.left);
   const names=[...new Set(shown.map(f=>f.spaceName).filter(Boolean))];
+  // 보이는 벽면·그 방 바닥의 마감 (영문) — 여러 가지면 나열
+  const _wEn=[...new Set(shown.filter(f=>!f.edge).map(f=>{
+    const w=(STATE.walls||[]).find(x=>x.id===f.wallId);
+    return matEn(typeof WALL_MATERIALS!=='undefined'?WALL_MATERIALS:null,w&&w.finishMaterial);
+  }).filter(Boolean))];
+  const _fEn=[...new Set(shown.map(f=>{
+    const w=(STATE.walls||[]).find(x=>x.id===f.wallId);
+    const sp2=w&&w.spaceId?(STATE.spaces||[]).find(x=>x.id===w.spaceId):null;
+    return matEn(typeof FLOOR_MATERIALS!=='undefined'?FLOOR_MATERIALS:null,sp2&&sp2.floorMaterial);
+  }).filter(Boolean))];
   return {sectionId:sec.id,label:'단면 '+sectionLabelOf(sec),
+    finishEn:{wall:_wEn.join(' / ')||null,floor:_fEn.join(' / ')||null},
     L,H,ops,devs,faces:shown,hidden:faces.length-shown.length,flip,
     depth:(depth===Infinity?0:depth),
     spaceName:names.slice(0,3).join('·'),

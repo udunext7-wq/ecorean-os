@@ -3665,7 +3665,12 @@ function buildPrintSheet(dataURL,L,info,cfg,opts){
     'body{margin:0;background:#fff;color:#000;'+
       "font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;"+
       '-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '.sheet{width:'+L.pw+'mm;height:'+L.ph+'mm;position:relative;overflow:hidden;page-break-after:always}'+
+    '.sheet{width:'+L.pw+'mm;height:'+L.ph+'mm;position:relative;'+
+      'overflow:hidden;page-break-after:always}'+
+    // 2026-08-30 대표 보고 "부속표와 입면도가 겹친다" — 프린터 여백을 켜고 뽑으면 장 높이가
+    //  실제 찍히는 영역보다 커져 다음 장으로 밀리며 겹친다. 인쇄할 때만 그 영역 안에 가둔다.
+    //  (화면에서는 100vh 가 창 높이라 미리보기가 잘리므로 @media print 안에서만)
+    '@media print{.sheet,.p2,.pe{max-height:100vh}}'+
     '.frame{position:absolute;left:'+PRINT_MARGIN+'mm;top:'+PRINT_MARGIN+'mm;'+
       'width:'+drawW+'mm;height:'+(L.ph-PRINT_MARGIN*2)+'mm;border:0.6mm solid #000}'+
     '.draw{position:absolute;left:0;top:0;width:'+drawW+'mm;height:'+drawH+'mm;overflow:hidden;'+
@@ -3683,7 +3688,10 @@ function buildPrintSheet(dataURL,L,info,cfg,opts){
     '.note{position:absolute;right:2mm;bottom:'+(TB+2)+'mm;font-size:2.2mm;color:#333;'+
       'background:rgba(255,255,255,0.9);padding:0.6mm 1mm;border:0.2mm solid #999}'+
     // 2페이지 (면적표·범례)
-    '.p2{width:'+L.pw+'mm;height:'+L.ph+'mm;padding:'+PRINT_MARGIN+'mm;position:relative}'+
+    // 2026-08-30 대표 보고: 부속표와 입면도가 겹쳐 나왔다 — 장을 확실히 끊는다
+    '.p2{width:'+L.pw+'mm;height:'+L.ph+'mm;padding:'+PRINT_MARGIN+'mm;'+
+      'position:relative;overflow:hidden;page-break-after:always;break-after:page}'+
+    '.pe{page-break-before:always;break-before:page}'+
     '.p2 h2{font-size:4.5mm;margin:0 0 3mm 0;border-bottom:0.5mm solid #000;padding-bottom:1.5mm}'+
     '.p2 .cols{display:flex;gap:6mm;align-items:flex-start;flex-wrap:wrap}'+
     'table.dt{border-collapse:collapse;font-size:2.8mm}'+
@@ -3691,7 +3699,8 @@ function buildPrintSheet(dataURL,L,info,cfg,opts){
     'table.dt td{border:0.25mm solid #666;padding:0.9mm 2mm}'+
     'table.dt td.r{text-align:right;font-family:monospace}'+
     // 입면도 뒷장 (2026-08-30)
-    '.pe{width:'+_E.pw+'mm;height:'+_E.ph+'mm;padding:'+PRINT_MARGIN+'mm;position:relative;'+
+    '.pe{width:'+_E.pw+'mm;height:'+_E.ph+'mm;padding:'+PRINT_MARGIN+'mm;'+
+      'position:relative;overflow:hidden;'+
       'page-break-after:always;display:flex;flex-direction:column}'+
     '.pe:last-child{page-break-after:auto}'+
     '.peh{display:flex;align-items:baseline;gap:6mm;border-bottom:0.6mm solid #000;'+
@@ -3862,7 +3871,8 @@ function buildPrintElevPages(L,cfg,opts){
         E.paper+' '+(E.orientation==='landscape'?'가로':'세로')+
         (cfg.colorMode==='color'?' · 칼라':'')+
         // 평면도와 종이가 다르면 프린터에서 그 용지를 골라야 축소되지 않는다
-        (E.own?(' <b>· 프린터에서 '+E.paper+' 선택</b>'):'')+'</div>'+
+        (E.own?(' <b>· 프린터에서 '+E.paper+' 선택</b>'):'')+
+        ' · 여백 없음 / 배율 100%</div>'+
       '<div class="pep">입면 '+(start+1)+'–'+(start+part.length)+' / '+list.length+
         '  (장 '+(pi+1)+'/'+pages.length+')</div></div>'+
       '<div class="peg"'+(rows===1&&!rot?' style="align-content:center"':'')+'>'+part.map((e,j)=>
@@ -6571,8 +6581,10 @@ window.addEventListener('load',()=>{
 // ===== 2026-08-30: 입면도 그리기 · 창 (대표 지시 — 평면도 정보로 자동 생성) =====
 //  도면 관례를 따른다: 바닥선을 제일 굵게, 벽면 외곽 실선, 문·창은 개구부 표기,
 //  아래에 구간 치수와 전체 치수 두 줄, 왼쪽에 천장고, 기구마다 설치 높이.
-const ELEV_PAD={l:260,r:130,t:110,b:620};    // 도면 여백 (좌표 단위 = mm)
-const ELEV_FS={dim:66,tag:78,title:104};
+// 2026-08-30 대표 지시: 글씨·숫자를 3배로. 글씨가 커진 만큼 여백도 함께 늘린다
+//  (여백을 안 늘리면 치수 숫자가 도면 밖으로 잘리거나 서로 겹친다)
+const ELEV_PAD={l:760,r:340,t:300,b:2600};   // 도면 여백 (좌표 단위 = mm)
+const ELEV_FS={dim:198,tag:234,title:312,dev:174};
 function _eTxt(x,y,t,fs,col,anchor,extra){
   return '<text x="'+Math.round(x)+'" y="'+Math.round(y)+'" font-size="'+fs+'" fill="'+(col||'#333')+
     '" text-anchor="'+(anchor||'middle')+'"'+(extra||'')+'>'+escapeHtml(String(t))+'</text>';
@@ -6581,23 +6593,23 @@ function _eTxt(x,y,t,fs,col,anchor,extra){
 function _eDimH(x1,x2,y,t,col){
   if(!(x2-x1>0)) return '';
   const c=col||'#666';
-  return '<g stroke="'+c+'" stroke-width="7" fill="none">'+
+  return '<g stroke="'+c+'" stroke-width="16" fill="none">'+
     '<line x1="'+Math.round(x1)+'" y1="'+Math.round(y)+'" x2="'+Math.round(x2)+'" y2="'+Math.round(y)+'"/>'+
-    '<line x1="'+Math.round(x1)+'" y1="'+Math.round(y-32)+'" x2="'+Math.round(x1)+'" y2="'+Math.round(y+32)+'"/>'+
-    '<line x1="'+Math.round(x2)+'" y1="'+Math.round(y-32)+'" x2="'+Math.round(x2)+'" y2="'+Math.round(y+32)+'"/>'+
-    '</g>'+_eTxt((x1+x2)/2,y-26,t,ELEV_FS.dim,c);
+    '<line x1="'+Math.round(x1)+'" y1="'+Math.round(y-90)+'" x2="'+Math.round(x1)+'" y2="'+Math.round(y+90)+'"/>'+
+    '<line x1="'+Math.round(x2)+'" y1="'+Math.round(y-90)+'" x2="'+Math.round(x2)+'" y2="'+Math.round(y+90)+'"/>'+
+    '</g>'+_eTxt((x1+x2)/2,y-80,t,ELEV_FS.dim,c);
 }
 // 세로 치수선 — 숫자를 눕혀서 적는다
 function _eDimV(x,y1,y2,t,col){
   const a=Math.min(y1,y2), b=Math.max(y1,y2);
   if(!(b-a>0)) return '';
   const c=col||'#666';
-  return '<g stroke="'+c+'" stroke-width="7" fill="none">'+
+  return '<g stroke="'+c+'" stroke-width="16" fill="none">'+
     '<line x1="'+Math.round(x)+'" y1="'+Math.round(a)+'" x2="'+Math.round(x)+'" y2="'+Math.round(b)+'"/>'+
-    '<line x1="'+Math.round(x-32)+'" y1="'+Math.round(a)+'" x2="'+Math.round(x+32)+'" y2="'+Math.round(a)+'"/>'+
-    '<line x1="'+Math.round(x-32)+'" y1="'+Math.round(b)+'" x2="'+Math.round(x+32)+'" y2="'+Math.round(b)+'"/>'+
-    '</g>'+_eTxt(x-26,(a+b)/2,t,ELEV_FS.dim,c,'middle',
-      ' transform="rotate(-90 '+Math.round(x-26)+' '+Math.round((a+b)/2)+')"');
+    '<line x1="'+Math.round(x-90)+'" y1="'+Math.round(a)+'" x2="'+Math.round(x+90)+'" y2="'+Math.round(a)+'"/>'+
+    '<line x1="'+Math.round(x-90)+'" y1="'+Math.round(b)+'" x2="'+Math.round(x+90)+'" y2="'+Math.round(b)+'"/>'+
+    '</g>'+_eTxt(x-80,(a+b)/2,t,ELEV_FS.dim,c,'middle',
+      ' transform="rotate(-90 '+Math.round(x-80)+' '+Math.round((a+b)/2)+')"');
 }
 // 입면 하나를 SVG 로. opt.color = 색을 넣을지, opt.devices = 스위치·콘센트를 그릴지
 function elevationSVG(e,opt){
@@ -6655,16 +6667,19 @@ function elevationSVG(e,opt){
          '" height="'+Math.round(Math.max(0,h-140))+'" fill="none" stroke="#111" stroke-width="5"/>';
       if(o.sill>0) g+=_eDimV(x+w/2,Y(0),Y(o.sill),'SILL '+o.sill,'#7A6A3A');                     // 창대 높이
     }
-    g+=_eTxt(x+w/2,y+h/2-14,o.name,ELEV_FS.tag,'#333');
-    g+=_eTxt(x+w/2,y+h/2+ELEV_FS.tag+8,o.w+'×'+o.h,ELEV_FS.tag,'#333');
+    // 글씨가 개구부보다 크면 그 안에서 읽히도록 줄인다 (한글 폭 대략 0.62배로 계산)
+    const _fit=(txt,box)=>Math.max(70,Math.min(ELEV_FS.tag,Math.floor(box/(String(txt).length*0.78))));
+    const fsN=_fit(o.name,w-60), fsD=_fit(o.w+'×'+o.h,w-60);
+    g+=_eTxt(x+w/2,y+fsN+50,o.name,fsN,'#333');
+    g+=_eTxt(x+w/2,y+fsN+fsD+90,o.w+'×'+o.h,fsD,'#333');
   });
   // 스위치·콘센트 — 설치 높이까지 같이
   if(showDev) e.devs.forEach(d=>{
     const x=X(d.left), y=Y(d.h+d.bh/2);
     g+='<rect x="'+Math.round(x)+'" y="'+Math.round(y)+'" width="'+d.w+'" height="'+d.bh+
        '" fill="'+(opt.color?'#EAF3E1':'#FFFFFF')+'" stroke="#3F6B2E" stroke-width="8"/>';
-    g+=_eTxt(x+d.w/2,y+d.bh/2+22,d.sym||'',60,'#3F6B2E');
-    g+=_eTxt(x+d.w/2,y-24,d.name,58,'#3F6B2E');
+    g+=_eTxt(x+d.w/2,y+d.bh/2+60,d.sym||'',ELEV_FS.dev,'#3F6B2E');
+    g+=_eTxt(x+d.w/2,y-70,d.name,ELEV_FS.dev,'#3F6B2E');
     // 설치 높이 — 바닥까지 가는 인출선 하나, 숫자는 기구 바로 밑에.
     //  가운데에 적으면 문·창 글씨와 겹친다 (실물 확인에서 나온 문제)
     g+='<g stroke="#3F6B2E" stroke-width="6" fill="none">'+
@@ -6672,10 +6687,10 @@ function elevationSVG(e,opt){
        '" y2="'+Math.round(y+d.bh)+'"/>'+
        '<line x1="'+Math.round(x+d.w/2-30)+'" y1="'+Math.round(Y(0))+'" x2="'+Math.round(x+d.w/2+30)+
        '" y2="'+Math.round(Y(0))+'"/></g>';
-    g+=_eTxt(x+d.w/2,y+d.bh+72,'H'+d.h,58,'#3F6B2E');
+    g+=_eTxt(x+d.w/2,y+d.bh+ELEV_FS.dev+30,'H'+d.h,ELEV_FS.dev,'#3F6B2E');
   });
   // 아래 치수 두 줄 — 구간(문·창 사이) + 전체
-  const yb1=Y(0)+170, yb2=Y(0)+400;
+  const yb1=Y(0)+430, yb2=Y(0)+900;
   let cut=[0];
   e.ops.forEach(o=>{cut.push(Math.max(0,Math.min(e.L,o.left)),Math.max(0,Math.min(e.L,o.left+o.w)));});
   cut.push(e.L);
@@ -6684,18 +6699,31 @@ function elevationSVG(e,opt){
     g+=_eDimH(X(cut[i]),X(cut[i+1]),yb1,cut[i+1]-cut[i]);
   g+=_eDimH(X(0),X(e.L),yb2,e.L,'#111');
   // 왼쪽 천장고
-  g+=_eDimV(X(0)-130,Y(0),Y(e.H),'CH '+e.H,'#111');
+  g+=_eDimV(X(0)-380,Y(0),Y(e.H),'CH '+e.H,'#111');
   // 이름표
   const isSec=!!(e.faces&&e.faces.length);
   const t1=(e.label?('['+e.label+'] '):'')+(e.spaceName||'')+' '+e.dir+' 입면도'+
     (e.viewSide==='out'?' (밖에서 봄)':'');
   const t2=[(isSec?'절단길이 ':'벽 ')+e.L+' × 천장고 '+e.H,
     (isSec?('깊이 '+(e.depth?e.depth:'제한 없음')):(e.thickness?('두께 '+e.thickness):'')),
-    (isSec?('벽면 '+e.faces.length):(e.material||'')),(e.bearing?'내력벽':''),
+    (isSec?('벽면 '+e.faces.length):''),(e.bearing?'내력벽':''),
     (e.ops.length?('문·창 '+e.ops.length):''),(showDev&&e.devs.length?('전기 '+e.devs.length):'')]
     .filter(Boolean).join('  ·  ');
-  g+=_eTxt(X(0),Y(0)+P.b-140,t1,ELEV_FS.title,'#000','start',' font-weight="700"');
-  g+=_eTxt(X(0),Y(0)+P.b-40,t2,ELEV_FS.dim,'#555','start');
+  // 표제는 가운데로 (대표 지시). 자재는 도면 관례대로 영문 두 줄.
+  const fin=e.finishEn||{};
+  const cx=X(e.L/2);
+  // 줄이 판보다 길면 그 줄만 줄여서 잘리지 않게 한다
+  const _line=(txt,fs,y,col,bold)=>{
+    if(!txt) return '';
+    const room=VW-60;
+    const est=String(txt).length*fs*0.58;
+    const f=(est>room)?Math.max(90,Math.floor(fs*room/est)):fs;
+    return _eTxt(cx,y,txt,f,col,'middle',bold?' font-weight="700"':'');
+  };
+  g+=_line(t1,ELEV_FS.title,Y(0)+P.b-1200,'#000',true);
+  g+=_line(t2,ELEV_FS.dim,Y(0)+P.b-820,'#555',false);
+  g+=_line(fin.wall?('WALL FINISH : '+fin.wall):'',ELEV_FS.dim,Y(0)+P.b-490,'#222',true);
+  g+=_line(fin.floor?('FLOOR FINISH : '+fin.floor):'',ELEV_FS.dim,Y(0)+P.b-160,'#222',true);
   return '<svg viewBox="0 0 '+Math.round(VW)+' '+Math.round(VH)+'" width="100%" '+
     'preserveAspectRatio="xMidYMid meet" style="display:block">'+g+'</svg>';
 }

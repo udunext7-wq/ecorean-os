@@ -4035,6 +4035,47 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('인쇄입면: 가로 용지는 그대로',flatHtml.indexOf('class="pe rot"')<0);
     c0.elevPaper='A3';
 
+    // [P6-3] 2026-08-30 대표 보고: 부속표와 입면도가 겹친다 / 글씨가 작다 / 자재를 영문으로 /
+    //        표제는 가운데로
+    const bigHtml=buildPrintSheet({url:'',wMm:10,hMm:10},LPE,_printInfo(),c0,{preview:true});
+    assert('인쇄입면: 부속표 뒤에서 장을 끊는다',
+      bigHtml.indexOf('page-break-after:always;break-after:page')>0&&
+      bigHtml.indexOf('.pe{page-break-before:always')>0);
+    assert('인쇄입면: 여백 켜도 장이 안 밀린다',bigHtml.indexOf('@media print{.sheet,.p2,.pe{max-height:100vh}}')>0);
+    assert('인쇄입면: 부속표가 넘쳐 흐르지 않는다',
+      bigHtml.indexOf('overflow:hidden;page-break-after')>0);
+
+    // 글씨3배 — 종전(66/78/104)의 세 배
+    assert('입면: 글씨 3배',ELEV_FS.dim===198&&ELEV_FS.tag===234&&ELEV_FS.title===312,
+      [ELEV_FS.dim,ELEV_FS.tag,ELEV_FS.title].join('/'));
+    const bigSvg=elevationSVG(printElevationList(c0)[0],{devices:true});
+    assert('입면: 치수 숫자도 3배',bigSvg.indexOf('font-size="198"')>0);
+    // 표제 <text> 를 실제로 찾아 가운데 정렬인지, x 가 도면 한가운데인지 본다
+    const _titleTag=(bigSvg.match(/<text[^>]*font-size="312"[^>]*>/)||[''])[0];
+    assert('입면: 표제가 3배 글씨',!!_titleTag,'no title tag');
+    assert('입면: 표제 가운데 정렬',_titleTag.indexOf('text-anchor="middle"')>0,_titleTag.slice(0,90));
+    const _e0=printElevationList(c0)[0];
+    const _tx=parseInt((_titleTag.match(/ x="(-?\d+)"/)||[0,'NaN'])[1],10);
+    assert('입면: 표제가 도면 한가운데',Math.abs(_tx-(ELEV_PAD.l+_e0.L/2))<3,
+      _tx+' vs '+(ELEV_PAD.l+_e0.L/2));
+
+    // 자재 영문 표기
+    assert('입면: 벽 자재 영문',bigSvg.indexOf('WALL FINISH')>0,'no wall');
+    const _wSp=STATE.spaces.find(x=>x.id===pA.sp.id);
+    _wSp.floorMaterial='STRONG';
+    const eF=buildElevation(STATE.walls.find(w=>w.id===pA.W[0].id),pA.sp.id);
+    assert('입면: 바닥 자재 영문',eF.finishEn&&eF.finishEn.floor==='Laminated Wood Flooring',
+      eF.finishEn?String(eF.finishEn.floor):'null');
+    assert('입면: 벽 자재 영문값',eF.finishEn.wall==='Silk Wallpaper',String(eF.finishEn.wall));
+    assert('입면: 그림에 바닥 자재',elevationSVG(eF,{}).indexOf('FLOOR FINISH : Laminated Wood Flooring')>0);
+    // 카탈로그에 영문이 빠진 항목이 없어야 한다
+    assert('자재: 벽 영문 전부 있다',
+      Object.values(WALL_MATERIALS).every(m=>!!m.nameEn),
+      Object.entries(WALL_MATERIALS).filter(([k,m])=>!m.nameEn).map(([k])=>k).join(','));
+    assert('자재: 바닥 영문 전부 있다',
+      Object.values(FLOOR_MATERIALS).every(m=>!!m.nameEn),
+      Object.entries(FLOOR_MATERIALS).filter(([k,m])=>!m.nameEn).map(([k])=>k).join(','));
+
     // [P7] 미리보기 — 입면도만 (평면·부속표는 빠진다)
     const only3=buildPrintSheet(null,LPE,_printInfo(),c0,{preview:true,onlyPage:3,onlyElevPage:1});
     assert('인쇄입면: 미리보기는 입면 한 장',(only3.match(/class="pe[ "]/g)||[]).length===1,
