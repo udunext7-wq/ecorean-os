@@ -5,7 +5,9 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PREFIXES = ['/login', '/signup', '/auth', '/api/contact', '/reset-password', '/update-password'];
+const PUBLIC_PREFIXES = ['/login', '/signup', '/auth', '/api/contact', '/reset-password', '/update-password',
+  // 카카오 연동 안내 화면(?show=1)만 — 실제 연동 시작은 라우트 안에서 admin 확인
+  '/api/kakao/connect'];
 const PUBLIC_EXACT = ['/'];
 
 function safeNext(raw: string | null): string | null {

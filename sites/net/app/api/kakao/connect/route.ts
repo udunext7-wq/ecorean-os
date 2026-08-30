@@ -11,7 +11,7 @@ import { kakaoAuthorizeUrl, kakaoRedirectUri } from '@/sites/net/lib/kakao-notif
 
 export const dynamic = 'force-dynamic';
 
-function guidePage(redirectUri: string, authorizeUrl: string | null): NextResponse {
+function guidePage(redirectUri: string, authorizeUrl: string | null, request: Request): NextResponse {
   const keyOk = Boolean(authorizeUrl); // 값은 절대 화면에 내보내지 않는다
   const alt = redirectUri.includes('://www.')
     ? redirectUri.replace('://www.', '://')
@@ -40,6 +40,17 @@ function guidePage(redirectUri: string, authorizeUrl: string | null): NextRespon
         ? `<a href="${authorizeUrl}" style="display:inline-block;background:#FEE500;color:#191600;font-weight:700;` +
           `padding:13px 20px;border-radius:10px;text-decoration:none">카카오 연동 시작하기</a>`
         : `<div style="color:#E08A7A">KAKAO_REST_API_KEY 가 없습니다 — Vercel 환경변수를 먼저 등록하세요.</div>`) +
+      `<hr style="border:none;border-top:1px solid #3A3428;margin:24px 0">` +
+      `<p style="font-size:12px;color:#9A9285;margin:0 0 6px">진단 정보 (등록한 주소와 아래가 정확히 같아야 합니다)</p>` +
+      `<pre style="background:#0F0D0A;border:1px solid #3A3428;border-radius:8px;padding:10px 12px;` +
+      `font-size:12px;color:#C8C0B4;overflow-x:auto;margin:0">` +
+      `x-forwarded-host : ${request.headers.get('x-forwarded-host') ?? '(없음)'}
+` +
+      `host             : ${request.headers.get('host') ?? '(없음)'}
+` +
+      `x-forwarded-proto: ${request.headers.get('x-forwarded-proto') ?? '(없음)'}
+` +
+      `보내는 redirect_uri : ${redirectUri}</pre>` +
       `<p style="margin-top:24px"><a href="/hub" style="color:#D4B483;font-size:14px">업무 허브로 돌아가기</a></p>` +
       `</div></body></html>`,
     { headers: { 'Content-Type': 'text/html; charset=utf-8' } },
@@ -47,20 +58,20 @@ function guidePage(redirectUri: string, authorizeUrl: string | null): NextRespon
 }
 
 export async function GET(request: Request) {
-  const profile = await getSessionProfile();
-  if (!profile || !hasRole(profile.role, 'admin')) {
-    // 로그인 후 원래 주소(쿼리 포함)로 돌아와야 한다 — ?show=1 이 떨어지면
-    // 안내 화면 대신 카카오로 바로 넘어가 KOE006 만 다시 보게 된다.
-    const self = new URL(request.url);
-    const back = encodeURIComponent(self.pathname + self.search);
-    return NextResponse.redirect(new URL(`/login?next=${back}`, request.url));
-  }
   const redirectUri = kakaoRedirectUri(request);
   const url = kakaoAuthorizeUrl(redirectUri);
 
-  // 등록할 주소를 확인하고 싶을 때 (KOE006 이 났을 때 여기로 온다)
+  // 안내 화면은 로그인 없이도 볼 수 있게 한다 — 여기엔 비밀이 없고(콜백 주소·키 유무만),
+  // KOE006 이 났을 때 무엇을 등록해야 하는지 확인하는 것이 목적이다.
   if (new URL(request.url).searchParams.get('show') === '1') {
-    return guidePage(redirectUri, url);
+    return guidePage(redirectUri, url, request);
+  }
+
+  const profile = await getSessionProfile();
+  if (!profile || !hasRole(profile.role, 'admin')) {
+    const self = new URL(request.url);
+    const back = encodeURIComponent(self.pathname + self.search);
+    return NextResponse.redirect(new URL(`/login?next=${back}`, request.url));
   }
   if (!url) {
     return NextResponse.json(
