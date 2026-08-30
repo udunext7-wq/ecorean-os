@@ -36,6 +36,8 @@ setTimeout(() => {
   ck(d.getElementById('mapToolbar'), '지도 밖 툴바가 없음');
   ck(d.getElementById('map').children.length === 0, '지도 캔버스 위에 얹은 요소가 있음: ' + d.getElementById('map').innerHTML.slice(0,60));
   ck(d.querySelector('.map-shell'), '3단 배치(map-shell)가 없음');
+  ck(d.getElementById('mapWrap').classList.contains('full'), '지도 뷰가 전체화면(full)이 아님');
+  ck(d.getElementById('count').style.display === 'none', '지도 뷰에서 건수 줄이 남아 공간을 먹음');
   const ix = d.querySelectorAll('#cxIndexList .ix');
   ck(ix.length === 2, '지도 위 단지 목록이 2건이 아님: ' + ix.length);
   ck(/A아파트/.test(d.getElementById('cxIndexList').textContent), '목록에 단지명이 없음');
