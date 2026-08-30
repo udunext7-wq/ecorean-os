@@ -32,7 +32,11 @@ setTimeout(() => {
   ck(d.getElementById('mapWrap').style.display === '', '첫 화면이 지도가 아님');
   ck(d.querySelector('.wrap:not(#mapWrap)').style.display === 'none', '목록이 숨겨지지 않음');
   ck(d.getElementById('mapBtn').textContent === '📋 목록', '지도 버튼 라벨이 목록 전환이 아님');
-  ['cxPanel', 'cxName', 'cxAddr', 'cxList', 'cxClose'].forEach(id => ck(d.getElementById(id), '패널 DOM 없음: ' + id));
+  ['cxPanel', 'cxName', 'cxAddr', 'cxList', 'cxClose', 'cxIndex', 'cxIndexList', 'cxIndexMin'].forEach(id => ck(d.getElementById(id), '패널 DOM 없음: ' + id));
+  const ix = d.querySelectorAll('#cxIndexList .ix');
+  ck(ix.length === 2, '지도 위 단지 목록이 2건이 아님: ' + ix.length);
+  ck(/A아파트/.test(d.getElementById('cxIndexList').textContent), '목록에 단지명이 없음');
+  ck(/서울 강남구/.test(d.getElementById('cxIndexList').textContent), '목록에 주소가 없음');
   const cards = d.querySelectorAll('#grid .card');
   ck(cards.length === 3, '목록 카드 3개가 아님: ' + cards.length);
   // 단지 묶음 로직 단위 검증 — 같은 단지의 여러 평형이 점 하나로 묶여야 한다
