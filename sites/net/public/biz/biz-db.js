@@ -125,7 +125,10 @@
   }
 
   /* ── 컬렉션 매퍼 : 화면이 쓰는 모양 ↔ 서버 행 ── */
-  var siteIdByName = {};   /* 현장명 → work_sites.id */
+  var siteIdByName = {};      /* 현장명 → work_sites.id */
+  var siteNameById = {};
+  var partnerIdByName = {};   /* 거래처명 → partners.id (직원 포털과 같은 명부) */
+  var partnerList = [];
 
   var COLS = {
     tx: {
@@ -141,7 +144,10 @@
           vat_mode: (t.vatm === 'incl' || t.vatm === 'excl') ? t.vatm : 'none',
           evidence: s(t.evid), account: s(t.acct), account_to: s(t.acct2),
           site_id: t.site ? (siteIdByName[t.site] || null) : null, site_name: s(t.site),
-          partner_id: s(t.partnerId), vendor: s(t.vendor), memo: s(t.memo),
+          /* 거래처를 손으로 골랐으면 그것, 아니면 상호가 정확히 같은 협력업체에 자동으로 붙인다 */
+          partner_id: s(t.partnerId) || (t.vendor ? (partnerIdByName[String(t.vendor).trim()] || null) : null),
+          po_id: s(t.poId),
+          vendor: s(t.vendor), memo: s(t.memo),
           is_credit: !!t.cr, due_date: s(t.due), settled_on: s(t.settled),
           recurring_id: s(t.rid), notion_synced: !!t.synced,
           source: t.src || 'manual', dedupe_key: s(t.dk),
@@ -156,7 +162,8 @@
           cat: r.category, ico: r.icon || undefined,
           amount: n(r.amount), supply: n(r.supply_amount), vat: n(r.vat_amount), vatm: r.vat_mode,
           evid: r.evidence || undefined, acct: r.account || undefined, acct2: r.account_to || undefined,
-          site: r.site_name || '', partnerId: r.partner_id || undefined, vendor: r.vendor || undefined,
+          site: r.site_name || '', partnerId: r.partner_id || undefined, poId: r.po_id || undefined,
+          vendor: r.vendor || undefined,
           memo: r.memo || '', cr: r.is_credit ? 1 : 0,
           due: r.due_date || undefined, settled: r.settled_on || undefined,
           rid: r.recurring_id ? (Number(r.recurring_id) || r.recurring_id) : undefined,
@@ -255,10 +262,10 @@
   /* ── 현장 : 직원 포털 work_sites 를 공유 마스터로 사용 ── */
   function pullSites() {
     return getAll('work_sites?select=id,name,status,contract_amount&order=created_at.asc').then(function (rows) {
-      siteIdByName = {};
+      siteIdByName = {}; siteNameById = {};
       var names = [], contracts = {};
       (rows || []).forEach(function (r) {
-        siteIdByName[r.name] = r.id;
+        siteIdByName[r.name] = r.id; siteNameById[r.id] = r.name;
         if (r.status === '보관') return;
         names.push(r.name);
         if (r.contract_amount) contracts[r.name] = n(r.contract_amount);
@@ -292,6 +299,21 @@
       }
     });
     return Promise.all(ops);
+  }
+
+  /* ── 거래처 명부 (직원 포털과 공유) ── */
+  function pullPartners() {
+    return getAll('partners?select=id,name,kinds,phone,biz_reg_no,status&status=eq.ACTIVE&order=name.asc')
+      .then(function (rows) {
+        partnerIdByName = {}; partnerList = rows || [];
+        partnerList.forEach(function (p) { partnerIdByName[String(p.name).trim()] = p.id; });
+        return partnerList;
+      }).catch(function () { return partnerList; });
+  }
+  /* ── 발주서 (직원 포털) : 장부에 아직 안 잡힌 발주를 찾아내기 위해 ── */
+  function pullPurchaseOrders() {
+    return getAll('work_purchase_orders?select=id,site_id,po_no,vendor_name,partner_id,order_date,due_date,supply_amount,vat_amount,total_amount,status,memo&order=order_date.desc&limit=300')
+      .then(function (rows) { return rows || []; }).catch(function () { return []; });
   }
 
   /* ── 예산 ── */
@@ -349,7 +371,7 @@
       base.sitesHash = JSON.stringify({ s: sites.names, c: sites.contracts });  /* 기준 = 서버 상태 */
       return Promise.all([
         getAll(COLS.tx.select), getAll(COLS.accounts.select), getAll(COLS.recurring.select),
-        getAll(COLS.goals.select), getAll(COLS.events.select), pullBudget()
+        getAll(COLS.goals.select), getAll(COLS.events.select), pullBudget(), pullPartners()
       ]);
     }).then(function (res) {
       var names = ['tx', 'accounts', 'recurring', 'goals', 'events'];
@@ -447,6 +469,9 @@
       });
     },
     siteId: function (name) { return siteIdByName[name] || null; },
+    siteName: function (id) { return siteNameById[id] || ''; },
+    partners: function () { return partnerList.slice(); },
+    purchaseOrders: pullPurchaseOrders,
     uploadReceipt: uploadReceipt,
     signedUrl: signedUrl,
     removeReceipt: removeReceipt,

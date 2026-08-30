@@ -575,6 +575,7 @@
       <div class="srow" id="goBiz"><div class="si">🏛️</div><div class="st"><div class="a">정책자금 연동</div><div class="b">기업마당 인증키 설정</div></div><div class="arr">›</div></div>
 
       <h3>데이터 · DATA</h3>
+      <div class="srow" id="goPO"><div class="si">🧾</div><div class="st"><div class="a">발주서에서 지출 가져오기</div><div class="b">직원 포털 발주서를 미지급 지출로 등록 (중복 없음)</div></div><div class="arr">›</div></div>
       <div class="srow" id="importCsv"><div class="si">📥</div><div class="st"><div class="a">카드 · 통장 내역 가져오기</div><div class="b">CSV 를 올리면 카테고리를 추정해 거래로 넣습니다 (중복 자동 제외)</div></div><div class="arr">›</div></div>
       <div class="srow" id="exportCsv"><div class="si">📤</div><div class="st"><div class="a">CSV 내보내기</div><div class="b">노션·엑셀 가져오기용</div></div><div class="arr">›</div></div>
       <div class="srow" id="backupJson"><div class="si">💾</div><div class="st"><div class="a">전체 백업 (JSON)</div><div class="b">파일로 저장</div></div><div class="arr">›</div></div>
@@ -677,6 +678,19 @@
   <div class="field"><label>날짜</label><input id="eDate" type="date"></div>
   <div class="field"><label>시간 (선택)</label><input id="eTime" type="time"></div>
   <button class="btn btn-primary" id="saveEvt">일정 등록</button>
+</div>
+
+<!-- 발주서 → 지출 SHEET -->
+<div class="overlay" id="ovPO"></div>
+<div class="sheet" id="shPO">
+  <div class="grab"></div><h2>발주서에서 지출 가져오기</h2><div class="desc">직원 포털에 올린 발주서 중 <b>장부에 아직 없는 건</b>만 보여줍니다</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 2px 8px">
+    <div style="font-family:var(--font-d);font-size:11px;letter-spacing:1.5px;color:var(--muted)" id="poCount">불러오는 중…</div>
+    <span class="act" id="poToggleAll">전체 선택/해제</span>
+  </div>
+  <div id="poList" style="max-height:50vh;overflow:auto;-webkit-overflow-scrolling:touch"></div>
+  <button class="btn btn-primary" id="poConfirm" style="margin-top:14px">선택한 발주를 미지급 지출로 기록</button>
+  <div class="note" style="margin-top:10px">발주는 <b>줄 돈(미지급)</b> 으로 들어갑니다. 실제로 지급하면 홈의 <b>줄 돈</b>에서 ✅ 로 완료 처리하세요. 지급 예정일은 발주서의 <b>납기일</b>을 기본값으로 넣습니다 — 지급 조건이 다르면 거래를 눌러 고치세요.</div>
 </div>
 
 <!-- 미수 · 미지급 SHEET -->
@@ -843,7 +857,8 @@ function load(){
    → 통째 덮어쓰기 사고 없이 대표·경리가 같은 장부를 동시에 쓸 수 있다. */
 function save(){
   try{localStorage.setItem(KEY,JSON.stringify(state));snapshot();}catch(e){toast('저장 공간 오류');}
-  if(window.BIZDB)BIZDB.schedulePush();
+  /* 동기화가 실패해도 로컬 기록과 화면 갱신은 계속돼야 한다 — save() 는 모든 입력 경로가 지난다 */
+  try{if(window.BIZDB&&BIZDB.schedulePush)BIZDB.schedulePush();}catch(e){}
 }
 function snapshot(){
   const dk='bocbiz_snap_'+new Date().toISOString().slice(0,10);
@@ -1071,6 +1086,7 @@ function openSiteSheet(name){
   const con=state.contracts[name]||0;
   $('#sdContract').value=con?con.toLocaleString('ko-KR'):'';
   renderSiteDetail();openSheet('SiteD');
+  if(window.BIZDB)refreshPO().then(()=>{if($('#shSiteD').classList.contains('on'))renderSiteDetail();}).catch(()=>{});
 }
 function renderSiteDetail(){
   const o=siteSummary(curSite),b=$('#sdBody');
@@ -1089,6 +1105,20 @@ function renderSiteDetail(){
     ${tile('순이익',(o.profit>=0?'+':'')+won(o.profit)+'<small> 원</small>',o.profit>=0?'var(--teal)':'var(--coral)')}
     ${tile('미지급금 (줄 돈)',won(o.pay)+'<small> 원</small>',o.pay?'var(--coral)':'')}
   </div>`;
+  /* 직원 포털 발주서 대비 — 발주는 냈는데 장부에 안 들어온 금액이 곧 숨은 원가다 */
+  const poSite=poAll.filter(p=>poSiteName(p)===curSite&&p.status!=='취소');
+  if(poSite.length){
+    const poSum=poSite.reduce((s,p)=>s+(p.total_amount||0),0);
+    const done={};state.tx.forEach(t=>{if(t.poId)done[String(t.poId)]=1;});
+    const notIn=poSite.filter(p=>!done[String(p.id)]);
+    const notSum=notIn.reduce((s,p)=>s+(p.total_amount||0),0);
+    html+=`<div style="margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.03)">
+      <div style="font-family:var(--font-d);font-size:11px;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px">발주 대비 · 직원 포털 ${poSite.length}건</div>
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px"><span>발주 약정 합계</span><span style="font-family:var(--font-d);font-variant-numeric:tabular-nums">${won(poSum)} 원</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12.5px"><span style="color:${notSum?'var(--coral)':'var(--teal)'}">${notSum?`장부에 아직 없는 발주 ${notIn.length}건`:'모두 장부에 반영됨'}</span><span style="font-family:var(--font-d);font-variant-numeric:tabular-nums;color:${notSum?'var(--coral)':'var(--teal)'}">${notSum?won(notSum)+' 원':'✅'}</span></div>
+      ${notSum?`<button class="btn btn-ghost" id="sdGoPO" style="margin-top:10px;padding:9px;font-size:12.5px">발주서에서 가져오기 ›</button>`:''}
+    </div>`;
+  }
   const txs=state.tx.filter(t=>!t.tf&&t.site===curSite).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).slice(0,30);
   if(txs.length){
     html+=`<div style="font-family:var(--font-d);font-size:11px;letter-spacing:1.5px;color:var(--muted);margin:16px 2px 8px">거래 내역 · 최근 ${txs.length}건</div>`+
@@ -1097,6 +1127,7 @@ function renderSiteDetail(){
         <span style="font-family:var(--font-d);white-space:nowrap;font-variant-numeric:tabular-nums;color:${t.type==='in'?'var(--teal)':'var(--coral)'}">${t.type==='in'?'+':'−'}${won(t.amount)}</span></div>`).join('');
   }else html+=`<div class="empty" style="padding:16px 0"><span class="em">📭</span>이 현장의 거래가 아직 없습니다</div>`;
   b.innerHTML=html;
+  const gp=$('#sdGoPO');if(gp)gp.onclick=()=>{closeSheet('SiteD');openPO();};
 }
 $('#sdSaveContract').onclick=()=>{
   const v=Number($('#sdContract').value.replace(/[^0-9]/g,''))||0;
@@ -1214,9 +1245,14 @@ $('#attInput').onchange=async e=>{
   }
   toast('영수증이 첨부됐습니다');
 };
+/* 거래처 추천 = 이 장부에서 자주 쓴 상호 + 직원 포털 협력업체 명부(partners) */
 function updateVendorSugg(){
   const freq={};state.tx.forEach(t=>{if(t.vendor)freq[t.vendor]=(freq[t.vendor]||0)+1;});
-  $('#vendorSugg').innerHTML=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,30).map(([m])=>`<option value="${esc(m)}">`).join('');
+  const mine=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,30).map(([m])=>m);
+  const book=(window.BIZDB?BIZDB.partners():[]).map(p=>p.name);
+  const seen={},list=[];
+  mine.concat(book).forEach(n=>{if(n&&!seen[n]){seen[n]=1;list.push(n);}});
+  $('#vendorSugg').innerHTML=list.slice(0,60).map(m=>`<option value="${esc(m)}">`).join('');
 }
 function setType(t){form.type=t;
   $('#tOut').className=t==='out'?'act-out':'';$('#tIn').className=t==='in'?'act-in':'';$('#tTr').className=t==='tr'?'act-tr':'';
@@ -1655,7 +1691,7 @@ $('#repPrint').onclick=()=>window.print();
 /* ============ 시트/탭 ============ */
 function openSheet(id){$('#ov'+id).classList.add('on');$('#sh'+id).classList.add('on');}
 function closeSheet(id){$('#ov'+id).classList.remove('on');$('#sh'+id).classList.remove('on');}
-['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
+['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
 $('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
 $('#prevM').onclick=()=>{view.setMonth(view.getMonth()-1);render();};
 $('#nextM').onclick=()=>{view.setMonth(view.getMonth()+1);render();};
@@ -1812,6 +1848,59 @@ $('#loadBenefit').onclick=async()=>{
       link=it.rceptEngnHmpgUrl||it.pblancUrl||it.link||'https://www.bizinfo.go.kr';
       return `<a class="ben" href="${esc(link)}" target="_blank" rel="noopener"><div class="bt">${esc(t)}</div><div class="bm">${field?`<span class="tagp">${esc(field)}</span>`:''}${org?`<span class="org">${esc(org)}</span>`:''}</div></a>`;}).join('');
   }catch(e){box.innerHTML=`<div class="note warn"><b>불러오기 실패.</b> 브라우저 보안(CORS)으로 막혔을 수 있습니다. 프록시를 설정하거나, 호스팅 환경에서 시도하세요. 지금은 위 '기업마당 ↗'로 직접 확인할 수 있습니다.</div>`;}
+};
+
+/* ============ 발주서 → 지출 (직원 포털 연계) ============
+   발주서는 "줄 돈이 생겼다"는 뜻인데 장부와 따로 놀았다. po_id 로 묶어 두 번 기록되지 않게 한다. */
+let poAll=[],poRows=[];
+function poSiteName(p){return (window.BIZDB&&BIZDB.siteName(p.site_id))||'';}
+async function refreshPO(){
+  if(!window.BIZDB)return [];
+  try{poAll=await BIZDB.purchaseOrders();}catch(e){poAll=[];}
+  return poAll;
+}
+async function openPO(){
+  if(!window.BIZDB){toast('서버에 연결된 상태에서만 쓸 수 있습니다');return;}
+  $('#poCount').textContent='불러오는 중…';$('#poList').innerHTML='';openSheet('PO');
+  await refreshPO();
+  const used={};state.tx.forEach(t=>{if(t.poId)used[String(t.poId)]=1;});
+  poRows=poAll.filter(p=>!used[String(p.id)]&&p.status!=='취소'&&(p.total_amount||p.supply_amount))
+              .map(p=>Object.assign({sel:true},p));
+  renderPOList();
+}
+function renderPOList(){
+  const sel=poRows.filter(p=>p.sel).length;
+  const sum=poRows.filter(p=>p.sel).reduce((s,p)=>s+(p.total_amount||0),0);
+  $('#poCount').textContent=poRows.length?`${poRows.length}건 중 ${sel}건 선택 · ${won(sum)}원`:'장부에 반영할 발주가 없습니다';
+  if(!poRows.length){$('#poList').innerHTML=`<div class="empty" style="padding:20px 0"><span class="em">📦</span>모든 발주가 이미 장부에 들어와 있습니다</div>`;return;}
+  $('#poList').innerHTML=poRows.map((p,i)=>
+    `<div class="tx t-out" data-i="${i}" style="cursor:pointer;${p.sel?'':'opacity:.4'}">
+      <div class="ico">${p.sel?'☑️':'⬜'}</div>
+      <div class="meta"><div class="c"><span class="badge out">발주</span>${esc(p.po_no||'번호없음')}${p.status?` <span style="color:var(--muted-2);font-size:10.5px">${esc(p.status)}</span>`:''}</div>
+      <div class="m">${poSiteName(p)?`<span style="color:var(--violet)">🏗️${esc(poSiteName(p))}</span> · `:''}<span style="color:var(--gold)">${esc(p.vendor_name||'-')}</span> · 발주 ${String(p.order_date||'').slice(5)}${p.due_date?` · 납기 ${String(p.due_date).slice(5)}`:''}</div></div>
+      <div class="amt2"><div class="col dr" style="grid-column:1/-1;text-align:right">${won(p.total_amount||0)}</div></div>
+    </div>`).join('');
+  $$('#poList .tx').forEach(el=>el.onclick=()=>{const i=+el.dataset.i;poRows[i].sel=!poRows[i].sel;renderPOList();});
+}
+$('#goPO').onclick=openPO;
+$('#poToggleAll').onclick=()=>{const on=poRows.some(p=>!p.sel);poRows.forEach(p=>p.sel=on);renderPOList();};
+$('#poConfirm').onclick=()=>{
+  const picked=poRows.filter(p=>p.sel);
+  if(!picked.length){toast('가져올 발주를 선택하세요');return;}
+  let k=0;
+  picked.forEach(p=>{
+    const total=p.total_amount||((p.supply_amount||0)+(p.vat_amount||0));
+    const cat=guessCat(p.vendor_name||'','out');
+    state.tx.push({id:Date.now()+(k++)*13+Math.floor(Math.random()*999),
+      type:'out',cat,ico:icoOf('out',cat),amount:total,
+      supply:p.supply_amount||total,vat:p.vat_amount||0,vatm:p.vat_amount?'incl':'none',
+      memo:p.memo||('발주 '+(p.po_no||'')),date:p.order_date||todayStr(),
+      acct:state.accounts[0].name,site:poSiteName(p),vendor:p.vendor_name||'',
+      partnerId:p.partner_id||undefined,poId:p.id,
+      evid:'세금계산서',cr:1,due:p.due_date||undefined,src:'po',att:[],synced:false});
+  });
+  save();closeSheet('PO');render();renderStats();
+  toast(`발주 ${picked.length}건을 미지급 지출로 기록했습니다`);
 };
 
 /* ============ 미수 · 미지급 관리 ============
