@@ -433,15 +433,18 @@ function refreshSpaceList(){
 //  조명 도구를 고르고 팔레트에서 항목을 고르면, 아무것도 선택 안 한 상태에서
 //  우측 패널에 배치 설정이 뜬다. 도면을 찍기 전에 모양을 정해 두는 자리다.
 function _arrayPreviewSVG(cfg){
-  const cols=cfg.cols, rows=cfg.rows;
   const W=150, H=96, pad=16;
-  const gx=cols>1?(W-pad*2)/(cols-1):0;
-  const gy=rows>1?(H-pad*2)/(rows-1):0;
+  // 2026-08-30: 실제 배치 좌표를 그대로 쓰면 회전까지 그대로 보인다
+  const offs=lightArrayOffsets(cfg);
+  const xs=offs.map(o=>o.dx), ys=offs.map(o=>o.dy);
+  const sw=Math.max(...xs)-Math.min(...xs), sh=Math.max(...ys)-Math.min(...ys);
+  const k=Math.min(sw?(W-pad*2)/sw:Infinity, sh?(H-pad*2)/sh:Infinity, 1e6);
+  const kk=isFinite(k)?k:0;
   let dots='';
-  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-    const x=cols>1?pad+c*gx:W/2, y=rows>1?pad+r*gy:H/2;
+  offs.forEach(o=>{
+    const x=W/2+o.dx*kk, y=H/2+o.dy*kk;
     dots+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="5" fill="#D4B872" stroke="#8C7434" stroke-width="1"/>';
-  }
+  });
   // 중심 십자 — 도면에서 찍는 점
   dots+='<line x1="'+(W/2-7)+'" y1="'+(H/2)+'" x2="'+(W/2+7)+'" y2="'+(H/2)+'" stroke="#D4FF3D" stroke-width="1.2"/>'+
         '<line x1="'+(W/2)+'" y1="'+(H/2-7)+'" x2="'+(W/2)+'" y2="'+(H/2+7)+'" stroke="#D4FF3D" stroke-width="1.2"/>';
@@ -480,15 +483,24 @@ function renderLightArrayPanel(){
       '<div class="field" style="flex:1;margin:0"><label class="field-label">세로 간격 (mm)</label>'+
       '<input type="text" inputmode="numeric" id="d-la-dy" value="'+a.dy+'"></div>'+
     '</div>'+
-    '<div style="display:flex;gap:3px;margin-top:5px">'+
-      [600,900,1200,1500].map(v=>'<button type="button" class="btn sm la-gap" data-v="'+v+'"'+
+    // 2026-08-30: 촌촌한 간격(150~300)도 많이 쓴다 — 두 줄로
+    [[0,4],[4,8]].map(rg=>'<div style="display:flex;gap:3px;margin-top:4px">'+
+      LIGHT_ARRAY_GAPS.slice(rg[0],rg[1]).map(v=>'<button type="button" class="btn sm la-gap" data-v="'+v+'"'+
         ' style="flex:1;padding:3px 2px;font-size:11px'+
         ((a.dx===v&&a.dy===v)?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
-        '">'+v+'</button>').join('')+
+        '">'+v+'</button>').join('')+'</div>').join('')+
+    '<div style="display:flex;gap:5px;margin-top:6px;align-items:flex-end">'+
+      '<div class="field" style="flex:1;margin:0"><label class="field-label">배치 회전 (°)</label>'+
+      '<input type="text" inputmode="numeric" id="d-la-ang" value="'+(a.angle||0)+'"></div>'+
+      [0,45,90].map(v=>'<button type="button" class="btn sm la-ang" data-v="'+v+'"'+
+        ' style="flex:0 0 40px;padding:5px 2px;font-size:11px'+
+        ((a.angle||0)===v?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
+        '">'+v+'°</button>').join('')+
     '</div>'+
     '<div class="field-label" style="margin:8px 0 4px;color:#D4B872">배치 견본</div>'+
     _arrayPreviewSVG(a)+
-    '<div class="hint" style="margin-top:4px">전체 '+span.w+' × '+span.h+'mm · 간격은 50mm 단위로 맞춰집니다<br>'+
+    '<div class="hint" style="margin-top:4px">전체 '+span.w+' × '+span.h+'mm'+
+      ((a.angle||0)?(' · '+a.angle+'° 회전'):'')+' · 간격은 50mm 단위로 맞춰집니다<br>'+
       '도면에서 <b>중심점</b>을 클릭하면 '+n+'개가 한 번에 놓입니다</div>'+
     '</div>';
   document.querySelectorAll('.la-preset').forEach(b=>b.addEventListener('click',()=>{
@@ -502,7 +514,14 @@ function renderLightArrayPanel(){
     a2.dx=parseInt(b.dataset.v,10);a2.dy=parseInt(b.dataset.v,10);
     lightArrayCfg();refreshUI();
   }));
-  [['d-la-cols','cols'],['d-la-rows','rows'],['d-la-dx','dx'],['d-la-dy','dy']].forEach(([id,key])=>{
+  document.querySelectorAll('.la-ang').forEach(b=>b.addEventListener('click',()=>{
+    const a2=lightArrayCfg();
+    a2.angle=parseInt(b.dataset.v,10);
+    lightArrayCfg();refreshUI();
+    showStatus('배치 회전 '+lightArrayCfg().angle+'°');
+  }));
+  [['d-la-cols','cols'],['d-la-rows','rows'],['d-la-dx','dx'],['d-la-dy','dy'],
+   ['d-la-ang','angle']].forEach(([id,key])=>{
     const el=document.getElementById(id);
     if(!el) return;
     el.addEventListener('change',e=>{

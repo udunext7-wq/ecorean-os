@@ -3380,6 +3380,33 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     const span=lightArraySpanMm();
     assert('배열: 전체 크기',span.w===900&&span.h===900,JSON.stringify(span));
 
+    // [A3b] 2026-08-30: 배치 회전 (대표 지시)
+    STATE.lightArray={cols:2,rows:1,dx:1000,dy:1000,angle:90};
+    const rot=lightArrayOffsets();
+    assert('배열: 90° 돌리면 가로가 세로로',
+      Math.abs(rot[0].dx)<2&&Math.abs(rot[1].dx)<2&&
+      Math.abs(Math.abs(rot[0].dy-rot[1].dy)-1000)<2,JSON.stringify(rot));
+    STATE.lightArray={cols:2,rows:2,dx:1000,dy:1000,angle:45};
+    const rot45=lightArrayOffsets();
+    assert('배열: 45°는 마름모 모양',rot45.length===4&&
+      rot45.some(o=>Math.abs(o.dx)<2&&Math.abs(Math.abs(o.dy)-707)<3),JSON.stringify(rot45));
+    const sp45=lightArraySpanMm();
+    assert('배열: 회전 후 범위도 따라간다',Math.abs(sp45.w-1414)<4&&Math.abs(sp45.h-1414)<4,
+      JSON.stringify(sp45));
+    STATE.lightArray={cols:2,rows:2,dx:1000,dy:1000,angle:0};
+    assert('배열: 0°는 종전과 같다',lightArraySpanMm().w===1000);
+    // 각도는 0~359 로 정리된다
+    STATE.lightArray={cols:2,rows:2,dx:900,dy:900,angle:-90};
+    assert('배열: 음수 각도 정리',lightArrayCfg().angle===270,String(lightArrayCfg().angle));
+    STATE.lightArray={cols:2,rows:2,dx:900,dy:900,angle:450};
+    assert('배열: 360 넘으면 정리',lightArrayCfg().angle===90);
+    // 자주 쓰는 간격에 150~300 이 들어 있다
+    assert('배열: 촌촌한 간격 제공',
+      [150,200,250,300].every(v=>LIGHT_ARRAY_GAPS.indexOf(v)>=0)&&
+      [600,900,1200,1500].every(v=>LIGHT_ARRAY_GAPS.indexOf(v)>=0),
+      JSON.stringify(LIGHT_ARRAY_GAPS));
+    assert('배열: 150은 최소값 이상',snapArrayGap(150)===150);
+
     // [A4] 1×1 이면 배열이 아니다 (평소처럼 하나만)
     STATE.lightArray={cols:1,rows:1,dx:900,dy:900};
     assert('배열: 1개면 배열 아님',lightArrayActive()===false);
@@ -3397,6 +3424,13 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('배열: 3×2 는 6개 배치',made&&made.length===6&&STATE.lights.length===6,
       'n='+(made?made.length:0));
     assert('배열: 규격이 전부 4인치',STATE.lights.every(l=>l.inch===4));
+    // 배치를 돌리면 기구 각도도 같이 돌아야 한다 (라인·간접처럼 방향 있는 기구)
+    STATE.lights=[];STATE.lightArray={cols:2,rows:1,dx:1000,dy:1000,angle:30};
+    addLightArray(pos,'downlight#3');
+    assert('배열: 기구 각도도 회전',STATE.lights.every(l=>l.angle===30),
+      JSON.stringify(STATE.lights.map(l=>l.angle)));
+    STATE.lights=[];STATE.lightArray={cols:3,rows:2,dx:1200,dy:800,angle:0};
+    saveHistory();addLightArray(pos,'downlight#4');
     const mx=STATE.lights.map(l=>l.x), my=STATE.lights.map(l=>l.y);
     assert('배열: 중심이 찍은 점',
       Math.abs((Math.min(...mx)+Math.max(...mx))/2-cmm.x)<2&&
@@ -3422,6 +3456,13 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('배열: 설정 패널 표시',!!document.getElementById('d-la-cols')&&
       !!document.getElementById('d-la-dx'));
     assert('배열: 견본 그림',document.getElementById('detail-content').innerHTML.indexOf('<svg')>=0);
+    assert('배열: 회전 입력칸',!!document.getElementById('d-la-ang')&&
+      document.querySelectorAll('.la-ang').length===3);
+    assert('배열: 간격 버튼 8개',document.querySelectorAll('.la-gap').length===LIGHT_ARRAY_GAPS.length,
+      String(document.querySelectorAll('.la-gap').length));
+    const a90=[...document.querySelectorAll('.la-ang')].filter(b=>b.dataset.v==='90')[0];
+    if(a90){a90.click();assert('배열: 회전 버튼 적용',lightArrayCfg().angle===90);
+      lightArrayCfg().angle=0;refreshUI();}
     assert('배열: 모양 프리셋',document.querySelectorAll('.la-preset').length===LIGHT_ARRAY_PRESETS.length);
     // 프리셋을 누르면 설정이 바뀐다
     const p33=[...document.querySelectorAll('.la-preset')].filter(b=>b.dataset.c==='3'&&b.dataset.r==='3')[0];

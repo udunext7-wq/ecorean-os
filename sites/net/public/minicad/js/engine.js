@@ -3028,6 +3028,8 @@ const LIGHT_ARRAY_STEP=50;
 const LIGHT_ARRAY_MIN=150, LIGHT_ARRAY_MAX=6000;
 const LIGHT_ARRAY_MAX_N=6;
 // 현장에서 자주 쓰는 모양 — '밭 전'은 2×2
+// 2026-08-30 대표 지시: 현장에서 많이 쓰는 간격 — 촌촌한 쪽(150~300)과 일반(600~1500)
+const LIGHT_ARRAY_GAPS=[150,200,250,300,600,900,1200,1500];
 const LIGHT_ARRAY_PRESETS=[
   {key:'1x1',name:'하나',      cols:1,rows:1},
   {key:'1x2',name:'일자 2',    cols:2,rows:1},
@@ -3044,6 +3046,9 @@ function lightArrayCfg(){
   a.rows=clampN(a.rows);
   a.dx=snapArrayGap(a.dx);
   a.dy=snapArrayGap(a.dy);
+  // 2026-08-30: 배치 회전 (대표 지시) — 빗금 벽을 따라 기울여 놓을 때
+  const ang=parseFloat(a.angle);
+  a.angle=isFinite(ang)?((Math.round(ang)%360)+360)%360:0;
   return a;
 }
 function snapArrayGap(v){
@@ -3061,17 +3066,23 @@ function lightArrayOffsets(cfg){
   const a=cfg||lightArrayCfg();
   const out=[];
   const w=(a.cols-1)*a.dx, h=(a.rows-1)*a.dy;
+  // 회전은 중심점 기준 — 찍는 자리는 그대로 두고 모양만 돌린다
+  const th=((a.angle||0)*Math.PI)/180;
+  const cs=Math.cos(th), sn=Math.sin(th);
   for(let r=0;r<a.rows;r++){
     for(let c=0;c<a.cols;c++){
-      out.push({dx:Math.round(-w/2+c*a.dx), dy:Math.round(-h/2+r*a.dy)});
+      const x=-w/2+c*a.dx, y=-h/2+r*a.dy;
+      out.push({dx:Math.round(x*cs-y*sn), dy:Math.round(x*sn+y*cs)});
     }
   }
   return out;
 }
-// 배치 전체가 차지하는 크기 (mm)
+// 배치 전체가 차지하는 크기 (mm) — 회전한 상태 그대로 쟴다
 function lightArraySpanMm(cfg){
-  const a=cfg||lightArrayCfg();
-  return {w:(a.cols-1)*a.dx, h:(a.rows-1)*a.dy};
+  const offs=lightArrayOffsets(cfg);
+  if(!offs.length) return {w:0,h:0};
+  const xs=offs.map(o=>o.dx), ys=offs.map(o=>o.dy);
+  return {w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)};
 }
 
 function renderLights(){

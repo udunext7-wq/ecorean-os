@@ -570,7 +570,10 @@ function addLightArray(pos,libKey){
   offs.forEach(off=>{
     const mm={x:c.x+off.dx, y:c.y+off.dy};
     const sp=findNearestSpace(mm);
-    const o={id:makeId('l'),type,x:mm.x,y:mm.y,angle:_libPlaceAngle||0,flipped:!!_libPlaceFlipped,
+    // 2026-08-30: 배치를 돌리면 기구도 같이 돌린다 (라인·간접처럼 방향이 있는 기구 때문)
+    const o={id:makeId('l'),type,x:mm.x,y:mm.y,
+      angle:(((_libPlaceAngle||0)+(lightArrayCfg().angle||0))%360+360)%360,
+      flipped:!!_libPlaceFlipped,
       layerName:makeLayerName('LITE',sp),spaceId:sp?sp.id:null};
     if(type==='downlight') o.inch=Math.round(STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT);
     if(typeof applyLibVariant==='function') applyLibVariant(o,libKey);
@@ -2951,7 +2954,8 @@ function updateLibPlacementPreview(pos){
     const sp3=lightArraySpanMm();
     _arr.forEach(off=>{
       const gx=cx+mmToPx(off.dx), gy=cy+mmToPx(off.dy);
-      const gg=new Konva.Group({x:gx,y:gy,rotation:_libPlaceAngle,opacity:0.5,listening:false});
+      const gg=new Konva.Group({x:gx,y:gy,
+        rotation:(_libPlaceAngle||0)+(lightArrayCfg().angle||0),opacity:0.5,listening:false});
       if(def.shape) drawShape(def.shape).forEach(n=>{n.listening(false);gg.add(n);});
       gg.add(new Konva.Circle({radius:Math.max(4,mmToPx(def.size||200)/2),stroke:'#D4FF3D',
         strokeWidth:1.3,dash:[4,3],listening:false}));
