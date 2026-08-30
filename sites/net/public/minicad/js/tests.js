@@ -4041,9 +4041,12 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('인쇄입면: 부속표 뒤에서 장을 끊는다',
       bigHtml.indexOf('page-break-after:always;break-after:page')>0&&
       bigHtml.indexOf('.pe{page-break-before:always')>0);
-    assert('인쇄입면: 여백 켜도 장이 안 밀린다',bigHtml.indexOf('@media print{.sheet,.p2,.pe{max-height:100vh}}')>0);
-    assert('인쇄입면: 부속표가 넘쳐 흐르지 않는다',
-      bigHtml.indexOf('overflow:hidden;page-break-after')>0);
+    // 부속표는 잘리면 안 되므로 가두지 않는다 — 도면·입면 장만 가둔다
+    assert('인쇄입면: 여백 켜도 장이 안 밀린다',bigHtml.indexOf('@media print{.sheet,.pe{max-height:100vh}}')>0);
+    assert('부속표: 높이를 가두지 않는다 (잘림 방지)',bigHtml.indexOf('.p2{width:')>0&&
+      bigHtml.indexOf('min-height:')>0&&bigHtml.indexOf('.p2{width:'+'')>0);
+    assert('인쇄입면: 부속표 뒤로 장이 끊긴다',
+      bigHtml.indexOf('page-break-after:always;break-after:page')>0);
 
     // 글씨3배 — 종전(66/78/104)의 세 배
     assert('입면: 글씨 3배',ELEV_FS.dim===198&&ELEV_FS.tag===234&&ELEV_FS.title===312,
@@ -4130,6 +4133,56 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     // 절단선 입면은 벽면마다 그 벽 자재를 단다
     const eS2=buildSectionElevation(STATE.sections.find(x=>x.id===pSec.id));
     assert('자재표기: 벽면마다 자재',eS2.faces.filter(f=>!f.edge).every(f=>'matEn' in f));
+
+    // [P6-6] 2026-08-31 대표 지시 네 가지
+    // (1) 내력벽은 평면 해칭용 — 입면도에 영향 없다
+    const _bw=STATE.walls.find(w=>w.id===pB.W[1].id);
+    const _bwType=_bw.wallType;
+    const _before=buildSpaceElevations(pB.sp.id).length;
+    _bw.wallType='bearing';
+    const _after=buildSpaceElevations(pB.sp.id).length;
+    assert('내력벽: 입면 벽 목록에서 빠진다',_after===_before-1,_before+'→'+_after);
+    assert('내력벽: 절단선 입면 면에도 없다',
+      !buildSectionElevation(STATE.sections.find(x=>x.id===pSec.id)).faces.some(f=>f.wallId===_bw.id));
+    assert('내력벽: 평면 벽 목록엔 그대로',STATE.walls.some(w=>w.id===_bw.id&&w.wallType==='bearing'));
+    _bw.wallType=_bwType;
+
+    // (2) 수성·도배 재질 표기 (해칭)
+    assert('재질표기: 도배 갈래',elevHatchKey('WP_SILK')==='wp'&&elevHatchKey('WP_COMPOSITE')==='wp');
+    assert('재질표기: 도장 갈래',elevHatchKey('PAINT_WATER')==='pt'&&elevHatchKey('PAINT_ECO')==='pt');
+    assert('재질표기: 타일 갈래',elevHatchKey('WALL_TILE')==='tl'&&elevHatchKey('TILE_PORC')==='tl');
+    assert('재질표기: 미정은 무늬 없음',elevHatchKey('UNDECIDED')===null&&elevHatchKey(null)===null);
+    const _w0=STATE.walls.find(w=>w.id===pA.W[0].id);
+    const _wm=_w0.finishMaterial;
+    _w0.finishMaterial='WP_SILK';
+    const svgWp=elevationSVG(buildElevation(_w0,pA.sp.id),{});
+    assert('재질표기: 무늬 정의가 들어간다',svgWp.indexOf('<pattern')>0&&svgWp.indexOf('fill="url(#evh')>0);
+    assert('재질표기: 도배 이름표',svgWp.indexOf('(도배)')>0);
+    _w0.finishMaterial='PAINT_WATER';
+    const svgPt=elevationSVG(buildElevation(_w0,pA.sp.id),{});
+    assert('재질표기: 수성은 다른 무늬',svgPt.indexOf('(도장)')>0&&svgPt.indexOf('circle')>0);
+    assert('재질표기: 도배와 무늬가 다르다',
+      (svgWp.match(/<pattern[^>]*>[\s\S]*?<\/pattern>/)||[''])[0]!==
+      (svgPt.match(/<pattern[^>]*>[\s\S]*?<\/pattern>/)||[''])[0]);
+    _w0.finishMaterial=_wm;
+
+    // (3) 부속표 물량 — 벽·방수·둘레 / 걸레받이·몰딩
+    const _pAsp=STATE.spaces.find(x=>x.id===pA.sp.id);
+    assert('물량: 둘레',Math.abs(spPeri(_pAsp)-14)<0.01,String(spPeri(_pAsp)));
+    assert('물량: 걸레받이는 문 폭을 뺀다',Math.abs(spBaseboard(_pAsp)-13.1)<0.01,
+      String(spBaseboard(_pAsp)));
+    assert('물량: 천장 몰딩은 둘레 그대로',Math.abs(spMolding(_pAsp)-spPeri(_pAsp))<1e-9);
+    const p2q=buildPrintPage2({pw:297,ph:210,scale:100},_printInfo());
+    assert('물량: 벽·방수·둘레 표',p2q.indexOf('벽·방수·둘레')>0&&p2q.indexOf('방수㎡')>0);
+    assert('물량: 걸레받이·몰딩 표',p2q.indexOf('걸레받이·몰딩')>0&&p2q.indexOf('천장몰딩m')>0);
+
+    // (4) 창호 면적 — ㎡ 와 才 (1才 = 303.03×303.03)
+    const _op900={width_mm:900,height_mm:2100};
+    assert('창호: 면적 ㎡',Math.abs(openingArea(_op900)-1.89)<0.001,String(openingArea(_op900)));
+    assert('창호: 才 계산',Math.abs(openingJae(_op900)-20.58)<0.05,String(openingJae(_op900)));
+    assert('창호: 1자×1자는 1才',Math.abs(openingJae({width_mm:303.03,height_mm:303.03})-1)<0.001);
+    assert('창호: 물량표',p2q.indexOf('창호 물량 (1才 = 303×303)')>0&&p2q.indexOf('<th>才</th>')>0);
+    assert('창호: 합계에 평',/합계 \([0-9.]+평\)/.test(p2q),'no pyeong');
 
     // [P7] 미리보기 — 입면도만 (평면·부속표는 빠진다)
     const only3=buildPrintSheet(null,LPE,_printInfo(),c0,{preview:true,onlyPage:3,onlyElevPage:1});

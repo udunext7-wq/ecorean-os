@@ -4596,9 +4596,11 @@ function elevNearestWallId(d,walls){
   return {id:best,dist:bd};
 }
 
-// 그 공간의 벽 — 안내선은 벽이 아니므로 뺀다. 내력벽은 입면에 그대로 나와야 하니 넣는다.
+// 그 공간의 벽 — 안내선은 벽이 아니므로 뺀다.
+//  2026-08-30 대표 지시: 내력벽은 평면도에 해칭을 넣으려고 만든 것이다. 입면도에는 넣지 않는다.
+//  (마감·적산에서도 이미 빼고 있다 — spWall 과 같은 규약)
 function elevationWallsOf(spaceId){
-  return (STATE.walls||[]).filter(w=>w.spaceId===spaceId&&!w.isLine);
+  return (STATE.walls||[]).filter(w=>w.spaceId===spaceId&&!w.isLine&&w.wallType!=='bearing');
 }
 function elevSpaceCentroid(sp){
   const poly=sp&&sp.polygon;
@@ -4675,6 +4677,7 @@ function buildElevation(wall,spaceId){
     ?WALL_MATERIALS[wall.finishMaterial].name:null;
   const finEn=elevFinishEn(wall,sp);
   return {wallId:wall.id,spaceId:sp?sp.id:null, viewSide:vside, finishEn:finEn,
+    finishCode:wall.finishMaterial||null, floorCode:(sp&&sp.floorMaterial)||null,
     spaceName:(sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||'',
     L,H,ops,devs,flip,material:mat,
     thickness:Math.round(wall.thickness||0),
@@ -4769,6 +4772,7 @@ function buildSectionElevation(sec){
   const faces=[];
   (STATE.walls||[]).forEach(w=>{
     if(w.isLine) return;
+    if(w.wallType==='bearing') return;   // 내력벽은 평면 해칭용 — 입면에는 안 넣는다
     const sA=into(w.x1,w.y1), sB=into(w.x2,w.y2);
     if(sA<BACK&&sB<BACK) return;              // 등 뒤
     if(sA>depth&&sB>depth) return;            // 너무 멀다
@@ -4791,6 +4795,7 @@ function buildSectionElevation(sec){
       material:(typeof WALL_MATERIALS!=='undefined'&&WALL_MATERIALS[w.finishMaterial])
         ?WALL_MATERIALS[w.finishMaterial].name:null,
       matEn:matEn(typeof WALL_MATERIALS!=='undefined'?WALL_MATERIALS:null,w.finishMaterial),
+      matCode:w.finishMaterial||null,
       spaceName:(sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||''});
   });
   // 가까운 것부터 훑으며 '이미 가려진 구간'을 쌓는다 — 벽은 뚫고 보이지 않는다.
@@ -4851,8 +4856,14 @@ function buildSectionElevation(sec){
     const sp2=w&&w.spaceId?(STATE.spaces||[]).find(x=>x.id===w.spaceId):null;
     return matEn(typeof FLOOR_MATERIALS!=='undefined'?FLOOR_MATERIALS:null,sp2&&sp2.floorMaterial);
   }).filter(Boolean))];
+  const _f0=shown.map(f=>{
+    const w=(STATE.walls||[]).find(x=>x.id===f.wallId);
+    const sp2=w&&w.spaceId?(STATE.spaces||[]).find(x=>x.id===w.spaceId):null;
+    return sp2&&sp2.floorMaterial;
+  }).filter(Boolean)[0]||null;
   return {sectionId:sec.id,label:'단면 '+sectionLabelOf(sec),
     finishEn:{wall:_wEn.join(' / ')||null,floor:_fEn.join(' / ')||null},
+    floorCode:_f0,
     L,H,ops,devs,faces:shown,hidden:faces.length-shown.length,flip,
     depth:(depth===Infinity?0:depth),
     spaceName:names.slice(0,3).join('·'),
