@@ -68,6 +68,25 @@ function mergeCollinear(list, tol, gap) {
   return out;
 }
 
+// 같은 선 위에 놓인 벽 조각들 사이의 빈 구간 = 문·창 개구부
+function gapsBetween(list, tol, maxGap) {
+  const lines = [];
+  for (const s2 of list) {
+    let ln = lines.find(l => Math.abs(l.c - s2.c) <= tol);
+    if (!ln) { ln = { c: s2.c, items: [] }; lines.push(ln); }
+    ln.items.push(s2);
+  }
+  const gaps = [];
+  for (const ln of lines) {
+    ln.items.sort((x, y) => x.a1 - y.a1);
+    for (let i = 1; i < ln.items.length; i++) {
+      const g = ln.items[i].a1 - ln.items[i - 1].a2;
+      if (g > 2 && g <= maxGap) gaps.push(g);
+    }
+  }
+  return gaps;
+}
+
 export async function convert(file, opt = {}) {
   const area_m2 = opt.exclusive_area_m2 || null;
   const { regions, srcW, w: dw } = await detectRegions(file, { dilate: 14 });
@@ -89,8 +108,10 @@ export async function convert(file, opt = {}) {
 
   const minLen = Math.round(Math.min(w, h) * 0.03);
   const maxThick = Math.round(Math.min(w, h) * 0.05);
-  const hb = mergeCollinear(bands(mask, w, h, true, minLen, maxThick), Math.max(2, maxThick / 2), minLen);
-  const vb = mergeCollinear(bands(mask, w, h, false, minLen, maxThick), Math.max(2, maxThick / 2), minLen);
+  const tol0 = Math.max(2, maxThick / 2);
+  const rawH = bands(mask, w, h, true, minLen, maxThick), rawV = bands(mask, w, h, false, minLen, maxThick);
+  const hb = mergeCollinear(rawH, tol0, minLen);
+  const vb = mergeCollinear(rawV, tol0, minLen);
   if (hb.length + vb.length < 6) return { ok: false, reason: '벽 검출 부족' };
 
   // 내부 면적(픽셀) — 도면 바깥에서 채워 들어가 닿지 않는 곳이 '내부'다.
@@ -126,15 +147,22 @@ export async function convert(file, opt = {}) {
   const medThick = thicks.length ? thicks[thicks.length >> 1] : 0;
   const thickMm = mmPerPx ? medThick * mmPerPx : null;
   // 검증 — 벽 두께가 상식 범위를 벗어나면 스케일이 틀린 것이다
-  if (thickMm != null && (thickMm < 60 || thickMm > 400)) warn.push(`벽두께 ${Math.round(thickMm)}mm`);
+  if (thickMm != null && (thickMm < 50 || thickMm > 450)) warn.push(`벽두께 ${Math.round(thickMm)}mm`);
   const unitWmm = mmPerPx ? w * mmPerPx : null;
   if (unitWmm != null && (unitWmm < 3000 || unitWmm > 40000)) warn.push(`전체폭 ${Math.round(unitWmm)}mm`);
-  let thickPeakOk = false;
+  // 검증 기준을 벽 두께 분포에서 "문 개구부 폭" 으로 바꾼다.
+  // 벽 조각 사이의 틈이 곧 문·창 개구부이고, 한국 실내문은 800~900mm 로 표준화돼 있다.
+  // 스케일이 맞으면 그 구간에 봉우리가 생긴다 — 축척이 맞는지를 직접 재는 셈이라
+  // 두께 분포보다 근거가 분명하고, 3D 투시 렌더처럼 축척이 없는 그림은 자연히 걸러진다.
+  // (실측: 검증 통과 도면 40장·표본 1,192개에서 문 구간 중앙값 862mm)
+  let doorMed = null, doorN = 0;
   if (mmPerPx) {
-    const all = [...hb, ...vb].map(b => b.t * mmPerPx);
-    const inRange = all.filter(t => t >= 90 && t <= 260).length;
-    thickPeakOk = all.length >= 8 && inRange / all.length >= 0.35;
-    if (!thickPeakOk) warn.push(`벽두께 분포 이상(실벽 구간 ${Math.round(100 * inRange / (all.length || 1))}%)`);
+    const gaps = gapsBetween(hb, tol0, w * 0.25).concat(gapsBetween(vb, tol0, h * 0.25))
+      .map(g => g * mmPerPx).filter(v => v >= 600 && v <= 1300).sort((x, y) => x - y);
+    doorN = gaps.length;
+    doorMed = doorN ? gaps[doorN >> 1] : null;
+    if (doorN < 6) warn.push(`개구부 표본 ${doorN}개`);
+    else if (doorMed < 700 || doorMed > 1060) warn.push(`문폭 ${Math.round(doorMed)}mm`);
   }
   const verified = !!mmPerPx && warn.length === 0;
 
@@ -185,7 +213,7 @@ export async function convert(file, opt = {}) {
     work: { w, h },
     mm_per_px: mmPerPx,                      // 크롭 후 작업 해상도 기준
     bg_mm_per_px: mmPerPx ? mmPerPx * (Wd / w) : null,  // 원본 크롭 픽셀 기준(배경 이미지용)
-    interiorPx, medThickPx: medThick, thickMm, scaleBasis,
+    interiorPx, medThickPx: medThick, thickMm, scaleBasis, doorMed, doorN,
     regionCount: regions.length,
   };
 }

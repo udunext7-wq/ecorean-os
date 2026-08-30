@@ -47,6 +47,9 @@ function parseFileName(file) {
 
 const manifest = JSON.parse(readFileSync('scripts/lttot-manifest.json', 'utf8'));
 const models = existsSync('scripts/lttot-models.json') ? JSON.parse(readFileSync('scripts/lttot-models.json', 'utf8')) : {};
+// 도면에 인쇄된 전용면적을 읽어 확정한 주택형 (plans-ocr-area.mjs).
+// 파일명·순서 추정보다 우선한다 — 도면 자체가 근거라 가장 정확하다.
+const ocr = existsSync('scripts/lttot-ocr.json') ? JSON.parse(readFileSync('scripts/lttot-ocr.json', 'utf8')) : {};
 
 const rows = [];
 let done = 0, skipped = 0;
@@ -77,6 +80,12 @@ for (const c of manifest) {
     }
 
     const code = p.raw.replace(/[^a-z0-9]+/g, '-');
+    const storePath = `${c.house_manage_no}/${code}.webp`;
+    const hit = ocr[storePath];
+    if (hit && hit.area) {                       // 도면에서 읽은 값이 있으면 그것으로 확정
+      match = { area: hit.area, letter: hit.letter || '', house_ty: hit.house_ty, supply_ar: null };
+      confidence = 'ocr';
+    }
     const outRel = `${c.slug}/${code}.webp`;
     const outAbs = join(OUT_DIR, outRel);
     let meta;
@@ -94,10 +103,12 @@ for (const c of manifest) {
       slug: c.slug, file: f, out: outRel,
       // Storage 오브젝트 키는 ASCII 만 허용한다(한글 슬러그 거부) → 공고번호로 경로를 만든다
       house_manage_no: c.house_manage_no,
-      store_path: `${c.house_manage_no}/${code}.webp`,
+      store_path: storePath,
       complex_name: c.name, address: c.address, region_sido: sido, region_gugun: gugun,
-      area_type: p.letter ? `${p.py}${p.letter}` : (p.py != null ? String(p.py) : (confidence === 'order' ? match.house_ty : null)),
-      exclusive_area_m2: confidence === 'order-loose' ? null : (match ? match.area : null), // 청약홈 실측치만. 추정값을 넣지 않는다
+      area_type: confidence === 'ocr'
+        ? `${Math.round(match.area)}${match.letter || ''}`
+        : (p.letter ? `${p.py}${p.letter}` : (p.py != null ? String(p.py) : (confidence === 'order' ? match.house_ty : null))),
+      exclusive_area_m2: (confidence === 'order-loose' && confidence !== 'ocr') ? null : (match ? match.area : null), // 도면·청약홈 실측치만
       supply_area_m2: confidence === 'order-loose' ? null : (match ? match.supply_ar : null),
       match_confidence: confidence,
       builder: c.builder, homepage: c.homepage, pblanc_url: c.pblanc_url, pblanc_de: c.pblanc_de,
