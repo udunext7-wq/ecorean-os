@@ -2506,6 +2506,7 @@ function setAllSwitchGangs(switchId,on){
 //  빠뜨리면 값은 바뀌는데 화면이 그대로다 — 렌더 캐시가 서명으로 재렌더를 판단하기 때문.
 //  (2026-08-30 대표 보고: gangOn 을 빠뜨려 '전체 토글은 되는데 구별 토글은 즉시 안 보임')
 function switchLightingSig(e){
+  // lightGang 은 점등뿐 아니라 '다른 구 연결' 경고 판정에도 쓰인다
   return [e.id, e.circuitOn?1:0, (e.lightIds||[]).join('.'),
           (e.gangOn||[]).map(v=>v?1:0).join(''),
           e.lightGang?Object.keys(e.lightGang).sort().map(k=>k+':'+e.lightGang[k]).join(','):''];
@@ -2904,10 +2905,81 @@ function linearGlowStops(peak,soft){
           1,_ga(0)];
 }
 
+// ===== 2026-08-30: 회로 충돌 경고 (대표 지시 — 다른 구끼리 점핑되면 표시) =====
+//  점핑으로 이어진 조명들은 전기적으로 한 회로다. 그런데 그 무리에 급전하는
+//  (스위치, 구)가 둘 이상이면 서로 다른 회로를 한 가닥으로 묶은 셈이 된다.
+//   · 같은 스위치의 1구와 2구를 점핑 → 구별 스위칭이 무의미해진다 (1구만 켜도 2구가 켜짐)
+//   · 다른 스위치끼리 점핑 → 두 회로가 단락된다
+//  둘 다 도면대로 시공하면 안 되는 배선이라 눈에 띄게 표시한다.
+//  ※ 무리 중 하나만 스위치에 물린 것은 정상이다 — 스위치→첫 기구, 나머지는 점핑.
+function lightFeedKeys(lightId){
+  const out=[];
+  (STATE.electric||[]).forEach(e=>{
+    if(!isSwitchType(e.type)||!Array.isArray(e.lightIds)) return;
+    if(e.lightIds.indexOf(lightId)<0) return;
+    out.push(e.id+'#'+lightGangOf(e,lightId));
+  });
+  return out;
+}
+let _jumpConflictCache=null,_jumpConflictSig=null;
+function invalidateJumpConflicts(){_jumpConflictCache=null;_jumpConflictSig=null;}
+function jumpConflictGroups(){
+  let sig;
+  try{
+    sig=JSON.stringify((STATE.lights||[]).map(l=>[l.id,(l.jumpIds||[]).join('.')]))
+       +'§'+JSON.stringify((STATE.electric||[]).map(e=>[e.id,(e.lightIds||[]).join('.'),
+            e.lightGang?Object.keys(e.lightGang).sort().map(k=>k+':'+e.lightGang[k]).join(','):'']));
+  }catch(_){sig=null;}
+  if(sig!==null&&_jumpConflictCache&&_jumpConflictSig===sig) return _jumpConflictCache;
+  const seen=new Set(), groups=[], ids=new Set();
+  (STATE.lights||[]).forEach(l=>{
+    if(seen.has(l.id)) return;
+    // 점핑으로 이어진 무리 하나
+    const stack=[l.id], mem=[];
+    seen.add(l.id);
+    while(stack.length){
+      const cur=stack.pop();mem.push(cur);
+      jumpNeighbors(cur).forEach(n=>{if(!seen.has(n)){seen.add(n);stack.push(n);}});
+    }
+    if(mem.length<2) return; // 점핑이 없으면 볼 것도 없다
+    const feeds=new Set();
+    mem.forEach(id=>lightFeedKeys(id).forEach(k=>feeds.add(k)));
+    if(feeds.size<2) return;
+    mem.forEach(id=>ids.add(id));
+    groups.push({members:mem,feeds:[...feeds]});
+  });
+  _jumpConflictCache={ids,groups};_jumpConflictSig=sig;
+  return _jumpConflictCache;
+}
+// 이 조명이 낀 충돌 무리 (없으면 null)
+function jumpConflictOf(lightId){
+  const c=jumpConflictGroups();
+  if(!c.ids.has(lightId)) return null;
+  return c.groups.find(g=>g.members.indexOf(lightId)>=0)||null;
+}
+// 충돌 내용을 사람이 읽는 문장으로 — '몇 구와 몇 구가 묶였다'
+function jumpConflictText(g){
+  if(!g) return '';
+  const bySw={};
+  g.feeds.forEach(k=>{
+    const i=k.lastIndexOf('#');
+    const sid=k.slice(0,i), gi=parseInt(k.slice(i+1),10)||0;
+    (bySw[sid]=bySw[sid]||[]).push(gi+1);
+  });
+  const parts=Object.keys(bySw).map(sid=>{
+    const sw=(STATE.electric||[]).find(e=>e.id===sid);
+    const nm=(sw&&ELECTRIC_LIB[sw.type]&&ELECTRIC_LIB[sw.type].name)||'스위치';
+    const gs=[...new Set(bySw[sid])].sort((a,b)=>a-b);
+    return nm+' '+gs.join('·')+'구';
+  });
+  return parts.join(' + ');
+}
+
 function renderLights(){
   groups.lights.destroyChildren();
   const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합 (2026-08-27: 점핑 연쇄 포함)
   const _dup=_pm()?{ids:new Set(),rep:new Map()}:duplicateLightGroups(); // 2026-08-29: 겹친 조명 — 경고는 화면에만
+  const _cfl=_pm()?{ids:new Set(),groups:[]}:jumpConflictGroups(); // 2026-08-30: 다른 구끼리 점핑
   // 2026-08-27: 조명↔조명 점핑선 (중복 방지 위해 id 사전순 한 번만)
   const _jvis=jumpVisibleSet();
   const _drawn=new Set();
@@ -2932,8 +3004,13 @@ function renderLights(){
       const on=_litSet.has(l.id)&&_litSet.has(nid);
       // 2026-08-29: 배선은 가는 점선 (대표 지시). 문제였던 건 선의 끈기가 아니라
       //  선 위에 박힌 둥근 마커들이었다 — 그건 없았고, 굵기만 얼파 두께 기구를 덮지 않게 한다.
-      groups.lights.add(new Konva.Line({points:[x1,y1,x2,y2],stroke:on?'#D4B872':'#7BA05B',
-        strokeWidth:CIRCUIT_LINE_W,dash:CIRCUIT_LINE_DASH,opacity:0.95,listening:false,name:'jump-line'}));
+      // 2026-08-30: 서로 다른 회로를 묶어버린 선은 빨간색으로 — 이대로 시공하면 안 된다
+      const _bad=_cfl.ids.has(l.id)&&_cfl.ids.has(nid);
+      groups.lights.add(new Konva.Line({points:[x1,y1,x2,y2],
+        stroke:_bad?'#FF3B30':(on?'#D4B872':'#7BA05B'),
+        strokeWidth:_bad?CIRCUIT_LINE_W*1.8:CIRCUIT_LINE_W,
+        dash:CIRCUIT_LINE_DASH,opacity:0.95,listening:false,
+        name:_bad?'jump-line jump-conflict':'jump-line'}));
     });
   });
   STATE.lights.forEach(o=>{
@@ -3046,6 +3123,18 @@ function renderLights(){
     if(isLinearLight(o.type)) addLinearLightTag(groups.lights,x,y,def,o);
     if(o.locked) g.opacity(0.30);
     groups.lights.add(g);
+    // 2026-08-30: 회로 충돌 — 무리당 한 번, 무엇과 무엇이 묶였는지까지 적는다
+    if(_cfl.ids.has(o.id)&&STATE.zoom>=0.3){
+      const grp=_cfl.groups.find(gg=>gg.members[0]===o.id);
+      if(grp){
+        const rr=mmToPx(def.size||200)/2+9;
+        groups.lights.add(new Konva.Text({x:x-130,y:y+rr+16,width:260,align:'center',
+          text:'⚠ 다른 회로 연결 — '+jumpConflictText(grp),
+          fontSize:11,fontFamily:'Inter',fontStyle:'700',
+          fill:'#FF6B60',stroke:'#0A0A0A',strokeWidth:2.8,fillAfterStrokeEnabled:true,
+          lineJoin:'round',listening:false}));
+      }
+    }
     // 겹친 무리당 글씨는 한 번만 (겹친 것마다 쓰면 오히려 안 읽힐다)
     if(_dup.rep.has(o.id)&&STATE.zoom>=0.3){
       const n=_dup.rep.get(o.id);

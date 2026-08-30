@@ -793,6 +793,26 @@ function refreshDetail(){
     }
     // 2026-08-27: 조명 점핑 패널 (대표 지시) — 조명↔조명 연결
     const isLightSel=STATE.selectedKind==='lights'&&obj;
+    // 2026-08-30: 다른 구·다른 스위치의 조명이 점핑으로 묶였을 때 (대표 지시)
+    let cflHtml='';
+    if(isLightSel&&typeof jumpConflictOf==='function'){
+      const _cg=jumpConflictOf(obj.id);
+      if(_cg){
+        cflHtml=
+          '<div style="margin-top:8px;padding:8px;background:rgba(255,59,48,0.10);'+
+          'border:1px solid rgba(255,59,48,0.55);border-radius:4px">'+
+          '<div class="field-label" style="margin-bottom:6px;color:#FF6B60">'+
+          '⚠ 다른 회로가 한 가닥으로 묶였습니다</div>'+
+          '<div class="hint" style="margin-bottom:6px;color:var(--text-secondary)">'+
+          escapeHtml(jumpConflictText(_cg))+' · 조명 <b>'+_cg.members.length+'개</b>가 점핑으로 이어져 '+
+          '한 쪽만 켜도 전부 켜집니다</div>'+
+          '<div style="display:flex;gap:4px">'+
+          '<button type="button" class="btn sm" id="d-cfl-unify" style="flex:1">한 구로 통일</button>'+
+          '<button type="button" class="btn sm" id="d-cfl-cut" style="flex:1">점핑 끊기</button>'+
+          '</div>'+
+          '<div class="hint" style="margin-top:4px">한 구로 통일 = 묶인 대로 살리고 도면을 맞춘다 · 끊기 = 구별로 나눈다</div></div>';
+      }
+    }
     // 2026-08-29: 같은 자리에 겹친 조명 경고 + 한 번에 정리 (대표 지시)
     let dupHtml='';
     if(isLightSel&&typeof duplicateLightPeers==='function'){
@@ -906,7 +926,7 @@ function refreshDetail(){
         '</div>';
     }
     dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      dupHtml+lenHtml+inchHtml+labelHtml+jumpHtml+circuitHtml+extraHtml+
+      cflHtml+dupHtml+lenHtml+inchHtml+labelHtml+jumpHtml+circuitHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -927,6 +947,13 @@ function refreshDetail(){
       }));
     }
     if(isLightSel){
+      const cu=document.getElementById('d-cfl-unify');
+      if(cu) cu.addEventListener('click',()=>unifyJumpGroupGang(obj.id));
+      const cc=document.getElementById('d-cfl-cut');
+      if(cc) cc.addEventListener('click',()=>{
+        const g=jumpConflictOf(obj.id);
+        if(g) unchainSelectedLights(g.members);
+      });
       const dfx=document.getElementById('d-dup-fix');
       if(dfx) dfx.addEventListener('click',()=>cleanDuplicateLights(obj.id));
     }
@@ -2591,6 +2618,39 @@ function unchainSelectedLights(ids){
   saveHistory();renderAll();refreshUI();_circuitBanner();
   cmdToast('🔗 점핑 해제 — 연결 '+n+'개');
   return n;
+}
+// 2026-08-30: 충돌 무리를 한 구로 몰아준다 — 묶인 대로 살리고 도면을 배선에 맞춘다
+function unifyJumpGroupGang(lightId){
+  const g=(typeof jumpConflictOf==='function')?jumpConflictOf(lightId):null;
+  if(!g){cmdToast('충돌이 없습니다');return 0;}
+  // 기준은 이 조명이 물린 회로, 없으면 무리의 첫 급전 회로
+  const own=lightFeedKeys(lightId);
+  const key=own[0]||g.feeds[0];
+  if(!key) return 0;
+  const i=key.lastIndexOf('#');
+  const swId=key.slice(0,i), gang=parseInt(key.slice(i+1),10)||0;
+  const sw=(STATE.electric||[]).find(e=>e.id===swId);
+  if(!sw){cmdToast('스위치를 찾을 수 없습니다');return 0;}
+  const set=new Set(g.members);
+  // 다른 회로의 급전은 띄어낸다
+  (STATE.electric||[]).forEach(e=>{
+    if(!Array.isArray(e.lightIds)) return;
+    if(e.id===swId){
+      e.lightIds.forEach(id=>{if(set.has(id)) setLightGang(e,id,gang);});
+      return;
+    }
+    const before=e.lightIds.length;
+    e.lightIds=e.lightIds.filter(id=>!set.has(id));
+    if(e.lightIds.length!==before){
+      if(e.lightGang) set.forEach(id=>{delete e.lightGang[id];});
+      if(typeof syncSwitchCircuitOn==='function') syncSwitchCircuitOn(e);
+    }
+  });
+  if(typeof syncSwitchCircuitOn==='function') syncSwitchCircuitOn(sw);
+  if(typeof invalidateJumpConflicts==='function') invalidateJumpConflicts();
+  saveHistory();renderAll();refreshUI();_circuitBanner();
+  cmdToast('한 구로 통일 — '+(gang+1)+'구 · 조명 '+g.members.length+'개');
+  return g.members.length;
 }
 // B. 스위치 먼저 — 이 스위치에서만 뺀다 (연결 모드에서 Alt+드래그)
 function detachLightsFromSwitch(switchId,lightIds){

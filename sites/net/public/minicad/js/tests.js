@@ -3129,6 +3129,108 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('점등표현·규격: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-30: 다른 구끼리 점핑되면 경고 (대표 지시) ===
+  try{
+    const _bakCF={lights:STATE.lights.slice(),electric:STATE.electric.slice(),zoom:STATE.zoom,
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice(),sc:STATE.showCircuits};
+    const CX=7900000;
+    STATE.lights=[];STATE.electric=[];STATE.boxSelection=[];
+    STATE.selectedKind=null;STATE.selectedId=null;STATE.zoom=1;STATE.showCircuits=true;
+
+    const C=[0,1,2,3].map(i=>{const o={id:'lc'+i,type:'downlight',x:CX+i*900,y:CX,angle:0,inch:3};
+      STATE.lights.push(o);return o;});
+    const cs={id:'csw',type:'switch_2',x:CX,y:CX+2500,angle:0,
+      lightIds:[C[0].id,C[2].id],lightGang:{},gangOn:[true,false]};
+    setLightGang(cs,C[0].id,0); setLightGang(cs,C[2].id,1);   // 1구 / 2구
+    STATE.electric.push(cs);
+    invalidateJumpConflicts();
+
+    // [F1] 점핑이 없으면 충돌도 없다
+    assert('회로충돌: 점핑 없으면 충돌 없음',jumpConflictGroups().ids.size===0);
+
+    // [F2] 같은 구 안에서 점핑 — 정상
+    C[0].jumpIds=[C[1].id];              // 1구 급전 → 미급전 조명으로 점핑
+    invalidateJumpConflicts();
+    assert('회로충돌: 같은 회로 점핑은 정상',jumpConflictGroups().ids.size===0,
+      'n='+jumpConflictGroups().ids.size);
+
+    // [F3] 1구와 2구를 점핑으로 이으면 충돌
+    C[1].jumpIds=[C[2].id];              // ... → 2구 급전 조명까지 이어짐
+    invalidateJumpConflicts();
+    const cg=jumpConflictGroups();
+    assert('회로충돌: 다른 구끼리 이으면 잡힌다',cg.ids.size===3&&cg.groups.length===1,
+      'n='+cg.ids.size+' g='+cg.groups.length);
+    assert('회로충돌: 무리 전체가 표시된다',
+      [C[0],C[1],C[2]].every(o=>cg.ids.has(o.id))&&!cg.ids.has(C[3].id));
+    const txt=jumpConflictText(cg.groups[0]);
+    assert('회로충돌: 무엇과 무엇인지 적는다',txt.indexOf('1')>=0&&txt.indexOf('2')>=0&&
+      txt.indexOf('구')>=0,txt);
+    assert('회로충돌: 조회 헬퍼',!!jumpConflictOf(C[1].id)&&!jumpConflictOf(C[3].id));
+
+    // [F4] 도면에 빨간 선 + 경고 글씨
+    renderAll();
+    const badLines=groups.lights.getChildren(n=>n.getClassName()==='Line'&&
+      n.name&&n.name().indexOf('jump-conflict')>=0);
+    assert('회로충돌: 충돌 선은 빨간색',badLines.length===2&&badLines.every(n=>n.stroke()==='#FF3B30'),
+      'n='+badLines.length);
+    let warnTxt=0;
+    groups.lights.getChildren().forEach(n=>{if(n.getClassName&&n.getClassName()==='Text'&&
+      n.text().indexOf('다른 회로 연결')>=0)warnTxt++;});
+    assert('회로충돌: 경고 글씨는 무리당 1개',warnTxt===1,'n='+warnTxt);
+
+    // [F5] 인쇄에는 경고를 내지 않는다
+    STATE.printMode=true;renderAll();
+    assert('회로충돌: 인쇄에는 미포함',
+      groups.lights.getChildren(n=>n.getClassName()==='Line'&&n.name&&
+        n.name().indexOf('jump-conflict')>=0).length===0);
+    STATE.printMode=false;renderAll();
+
+    // [F6] 다른 스위치끼리 점핑도 충돌
+    const cs2={id:'csw2',type:'switch_1',x:CX+5000,y:CX+2500,angle:0,
+      lightIds:[C[3].id],lightGang:{},gangOn:[true]};
+    STATE.electric.push(cs2);
+    C[2].jumpIds=[C[3].id];
+    invalidateJumpConflicts();
+    assert('회로충돌: 다른 스위치끼리도 잡는다',jumpConflictGroups().ids.size===4,
+      'n='+jumpConflictGroups().ids.size);
+    assert('회로충돌: 스위치 두 대가 문구에',jumpConflictText(jumpConflictGroups().groups[0]).indexOf('+')>=0,
+      jumpConflictText(jumpConflictGroups().groups[0]));
+    C[2].jumpIds=[];STATE.electric=STATE.electric.filter(e=>e!==cs2);
+    C[1].jumpIds=[C[2].id];invalidateJumpConflicts();
+
+    // [F7] 속성 패널에 경고와 고치는 두 가지 길
+    STATE.selectedKind='lights';STATE.selectedId=C[1].id;STATE.boxSelection=[];
+    refreshUI();
+    assert('회로충돌: 패널 경고',!!document.getElementById('d-cfl-unify')&&
+      !!document.getElementById('d-cfl-cut'));
+    const _dc2=document.getElementById('detail-content').innerHTML;
+    assert('회로충돌: 경고가 맨 위',_dc2.indexOf('다른 회로가 한 가닥으로')>=0&&
+      _dc2.indexOf('다른 회로가 한 가닥으로')<_dc2.indexOf('배선 —'));
+
+    // [F8] '한 구로 통일' — 무리 전체를 고른 조명의 구로 몰아준다
+    unifyJumpGroupGang(C[1].id);
+    invalidateJumpConflicts();
+    assert('회로충돌: 통일하면 경고가 사라진다',jumpConflictGroups().ids.size===0,
+      'n='+jumpConflictGroups().ids.size);
+    assert('회로충돌: 같은 구로 모인다',lightGangOf(cs,C[0].id)===lightGangOf(cs,C[2].id),
+      lightGangOf(cs,C[0].id)+'/'+lightGangOf(cs,C[2].id));
+
+    // [F9] '점핑 끊기' 로도 풀린다
+    setLightGang(cs,C[2].id,1);invalidateJumpConflicts();
+    assert('회로충돌: 되돌리면 다시 경고',jumpConflictGroups().ids.size===3);
+    unchainSelectedLights(jumpConflictOf(C[1].id).members);
+    invalidateJumpConflicts();
+    assert('회로충돌: 끊으면 해소',jumpConflictGroups().ids.size===0);
+
+    STATE.lights=_bakCF.lights;STATE.electric=_bakCF.electric;STATE.zoom=_bakCF.zoom;
+    STATE.selectedKind=_bakCF.selK;STATE.selectedId=_bakCF.selI;STATE.boxSelection=_bakCF.box;
+    STATE.showCircuits=_bakCF.sc;
+    invalidateJumpConflicts();
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('회로충돌: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),
