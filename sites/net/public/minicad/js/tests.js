@@ -3352,6 +3352,100 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('빛설정: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-30: 조명 배열 배치 (대표 지시 — 밭 전(田)자처럼 간격 맞춰 여러 개) ===
+  try{
+    const _bakAR={lights:STATE.lights.slice(),arr:STATE.lightArray?{...STATE.lightArray}:null,
+      tool:STATE.selectedTool,lib:STATE.selectedLib,dl:STATE.downlightInch,
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice()};
+    STATE.lights=[];STATE.boxSelection=[];STATE.selectedKind=null;STATE.selectedId=null;
+
+    // [A1] 간격은 50mm 단위로 맞춰진다
+    assert('배열: 50단위 반올림',snapArrayGap(923)===900&&snapArrayGap(926)===950&&snapArrayGap(875)===900,
+      snapArrayGap(923)+'/'+snapArrayGap(926)+'/'+snapArrayGap(875));
+    assert('배열: 간격 상하한',snapArrayGap(10)===LIGHT_ARRAY_MIN&&snapArrayGap(999999)===LIGHT_ARRAY_MAX);
+    assert('배열: 숫자가 아니면 기본',snapArrayGap('abc')===900);
+
+    // [A2] 개수는 1~6 으로 제한
+    STATE.lightArray={cols:99,rows:0,dx:900,dy:900};
+    const c1=lightArrayCfg();
+    assert('배열: 개수 1~6 제한',c1.cols===LIGHT_ARRAY_MAX_N&&c1.rows===1,c1.cols+'/'+c1.rows);
+
+    // [A3] 밭 전(田) — 2×2 는 중심 기준 네 귀퉁이
+    STATE.lightArray={cols:2,rows:2,dx:900,dy:900};
+    const offs=lightArrayOffsets();
+    assert('배열: 2×2 는 4개',offs.length===4);
+    const xs=offs.map(o=>o.dx).sort((a,b)=>a-b), ys=offs.map(o=>o.dy).sort((a,b)=>a-b);
+    assert('배열: 중심 기준 대칭',xs[0]===-450&&xs[3]===450&&ys[0]===-450&&ys[3]===450,
+      JSON.stringify({xs,ys}));
+    const span=lightArraySpanMm();
+    assert('배열: 전체 크기',span.w===900&&span.h===900,JSON.stringify(span));
+
+    // [A4] 1×1 이면 배열이 아니다 (평소처럼 하나만)
+    STATE.lightArray={cols:1,rows:1,dx:900,dy:900};
+    assert('배열: 1개면 배열 아님',lightArrayActive()===false);
+    STATE.lightArray={cols:2,rows:1,dx:900,dy:900};
+    assert('배열: 2개면 배열',lightArrayActive()===true);
+
+    // [A5] 실제 배치 — 중심점 하나로 여러 개, 인치도 따라온다
+    STATE.lightArray={cols:3,rows:2,dx:1200,dy:800};
+    STATE.selectedTool='light';STATE.selectedLib='downlight#4';
+    // 배치 전 상태를 히스토리에 기록해야 undo 기준점이 '빈 도면'이 된다
+    saveHistory();
+    const pos={x:stage.width()/2,y:stage.height()/2};
+    const cmm=getMm(pos);
+    const made=addLightArray(pos,'downlight#4');
+    assert('배열: 3×2 는 6개 배치',made&&made.length===6&&STATE.lights.length===6,
+      'n='+(made?made.length:0));
+    assert('배열: 규격이 전부 4인치',STATE.lights.every(l=>l.inch===4));
+    const mx=STATE.lights.map(l=>l.x), my=STATE.lights.map(l=>l.y);
+    assert('배열: 중심이 찍은 점',
+      Math.abs((Math.min(...mx)+Math.max(...mx))/2-cmm.x)<2&&
+      Math.abs((Math.min(...my)+Math.max(...my))/2-cmm.y)<2,
+      ((Math.min(...mx)+Math.max(...mx))/2-cmm.x)+'/'+((Math.min(...my)+Math.max(...my))/2-cmm.y));
+    assert('배열: 가로 간격 1200',Math.max(...mx)-Math.min(...mx)===2400,
+      String(Math.max(...mx)-Math.min(...mx)));
+    assert('배열: 세로 간격 800',Math.max(...my)-Math.min(...my)===800);
+
+    // [A6] 한 번의 취소로 전부 되돌아간다
+    if(typeof undo==='function'){
+      undo();
+      assert('배열: 취소 한 번에 전부',STATE.lights.length===0,'n='+STATE.lights.length);
+      if(typeof redo==='function') redo();
+    }
+
+    // [A7] 설정 패널 — 도구+팔레트 선택 상태에서 뜬다
+    STATE.lights=[];
+    STATE.selectedKind=null;STATE.selectedId=null;STATE.boxSelection=[];
+    STATE.selectedTool='light';STATE.selectedLib='downlight#3';
+    STATE.lightArray={cols:2,rows:2,dx:900,dy:900};
+    refreshUI();
+    assert('배열: 설정 패널 표시',!!document.getElementById('d-la-cols')&&
+      !!document.getElementById('d-la-dx'));
+    assert('배열: 견본 그림',document.getElementById('detail-content').innerHTML.indexOf('<svg')>=0);
+    assert('배열: 모양 프리셋',document.querySelectorAll('.la-preset').length===LIGHT_ARRAY_PRESETS.length);
+    // 프리셋을 누르면 설정이 바뀐다
+    const p33=[...document.querySelectorAll('.la-preset')].filter(b=>b.dataset.c==='3'&&b.dataset.r==='3')[0];
+    assert('배열: 3×3 프리셋 존재',!!p33);
+    if(p33){p33.click();
+      assert('배열: 프리셋 적용',lightArrayCfg().cols===3&&lightArrayCfg().rows===3);}
+    // 간격 입력이 50 단위로 정리된다
+    const dxEl=document.getElementById('d-la-dx');
+    dxEl.value='937';dxEl.dispatchEvent(new Event('change'));
+    assert('배열: 입력도 50단위로',lightArrayCfg().dx===950,String(lightArrayCfg().dx));
+    // 객체를 고르면 배치 패널 대신 그 객체 속성이 나온다
+    STATE.lights.push({id:'la1',type:'downlight',x:0,y:0,angle:0,inch:3});
+    STATE.selectedKind='lights';STATE.selectedId='la1';
+    refreshUI();
+    assert('배열: 객체 선택 시엔 속성 패널',!document.getElementById('d-la-cols'));
+
+    STATE.lights=_bakAR.lights;STATE.lightArray=_bakAR.arr;
+    STATE.selectedTool=_bakAR.tool;STATE.selectedLib=_bakAR.lib;STATE.downlightInch=_bakAR.dl;
+    STATE.selectedKind=_bakAR.selK;STATE.selectedId=_bakAR.selI;STATE.boxSelection=_bakAR.box;
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('배열: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),

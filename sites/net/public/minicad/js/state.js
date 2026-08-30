@@ -10,6 +10,8 @@ const STATE={
   symbolLabelMode:'smart',
   // 2026-08-28: 인쇄 설정 (대표 지시 — 원하는 포인트만 뽑게). 문서와 함께 저장된다
   printConfig:null,   // {region,rect,spaceIds,paper,orientation,scale,preset,layers,symbolLabels,titleBlock,scaleBar,north,page2}
+  // 2026-08-30: 조명 배열 배치 (대표 지시) — 가로×세로 개수와 간격(50mm 단위)
+  lightArray:{cols:2,rows:2,dx:900,dy:900},
   printFrameOn:false, // 2026-08-28: 도면 위에 인쇄 틀을 띄워 손으로 잡기
   printColor:false,  // 2026-08-29: 칼라 인쇄 (기본은 흑백 선화)
   printLabels:false,  // 인쇄 중 기호 이름을 찍을지 (조명·전기 도면용)

@@ -429,6 +429,92 @@ function refreshSpaceList(){
 }
 
 // *** 디테일 — 도어/창 W×H×D 편집 UI (요구사항 #2, #3) ***
+// ===== 2026-08-30: 조명 배열 배치 설정 패널 (대표 지시) =====
+//  조명 도구를 고르고 팔레트에서 항목을 고르면, 아무것도 선택 안 한 상태에서
+//  우측 패널에 배치 설정이 뜬다. 도면을 찍기 전에 모양을 정해 두는 자리다.
+function _arrayPreviewSVG(cfg){
+  const cols=cfg.cols, rows=cfg.rows;
+  const W=150, H=96, pad=16;
+  const gx=cols>1?(W-pad*2)/(cols-1):0;
+  const gy=rows>1?(H-pad*2)/(rows-1):0;
+  let dots='';
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const x=cols>1?pad+c*gx:W/2, y=rows>1?pad+r*gy:H/2;
+    dots+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="5" fill="#D4B872" stroke="#8C7434" stroke-width="1"/>';
+  }
+  // 중심 십자 — 도면에서 찍는 점
+  dots+='<line x1="'+(W/2-7)+'" y1="'+(H/2)+'" x2="'+(W/2+7)+'" y2="'+(H/2)+'" stroke="#D4FF3D" stroke-width="1.2"/>'+
+        '<line x1="'+(W/2)+'" y1="'+(H/2-7)+'" x2="'+(W/2)+'" y2="'+(H/2+7)+'" stroke="#D4FF3D" stroke-width="1.2"/>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="96" style="display:block">'+
+    '<rect x="0.5" y="0.5" width="'+(W-1)+'" height="'+(H-1)+'" fill="rgba(255,255,255,0.02)" '+
+    'stroke="rgba(212,184,114,0.35)" stroke-dasharray="4 3"/>'+dots+'</svg>';
+}
+function renderLightArrayPanel(){
+  const dc=document.getElementById('detail-content');
+  if(!dc) return;
+  const a=lightArrayCfg();
+  const span=lightArraySpanMm();
+  const n=a.cols*a.rows;
+  const libKey=STATE.selectedLib;
+  const def=(typeof libDefForKey==='function')?libDefForKey(LIGHT_LIB,libKey):LIGHT_LIB[libKey];
+  const nm=(def&&def.name)||'조명';
+  const preset=(p)=>'<button type="button" class="btn sm la-preset" data-c="'+p.cols+'" data-r="'+p.rows+'"'+
+    ' style="flex:1 1 30%;padding:4px 2px;font-size:11px'+
+    ((a.cols===p.cols&&a.rows===p.rows)?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
+    '">'+p.name+'</button>';
+  dc.innerHTML=
+    '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">배치할 조명: '+
+      '<strong style="color:var(--gold)">'+escapeHtml(nm)+'</strong></p>'+
+    '<div style="padding:9px;background:rgba(212,184,114,0.07);border:1px solid rgba(212,184,114,0.45);border-radius:5px">'+
+    '<div class="field-label" style="margin-bottom:6px;color:#D4B872">배치 모양 — 중심점 하나로 '+n+'개</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:4px">'+LIGHT_ARRAY_PRESETS.map(preset).join('')+'</div>'+
+    '<div style="display:flex;gap:5px;margin-top:6px">'+
+      '<div class="field" style="flex:1;margin:0"><label class="field-label">가로 개수</label>'+
+      '<input type="text" inputmode="numeric" id="d-la-cols" value="'+a.cols+'"></div>'+
+      '<div class="field" style="flex:1;margin:0"><label class="field-label">세로 개수</label>'+
+      '<input type="text" inputmode="numeric" id="d-la-rows" value="'+a.rows+'"></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:5px;margin-top:5px">'+
+      '<div class="field" style="flex:1;margin:0"><label class="field-label">가로 간격 (mm)</label>'+
+      '<input type="text" inputmode="numeric" id="d-la-dx" value="'+a.dx+'"></div>'+
+      '<div class="field" style="flex:1;margin:0"><label class="field-label">세로 간격 (mm)</label>'+
+      '<input type="text" inputmode="numeric" id="d-la-dy" value="'+a.dy+'"></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:3px;margin-top:5px">'+
+      [600,900,1200,1500].map(v=>'<button type="button" class="btn sm la-gap" data-v="'+v+'"'+
+        ' style="flex:1;padding:3px 2px;font-size:11px'+
+        ((a.dx===v&&a.dy===v)?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
+        '">'+v+'</button>').join('')+
+    '</div>'+
+    '<div class="field-label" style="margin:8px 0 4px;color:#D4B872">배치 견본</div>'+
+    _arrayPreviewSVG(a)+
+    '<div class="hint" style="margin-top:4px">전체 '+span.w+' × '+span.h+'mm · 간격은 50mm 단위로 맞춰집니다<br>'+
+      '도면에서 <b>중심점</b>을 클릭하면 '+n+'개가 한 번에 놓입니다</div>'+
+    '</div>';
+  document.querySelectorAll('.la-preset').forEach(b=>b.addEventListener('click',()=>{
+    const a2=lightArrayCfg();
+    a2.cols=parseInt(b.dataset.c,10);a2.rows=parseInt(b.dataset.r,10);
+    lightArrayCfg();refreshUI();
+    showStatus('배치 '+a2.cols+'×'+a2.rows+' — 도면에서 중심점 클릭');
+  }));
+  document.querySelectorAll('.la-gap').forEach(b=>b.addEventListener('click',()=>{
+    const a2=lightArrayCfg();
+    a2.dx=parseInt(b.dataset.v,10);a2.dy=parseInt(b.dataset.v,10);
+    lightArrayCfg();refreshUI();
+  }));
+  [['d-la-cols','cols'],['d-la-rows','rows'],['d-la-dx','dx'],['d-la-dy','dy']].forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('change',e=>{
+      const v=parseInt(e.target.value,10);
+      if(!isFinite(v)){refreshUI();return;}
+      const a2=lightArrayCfg();
+      a2[key]=v;
+      lightArrayCfg(); // 개수 1~6, 간격 50 단위로 정리
+      refreshUI();
+    });
+  });
+}
 function refreshDetail(){
   const empty=document.getElementById('sp-empty');
   const detail=document.getElementById('sp-detail');
@@ -488,7 +574,16 @@ function refreshDetail(){
     if(_db) _db.addEventListener('click',deleteSelected);
     return;
   }
-  if(!STATE.selectedKind||!STATE.selectedId){empty.style.display='block';detail.style.display='none';return;}
+  // 2026-08-30: 조명 도구 + 팔레트 선택 상태면 배치 설정을 보여준다 (찍기 전에 모양을 정하는 자리)
+  if(!STATE.selectedKind||!STATE.selectedId){
+    if(STATE.selectedTool==='light'&&STATE.selectedLib&&typeof lightArrayCfg==='function'){
+      empty.style.display='none';detail.style.display='block';
+      stats.style.display='none';warn.style.display='none';
+      renderLightArrayPanel();
+      return;
+    }
+    empty.style.display='block';detail.style.display='none';return;
+  }
   empty.style.display='none';detail.style.display='block';
   stats.style.display='none';warn.style.display='none';
   const dc=document.getElementById('detail-content');

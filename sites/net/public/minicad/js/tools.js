@@ -561,10 +561,43 @@ function placeLibAt(pos){
   addLibObject(pos,kind,STATE.selectedLib); // 2026-08-30: 'type#규격' 키도 그대로 넘긴다
   return true;
 }
+// 2026-08-30: 조명 배열 배치 — 중심점 하나로 N개를 놓는다 (취소도 한 번에)
+function addLightArray(pos,libKey){
+  const type=(typeof libBaseType==='function')?libBaseType(libKey):libKey;
+  const c=getMm(pos);
+  const offs=lightArrayOffsets();
+  const made=[];
+  offs.forEach(off=>{
+    const mm={x:c.x+off.dx, y:c.y+off.dy};
+    const sp=findNearestSpace(mm);
+    const o={id:makeId('l'),type,x:mm.x,y:mm.y,angle:_libPlaceAngle||0,flipped:!!_libPlaceFlipped,
+      layerName:makeLayerName('LITE',sp),spaceId:sp?sp.id:null};
+    if(type==='downlight') o.inch=Math.round(STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT);
+    if(typeof applyLibVariant==='function') applyLibVariant(o,libKey);
+    if(typeof isLinearLight==='function'&&isLinearLight(type)) o.length_mm=linearLightLen({type});
+    STATE.lights.push(o);made.push(o);
+  });
+  if(type==='downlight'&&typeof libVariantVal==='function'&&libVariantVal(libKey)!==null&&made[0])
+    STATE.downlightInch=made[0].inch;
+  drawGroup.destroyChildren();
+  _libPreviewActive=false;
+  saveHistory();renderAll();refreshUI();
+  mainLayer.draw();previewLayer.draw();
+  const sp2=lightArraySpanMm();
+  if(typeof cmdToast==='function')
+    cmdToast('조명 '+made.length+'개 배치 — '+lightArrayCfg().cols+'×'+lightArrayCfg().rows+
+      ' · '+sp2.w+'×'+sp2.h+'mm (Ctrl+Z 취소)');
+  return made;
+}
 function addLibObject(pos,kind,type){
   // 2026-08-30: 팔레트 키가 'downlight#3' 처럼 규격을 단 경우 — 타입과 규격을 분리
   const _libKey=type;
   if(typeof libBaseType==='function') type=libBaseType(_libKey);
+  // 2026-08-30: 조명 배열 — 찍은 곳을 중심으로 설정한 모양대로 한 번에 (대표 지시)
+  if(kind==='lights'&&typeof lightArrayActive==='function'&&lightArrayActive()){
+    addLightArray(pos,_libKey);
+    return;
+  }
   const mm=getMm(pos);
   const sp=findNearestSpace(mm);
   const elem={fixtures:'FIXT',furniture:'FURN',lights:'LITE',electric:'ELEC',hvac:'HVAC'}[kind]||'OBJ';
@@ -2911,6 +2944,30 @@ function updateLibPlacementPreview(pos){
   const halfW=(wMm*cosA+hMm*sinA)/2;
   const halfH=(wMm*sinA+hMm*cosA)/2;
 
+  // 2026-08-30: 조명 배열이면 놓일 자리를 모두 미리 보여준다 (배치 견본)
+  const _arr=(tool==='light'&&typeof lightArrayActive==='function'&&lightArrayActive())
+    ?lightArrayOffsets():null;
+  if(_arr){
+    const sp3=lightArraySpanMm();
+    _arr.forEach(off=>{
+      const gx=cx+mmToPx(off.dx), gy=cy+mmToPx(off.dy);
+      const gg=new Konva.Group({x:gx,y:gy,rotation:_libPlaceAngle,opacity:0.5,listening:false});
+      if(def.shape) drawShape(def.shape).forEach(n=>{n.listening(false);gg.add(n);});
+      gg.add(new Konva.Circle({radius:Math.max(4,mmToPx(def.size||200)/2),stroke:'#D4FF3D',
+        strokeWidth:1.3,dash:[4,3],listening:false}));
+      drawGroup.add(gg);
+    });
+    // 전체 범위 상자 + 치수
+    const bw=mmToPx(sp3.w), bh=mmToPx(sp3.h);
+    drawGroup.add(new Konva.Rect({x:cx-bw/2,y:cy-bh/2,width:bw,height:bh,
+      stroke:'#D4FF3D',strokeWidth:1,dash:[8,5],fill:'transparent',opacity:0.7,listening:false}));
+    drawGroup.add(new Konva.Text({x:cx-120,y:cy-bh/2-22,width:240,align:'center',
+      text:lightArrayCfg().cols+'×'+lightArrayCfg().rows+'  '+sp3.w+'×'+sp3.h+'mm',
+      fontSize:11.5,fontFamily:'JetBrains Mono',fontStyle:'700',
+      fill:'#D4FF3D',stroke:'#0A0A0A',strokeWidth:3,fillAfterStrokeEnabled:true,listening:false}));
+    previewLayer.batchDraw();
+    return;
+  }
   // 고스트 도형 (회전 + 미러 적용)
   const ghost=new Konva.Group({x:cx,y:cy,rotation:_libPlaceAngle,scaleX:_libPlaceFlipped?-1:1,scaleY:1,opacity:0.55,listening:false});
   if(def.shape){

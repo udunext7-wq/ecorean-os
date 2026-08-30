@@ -3021,6 +3021,59 @@ function hasCustomGlow(o){
   return ['spread','r','peak','soft'].some(k=>g[k]!==undefined&&g[k]!==null);
 }
 
+// ===== 2026-08-30: 조명 배열 배치 (대표 지시 — 밭 전(田)자처럼 여러 개를 간격 맞춰) =====
+//  다운라이트는 한 개만 놓는 일이 드물다. 가로·세로 개수와 간격을 미리 정해 두고
+//  도면에서 중심점 하나만 찍으면 그 모양대로 한 번에 놓는다. 간격은 50mm 단위.
+const LIGHT_ARRAY_STEP=50;
+const LIGHT_ARRAY_MIN=150, LIGHT_ARRAY_MAX=6000;
+const LIGHT_ARRAY_MAX_N=6;
+// 현장에서 자주 쓰는 모양 — '밭 전'은 2×2
+const LIGHT_ARRAY_PRESETS=[
+  {key:'1x1',name:'하나',      cols:1,rows:1},
+  {key:'1x2',name:'일자 2',    cols:2,rows:1},
+  {key:'1x3',name:'일자 3',    cols:3,rows:1},
+  {key:'2x2',name:'밭 전(田)', cols:2,rows:2},
+  {key:'2x3',name:'2×3',       cols:3,rows:2},
+  {key:'3x3',name:'3×3',       cols:3,rows:3},
+];
+function lightArrayCfg(){
+  if(!STATE.lightArray||typeof STATE.lightArray!=='object') STATE.lightArray={};
+  const a=STATE.lightArray;
+  const clampN=v=>Math.max(1,Math.min(LIGHT_ARRAY_MAX_N,Math.round(v||0)||1));
+  a.cols=clampN(a.cols);
+  a.rows=clampN(a.rows);
+  a.dx=snapArrayGap(a.dx);
+  a.dy=snapArrayGap(a.dy);
+  return a;
+}
+function snapArrayGap(v){
+  const n=parseFloat(v);
+  if(!isFinite(n)) return 900;
+  const r=Math.round(n/LIGHT_ARRAY_STEP)*LIGHT_ARRAY_STEP;
+  return Math.max(LIGHT_ARRAY_MIN,Math.min(LIGHT_ARRAY_MAX,r));
+}
+function lightArrayActive(){
+  const a=lightArrayCfg();
+  return (a.cols*a.rows)>1;
+}
+// 중심점(mm) 기준 배치 좌표들 — 가운데를 찍으면 그 둘레로 고르게 퍼진다
+function lightArrayOffsets(cfg){
+  const a=cfg||lightArrayCfg();
+  const out=[];
+  const w=(a.cols-1)*a.dx, h=(a.rows-1)*a.dy;
+  for(let r=0;r<a.rows;r++){
+    for(let c=0;c<a.cols;c++){
+      out.push({dx:Math.round(-w/2+c*a.dx), dy:Math.round(-h/2+r*a.dy)});
+    }
+  }
+  return out;
+}
+// 배치 전체가 차지하는 크기 (mm)
+function lightArraySpanMm(cfg){
+  const a=cfg||lightArrayCfg();
+  return {w:(a.cols-1)*a.dx, h:(a.rows-1)*a.dy};
+}
+
 function renderLights(){
   groups.lights.destroyChildren();
   const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합 (2026-08-27: 점핑 연쇄 포함)
