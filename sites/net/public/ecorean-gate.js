@@ -124,6 +124,27 @@
     var g = document.getElementById('ecorean-gate-style');
     if (g) g.remove();
   }
+
+  /* ── 2026-08-30 첫 화면 지연 제거 ──
+     v3 는 (필요 시 토큰 갱신 →) profiles 조회가 끝날 때까지 html{visibility:hidden} 을 유지했다.
+     즉 네트워크 왕복 1~2회가 끝나야 아무것도 안 보였다.
+     조치: 직전에 확인한 역할을 캐시해 두고, 같은 사용자면 즉시 그린다.
+           검증은 뒤에서 계속 돌고, 실제로 권한이 없으면 그때 내보낸다.
+     안전성: 화면만 먼저 보일 뿐 데이터는 서버 RLS 가 막는다 — 권한 없는 사람에게 내용이 새지 않는다. */
+  var ROLE_CACHE = 'ecorean_role_cache';
+  var ROLE_TTL = 12 * 3600 * 1000;
+  var ALLOWED = { staff: 1, executive: 1, admin: 1, master: 1 };
+  function readRoleCache(uid) {
+    try {
+      var c = JSON.parse(localStorage.getItem(ROLE_CACHE) || 'null');
+      if (!c || c.uid !== uid) return null;
+      if (Date.now() - c.at > ROLE_TTL) return null;
+      return c.role || null;
+    } catch (e) { return null; }
+  }
+  function writeRoleCache(uid, role) {
+    try { localStorage.setItem(ROLE_CACHE, JSON.stringify({ uid: uid, role: role, at: Date.now() })); } catch (e) {}
+  }
   function fetchRole(sess) {
     var uid = (sess.user && sess.user.id) || (jwtPayload(sess.access_token) || {}).sub;
     if (!uid) return Promise.resolve({ status: 0, role: null });
@@ -134,11 +155,20 @@
       return r.json().then(function (rows) { return { status: 200, role: rows && rows[0] && rows[0].role }; });
     }).catch(function () { return { status: 0, role: null }; });
   }
+  var uid0 = session && ((session.user && session.user.id) || (jwtPayload(session.access_token) || {}).sub);
+  var painted = false;
   function finish(res) {
-    if (res.role === 'staff' || res.role === 'executive' || res.role === 'admin' || res.role === 'master') pass();
-    else if (res.role) location.replace('/request-role/');
-    else deny();
+    if (res.role) writeRoleCache(uid0, res.role);
+    if (ALLOWED[res.role]) { pass(); painted = true; return; }
+    /* 이미 그려 놓았더라도 실제로 권한이 없으면 내보낸다 */
+    if (res.role) location.replace('/request-role/');
+    else if (res.status !== 0) deny();          /* 네트워크 실패(0)면 캐시로 그린 화면을 유지 */
+    else if (!painted) deny();
   }
+
+  /* 캐시된 역할이 있으면 네트워크를 기다리지 않고 먼저 그린다 */
+  if (uid0 && ALLOWED[readRoleCache(uid0)]) { pass(); painted = true; }
+  else if (!session) return deny();
 
   ensureFresh(session).then(function (s) {
     if (!s) return deny();

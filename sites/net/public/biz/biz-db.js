@@ -130,6 +130,7 @@
   /* ── 컬렉션 매퍼 : 화면이 쓰는 모양 ↔ 서버 행 ── */
   var siteIdByName = {};      /* 현장명 → work_sites.id */
   var siteNameById = {};
+  var sitesLoaded = false;   /* 현장이 0곳이어도 "받아왔다"를 구분해야 헛왕복이 안 생긴다 */
   var partnerIdByName = {};   /* 거래처명 → partners.id (직원 포털과 같은 명부) */
   var partnerList = [];
 
@@ -263,16 +264,23 @@
   }
 
   /* ── 현장 : 직원 포털 work_sites 를 공유 마스터로 사용 ── */
+  var siteMetaByName = {};
   function pullSites() {
-    return getAll('work_sites?select=id,name,status,contract_amount&tenant_id=eq.' + TENANT + '&order=created_at.asc').then(function (rows) {
-      siteIdByName = {}; siteNameById = {};
+    return getAll('work_sites?select=id,name,status,contract_amount,client_name,address,start_date,end_date&tenant_id=eq.' + TENANT + '&order=created_at.asc').then(function (rows) {
+      siteIdByName = {}; siteNameById = {}; siteMetaByName = {};
       var names = [], contracts = {};
       (rows || []).forEach(function (r) {
         siteIdByName[r.name] = r.id; siteNameById[r.id] = r.name;
+        siteMetaByName[r.name] = {
+          id: r.id, status: r.status || '진행중', contract: n(r.contract_amount),
+          client: r.client_name || '', address: r.address || '',
+          start: r.start_date || '', end: r.end_date || ''
+        };
         if (r.status === '보관') return;
         names.push(r.name);
         if (r.contract_amount) contracts[r.name] = n(r.contract_amount);
       });
+      sitesLoaded = true;
       return { names: names, contracts: contracts, rows: rows || [] };
     });
   }
@@ -414,11 +422,19 @@
     var state = cfg.getState();
     var base = loadBase();
     setStatus('syncing', '불러오는 중');
-    return pullMe().then(function () {
-      return Promise.all([pullOrgs(), pullMyMembership(), isManager() ? pullStaffDirectory() : null]);
-    }).then(function () {
-      return pullSites();
-    }).then(function (sites) {
+    /* 2026-08-30 첫 로딩 개선:
+       이전에는 나 → (장부·담당현장·직원명부) → 현장 → (거래·계좌·…) 4단계를 차례로 기다렸다.
+       실제로는 서로 필요 없는 요청들이라 한 번에 띄운다. 병합은 전부 도착한 뒤에 하므로
+       현장·거래처 이름표(siteIdByName/partnerIdByName)는 그때 이미 채워져 있다.
+       staffDirectory 는 서버가 관리자만 내용을 주므로 조건 없이 불러도 안전하다. */
+    return Promise.all([
+      pullMe(), pullOrgs(), pullMyMembership(), pullStaffDirectory(),
+      pullSites(), pullPartners(),
+      getAll(COLS.tx.select), getAll(COLS.accounts.select), getAll(COLS.recurring.select),
+      getAll(COLS.goals.select), getAll(COLS.events.select), pullBudget()
+    ]).then(function (all) {
+      var sites = all[4];
+      var res = [all[6], all[7], all[8], all[9], all[10], all[11]];
       /* 현장도 3-way 병합. 서버 목록으로 통째 교체하면 아직 못 올린 로컬 현장이 사라진다. */
       var baseS = null; try { baseS = base.sitesHash ? JSON.parse(base.sitesHash) : null; } catch (e) {}
       var prevNames = state.sites || [], prevC = state.contracts || {};
@@ -443,10 +459,7 @@
       state.sites = names;
       state.contracts = cts;
       base.sitesHash = JSON.stringify({ s: sites.names, c: sites.contracts });  /* 기준 = 서버 상태 */
-      return Promise.all([
-        getAll(COLS.tx.select), getAll(COLS.accounts.select), getAll(COLS.recurring.select),
-        getAll(COLS.goals.select), getAll(COLS.events.select), pullBudget(), pullPartners()
-      ]);
+      return res;
     }).then(function (res) {
       var names = ['tx', 'accounts', 'recurring', 'goals', 'events'];
       names.forEach(function (nm, i) {
@@ -463,11 +476,14 @@
         if (!prev.uid && a.uid) { dedup[dedup.indexOf(prev)] = a; seenName[k] = a; }
       });
       state.accounts = dedup;
-      if (res[5]) {
-        var localB = state.budgets || { total: 0, cats: {} };
-        var baseB = base.budget;
-        var mineHash = JSON.stringify({ total: n(localB.total), cats: localB.cats || {} });
-        if (baseB === undefined || baseB === mineHash) { state.budgets = res[5]; base.budget = JSON.stringify(res[5]); }
+      /* 서버에 예산 행이 없으면 "예산 0" 이 서버의 상태다 — 그렇게 기준을 잡아야
+         빈 예산을 매번 다시 올리지 않는다. */
+      var srvBudget = res[5] || { total: 0, cats: {} };
+      var localB = state.budgets || { total: 0, cats: {} };
+      var mineHash = JSON.stringify({ total: n(localB.total), cats: localB.cats || {} });
+      if (base.budget === undefined || base.budget === mineHash) {
+        state.budgets = srvBudget;
+        base.budget = JSON.stringify({ total: n(srvBudget.total), cats: srvBudget.cats || {} });
       }
       if (!state.accounts || !state.accounts.length) {
         state.accounts = [{ name: '사업통장', ico: '🏦', init: 0 }, { name: '현금', ico: '💵', init: 0 }, { name: '사업카드', ico: '💳', init: 0 }];
@@ -482,11 +498,41 @@
     });
   }
 
+  /* 올릴 게 실제로 있는지 네트워크 없이 먼저 본다 — 부팅 직후 push 는 대개 보낼 게 없다 */
+  function hasPending(state, base) {
+    var MGR_ONLY = { accounts: 1, recurring: 1, goals: 1 };
+    var mgr = isManager();
+    var dirty = false;
+    Object.keys(COLS).forEach(function (nm) {
+      if (dirty) return;
+      if (MGR_ONLY[nm] && !mgr) return;
+      var c = COLS[nm], arr = state[nm] || [], b = base[nm] || {};
+      var alive = {};
+      for (var i = 0; i < arr.length; i++) {
+        var o = arr[i];
+        if (!o.uid) { dirty = true; return; }
+        alive[o.uid] = 1;
+        if (b[o.uid] !== hashOf(c.toRow(o, i))) { dirty = true; return; }
+      }
+      var keys = Object.keys(b);
+      for (var j = 0; j < keys.length; j++) if (!alive[keys[j]]) { dirty = true; return; }
+    });
+    if (dirty) return true;
+    if (mgr) {
+      var bh = JSON.stringify({ total: n(state.budgets && state.budgets.total), cats: (state.budgets && state.budgets.cats) || {} });
+      if (base.budget !== bh) return true;
+      var sh = JSON.stringify({ s: state.sites || [], c: state.contracts || {} });
+      if (base.sitesHash !== sh) return true;
+    }
+    return false;
+  }
+
   function push() {
     if (pushing) { pushAgain = true; return Promise.resolve(); }
-    pushing = true;
     var state = cfg.getState();
     var base = loadBase();
+    if (meProfile && !hasPending(state, base)) return Promise.resolve();
+    pushing = true;
     setStatus('syncing', '저장 중');
 
     /* 현장 먼저 — 거래의 site_id 가 여기서 결정된다.
@@ -500,7 +546,7 @@
       .then(function () {
         mgr = isManager();
         var siteHash = JSON.stringify({ s: state.sites || [], c: state.contracts || {} });
-        var sitesUnchanged = !mgr || ((base.sitesHash === siteHash) && Object.keys(siteIdByName).length > 0);
+        var sitesUnchanged = !mgr || ((base.sitesHash === siteHash) && sitesLoaded);
         if (sitesUnchanged) return null;
         return pullSites().then(function (sv) { return pushSites(state, sv); })
           .then(function () { return pullSites(); })
@@ -550,14 +596,31 @@
       clearTimeout(pushTimer);
       pushTimer = setTimeout(push, ms === undefined ? 900 : ms);
     },
+    /* 예전에는 30초마다 12개 테이블을 통째로 다시 받았다. 이제는 눈금(가장 최근 수정 시각)만
+       확인하고, 바뀌었을 때만 실제로 받는다. 삭제는 눈금을 올리지 않으므로 5번에 한 번은 전량. */
     startPolling: function (sec) {
       clearInterval(pollTimer);
-      pollTimer = setInterval(function () {
+      var lastMark = null, ticks = 0;
+      function mark() {
+        return Promise.all([
+          getAll('biz_tx?select=updated_at&tenant_id=eq.' + TENANT + '&order=updated_at.desc&limit=1'),
+          getAll('biz_expense_claims?select=updated_at&tenant_id=eq.' + TENANT + '&order=updated_at.desc&limit=1')
+        ]).then(function (r) {
+          return ((r[0] && r[0][0] && r[0][0].updated_at) || '') + '|' + ((r[1] && r[1][0] && r[1][0].updated_at) || '');
+        });
+      }
+      function tick() {
         if (document.hidden || pushing || status.phase === 'syncing') return;
-        pull().catch(function () {});
-      }, (sec || 30) * 1000);
+        ticks++;
+        if (ticks % 5 === 0) { pull().catch(function () {}); return; }
+        mark().then(function (m) {
+          if (lastMark === null) { lastMark = m; return; }
+          if (m !== lastMark) { lastMark = m; pull().catch(function () {}); }
+        }).catch(function () {});
+      }
+      pollTimer = setInterval(tick, (sec || 30) * 1000);
       document.addEventListener('visibilitychange', function () {
-        if (!document.hidden && status.phase !== 'syncing') pull().catch(function () {});
+        if (!document.hidden && status.phase !== 'syncing') { lastMark = null; pull().catch(function () {}); }
       });
     },
     /* 공용 / 프로젝트 / 개인 3계층 */
@@ -589,6 +652,16 @@
 
     siteId: function (name) { return siteIdByName[name] || null; },
     siteName: function (id) { return siteNameById[id] || ''; },
+    siteMeta: function (name) { return siteMetaByName[name] || null; },
+    allSiteNames: function () { return Object.keys(siteMetaByName); },
+    /* 현장 상태(진행중·완료·보관)는 직원 포털과 공유하는 값이라 여기서 바로 서버에 쓴다 */
+    setSiteStatus: function (name, status) {
+      var m = siteMetaByName[name];
+      if (!m) return Promise.reject(new Error('현장을 찾을 수 없습니다'));
+      return req('work_sites?id=eq.' + m.id, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: status })
+      }).then(function () { m.status = status; });
+    },
     partners: function () { return partnerList.slice(); },
     purchaseOrders: pullPurchaseOrders,
     uploadReceipt: uploadReceipt,

@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <style id="ecorean-gate-style">html{visibility:hidden}</style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/ecorean-gate.js"></script>
 <script src="/app-cloud.js"></script>
 <script src="/biz/biz-db.js"></script>
@@ -17,7 +16,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://t1.kakao.com/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 <style>
   :root{
     --bg:#05070d; --bg2:#0a0f1c;
@@ -121,6 +119,29 @@
   .memchip{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:20px;border:1px solid var(--border);
     background:rgba(255,255,255,.04);cursor:pointer;font-size:12px;margin:0 7px 7px 0}
   .memchip.on{border-color:var(--teal);background:rgba(46,230,200,.1);color:var(--teal)}
+  .sitechip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 12px;padding:9px 13px;
+    border-radius:11px;border:1px solid rgba(176,123,255,.35);background:rgba(176,123,255,.08);color:var(--violet);
+    font-size:12px;cursor:pointer}
+  .sitechip .x{color:var(--muted);font-size:11px;flex:none}
+  /* 프로젝트(현장) 카드 */
+  .pcard{border:1px solid var(--border);background:var(--glass);border-radius:15px;padding:14px 15px;margin-bottom:11px;
+    cursor:pointer;transition:.2s;backdrop-filter:blur(8px)}
+  .pcard:active{transform:scale(.985)}
+  .pcard .ph{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .pcard .pn{font-size:14.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pst{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;flex:none;letter-spacing:.3px}
+  .pst.go{background:rgba(46,230,200,.15);color:var(--teal)}
+  .pst.done{background:rgba(90,167,255,.15);color:var(--blue)}
+  .pst.arch{background:rgba(255,255,255,.07);color:var(--muted-2)}
+  .pbarwrap{margin-top:11px}
+  .pbar{height:7px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden}
+  .pfill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--gold),var(--teal))}
+  .pbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+  .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+  .pgrid .k{font-size:10.5px;color:var(--muted-2);margin-bottom:3px}
+  .pgrid .v{font-family:var(--font-d);font-size:13px;font-variant-numeric:tabular-nums}
+  .pfoot{display:flex;gap:12px;flex-wrap:wrap;margin-top:11px;padding-top:9px;border-top:1px solid var(--border);
+    font-size:11.5px;font-variant-numeric:tabular-nums}
   .hintline{font-size:11px;color:var(--muted-2);margin-top:6px;line-height:1.5}
   .attrow{display:flex;flex-wrap:wrap;gap:8px}
   .attrow:empty{display:none}
@@ -522,10 +543,23 @@
       <select id="filterType"><option value="all">전체</option><option value="out">지출</option><option value="in">매출</option><option value="cr">외상만</option></select>
       <select id="filterRange"><option value="month">이번 달</option><option value="all">전체 기간</option></select>
     </div>
+    <div id="siteFilterChip" class="sitechip hidden"></div>
     <div id="list"></div>
   </section>
 
   <!-- ================= STATS ================= -->
+  <!-- ================= 현장 · PROJECTS ================= -->
+  <section class="tab" id="tab-site">
+    <div class="pills" id="siteFilter" style="margin-bottom:14px">
+      <div class="pill sel" data-f="active">진행중</div>
+      <div class="pill" data-f="done">완료</div>
+      <div class="pill" data-f="all">전체</div>
+    </div>
+    <div class="card" id="siteTotals"></div>
+    <div class="sec-t">프로젝트 · PROJECTS <span class="act" id="addSiteBtn">＋ 현장</span></div>
+    <div id="siteCards"></div>
+  </section>
+
   <section class="tab" id="tab-stats">
     <button class="btn btn-primary" id="openRepBtn" style="display:flex;align-items:center;justify-content:center;gap:9px;font-size:15px;padding:15px;margin-bottom:4px">🖨️ 월간 결산 리포트 <span style="font-size:11px;font-weight:400;opacity:.75">인쇄 · PDF 저장</span></button>
     <div class="sec-t">월별 추이 · 6 MONTHS</div>
@@ -646,6 +680,7 @@
 
 <nav class="nav">
   <button class="on" data-tab="home"><span class="ni">🏠</span>홈</button>
+  <button data-tab="site"><span class="ni">🏗️</span>현장</button>
   <button data-tab="stats"><span class="ni">📊</span>통계</button>
   <button data-tab="cal"><span class="ni">📅</span>일정</button>
   <button data-tab="benefit"><span class="ni">🙋</span>내 업무</button>
@@ -709,10 +744,13 @@
 <div class="overlay" id="ovSiteD"></div>
 <div class="sheet" id="shSiteD">
   <div class="grab"></div><h2 id="sdTitle">🏗️ 현장 상세</h2><div class="desc">공사대금 · 프로젝트별 정산 현황</div>
+  <div class="field" id="sdStatusField"><label>진행 상태</label><div class="pills" id="sdStatus">
+    <div class="pill" data-s="진행중">진행중</div><div class="pill" data-s="완료">완료</div><div class="pill" data-s="보관">보관</div></div></div>
   <div class="field"><label>계약금액 (공사대금 총액 · 부가세 포함)</label><input id="sdContract" type="text" inputmode="numeric" placeholder="예: 55,000,000"></div>
   <button class="btn btn-ghost" id="sdSaveContract">계약금액 저장</button>
   <div id="sdBody" style="margin-top:16px"></div>
   <button class="btn btn-primary" id="sdAddTx" style="margin-top:8px">＋ 이 현장 거래 기록</button>
+  <button class="btn btn-ghost" id="sdOnly" style="margin-top:9px">🔎 이 현장 거래만 보기</button>
   <button class="btn btn-ghost" id="sdMembers" style="margin-top:9px">👥 현장 담당자 배정</button>
 </div>
 
@@ -1016,7 +1054,15 @@ let state=load();
 let view=new Date(); view.setDate(1);
 let form={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name,acct2:'',editId:null,site:'',vatm:'none',evid:'세금계산서',cr:0,due:'',att:[]};
 let rform={type:'out',cat:'자재비',ico:'🧱',acct:state.accounts[0].name};
-let filter={q:'',type:'all',range:'month'};
+let filter={q:'',type:'all',range:'month',site:''};
+/* 현장 하나만 골라 보는 상태를 눈에 보이게 — 안 보이면 "거래가 사라졌다"고 오해한다 */
+function renderSiteFilterChip(){
+  const el=$('#siteFilterChip');if(!el)return;
+  el.classList.toggle('hidden',!filter.site);
+  if(!filter.site)return;
+  el.innerHTML=`🏗️ ${esc(filter.site)} 만 보는 중 <span class="x">✕ 해제</span>`;
+  el.onclick=()=>{filter.site='';render();};
+}
 
 /* ============ 유틸 ============ */
 const $=s=>document.querySelector(s);
@@ -1142,6 +1188,8 @@ function renderDonut(list,exp){
 function renderList(list){
   const el=$('#list');
   let f=list.filter(t=>filter.type==='all'||(filter.type==='cr'?(t.cr&&!t.tf):t.type===filter.type));
+  if(filter.site)f=f.filter(t=>t.site===filter.site);
+  renderSiteFilterChip();
   if(filter.q){const q=filter.q.toLowerCase();f=f.filter(t=>(t.memo||'').toLowerCase().includes(q)||t.cat.toLowerCase().includes(q)||(t.vendor||'').toLowerCase().includes(q)||(t.site||'').toLowerCase().includes(q));}
   if(!f.length){el.innerHTML=`<div class="card"><div class="empty"><span class="em">📭</span>${list.length?'검색 결과가 없습니다':'거래 내역이 없습니다<br>아래 + 버튼으로 추가하세요'}</div></div>`;return;}
   f=f.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
@@ -1280,6 +1328,8 @@ function openSiteSheet(name){
   $('#sdMembers').classList.toggle('hidden',!isMgr());
   $('#sdContract').disabled=!isMgr();
   $('#sdSaveContract').classList.toggle('hidden',!isMgr());
+  $('#sdStatusField').classList.toggle('hidden',!isMgr());
+  renderSdStatus();
   renderSiteDetail();openSheet('SiteD');
   if(window.BIZDB)refreshPO().then(()=>{if($('#shSiteD').classList.contains('on'))renderSiteDetail();}).catch(()=>{});
 }
@@ -1324,6 +1374,34 @@ function renderSiteDetail(){
   b.innerHTML=html;
   const gp=$('#sdGoPO');if(gp)gp.onclick=()=>{closeSheet('SiteD');openPO();};
 }
+/* 현장 상태는 직원 포털 work_sites 와 같은 값이라 바꾸면 양쪽에 바로 반영된다 */
+function renderSdStatus(){
+  const cur=siteStatusOf(curSite);
+  $$('#sdStatus .pill').forEach(p=>{
+    p.classList.toggle('sel',p.dataset.s===cur);
+    p.onclick=async()=>{
+      if(!isMgr())return;
+      const s=p.dataset.s;
+      if(s===cur)return;
+      if(s==='보관'&&!confirm(`"${curSite}"을(를) 보관 처리할까요?\n장부·직원 포털 목록에서 숨겨집니다 (기록은 남습니다).`))return;
+      try{
+        await BIZDB.setSiteStatus(curSite,s);
+        renderSdStatus();
+        if(s==='보관'){closeSheet('SiteD');}
+        renderSiteTab();render();
+        toast(`상태를 "${s}"(으)로 바꿨습니다`);
+      }catch(e){toast('상태 변경 실패 · '+String(e.message||'').slice(0,40));}
+    };
+  });
+}
+$('#sdOnly').onclick=()=>{
+  filter.site=curSite;filter.q='';filter.range='all';
+  $('#searchInput').value='';$('#filterRange').value='all';
+  closeSheet('SiteD');
+  document.querySelector('.nav button[data-tab="home"]').click();
+  render();
+  toast(`🏗️ ${curSite} 거래만 보는 중 · 위 필터에서 해제`);
+};
 $('#sdMembers').onclick=()=>{closeSheet('SiteD');openMembers(curSite);};
 $('#sdSaveContract').onclick=()=>{
   const v=Number($('#sdContract').value.replace(/[^0-9]/g,''))||0;
@@ -1954,6 +2032,8 @@ $$('.nav button').forEach(b=>b.onclick=()=>{
   $('#fab').style.display=t==='home'?'grid':'none';
   if(t==='stats')renderStats();
   if(t==='cal')renderCalTab();
+  if(t==='site')renderSiteTab();
+  if(t==='benefit')renderMyTab();
 });
 
 /* ============ 설정 동작 ============ */
@@ -2032,20 +2112,37 @@ $('#resetData').onclick=()=>{if(confirm('모든 데이터를 삭제할까요? �
 /* ============ 카카오 ============ */
 function summaryText(){const l=monthTx(new Date()),inc=sumIn(l),exp=sumOut(l);
   return{inc,exp,bal:inc-exp,month:`${new Date().getFullYear()}년 ${new Date().getMonth()+1}월`};}
-function initKakao(){if(typeof Kakao==='undefined')return false;if(state.settings.kakao.key&&!Kakao.isInitialized()){try{Kakao.init(state.settings.kakao.key);}catch(e){}}return Kakao.isInitialized();}
+/* 카카오 SDK 는 공유할 때만 필요하다 — head 에서 미리 받으면 첫 화면이 그만큼 늦는다 */
+let kakaoLoad=null;
+function loadKakao(){
+  if(window.Kakao)return Promise.resolve(true);
+  if(kakaoLoad)return kakaoLoad;
+  kakaoLoad=new Promise(res=>{
+    const s=document.createElement('script');
+    s.src='https://t1.kakao.com/kakao_js_sdk/2.7.2/kakao.min.js';
+    s.async=true;s.onload=()=>res(true);s.onerror=()=>res(false);
+    document.head.appendChild(s);
+  });
+  return kakaoLoad;
+}
+async function initKakao(){
+  if(!state.settings.kakao.key)return false;
+  if(!await loadKakao())return false;
+  if(!Kakao.isInitialized()){try{Kakao.init(state.settings.kakao.key);}catch(e){}}
+  return Kakao.isInitialized();
+}
 $('#goKakao').onclick=()=>{$('#kKey').value=state.settings.kakao.key||'';openSheet('Kakao');};
 $('#saveKakao').onclick=()=>{state.settings.kakao.key=$('#kKey').value.trim();save();initKakao();toast('카카오 키 저장됨');};
-$('#shareKakao').onclick=()=>{
-  if(typeof Kakao==='undefined'){toast('카카오 SDK 로드 실패(온라인 확인)');return;}
-  if(!initKakao()){toast('JavaScript 키를 먼저 저장하세요');return;}
+$('#shareKakao').onclick=async()=>{
+  if(!await initKakao()){toast('JavaScript 키를 먼저 저장하세요 (또는 온라인 상태 확인)');return;}
   const s=summaryText();
   try{Kakao.Share.sendDefault({objectType:'text',
     text:`📊 ${s.month} BOC_BIZ 결산\n\n💰 매출(대변)  ${won(s.inc)}원\n💸 지출(차변)  ${won(s.exp)}원\n📈 순이익  ${won(s.bal)}원\n\n#ECOREAN #BOC_BIZ`,
     link:{webUrl:location.href,mobileWebUrl:location.href}});
   }catch(e){toast('공유 실패 · 도메인 등록을 확인하세요');}
 };
-$('#memoKakao').onclick=()=>{
-  if(!initKakao()){toast('JavaScript 키를 먼저 저장하세요');return;}
+$('#memoKakao').onclick=async()=>{
+  if(!await initKakao()){toast('JavaScript 키를 먼저 저장하세요 (또는 온라인 상태 확인)');return;}
   const send=()=>{const s=summaryText();
     Kakao.API.request({url:'/v2/api/talk/memo/default/send',data:{template_object:{object_type:'text',
       text:`📊 ${s.month} BOC_BIZ 결산\n매출 ${won(s.inc)}원 · 지출 ${won(s.exp)}원\n순이익 ${won(s.bal)}원`,
@@ -2365,6 +2462,96 @@ function renderMyTab(){
     ms.querySelectorAll('.siterow').forEach(r=>r.onclick=()=>openSiteSheet(r.dataset.site));
   }
 }
+
+/* ============ 현장(프로젝트) 탭 ============
+   장부를 거래 나열이 아니라 "프로젝트 단위"로 본다 — 인테리어는 현장이 원가·손익의 단위다.
+   카드 하나에 계약·기성·원가·이익·미수/미지급·담당자를 모아 한눈에 판단할 수 있게 한다. */
+let siteFilterMode='active';
+function siteStatusOf(name){
+  const m=(window.BIZDB&&BIZDB.siteMeta)?BIZDB.siteMeta(name):null;
+  return (m&&m.status)||'진행중';
+}
+function visibleSiteNames(){
+  const all=(window.BIZDB&&BIZDB.allSiteNames)?BIZDB.allSiteNames():state.sites.slice();
+  const fromTx=[...new Set(state.tx.filter(t=>!t.tf&&t.site).map(t=>t.site))];
+  const names=[...new Set([...state.sites,...all,...fromTx])];
+  const mine=(window.BIZDB&&BIZDB.mySiteNames)?BIZDB.mySiteNames():[];
+  const scoped=isMgr()?names:names.filter(n=>mine.indexOf(n)!==-1||state.tx.some(t=>t.site===n));
+  return scoped.filter(n=>{
+    const st=siteStatusOf(n);
+    if(siteFilterMode==='active')return st==='진행중';
+    if(siteFilterMode==='done')return st==='완료'||st==='보관';
+    return true;
+  });
+}
+function renderSiteTab(){
+  $$('#siteFilter .pill').forEach(p=>{
+    p.classList.toggle('sel',p.dataset.f===siteFilterMode);
+    p.onclick=()=>{siteFilterMode=p.dataset.f;renderSiteTab();};
+  });
+  $('#addSiteBtn').style.display=isMgr()?'':'none';
+  const names=visibleSiteNames();
+  const rows=names.map(n=>[n,siteSummary(n)]);
+
+  /* 상단 합계 */
+  const T=rows.reduce((a,[,o])=>({contract:a.contract+o.contract,billed:a.billed+o.billed,out:a.out+o.out,
+    recv:a.recv+o.recv,pay:a.pay+o.pay}),{contract:0,billed:0,out:0,recv:0,pay:0});
+  const profit=T.billed-T.out;
+  $('#siteTotals').innerHTML=`<div class="ins-grid">
+      <div class="ins"><div class="k">${siteFilterMode==='active'?'진행중':siteFilterMode==='done'?'완료':'전체'} ${rows.length}곳 · 계약</div><div class="v">${won(T.contract)}<small> 원</small></div></div>
+      <div class="ins"><div class="k">발생 매출 (기성 누계)</div><div class="v" style="color:var(--teal)">${won(T.billed)}<small> 원</small></div></div>
+      <div class="ins"><div class="k">투입 원가</div><div class="v" style="color:var(--coral)">${won(T.out)}<small> 원</small></div></div>
+      <div class="ins"><div class="k">이익 ${T.billed?`(${Math.round(profit/T.billed*100)}%)`:''}</div><div class="v" style="color:${profit>=0?'var(--teal)':'var(--coral)'}">${won(profit)}<small> 원</small></div></div>
+    </div>
+    ${(T.recv||T.pay)?`<div style="display:flex;gap:14px;margin-top:10px;font-size:11.5px;font-variant-numeric:tabular-nums">
+      ${T.recv?`<span style="color:var(--gold)">받을 돈 ${won(T.recv)}</span>`:''}
+      ${T.pay?`<span style="color:var(--coral)">줄 돈 ${won(T.pay)}</span>`:''}</div>`:''}`;
+
+  const el=$('#siteCards');
+  if(!rows.length){
+    el.innerHTML=`<div class="card"><div class="empty" style="padding:18px 0"><span class="em">🏗️</span>${
+      siteFilterMode==='active'?'진행중인 현장이 없습니다':'해당하는 현장이 없습니다'}${
+      isMgr()?'<br><span style="color:var(--teal);font-size:12px">위 ＋ 현장으로 추가하세요</span>':''}</div></div>`;
+    return;
+  }
+  /* 이익이 나쁜 현장이 위로 오게 — 관리가 필요한 것부터 본다 */
+  rows.sort((a,b)=>{
+    const ra=a[1].billed?a[1].profit/a[1].billed:0, rb=b[1].billed?b[1].profit/b[1].billed:0;
+    return ra-rb;
+  });
+  el.innerHTML=rows.map(([name,o])=>{
+    const st=siteStatusOf(name);
+    const rate=o.billed?o.profit/o.billed*100:null;
+    const prog=o.contract?Math.min(100,o.billed/o.contract*100):null;
+    const od=state.tx.filter(t=>t.site===name&&overdueDays(t)>0).length;
+    const members=(window.BIZDB&&BIZDB.staffDirectory)?BIZDB.staffDirectory():[];
+    return `<div class="pcard" data-site="${esc(name)}">
+      <div class="ph"><div class="pn">🏗️ ${esc(name)}</div>
+        <span class="pst ${st==='진행중'?'go':st==='완료'?'done':'arch'}">${esc(st)}</span></div>
+      ${o.contract?`<div class="pbarwrap"><div class="pbar"><div class="pfill" style="width:${prog}%"></div></div>
+        <div class="pbl"><span>기성 ${prog.toFixed(0)}%</span><span>계약 ${won(o.contract)}</span></div></div>`:
+        `<div class="pbl" style="margin-top:8px"><span style="color:var(--muted-2)">계약금액 미입력</span><span></span></div>`}
+      <div class="pgrid">
+        <div><div class="k">매출</div><div class="v" style="color:var(--teal)">${won(o.billed)}</div></div>
+        <div><div class="k">원가</div><div class="v" style="color:var(--coral)">${won(o.out)}</div></div>
+        <div><div class="k">이익${rate!==null?` ${rate.toFixed(0)}%`:''}</div><div class="v" style="color:${o.profit>=0?'var(--teal)':'var(--coral)'}">${won(o.profit)}</div></div>
+      </div>
+      ${(o.recv||o.pay||od)?`<div class="pfoot">
+        ${o.recv?`<span style="color:var(--gold)">받을 ${won(o.recv)}</span>`:''}
+        ${o.pay?`<span style="color:var(--coral)">줄 ${won(o.pay)}</span>`:''}
+        ${od?`<span class="odue">🔴 연체 ${od}건</span>`:''}
+      </div>`:''}
+    </div>`;}).join('');
+  el.querySelectorAll('.pcard').forEach(c=>c.onclick=()=>openSiteSheet(c.dataset.site));
+}
+$('#addSiteBtn').onclick=()=>{
+  const n=prompt('새 현장 이름을 입력하세요 (예: ○○아파트 302동)');
+  if(!n||!n.trim())return;
+  const name=n.trim();
+  if(state.sites.indexOf(name)!==-1){toast('이미 있는 현장입니다');return;}
+  state.sites.push(name);save();renderSiteTab();renderSiteChips();renderSitePills();
+  toast(`현장 "${name}" 추가됨 · 동기화되면 직원 포털에도 보입니다`);
+};
 
 /* ============ 현장 담당자 배정 (관리자) ============ */
 let memSite='',memPicked=[];
@@ -2768,7 +2955,6 @@ renderAcctChips();
 renderSiteChips();
 renderSnapChips();
 applyRecurring();
-initKakao();
 $('#dateInput').value=todayStr();
 setType('out');renderAcctPills();updateMemoSugg();
 render();
