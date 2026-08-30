@@ -13,9 +13,11 @@ export const dynamic = 'force-dynamic';
 
 function guidePage(redirectUri: string, authorizeUrl: string | null, request: Request): NextResponse {
   const keyOk = Boolean(authorizeUrl); // 값은 절대 화면에 내보내지 않는다
-  const alt = redirectUri.includes('://www.')
-    ? redirectUri.replace('://www.', '://')
-    : redirectUri.replace('://', '://www.');
+  // next.config 의 trailingSlash:true 때문에 브라우저에서 주소를 확인하면
+  // 슬래시가 붙은 형태가 남는다 → 네 가지를 모두 등록하면 어긋날 일이 없다.
+  const apex = redirectUri.replace('://www.', '://');
+  const www = apex.replace('://', '://www.');
+  const variants = [apex, `${apex}/`, www, `${www}/`];
   const box = (v: string) =>
     `<div style="background:#0F0D0A;border:1px solid #3A3428;border-radius:8px;padding:12px 14px;margin:6px 0;` +
     `font-family:ui-monospace,Consolas,monospace;font-size:13px;word-break:break-all;color:#F8F4EE">${v}</div>`;
@@ -29,10 +31,13 @@ function guidePage(redirectUri: string, authorizeUrl: string | null, request: Re
       `<b>KOE006 (앱 관리자 설정 오류)</b> 는 아래 주소가 카카오에 등록돼 있지 않을 때 납니다.</p>` +
       `<p style="font-size:14px;margin:0 0 4px">1. <b>developers.kakao.com</b> → 내 애플리케이션 → <b>카카오 로그인</b></p>` +
       `<p style="font-size:14px;margin:0 0 4px">2. <b>활성화 설정 ON</b></p>` +
-      `<p style="font-size:14px;margin:0 0 4px">3. <b>Redirect URI</b> 에 아래 주소를 <b>그대로</b> 등록 (두 개 다 넣으면 안전합니다)</p>` +
-      box(redirectUri) + box(alt) +
+      `<p style="font-size:14px;margin:0 0 4px">3. <b>Redirect URI</b> 에 아래 <b>네 개를 모두</b> 등록하세요 ` +
+      `(슬래시·www 차이로 KOE006 이 나는 것을 막습니다)</p>` +
+      variants.map(box).join('') +
       `<p style="font-size:14px;margin:16px 0 4px">4. <b>동의항목</b> → <b>카카오톡 메시지 전송</b>(talk_message) 을 <b>이용 중 동의</b>로 설정</p>` +
       `<p style="font-size:14px;margin:0 0 4px">5. <b>앱 설정 → 플랫폼 → Web</b> 에 사이트 도메인 등록</p>` +
+      `<p style="font-size:14px;margin:0 0 4px">6. <b>보안 → Client Secret</b> — 켜 두셨다면 그 값을 서버에 ` +
+      `<b>KAKAO_CLIENT_SECRET</b> 으로 넣어야 합니다. 안 넣으면 토큰 교환에서 <b>KOE010</b> 이 납니다.</p>` +
       `<p style="font-size:13px;color:${keyOk ? '#7FBF7F' : '#E08A7A'};margin:18px 0 8px">` +
       `서버 REST 키: <b>${keyOk ? (restKeyHint() ?? '등록됨') : '없음 — Vercel 환경변수 KAKAO_REST_API_KEY 를 먼저 채우세요'}</b></p>` +
       `<p style="font-size:13px;color:#B8965A;margin:0 0 8px">` +
