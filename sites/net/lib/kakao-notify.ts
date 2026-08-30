@@ -19,6 +19,19 @@ export function kakaoState(): string {
   return createHash('sha256').update(`ecorean-kakao-v1:${key}`).digest('hex').slice(0, 24);
 }
 
+// 콜백 주소는 카카오 콘솔에 '똑같이' 등록돼 있어야 한다 (다르면 KOE006).
+// request.url 은 프록시 뒤에서 배포 URL로 잡힐 수 있어 www/apex/프리뷰마다 달라진다 →
+// 실제 접속 호스트(x-forwarded-host)를 기준으로 만들고, 없으면 대표 도메인으로 고정한다.
+export function kakaoRedirectUri(request: Request): string {
+  const fixed = process.env.KAKAO_REDIRECT_URI?.trim();
+  if (fixed) return fixed;
+  const h = request.headers;
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? '';
+  const proto = h.get('x-forwarded-proto') ?? 'https';
+  if (host) return `${proto}://${host}/api/kakao/callback`;
+  return new URL('/api/kakao/callback', request.url).toString();
+}
+
 export function kakaoAuthorizeUrl(redirectUri: string): string | null {
   const key = restKey();
   if (!key) return null;
