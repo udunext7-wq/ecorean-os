@@ -192,9 +192,20 @@
       table: 'biz_accounts',
       select: 'biz_accounts?select=*&tenant_id=eq.' + TENANT + '&order=sort_order.asc',
       toRow: function (a, i) {
-        return { id: a.uid, tenant_id: TENANT, name: a.name, icon: a.ico || '🏦', init_balance: n(a.init), sort_order: i };
+        return {
+          id: a.uid, tenant_id: TENANT, name: a.name, icon: a.ico || '🏦',
+          init_balance: n(a.init), sort_order: i,
+          bank_name: s(a.bank), account_no: s(a.no), holder: s(a.holder),
+          kind: a.kind || '통장', last_import_on: s(a.lastImp)
+        };
       },
-      toObj: function (r) { return { uid: r.id, name: r.name, ico: r.icon, init: n(r.init_balance) }; }
+      toObj: function (r) {
+        return {
+          uid: r.id, name: r.name, ico: r.icon, init: n(r.init_balance),
+          bank: r.bank_name || undefined, no: r.account_no || undefined, holder: r.holder || undefined,
+          kind: r.kind || '통장', lastImp: r.last_import_on || undefined
+        };
+      }
     },
     recurring: {
       table: 'biz_recurring',

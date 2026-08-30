@@ -7,7 +7,7 @@
 <script src="/app-cloud.js"></script>
 <!-- 고칠 때마다 ?v= 를 올린다. 안 올리면 브라우저가 옛 파일을 계속 써서
      화면(HTML)과 저장 계층(JS)의 버전이 어긋난다 — 내역이 안 보이는 원인이 된다. -->
-<script src="/biz/biz-db.js?v=biz12"></script>
+<script src="/biz/biz-db.js?v=biz13"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -668,7 +668,7 @@
       <h3>계좌 관리 · ACCOUNTS</h3>
       <div class="chiplist" id="acctChips"></div>
       <div class="row2"><input id="newAcct" class="field" style="margin:0" placeholder="계좌 이름 (예: 카드)"><button class="btn btn-ghost" id="addAcct" style="margin:0;max-width:90px">추가</button></div>
-      <div class="note" style="margin-top:10px">계좌 이름을 <b>탭하면 초기잔액</b>을 설정할 수 있습니다. 계좌 잔액 = 초기잔액 + 거래 합계.</div>
+      <div class="note" style="margin-top:10px">계좌 이름을 <b>탭하면 은행·계좌번호</b>를 등록할 수 있습니다. 계좌번호를 넣어두면 <b>은행 파일을 올릴 때 어느 계좌인지 스스로 알아보고</b>, 마지막 반영일 다음 거래부터만 가져옵니다.</div>
 
       <h3>현장 · 프로젝트 관리</h3>
       <div class="chiplist" id="siteChips"></div>
@@ -816,6 +816,29 @@
   <button class="btn btn-primary" id="saveEvt">일정 등록</button>
 </div>
 
+<!-- 계좌 등록 SHEET -->
+<div class="overlay" id="ovAcct"></div>
+<div class="sheet" id="shAcct">
+  <div class="grab"></div><h2 id="acTitle">계좌 등록</h2>
+  <div class="desc">계좌번호를 넣어두면 은행에서 내려받은 파일을 올릴 때 <b>이 계좌로 자동 배정</b>됩니다</div>
+  <div class="field"><label>계좌 이름 (장부에 표시)</label><input id="acName" type="text" placeholder="예: 기업은행 사업통장"></div>
+  <div class="field"><label>종류</label><div class="pills" id="acKind">
+    <div class="pill" data-k="통장">🏦 통장</div><div class="pill" data-k="카드">💳 카드</div>
+    <div class="pill" data-k="현금">💵 현금</div><div class="pill" data-k="기타">📦 기타</div></div></div>
+  <div class="row2">
+    <div class="field"><label>은행 · 카드사</label><input id="acBank" type="text" placeholder="예: 기업은행"></div>
+    <div class="field"><label>예금주</label><input id="acHolder" type="text" placeholder="예: (주)에코리안"></div>
+  </div>
+  <div class="field"><label>계좌번호 <span style="color:var(--muted-2);font-weight:400">· 자동 인식의 열쇠</span></label>
+    <input id="acNo" type="text" inputmode="numeric" placeholder="예: 676-910039-72104">
+    <div class="hintline">하이픈은 넣어도 됩니다. 파일에서 숫자만 비교해 찾습니다.</div></div>
+  <div class="field"><label>초기잔액</label><input id="acInit" type="text" inputmode="numeric" placeholder="0">
+    <div class="hintline">계좌 잔액 = 초기잔액 + 장부의 거래 합계</div></div>
+  <div class="note hidden" id="acLastImp"></div>
+  <button class="btn btn-primary" id="acSave">저장</button>
+  <button class="btn btn-ghost hidden" id="acDel" style="margin-top:10px;color:var(--coral)">이 계좌 삭제</button>
+</div>
+
 <!-- 인쇄 프리셋 SHEET -->
 <div class="overlay" id="ovPrint"></div>
 <div class="sheet" id="shPrint">
@@ -938,10 +961,11 @@
 <div class="sheet" id="shImp">
   <div class="grab"></div><h2>카드 · 통장 내역 가져오기</h2><div class="desc">은행·카드사에서 받은 CSV 를 그대로 올리면 거래로 바꿔 넣습니다</div>
   <div id="impStep1">
-    <button class="btn btn-primary" id="impPick" style="padding:15px">📄 CSV 파일 고르기</button>
-    <div class="note" style="margin-top:12px"><b>어디서 받나요</b><br>· 은행: 인터넷뱅킹 › 거래내역 조회 › 엑셀(CSV) 내려받기<br>· 카드: 카드사 홈페이지 › 이용대금 명세 › 엑셀 내려받기<br>날짜·금액·적요(가맹점) 열만 있으면 됩니다. 한글(EUC-KR) 파일도 읽습니다.</div>
+    <button class="btn btn-primary" id="impPick" style="padding:15px">📄 은행 파일 고르기 (CSV · 엑셀)</button>
+    <div class="note" style="margin-top:12px"><b>어디서 받나요</b><br>· 은행: 인터넷뱅킹 › 거래내역 조회 › 엑셀(CSV) 내려받기<br>· 카드: 카드사 홈페이지 › 이용대금 명세 › 엑셀 내려받기<br>날짜·금액·적요(가맹점) 열만 있으면 됩니다. <b>CSV·엑셀(xls/xlsx)</b> 모두 되고 한글(EUC-KR)도 읽습니다.<br>설정 › 계좌 관리에 <b>계좌번호를 등록</b>해 두면, 파일을 올릴 때 어느 계좌인지 스스로 알아보고 <b>마지막 반영일 다음 거래부터만</b> 담습니다.</div>
   </div>
   <div id="impStep2" class="hidden">
+    <div class="note" id="impAutoNote" style="margin-bottom:12px"></div>
     <div class="field"><label>넣을 계좌</label><div class="pills" id="impAcctPills"></div></div>
     <div class="field"><label>현장 (선택 · 전체 일괄 지정)</label><div class="pills" id="impSitePills"></div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px">
@@ -952,7 +976,7 @@
     <button class="btn btn-primary" id="impConfirm" style="margin-top:14px">선택한 내역 가져오기</button>
     <button class="btn btn-ghost" id="impBack" style="margin-top:9px">다른 파일 고르기</button>
   </div>
-  <input type="file" id="csvInput" accept=".csv,text/csv,text/plain" class="hidden">
+  <input type="file" id="csvInput" accept=".csv,.xls,.xlsx,text/csv,text/plain" class="hidden">
 </div>
 
 <!-- KAKAO SHEET -->
@@ -2377,7 +2401,7 @@ function syncRepHead(){
 /* ============ 시트/탭 ============ */
 function openSheet(id){$('#ov'+id).classList.add('on');$('#sh'+id).classList.add('on');}
 function closeSheet(id){$('#ov'+id).classList.remove('on');$('#sh'+id).classList.remove('on');}
-['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member','Trash','Budget','Print'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
+['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member','Trash','Budget','Print','Acct'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
 $('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;form.pc='';form.ct='';form.inv='';setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
 $('#prevM').onclick=()=>{view.setMonth(view.getMonth()-1);render();};
 $('#nextM').onclick=()=>{view.setMonth(view.getMonth()+1);render();};
@@ -2410,17 +2434,74 @@ $('#saveBudget').onclick=()=>{
   $$('#catBudgets input').forEach(inp=>{const v=Number(inp.value.replace(/[^0-9]/g,''));if(v>0)cats[inp.dataset.cat]=v;});
   state.budgets.cats=cats;
   save();render();toast('예산 저장됨');};
-$('#addAcct').onclick=()=>{const n=$('#newAcct').value.trim();if(!n)return;if(state.accounts.some(a=>a.name===n)){toast('이미 있는 계좌');return;}state.accounts.push({name:n,ico:'💳',init:0});$('#newAcct').value='';save();renderAcctChips();renderAccounts();toast('계좌 추가됨');};
+$('#addAcct').onclick=()=>{const n=$('#newAcct').value.trim();openAcct(-1);if(n){$('#acName').value=n;$('#newAcct').value='';}};
+const ACCT_ICO={'통장':'🏦','카드':'💳','현금':'💵','기타':'📦'};
+/* 계좌번호는 숫자만 남겨 비교한다 — 은행마다 하이픈·공백이 제각각이다 */
+function digits(s){return String(s||'').replace(/\D/g,'');}
+function daysSince(d){if(!d)return null;return Math.floor((new Date(new Date().toDateString())-new Date(d+'T00:00'))/864e5);}
 function renderAcctChips(){
-  $('#acctChips').innerHTML=state.accounts.map((a,i)=>`<div class="chipx"><span class="nm" data-i="${i}" style="cursor:pointer">${a.ico} ${esc(a.name)}${a.init?` <b style="color:var(--blue);font-size:11px">${won(a.init)}</b>`:''}</span>${state.accounts.length>1?`<span class="rm" data-i="${i}">×</span>`:''}</div>`).join('');
-  $$('#acctChips .rm').forEach(b=>b.onclick=()=>{state.accounts.splice(+b.dataset.i,1);save();renderAcctChips();renderAccounts();});
-  $$('#acctChips .nm').forEach(b=>b.onclick=()=>{
-    const a=state.accounts[+b.dataset.i];
-    const v=prompt(`'${a.name}' 초기잔액 설정 (현재 ${won(a.init||0)}원)`,a.init||0);
-    if(v===null)return;
-    a.init=Number(String(v).replace(/[^0-9-]/g,''))||0;
-    save();renderAcctChips();renderAccounts();toast('초기잔액 저장됨');});
+  $('#acctChips').innerHTML=state.accounts.map((a,i)=>{
+    const stale=daysSince(a.lastImp);
+    const badge=a.no?(stale===null?'':`<b style="color:${stale>14?'var(--gold)':'var(--muted-2)'};font-size:10.5px"> ${stale}일 전</b>`):'';
+    return `<div class="chipx"><span class="nm" data-i="${i}" style="cursor:pointer">${a.ico||ACCT_ICO[a.kind]||'💳'} ${esc(a.name)}${a.no?' <b style="color:var(--blue);font-size:10.5px">연동</b>':''}${badge}</span></div>`;
+  }).join('');
+  $$('#acctChips .nm').forEach(b=>b.onclick=()=>openAcct(+b.dataset.i));
 }
+/* ── 계좌 등록 ── */
+let acIdx=-1,acKind='통장';
+function openAcct(i){
+  acIdx=(i===undefined||i===null)?-1:i;
+  const a=acIdx>=0?state.accounts[acIdx]:null;
+  acKind=a?(a.kind||'통장'):'통장';
+  $('#acTitle').textContent=a?'계좌 정보':'계좌 등록';
+  $('#acName').value=a?a.name:'';
+  $('#acBank').value=a?(a.bank||''):'';
+  $('#acHolder').value=a?(a.holder||''):'';
+  $('#acNo').value=a?(a.no||''):'';
+  $('#acInit').value=a&&a.init?a.init.toLocaleString('ko-KR'):'';
+  $('#acDel').classList.toggle('hidden',!a||state.accounts.length<=1);
+  const li=$('#acLastImp');
+  if(a&&a.lastImp){
+    const d=daysSince(a.lastImp);
+    li.classList.remove('hidden');
+    li.innerHTML=`마지막 반영: <b>${a.lastImp.replace(/-/g,'.')}</b> (${d}일 전)<br>다음에 파일을 올리면 <b>${a.lastImp.replace(/-/g,'.')} 다음 거래부터</b> 자동으로 골라 담습니다.`;
+  }else li.classList.add('hidden');
+  renderAcKind();openSheet('Acct');
+}
+function renderAcKind(){
+  $$('#acKind .pill').forEach(p=>{
+    p.classList.toggle('sel',p.dataset.k===acKind);
+    p.onclick=()=>{acKind=p.dataset.k;renderAcKind();};
+  });
+}
+$('#acInit').oninput=e=>{let v=e.target.value.replace(/[^0-9]/g,'');e.target.value=v?Number(v).toLocaleString('ko-KR'):'';};
+$('#acSave').onclick=()=>{
+  const name=$('#acName').value.trim();
+  if(!name){toast('계좌 이름을 입력하세요');return;}
+  const dup=state.accounts.findIndex(x=>x.name===name);
+  if(dup!==-1&&dup!==acIdx){toast('같은 이름의 계좌가 이미 있습니다');return;}
+  const data={name,kind:acKind,ico:ACCT_ICO[acKind]||'💳',
+    bank:$('#acBank').value.trim()||undefined,
+    holder:$('#acHolder').value.trim()||undefined,
+    no:$('#acNo').value.trim()||undefined,
+    init:Number($('#acInit').value.replace(/[^0-9]/g,''))||0};
+  if(acIdx>=0){
+    const old=state.accounts[acIdx].name;
+    Object.assign(state.accounts[acIdx],data);
+    /* 이름을 바꾸면 그 계좌로 기록된 거래도 같이 따라가야 잔액이 맞는다 */
+    if(old!==name)state.tx.forEach(t=>{if(t.acct===old)t.acct=name;if(t.acct2===old)t.acct2=name;});
+  }else state.accounts.push(data);
+  save();closeSheet('Acct');renderAcctChips();renderAccounts();renderAcctPills();
+  toast(acIdx>=0?'계좌 정보 저장됨':'계좌 등록됨');
+};
+$('#acDel').onclick=()=>{
+  if(acIdx<0)return;
+  const a=state.accounts[acIdx];
+  const used=state.tx.filter(t=>t.acct===a.name||t.acct2===a.name).length;
+  if(!confirm(`'${a.name}' 계좌를 삭제할까요?${used?`\n\n이 계좌로 기록된 거래 ${used}건은 지워지지 않고 남습니다.`:''}`))return;
+  state.accounts.splice(acIdx,1);
+  save();closeSheet('Acct');renderAcctChips();renderAccounts();renderAcctPills();toast('계좌 삭제됨');
+};
 $('#addSite').onclick=()=>{const n=$('#newSite').value.trim();if(!n)return;if(state.sites.includes(n)){toast('이미 있는 현장');return;}state.sites.push(n);$('#newSite').value='';save();renderSiteChips();toast('현장 추가됨');};
 function renderSiteChips(){
   $('#siteChips').innerHTML=state.sites.length?state.sites.map((s,i)=>`<div class="chipx"><span class="nm" data-s="${esc(s)}" style="cursor:pointer">🏗️ ${esc(s)}${state.contracts[s]?` <b style="color:var(--gold);font-size:11px">${won(state.contracts[s])}</b>`:''}</span><span class="rm" data-i="${i}">×</span></div>`).join(''):'<div style="font-size:12px;color:var(--muted-2);padding:4px">등록된 현장이 없습니다 · 현장별 공사대금을 관리하려면 추가하세요</div>';
@@ -3460,6 +3541,40 @@ function renderCashflow(){
 /* ============ 카드 · 통장 CSV 가져오기 ============
    국내 은행·카드 CSV 는 (1) 대개 EUC-KR (2) 헤더 앞에 안내문 몇 줄 (3) 은행마다 열 이름이 제각각.
    → 인코딩 자동 판별 + 헤더 줄 탐색 + 열 이름 패턴 매칭으로 흡수한다. */
+/* 은행은 대부분 엑셀(.xls/.xlsx)로 내려준다. 파서는 그 파일을 고를 때만 받아온다. */
+let sheetLoad=null;
+function loadSheetJS(){
+  if(window.XLSX)return Promise.resolve(true);
+  if(sheetLoad)return sheetLoad;
+  sheetLoad=new Promise(res=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.async=true;s.onload=()=>res(true);s.onerror=()=>res(false);
+    document.head.appendChild(s);
+  });
+  return sheetLoad;
+}
+/* 엑셀 → CSV와 같은 2차원 배열. 시트가 여러 장이면 거래가 가장 많아 보이는 장을 쓴다. */
+async function sheetToRows(buf){
+  if(!await loadSheetJS())return null;
+  const wb=XLSX.read(buf,{type:'array',cellDates:false});
+  let best=null,bestScore=-1;
+  wb.SheetNames.forEach(nm=>{
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1,raw:false,defval:''});
+    const score=rows.length;
+    if(score>bestScore){bestScore=score;best=rows;}
+  });
+  return best?best.map(r=>r.map(c=>String(c==null?'':c).trim())):null;
+}
+/* 파일 어디엔가 적힌 계좌번호로 등록된 계좌를 찾는다 (숫자만 비교) */
+function detectAccount(rows){
+  const head=rows.slice(0,12).map(r=>r.join(' ')).join(' ');
+  const nums=digits(head);
+  if(!nums)return null;
+  const cands=state.accounts.filter(a=>a.no&&digits(a.no).length>=6);
+  for(const a of cands){ if(nums.indexOf(digits(a.no))!==-1) return a; }
+  return null;
+}
 function decodeCsv(buf){
   try{return new TextDecoder('utf-8',{fatal:true}).decode(buf);}
   catch(e){ try{return new TextDecoder('euc-kr').decode(buf);}catch(_){return new TextDecoder('utf-8').decode(buf);} }
@@ -3478,23 +3593,28 @@ function parseCsv(text){
   if(cur!==''||row.length){row.push(cur);rows.push(row);}
   return rows.filter(r=>r.some(v=>String(v).trim()!==''));
 }
+/* 국내 은행·회계 파일은 머리글을 「거 래 일 시」「입 금」처럼 띄어 쓰는 경우가 많다.
+   공백을 빼고 비교하지 않으면 열을 하나도 못 찾는다. */
 const CSV_H={
-  date:/날짜|일자|거래일|승인일|이용일|매출일/,
-  out :/출금|지급|인출|사용금액|이용금액|승인금액|결제금액|출금액|사용액/,
-  inc :/입금|입금액/,
+  date:/날짜|일자|거래일|거래일시|승인일|이용일|매출일/,
+  out :/출금|지급|인출|사용금액|이용금액|승인금액|결제금액|출금액|사용액|차변/,
+  inc :/입금|입금액|대변/,
   amt :/금액|amount/i,
-  desc:/적요|내용|가맹점|거래처|비고|메모|상호|기재|가맹점명|이용하신곳/
+  desc:/적요|내용|가맹점|비고|메모|기재|이용하신곳|거래내용/,
+  who :/의뢰인|수취인|입금자|받는분|보내는분|거래상대|거래처|상호|가맹점명/
 };
 function findHeader(rows){
   let best=-1,bestScore=0,bestMap=null;
   rows.slice(0,20).forEach((r,i)=>{
     const map={};let score=0;
     r.forEach((cell,j)=>{
-      const v=String(cell||'').trim();
+      const v=String(cell||'').replace(/\s+/g,'');   /* 「거 래 일 시」 → 「거래일시」 */
+      if(!v)return;
       if(map.date===undefined&&CSV_H.date.test(v)){map.date=j;score++;return;}
       if(map.out ===undefined&&CSV_H.out.test(v)) {map.out =j;score++;return;}
       if(map.inc ===undefined&&CSV_H.inc.test(v)) {map.inc =j;score++;return;}
       if(map.desc===undefined&&CSV_H.desc.test(v)){map.desc=j;score++;return;}
+      if(map.who ===undefined&&CSV_H.who.test(v)) {map.who =j;score++;return;}
       if(map.amt ===undefined&&CSV_H.amt.test(v)) {map.amt =j;score++;}
     });
     if(map.date!==undefined&&(map.out!==undefined||map.inc!==undefined||map.amt!==undefined)&&score>bestScore){
@@ -3554,11 +3674,14 @@ function buildImpItems(rows,idx,map){
     else if(map.amt!==undefined){amount=normAmt(r2[map.amt]);type=/^\s*-/.test(String(r2[map.amt]))?'out':'out';}
     if(!amount)return;
     const desc=String(map.desc!==undefined?(r2[map.desc]||''):'').trim().replace(/\s+/g,' ');
+    /* 은행 파일에 '의뢰인/수취인' 열이 따로 있으면 그게 거래처다 — 적요보다 정확하다 */
+    const who=String(map.who!==undefined?(r2[map.who]||''):'').trim().replace(/\s+/g,' ');
+    const vendor=who||desc.slice(0,30);
     const dup=state.tx.some(x=>!x.tf&&x.date===date&&x.amount===amount&&String(x.memo||'').slice(0,24)===desc.slice(0,24));
     const base=`imp|${date}|${amount}|${desc.slice(0,24)}`;
     seen[base]=(seen[base]||0)+1;
-    const cat=guessCat(desc,type);
-    out.push({date,amount,type,memo:desc,vendor:desc.slice(0,30),cat,ico:icoOf(type,cat),
+    const cat=guessCat(who?`${who} ${desc}`:desc,type);
+    out.push({date,amount,type,memo:desc,vendor,cat,ico:icoOf(type,cat),
               dup,sel:!dup,dk:dup?null:base+'#'+seen[base]});
   });
   out.sort((a,b)=>a.date.localeCompare(b.date));
@@ -3573,22 +3696,49 @@ function openImport(){
 $('#importCsv').onclick=openImport;
 $('#impPick').onclick=()=>$('#csvInput').click();
 $('#impBack').onclick=()=>{$('#impStep1').classList.remove('hidden');$('#impStep2').classList.add('hidden');};
+let impAuto='';   /* 자동으로 알아본 내용을 사용자에게 알려주는 문구 */
 $('#csvInput').onchange=e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
+  const isSheet=/\.(xls|xlsx)$/i.test(f.name||'');
   const r=new FileReader();
-  r.onload=()=>{
-    let rows;
-    try{rows=parseCsv(decodeCsv(r.result));}catch(err){toast('파일을 읽지 못했습니다');return;}
+  r.onload=async()=>{
+    let rows=null;
+    try{
+      rows=isSheet ? await sheetToRows(r.result) : parseCsv(decodeCsv(r.result));
+    }catch(err){rows=null;}
+    if(!rows||!rows.length){
+      toast(isSheet?'엑셀을 읽지 못했습니다 (온라인 상태 확인)':'파일을 읽지 못했습니다');return;
+    }
     const hd=findHeader(rows);
-    if(!hd){toast('날짜·금액 열을 찾지 못했습니다. 원본 CSV 인지 확인해 주세요');return;}
+    if(!hd){toast('날짜·금액 열을 찾지 못했습니다. 은행에서 받은 원본인지 확인해 주세요');return;}
+
+    /* ① 계좌 자동 인식 — 등록해 둔 계좌번호가 파일 어딘가에 있으면 그 계좌로 */
+    const hit=detectAccount(rows);
+    impAcct=hit?hit.name:(state.accounts[0]?state.accounts[0].name:'');
+    impSite='';
     impItems=buildImpItems(rows,hd.idx,hd.map);
     if(!impItems.length){toast('가져올 내역이 없습니다');return;}
+
+    /* ② 이어받기 — 그 계좌에 마지막으로 반영된 날 다음부터만 기본 선택 */
+    let resumed=0;
+    if(hit&&hit.lastImp){
+      impItems.forEach(it=>{ if(it.date<=hit.lastImp){it.sel=false;resumed++;} });
+    }
+    const news=impItems.filter(i=>i.sel).length;
+    impAuto=[
+      hit?`계좌 <b>${esc(hit.name)}</b> 자동 인식`:'계좌를 알아보지 못했습니다 — 아래에서 골라주세요',
+      resumed?`이미 반영된 ${resumed}건 제외 (${hit.lastImp.replace(/-/g,'.')} 까지)`:'',
+      `새로 담을 내역 <b>${news}건</b>`
+    ].filter(Boolean).join(' · ');
+
     $('#impStep1').classList.add('hidden');$('#impStep2').classList.remove('hidden');
     renderImpPills();renderImpList();
   };
   r.readAsArrayBuffer(f);
 };
 function renderImpPills(){
+  const an=$('#impAutoNote');
+  if(an){an.classList.toggle('hidden',!impAuto);an.innerHTML=impAuto;}
   $('#impAcctPills').innerHTML=state.accounts.map(a=>`<div class="pill ${impAcct===a.name?'sel':''}" data-a="${esc(a.name)}">${a.ico} ${esc(a.name)}</div>`).join('');
   $$('#impAcctPills .pill').forEach(p=>p.onclick=()=>{impAcct=p.dataset.a;renderImpPills();});
   $('#impSitePills').innerHTML=`<div class="pill ${!impSite?'sel':''}" data-s="">지정 안 함</div>`+
@@ -3619,8 +3769,14 @@ $('#impConfirm').onclick=()=>{
       vatm:'none',supply:it.amount,vat:0,evid:it.type==='out'?'카드':'',cr:0,
       src:'import',dk:it.dk||undefined,att:[],synced:false});
   });
-  save();closeSheet('Imp');render();renderStats();
-  toast(`${picked.length}건을 가져왔습니다 · 카테고리를 확인해 주세요`);
+  /* 이 계좌에 어디까지 반영했는지 기록해 두면 다음 파일은 그 다음부터만 담긴다 */
+  const acc=state.accounts.find(a=>a.name===(impAcct||state.accounts[0].name));
+  if(acc){
+    const last=picked.map(p=>p.date).sort().pop();
+    if(last&&(!acc.lastImp||last>acc.lastImp))acc.lastImp=last;
+  }
+  save();closeSheet('Imp');render();renderStats();renderAcctChips();
+  toast(`${picked.length}건을 가져왔습니다${acc&&acc.lastImp?` · ${acc.name} ${acc.lastImp.replace(/-/g,'.')}까지 반영`:''}`);
 };
 
 /* ============ 시작 ============ */
