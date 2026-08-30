@@ -3918,21 +3918,29 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       cand.filter(c=>c.kind==='section').length===1);
     assert('인쇄입면: 공간별로 묶인다',cand.filter(c=>c.group==='인쇄방1').length===4&&
       cand.filter(c=>c.group==='인쇄방2').length===4);
+    assert('인쇄입면: 절단선이 목록 맨 앞',cand[0].kind==='section',cand[0].kind);
     assert('인쇄입면: 내용 있는 면을 표시',cand.filter(c=>c.kind==='wall'&&c.busy>0).length===2,
       String(cand.filter(c=>c.kind==='wall'&&c.busy>0).length));
 
-    // [P3] 켜면 '문창·전기 있는 면 + 절단선' 만 담는다 (빈 벽이 딸려 나오지 않게)
+    // [P3] 대표 지시: "절단면으로 만들 자리만 입면도로 인쇄" — 켜면 절단선만 담는다
     c0.elevations=true;
     printElevDefaults(c0);
-    assert('인쇄입면: 기본은 내용 있는 면만',printElevationList(c0).length===3,
+    assert('인쇄입면: 기본은 절단선 그은 자리만',printElevationList(c0).length===1,
       'n='+printElevationList(c0).length);
-    assert('인쇄입면: 빈 벽은 안 담긴다',
-      c0.elevPick.length===3&&cand.filter(c=>c.busy===0).every(c=>c0.elevPick.indexOf(c.key)<0));
+    assert('인쇄입면: 벽면은 기본에서 빠진다',
+      c0.elevPick.length===1&&c0.elevPick[0]==='s:'+pSec.id,c0.elevPick.join(','));
+    // 절단선이 하나도 없을 때만 벽면으로 대신한다 (빈 장이 되지 않게)
+    const _scSave=STATE.sections;STATE.sections=[];
+    const cNo={...c0,elevPick:[]};
+    printElevDefaults(cNo);
+    assert('인쇄입면: 절단선 없으면 벽면으로',cNo.elevPick.length===2,
+      String(cNo.elevPick.length));
+    STATE.sections=_scSave;
 
     // [P4] 면 하나씩 넣고 뺀다
     const emptyKey=cand.filter(c=>c.busy===0)[0].key;
     c0.elevPick.push(emptyKey);
-    assert('인쇄입면: 한 면 추가',printElevationList(c0).length===4);
+    assert('인쇄입면: 한 면 추가',printElevationList(c0).length===2);
     c0.elevPick=[cand[0].key];
     assert('인쇄입면: 한 면만',printElevationList(c0).length===1);
     c0.elevPick=[];
@@ -3942,7 +3950,14 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     // [P5] 한 장에 몇 면 — 적게 담을수록 크게 나온다
     const Lland={orientation:'landscape'},Lport={orientation:'portrait'};
     c0.elevPerPage=0;
-    assert('인쇄입면: 자동은 가로 4·세로 2',printElevPerPage(Lland,c0)===4&&printElevPerPage(Lport,c0)===2);
+    const _pSave=c0.elevPaper;
+    c0.elevPaper='same';
+    assert('인쇄입면: 같게+자동은 가로 4·세로 2',
+      printElevPerPage(Lland,c0)===4&&printElevPerPage(Lport,c0)===2);
+    c0.elevPaper='A3';
+    assert('인쇄입면: 큰 종이를 고르면 자동은 한 장에 하나',printElevPerPage(Lland,c0)===1,
+      String(printElevPerPage(Lland,c0)));
+    c0.elevPaper=_pSave;
     c0.elevPerPage=1;
     assert('인쇄입면: 1면 지정',printElevPerPage(Lland,c0)===1&&printElevPerPage(Lport,c0)===1);
     assert('인쇄입면: 1~2면은 종이 폭을 다 쓴다',printElevCols(Lland,c0)===1);
@@ -3971,7 +3986,38 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('인쇄입면: 끄면 안 붙는다',(sheetOf().match(/class="pe[ "]/g)||[]).length===0);
     c0.elevations=true;
 
+    // [P6-1] 입면도만 다른 용지로 — 대표 보고 "더 키워야한다"
+    assert('인쇄입면: 용지 기본 A3',c0.elevPaper==='A3');
+    const EA3=printElevPaper(Lport,c0);
+    assert('인쇄입면: A3 가로로 나온다',EA3.pw===420&&EA3.ph===297&&
+      EA3.orientation==='landscape'&&EA3.own===true,EA3.pw+'x'+EA3.ph);
+    c0.elevPaper='same';
+    const ESame=printElevPaper({pw:210,ph:297,orientation:'portrait',paper:'A4'},c0);
+    assert('인쇄입면: 같게면 평면도 장 그대로',ESame.pw===210&&ESame.own===false);
+    // 용지가 클수록 도면이 넓어진다
+    const wOf=v=>{c0.elevPaper=v;return printElevDrawWidth({pw:210,ph:297,orientation:'portrait',paper:'A4'},c0);};
+    const wSame=wOf('same'), wA4=wOf('A4'), wA3=wOf('A3'), wA2=wOf('A2');
+    assert('인쇄입면: 용지가 클수록 넓다',wA4<wA3&&wA3<wA2,[wSame,wA4,wA3,wA2].join('/'));
+    assert('인쇄입면: A3 이 A4 세로보다 넓다',wA3>wSame,wA3+'>'+wSame);
+    c0.elevPaper='A3';
+    // 장마다 용지가 다르면 이름 붙인 @page 를 낸다
+    const mixHtml=buildPrintSheet({url:'',wMm:10,hMm:10},
+      {...LPE,orientation:'portrait',pw:210,ph:297,paper:'A4',availW:194,availH:200,tbH:30},
+      _printInfo(),c0,{preview:true});
+    assert('인쇄입면: 섞인 용지 @page',mixHtml.indexOf('@page elevpg')>0&&
+      mixHtml.indexOf('.pe{page:elevpg}')>0);
+    assert('인쇄입면: 입면 장은 A3 크기',mixHtml.indexOf('.pe{width:420mm;height:297mm')>0,
+      String(mixHtml.indexOf('.pe{width:420mm')));
+    c0.elevPaper='same';
+    const sameHtml=buildPrintSheet({url:'',wMm:10,hMm:10},
+      {...LPE,orientation:'portrait',pw:210,ph:297,paper:'A4',availW:194,availH:200,tbH:30},
+      _printInfo(),c0,{preview:true});
+    assert('인쇄입면: 같게면 이름 안 붙인다',sameHtml.indexOf('@page elevpg')<0);
+    assert('인쇄입면: 그림은 칸을 넘지 않는다',sameHtml.indexOf('max-height:100%')>0);
+    c0.elevPaper='A3';
+
     // [P6-2] 세로 용지에선 눕혀 크게 (대표 보고: 인쇄란에서 작아서 잘 보이지 않는다)
+    c0.elevPaper='same';
     assert('인쇄입면: 눕히기 기본 켬',c0.elevLandscape===true);
     assert('인쇄입면: 세로일 때만 눕힌다',
       printElevRot(Lport,c0)===true&&printElevRot(Lland,c0)===false);
@@ -3987,6 +4033,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       scale:LPE.scale,availW:281,availH:150,tbH:30},_printInfo(),c0,
       {preview:true,onlyPage:3,onlyElevPage:1});
     assert('인쇄입면: 가로 용지는 그대로',flatHtml.indexOf('class="pe rot"')<0);
+    c0.elevPaper='A3';
 
     // [P7] 미리보기 — 입면도만 (평면·부속표는 빠진다)
     const only3=buildPrintSheet(null,LPE,_printInfo(),c0,{preview:true,onlyPage:3,onlyElevPage:1});
@@ -4010,6 +4057,11 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('인쇄입면: 한 장에 몇 면 버튼',document.querySelectorAll('.pd-evper').length===4);
     assert('인쇄입면: 전체·해제 버튼',!!document.getElementById('pd-evall')&&
       !!document.getElementById('pd-evbusy')&&!!document.getElementById('pd-evnone'));
+    assert('인쇄입면: 절단선만 버튼',!!document.getElementById('pd-evsec'));
+    assert('인쇄입면: 용지 버튼 4개',document.querySelectorAll('.pd-evpaper').length===4);
+    document.getElementById('pd-evsec').click();
+    assert('인쇄입면: 절단선만 담긴다',printCfg().elevPick.length===1&&
+      printCfg().elevPick[0].indexOf('s:')===0,printCfg().elevPick.join(','));
     // 전체 → 9면, 해제 → 0면, 내용 있는 면 → 3면
     document.getElementById('pd-evall').click();
     assert('인쇄입면: 전체 선택',printElevationList(printCfg()).length===9,
@@ -4028,9 +4080,14 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     // 한 장에 1면으로
     [...document.querySelectorAll('.pd-evper')].filter(b=>b.dataset.v==='1')[0].click();
     assert('인쇄입면: 1면 설정 적용',printCfg().elevPerPage===1);
-    // 눕히기 토글
+    // 용지 바꾸기 — A2 로
+    [...document.querySelectorAll('.pd-evpaper')].filter(b=>b.dataset.v==='A2')[0].click();
+    assert('인쇄입면: 용지 A2 적용',printCfg().elevPaper==='A2');
+    // '같게' 일 때만 눕히기 토글이 뜬다 (자기 용지는 이미 가로다)
+    assert('인쇄입면: 자기 용지면 눕히기 안 보임',!document.getElementById('pd-evrot'));
+    [...document.querySelectorAll('.pd-evpaper')].filter(b=>b.dataset.v==='same')[0].click();
     const rt=document.getElementById('pd-evrot');
-    assert('인쇄입면: 눕히기 토글',!!rt&&rt.checked===true);
+    assert('인쇄입면: 같게면 눕히기 토글',!!rt&&rt.checked===true);
     rt.checked=false;rt.dispatchEvent(new Event('change'));
     assert('인쇄입면: 눕히기 끄기',printCfg().elevLandscape===false);
     rt.checked=true;rt.dispatchEvent(new Event('change'));
