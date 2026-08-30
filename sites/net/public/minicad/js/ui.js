@@ -4000,7 +4000,7 @@ function _pdLeftHTML(cfg){
   const evChip=(id,nm,on,cls)=>'<button type="button" class="btn sm '+cls+'" data-id="'+id+'" '+
     'style="padding:3px 8px;font-size:11px'+
     (on?';background:rgba(201,169,97,0.25);border-color:#C9A961;color:#C9A961':'')+'">'+nm+'</button>';
-  const elevBox=_pdSection('입면도',
+  const elevBox=_pdSection('입면도 — 평면도 뒤에 붙는 뒷장',
     '<label style="display:flex;align-items:center;gap:5px;font-size:11.5px;cursor:pointer;padding:2px 0">'+
       '<input type="checkbox" id="pd-elev"'+(cfg.elevations?' checked':'')+
       ' style="accent-color:#C9A961">평면도 뒤에 입면도 붙이기</label>'+
@@ -4026,7 +4026,7 @@ function _pdLeftHTML(cfg){
 
   return region+
     (cfg.region==='space'?_pdSection('인쇄할 공간 (여러 개 선택 가능)',spaceChips):'')+
-    paper+layers+color+sheet+elevBox;
+    paper+elevBox+layers+color+sheet;
 }
 function _pdThumbsHTML(cfg){
   return '<div style="display:flex;gap:8px">'+PRINT_PRESETS.map(p=>
@@ -4098,7 +4098,17 @@ function openPrintDialog(){
   document.getElementById('pd-print').addEventListener('click',()=>{closePrintDialog();printPlan();});
   document.getElementById('pd-pg1').addEventListener('click',()=>{_printPreviewPage=1;_pdSyncPageBtns();_pdPreview();});
   document.getElementById('pd-pg2').addEventListener('click',()=>{_printPreviewPage=2;_pdSyncPageBtns();_pdPreview();});
-  document.getElementById('pd-pg3').addEventListener('click',()=>{_printPreviewPage=3;_pdSyncPageBtns();_pdPreview();});
+  document.getElementById('pd-pg3').addEventListener('click',()=>{
+    // 2026-08-30 대표 보고: 눌러도 안 나왔다 — 꺼져 있으면 여기서 켠다 (누른 것 자체가 보겠다는 뜻)
+    const c=printCfg();
+    if(!c.elevations||!printElevationList(c).length){
+      c.elevations=true;
+      c.elevSpaceIds=[];c.elevSectionIds=[];
+      printElevDefaults(c);
+      _pdRenderLeft();
+    }
+    _printPreviewPage=3;_pdSyncPageBtns();_pdPreview();
+  });
   _pdRenderLeft();
   _pdSyncPageBtns();
   _pdPreview();
@@ -4111,10 +4121,14 @@ function _pdSyncPageBtns(){
   if(b2){b2.classList.toggle('gold',_printPreviewPage===2);b2.disabled=!c.page2;b2.style.opacity=c.page2?'1':'0.45';}
   const b3=document.getElementById('pd-pg3');
   if(b3){
+    // 잠그는 건 도면에 뽑을 벽 자체가 없을 때만. '아직 안 켬' 은 잠글 이유가 아니다 —
+    // 누르면 켜지게 해 두었다 (2026-08-30 대표 보고).
+    const can=((typeof elevationSpaces==='function')?elevationSpaces().length:0)+
+              ((STATE.sections||[]).length);
     const n=printElevationList(c).length;
     b3.classList.toggle('gold',_printPreviewPage===3);
-    b3.disabled=!n;b3.style.opacity=n?'1':'0.45';
-    b3.textContent=n?('입면도 ('+n+'면)'):'입면도';
+    b3.disabled=!can;b3.style.opacity=can?'1':'0.45';
+    b3.textContent=can?('입면도'+(n?(' ('+n+'면)'):'')):'입면도 (뽑을 벽 없음)';
   }
 }
 function _pdRenderLeft(){
@@ -4223,6 +4237,16 @@ function _pdPreview(){
     const L=choosePrintLayout(bbox,cfg);
     if(info) info.textContent=printRegionLabel(cfg)+' · '+L.paper+' '+(L.orientation==='landscape'?'가로':'세로')+
       ' · 1/'+L.scale+' · '+Math.round(bbox.w)+'×'+Math.round(bbox.h)+'mm';
+    // 입면도 미리보기인데 담긴 면이 없으면 흰 종이 대신 이유를 적는다
+    if(_printPreviewPage===3&&!printElevationList(cfg).length){
+      const can=((typeof elevationSpaces==='function')?elevationSpaces().length:0)+
+                ((STATE.sections||[]).length);
+      host.innerHTML='<div style="color:#fff;font-size:12px;text-align:center;line-height:1.7;padding:16px">'+
+        (can?'왼쪽 <b>입면도</b> 에서 넣을 벽·절단선을 골라주세요'
+            :'입면도로 뽑을 벽이 없습니다<br>공간을 그리거나 절단선(K)을 그어주세요')+'</div>';
+      if(busy) busy.textContent='';
+      return;
+    }
     let html;
     try{
       const img=(_printPreviewPage!==1)?null:_printCapture(bbox,L,cfg,60);

@@ -3977,11 +3977,45 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     // 껐다 켜기
     const tgl=document.getElementById('pd-elev');
     tgl.checked=false;tgl.dispatchEvent(new Event('change'));
-    assert('인쇄입면: 끄면 버튼 잠금',document.getElementById('pd-pg3').disabled===true);
+    assert('인쇄입면: 꺼도 버튼은 살아있다',document.getElementById('pd-pg3').disabled===false);
     tgl.checked=true;tgl.dispatchEvent(new Event('change'));
     assert('인쇄입면: 다시 켜기',printCfg().elevations===true&&
       document.getElementById('pd-pg3').disabled===false);
     closePrintDialog();
+
+    // [P9] 2026-08-30 대표 보고: "인쇄에서 입면도를 봐도 나오지가 않는다"
+    //  꺼진 상태에서 버튼이 잠겨 있어 눌러도 아무 일이 없었다.
+    //  누른 것 자체가 보겠다는 뜻이므로, 눌리면 켜지고 담을 것도 알아서 채워야 한다.
+    STATE.printConfig=null;
+    const cOff=printCfg();
+    assert('인쇄입면: 기본은 꺼짐 (재확인)',cOff.elevations===false);
+    openPrintDialog();
+    const b3=document.getElementById('pd-pg3');
+    assert('인쇄입면: 꺼져 있어도 버튼이 잠기지 않는다',b3.disabled===false,String(b3.disabled));
+    b3.click();
+    assert('인쇄입면: 누르면 켜진다',printCfg().elevations===true);
+    assert('인쇄입면: 누르면 담을 것도 채워진다',printElevationList(printCfg()).length>0,
+      String(printElevationList(printCfg()).length));
+    assert('인쇄입면: 누르면 입면도 쪽을 본다',_printPreviewPage===3,String(_printPreviewPage));
+    // 다 빼놓고 눌러도 다시 채워진다
+    const c9=printCfg();
+    c9.elevSpaceIds=[];c9.elevSectionIds=[];
+    document.getElementById('pd-pg3').click();
+    assert('인쇄입면: 비어 있으면 다시 채운다',printElevationList(printCfg()).length>0,
+      String(printElevationList(printCfg()).length));
+    closePrintDialog();
+
+    // [P10] 뽑을 벽이 아예 없으면 그때만 잠근다
+    const _spBak=STATE.spaces,_wBak=STATE.walls,_scBak=STATE.sections;
+    STATE.spaces=[];STATE.walls=[];STATE.sections=[];
+    STATE.printConfig=null;
+    openPrintDialog();
+    const bNone=document.getElementById('pd-pg3');
+    assert('인쇄입면: 뽑을 벽이 없으면 잠금',bNone.disabled===true,String(bNone.disabled));
+    assert('인쇄입면: 없다고 적어준다',bNone.textContent.indexOf('없음')>0,bNone.textContent);
+    closePrintDialog();
+    STATE.spaces=_spBak;STATE.walls=_wBak;STATE.sections=_scBak;
+    STATE.printConfig=null;printCfg().elevations=true;printElevDefaults(printCfg());
 
     STATE.spaces=_bakPE.spaces;STATE.walls=_bakPE.walls;STATE.vertices=_bakPE.vertices;
     STATE.openings=_bakPE.openings;STATE.electric=_bakPE.electric;
