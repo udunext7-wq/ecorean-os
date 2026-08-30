@@ -23,6 +23,7 @@ groups={
   hvac:new Konva.Group(), // v5.6
   leaders:new Konva.Group(), // v5.9
   xlines:new Konva.Group(), // v5.9: 무한 안내선 (XLINE)
+  sections:new Konva.Group(), // 2026-08-30: 절단선 (입면 방향선)
   pillars:new Konva.Group(), // v5.9: 기둥 (RC) — 내력벽과 함께 최상단
   spaceHandles:new Konva.Group(), // v5.9: 공간 vertex 편집 핸들 (선택 시만 표시, 가장 위 z-order)
   printFrame:new Konva.Group(), // 2026-08-28: 화면에서 잡는 인쇄 영역 틀 (최상단, 인쇄엔 미포함)
@@ -36,6 +37,7 @@ mainLayer.add(groups.curves); // v5.9: 자유곡선
 mainLayer.add(groups.hvac); // v5.6
 mainLayer.add(groups.leaders); // v5.9
 mainLayer.add(groups.xlines); // v5.9: 무한 안내선 — 벽 위, 핸들 아래 (클릭 선택 가능)
+mainLayer.add(groups.sections); // 2026-08-30: 절단선 — 도면 위에서 잘 보여야 하므로 벽 위
 mainLayer.add(groups.pillars); // v5.9: 기둥 — 벽 위로
 mainLayer.add(groups.spaceHandles); // v5.9: 핸들이 가장 위 — 벽보다 위에서 클릭 가능
 mainLayer.add(groups.printFrame);   // 2026-08-28: 인쇄 영역 틀은 모든 것 위
@@ -1051,7 +1053,7 @@ function saveHistory(){
     furniture:STATE.furniture,fixtures:STATE.fixtures,lights:STATE.lights,
     electric:STATE.electric,texts:STATE.texts,measures:STATE.measures,
     circles:STATE.circles,arcs:STATE.arcs,hvac:STATE.hvac,
-    leaders:STATE.leaders,
+    leaders:STATE.leaders,sections:STATE.sections,
     estimateConfig:STATE.estimateConfig,
   });
   STATE.history=STATE.history.slice(0,STATE.historyIdx+1);
@@ -3642,6 +3644,7 @@ function renderAll(){
   _rif('curves',  sig('curves', (J?J(STATE.curves||[]):'')+sSpaces),()=>renderCurves());
   _rif('leaders', sig('leaders',J?J(STATE.leaders):''),     ()=>renderLeaders());
   _rif('xlines',  sig('xlines', J?J(STATE.xlines||[]):''),  ()=>renderXlines());
+  _rif('sections',sig('sections',J?J(STATE.sections||[]):''),()=>renderSections());
   _rif('pillars', sig('pillars',J?J(STATE.pillars||[]):''), ()=>renderPillars());
   // v5.9: 자동 면적 라벨 비활성화 — 공간 공유 변 사이 부분영역마다 라벨이 생겨 도면이 어지러움
   renderSpaceHandles(); // 선택 의존·저비용 — 항상 실행
@@ -4621,6 +4624,9 @@ function buildElevation(wall,spaceId){
       flip=(ux*(-dy)+uy*dx)<0;                    // (-dy,dx) = 그 사람의 오른손 방향
     }
   }
+  // 2026-08-30: 방향은 대표가 고른다 — 기본은 '방 안에서', 'out' 이면 벽 반대편에서 본 그림
+  const vside=(wall.elevSide==='out')?'out':'in';
+  if(vside==='out'){ dirx=-dirx; diry=-diry; flip=!flip; }
   // 벽을 따라간 거리로 바꾼다. 뒤집을 때는 반대쪽 끝에서 잰다.
   const along=(px,py)=>{
     const t=(px-wall.x1)*ux+(py-wall.y1)*uy;
@@ -4656,7 +4662,7 @@ function buildElevation(wall,spaceId){
   }).filter(Boolean).sort((a,b)=>a.left-b.left);
   const mat=(typeof WALL_MATERIALS!=='undefined'&&WALL_MATERIALS[wall.finishMaterial])
     ?WALL_MATERIALS[wall.finishMaterial].name:null;
-  return {wallId:wall.id,spaceId:sp?sp.id:null,
+  return {wallId:wall.id,spaceId:sp?sp.id:null, viewSide:vside,
     spaceName:(sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||'',
     L,H,ops,devs,flip,material:mat,
     thickness:Math.round(wall.thickness||0),
@@ -4671,4 +4677,203 @@ function buildSpaceElevations(spaceId){
 }
 function elevationSpaces(){
   return (STATE.spaces||[]).filter(s=>elevationWallsOf(s.id).length>0);
+}
+
+// ===== 2026-08-30: 절단선(입면 방향선) — 대표 지시 =====
+//  "입면도 방향을 내가 선택하고 절단면에서부터 원하는 입면도를 자유롭게"
+//  도면 위에 선을 긋고 어느 쪽을 볼지 고르면, 그 선 앞에 있는 것들을 선 위에 세워 그린다.
+//  방 하나에 갇히지 않는다 — 여러 방을 가로질러도, 복도에서 안쪽을 봐도 된다.
+const SECTION_DEPTH_DEFAULT=6000;   // 절단면에서 볼 깊이 (mm) — 방 하나 정도
+const SECTION_DEPTHS=[1500,3000,4500,6000,9000,0];  // 0 = 제한 없음
+const SECTION_PARALLEL_COS=0.866;   // 30° 이내면 '마주 보는 벽면'으로 친다
+function sectionDepthOf(sec){
+  const d=sec&&sec.depth_mm;
+  if(d==null) return SECTION_DEPTH_DEFAULT;
+  return (d<=0)?Infinity:Math.max(300,Math.round(d));
+}
+function sectionLabelOf(sec){
+  const i=(STATE.sections||[]).findIndex(x=>x.id===(sec&&sec.id));
+  return String.fromCharCode(65+((i<0?0:i)%26));
+}
+// 절단선의 보는 방향 (단위벡터) — side 가 +1/-1 로 어느 쪽인지 정한다
+function sectionViewDir(sec){
+  const L=Math.hypot(sec.x2-sec.x1,sec.y2-sec.y1)||1;
+  const ux=(sec.x2-sec.x1)/L, uy=(sec.y2-sec.y1)/L;
+  const sd=(sec.side===-1)?-1:1;
+  return {ux,uy,L,dx:-uy*sd,dy:ux*sd};
+}
+function makeSection(x1,y1,x2,y2,side,props){
+  return Object.assign({id:makeId('sc'),x1:Math.round(x1),y1:Math.round(y1),
+    x2:Math.round(x2),y2:Math.round(y2),side:(side===-1?-1:1),
+    depth_mm:SECTION_DEPTH_DEFAULT,name:''},props||{});
+}
+// 선분을 [0,L] 로 자른 뒤 겹치는 범위 반환 (없으면 null)
+function _clip01(a,b,lo,hi){
+  const l=Math.max(Math.min(a,b),lo), r=Math.min(Math.max(a,b),hi);
+  return (r-l>1)?[l,r]:null;
+}
+// 구간 [l,r] 에서 이미 가려진 구간들을 뺀 나머지
+function _rangeSub(l,r,covered){
+  let out=[[l,r]];
+  covered.forEach(([cl,cr])=>{
+    const nx=[];
+    out.forEach(([a,b])=>{
+      if(cr<=a||cl>=b){nx.push([a,b]);return;}   // 안 겹침
+      if(cl>a) nx.push([a,Math.min(cl,b)]);
+      if(cr<b) nx.push([Math.max(cr,a),b]);
+    });
+    out=nx.filter(([a,b])=>b-a>1);
+  });
+  return out;
+}
+function _rangeAdd(covered,l,r){
+  const all=covered.concat([[l,r]]).sort((a,b)=>a[0]-b[0]);
+  const out=[];
+  all.forEach(iv=>{
+    const last=out[out.length-1];
+    if(last&&iv[0]<=last[1]) last[1]=Math.max(last[1],iv[1]);
+    else out.push([iv[0],iv[1]]);
+  });
+  return out;
+}
+function _inRanges(v,ranges){ return ranges.some(([a,b])=>v>=a&&v<=b); }
+// 절단선 하나의 입면 자료 — elevationSVG 가 그대로 그릴 수 있는 모양으로 돌려준다
+function buildSectionElevation(sec){
+  if(!sec) return null;
+  const V=sectionViewDir(sec);
+  const L=Math.round(V.L);
+  if(!(L>0)) return null;
+  const {ux,uy,dx,dy}=V;
+  const flip=(ux*(-dy)+uy*dx)<0;              // (-dy,dx) = 보는 사람의 오른손 방향
+  const depth=sectionDepthOf(sec);
+  const along=(px,py)=>{const t=(px-sec.x1)*ux+(py-sec.y1)*uy; return flip?(L-t):t;};
+  const into =(px,py)=>(px-sec.x1)*dx+(py-sec.y1)*dy;   // 절단면에서 안쪽으로 얼마나
+  const BACK=-150;                            // 절단면 살짝 뒤까지는 같은 면으로 본다
+  const chOf=w=>{
+    const sp=w.spaceId?(STATE.spaces||[]).find(s=>s.id===w.spaceId):null;
+    return Math.round(w.height_mm||(sp&&sp.ceilingHeight_mm)||STATE.ceilingHeight||2400);
+  };
+  // ① 벽면 담기 — 마주 보는 벽은 넓은 면, 옆으로 선 벽은 좁은 기둥면
+  const faces=[];
+  (STATE.walls||[]).forEach(w=>{
+    if(w.isLine) return;
+    const sA=into(w.x1,w.y1), sB=into(w.x2,w.y2);
+    if(sA<BACK&&sB<BACK) return;              // 등 뒤
+    if(sA>depth&&sB>depth) return;            // 너무 멀다
+    const tA=along(w.x1,w.y1), tB=along(w.x2,w.y2);
+    const wl=Math.hypot(w.x2-w.x1,w.y2-w.y1)||1;
+    const par=Math.abs(((w.x2-w.x1)/wl)*ux+((w.y2-w.y1)/wl)*uy);
+    const th=Math.max(50,Math.round(w.thickness||100));
+    let span;
+    if(par>=SECTION_PARALLEL_COS){            // 마주 보는 벽면
+      span=_clip01(tA,tB,0,L);
+    }else{                                    // 옆에서 본 벽 — 두께만큼만 보인다
+      const tc=(tA+tB)/2;
+      span=_clip01(tc-th/2,tc+th/2,0,L);
+    }
+    if(!span) return;
+    const sp=w.spaceId?(STATE.spaces||[]).find(x=>x.id===w.spaceId):null;
+    faces.push({wallId:w.id,left:Math.round(span[0]),right:Math.round(span[1]),
+      h:chOf(w),dist:Math.round(Math.max(0,Math.min(sA,sB))),edge:par<SECTION_PARALLEL_COS,
+      bearing:w.wallType==='bearing',
+      material:(typeof WALL_MATERIALS!=='undefined'&&WALL_MATERIALS[w.finishMaterial])
+        ?WALL_MATERIALS[w.finishMaterial].name:null,
+      spaceName:(sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||''});
+  });
+  // 가까운 것부터 훑으며 '이미 가려진 구간'을 쌓는다 — 벽은 뚫고 보이지 않는다.
+  //  이걸 안 하면 앞 벽 뒤에 있는 창이 앞 벽을 통과해 그려진다 (실물 확인에서 나온 문제).
+  faces.sort((a,b)=>a.dist-b.dist);
+  let covered=[];
+  faces.forEach(f=>{
+    f.vis=_rangeSub(f.left,f.right,covered);
+    covered=_rangeAdd(covered,f.left,f.right);
+  });
+  const shown=faces.filter(f=>f.vis.length>0);
+  shown.sort((a,b)=>b.dist-a.dist);            // 그릴 때는 먼 것부터
+  const faceById={};shown.forEach(f=>{faceById[f.wallId]=f;});
+  const H=Math.max(STATE.ceilingHeight||2400,...shown.map(f=>f.h));
+  // ② 문·창 — 그 벽면이 보이는 것만
+  const ops=(STATE.openings||[]).map(o=>{
+    const wid=elevWallIdOf(o);
+    const f=wid?faceById[wid]:null;
+    if(!f||f.edge) return null;                // 옆에서 본 벽의 개구부는 안 보인다
+    const w=Math.max(1,Math.round(o.width_mm||900));
+    const h=Math.max(1,Math.round(o.height_mm||2100));
+    const isDoor=(o.type==='DOOR');
+    const sill=isDoor?0:Math.max(0,Math.round(o.sillHeight_mm||0));
+    const lib=isDoor?DOOR_TYPES:WINDOW_TYPES;
+    const def=lib&&lib[o.subType];
+    const left=Math.round(along(o.x,o.y)-w/2);
+    if(left+w<f.left||left>f.right) return null;
+    if(!_inRanges(left+w/2,f.vis)) return null;   // 앞 벽에 가려 안 보인다
+    return {id:o.id,kind:o.type,isDoor,w,h,sill,left,top:sill+h,dist:f.dist,wallId:wid,
+      name:(def&&def.name)||(isDoor?'문':'창')};
+  }).filter(Boolean).sort((a,b)=>a.left-b.left);
+  // ③ 벽에 붙은 스위치·콘센트 — 보이는 벽면에 붙은 것만
+  const devs=elevWallDevices().map(e=>{
+    const m=elevMountOf(e);
+    if(!m) return null;
+    const s0=into(e.x,e.y);
+    if(s0<BACK||s0>depth) return null;
+    // 가장 가까운 벽이 보이는 면이어야 한다 (반대편 벽에 붙은 것이 딸려오지 않게)
+    const nw=elevNearestWallId(e,(STATE.walls||[]).filter(w=>!w.isLine));
+    const f=nw.id?faceById[nw.id]:null;
+    if(!f||f.edge||nw.dist>Math.max(300,250+(m.w||200)/2)) return null;
+    const t=along(e.x,e.y);
+    if(t<f.left-m.w/2||t>f.right+m.w/2) return null;
+    if(!_inRanges(t,f.vis)) return null;          // 앞 벽에 가려 안 보인다
+    const def=elevDevName(e.type);
+    return {id:e.id,type:e.type,h:m.h,w:m.w,bh:m.bh,dist:f.dist,wallId:nw.id,
+      left:Math.round(Math.max(0,Math.min(L-m.w,t-m.w/2))),
+      name:(def&&def.name)||e.type,sym:(def&&def.sym)||''};
+  }).filter(Boolean).sort((a,b)=>a.left-b.left);
+  const names=[...new Set(shown.map(f=>f.spaceName).filter(Boolean))];
+  return {sectionId:sec.id,label:'단면 '+sectionLabelOf(sec),
+    L,H,ops,devs,faces:shown,hidden:faces.length-shown.length,flip,
+    depth:(depth===Infinity?0:depth),
+    spaceName:names.slice(0,3).join('·'),
+    dir:elevCompass(dx,dy),material:null,thickness:0,bearing:false};
+}
+function buildAllSectionElevations(){
+  return (STATE.sections||[]).map(buildSectionElevation).filter(Boolean);
+}
+// ===== 절단선 그리기 (도면 위) =====
+//  도면 관례: 굵은 일점쇄선 + 양 끝에 보는 방향 화살표 + 동그란 이름표
+function renderSections(){
+  groups.sections.destroyChildren();
+  const arr=STATE.sections||[];
+  if(!arr.length) return;
+  arr.forEach(sec=>{
+    const sel=(STATE.selectedKind==='sections'&&STATE.selectedId===sec.id)||
+      (STATE.boxSelection||[]).some(b=>b.kind==='sections'&&b.id===sec.id);
+    const col=sel?'#E2725B':(_pm()?'#000000':'#C0392B');
+    const ax=STATE.offsetX+mmToPx(sec.x1), ay=STATE.offsetY+mmToPx(sec.y1);
+    const bx=STATE.offsetX+mmToPx(sec.x2), by=STATE.offsetY+mmToPx(sec.y2);
+    const len=Math.hypot(bx-ax,by-ay)||1;
+    const ux=(bx-ax)/len, uy=(by-ay)/len;
+    const nx=-uy*((sec.side===-1)?-1:1), ny=ux*((sec.side===-1)?-1:1); // 화면상 보는 방향
+    const g=new Konva.Group({id:sec.id});
+    g.add(new Konva.Line({points:[ax,ay,bx,by],stroke:col,
+      strokeWidth:sel?3:2,dash:[16,5,3,5],lineCap:'round',hitStrokeWidth:18}));
+    // 양 끝 — 방향 다리 + 화살촉 + 이름표
+    const LEG=22, HEAD=9;
+    [[ax,ay],[bx,by]].forEach(([px,py])=>{
+      const qx=px+nx*LEG, qy=py+ny*LEG;
+      g.add(new Konva.Line({points:[px,py,qx,qy],stroke:col,strokeWidth:sel?3:2,lineCap:'round'}));
+      g.add(new Konva.Line({closed:true,fill:col,stroke:col,strokeWidth:1,points:[
+        qx+nx*HEAD,qy+ny*HEAD, qx-ny*HEAD*0.55-nx*2,qy+nx*HEAD*0.55-ny*2,
+        qx+ny*HEAD*0.55-nx*2,qy-nx*HEAD*0.55-ny*2]}));
+      g.add(new Konva.Circle({x:px-ux*13*(px===ax?1:-1),y:py-uy*13*(px===ax?1:-1),
+        radius:9,fill:'#FFFFFF',stroke:col,strokeWidth:sel?2:1.4}));
+      g.add(new Konva.Text({x:px-ux*13*(px===ax?1:-1)-9,y:py-uy*13*(px===ax?1:-1)-5,
+        width:18,align:'center',text:sectionLabelOf(sec),fontSize:10,
+        fontFamily:'Inter',fontStyle:'bold',fill:col,listening:false}));
+    });
+    g.on('click tap',e=>{
+      if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0) return;
+      e.cancelBubble=true;
+      if(STATE.selectedTool==='select') selectObj('sections',sec.id);
+    });
+    groups.sections.add(g);
+  });
 }

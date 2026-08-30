@@ -864,6 +864,23 @@ function addXline(x1,y1,x2,y2){
   STATE.xlines.push({id:makeId('xl'),x1:Math.round(x1),y1:Math.round(y1),x2:Math.round(x2),y2:Math.round(y2)});
   saveHistory();renderAll();refreshUI();
 }
+// 2026-08-30: 절단선 (입면 방향선) — 대표 지시 "방향을 내가 고르고 절단면에서 자유롭게"
+//  ① 시작점 ② 끝점 ③ 보는 쪽 — 세 번째 클릭은 '어느 쪽을 볼지'만 정한다.
+//  마우스가 선의 어느 편에 있는지로 방향이 정해지고, 미리보기 화살표가 실시간으로 따라간다.
+function sectionSideOfPoint(x1,y1,x2,y2,px,py){
+  // 선을 기준으로 점이 어느 쪽인가 — 외적 부호. renderSections 의 법선(-uy,ux) 과 같은 규약
+  const ux=x2-x1, uy=y2-y1;
+  return ((px-x1)*uy-(py-y1)*ux)>=0 ? -1 : 1;
+}
+function addSection(x1,y1,x2,y2,side){
+  if(Math.hypot(x2-x1,y2-y1)<100){cmdToast('절단선이 너무 짧습니다 (100mm 이상)');return null;}
+  const sec=makeSection(x1,y1,x2,y2,side);
+  STATE.sections.push(sec);
+  saveHistory();renderAll();refreshUI();
+  cmdToast('절단선 '+sectionLabelOf(sec)+' — '+
+    elevCompass(sectionViewDir(sec).dx,sectionViewDir(sec).dy)+' 방향 · 속성창에서 뒤집기/깊이');
+  return sec;
+}
 function endWall(){
   if(!drawState||drawState.type!=='wall') return;
   let end=drawState.current;
@@ -1072,6 +1089,7 @@ function finishBoxSelection(){
     electric:o=>hit('electric',o), texts:o=>hit('texts',o), measures:o=>hit('measures',o),
     circles:o=>hit('circles',o), arcs:o=>hit('arcs',o), hvac:o=>hit('hvac',o),
     leaders:o=>hit('leaders',o), curves:o=>hit('curves',o), pillars:o=>hit('pillars',o),
+    sections:o=>hit('sections',o), // 2026-08-30: 절단선
     // 무한 안내선: 길이가 무한이라 Window 로는 절대 포함될 수 없음 → Crossing 에서 관통 판정만
     xlines:xl=>{
       if(!isCrossing) return false;
@@ -1081,7 +1099,7 @@ function finishBoxSelection(){
       return pos>0&&neg>0;
     },
   };
-  const map={walls:'wall',spaces:'space',openings:'opening',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac',leaders:'leaders',xlines:'xlines',curves:'curves',pillars:'pillars'};
+  const map={walls:'wall',spaces:'space',openings:'opening',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac',leaders:'leaders',xlines:'xlines',curves:'curves',pillars:'pillars',sections:'sections'};
   let added=0;
   Object.entries(tests).forEach(([key,fn])=>{
     STATE[key].forEach(o=>{if(fn(o)){STATE.boxSelection.push({kind:map[key],id:o.id});added++;}});
@@ -1098,7 +1116,7 @@ function finishBoxSelection(){
 // v5.3: 다중 삭제
 function deleteBoxSelection(){
   if(STATE.boxSelection.length===0) return false;
-  const groups2={wall:'walls',space:'spaces',opening:'openings',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac',leaders:'leaders',xlines:'xlines',curves:'curves',pillars:'pillars'};
+  const groups2={wall:'walls',space:'spaces',opening:'openings',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac',leaders:'leaders',xlines:'xlines',curves:'curves',pillars:'pillars',sections:'sections'};
   // 2026-08-24: 잠금 강화 — 잠긴 객체는 삭제 대상에서 제외 (대표 지시)
   const _lockedSkip=STATE.boxSelection.filter(b=>{
     const arr=STATE[groups2[b.kind]];const o=arr&&arr.find(x=>x.id===b.id);return o&&o.locked;
@@ -2300,6 +2318,33 @@ function updatePreview(){
       if(willSplit) drawGroup.add(new Konva.Text({x:(x1+x2)/2-50,y:(y1+y2)/2-22,text:'✂ 분할',width:100,align:'center',fontSize:12,fontFamily:'Inter',fill:prevColor,fontStyle:'bold'}));
     }
     drawGroup.add(new Konva.Text({x:(x1+x2)/2-50,y:(y1+y2)/2-6,text:Math.round(d)+' mm',width:100,align:'center',fontSize:11,fontFamily:'JetBrains Mono',fill:prevColor}));
+  }else if(drawState.type==='section'){
+    // 절단선 미리보기 — 굵은 일점쇄선 + 지금 마우스가 있는 쪽으로 화살표
+    const a=drawState.start, b=drawState.end||drawState.current;
+    const ax=STATE.offsetX+mmToPx(a.x), ay=STATE.offsetY+mmToPx(a.y);
+    const bx=STATE.offsetX+mmToPx(b.x), by=STATE.offsetY+mmToPx(b.y);
+    const col='#C0392B';
+    drawGroup.add(new Konva.Circle({x:ax,y:ay,radius:3.5,fill:col}));
+    const len=Math.hypot(bx-ax,by-ay);
+    if(len>1){
+      drawGroup.add(new Konva.Line({points:[ax,ay,bx,by],stroke:col,strokeWidth:2.2,
+        dash:[16,5,3,5],lineCap:'round'}));
+      const ux=(bx-ax)/len, uy=(by-ay)/len;
+      const sd=drawState.end?drawState.side:1;
+      const nx=-uy*sd, ny=ux*sd;
+      const LEG=22,HEAD=9;
+      [[ax,ay],[bx,by]].forEach(([px,py])=>{
+        const qx=px+nx*LEG, qy=py+ny*LEG;
+        drawGroup.add(new Konva.Line({points:[px,py,qx,qy],stroke:col,strokeWidth:2.2}));
+        drawGroup.add(new Konva.Line({closed:true,fill:col,stroke:col,strokeWidth:1,points:[
+          qx+nx*HEAD,qy+ny*HEAD, qx-ny*HEAD*0.55-nx*2,qy+nx*HEAD*0.55-ny*2,
+          qx+ny*HEAD*0.55-nx*2,qy-nx*HEAD*0.55-ny*2]}));
+      });
+      const dMm=Math.round(Math.hypot(b.x-a.x,b.y-a.y));
+      drawGroup.add(new Konva.Text({x:(ax+bx)/2-60,y:(ay+by)/2-24,width:120,align:'center',
+        text:drawState.end?'← 이 쪽을 봅니다':(dMm+' mm'),fontSize:11,fontFamily:'Inter',fill:col,
+        fontStyle:'bold'}));
+    }
   }else if(drawState.type==='xline'){
     // 무한 안내선 미리보기 — 방향으로 화면 끝까지 연장
     const ax=STATE.offsetX+mmToPx(drawState.start.x),ay=STATE.offsetY+mmToPx(drawState.start.y);
@@ -3127,6 +3172,17 @@ stage.on('mousemove touchmove',e=>{
     drawState.current=p;updatePreview();
   }
   // v5.9: 무한 안내선 — 첫 클릭 후 마우스 따라 무한선 미리보기
+  else if(STATE.selectedTool==='section'&&drawState&&drawState.type==='section'){
+    const mm=getMm(pos);
+    if(drawState.end){
+      // 방향 고르는 단계 — 마우스가 선의 어느 편에 있는지로 정한다
+      drawState.side=sectionSideOfPoint(drawState.start.x,drawState.start.y,
+        drawState.end.x,drawState.end.y,mm.x,mm.y);
+    }else{
+      drawState.current=applyOrtho(drawState.start,mm);
+    }
+    updatePreview();
+  }
   else if(STATE.selectedTool==='xline'&&drawState&&drawState.type==='xline'){
     drawState.current=applyOrtho(drawState.start,mm);updatePreview();
   }
@@ -3401,6 +3457,28 @@ stage.on('mouseup touchend',e=>{
       const mm=getMm(pos);
       drawState={type:'line',start:mm,current:mm};
       enterCmdMode('wall-len',{},'길이(mm):','선 끝점 클릭(연속) / 거리 Enter / Shift=직교 / Esc=종료');
+    }
+  }
+  else if(STATE.selectedTool==='section'){
+    // ① 시작점 ② 끝점 ③ 보는 쪽 (세 번째는 마우스가 있는 편으로 정해진다)
+    const mm=getMm(pos);
+    if(!isClick) return;
+    if(!drawState||drawState.type!=='section'){
+      drawState={type:'section',start:mm,current:mm,end:null,side:1};
+      cmdToast('절단선 — 끝점 클릭 (Shift=수평·수직) / Esc 취소');
+    }else if(!drawState.end){
+      const end=applyOrtho(drawState.start,mm);
+      if(Math.hypot(end.x-drawState.start.x,end.y-drawState.start.y)<100){
+        cmdToast('절단선이 너무 짧습니다 — 더 멀리 클릭하세요');return;}
+      drawState.end=end;drawState.current=end;
+      cmdToast('보는 쪽을 클릭하세요 — 마우스를 움직이면 화살표가 따라옵니다');
+      updatePreview();
+    }else{
+      const sc=addSection(drawState.start.x,drawState.start.y,drawState.end.x,drawState.end.y,
+        drawState.side);
+      drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+      if(sc){selectObj('sections',sc.id);
+        if(typeof autoOpenPropsDrawer==='function') autoOpenPropsDrawer();}
     }
   }
   else if(STATE.selectedTool==='xline'){
@@ -3995,6 +4073,8 @@ document.addEventListener('keydown',e=>{
   }
   // 2026-08-28: 인쇄 설정창이 열려 있으면 도면 단축키를 가로채지 않는다 (버튼 클릭 후 키 입력이 도구를 바꾸던 문제)
   if(typeof _printDlgEl!=='undefined'&&_printDlgEl&&e.key!=='Escape') return;
+  // 2026-08-30: 입면도 창도 같은 처리 — 창 위에서 누른 키가 뒤의 도구를 바꾸면 안 된다
+  if(typeof _elevDlg!=='undefined'&&_elevDlg&&e.key!=='Escape') return;
   // 입력창에 포커스가 있으면 단축키 가로채지 않음 (명령어 입력 우선)
   // 방향키만 예외 — 미세이동 가능하도록 통과 (단, cmd-input에 값이 있으면 텍스트 커서 이동)
   if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA'){
@@ -4064,6 +4144,7 @@ document.addEventListener('keydown',e=>{
     case 'c':setTool('circlespace');break;
     case 'i':setTool('dimwall');cmdToast('치수 모드 — 벽 클릭');break;
     case 'f':toggleGrid();break;
+    case 'k':setTool('section');cmdToast('절단선 — 시작점 → 끝점 → 보는 쪽 클릭 / Esc 취소');break; // 2026-08-30
     case 'x':setTool('trim');cmdToast('트림 모드 — 자를 부분 클릭');break;
     case 'z':setTool('break');cmdToast('분할 모드 — 분할할 점 클릭');break;
     case 'e':setTool('eraser');cmdToast('지우개 — 지울 객체 클릭');break;

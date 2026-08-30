@@ -3649,8 +3649,10 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     openElevationDialog(esp.id);
     assert('입면: 창 열림',!!document.getElementById('elev-dialog'));
     assert('입면: 공간 선택칸',!!document.getElementById('ev-space'));
-    assert('입면: 벽 목록 4줄',document.querySelectorAll('.ev-row').length===4,
-      String(document.querySelectorAll('.ev-row').length));
+    assert('입면: 벽 목록 4줄',document.querySelectorAll('.ev-wallrow').length===4,
+      String(document.querySelectorAll('.ev-wallrow').length));
+    assert('입면: 벽마다 보는 쪽 버튼',document.querySelectorAll('.ev-side').length===4,
+      String(document.querySelectorAll('.ev-side').length));
     const evBody=document.getElementById('ev-body');
     assert('입면: 미리보기 4장',(evBody.innerHTML.match(/<svg/g)||[]).length===4,
       String((evBody.innerHTML.match(/<svg/g)||[]).length));
@@ -3680,6 +3682,198 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     renderAll();refreshUI();
   }catch(e){
     assert('입면: 테스트 예외 없음',false,e.message);
+  }
+  // === 2026-08-30: 보는 방향 고르기 + 절단선 입면도 (대표 지시) ===
+  try{
+    const _bakSC={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
+      openings:STATE.openings.slice(),electric:STATE.electric.slice(),hvac:STATE.hvac.slice(),
+      sections:(STATE.sections||[]).slice(),tool:STATE.selectedTool,
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice()};
+    STATE.sections=[];STATE.boxSelection=[];STATE.selectedKind=null;STATE.selectedId=null;
+
+    // [V1] 구간 빼기·합치기 (가림 계산의 바탕)
+    assert('절단선: 구간 빼기 가운데',JSON.stringify(_rangeSub(0,100,[[40,60]]))==='[[0,40],[60,100]]',
+      JSON.stringify(_rangeSub(0,100,[[40,60]])));
+    assert('절단선: 구간 빼기 전부',_rangeSub(10,90,[[0,100]]).length===0);
+    assert('절단선: 구간 빼기 안 겹침',JSON.stringify(_rangeSub(0,10,[[50,60]]))==='[[0,10]]');
+    assert('절단선: 구간 합치기',JSON.stringify(_rangeAdd([[0,50]],40,90))==='[[0,90]]',
+      JSON.stringify(_rangeAdd([[0,50]],40,90)));
+    assert('절단선: 안에 있나',_inRanges(30,[[0,50]])&&!_inRanges(70,[[0,50]]));
+
+    // 앞방(4000×2600) + 그 뒤로 떨어진 뒷방 — 절단선이 앞방을 가로지른다
+    const S0=3900000;
+    const mkRoom=(pts,name,ti)=>{
+      const v=polygonToVertexIds(pts.map(p=>({x:S0+p[0],y:S0+p[1]})));
+      const sp=makeSpaceVEF(v,{name,type:'ROOM',typeIndex:ti,layerName:'A-AREA-ROOM-'+ti});
+      sp.ceilingHeight_mm=2400;STATE.spaces.push(sp);
+      const W=[];
+      for(let i=0;i<v.length;i++){
+        const w=makeWallVEF(v[i],v[(i+1)%v.length],{spaceId:sp.id,layerName:'A-WALL-ROOM-'+ti});
+        STATE.walls.push(w);W.push(w);
+      }
+      return {sp,W};
+    };
+    const R1=mkRoom([[0,2400],[4000,2400],[4000,5000],[0,5000]],'앞방',91);
+    const R2=mkRoom([[500,-600],[3000,-600],[3000,1800],[500,1800]],'뒷방',92);
+    // 앞방 북쪽 벽에 문 / 뒷방 북쪽 벽에 창 (뒷방은 앞방에 가려 보이면 안 된다)
+    const sDoor={id:'sc_d',type:'DOOR',subType:'swing',spaceId:R1.sp.id,wallId:R1.W[0].id,
+      x:S0+3200,y:S0+2400,width_mm:900,height_mm:2100,depth_mm:200,sillHeight_mm:null,angle:0};
+    const sWin={id:'sc_w',type:'WINDOW',subType:'fixed',spaceId:R2.sp.id,wallId:R2.W[0].id,
+      x:S0+1750,y:S0-600,width_mm:1500,height_mm:1800,depth_mm:200,sillHeight_mm:600,angle:0};
+    STATE.openings.push(sDoor,sWin);
+    STATE.electric.push({id:'sc_sw',type:'switch_3',x:S0+2000,y:S0+2450,angle:0,spaceId:R1.sp.id});
+    STATE.electric.push({id:'sc_bk',type:'outlet_w',x:S0+1500,y:S0-550,angle:0,spaceId:R2.sp.id});
+
+    // [V2] 절단선을 긋는다 — 기본값
+    const sec=addSection(S0-200,S0+3800,S0+4200,S0+3800,-1);
+    assert('절단선: 추가됨',!!sec&&STATE.sections.length===1);
+    assert('절단선: 기본 깊이',sectionDepthOf(sec)===SECTION_DEPTH_DEFAULT,String(sectionDepthOf(sec)));
+    assert('절단선: 이름표 A',sectionLabelOf(sec)==='A');
+
+    // [V3] 어느 쪽을 보는가 — side 가 방향을 뒤집는다
+    const d1=sectionViewDir(sec);
+    assert('절단선: 북쪽을 본다',Math.round(d1.dx)===0&&Math.round(d1.dy)===-1,d1.dx+'/'+d1.dy);
+    sec.side=1;
+    const d2=sectionViewDir(sec);
+    assert('절단선: 뒤집으면 남쪽',Math.round(d2.dy)===1,String(d2.dy));
+    sec.side=-1;
+
+    // [V4] 마우스가 있는 쪽으로 방향이 정해진다 (화면 화살표와 같은 규약)
+    const above=sectionSideOfPoint(S0-200,S0+3800,S0+4200,S0+3800,S0+2000,S0+1000); // 위쪽
+    const below=sectionSideOfPoint(S0-200,S0+3800,S0+4200,S0+3800,S0+2000,S0+4800); // 아래쪽
+    assert('절단선: 위를 찍으면 위를 본다',
+      Math.round(sectionViewDir({x1:S0-200,y1:S0+3800,x2:S0+4200,y2:S0+3800,side:above}).dy)===-1,
+      String(above));
+    assert('절단선: 아래를 찍으면 아래를 본다',
+      Math.round(sectionViewDir({x1:S0-200,y1:S0+3800,x2:S0+4200,y2:S0+3800,side:below}).dy)===1,
+      String(below));
+
+    // [V5] 입면 — 앞 벽에 가린 것은 그리지 않는다
+    const se=buildSectionElevation(sec);
+    assert('절단선: 절단 길이 4400',se.L===4400,String(se.L));
+    assert('절단선: 천장고 2400',se.H===2400,String(se.H));
+    assert('절단선: 방위 북측',se.dir==='북측',se.dir);
+    const faceW=se.faces.filter(f=>!f.edge);
+    assert('절단선: 보이는 벽면은 앞방 북쪽 하나',faceW.length===1&&faceW[0].wallId===R1.W[0].id,
+      'n='+faceW.length);
+    assert('절단선: 옆에서 잘린 벽 2장',se.faces.filter(f=>f.edge).length===2,
+      String(se.faces.filter(f=>f.edge).length));
+    assert('절단선: 가려진 벽이 있었다',se.hidden>0,'hidden='+se.hidden);
+    assert('절단선: 앞방 문만 보인다',se.ops.length===1&&se.ops[0].id==='sc_d',
+      se.ops.map(o=>o.id).join(','));
+    assert('절단선: 문 위치 2950',se.ops[0].left===2950,String(se.ops[0].left));
+    assert('절단선: 뒷방 창은 가려서 안 보인다',!se.ops.some(o=>o.id==='sc_w'));
+    assert('절단선: 앞방 스위치만',se.devs.length===1&&se.devs[0].id==='sc_sw',
+      se.devs.map(d=>d.id).join(','));
+
+    // [V6] 깊이 — 절단면에서 가까운 것만 보고 싶을 때
+    sec.depth_mm=1000;
+    const seD=buildSectionElevation(sec);
+    assert('절단선: 깊이 1000 이면 1400 짜리 벽은 빠진다',
+      seD.faces.filter(f=>!f.edge).length===0,String(seD.faces.filter(f=>!f.edge).length));
+    assert('절단선: 깊이 밖이면 문도 없다',seD.ops.length===0);
+    sec.depth_mm=0;
+    assert('절단선: 0 은 제한 없음',sectionDepthOf(sec)===Infinity);
+    sec.depth_mm=SECTION_DEPTH_DEFAULT;
+
+    // [V7] 반대쪽에서 보기 — 다른 벽이 보인다
+    sec.side=1;
+    const seB=buildSectionElevation(sec);
+    assert('절단선: 반대는 남측',seB.dir==='남측',seB.dir);
+    assert('절단선: 반대에선 그 문이 안 보인다',!seB.ops.some(o=>o.id==='sc_d'),
+      seB.ops.map(o=>o.id).join(','));
+    assert('절단선: 반대에도 벽면은 있다',seB.faces.filter(f=>!f.edge).length===1);
+    sec.side=-1;
+
+    // [V8] 그림
+    const svgS=elevationSVG(buildSectionElevation(sec),{devices:true});
+    assert('절단선: SVG 생성',svgS.indexOf('<svg')===0);
+    assert('절단선: 전체 치수',svgS.indexOf('>4400<')>0);
+    assert('절단선: 이름표에 단면 A',svgS.indexOf('[단면 A]')>0,svgS.indexOf('[단면 A]')+'');
+    assert('절단선: 깊이 표기',svgS.indexOf('깊이 6000')>0);
+
+    // [V9] 되돌리기가 절단선까지 되돌린다
+    if(typeof undo==='function'){
+      const before=STATE.sections.length;
+      addSection(S0,S0+4600,S0+3000,S0+4600,-1);
+      assert('절단선: 하나 더',STATE.sections.length===before+1);
+      undo();
+      assert('절단선: 되돌리기',STATE.sections.length===before,'n='+STATE.sections.length);
+    }
+
+    // [V10] 속성창 — 방향·깊이를 여기서 고친다
+    //  ※ 되돌리기가 STATE 를 통째로 갈아끼우므로 여기서부터는 id 로 다시 찾아 쓴다
+    const secId=sec.id;
+    const SEC=()=>STATE.sections.find(x=>x.id===secId);
+    assert('절단선: 되돌린 뒤에도 같은 id',!!SEC());
+    STATE.selectedKind='sections';STATE.selectedId=secId;
+    refreshUI();
+    assert('절단선: 속성창',!!document.getElementById('sc-flip')&&!!document.getElementById('sc-open'));
+    const sideBefore=SEC().side;
+    document.getElementById('sc-flip').click();
+    assert('절단선: 속성창에서 뒤집기',SEC().side===-sideBefore,String(SEC().side));
+    document.getElementById('sc-flip').click();
+    const dBtn=[...document.querySelectorAll('.sc-d')].filter(b=>b.dataset.v==='3000')[0];
+    assert('절단선: 깊이 버튼',!!dBtn);
+    if(dBtn){dBtn.click();assert('절단선: 깊이 3000 적용',SEC().depth_mm===3000,String(SEC().depth_mm));}
+    SEC().depth_mm=SECTION_DEPTH_DEFAULT;
+
+    // [V11] 입면도 창 — 절단선 모드
+    STATE.selectedKind=null;STATE.selectedId=null;
+    openElevationDialog(null,{mode:'section',sectionId:secId});
+    assert('절단선: 창 열림',!!document.getElementById('elev-dialog'));
+    assert('절단선: 절단선 목록',document.querySelectorAll('.ev-sec').length===STATE.sections.length);
+    assert('절단선: 방향 뒤집기 버튼',!!document.getElementById('ev-flip'));
+    assert('절단선: 미리보기 1장',
+      (document.getElementById('ev-body').innerHTML.match(/<svg/g)||[]).length===1);
+    // 탭으로 공간별과 오간다
+    const tabs=[...document.querySelectorAll('.ev-tab')];
+    assert('절단선: 모드 탭 2개',tabs.length===2);
+    tabs.filter(b=>b.dataset.m==='space')[0].click();
+    assert('절단선: 공간별로 전환',!!document.getElementById('ev-space'));
+    const tabs2=[...document.querySelectorAll('.ev-tab')];
+    tabs2.filter(b=>b.dataset.m==='section')[0].click();
+    assert('절단선: 다시 절단선으로',!!document.getElementById('ev-flip'));
+    closeElevationDialog();
+
+    // [V11-2] 저장·불러오기에 실려야 한다 (옛 저장본엔 절단선이 없다)
+    const jsonSC=buildJSON();
+    assert('절단선: 저장본에 실림',Array.isArray(jsonSC.sections)&&
+      jsonSC.sections.some(x=>x.id===secId),String((jsonSC.sections||[]).length));
+    assert('절단선: 방향·깊이도 함께',
+      jsonSC.sections.filter(x=>x.id===secId)[0].side===SEC().side&&
+      'depth_mm' in jsonSC.sections.filter(x=>x.id===secId)[0]);
+    assert('절단선: 레이어 켜고 끄기',STATE.layers.sections===true||STATE.layers.sections===false);
+
+    // [V12] 삭제
+    STATE.selectedKind='sections';STATE.selectedId=secId;
+    deleteSelected();
+    assert('절단선: 삭제',STATE.sections.length===0,'n='+STATE.sections.length);
+
+    // [V13] 벽 입면 — 안/밖 방향을 대표가 고른다
+    const wN=STATE.walls.find(x=>x.id===R1.W[0].id)||R1.W[0];
+    const spR1=STATE.spaces.find(x=>x.id===R1.sp.id)||R1.sp;
+    delete wN.elevSide;
+    const inE=buildElevation(wN,spR1.id);
+    wN.elevSide='out';
+    const outE=buildElevation(wN,spR1.id);
+    assert('방향: 기본은 방 안에서',inE.viewSide==='in'&&inE.dir==='북측',inE.viewSide+'/'+inE.dir);
+    assert('방향: 밖에서 보면 방위가 뒤집힌다',outE.viewSide==='out'&&outE.dir==='남측',outE.dir);
+    assert('방향: 밖에서 보면 좌우도 뒤집힌다',
+      inE.ops.length===1&&outE.ops.length===1&&
+      inE.ops[0].left+outE.ops[0].left===inE.L-inE.ops[0].w,
+      inE.ops[0].left+'/'+outE.ops[0].left);
+    const svgOut=elevationSVG(outE,{devices:false});
+    assert('방향: 그림에 밖에서 봄 표기',svgOut.indexOf('밖에서 봄')>0);
+    delete wN.elevSide;
+
+    STATE.spaces=_bakSC.spaces;STATE.walls=_bakSC.walls;STATE.vertices=_bakSC.vertices;
+    STATE.openings=_bakSC.openings;STATE.electric=_bakSC.electric;STATE.hvac=_bakSC.hvac;
+    STATE.sections=_bakSC.sections;STATE.selectedTool=_bakSC.tool;
+    STATE.selectedKind=_bakSC.selK;STATE.selectedId=_bakSC.selI;STATE.boxSelection=_bakSC.box;
+    renderAll();refreshUI();
+  }catch(e){
+    assert('절단선: 테스트 예외 없음',false,e.message);
   }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{

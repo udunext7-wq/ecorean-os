@@ -26,6 +26,9 @@ const STATE={
   hvac:[], // v5.6: 공조/소방
   leaders:[], // v5.9: 지시선 (LE 명령)
   xlines:[], // v5.9: 무한 안내선 (AutoCAD XLINE) — {id,x1,y1,x2,y2} 두 점이 방향, 무한 연장·가는 실선
+  // 2026-08-30: 절단선 (입면 방향선) — 대표 지시 "방향을 내가 고르고 절단면에서 자유롭게"
+  //  {id,x1,y1,x2,y2, side:+1|-1 (선의 어느 쪽을 보는가), depth_mm (절단면에서 볼 깊이), name}
+  sections:[],
   pillars:[], // v5.9: 기둥 (사각/원형/L자) — RC 콘크리트 표기
   pillarDefaults:{shape:'rect',width:500,height:500,thickness:200,rotation:0}, // v5.9: 기둥 도구 기본값
   selectedTool:'select',selectedSpaceType:'LIVING',selectedLib:null,
@@ -38,7 +41,7 @@ const STATE={
   shiftPressed:false,
   ctrlPressed:false, // v5.9: Ctrl 누르면 자석 스냅 일시 OFF
   history:[],historyIdx:-1,measureFirst:null,
-  layers:{walls:true,spaces:true,openings:true,furniture:true,fixtures:true,lights:true,electric:true,dimensions:true,text:true,circles:true,arcs:true,curves:true,hvac:true,leaders:true,xlines:true,pillars:true},
+  layers:{walls:true,spaces:true,openings:true,furniture:true,fixtures:true,lights:true,electric:true,dimensions:true,text:true,circles:true,arcs:true,curves:true,hvac:true,leaders:true,xlines:true,pillars:true,sections:true},
   estimateConfig:{},
   cmdHistory:[],cmdHistoryIdx:-1,
   cmdMode:null,cmdData:{}, // v5.1: 단계별 프롬프트 모드
