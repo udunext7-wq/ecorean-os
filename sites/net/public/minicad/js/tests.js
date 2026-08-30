@@ -3231,6 +3231,109 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('회로충돌: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-30: 조명별 빛 표현 설정 (대표 지시) ===
+  try{
+    const _bakGS={lights:STATE.lights.slice(),electric:STATE.electric.slice(),zoom:STATE.zoom,
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice(),sc:STATE.showCircuits};
+    const SX=8800000;
+    STATE.lights=[];STATE.electric=[];STATE.boxSelection=[];
+    STATE.selectedKind=null;STATE.selectedId=null;STATE.zoom=1;STATE.showCircuits=false;
+
+    const gcove={id:'gc1',type:'cove',x:SX,y:SX,angle:0,length_mm:3000};
+    const gcove2={id:'gc2',type:'cove',x:SX,y:SX+3000,angle:0,length_mm:3000};
+    const gdl={id:'gd1',type:'downlight',x:SX+6000,y:SX,angle:0,inch:3};
+    STATE.lights.push(gcove,gcove2,gdl);
+    const gsw={id:'gsw',type:'switch_1',x:SX,y:SX+6000,angle:0,
+      lightIds:[gcove.id,gcove2.id,gdl.id],gangOn:[true],circuitOn:true};
+    STATE.electric.push(gsw);
+
+    // [S1] 설정이 없으면 종류 기본값 그대로
+    const b1=resolveGlow(gcove), bd=resolveGlow(gdl);
+    assert('빛설정: 기본은 종류값',b1.spread===linearGlowOf('cove').spread&&
+      Math.abs(b1.peak-linearGlowOf('cove').peak)<1e-9,JSON.stringify(b1));
+    assert('빛설정: 점광원도 종류값',bd.r===pointGlowOf(gdl).r,JSON.stringify(bd));
+    assert('빛설정: 조정 여부 판정',hasCustomGlow(gcove)===false);
+
+    // [S2] 개별 설정이 기본값을 덮는다
+    gcove.glow={spread:500,peak:0.8};
+    const g2=resolveGlow(gcove);
+    assert('빛설정: 개별값이 우선',g2.spread===500&&Math.abs(g2.peak-0.8)<1e-9,JSON.stringify(g2));
+    assert('빛설정: 지정 안 한 값은 기본 유지',g2.soft===linearGlowOf('cove').soft);
+    assert('빛설정: 조정됨으로 잡힌다',hasCustomGlow(gcove)===true);
+    // 같은 종류라도 다른 조명은 그대로
+    assert('빛설정: 다른 조명은 안 건드린다',resolveGlow(gcove2).spread===linearGlowOf('cove').spread);
+
+    // [S3] 범위를 벗어난 값은 잘라낸다 (0이나 음수로 빛이 사라지지 않게)
+    gcove.glow={spread:999999,peak:5};
+    const g3=resolveGlow(gcove);
+    assert('빛설정: 상한으로 제한',g3.spread===GLOW_LIMITS.spread[1]&&g3.peak===GLOW_LIMITS.peak[1],
+      JSON.stringify(g3));
+    gcove.glow={spread:-100,peak:-1};
+    const g4=resolveGlow(gcove);
+    assert('빛설정: 하한으로 제한',g4.spread===GLOW_LIMITS.spread[0]&&g4.peak===GLOW_LIMITS.peak[0]);
+    gcove.glow={spread:'abc'};
+    assert('빛설정: 숫자가 아니면 기본값',resolveGlow(gcove).spread===linearGlowOf('cove').spread);
+
+    // [S4] 실제 도면에 반영된다
+    gcove.glow={spread:400};
+    renderLights();
+    const bandH=id=>{let g=null;groups.lights.getChildren().forEach(c=>{if(c.id&&c.id()===id)g=c;});
+      if(!g) return 0;
+      const r=g.getChildren(n=>n.getClassName()==='Rect'&&typeof n.fillLinearGradientColorStops==='function'&&
+        (n.fillLinearGradientColorStops()||[]).length>0)[0];
+      return r?r.height():0;};
+    const hSmall=bandH(gcove.id), hBase=bandH(gcove2.id);
+    assert('빛설정: 좁게 바꾸면 도면도 좁아진다',hSmall>0&&hSmall<hBase*0.5,
+      hSmall.toFixed(0)+' vs '+hBase.toFixed(0));
+    assert('빛설정: 같은 종류 다른 조명은 그대로',
+      Math.abs(hBase-mmToPx(linearGlowOf('cove').spread)*2)<1,hBase.toFixed(1));
+
+    // [S5] 속성 패널 — 입력칸과 버튼
+    STATE.selectedKind='lights';STATE.selectedId=gcove.id;STATE.boxSelection=[];
+    refreshUI();
+    assert('빛설정: 패널에 입력칸',!!document.getElementById('d-glow-size')&&
+      !!document.getElementById('d-glow-peak'));
+    assert('빛설정: 선형은 흐림도 조절',!!document.getElementById('d-glow-soft'));
+    assert('빛설정: 조정됐으면 기본값 버튼 살아있다',
+      !!document.getElementById('d-glow-reset')&&document.getElementById('d-glow-reset').disabled===false);
+    assert('빛설정: 현재값이 칸에 들어있다',document.getElementById('d-glow-size').value==='400',
+      document.getElementById('d-glow-size').value);
+    // 점광원은 흐림 칸이 없다 (선형에만 있는 개념)
+    STATE.selectedId=gdl.id;refreshUI();
+    assert('빛설정: 점광원은 반경·세기만',!!document.getElementById('d-glow-size')&&
+      !document.getElementById('d-glow-soft'));
+    assert('빛설정: 기본 상태면 기본값 버튼 비활성',
+      document.getElementById('d-glow-reset').disabled===true);
+
+    // [S6] 기본값 되돌리기
+    STATE.selectedId=gcove.id;refreshUI();
+    document.getElementById('d-glow-reset').click();
+    assert('빛설정: 기본값 복귀',!gcove.glow&&resolveGlow(gcove).spread===linearGlowOf('cove').spread);
+
+    // [S7] 같은 종류 전체 적용
+    gcove.glow={spread:700,peak:0.4};
+    refreshUI();
+    document.getElementById('d-glow-all').click();
+    assert('빛설정: 같은 종류에 퍼진다',resolveGlow(gcove2).spread===700,
+      JSON.stringify(resolveGlow(gcove2)));
+    assert('빛설정: 다른 종류는 그대로',resolveGlow(gdl).r===pointGlowOf(gdl).r);
+
+    // [S8] 저장 → 불러오기 왕복 보존
+    const rawGS=JSON.stringify(buildJSON());
+    applyLoadedData(JSON.parse(rawGS));
+    const back=STATE.lights.find(l=>l.id===gcove.id);
+    assert('빛설정: 저장 왕복 보존',!!back&&back.glow&&back.glow.spread===700,
+      back?JSON.stringify(back.glow):'lost');
+
+    STATE.lights=_bakGS.lights;STATE.electric=_bakGS.electric;STATE.zoom=_bakGS.zoom;
+    STATE.selectedKind=_bakGS.selK;STATE.selectedId=_bakGS.selI;STATE.boxSelection=_bakGS.box;
+    STATE.showCircuits=_bakGS.sc;
+    if(typeof invalidateJumpConflicts==='function') invalidateJumpConflicts();
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    renderAll();refreshUI();
+  }catch(e){
+    assert('빛설정: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-27: 치수 입력 계산식 (6000/2 → 3000) — 대표 지시 ===
   try{
     const _bakEX={lights:STATE.lights.slice(),openings:STATE.openings.slice(),

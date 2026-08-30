@@ -793,6 +793,37 @@ function refreshDetail(){
     }
     // 2026-08-27: 조명 점핑 패널 (대표 지시) — 조명↔조명 연결
     const isLightSel=STATE.selectedKind==='lights'&&obj;
+    // 2026-08-30: 빛 표현 설정 (대표 지시) — 종류 기본값 위에 이 조명만 조정
+    let glowHtml='';
+    if(isLightSel&&typeof resolveGlow==='function'){
+      const _lin=(typeof isLinearLight==='function')&&isLinearLight(obj.type);
+      const _gv=resolveGlow(obj);
+      const _base=_lin?linearGlowOf(obj.type):pointGlowOf(obj);
+      const _cur=_lin?Math.round(_gv.spread):Math.round(_gv.r);
+      const _bas=_lin?Math.round(_base.spread):Math.round(_base.r);
+      const _lbl=_lin?'퍼짐 (편측)':'빛 반경';
+      const _custom=hasCustomGlow(obj);
+      glowHtml=
+        '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.07);'+
+        'border:1px solid rgba(212,184,114,0.40);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#D4B872">\uD83D\uDCA1 빛 표현 (켰을 때)</div>'+
+        '<div style="display:flex;gap:5px">'+
+        '<div class="field" style="flex:1;margin:0"><label class="field-label">'+_lbl+' (mm)</label>'+
+        '<input type="text" inputmode="numeric" id="d-glow-size" value="'+_cur+'"></div>'+
+        '<div class="field" style="flex:1;margin:0"><label class="field-label">세기 (%)</label>'+
+        '<input type="text" inputmode="numeric" id="d-glow-peak" value="'+Math.round(_gv.peak*100)+'"></div>'+
+        '</div>'+
+        (_lin?'<div class="field" style="margin:5px 0 0"><label class="field-label">가장자리 흐림 (%)</label>'+
+          '<input type="text" inputmode="numeric" id="d-glow-soft" value="'+Math.round((_gv.soft||0)*100)+'"></div>':'')+
+        '<div style="display:flex;gap:4px;margin-top:5px">'+
+        '<button type="button" class="btn sm" id="d-glow-reset"'+(_custom?'':' disabled')+
+          ' style="flex:1'+(_custom?'':';opacity:0.4;cursor:default')+'">기본값</button>'+
+        '<button type="button" class="btn sm" id="d-glow-all" style="flex:1">같은 종류 전체</button>'+
+        '</div>'+
+        '<div class="hint" style="margin-top:4px">'+escapeHtml((_lin?linearLightTagText(obj,symbolDefOf('lights',obj)):(symbolDefOf('lights',obj)||{}).name||'')||'')+
+        ' 기본 '+_bas+'mm · '+Math.round(_base.peak*100)+'%'+(_custom?' <b style="color:#D4B872">(조정됨)</b>':'')+'</div></div>';
+    }
+
     // 2026-08-30: 다른 구·다른 스위치의 조명이 점핑으로 묶였을 때 (대표 지시)
     let cflHtml='';
     if(isLightSel&&typeof jumpConflictOf==='function'){
@@ -926,7 +957,7 @@ function refreshDetail(){
         '</div>';
     }
     dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      cflHtml+dupHtml+lenHtml+inchHtml+labelHtml+jumpHtml+circuitHtml+extraHtml+
+      cflHtml+dupHtml+lenHtml+inchHtml+glowHtml+labelHtml+jumpHtml+circuitHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -947,6 +978,51 @@ function refreshDetail(){
       }));
     }
     if(isLightSel){
+      // 2026-08-30: 빛 표현 — 입력 즉시 도면에 반영
+      const _lin2=(typeof isLinearLight==='function')&&isLinearLight(obj.type);
+      const _setGlow=(k,v)=>{
+        if(!obj.glow) obj.glow={};
+        obj.glow[k]=v;
+        saveHistory();renderAll();refreshUI();
+      };
+      const _gs=document.getElementById('d-glow-size');
+      if(_gs) _gs.addEventListener('change',e=>{
+        const v=parseInt(e.target.value,10);
+        if(!isFinite(v)){refreshUI();return;}
+        _setGlow(_lin2?'spread':'r',v);
+        cmdToast('빛 '+(_lin2?'퍼짐':'반경')+' '+resolveGlow(obj)[_lin2?'spread':'r']+'mm');
+      });
+      const _gp=document.getElementById('d-glow-peak');
+      if(_gp) _gp.addEventListener('change',e=>{
+        const v=parseInt(e.target.value,10);
+        if(!isFinite(v)){refreshUI();return;}
+        _setGlow('peak',v/100);
+        cmdToast('빛 세기 '+Math.round(resolveGlow(obj).peak*100)+'%');
+      });
+      const _gf=document.getElementById('d-glow-soft');
+      if(_gf) _gf.addEventListener('change',e=>{
+        const v=parseInt(e.target.value,10);
+        if(!isFinite(v)){refreshUI();return;}
+        _setGlow('soft',v/100);
+      });
+      const _gr=document.getElementById('d-glow-reset');
+      if(_gr) _gr.addEventListener('click',()=>{
+        delete obj.glow;saveHistory();renderAll();refreshUI();
+        cmdToast('빛 표현 기본값으로');
+      });
+      const _ga2=document.getElementById('d-glow-all');
+      if(_ga2) _ga2.addEventListener('click',()=>{
+        const src=obj.glow?JSON.parse(JSON.stringify(obj.glow)):null;
+        let n=0;
+        (STATE.lights||[]).forEach(l=>{
+          if(l.type!==obj.type||l.id===obj.id||l.locked) return;
+          if(src) l.glow=JSON.parse(JSON.stringify(src)); else delete l.glow;
+          n++;
+        });
+        if(!n){cmdToast('같은 종류의 다른 조명이 없습니다');return;}
+        saveHistory();renderAll();refreshUI();
+        cmdToast('같은 종류 '+n+'개에 빛 표현 적용');
+      });
       const cu=document.getElementById('d-cfl-unify');
       if(cu) cu.addEventListener('click',()=>unifyJumpGroupGang(obj.id));
       const cc=document.getElementById('d-cfl-cut');

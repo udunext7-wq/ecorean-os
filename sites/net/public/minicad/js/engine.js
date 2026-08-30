@@ -2975,6 +2975,34 @@ function jumpConflictText(g){
   return parts.join(' + ');
 }
 
+// ===== 2026-08-30: 조명별 빛 표현 설정 (대표 지시) =====
+//  종류별 기본값(LINEAR_GLOW / POINT_GLOW) 위에 조명 하나하나의 설정을 얹는다.
+//  기본값은 그 종류의 배광을 따르고, 현장에서 다르면 그 조명만 고쳐 쓴다.
+//  o.glow = {spread|r, peak, soft} — 없는 값은 종류 기본값 그대로.
+const GLOW_LIMITS={spread:[100,4000], r:[100,6000], peak:[0.05,1], soft:[0,1]};
+function _glowClamp(k,v,dflt){
+  const n=parseFloat(v);
+  if(!isFinite(n)) return dflt;
+  const L=GLOW_LIMITS[k];
+  return L?Math.max(L[0],Math.min(L[1],n)):n;
+}
+function resolveGlow(o){
+  const lin=(typeof isLinearLight==='function')&&isLinearLight(o&&o.type);
+  const base=lin?linearGlowOf(o&&o.type):pointGlowOf(o);
+  const g=(o&&o.glow)||{};
+  if(lin) return {spread:_glowClamp('spread',g.spread,base.spread),
+                  peak:_glowClamp('peak',g.peak,base.peak),
+                  soft:_glowClamp('soft',g.soft,base.soft),
+                  spots:base.spots};
+  return {r:_glowClamp('r',g.r,base.r), peak:_glowClamp('peak',g.peak,base.peak)};
+}
+// 이 조명이 기본값에서 벗어나 있나 (패널에서 '기본값' 버튼을 살릴지 판단)
+function hasCustomGlow(o){
+  const g=o&&o.glow;
+  if(!g) return false;
+  return ['spread','r','peak','soft'].some(k=>g[k]!==undefined&&g[k]!==null);
+}
+
 function renderLights(){
   groups.lights.destroyChildren();
   const _litSet=litLightIds(); // 2026-08-26: 회로 점등 집합 (2026-08-27: 점핑 연쇄 포함)
@@ -3024,7 +3052,7 @@ function renderLights(){
     // 2026-08-26: 회로 점등 — 연결된 스위치가 ON이면 빛 퍼짐(글로우) 표시
     if(_litSet.has(o.id)){
       // 2026-08-30: 종류별로 다르게 켜진다 — 간접과 라인이 같아 보이던 문제
-      const gp=isLinearLight(o.type)?linearGlowOf(o.type):null;
+      const gp=isLinearLight(o.type)?resolveGlow(o):null;
       if(gp&&gp.spots){
         // 마그넷 트랙 — 레일에 스팟이 줄지어 달린다. 띄가 아니라 점이 여러 개.
         const L=def.size||1500, Lpx=mmToPx(L);
@@ -3045,7 +3073,7 @@ function renderLights(){
           fillLinearGradientStartPoint:{x:0,y:-gh/2},fillLinearGradientEndPoint:{x:0,y:gh/2},
           fillLinearGradientColorStops:linearGlowStops(gp.peak,gp.soft)}));
       }else{
-        const pg=pointGlowOf(o);
+        const pg=resolveGlow(o);
         const gr=Math.max(mmToPx(def.size||200)/2+10, mmToPx(pg.r));
         g.add(new Konva.Circle({radius:gr,listening:false,
           fillRadialGradientStartPoint:{x:0,y:0},fillRadialGradientEndPoint:{x:0,y:0},
