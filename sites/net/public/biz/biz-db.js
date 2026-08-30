@@ -637,6 +637,7 @@
     saveOrg: saveOrg,
     me: function () { return meProfile; },
     isManager: isManager,
+    roleKnown: function () { return !!meProfile; },
     mySiteIds: function () { return myMemberSites.map(function (m) { return m.site_id; }); },
     mySiteNames: function () {
       return myMemberSites.map(function (m) { return siteNameById[m.site_id]; }).filter(Boolean);
