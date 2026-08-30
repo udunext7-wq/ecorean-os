@@ -4059,15 +4059,15 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('입면: 표제가 도면 한가운데',Math.abs(_tx-(ELEV_PAD.l+_e0.L/2))<3,
       _tx+' vs '+(ELEV_PAD.l+_e0.L/2));
 
-    // 자재 영문 표기
-    assert('입면: 벽 자재 영문',bigSvg.indexOf('WALL FINISH')>0,'no wall');
+    // 자재 영문 표기 — 표제칸이 아니라 도면 안에 (대표 지시로 자리 옮김)
+    assert('입면: 벽 자재 영문',bigSvg.indexOf('Silk Wallpaper')>0,'no wall');
     const _wSp=STATE.spaces.find(x=>x.id===pA.sp.id);
     _wSp.floorMaterial='STRONG';
     const eF=buildElevation(STATE.walls.find(w=>w.id===pA.W[0].id),pA.sp.id);
     assert('입면: 바닥 자재 영문',eF.finishEn&&eF.finishEn.floor==='Laminated Wood Flooring',
       eF.finishEn?String(eF.finishEn.floor):'null');
     assert('입면: 벽 자재 영문값',eF.finishEn.wall==='Silk Wallpaper',String(eF.finishEn.wall));
-    assert('입면: 그림에 바닥 자재',elevationSVG(eF,{}).indexOf('FLOOR FINISH : Laminated Wood Flooring')>0);
+    assert('입면: 그림에 바닥 자재',elevationSVG(eF,{}).indexOf('Laminated Wood Flooring')>0);
     // 카탈로그에 영문이 빠진 항목이 없어야 한다
     assert('자재: 벽 영문 전부 있다',
       Object.values(WALL_MATERIALS).every(m=>!!m.nameEn),
@@ -4075,6 +4075,61 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('자재: 바닥 영문 전부 있다',
       Object.values(FLOOR_MATERIALS).every(m=>!!m.nameEn),
       Object.entries(FLOOR_MATERIALS).filter(([k,m])=>!m.nameEn).map(([k])=>k).join(','));
+
+    // [P6-4] 2026-08-30 대표 지시: 범례가 잘리면 옆으로 넓히고, 그래도 모자라면 장을 더 낸다
+    const capA4=printP2Capacity({pw:210,ph:297});
+    const capA3=printP2Capacity({pw:420,ph:297});
+    assert('부속표: A4 는 2칸',capA4.cols===2,String(capA4.cols));
+    assert('부속표: A3 는 더 많은 칸',capA3.cols>capA4.cols,capA3.cols+'>'+capA4.cols);
+    assert('부속표: 칸이 종이 폭 안에',capA4.cols*capA4.colW+(capA4.cols-1)*P2_GAP_MM<=210-PRINT_MARGIN*2+0.5,
+      String(capA4.cols*capA4.colW));
+    // 작은 표들은 한 칸에 모인다 (표마다 칸을 새로 열면 작은 도면도 두 장이 된다)
+    const rowsOf=n=>Array.from({length:n},(_,i)=>'<tr><td>'+i+'</td></tr>');
+    const small=_p2Pack([{title:'가',head:'',rows:rowsOf(2),foot:''},
+                         {title:'나',head:'',rows:rowsOf(3),foot:''},
+                         {title:'다',head:'',rows:rowsOf(1),foot:''}],capA4);
+    assert('부속표: 작으면 한 장 한 칸',small.length===1&&small[0].length===1&&small[0][0].length===3,
+      small.length+'/'+small[0].length+'/'+small[0][0].length);
+    // 긴 표는 옆 칸으로 이어지고 '(계속)' 이 붙는다
+    const big=_p2Pack([{title:'범례',head:'',rows:rowsOf(capA4.rows*3),foot:''}],capA4);
+    const _flat=big.flat().flat();
+    assert('부속표: 길면 여러 칸으로',_flat.length>=3,String(_flat.length));
+    assert('부속표: 이어지는 칸에 (계속)',_flat[0].title==='범례'&&_flat[1].title==='범례 (계속)',
+      _flat.map(t=>t.title).join(','));
+    assert('부속표: 줄을 하나도 잃지 않는다',
+      _flat.reduce((n,t)=>n+t.rows.length,0)===capA4.rows*3,
+      String(_flat.reduce((n,t)=>n+t.rows.length,0)));
+    assert('부속표: 한 칸이 정원을 넘지 않는다',
+      big.every(pg=>pg.every(col=>col.reduce((n,t)=>n+t.rows.length,0)<=capA4.rows)),'over');
+    assert('부속표: 한 장이 칸 수를 넘지 않는다',big.every(pg=>pg.length<=capA4.cols));
+    // 실제 HTML — 장이 여러 개 나오고 번호가 붙는다
+    const _bakSp=STATE.spaces;
+    STATE.spaces=_bakSp.concat(Array.from({length:120},(_,i)=>({
+      id:'p2x'+i,type:'ROOM',name:'가상'+i,polygon:[{x:0,y:0},{x:1000,y:0},{x:1000,y:1000},{x:0,y:1000}]})));
+    const p2h=buildPrintPage2({pw:210,ph:297,scale:100},_printInfo());
+    const p2n=(p2h.match(/class="p2"/g)||[]).length;
+    assert('부속표: 넘치면 장을 더 낸다',p2n>=2,'n='+p2n);
+    assert('부속표: 장 번호',p2h.indexOf('1 / '+p2n)>0&&p2h.indexOf(p2n+' / '+p2n)>0,String(p2n));
+    assert('부속표: 공간 줄이 전부 실린다',
+      (p2h.match(/<tr><td>/g)||[]).length>=120,String((p2h.match(/<tr><td>/g)||[]).length));
+    STATE.spaces=_bakSp;
+
+    // [P6-5] 자재는 도면 안, 그 자재 쪽에 (대표 지시)
+    const _wSp2=STATE.spaces.find(x=>x.id===pA.sp.id);
+    _wSp2.floorMaterial='STRONG';
+    const eM=buildElevation(STATE.walls.find(w=>w.id===pA.W[0].id),pA.sp.id);
+    const svgM=elevationSVG(eM,{devices:false});
+    assert('자재표기: 벽 자재가 도면 안에',svgM.indexOf('Silk Wallpaper')>0);
+    assert('자재표기: 바닥 자재가 도면 안에',svgM.indexOf('Laminated Wood Flooring')>0);
+    assert('자재표기: 표제칸 문구는 없앴다',svgM.indexOf('WALL FINISH :')<0&&
+      svgM.indexOf('FLOOR FINISH :')<0);
+    // 문·창을 피해 자리를 잡는다
+    const _span=_elevClearSpan(0,4000,[{left:1000,w:900},{left:3000,w:600}]);
+    assert('자재표기: 문창 없는 가장 넓은 자리',_span[0]===1940&&_span[1]===2960,_span.join('~'));
+    assert('자재표기: 개구부가 없으면 전체',_elevClearSpan(0,4000,[]).join()==='0,4000');
+    // 절단선 입면은 벽면마다 그 벽 자재를 단다
+    const eS2=buildSectionElevation(STATE.sections.find(x=>x.id===pSec.id));
+    assert('자재표기: 벽면마다 자재',eS2.faces.filter(f=>!f.edge).every(f=>'matEn' in f));
 
     // [P7] 미리보기 — 입면도만 (평면·부속표는 빠진다)
     const only3=buildPrintSheet(null,LPE,_printInfo(),c0,{preview:true,onlyPage:3,onlyElevPage:1});

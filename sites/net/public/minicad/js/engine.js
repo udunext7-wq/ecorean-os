@@ -4790,6 +4790,7 @@ function buildSectionElevation(sec){
       bearing:w.wallType==='bearing',
       material:(typeof WALL_MATERIALS!=='undefined'&&WALL_MATERIALS[w.finishMaterial])
         ?WALL_MATERIALS[w.finishMaterial].name:null,
+      matEn:matEn(typeof WALL_MATERIALS!=='undefined'?WALL_MATERIALS:null,w.finishMaterial),
       spaceName:(sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||''});
   });
   // 가까운 것부터 훑으며 '이미 가려진 구간'을 쌓는다 — 벽은 뚫고 보이지 않는다.

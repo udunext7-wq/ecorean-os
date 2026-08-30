@@ -3693,7 +3693,9 @@ function buildPrintSheet(dataURL,L,info,cfg,opts){
       'position:relative;overflow:hidden;page-break-after:always;break-after:page}'+
     '.pe{page-break-before:always;break-before:page}'+
     '.p2 h2{font-size:4.5mm;margin:0 0 3mm 0;border-bottom:0.5mm solid #000;padding-bottom:1.5mm}'+
-    '.p2 .cols{display:flex;gap:6mm;align-items:flex-start;flex-wrap:wrap}'+
+    '.p2 .cols{display:flex;gap:'+P2_GAP_MM+'mm;align-items:flex-start}'+
+    '.p2col{display:flex;flex-direction:column;gap:3mm}'+
+    '.p2col table.dt{width:100%}'+
     'table.dt{border-collapse:collapse;font-size:2.8mm}'+
     'table.dt th{background:#EEE;border:0.25mm solid #000;padding:1mm 2mm;font-weight:700}'+
     'table.dt td{border:0.25mm solid #666;padding:0.9mm 2mm}'+
@@ -3885,12 +3887,57 @@ function buildPrintElevPages(L,cfg,opts){
 }
 
 // 2페이지 — 공간 면적표 / 범례 / 개구부 리스트
+//  2026-08-30 대표 지시: 범례가 잘리면 옆으로 넓히고, 그래도 모자라면 장을 더 낸다.
+//   표를 '줄' 단위로 쪼개 칸(세로 단)에 차례로 채우고, 칸이 다 차면 다음 장으로 넘긴다.
+// 실측값 (2026-08-30 브라우저에서 재봄): 줄 6.14mm / 장 제목 10.85mm
+//  잘리는 쪽보다 한 장 더 나오는 쪽이 낫다 — 여유를 두고 잡는다
+const P2_ROW_MM=6.5;      // 표 한 줄 높이
+const P2_HEAD_MM=14;      // 표 제목 + 머리줄
+const P2_TITLE_MM=11;     // 장 제목
+const P2_COL_MM=64;       // 한 칸 폭
+const P2_GAP_MM=6;
+// 한 장에 칸이 몇 개, 칸마다 줄이 몇 개 들어가나
+function printP2Capacity(L){
+  const availW=L.pw-PRINT_MARGIN*2, availH=L.ph-PRINT_MARGIN*2-P2_TITLE_MM;
+  const cols=Math.max(1,Math.floor((availW+P2_GAP_MM)/(P2_COL_MM+P2_GAP_MM)));
+  const rows=Math.max(4,Math.floor(availH/P2_ROW_MM));
+  return {cols,rows,colW:Math.floor(((availW-(cols-1)*P2_GAP_MM)/cols)*10)/10};
+}
+// 표를 칸에 차례로 채운다 — 칸이 차면 옆 칸으로, 칸이 다 차면 다음 장으로.
+//  표가 끝났다고 칸을 새로 열지 않는다 (작은 표들이 한 칸에 모이도록).
+//  남은 줄은 '(계속)' 제목을 달고 이어 붙인다.
+function _p2Pack(blocks,cap){
+  const pages=[];
+  let page=[],col=[],used=0;
+  const newCol=()=>{
+    if(col.length) page.push(col);
+    col=[];used=0;
+    if(page.length>=cap.cols){pages.push(page);page=[];}
+  };
+  const headCost=Math.ceil(P2_HEAD_MM/P2_ROW_MM);
+  blocks.forEach(b=>{
+    let i=0, first=true;
+    do{
+      if(cap.rows-used-headCost<2) newCol();
+      const room=Math.max(1,cap.rows-used-headCost);
+      const take=b.rows.slice(i,i+room);
+      const done=(i+take.length>=b.rows.length);
+      col.push({title:b.title+(first?'':' (계속)'),head:b.head,rows:take,foot:done?b.foot:''});
+      used+=headCost+take.length+((done&&b.foot)?1:0);
+      i+=take.length;
+      first=false;
+    }while(i<b.rows.length);
+  });
+  if(col.length) page.push(col);
+  if(page.length) pages.push(page);
+  return pages;
+}
 function buildPrintPage2(L,info){
   const spaceRows=(STATE.spaces||[]).map(sp=>
     '<tr><td>'+((SPACE_TYPES[sp.type]&&SPACE_TYPES[sp.type].name)||sp.type)+'</td>'+
     '<td>'+escapeHtml(sp.name||'')+'</td>'+
     '<td class="r">'+spArea(sp).toFixed(2)+'</td>'+
-    '<td class="r">'+(spArea(sp)/3.3058).toFixed(1)+'</td></tr>').join('');
+    '<td class="r">'+(spArea(sp)/3.3058).toFixed(1)+'</td></tr>');
   // 2026-08-29: 품명에 규격을 살린다 — 다운라이트 2"/3"/6" 가 따로 집계되고 타공경도 나온다
   const legend=[];
   const cnt=(arr,kind,label)=>{
@@ -3898,7 +3945,7 @@ function buildPrintPage2(L,info){
     (arr||[]).forEach(o=>{
       const it=(typeof legendItemOf==='function')?legendItemOf(kind,o):null;
       if(!it||!it.name) return;
-      const key=it.name+'\u0000'+(it.spec||'');
+      const key=it.name+'||'+(it.spec||'');
       if(!m[key]) m[key]={name:it.name,spec:it.spec||'',n:0};
       m[key].n++;
     });
@@ -3910,22 +3957,32 @@ function buildPrintPage2(L,info){
   cnt(STATE.electric,'electric','전기');
   cnt(STATE.hvac,'hvac','공조/소방');
   const legendRows=legend.map(r=>'<tr><td>'+r[0]+'</td><td>'+escapeHtml(r[1])+'</td>'+
-    '<td>'+escapeHtml(r[2]||'-')+'</td><td class="r">'+r[3]+'</td></tr>').join('');
+    '<td>'+escapeHtml(r[2]||'-')+'</td><td class="r">'+r[3]+'</td></tr>');
   const opRows=(STATE.openings||[]).map((o,i)=>
     '<tr><td class="r">'+(i+1)+'</td><td>'+(o.type==='DOOR'?'문':'창')+'</td>'+
-    '<td>'+escapeHtml((o.doorType&&DOOR_TYPES&&DOOR_TYPES[o.doorType]?DOOR_TYPES[o.doorType].name:(o.subType||''))||'-')+'</td>'+
-    '<td class="r">'+(o.width_mm||o.w||0)+'×'+(o.height_mm||o.h||0)+'</td></tr>').join('');
-  return '<div class="p2">'+
-    '<h2>'+escapeHtml(STATE.projectName||'')+' — 도면 부속표 (평면도 1/'+L.scale+')</h2>'+
-    '<div class="cols">'+
-      '<table class="dt"><tr><th colspan="4">공간 면적표</th></tr>'+
-        '<tr><th>구분</th><th>실명</th><th>㎡</th><th>평</th></tr>'+spaceRows+
-        '<tr><th colspan="2">합계</th><th class="r">'+info.area+'</th><th class="r">'+info.py+'</th></tr></table>'+
-      (legendRows?'<table class="dt"><tr><th colspan="4">범례 (수량)</th></tr>'+
-        '<tr><th>분류</th><th>품명</th><th>규격 (mm)</th><th>수량</th></tr>'+legendRows+'</table>':'')+
-      (opRows?'<table class="dt"><tr><th colspan="4">개구부 리스트</th></tr>'+
-        '<tr><th>NO</th><th>종별</th><th>형식</th><th>W×H</th></tr>'+opRows+'</table>':'')+
-    '</div></div>';
+    '<td>'+escapeHtml((o.subType&&DOOR_TYPES&&DOOR_TYPES[o.subType]?DOOR_TYPES[o.subType].name:
+      (o.subType&&WINDOW_TYPES&&WINDOW_TYPES[o.subType]?WINDOW_TYPES[o.subType].name:(o.subType||'')))||'-')+'</td>'+
+    '<td class="r">'+(o.width_mm||o.w||0)+'×'+(o.height_mm||o.h||0)+'</td></tr>');
+  const blocks=[
+    {title:'공간 면적표',head:'<tr><th>구분</th><th>실명</th><th>㎡</th><th>평</th></tr>',
+     rows:spaceRows,foot:'<tr><th colspan="2">합계</th><th class="r">'+info.area+'</th><th class="r">'+info.py+'</th></tr>'},
+    {title:'범례 (수량)',head:'<tr><th>분류</th><th>품명</th><th>규격 (mm)</th><th>수량</th></tr>',
+     rows:legendRows,foot:''},
+    {title:'개구부 리스트',head:'<tr><th>NO</th><th>종별</th><th>형식</th><th>W×H</th></tr>',
+     rows:opRows,foot:''},
+  ].filter(b=>b.rows.length);
+  if(!blocks.length) return '';
+  const cap=printP2Capacity(L);
+  const pages=_p2Pack(blocks,cap);
+  return pages.map((page,pi)=>
+    '<div class="p2"><h2>'+escapeHtml(STATE.projectName||'')+' — 도면 부속표 (평면도 1/'+L.scale+')'+
+      (pages.length>1?('  ·  '+(pi+1)+' / '+pages.length):'')+'</h2>'+
+    '<div class="cols">'+page.map(col=>
+      '<div class="p2col" style="width:'+cap.colW+'mm">'+col.map(t=>
+        '<table class="dt"><tr><th colspan="4">'+escapeHtml(t.title)+'</th></tr>'+
+        t.head+t.rows.join('')+t.foot+'</table>').join('')+
+      '</div>').join('')+
+    '</div></div>').join('');
 }
 
 // v5.7: 인쇄 시 2.5D 강제 OFF (시공 도면은 평면 모드만 허용)
@@ -6583,7 +6640,7 @@ window.addEventListener('load',()=>{
 //  아래에 구간 치수와 전체 치수 두 줄, 왼쪽에 천장고, 기구마다 설치 높이.
 // 2026-08-30 대표 지시: 글씨·숫자를 3배로. 글씨가 커진 만큼 여백도 함께 늘린다
 //  (여백을 안 늘리면 치수 숫자가 도면 밖으로 잘리거나 서로 겹친다)
-const ELEV_PAD={l:760,r:340,t:300,b:2600};   // 도면 여백 (좌표 단위 = mm)
+const ELEV_PAD={l:760,r:340,t:300,b:2100};   // 도면 여백 (좌표 단위 = mm)
 const ELEV_FS={dim:198,tag:234,title:312,dev:174};
 function _eTxt(x,y,t,fs,col,anchor,extra){
   return '<text x="'+Math.round(x)+'" y="'+Math.round(y)+'" font-size="'+fs+'" fill="'+(col||'#333')+
@@ -6610,6 +6667,36 @@ function _eDimV(x,y1,y2,t,col){
     '<line x1="'+Math.round(x-90)+'" y1="'+Math.round(b)+'" x2="'+Math.round(x+90)+'" y2="'+Math.round(b)+'"/>'+
     '</g>'+_eTxt(x-80,(a+b)/2,t,ELEV_FS.dim,c,'middle',
       ' transform="rotate(-90 '+Math.round(x-80)+' '+Math.round((a+b)/2)+')"');
+}
+// 2026-08-30 대표 지시: 자재는 표제칸이 아니라 '도면 안, 그 자재가 붙는 자리' 에 적는다.
+//  벽면 글씨가 문·창 위에 얹히면 못 읽으니, 개구부가 없는 가장 넓은 구간을 찾아 거기에 적는다.
+function _elevClearSpan(l,r,ops){
+  let gaps=[[l,r]];
+  (ops||[]).forEach(o=>{
+    const nx=[];
+    gaps.forEach(([a,b])=>{
+      const cl=o.left-40, cr=o.left+o.w+40;
+      if(cr<=a||cl>=b){nx.push([a,b]);return;}
+      if(cl>a) nx.push([a,Math.min(cl,b)]);
+      if(cr<b) nx.push([Math.max(cr,a),b]);
+    });
+    gaps=nx;
+  });
+  if(!gaps.length) return [l,r];
+  return gaps.reduce((m,g)=>((g[1]-g[0])>(m[1]-m[0])?g:m),gaps[0]);
+}
+// 자재 이름표 — 넓이에 맞춰 글씨를 줄이고, 밑줄로 '이 면' 임을 가리킨다
+function _elevMatTag(cx,y,txt,span,col){
+  if(!txt) return '';
+  const room=Math.max(400,span-80);
+  const est=String(txt).length*ELEV_FS.dim*0.55;
+  const fs=(est>room)?Math.max(80,Math.floor(ELEV_FS.dim*room/est)):ELEV_FS.dim;
+  const w=Math.min(room,String(txt).length*fs*0.55);
+  return '<rect x="'+Math.round(cx-w/2-30)+'" y="'+Math.round(y-fs)+'" width="'+Math.round(w+60)+
+      '" height="'+Math.round(fs*1.35)+'" fill="#FFFFFF" fill-opacity="0.82"/>'+
+    _eTxt(cx,y,txt,fs,col||'#1A4B7A','middle',' font-weight="700"')+
+    '<line x1="'+Math.round(cx-w/2)+'" y1="'+Math.round(y+fs*0.22)+'" x2="'+Math.round(cx+w/2)+
+      '" y2="'+Math.round(y+fs*0.22)+'" stroke="'+(col||'#1A4B7A')+'" stroke-width="9"/>';
 }
 // 입면 하나를 SVG 로. opt.color = 색을 넣을지, opt.devices = 스위치·콘센트를 그릴지
 function elevationSVG(e,opt){
@@ -6650,6 +6737,22 @@ function elevationSVG(e,opt){
   // 바닥선 — 제일 굵게
   g+='<line x1="'+(X(0)-70)+'" y1="'+Y(0)+'" x2="'+(X(e.L)+70)+'" y2="'+Y(0)+
      '" stroke="#000" stroke-width="26"/>';
+  // 벽 자재 — 그 벽면 위에 적는다 (문·창을 피해 가장 넓은 자리)
+  const _matY=Y(e.H*0.78);
+  if(e.faces&&e.faces.length){
+    e.faces.forEach(f=>{
+      if(f.edge||!f.matEn) return;
+      (f.vis||[[f.left,f.right]]).forEach(([l,r])=>{
+        if(r-l<600) return;
+        const sp=_elevClearSpan(l,r,e.ops.filter(o=>o.wallId===f.wallId));
+        g+=_elevMatTag(X((sp[0]+sp[1])/2),Math.min(_matY,Y(Math.min(f.h,e.H)*0.78)),
+          f.matEn,sp[1]-sp[0]);
+      });
+    });
+  }else if(e.finishEn&&e.finishEn.wall){
+    const sp=_elevClearSpan(0,e.L,e.ops);
+    g+=_elevMatTag(X((sp[0]+sp[1])/2),_matY,e.finishEn.wall,sp[1]-sp[0]);
+  }
   // 문·창
   e.ops.forEach(o=>{
     const l=Math.max(0,o.left), r=Math.min(e.L,o.left+o.w);
@@ -6689,6 +6792,11 @@ function elevationSVG(e,opt){
        '" y2="'+Math.round(Y(0))+'"/></g>';
     g+=_eTxt(x+d.w/2,y+d.bh+ELEV_FS.dev+30,'H'+d.h,ELEV_FS.dev,'#3F6B2E');
   });
+  // 바닥 자재 — 바닥선 바로 위에 (그 자리가 바닥이다)
+  if(e.finishEn&&e.finishEn.floor){
+    const spF=_elevClearSpan(0,e.L,e.ops.filter(o=>o.isDoor));
+    g+=_elevMatTag(X((spF[0]+spF[1])/2),Y(0)-70,e.finishEn.floor,spF[1]-spF[0],'#6B4E16');
+  }
   // 아래 치수 두 줄 — 구간(문·창 사이) + 전체
   const yb1=Y(0)+430, yb2=Y(0)+900;
   let cut=[0];
@@ -6720,10 +6828,8 @@ function elevationSVG(e,opt){
     const f=(est>room)?Math.max(90,Math.floor(fs*room/est)):fs;
     return _eTxt(cx,y,txt,f,col,'middle',bold?' font-weight="700"':'');
   };
-  g+=_line(t1,ELEV_FS.title,Y(0)+P.b-1200,'#000',true);
-  g+=_line(t2,ELEV_FS.dim,Y(0)+P.b-820,'#555',false);
-  g+=_line(fin.wall?('WALL FINISH : '+fin.wall):'',ELEV_FS.dim,Y(0)+P.b-490,'#222',true);
-  g+=_line(fin.floor?('FLOOR FINISH : '+fin.floor):'',ELEV_FS.dim,Y(0)+P.b-160,'#222',true);
+  g+=_line(t1,ELEV_FS.title,Y(0)+P.b-700,'#000',true);
+  g+=_line(t2,ELEV_FS.dim,Y(0)+P.b-300,'#555',false);
   return '<svg viewBox="0 0 '+Math.round(VW)+' '+Math.round(VH)+'" width="100%" '+
     'preserveAspectRatio="xMidYMid meet" style="display:block">'+g+'</svg>';
 }
