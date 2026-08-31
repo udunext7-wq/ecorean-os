@@ -642,11 +642,24 @@ const LIGHT_LIB={
     {type:'rect',x:-580,y:-30,w:1160,h:60,fill:'#FFF8E0',stroke:'#F5E5B8',sw:2,r:3},
   ]},
   // ===== 2026-08-24: 트렌드 조명 6종 (대표 지시) =====
-  line_t5:{name:'라인조명 (T5)',nameEn:'LED line light',size:1200,c:'#D4B872',shape:[
+  // 2026-08-31 대표 지시로 갈래를 바로잡음: 'T5' 와 '라인조명' 은 전혀 다른 제품이다.
+  //  · T 숫자 = 관 지름을 1/8인치로 센 것 (1T = 3.175mm).
+  //    T3 9.5 / T4 12.7 / T5 15.9 / T8 25.4mm. 국내 인테리어에서 T5 바는
+  //    우물천장·커튼박스·가구 하부의 간접등으로 쓰고, 300·600·900·1200mm 가 표준이다.
+  //  · 라인조명 = 알루미늄 프로파일에 LED 를 넣은 선형 등기구. 매입·직부·펜던트·가구형으로
+  //    나뉘고 단면(폭×높이)이 제각각이며 길이는 맞춤 제작이다.
+  //  타입 id(line_t5)는 예전 도면이 물고 있어 그대로 두고, 관경은 속성(tube)으로 간다.
+  line_t5:{name:'T5 바',nameEn:'T5 tube bar light',size:1200,c:'#D4B872',tubeDefault:'T5',shape:[
     {type:'rect',x:-600,y:-30,w:1200,h:60,fill:'#FFF3D0',stroke:'#D4B872',sw:5,r:30},
     {type:'rect',x:-620,y:-18,w:40,h:36,fill:'#5A5A5A',stroke:'#2A2A2A',sw:3,r:8},
     {type:'rect',x:580,y:-18,w:40,h:36,fill:'#5A5A5A',stroke:'#2A2A2A',sw:3,r:8},
     {type:'line',x1:-560,y1:0,x2:560,y2:0,stroke:'#FFE9A8',sw:14},
+  ]},
+  // 라인조명 (프로파일 선형등) — 설치 방식과 단면은 속성으로 고른다
+  line_light:{name:'라인조명',nameEn:'LED linear profile light',size:1200,c:'#D4B872',
+    mountDefault:'recess',profileDefault:0,shape:[
+    {type:'rect',x:-600,y:-15,w:1200,h:30,fill:'#3A3A3A',stroke:'#1A1A1A',sw:4,r:3},
+    {type:'rect',x:-594,y:-9,w:1188,h:18,fill:'#FFF3D0',stroke:'#D4B872',sw:2,r:2},
   ]},
   magnet_track:{name:'마그네틱 트랙',nameEn:'magnetic track light',size:1500,c:'#D4B872',shape:[
     {type:'rect',x:-750,y:-35,w:1500,h:70,fill:'#2E2E2E',stroke:'#101010',sw:6,r:8},
@@ -1072,6 +1085,25 @@ function normalizeSelectedLib(tool){
   }
   return STATE.selectedLib;
 }
+// 2026-08-31: 튜브 규격 — T 숫자는 관 지름(1/8인치 단위). 등기구 폭은 관을 감싼 실제 몸통.
+const TUBE_SPECS={
+  T3:{name:'T3',dia:9.5, housing:16,lens:8 },
+  T4:{name:'T4',dia:12.7,housing:20,lens:11},
+  T5:{name:'T5',dia:15.9,housing:25,lens:14},
+  T8:{name:'T8',dia:25.4,housing:36,lens:22},
+};
+const TUBE_ORDER=['T3','T4','T5','T8'];
+// 국내 유통 표준 길이 (KS 제품 300·600·900·1200, 여기에 현장에서 쓰는 150·400·1500)
+const TUBE_LENGTHS=[150,300,400,600,900,1200,1500];
+// 라인조명 프로파일 — 설치 방식마다 단면(폭×높이 mm)이 다르다
+const LINE_PROFILES={
+  recess:   {name:'매입형',  list:[[30,20],[40,30],[50,30],[60,30]]},
+  surface:  {name:'직부형',  list:[[20,20],[30,30],[40,40],[50,50],[60,50],[70,50],[80,60],[90,60]]},
+  pendant:  {name:'펜던트형',list:[[40,40],[50,50],[60,50],[70,50],[80,60]]},
+  furniture:{name:'가구형',  list:[[10,9],[12,10],[15,10],[18,10]]},
+};
+const LINE_MOUNT_ORDER=['recess','surface','pendant','furniture'];
+
 const LIB_GROUPS={
   furniture:[
     ['거실',['sofa3','sofa2','sofa1','sofa_modular','sofa_curved','lounge_chair','beanbag','coffee','side_table','console','tv_stand','rug','plant']],
@@ -1100,7 +1132,11 @@ const LIB_GROUPS={
                   'edge_flat_600','kitchen_flat','spot_cyl']],
     ['천장 직부',['ceiling','ceiling_fan','spot_bar_3','fluorescent','sensor_light',
                   'bath_light#2','bath_light#3','bath_light#4','bath_light#5','bath_light#6']],
-    ['라인·간접 (길이 조절)',['line_t5','cove','magnet_track','pendant_linear']],
+    // 2026-08-31: T5 바(관경별) 와 라인조명(설치별) 은 다른 제품 — 줄을 나눈다
+    ['T5 바 — 관경별 (길이 조절)',['line_t5#T3','line_t5#T4','line_t5#T5','line_t5#T8']],
+    ['라인조명 — 설치별 (길이 조절)',['line_light#recess','line_light#surface',
+                  'line_light#pendant','line_light#furniture']],
+    ['간접·트랙 (길이 조절)',['cove','magnet_track','pendant_linear']],
     ['펜던트·장식',['pendant','pendant_cluster','chandelier']],
     ['벽·스탠드',['wall_lamp','step_light','floor_lamp','table_lamp']],
   ],

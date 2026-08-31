@@ -1096,13 +1096,20 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   try{
     const _bakL={lights:STATE.lights.slice(),selK:STATE.selectedKind,selI:STATE.selectedId};
     // [L1] 대상 타입
-    assert('라인조명: 대상 5종',['line_t5','cove','magnet_track','fluorescent','pendant_linear'].every(isLinearLight)
+    assert('라인조명: 대상 6종',['line_t5','line_light','cove','magnet_track','fluorescent','pendant_linear'].every(isLinearLight)
       &&!isLinearLight('downlight')&&!isLinearLight('pendant'));
     // [L2] 길이별 도식 — 몸체 rect 폭이 길이와 일치
     const bodyW=(type,L)=>{const sh=linearLightShape(type,L);const r=sh.find(c=>c.type==='rect');return r?r.w:0;};
     assert('라인조명: 길이 = 몸체 폭',bodyW('line_t5',1200)===1200&&bodyW('line_t5',4500)===4500&&bodyW('cove',3000)===3000);
-    assert('라인조명: 끝단 캡 위치 추종',(function(){const sh=linearLightShape('line_t5',2400);
-      const caps=sh.filter(c=>c.type==='rect'&&c.w===40);return caps.length===2&&Math.abs(caps[1].x-(1200-20))<0.1;})());
+    // 2026-08-31: 캡 크기는 관경을 따라가므로 '폭 40' 으로 찾지 않고 위치로 확인한다
+    assert('라인조명: 끝단 캡 위치 추종',(function(){
+      const sh=linearLightShape('line_t5',2400,{type:'line_t5',tube:'T5'});
+      const body=sh[0];
+      const caps=sh.filter((c,i)=>i>0&&c.type==='rect');
+      if(caps.length!==2) return false;
+      return Math.abs(body.w-2400)<0.1&&
+             Math.abs(caps[0].x-(-1200-caps[0].w/2))<0.1&&
+             Math.abs(caps[1].x-(1200-caps[1].w/2))<0.1;})());
     // [L3] 마그네틱 트랙 — 길이에 비례해 모듈 수 증가
     const modN=L=>linearLightShape('magnet_track',L).length;
     assert('라인조명: 트랙 모듈 길이 비례',modN(4500)>modN(1500),modN(1500)+'→'+modN(4500));
@@ -2342,16 +2349,22 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     const tagOf=txt=>{let f=false;groups.lights.getChildren().forEach(n=>{
       if(n.getClassName&&n.getClassName()==='Text'&&n.text().indexOf(txt)>=0)f=true;});return f;};
     assert('간접: 도면에 종류 표기',tagOf('간접'),'표기 없음');
-    assert('간접: 길이 m 표기',tagOf('3.0m'),'길이 없음');
+    // 2026-08-31: 라인·간접도 이름표로 묶이면서 표기가 '간접조명 (코브) 3000mm' 로 바뀌었다.
+    //  뜻(종류와 길이가 도면에 적힌다)은 그대로이므로 두 표기 다 받는다.
+    assert('간접: 길이 표기',tagOf('3.0m')||tagOf('3000mm'),'길이 없음');
     assert('간접: 표기 문구',linearLightTagText(cove,linearLightDef(cove))==='간접 3.0m',
       linearLightTagText(cove,linearLightDef(cove)));
     // 길이를 바꾸면 표기도 따라온다
     cove.length_mm=4500;renderLights();
-    assert('간접: 길이 변경 반영',tagOf('4.5m'));
+    assert('간접: 길이 변경 반영',tagOf('4.5m')||tagOf('4500mm'));
     // 종류별 이름
+    // 2026-08-31: 'T5 라인' 은 두 제품을 뒤섞은 말이었다 — T5(관 규격) 와 라인조명을 갈랐다
     const t5={id:makeId('li'),type:'line_t5',x:LX,y:LX+24000,angle:0,length_mm:1200};
-    assert('간접: T5 라인 표기',linearLightTagText(t5,linearLightDef(t5))==='T5 라인 1.2m',
+    assert('간접: T5 표기',linearLightTagText(t5,linearLightDef(t5))==='T5 1.2m',
       linearLightTagText(t5,linearLightDef(t5)));
+    const ll={id:makeId('li'),type:'line_light',x:LX,y:LX+25000,angle:0,length_mm:1200};
+    assert('간접: 라인조명 표기',linearLightTagText(ll,linearLightDef(ll))==='라인 1.2m',
+      linearLightTagText(ll,linearLightDef(ll)));
     // [간접6] 라벨 모드가 '끔'이어도 간접 표기는 남는다 (도면 판독에 필수)
     STATE.symbolLabelMode='off';renderLights();
     assert('간접: 라벨 끔에도 표기 유지',tagOf('간접'));
@@ -3751,6 +3764,106 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     invalidateRenderCache();renderAll();refreshUI();
   }catch(e){
     assert('점핑선: 테스트 예외 없음',false,e.message);
+  }
+  // === 2026-08-31 대표 지시: T5 와 라인조명은 전혀 다른 제품 — 갈래를 다시 나눈다 ===
+  try{
+    const _bakLC={lights:STATE.lights.slice(),mode:STATE.symbolLabelMode,
+      spaces:STATE.spaces.slice(),vertices:STATE.vertices.slice(),walls:STATE.walls.slice(),
+      selK:STATE.selectedKind,selI:STATE.selectedId,box:STATE.boxSelection.slice()};
+    STATE.lights=[];STATE.boxSelection=[];STATE.selectedKind=null;STATE.selectedId=null;
+
+    // [C1] T 관경 — 숫자는 관 지름을 1/8인치로 센 것 (1T = 3.175mm)
+    assert('조명분류: T 관경 4종',TUBE_ORDER.join(',')==='T3,T4,T5,T8');
+    assert('조명분류: T5 는 15.9mm',Math.abs(TUBE_SPECS.T5.dia-15.9)<0.05,String(TUBE_SPECS.T5.dia));
+    assert('조명분류: T8 은 25.4mm',Math.abs(TUBE_SPECS.T8.dia-25.4)<0.05,String(TUBE_SPECS.T8.dia));
+    assert('조명분류: T 숫자 = 1/8인치',
+      TUBE_ORDER.every(k=>Math.abs(TUBE_SPECS[k].dia-parseInt(k.slice(1),10)*3.175)<0.6),
+      TUBE_ORDER.map(k=>k+':'+TUBE_SPECS[k].dia).join(' '));
+    assert('조명분류: 관경이 굵을수록 등기구도 굵다',
+      TUBE_SPECS.T3.housing<TUBE_SPECS.T4.housing&&
+      TUBE_SPECS.T4.housing<TUBE_SPECS.T5.housing&&
+      TUBE_SPECS.T5.housing<TUBE_SPECS.T8.housing);
+    assert('조명분류: 표준 길이에 300·600·900·1200',
+      [300,600,900,1200].every(v=>TUBE_LENGTHS.indexOf(v)>=0),TUBE_LENGTHS.join(','));
+
+    // [C2] 라인조명은 T5 와 다른 제품 — 설치 방식별 프로파일
+    assert('조명분류: 라인조명은 별도 타입',isLinearLight('line_light')&&!!LIGHT_LIB.line_light);
+    assert('조명분류: 설치 4종',LINE_MOUNT_ORDER.join(',')==='recess,surface,pendant,furniture');
+    assert('조명분류: 매입 프로파일 30×20 부터',
+      LINE_PROFILES.recess.list[0].join('×')==='30×20',LINE_PROFILES.recess.list[0].join('×'));
+    assert('조명분류: 가구형이 가장 가늘다',
+      LINE_PROFILES.furniture.list[0][0]<LINE_PROFILES.recess.list[0][0]);
+    assert('조명분류: 모든 프로파일이 폭·높이 두 값',
+      LINE_MOUNT_ORDER.every(m=>LINE_PROFILES[m].list.every(w=>w.length===2&&w[0]>0&&w[1]>0)));
+
+    // [C3] 굵기가 규격을 따라간다 — 도면에 그려지는 두께
+    const mkT=t=>({type:'line_t5',tube:t,length_mm:1200});
+    assert('조명분류: T5 굵기는 등기구 폭',linearCrossMm(mkT('T5'))===TUBE_SPECS.T5.housing);
+    assert('조명분류: T3 가 T8 보다 가늘다',linearCrossMm(mkT('T3'))<linearCrossMm(mkT('T8')));
+    const mkL=(m,i)=>({type:'line_light',mount:m,profile:i,length_mm:1200});
+    assert('조명분류: 라인조명 굵기는 프로파일 폭',
+      linearCrossMm(mkL('recess',0))===LINE_PROFILES.recess.list[0][0]);
+    assert('조명분류: 도식 몸체 폭이 굵기와 같다',(function(){
+      const sh=linearLightShape('line_light',1200,mkL('surface',3));
+      return sh[0].h===LINE_PROFILES.surface.list[3][0];})(),
+      String(linearLightShape('line_light',1200,mkL('surface',3))[0].h));
+
+    // [C4] 이름 — 무엇을 몇 mm 짜리로 넣는지 그대로 읽힌다
+    assert('조명분류: T5 이름',linearLightDef(mkT('T5')).name==='T5 바 1200mm',
+      linearLightDef(mkT('T5')).name);
+    assert('조명분류: T8 이름',linearLightDef(mkT('T8')).name==='T8 바 1200mm');
+    assert('조명분류: 라인조명 이름',
+      linearLightDef(mkL('recess',1)).name==='라인조명 매입형 40×30 1200mm',
+      linearLightDef(mkL('recess',1)).name);
+
+    // [C5] 팔레트에서 규격을 골라 바로 배치된다
+    const o1=applyLibVariant({type:'line_t5'},'line_t5#T8');
+    assert('조명분류: 팔레트 관경 적용',o1.tube==='T8');
+    const o2=applyLibVariant({type:'line_light'},'line_light#furniture');
+    assert('조명분류: 팔레트 설치 적용',o2.mount==='furniture'&&o2.profile===0);
+    assert('조명분류: 팔레트 썸네일도 규격대로',
+      libDefForKey(LIGHT_LIB,'line_t5#T3').crossH===TUBE_SPECS.T3.housing,
+      String(libDefForKey(LIGHT_LIB,'line_t5#T3').crossH));
+    assert('조명분류: 팔레트에 관경·설치가 다 있다',
+      TUBE_ORDER.every(k=>libHasKey('light','line_t5#'+k))&&
+      LINE_MOUNT_ORDER.every(k=>libHasKey('light','line_light#'+k)));
+
+    // [C6] 대표 지시: 평면도에서 다운라이트처럼 이름을 묶어 단다
+    const CX=900000;
+    const cv=polygonToVertexIds([{x:CX,y:CX},{x:CX+6000,y:CX},{x:CX+6000,y:CX+4000},{x:CX,y:CX+4000}]);
+    const csp=makeSpaceVEF(cv,{name:'분류시험',type:'ROOM',typeIndex:99,layerName:'A-AREA-ROOM-99'});
+    STATE.spaces.push(csp);
+    for(let i=0;i<3;i++) STATE.lights.push({id:'lc'+i,type:'line_t5',tube:'T5',
+      x:CX+1000+i*1500,y:CX+1000,angle:0,length_mm:1200});
+    for(let i=0;i<2;i++) STATE.lights.push({id:'lm'+i,type:'line_light',mount:'recess',profile:0,
+      x:CX+1000+i*1500,y:CX+2500,angle:0,length_mm:1200});
+    STATE.symbolLabelMode='smart';
+    assert('조명분류: T5 도 이름표 대상',
+      symbolLabelEligible('lights',symbolDefOf('lights',STATE.lights[0]))===true);
+    assert('조명분류: 라인조명도 이름표 대상',
+      symbolLabelEligible('lights',symbolDefOf('lights',STATE.lights[3]))===true);
+    const plan=symbolLabelPlan();
+    const texts=[...plan.rep.values()];
+    assert('조명분류: 같은 규격끼리 묶인다',texts.indexOf('T5 바 1200mm ×3')>=0,texts.join(' | '));
+    assert('조명분류: 라인조명도 묶인다',
+      texts.indexOf('라인조명 매입형 30×20 1200mm ×2')>=0,texts.join(' | '));
+    assert('조명분류: 묶음 대표는 5개 중 2개만',plan.rep.size===2,String(plan.rep.size));
+    // 규격이 다르면 따로 묶인다
+    STATE.lights[2].tube='T8';
+    const plan2=symbolLabelPlan();
+    assert('조명분류: 관경이 다르면 따로',plan2.rep.size===3,String(plan2.rep.size));
+    assert('조명분류: T8 은 따로 셈',[...plan2.rep.values()].indexOf('T8 바 1200mm')>=0,
+      [...plan2.rep.values()].join(' | '));
+    // 간접(코브)처럼 굵은 기구는 종전대로 이름표에서 빠진다
+    assert('조명분류: 굵은 간접은 이름표 제외',
+      symbolLabelEligible('lights',symbolDefOf('lights',{type:'pendant_linear',length_mm:1200}))===true);
+
+    STATE.lights=_bakLC.lights;STATE.symbolLabelMode=_bakLC.mode;
+    STATE.spaces=_bakLC.spaces;STATE.vertices=_bakLC.vertices;STATE.walls=_bakLC.walls;
+    STATE.selectedKind=_bakLC.selK;STATE.selectedId=_bakLC.selI;STATE.boxSelection=_bakLC.box;
+    invalidateRenderCache();renderAll();refreshUI();
+  }catch(e){
+    assert('조명분류: 테스트 예외 없음',false,e.message);
   }
   // === 2026-08-30: 보는 방향 고르기 + 절단선 입면도 (대표 지시) ===
   try{

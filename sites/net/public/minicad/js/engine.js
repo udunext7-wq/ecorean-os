@@ -2294,7 +2294,9 @@ function symbolLabelMode(){
 function symbolLabelEligible(kind,def){
   if(!def) return false;
   if(kind==='electric') return true;
-  if(kind==='lights')   return (def.size||0)<=400;   // 라인·간접조명(길이 가변)은 제외
+  // 2026-08-31 대표 지시: 라인·T5 도 다운라이트처럼 이름을 묶어 달 수 있어야 한다.
+  //  선형 기구는 size 가 '길이' 라 늘 400 을 넘어 빠졌다 — 굵기(단면)로 재야 옳다.
+  if(kind==='lights')   return def.crossH?(def.crossH<=400):((def.size||0)<=400);
   if(kind==='hvac')     return (def.size||0)<=600;
   if(kind==='fixtures') return Math.max(def.w||0,def.h||0)<=300; // 바닥 배수구 등
   return false;
@@ -2350,7 +2352,10 @@ function symbolLabelPlan(){
   let sig;
   try{
     sig=JSON.stringify((STATE.spaces||[]).map(sp=>[sp.id,sp.polygon]))+'§'
-       +SYMBOL_LABEL_KINDS.map(k=>JSON.stringify((STATE[k]||[]).map(o=>[o.id,o.type,o.x,o.y,o.inch||0,o.length_mm||0]))).join('§');
+       // 2026-08-31: 이름이 규격을 담으므로 규격도 서명에 들어가야 한다.
+       //  (관경만 바꾸면 캐시가 옛 묶음을 그대로 내놓는다 — 테스트에서 잡혔다)
+       +SYMBOL_LABEL_KINDS.map(k=>JSON.stringify((STATE[k]||[]).map(o=>
+          [o.id,o.type,o.x,o.y,o.inch||0,o.length_mm||0,o.tube||'',o.mount||'',o.profile||0]))).join('§');
   }catch(_){sig=null;}
   if(sig!==null&&_symLabelPlan&&_symLabelPlanSig===sig) return _symLabelPlan;
   const buckets=new Map();
@@ -2393,10 +2398,10 @@ function symbolLabelTextFor(kind,o,def){
 function addSymbolLabel(group,xPx,yPx,def,kind,id,o){
   // 2026-08-27: 인쇄에서는 기본적으로 범례를 쓴다 (라벨이 심볼보다 커서 도면을 덮음).
   // 2026-08-28: 다만 조명·전기 도면은 이름이 있어야 읽힌다 — 인쇄 설정에서 켜면 찍는다
-  if(_pm()&&!STATE.printLabels) return;
-  if(STATE.zoom<0.3) return; // 극축소 시 겹침 방지
+  if(_pm()&&!STATE.printLabels) return false;
+  if(STATE.zoom<0.3) return false; // 극축소 시 겹침 방지
   const text=symbolLabelTextFor(kind,o||{id:id},def);
-  if(!text) return;
+  if(!text) return false;
   const halfPx=mmToPx((def.size||Math.max(def.w||0,def.h||0)||200))/2;
   // 2026-08-28: 글씨가 작아 안 읽힌다는 지적 — 개수가 줄어든 만큼 키우고,
   //  그림자 대신 외곽선으로 가독성을 낸다 (Konva 그림자가 라벨 수만큼 느려지던 주범)
@@ -2408,6 +2413,7 @@ function addSymbolLabel(group,xPx,yPx,def,kind,id,o){
   });
   if(kind){t.on('click tap',_symbolLabelClick(kind,id));t.on('mouseenter',()=>{document.body.style.cursor='pointer';});t.on('mouseleave',()=>{document.body.style.cursor='';});}
   group.add(t);
+  return true;
 }
 // 2026-08-29: 배선 선 규격 — 회로선·점핑선이 따로 놀지 않게 한 곳에서 정한다
 //  가는 점선 — 기구(다운라이트)보다 약하게 보여야 도면이 읽힌다
@@ -2632,8 +2638,30 @@ function renderRect(arr,group,lib,kind){
 
 // 2026-08-25: 라인·간접조명 길이 가변 (대표 지시) — 하나를 넣고 길이를 입력해 길게 뺀다
 //  o.length_mm 인스턴스 속성. 단면 높이는 고정, 길이 방향만 실치수로 다시 그린다.
-const LINEAR_LIGHT_TYPES=['line_t5','cove','magnet_track','fluorescent','pendant_linear'];
-const LINEAR_LIGHT_CROSS={line_t5:60,cove:140,magnet_track:70,fluorescent:100,pendant_linear:140};
+const LINEAR_LIGHT_TYPES=['line_t5','line_light','cove','magnet_track','fluorescent','pendant_linear'];
+const LINEAR_LIGHT_CROSS={line_t5:60,line_light:40,cove:140,magnet_track:70,fluorescent:100,pendant_linear:140};
+// 2026-08-31: T5 바 관경 / 라인조명 프로파일 — 규격을 객체 속성으로 (대표 지시)
+function tubeOf(o){
+  const t=String((o&&o.tube)||(LIGHT_LIB.line_t5&&LIGHT_LIB.line_t5.tubeDefault)||'T5');
+  return TUBE_SPECS[t]?t:'T5';
+}
+function lineMountOf(o){
+  const m=String((o&&o.mount)||(LIGHT_LIB.line_light&&LIGHT_LIB.line_light.mountDefault)||'recess');
+  return LINE_PROFILES[m]?m:'recess';
+}
+function lineProfileOf(o){
+  const list=LINE_PROFILES[lineMountOf(o)].list;
+  const i=Math.round((o&&o.profile)||0);
+  return (i>=0&&i<list.length)?i:0;
+}
+function lineProfileWH(o){ return LINE_PROFILES[lineMountOf(o)].list[lineProfileOf(o)]; }
+// 선형 기구의 굵기(단면 폭) — 도면에 그리는 두께이자 점핑선을 들이는 기준
+function linearCrossMm(o){
+  if(!o) return 80;
+  if(o.type==='line_t5') return TUBE_SPECS[tubeOf(o)].housing;
+  if(o.type==='line_light') return lineProfileWH(o)[0];
+  return LINEAR_LIGHT_CROSS[o.type]||80;
+}
 const LINEAR_LIGHT_MIN=300, LINEAR_LIGHT_MAX=30000;
 function isLinearLight(t){return LINEAR_LIGHT_TYPES.indexOf(t)>=0;}
 function linearLightLen(o){
@@ -2641,8 +2669,35 @@ function linearLightLen(o){
   const n=Math.round((o&&o.length_mm)||0);
   return Math.max(LINEAR_LIGHT_MIN,Math.min(LINEAR_LIGHT_MAX,n||base.size||1200));
 }
-function linearLightShape(type,L){
+function linearLightShape(type,L,o){
   const h=L/2;
+  // 2026-08-31: T5 바 — 관경만큼 굵기가 달라진다 (T3 가장 가늘고 T8 가장 굵다)
+  if(type==='line_t5'){
+    const sp=TUBE_SPECS[tubeOf(o)];
+    const H=sp.housing, lh=sp.lens, cap=Math.min(40,H*1.4);
+    return [
+      {type:'rect',x:-h,y:-H/2,w:L,h:H,fill:'#FFF3D0',stroke:'#D4B872',sw:Math.max(3,H*0.18),r:H/2},
+      {type:'rect',x:-h-cap*0.5,y:-H*0.6,w:cap,h:H*1.2,fill:'#5A5A5A',stroke:'#2A2A2A',sw:3,r:4},
+      {type:'rect',x:h-cap*0.5,y:-H*0.6,w:cap,h:H*1.2,fill:'#5A5A5A',stroke:'#2A2A2A',sw:3,r:4},
+      {type:'line',x1:-h+cap,y1:0,x2:h-cap,y2:0,stroke:'#FFE9A8',sw:Math.max(4,lh)},
+    ];
+  }
+  // 라인조명 — 알루미늄 프로파일 단면 그대로. 매입은 벽선까지 파묻힌 표기.
+  if(type==='line_light'){
+    const [W,D]=lineProfileWH(o);
+    const mount=lineMountOf(o);
+    const out=[{type:'rect',x:-h,y:-W/2,w:L,h:W,fill:'#3A3A3A',stroke:'#1A1A1A',sw:Math.max(3,W*0.12),r:2}];
+    out.push({type:'rect',x:-h+2,y:-W/2+Math.max(2,W*0.18),w:Math.max(4,L-4),
+      h:Math.max(3,W*0.64),fill:'#FFF3D0',stroke:'#D4B872',sw:2,r:2});
+    if(mount==='recess'){   // 매입 — 타공선을 파선으로
+      out.push({type:'line',x1:-h,y1:-W*0.9,x2:h,y2:-W*0.9,stroke:'#9A9A9A',sw:3,dash:[40,30]});
+      out.push({type:'line',x1:-h,y1:W*0.9,x2:h,y2:W*0.9,stroke:'#9A9A9A',sw:3,dash:[40,30]});
+    }else if(mount==='pendant'){  // 펜던트 — 매단 줄
+      out.push({type:'line',x1:-L*0.3,y1:-W*1.3,x2:-L*0.3,y2:W*1.3,stroke:'#5A5A5A',sw:3});
+      out.push({type:'line',x1:L*0.3,y1:-W*1.3,x2:L*0.3,y2:W*1.3,stroke:'#5A5A5A',sw:3});
+    }
+    return out;
+  }
   if(type==='cove'){
     return [
       {type:'rect',x:-h,y:-25,w:L,h:50,fill:'#FFF8E0',stroke:'#F5E5B8',sw:3,r:25},
@@ -2689,8 +2744,19 @@ function linearLightShape(type,L){
 function linearLightDef(o){
   const base=LIGHT_LIB[o.type]||{};
   const L=linearLightLen(o);
-  return {...base,size:L,length_mm:L,crossH:LINEAR_LIGHT_CROSS[o.type]||80,
-    name:base.name+' '+L+'mm',shape:linearLightShape(o.type,L)};
+  const cross=linearCrossMm(o);
+  let nm=base.name+' '+L+'mm';
+  if(o.type==='line_t5') nm=tubeOf(o)+' 바 '+L+'mm';
+  else if(o.type==='line_light'){
+    const [W,D]=lineProfileWH(o);
+    nm='라인조명 '+LINE_PROFILES[lineMountOf(o)].name+' '+W+'×'+D+' '+L+'mm';
+  }
+  return {...base,size:L,length_mm:L,crossH:cross,
+    tube:(o.type==='line_t5')?tubeOf(o):undefined,
+    mount:(o.type==='line_light')?lineMountOf(o):undefined,
+    profile:(o.type==='line_light')?lineProfileOf(o):undefined,
+    name:nm,nameEn:(o.type==='line_t5')?(tubeOf(o)+' tube bar '+L+'mm'):(base.nameEn||''),
+    shape:linearLightShape(o.type,L,o)};
 }
 // ===== 2026-08-30: 라이브러리 규격 변형 (대표 지시 — 방습등·다운라이트를 사이즈별로) =====
 //  팔레트 키에 '#'로 규격을 붙인다: downlight#3 / bath_light#300
@@ -2706,19 +2772,28 @@ function libVariantVal(key){
   const v=parseInt(k.slice(i+1),10);
   return isFinite(v)?v:null;
 }
+// 2026-08-31: 숫자가 아닌 규격(T5 · recess) 도 팔레트 키로 쓴다
+function libVariantRaw(key){
+  const k=String(key||''); const i=k.indexOf('#');
+  return i<0?null:k.slice(i+1);
+}
 // 규격 변형을 객체에 실어준다 (배치 시점)
 function applyLibVariant(o,key){
-  const v=libVariantVal(key);
-  if(v===null||!o) return o;
-  const t=libBaseType(key);
-  if(t==='downlight'||t==='bath_light') o.inch=v; // 2026-08-30: 방습등도 인치
+  if(!o) return o;
+  const t=libBaseType(key), raw=libVariantRaw(key), v=libVariantVal(key);
+  if(v!==null&&(t==='downlight'||t==='bath_light')){o.inch=v;return o;} // 2026-08-30: 방습등도 인치
+  if(raw&&t==='line_t5'&&TUBE_SPECS[raw]) o.tube=raw;                  // 2026-08-31: 관경
+  if(raw&&t==='line_light'&&LINE_PROFILES[raw]){o.mount=raw;o.profile=0;}
   return o;
 }
 // 팔레트 키('downlight#3')로 정의를 가져온다 — 썸네일·고스트·이름이 규격을 따른다
 function libDefForKey(lib,key){
-  const t=libBaseType(key), v=libVariantVal(key);
+  const t=libBaseType(key), v=libVariantVal(key), raw=libVariantRaw(key);
   const base=lib&&lib[t];
   if(!base) return null;
+  // 2026-08-31: 관경·설치별 라인 기구 — 팔레트 썸네일·고스트가 그 규격으로 보인다
+  if(t==='line_t5'&&raw&&TUBE_SPECS[raw]) return linearLightDef({type:t,tube:raw});
+  if(t==='line_light'&&raw&&LINE_PROFILES[raw]) return linearLightDef({type:t,mount:raw,profile:0});
   if(v===null) return base;
   if(t==='downlight'&&typeof downlightDef==='function') return downlightDef({type:t,inch:v});
   if(t==='bath_light') return bathLightDef({type:t,inch:v});
@@ -2790,7 +2865,7 @@ function downlightDef(o){
 //  코브에서 천장·벽을 타고 '기구를 따라 띠 모양으로' 은은하게 퍼진다.
 //  그래서 길이 방향으로 길고 폭은 좁은 띠 + 낮은 밝기(간접은 직부보다 은은)로 바꾼다.
 // 평면도에서 이게 간접인지 라인인지 읽히게 — 도면 위 주기 (길이 m 포함)
-const LINEAR_LIGHT_TAG={cove:'간접',line_t5:'T5 라인',magnet_track:'마그넷',
+const LINEAR_LIGHT_TAG={cove:'간접',line_t5:'T5',line_light:'라인',magnet_track:'마그넷',
                         fluorescent:'형광',pendant_linear:'펜던트'};
 function linearLightTagText(o,def){
   const nm=LINEAR_LIGHT_TAG[o.type]||(def&&def.name)||o.type;
@@ -2893,6 +2968,8 @@ const LINEAR_GLOW={
   cove:          {spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.90},
   fluorescent:   {spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.55},
   line_t5:       {spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.28},
+  // 라인조명(프로파일) — T5 바와 같은 직부 선광원으로 본다
+  line_light:    {spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.28},
   pendant_linear:{spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED, soft:0.35},
   magnet_track:  {spots:true, spread:LINEAR_GLOW_SPREAD_FIXED, peak:LINEAR_GLOW_PEAK_FIXED},
 };
@@ -3260,9 +3337,17 @@ function renderLights(){
       g.add(new Konva.Line({points:[-rr*0.62,-rr*0.62,rr*0.62,rr*0.62],stroke:'#FF3B30',
         strokeWidth:2.2,listening:false}));
     }
-    if(symbolLabelEligible('lights',def)) addSymbolLabel(groups.lights,x,y,def,'lights',o.id,o); // 2026-08-24: 소형 조명 라벨 (클릭 = 선택/회로 연결)
+    // 2026-08-24: 소형 조명 라벨 (클릭 = 선택/회로 연결)
+    const _named=symbolLabelEligible('lights',def)
+      ? addSymbolLabel(groups.lights,x,y,def,'lights',o.id,o) : false;
     // 2026-08-29: 라인·간접은 평면에서 구분이 안 된다 — 종류와 길이(m)를 도면에 적는다
-    if(isLinearLight(o.type)) addLinearLightTag(groups.lights,x,y,def,o);
+    // 2026-08-31 대표 지시: 이제 라인·T5 도 다운라이트처럼 이름표로 묶인다.
+    //  묶음이 도는 동안에는 주기를 뺀다 — 대표에만 이름이 붙고 나머지는 조용해야
+    //  다운라이트와 같은 모습이 된다. 라벨을 아예 '끔' 으로 둔 때만 주기를 남겨
+    //  간접·라인이 무엇인지 알 수 있게 한다 (도면 판독).
+    const _labelOff=(symbolLabelMode()==='off');
+    if(isLinearLight(o.type)&&!_named&&(_labelOff||!symbolLabelEligible('lights',def)))
+      addLinearLightTag(groups.lights,x,y,def,o);
     if(o.locked) g.opacity(0.30);
     groups.lights.add(g);
     // 2026-08-30: 회로 충돌 — 무리당 한 번, 무엇과 무엇이 묶였는지까지 적는다

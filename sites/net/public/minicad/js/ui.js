@@ -926,6 +926,45 @@ function refreshDetail(){
         '<div class="hint" style="margin-top:4px">양 끝 <b style="color:#E2725B">●</b> 핸들을 끌어도 길이 조절 (10mm 단위) · 회전은 아래 각도</div>'+
         '</div>';
     }
+    // 2026-08-31 대표 지시: T5(관경) 와 라인조명(설치·단면) 은 서로 다른 제품이므로
+    //  각각의 규격을 속성에서 고른다. 길이는 위의 '조명 길이' 와 함께 쓴다.
+    const isTube=STATE.selectedKind==='lights'&&obj&&obj.type==='line_t5';
+    const isLineLight=STATE.selectedKind==='lights'&&obj&&obj.type==='line_light';
+    let specHtml='';
+    if(isTube){
+      const cur=tubeOf(obj), sp=TUBE_SPECS[cur];
+      specHtml=
+        '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.08);border:1px solid rgba(212,184,114,0.35);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#D4B872">T 관경 — 관 지름</div>'+
+        '<div style="display:flex;gap:3px">'+
+        TUBE_ORDER.map(k=>'<button type="button" class="btn sm d-tube" data-v="'+k+'" style="flex:1'+
+          (k===cur?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
+          '">'+k+'</button>').join('')+'</div>'+
+        '<div class="hint" style="margin-top:4px">T 숫자 = 관 지름을 1/8인치로 센 것 — '+
+          cur+' 는 Ø'+sp.dia+'mm (등기구 폭 '+sp.housing+'mm)</div>'+
+        '<div class="field-label" style="margin:7px 0 4px">표준 길이</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:3px">'+
+        TUBE_LENGTHS.map(v=>'<button type="button" class="btn sm ll-preset" data-len="'+v+'" '+
+          'style="flex:1 1 22%;padding:4px 2px'+
+          (v===linearLightLen(obj)?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
+          '">'+v+'</button>').join('')+'</div></div>';
+    }
+    if(isLineLight){
+      const mk=lineMountOf(obj), pi=lineProfileOf(obj), list=LINE_PROFILES[mk].list;
+      specHtml=
+        '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.08);border:1px solid rgba(212,184,114,0.35);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#D4B872">라인조명 — 설치 방식</div>'+
+        '<div style="display:flex;gap:3px">'+
+        LINE_MOUNT_ORDER.map(k=>'<button type="button" class="btn sm d-lmount" data-v="'+k+'" '+
+          'style="flex:1;padding:4px 2px;font-size:11px'+
+          (k===mk?';background:rgba(212,184,114,0.25);border-color:#D4B872;color:#D4B872':'')+
+          '">'+LINE_PROFILES[k].name+'</button>').join('')+'</div>'+
+        '<div class="field-label" style="margin:7px 0 4px">프로파일 단면 (폭×높이 mm)</div>'+
+        '<div class="field"><select id="d-lprof">'+
+        list.map((wh,i)=>'<option value="'+i+'"'+(i===pi?' selected':'')+'>'+wh[0]+'×'+wh[1]+'</option>').join('')+
+        '</select></div>'+
+        '<div class="hint">도면에는 이 폭 그대로 그려집니다 — 길이는 위에서 맞추세요</div></div>';
+    }
     // 2026-08-25: 다운라이트 인치 선택 (대표 지시) — 2~6인치, 타공경 자동
     // 2026-08-30: 방습등도 인치로 관리한다 (대표 지시)
     const isBathLight=STATE.selectedKind==='lights'&&obj&&obj.type==='bath_light';
@@ -1132,7 +1171,7 @@ function refreshDetail(){
         '</div>';
     }
     dc.innerHTML='<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+kn[STATE.selectedKind]+'</strong></p>'+
-      cflHtml+dupHtml+lenHtml+inchHtml+glowHtml+labelHtml+jumpHtml+circuitHtml+extraHtml+
+      cflHtml+dupHtml+lenHtml+specHtml+inchHtml+glowHtml+labelHtml+jumpHtml+circuitHtml+extraHtml+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     if(hasAngle){
@@ -1232,6 +1271,30 @@ function refreshDetail(){
       const li=document.getElementById('d-ll-len');
       if(li) li.addEventListener('change',e=>{const v=_numField(e,300);if(v==null){refreshUI();return;}applyLen(v);});
       document.querySelectorAll('.ll-preset').forEach(b=>b.addEventListener('click',()=>applyLen(parseInt(b.dataset.len,10))));
+    }
+    // 2026-08-31: T5 관경 / 라인조명 설치·단면
+    if(isTube){
+      document.querySelectorAll('.d-tube').forEach(b=>b.addEventListener('click',()=>{
+        if(!TUBE_SPECS[b.dataset.v]) return;
+        obj.tube=b.dataset.v;
+        saveHistory();renderAll();refreshUI();
+        showStatus(b.dataset.v+' 관경 — 관 지름 Ø'+TUBE_SPECS[b.dataset.v].dia+'mm');
+      }));
+    }
+    if(isLineLight){
+      document.querySelectorAll('.d-lmount').forEach(b=>b.addEventListener('click',()=>{
+        if(!LINE_PROFILES[b.dataset.v]) return;
+        obj.mount=b.dataset.v;obj.profile=0;   // 설치가 바뀌면 쓸 수 있는 단면도 바뀐다
+        saveHistory();renderAll();refreshUI();
+        showStatus('라인조명 '+LINE_PROFILES[b.dataset.v].name);
+      }));
+      const ps=document.getElementById('d-lprof');
+      if(ps) ps.addEventListener('change',e=>{
+        obj.profile=parseInt(e.target.value,10)||0;
+        saveHistory();renderAll();refreshUI();
+        const wh=lineProfileWH(obj);
+        showStatus('프로파일 '+wh[0]+'×'+wh[1]+'mm');
+      });
     }
     if(isDownlight){
       const sel=document.getElementById('d-dl-inch');
@@ -1652,7 +1715,9 @@ const SEMANTIC_MAP={
   bath_vanity_900:{tag:'builtin_cabinet',kw:'bathroom vanity cabinet with basin'},
   laundry_cab_700:{tag:'builtin_cabinet',kw:'laundry appliance cabinet'},
   // 2026-08-24: 트렌드 조명 6종
-  line_t5:{tag:'ceiling_light',kw:'slim LED line light bar'},
+  line_t5:{tag:'ceiling_light',kw:'slim T5 tube bar light'},
+  // 2026-08-31: 라인조명은 T5 와 다른 제품 (알루미늄 프로파일 선형등)
+  line_light:{tag:'ceiling_light',kw:'aluminium profile LED linear light'},
   magnet_track:{tag:'track_light',kw:'recessed magnetic track with spot and linear modules'},
   cove:{tag:'ceiling_light',kw:'indirect cove strip lighting'},
   spot_cyl:{tag:'ceiling_light',kw:'surface-mounted cylinder spotlight'},
