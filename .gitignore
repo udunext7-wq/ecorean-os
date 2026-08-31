@@ -21,3 +21,6 @@ assets/plan-staging/
 
 # 변환 산출물 — Storage 로만 배포한다
 assets/plan-minicad/
+
+# 건설사 PDF 원본 — 내부 참조용
+assets/plan-pdf/

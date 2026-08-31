@@ -325,7 +325,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
   // 재작도·표준 유형은 전량 폐기했고, 아래 두 분기는 옛 행이 남아 있을 때 이용자에게 경고하려는 안전장치다.
   function planKind(r){
     var note=r.source_note||'';
-    if(r.plan_walls>0)return{cls:'realplan',label:'실도면 · MiniCAD 벽 '+r.plan_walls+'개'};
+    if(r.plan_walls>0)return{cls:'realplan',label:'실도면 · 벡터 벽 '+r.plan_walls+'개'};   // 벡터 PDF 파서로 만든 벽만 여기 온다
     if(/재작도/.test(note))return{cls:'redraw',label:'유형 재작도 · 실도면 아님'};
     if(r.source==='minicad')return{cls:'redraw',label:'표준 유형 · 실도면 아님'};
     if(/건설사 분양홈페이지/.test(note))return{cls:'realplan',label:'실도면 · 건설사 원본'};
@@ -845,9 +845,8 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     if(r.plan_path){
       var planUrl=PUB+r.plan_path.split('/').map(encodeURIComponent).join('/');
       cadBtn.style.display='';
-      cadBtn.textContent=(r.plan_walls>0)
-        ? '📐 MiniCAD로 열기 (벽 '+r.plan_walls+'개 + 원본 도면)'
-        : '📐 MiniCAD로 열기 (원본 도면 배경 — 축척 미검증)';
+      // 픽셀 추출 벽은 정확도 부족(재현 46%)으로 내렸다. 도면은 실축척 밑그림으로 열고 벽은 스냅으로 따라 그린다.
+      cadBtn.textContent='📐 MiniCAD로 열기 (원본 도면 밑그림)';
       cadBtn.href='/minicad/?plan='+encodeURIComponent(planUrl);
       bgBtn.textContent='🖼 밑그림으로만 열기';
       bgBtn.href=bgHref;
@@ -856,6 +855,10 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
         .then(function(res){return res.ok?res.json():null;})
         .then(function(d){
           if(!d||state.current!==r)return;
+          var ver=d.meta&&d.meta.verified;
+          cadBtn.textContent=ver
+            ? '📐 MiniCAD로 열기 (실축척 밑그림 · 문폭 검증 · 스냅 작도)'
+            : '📐 MiniCAD로 열기 (밑그림 · 축척 미검증 → 스케일 보정 필요)';
           var svg=renderParsePreview(d);
           if(svg){parseBox.innerHTML=svg;parseWrap.style.display='';}
         }).catch(function(){});

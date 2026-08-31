@@ -284,7 +284,11 @@ export async function convert(file, opt = {}) {
     const mm = Math.max(50, R(t));
     return mm > MAXW ? null : { id, x1: R(x1), y1: R(y1), x2: R(x2), y2: R(y2), thickness: mm };
   };
-  const walls = verified ? [
+  // 2026-08-31 대표 지시 "정확도 우선": 픽셀 추출 벽은 재현 46%·정밀 54% 로 실측됐다.
+  // 반쯤 맞는 벽은 없느니만 못하다(사용자가 믿고 견적을 낸다). 축척(검증됨)만 넘기고 벽은 내보내지 않는다.
+  // 벽 좌표는 벡터 PDF 파서(plans-pdf-*.mjs)로만 만든다. 실험이 필요하면 PLAN_EMIT_WALLS=1.
+  const EMIT = process.env.PLAN_EMIT_WALLS === '1';
+  const walls = (verified && EMIT) ? [
     ...hb.map((b, i) => wallOf(`w-h${i}`, b.a1, b.c, b.a2, b.c, b.t)),
     ...vb.map((b, i) => wallOf(`w-v${i}`, b.c, b.a1, b.c, b.a2, b.t)),
   ].filter(Boolean).filter(w => w.x1 !== w.x2 || w.y1 !== w.y2) : [];
@@ -304,7 +308,7 @@ export async function convert(file, opt = {}) {
   }, 0);
 
   const spaceOk = !!area_m2 && spaceArea >= area_m2 * 0.85 && spaceArea <= area_m2 * 1.15;
-  const outSpaces = spaceOk ? spaces : [];
+  const outSpaces = (spaceOk && EMIT) ? spaces : [];   // 공간도 픽셀 추정치 — 벡터 파서 전까지 내보내지 않는다
 
   return {
     ok: true, verified, warn, walls, spaces: outSpaces, spaceArea, spaceOk, spaceFound: spaces.length,
@@ -329,7 +333,7 @@ if (process.argv[1]?.endsWith('plans-to-minicad.mjs')) {
 export function toMiniCadDoc(res, row) {
   const title = [row.complex_name, row.area_type].filter(Boolean).join(' ');
   const note = res.verified
-    ? '건설사 공개 평면도를 좌표로 옮긴 도면 — 스케일은 전용면적 기준 산출값이다. 시공 전 실측 확인 필요.'
+    ? '건설사 공개 평면도를 실제 축척(전용면적 기준·문폭 검증)으로 깐 밑그림. 벽은 스냅으로 따라 그릴 것. 시공 전 실측 확인 필요.'
     : '스케일 검증 실패 — 벽 좌표를 넣지 않았다. 배경 이미지를 보고 직접 작도할 것.';
   return {
     schema: 'ECOREAN.FloorPlan.v5.0',

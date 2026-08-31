@@ -6747,8 +6747,13 @@ window.addEventListener('load',()=>{
             .then(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}))
             .then(u=>setBgImage(u,name)).catch(()=>{});
           const nW=STATE.walls.length,nS=STATE.spaces.length;
-          showStatus('실도면 로드 — '+((d.meta&&d.meta.project)||'')+' · 벽 '+nW+'개'+(nS?' · 공간 '+nS+'개':'')+
-            ((d.meta&&d.meta.verified)?' (전용면적 기준 스케일 · 시공 전 실측 확인)':' (스케일 미검증 — 배경만 참고)'));
+          const ver=!!(d.meta&&d.meta.verified);
+          // 벽이 없는 문서 = 실축척 밑그림. 벽은 배경을 따라 스냅으로 그리고, 축척이 의심되면 📐 스케일 보정을 쓴다.
+          showStatus(nW
+            ? '실도면 로드 — '+((d.meta&&d.meta.project)||'')+' · 벽 '+nW+'개'+(nS?' · 공간 '+nS+'개':'')+' (시공 전 실측 확인)'
+            : '실도면 밑그림 로드 — '+((d.meta&&d.meta.project)||'')+(ver
+                ?' · 실축척(전용면적 기준·문폭 검증) — 배경을 따라 벽을 스냅 작도하세요'
+                :' · 축척 미검증 — 우측 배경 패널 📐 스케일 보정(알려진 두 점 + mm) 후 작도하세요'));
         });
       })
       .catch(err=>showStatus('표준 평면도 로드 실패: '+err.message));

@@ -21,7 +21,7 @@ for (const f of files) {
   if (!Array.isArray(d.walls) || !Array.isArray(d.spaces)) { err(f, 'walls/spaces 배열 아님'); continue; }
   if (d.meta.verified) {
     vec++;
-    if (!d.walls.length) { err(f, '검증 통과인데 벽이 없음'); continue; }
+    // 축척 검증 통과 = 배경이 실제 치수로 깔린다는 뜻. 벽은 벡터 PDF 파서로만 넣으므로 0개여도 된다.
     if (!(d.meta.background.mm_per_px > 0)) { err(f, '배경 축척값 없음'); continue; }
   } else {
     bgOnly++;
