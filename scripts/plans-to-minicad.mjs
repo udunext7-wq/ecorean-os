@@ -11,49 +11,98 @@ import sharp from 'sharp';
 import { detectRegions } from './plans-detect-region.mjs';
 import { roomsFromWalls } from './plans-rooms.mjs';
 
-const DARK = 110;
+const DARK = +(process.env.PLAN_DARK || 110);   // 실험으로 정한다 (plans-sweep)
 const PUB = 'https://gdcfqbdgubgpzusbtftf.supabase.co/storage/v1/object/public/floor-plans/';
 
 // ── 축에 나란한 벽 밴드 추출 ─────────────────────────────────────────
-function bands(mask, w, h, horiz, minLen, maxThick) {
-  const at = (x, y) => mask[y * w + x];
-  const out = [], seen = new Uint8Array(w * h);
+// ── 축에 나란한 벽 밴드 추출 ─────────────────────────────────────────
+// 이전 방식은 '어두운 긴 획' 만 봐서 회색 경량벽을 통째로 놓치고(재현율 45%),
+// 가구 윤곽선까지 벽으로 잡았다(정밀도 64%). 두 가지를 바꾼다.
+//  ① 밝기 기준을 넓히되(회색 벽 포함) 1~2px 얇은 선은 침식으로 떨어뜨린다 → 벽은 '두께가 있는 띠'다
+//  ② 가로/세로 점유 표시를 분리한다 → 교차점에서 한쪽 벽이 통째로 사라지던 문제 해결
+function erode1(mask, w, h) {
+  const out = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x;
+    if (mask[i] && mask[i - 1] && mask[i + 1] && mask[i - w] && mask[i + w]) out[i] = 1;
+  }
+  return out;
+}
+// 벽 네트워크만 남긴다 — 벽은 방을 둘러싸며 서로 이어진 큰 덩어리이고,
+// 가구·설비·글자는 그와 떨어진 작은 덩어리다. 크기로 가르면 침식 없이도 가구를 뺄 수 있다.
+function wallNetwork(mask, w, h) {
+  const lbl = new Int32Array(w * h).fill(-1);
+  const keep = new Uint8Array(w * h);
+  const areaMin = w * h * 0.004;
+  const diagMin = Math.hypot(w, h) * 0.28;
+  const st = [];
+  for (let i0 = 0; i0 < w * h; i0++) {
+    if (!mask[i0] || lbl[i0] >= 0) continue;
+    const id = i0, cells = [];
+    let x0 = w, y0 = h, x1 = 0, y1 = 0;
+    lbl[i0] = id; st.push(i0);
+    while (st.length) {
+      const p = st.pop(), px = p % w, py = (p / w) | 0;
+      cells.push(p);
+      if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = px + dx, ny = py + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const q = ny * w + nx;
+        if (mask[q] && lbl[q] < 0) { lbl[q] = id; st.push(q); }
+      }
+    }
+    const diag = Math.hypot(x1 - x0 + 1, y1 - y0 + 1);
+    if (cells.length >= areaMin || diag >= diagMin) for (const p of cells) keep[p] = 1;
+  }
+  return keep;
+}
+function bands(mask, core, w, h, horiz, minLen, maxThick) {
   const A = horiz ? h : w, B = horiz ? w : h;
-  for (let a = 0; a < A; a++) {
-    let s = -1;
-    for (let b = 0; b <= B; b++) {
-      const on = b < B && (horiz ? at(b, a) : at(a, b));
-      if (on && s < 0) s = b;
-      if (!on && s >= 0) {
-        const len = b - s;
+  const seen = new Uint8Array(w * h);              // 방향별로 따로 — 교차점에서 서로를 지우지 않게
+  const out = [];
+  const coverAt = (row, s0, e0) => {
+    let c = 0;
+    for (let k = s0; k < e0; k++) {
+      if (horiz) { if (row >= 0 && row < h && mask[row * w + k]) c++; }
+      else { if (row >= 0 && row < w && mask[k * w + row]) c++; }
+    }
+    return c;
+  };
+  for (let a2 = 0; a2 < A; a2++) {
+    let st = -1;
+    for (let b2 = 0; b2 <= B; b2++) {
+      const on = b2 < B && (horiz ? core[a2 * w + b2] : core[b2 * w + a2]);
+      if (on && st < 0) st = b2;
+      if (!on && st >= 0) {
+        const len = b2 - st;
         if (len >= minLen) {
-          let t = 0;
-          while (a + t < A) {
-            let cover = 0;
-            for (let k = s; k < b; k++) if (horiz ? at(k, a + t) : at(a + t, k)) cover++;
-            if (cover < len * 0.8) break;
-            t++;
-          }
-          if (t >= 1 && t <= maxThick) {
-            let dup = false;
-            for (let k = s; k < b && !dup; k++) if (horiz ? seen[a * w + k] : seen[k * w + a]) dup = true;
-            if (!dup) {
-              for (let tt = 0; tt < t; tt++) for (let k = s; k < b; k++) {
-                if (horiz) { if (a + tt < h) seen[(a + tt) * w + k] = 1; }
-                else { if (a + tt < w) seen[k * w + a + tt] = 1; }
+          let dup = false;
+          for (let k = st; k < b2 && !dup; k++) if (horiz ? seen[a2 * w + k] : seen[k * w + a2]) dup = true;
+          if (!dup) {
+            let up = 0, dn = 0;
+            while (up < maxThick && coverAt(a2 - up - 1, st, b2) >= len * 0.8) up++;
+            while (dn < maxThick && coverAt(a2 + dn + 1, st, b2) >= len * 0.8) dn++;
+            const t = up + dn + 1;
+            if (t <= maxThick) {
+              for (let tt = -up; tt <= dn; tt++) {
+                const rr = a2 + tt; if (rr < 0) continue;
+                for (let k = st; k < b2; k++) {
+                  if (horiz) { if (rr < h) seen[rr * w + k] = 1; }
+                  else { if (rr < w) seen[k * w + rr] = 1; }
+                }
               }
-              out.push(horiz ? { horiz: 1, a1: s, a2: b, c: a + t / 2, t } : { horiz: 0, a1: s, a2: b, c: a + t / 2, t });
+              out.push({ horiz: horiz ? 1 : 0, a1: st, a2: b2, c: a2 + (dn - up) / 2, t });
             }
           }
         }
-        s = -1;
+        st = -1;
       }
     }
   }
   return out;
 }
 
-// 같은 선상에 있는 조각을 하나로 잇는다 (문틀·기둥에서 끊긴 벽 복원)
 function mergeCollinear(list, tol, gap) {
   const sorted = [...list].sort((a, b) => a.c - b.c || a.a1 - b.a1);
   const out = [];
@@ -136,7 +185,7 @@ export async function convert(file, opt = {}) {
   const Hd = Math.min(sh - T, Math.round((r.bh + pad * 2) * k));
   if (Wd < 60 || Hd < 60) return { ok: false, reason: '평면도 영역이 너무 작음' };
   const { data, info } = await sharp(file).extract({ left: L, top: T, width: Wd, height: Hd })
-    .resize({ width: Math.min(opt.work || 1000, Wd) }).grayscale().raw().toBuffer({ resolveWithObject: true });
+    .resize({ width: Math.min(opt.work || +(process.env.PLAN_WORK || 1000), Wd) }).grayscale().raw().toBuffer({ resolveWithObject: true });
   const w = info.width, h = info.height;
   const mask = new Uint8Array(w * h);
   let darkPx = 0;
@@ -151,10 +200,14 @@ export async function convert(file, opt = {}) {
   if (shape.dark > 0.28) shapeBad.push(`잉크 과다(${shape.dark.toFixed(2)}) — 배너·사양표 추정`);
   if (aspect > 2.1 || aspect < 0.45) shapeBad.push(`비율 이상(${aspect.toFixed(2)}) — 여러 도면이 한 영역`);
 
-  const minLen = Math.round(Math.min(w, h) * 0.03);
+  const minLen = Math.max(10, Math.round(Math.min(w, h) * 0.018));  // 문 옆 짧은 벽까지
   const maxThick = Math.round(Math.min(w, h) * 0.05);
   const tol0 = Math.max(2, maxThick / 2);
-  const rawH = bands(mask, w, h, true, minLen, maxThick), rawV = bands(mask, w, h, false, minLen, maxThick);
+  const CORE = process.env.PLAN_CORE || 'raw';   // 현재 배포본 기준. erode/net 은 실험용(plans-sweep)
+  const core = CORE === 'net' ? wallNetwork(mask, w, h)
+    : CORE === 'erode' ? erode1(mask, w, h) : mask;
+  const rawH = bands(mask, core, w, h, true, minLen, maxThick);
+  const rawV = bands(mask, core, w, h, false, minLen, maxThick);
   const hb = mergeCollinear(rawH, tol0, minLen);
   const vb = mergeCollinear(rawV, tol0, minLen);
   if (hb.length + vb.length < 6) return { ok: false, reason: '벽 검출 부족' };
