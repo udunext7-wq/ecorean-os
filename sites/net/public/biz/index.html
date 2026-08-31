@@ -7,7 +7,7 @@
 <script src="/app-cloud.js"></script>
 <!-- 고칠 때마다 ?v= 를 올린다. 안 올리면 브라우저가 옛 파일을 계속 써서
      화면(HTML)과 저장 계층(JS)의 버전이 어긋난다 — 내역이 안 보이는 원인이 된다. -->
-<script src="/biz/biz-db.js?v=biz14"></script>
+<script src="/biz/biz-db.js?v=biz15"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -357,6 +357,9 @@
   .field label{display:block;font-size:11px;letter-spacing:1px;color:var(--muted);margin-bottom:7px;font-family:var(--font-d)}
   .field input,.field textarea,.field select{width:100%;background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:13px 14px;color:var(--text);font-family:var(--font-b);font-size:14px;outline:none;transition:.2s}
   .field input:focus,.field select:focus{border-color:var(--border-bright)}
+  /* 펼친 목록(option)은 브라우저가 흰 바탕으로 그린다 — 글씨를 검정으로 못 박지 않으면 안 보인다 */
+  select option{color:#111!important;background:#fff!important}
+  select optgroup{color:#111!important;background:#fff!important}
   .field input[type=date]{color-scheme:dark} body.light .field input[type=date]{color-scheme:light}
   .row2{display:flex;gap:10px}.row2>*{flex:1}
   .btn{width:100%;padding:14px;border:none;border-radius:14px;cursor:pointer;font-family:var(--font-d);font-weight:600;font-size:14px;letter-spacing:.5px;transition:.2s;margin-top:6px}
@@ -795,6 +798,7 @@
     <div class="field"><label>부가세</label><select id="vatSel"><option value="none">없음 · 면세</option><option value="incl">포함 (총액에 10% 포함)</option><option value="excl">별도 (공급가만 입력)</option></select></div>
     <div class="field"><label>증빙</label><select id="evidSel"><option value="세금계산서">세금계산서</option><option value="카드">카드</option><option value="현금영수증">현금영수증</option><option value="간이영수증">간이영수증</option><option value="">없음</option></select></div>
   </div>
+  <div class="hintline bizfield" id="evidHint"></div>
   <div class="field bizfield"><label>대금 상태</label><div class="pills" id="crPills"><div class="pill sel" data-cr="0">✅ 결제 완료</div><div class="pill" data-cr="1">⏳ 외상 (미수·미지급)</div></div></div>
   <div class="field bizfield hidden" id="invField"><label>세금계산서 발행일 <span style="color:var(--muted-2);font-weight:400">· 비우면 미발행으로 봅니다</span></label>
     <input id="invInput" type="date"></div>
@@ -867,7 +871,8 @@
     <button class="btn btn-ghost" id="sdSaveContract">계약금액 저장</button>
     <button class="btn btn-ghost" id="sdMembers" style="margin-top:9px">👥 현장 담당자 배정</button>
     <div class="note" id="sdDelNote" style="margin-top:18px"></div>
-    <button class="btn btn-ghost" id="sdDelete" style="margin-top:10px;color:var(--coral)">🗑️ 이 현장 삭제</button>
+    <button class="btn btn-ghost" id="sdArchive" style="margin-top:10px">📦 보관 (목록에서 숨기기 · 기록 유지)</button>
+    <button class="btn btn-ghost" id="sdDelete" style="margin-top:9px;color:var(--coral)">🗑️ 이 현장 삭제 (대표 전용)</button>
   </div>
 </div>
 
@@ -1189,6 +1194,13 @@ function isCorp(){return bizOrg().biz_type==='법인';}
    내 역할을 아직 모르는 동안(부팅 직후)에는 관리자 화면을 그대로 둔다 —
    모른다고 직원 화면으로 접었다가 펴면 대표 화면이 깜빡이고, 설정이 사라진 것처럼 보인다.
    실제 차단은 서버 RLS 가 하므로 화면을 먼저 보여도 데이터가 새지 않는다. */
+/* 대표 계정 = master/admin. 임원(executive)은 관리자지만 현장을 지울 수는 없다. */
+function isOwner(){
+  if(!(window.BIZDB&&BIZDB.me))return true;
+  const me=BIZDB.me();
+  if(!me)return false;
+  return me.role==='master'||me.role==='admin';
+}
 function isMgr(){
   if(!(window.BIZDB&&BIZDB.isManager))return true;
   if(BIZDB.roleKnown&&!BIZDB.roleKnown())return true;
@@ -1644,7 +1656,8 @@ function openSiteSheet(name){
   $('#sdContract').disabled=!isMgr();
   $('#sdSaveContract').classList.toggle('hidden',!isMgr());
   $('#sdStatusField').classList.toggle('hidden',!isMgr());
-  $('#sdDelete').classList.toggle('hidden',!isMgr());
+  $('#sdArchive').classList.toggle('hidden',!isMgr());
+  $('#sdDelete').classList.toggle('hidden',!isOwner());
   renderSdStatus();
   $('#sdEditBudget').style.display=isMgr()?'':'none';
   setSdPane(sdPane==='mgmt'?'tx':sdPane);
@@ -1733,31 +1746,53 @@ function siteRefs(name){
 function renderSdDelNote(){
   const el=$('#sdDelNote');if(!el)return;
   const r=siteRefs(curSite);
-  el.innerHTML=(r.tx||r.po)
-    ?`이 현장에는 <b>거래 ${r.tx}건${r.po?` · 발주 ${r.po}건`:''}</b>이 연결돼 있어 <b>삭제할 수 없습니다.</b> 삭제 버튼을 누르면 대신 <b>보관</b> 처리됩니다 — 목록에서 사라지고 기록은 그대로 남으며, 위 진행 상태에서 다시 꺼낼 수 있습니다.`
-    :`연결된 거래·발주가 없어 <b>완전히 삭제</b>됩니다. 되돌릴 수 없습니다.`;
-}
-$('#sdDelete').onclick=async()=>{
-  if(!isMgr()){toast('현장 삭제는 대표·관리자만 할 수 있습니다');return;}
-  const name=curSite,r=siteRefs(name);
-  if(r.tx||r.po){
-    if(!confirm(`"${name}" 에는 거래 ${r.tx}건${r.po?`·발주 ${r.po}건`:''}이 연결돼 있어 삭제할 수 없습니다.\n\n대신 [보관] 처리할까요? 목록에서 숨겨지고 기록은 남습니다.`))return;
-    try{
-      if(window.BIZDB&&BIZDB.siteId(name))await BIZDB.setSiteStatus(name,'보관');
-      state.sites=state.sites.filter(x=>x!==name);
-      save();closeSheet('SiteD');renderSiteTab();render();
-      toast(`"${name}" 을(를) 보관했습니다 · 현장 탭 › 전체 에서 볼 수 있습니다`);
-    }catch(e){toast('보관 실패 · '+String(e.message||'').slice(0,40));}
-    return;
+  if(!isOwner()){
+    el.innerHTML=`<b>보관</b>은 목록에서만 숨기고 기록은 그대로 둡니다. <b>삭제</b>는 대표 계정만 할 수 있습니다.`;return;
   }
-  if(!confirm(`"${name}" 현장을 삭제할까요?\n\n연결된 거래·발주가 없어 완전히 삭제됩니다. 되돌릴 수 없습니다.`))return;
+  el.innerHTML=(r.tx||r.po)
+    ?`이 현장에는 <b>거래 ${r.tx}건${r.po?` · 발주 ${r.po}건`:''}</b>이 연결돼 있습니다.<br>
+      · <b>보관</b> — 목록에서만 숨기고 전부 그대로 둡니다 (권장)<br>
+      · <b>삭제</b> — 거래는 <b>현장 없음</b>으로 남고, 직원 포털의 <b>공사일보·공정표는 함께 삭제</b>됩니다. 발주서는 현장만 비워집니다. 되돌릴 수 없습니다.`
+    :`연결된 거래·발주가 없어 <b>삭제</b>하면 완전히 사라집니다. 되돌릴 수 없습니다.`;
+}
+async function archiveSite(name){
+  try{
+    if(window.BIZDB&&BIZDB.siteId(name))await BIZDB.setSiteStatus(name,'보관');
+    state.sites=state.sites.filter(x=>x!==name);
+    save();closeSheet('SiteD');renderSiteTab();render();
+    toast(`"${name}" 을(를) 보관했습니다 · 현장 탭 › 전체 에서 다시 꺼낼 수 있습니다`);
+  }catch(e){toast('보관 실패 · '+String(e.message||'').slice(0,40));}
+}
+$('#sdArchive').onclick=()=>{
+  if(!isMgr()){toast('보관은 대표·관리자만 할 수 있습니다');return;}
+  if(!confirm(`"${curSite}" 을(를) 보관할까요?\n\n목록에서 숨겨지고 거래·발주·일보는 전부 그대로 남습니다.`))return;
+  archiveSite(curSite);
+};
+/* ── 현장 삭제 (대표 전용) ──
+   거래·발주·일보가 붙은 현장도 대표가 원하면 지운다. 다만 무엇이 어떻게 되는지 먼저 말하고,
+   「삭제」를 직접 입력해야 하며, 지우기 전에 지금 장부를 파일로 내려받는다. */
+$('#sdDelete').onclick=async()=>{
+  if(!isOwner()){toast('현장 삭제는 대표 계정만 할 수 있습니다');return;}
+  const name=curSite,r=siteRefs(name);
+  const heavy=!!(r.tx||r.po);
+  const msg=heavy
+    ? `"${name}" 현장을 삭제합니다.\n\n· 거래 ${r.tx}건은 지워지지 않고 "현장 없음"으로 남습니다\n· 직원 포털의 공사일보·공정표는 함께 삭제됩니다\n· 발주서 ${r.po}건은 현장만 비워집니다\n· 먼저 백업 파일을 내려받습니다\n\n되돌릴 수 없습니다. 계속할까요?`
+    : `"${name}" 현장을 삭제할까요?\n\n연결된 거래·발주가 없어 완전히 삭제됩니다. 되돌릴 수 없습니다.`;
+  if(!confirm(msg))return;
+  if(heavy){
+    downloadBackup('현장삭제전');
+    const a=prompt('마지막 확인입니다.\n정말 지우려면 「삭제」 라고 입력하세요.');
+    if((a||'').trim()!=='삭제'){toast('취소했습니다 — 아무것도 지우지 않았습니다');return;}
+  }
   try{
     if(window.BIZDB&&BIZDB.deleteSite&&BIZDB.siteId(name))await BIZDB.deleteSite(name);
   }catch(e){toast('삭제 실패 · '+String(e.message||'').slice(0,50));return;}
+  /* 서버는 site_id 만 비운다 — 로컬의 현장 이름도 같이 비워야 목록·집계가 맞는다 */
+  state.tx.forEach(t=>{if(t.site===name)t.site='';});
   state.sites=state.sites.filter(x=>x!==name);
   delete state.contracts[name];
   save();closeSheet('SiteD');renderSiteTab();renderSiteChips();renderSitePills();render();
-  toast(`"${name}" 현장을 삭제했습니다`);
+  toast(heavy?`"${name}" 삭제 · 거래 ${r.tx}건은 현장 없음으로 남았습니다`:`"${name}" 현장을 삭제했습니다`);
 };
 $('#sdMembers').onclick=()=>{closeSheet('SiteD');openMembers(curSite);};
 $('#sdSaveContract').onclick=()=>{
@@ -1770,7 +1805,7 @@ $('#sdAddTx').onclick=()=>{
   txReturn='site';
   closeSheet('SiteD');
   resetAddSheet();$('#dateInput').value=todayStr();form.site=curSite;form.cr=0;setType('in');form.acct=state.accounts[0].name;renderAcctPills();
-  $('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='incl';$('#evidSel').value='세금계산서';
+  $('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';applyAcctEvidence(true);
   renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);
 };
 function renderVendorStat(){
@@ -1830,9 +1865,41 @@ function renderCats(){
     renderCats();renderCostPills();
   });
 }
+/* ── 계좌 종류 → 증빙·부가세 반자동 ──
+   사업카드로 결제하면 카드매출전표가 곧 적격증빙이라 부가세 공제가 확정된다 → 카드 / 부가세 포함.
+   통장 이체는 세금계산서를 받는 것이 표준 → 세금계산서 / 포함 (발행일 칸이 열린다).
+   현금은 현금영수증을 끊었는지에 따라 갈린다 → 현금영수증 을 기본으로 두고 사용자가 바꾼다.
+   사용자가 손으로 바꾼 뒤에는 계좌를 바꿔도 덮어쓰지 않는다(evidTouched). */
+function acctKindOf(name){
+  const a=state.accounts.find(x=>x.name===name);
+  if(!a)return '통장';
+  if(a.kind)return a.kind;
+  return /카드/.test(a.name)?'카드':/현금/.test(a.name)?'현금':'통장';
+}
+const EVID_BY_KIND={'카드':'카드','현금':'현금영수증','통장':'세금계산서','기타':'세금계산서'};
+function applyAcctEvidence(force){
+  if(form.type==='tr')return;
+  if(form.evidTouched&&!force)return;
+  const k=acctKindOf(form.acct);
+  $('#evidSel').value=EVID_BY_KIND[k]||'세금계산서';
+  $('#vatSel').value='incl';
+  form.evidTouched=false;
+  renderInvField();renderEvidHint();
+}
+function renderEvidHint(){
+  const el=$('#evidHint');if(!el)return;
+  const k=acctKindOf(form.acct),ev=$('#evidSel').value;
+  el.innerHTML=k==='카드'
+    ? `💳 <b>사업카드</b> — 카드매출전표가 적격증빙이라 <b>증빙 카드 · 부가세 포함</b>으로 자동 설정했습니다`
+    : k==='현금'
+      ? `💵 <b>현금</b> — 현금영수증을 끊었으면 그대로, 아니면 증빙을 <b>간이영수증·없음</b>으로 바꾸세요 (매입세액 불공제)`
+      : (ev==='세금계산서'
+          ? `🏦 <b>통장</b> — 세금계산서를 받는 거래로 봅니다. <b>발행일</b>을 넣어야 미발행 추적에서 빠집니다`
+          : `🏦 <b>통장</b> — 증빙을 골라 주세요. 세금계산서가 아니면 매입세액 공제가 안 될 수 있습니다`);
+}
 function renderAcctPills(){
   $('#acctPills').innerHTML=state.accounts.map(a=>`<div class="pill ${form.acct===a.name?'sel':''}" data-a="${esc(a.name)}">${a.ico} ${esc(a.name)}</div>`).join('');
-  $$('#acctPills .pill').forEach(p=>p.onclick=()=>{form.acct=p.dataset.a;renderAcctPills();});
+  $$('#acctPills .pill').forEach(p=>p.onclick=()=>{form.acct=p.dataset.a;renderAcctPills();applyAcctEvidence(false);});
 }
 function renderAcctPills2(){
   $('#acctPills2').innerHTML=state.accounts.map(a=>`<div class="pill ${form.acct2===a.name?'sel':''}" data-a="${esc(a.name)}">${a.ico} ${esc(a.name)}</div>`).join('');
@@ -1940,9 +2007,10 @@ function updateMemoSugg(){
 }
 $('#dueInput').onchange=e=>{form.due=e.target.value||'';};
 $('#invInput').onchange=e=>{form.inv=e.target.value||'';};
-$('#evidSel').onchange=renderInvField;
+$('#evidSel').onchange=()=>{form.evidTouched=true;renderInvField();renderEvidHint();};
+$('#vatSel').onchange=()=>{form.evidTouched=true;};
 function resetAddSheet(){
-  form.editId=null;form.due='';form.att=[];form.pc='';form.ct='';form.inv='';
+  form.editId=null;form.due='';form.att=[];form.pc='';form.ct='';form.inv='';form.evidTouched=false;
   if($('#dueInput'))$('#dueInput').value='';
   renderAtt();renderProcPills();renderCostPills();renderInvField();
   $('#addTitle').textContent='거래 추가';$('#saveTx').textContent='기록하기';$('#delTx').classList.add('hidden');
@@ -1959,6 +2027,7 @@ function openEdit(id){
   $('#vendorInput').value=t.vendor||'';
   $('#vatSel').value=t.vatm||'none';
   $('#evidSel').value=t.evid!=null?t.evid:'세금계산서';
+  form.evidTouched=true;renderEvidHint();
   $('#amtInput').value=(t.vatm==='excl'?t.supply:t.amount).toLocaleString('ko-KR');
   $('#memoInput').value=t.memo||'';
   $('#dateInput').value=t.date;
@@ -2585,7 +2654,7 @@ function closeSheet(id){
   if(id==='Add'&&txReturn==='site'){txReturn=null;setTimeout(()=>{if(curSite)openSiteSheet(curSite);},80);}
 }
 ['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member','Trash','Budget','Print','Acct'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
-$('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;form.pc='';form.ct='';form.inv='';setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
+$('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;form.pc='';form.ct='';form.inv='';setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';applyAcctEvidence(true);renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
 $('#prevM').onclick=()=>{view.setMonth(view.getMonth()-1);render();};
 $('#nextM').onclick=()=>{view.setMonth(view.getMonth()+1);render();};
 $('#searchInput').oninput=e=>{filter.q=e.target.value;renderList(listSource());};
@@ -4015,7 +4084,13 @@ $('#impConfirm').onclick=()=>{
     state.tx.push({id:Date.now()+(k++)*7+Math.floor(Math.random()*999),
       type:it.type,cat:it.cat,ico:it.ico,amount:it.amount,memo:it.memo,date:it.date,
       acct:impAcct||state.accounts[0].name,site:impSite||'',vendor:it.vendor||'',
-      vatm:'none',supply:it.amount,vat:0,evid:it.type==='out'?'카드':'',cr:0,
+      /* 사업카드 계좌 = 적격증빙·부가세 포함 확정. 통장은 세금계산서로 두고 발행일을 채우게 한다 */
+      ...(function(){
+        const k=acctKindOf(impAcct||state.accounts[0].name);
+        if(it.type!=='out')return {vatm:'none',supply:it.amount,vat:0,evid:''};
+        if(k==='카드'){const sp=Math.round(it.amount/1.1);return {vatm:'incl',supply:sp,vat:it.amount-sp,evid:'카드'};}
+        return {vatm:'none',supply:it.amount,vat:0,evid:EVID_BY_KIND[k]||'세금계산서'};
+      })(),cr:0,
       src:'import',dk:it.dk||undefined,att:[],synced:false});
   });
   /* 이 계좌에 어디까지 반영했는지 기록해 두면 다음 파일은 그 다음부터만 담긴다 */
