@@ -2402,7 +2402,17 @@ function addSymbolLabel(group,xPx,yPx,def,kind,id,o){
   if(STATE.zoom<0.3) return false; // 극축소 시 겹침 방지
   const text=symbolLabelTextFor(kind,o||{id:id},def);
   if(!text) return false;
-  const halfPx=mmToPx((def.size||Math.max(def.w||0,def.h||0)||200))/2;
+  // 2026-08-31 대표 보고: 간접(코브) 이름이 조명에서 한참 떨어져 나온다.
+  //  선형 기구는 def.size 가 '길이' 라, 길이의 절반만큼 아래로 밀려나 있었다
+  //  (3m 코브면 1.5m 밖). 굵기(단면)의 절반만 띄우고, 기울어진 기구는 그 방향을 따른다.
+  const _lin=!!def.crossH;
+  const halfPx=mmToPx(_lin?def.crossH:(def.size||Math.max(def.w||0,def.h||0)||200))/2;
+  if(_lin){
+    const ang=((o&&o.angle)||0)*Math.PI/180;
+    const off=halfPx+13;
+    xPx=xPx-Math.sin(ang)*off;
+    yPx=yPx+Math.cos(ang)*off-halfPx;   // 아래에서 다시 halfPx 를 더하므로 미리 뺀다
+  }
   // 2026-08-28: 글씨가 작아 안 읽힌다는 지적 — 개수가 줄어든 만큼 키우고,
   //  그림자 대신 외곽선으로 가독성을 낸다 (Konva 그림자가 라벨 수만큼 느려지던 주범)
   const t=new Konva.Text({

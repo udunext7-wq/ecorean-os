@@ -3858,6 +3858,44 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('조명분류: 굵은 간접은 이름표 제외',
       symbolLabelEligible('lights',symbolDefOf('lights',{type:'pendant_linear',length_mm:1200}))===true);
 
+    // [C7] 2026-08-31 대표 보고: 간접(코브) 이름이 조명에서 한참 떨어져 나온다.
+    //  선형 기구는 def.size 가 '길이' 라 길이의 절반만큼 밀려나 있었다 — 굵기 기준이어야 한다.
+    STATE.lights=[{id:'cv9',type:'cove',x:CX+3000,y:CX+2000,angle:0,length_mm:3000}];
+    invalidateRenderCache();renderAll();
+    const _cvY=STATE.offsetY+mmToPx(CX+2000);
+    let _lblY=null;
+    groups.lights.getChildren().forEach(n=>{
+      if(n.getClassName&&n.getClassName()==='Text'&&n.text().indexOf('코브')>=0) _lblY=n.y();
+    });
+    assert('이름표: 간접 이름이 그려진다',_lblY!==null,'없음');
+    if(_lblY!==null){
+      const gap=Math.abs(_lblY-_cvY);
+      const halfLen=mmToPx(3000)/2;
+      const halfCross=mmToPx(LINEAR_LIGHT_CROSS.cove)/2;
+      assert('이름표: 간접 이름이 기구에 붙어 있다',gap<halfCross+30,
+        gap.toFixed(1)+'px (굵기 절반 '+halfCross.toFixed(1)+')');
+      // 길이에 따라 멀어지면 안 된다 — 길이를 두 배로 해도 같은 자리에 붙어 있어야 한다
+      STATE.lights=[{id:'cv9',type:'cove',x:CX+3000,y:CX+2000,angle:0,length_mm:6000}];
+      invalidateRenderCache();renderAll();
+      let _lblY2=null;
+      groups.lights.getChildren().forEach(n=>{
+        if(n.getClassName&&n.getClassName()==='Text'&&n.text().indexOf('코브')>=0) _lblY2=n.y();
+      });
+      assert('이름표: 길이가 늘어도 같은 자리',_lblY2!==null&&Math.abs(_lblY2-_lblY)<0.5,
+        _lblY2===null?'없음':(_lblY.toFixed(1)+' → '+_lblY2.toFixed(1)+' (길이 절반 '+halfLen.toFixed(1)+')'));
+    }
+    // 기울어진 기구는 그 방향으로 비켜선다 (가로로만 내려가면 기구를 덮는다)
+    STATE.lights=[{id:'cv8',type:'cove',x:CX+3000,y:CX+2000,angle:90,length_mm:3000}];
+    invalidateRenderCache();renderAll();
+    let _rx=null,_ry=null;
+    groups.lights.getChildren().forEach(n=>{
+      if(n.getClassName&&n.getClassName()==='Text'&&n.text().indexOf('코브')>=0){
+        _rx=n.x()+n.width()/2;_ry=n.y();}
+    });
+    assert('이름표: 90도면 옆으로 비켜선다',_rx!==null&&
+      Math.abs(_rx-(STATE.offsetX+mmToPx(CX+3000)))>Math.abs(_ry-_cvY),
+      _rx===null?'없음':((_rx-(STATE.offsetX+mmToPx(CX+3000))).toFixed(1)+' / '+(_ry-_cvY).toFixed(1)));
+
     STATE.lights=_bakLC.lights;STATE.symbolLabelMode=_bakLC.mode;
     STATE.spaces=_bakLC.spaces;STATE.vertices=_bakLC.vertices;STATE.walls=_bakLC.walls;
     STATE.selectedKind=_bakLC.selK;STATE.selectedId=_bakLC.selI;STATE.boxSelection=_bakLC.box;
