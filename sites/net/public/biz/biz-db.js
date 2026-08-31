@@ -755,6 +755,17 @@
     siteMeta: function (name) { return siteMetaByName[name] || null; },
     allSiteNames: function () { return Object.keys(siteMetaByName); },
     /* 현장 상태(진행중·완료·보관)는 직원 포털과 공유하는 값이라 여기서 바로 서버에 쓴다 */
+    /* 현장 삭제 — 거래·발주가 하나도 안 붙은 현장만. 붙어 있으면 화면에서 '보관'으로 유도한다.
+       (직원 포털·발주서가 같은 행을 참조하므로 기록이 있는 현장은 지우지 않는다) */
+    deleteSite: function (name) {
+      var m = siteMetaByName[name];
+      if (!m) return Promise.resolve(false);
+      return req('work_sites?id=eq.' + m.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+        .then(function () {
+          delete siteMetaByName[name]; delete siteIdByName[name]; delete siteNameById[m.id];
+          return true;
+        });
+    },
     setSiteStatus: function (name, status) {
       var m = siteMetaByName[name];
       if (!m) return Promise.reject(new Error('현장을 찾을 수 없습니다'));

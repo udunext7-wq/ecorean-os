@@ -7,7 +7,7 @@
 <script src="/app-cloud.js"></script>
 <!-- 고칠 때마다 ?v= 를 올린다. 안 올리면 브라우저가 옛 파일을 계속 써서
      화면(HTML)과 저장 계층(JS)의 버전이 어긋난다 — 내역이 안 보이는 원인이 된다. -->
-<script src="/biz/biz-db.js?v=biz13"></script>
+<script src="/biz/biz-db.js?v=biz14"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -157,6 +157,50 @@
   .pgrid .v{font-family:var(--font-d);font-size:13px;font-variant-numeric:tabular-nums}
   .pfoot{display:flex;gap:12px;flex-wrap:wrap;margin-top:11px;padding-top:9px;border-top:1px solid var(--border);
     font-size:11.5px;font-variant-numeric:tabular-nums}
+  /* 홈 총괄 대시보드 */
+  .dash{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .dash .dt{border-radius:14px;background:var(--glass);border:1px solid var(--border);padding:11px 12px;cursor:pointer;min-width:0;transition:.2s}
+  .dash .dt:active{transform:scale(.97)}
+  .dash .dt .k{font-size:10.5px;color:var(--muted-2);letter-spacing:.4px;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dash .dt .v{font-family:var(--font-d);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dash .dt .v small{font-size:10.5px;font-weight:400;color:var(--muted)}
+  .dash .dt .sub{font-size:10.5px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dash .dt.warn{border-color:rgba(255,93,122,.45)} .dash .dt.warn .v{color:var(--coral)}
+  .dash .dt.gold .v{color:var(--gold)} .dash .dt.teal .v{color:var(--teal)}
+  @media(max-width:380px){.dash{grid-template-columns:repeat(2,1fr)}}
+  .dsrow{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px solid var(--border);cursor:pointer;font-size:12.5px}
+  .dsrow:first-child{border-top:none}
+  .dsrow .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dsrow .n{font-family:var(--font-d);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12px;width:78px;text-align:right}
+  .dsrow .n.in{color:var(--teal)} .dsrow .n.out{color:var(--coral)}
+  .more-t{cursor:pointer;user-select:none}
+  /* 날짜 아코디언 — 접혀 있으면 그 날 매출·매입 합계만, 펼치면 거래 하나하나 */
+  .dayhead2{display:flex;align-items:center;gap:8px;padding:11px 13px;border-radius:13px;background:var(--glass);border:1px solid var(--border);cursor:pointer;user-select:none}
+  .dayhead2:active{border-color:var(--border-bright)}
+  .dayhead2 .chev{color:var(--muted-2);font-size:12px;transition:transform .2s;width:12px;flex:none}
+  .daygroup.open .dayhead2 .chev{transform:rotate(90deg)}
+  .daygroup.open .dayhead2{border-radius:13px 13px 0 0}
+  .dayhead2 .d{font-family:var(--font-d);font-size:13px;font-weight:600;white-space:nowrap}
+  .dayhead2 .d small{color:var(--muted);font-weight:400}
+  .dayhead2 .cnt{font-size:10.5px;color:var(--muted-2);white-space:nowrap}
+  .dayhead2 .s{margin-left:auto;display:flex;gap:10px;font-family:var(--font-d);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .dayhead2 .di{color:var(--teal)} .dayhead2 .do{color:var(--coral)} .dayhead2 .ph{color:var(--muted-2)}
+  .daybody{display:none;padding:8px 0 0 6px;border-left:2px solid var(--border);margin-left:14px}
+  .daygroup.open .daybody{display:block}
+  .daybar{display:flex;justify-content:flex-end;gap:14px;padding:0 4px 8px;font-size:11.5px}
+  /* 현장 = 프로젝트 화면 (전체 화면) */
+  #shSiteD{top:0;bottom:0;max-height:none;border-radius:0;border:none;padding-top:0}
+  .pj-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:calc(12px + var(--safe-t)) 0 10px;background:var(--bg2);border-bottom:1px solid var(--border);margin:0 -20px 12px;padding-left:18px;padding-right:14px}
+  .pj-title{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+  .pj-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .pj-strip div{border-radius:12px;background:var(--glass);border:1px solid var(--border);padding:9px 10px;min-width:0}
+  .pj-strip .k{font-size:10px;color:var(--muted-2);margin-bottom:3px}
+  .pj-strip .v{font-family:var(--font-d);font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pj-tabs{display:flex;gap:6px;margin-bottom:14px}
+  .pj-tabs button{flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border);background:var(--glass);color:var(--muted);font-size:12.5px;cursor:pointer;font-family:var(--font-b)}
+  .pj-tabs button.on{color:var(--teal);border-color:var(--teal);background:rgba(46,230,200,.08)}
+  .pj-pane{display:none}.pj-pane.on{display:block}
   .hintline{font-size:11px;color:var(--muted-2);margin-top:6px;line-height:1.5}
   .attrow{display:flex;flex-wrap:wrap;gap:8px}
   .attrow:empty{display:none}
@@ -554,20 +598,11 @@
       </div>
     </div>
 
-    <div class="sec-t">예산 소진 · BUDGET</div>
-    <div class="card" id="budgetCard"></div>
+    <div class="sec-t">총괄 · DASHBOARD</div>
+    <div class="dash" id="dashGrid"></div>
 
-    <div class="sec-t">인사이트 · INSIGHT</div>
-    <div class="card" id="insightCard"></div>
-
-    <div class="sec-t">고정 항목 · FIXED <span class="act" id="manageFixed">＋ 관리</span></div>
-    <div class="card" id="fixedCard"></div>
-
-    <div class="sec-t">계좌 · ACCOUNTS</div>
-    <div class="acct-row" id="acctRow"></div>
-
-    <div class="sec-t">지출 분석 · BREAKDOWN</div>
-    <div class="card" id="donutCard"></div>
+    <div class="sec-t">현장별 이번 달 · SITES <span class="act" id="dashSitesMore">전체 ›</span></div>
+    <div class="card" id="dashSites"></div>
 
     <div class="sec-t">거래 내역 · TRANSACTIONS</div>
     <div class="searchbar">
@@ -577,6 +612,24 @@
     </div>
     <div id="siteFilterChip" class="sitechip hidden"></div>
     <div id="list"></div>
+
+    <div class="sec-t more-t" id="moreToggle">분석 · 더 보기 <span class="act" id="moreArrow">▸ 펼치기</span></div>
+    <div id="homeMore" class="hidden">
+      <div class="sec-t" style="margin-top:6px">예산 소진 · BUDGET</div>
+      <div class="card" id="budgetCard"></div>
+
+      <div class="sec-t">인사이트 · INSIGHT</div>
+      <div class="card" id="insightCard"></div>
+
+      <div class="sec-t">고정 항목 · FIXED <span class="act" id="manageFixed">＋ 관리</span></div>
+      <div class="card" id="fixedCard"></div>
+
+      <div class="sec-t">계좌 · ACCOUNTS</div>
+      <div class="acct-row" id="acctRow"></div>
+
+      <div class="sec-t">지출 분석 · BREAKDOWN</div>
+      <div class="card" id="donutCard"></div>
+    </div>
   </section>
 
   <!-- ================= STATS ================= -->
@@ -782,19 +835,40 @@
 <!-- SITE DETAIL SHEET (공사대금 · 프로젝트별) -->
 <div class="overlay" id="ovSiteD"></div>
 <div class="sheet" id="shSiteD">
-  <div class="grab"></div><h2 id="sdTitle">🏗️ 현장 상세</h2><div class="desc">공사대금 · 프로젝트별 정산 현황</div>
-  <div class="field" id="sdStatusField"><label>진행 상태</label><div class="pills" id="sdStatus">
-    <div class="pill" data-s="진행중">진행중</div><div class="pill" data-s="완료">완료</div><div class="pill" data-s="보관">보관</div></div></div>
-  <div class="field"><label>계약금액 (공사대금 총액 · 부가세 포함)</label><input id="sdContract" type="text" inputmode="numeric" placeholder="예: 55,000,000"></div>
-  <button class="btn btn-ghost" id="sdSaveContract">계약금액 저장</button>
-  <div id="sdBody" style="margin-top:16px"></div>
-  <div class="sec-t" style="margin-top:18px">원가계산서 · COST</div>
-  <div class="card" id="sdCost"></div>
-  <div class="sec-t" style="margin-top:16px">집계표 · 공종별 예산 대비 <span class="act" id="sdEditBudget">＋ 집계표 입력</span></div>
-  <div class="card" id="sdTally"></div>
-  <button class="btn btn-primary" id="sdAddTx" style="margin-top:14px">＋ 이 현장 거래 기록</button>
-  <button class="btn btn-ghost" id="sdOnly" style="margin-top:9px">🔎 이 현장 거래만 보기</button>
-  <button class="btn btn-ghost" id="sdMembers" style="margin-top:9px">👥 현장 담당자 배정</button>
+  <div class="pj-head"><div class="pj-title" id="sdTitle">🏗️ 현장</div><div class="iconbtn" id="sdClose" style="width:36px;height:36px">✕</div></div>
+  <div class="pj-strip" id="sdStrip"></div>
+  <div class="pj-tabs" id="sdTabs">
+    <button data-p="tx" class="on">거래</button><button data-p="sum">요약</button><button data-p="cost">원가</button><button data-p="mgmt">관리</button>
+  </div>
+
+  <div class="pj-pane on" data-p="tx">
+    <div class="searchbar">
+      <input id="sdSearch" type="text" placeholder="🔍 거래처·메모 검색">
+      <select id="sdType"><option value="all">전체</option><option value="out">지출</option><option value="in">매출</option><option value="cr">외상만</option></select>
+    </div>
+    <div id="sdList"></div>
+    <button class="btn btn-primary" id="sdAddTx" style="margin-top:14px">＋ 이 현장 거래 기록</button>
+    <button class="btn btn-ghost" id="sdOnly" style="margin-top:9px">🔎 홈에서 이 현장만 보기</button>
+  </div>
+
+  <div class="pj-pane" data-p="sum"><div id="sdBody"></div></div>
+
+  <div class="pj-pane" data-p="cost">
+    <div class="sec-t" style="margin-top:4px">원가계산서 · COST</div>
+    <div class="card" id="sdCost"></div>
+    <div class="sec-t" style="margin-top:16px">집계표 · 공종별 예산 대비 <span class="act" id="sdEditBudget">＋ 집계표 입력</span></div>
+    <div class="card" id="sdTally"></div>
+  </div>
+
+  <div class="pj-pane" data-p="mgmt">
+    <div class="field" id="sdStatusField"><label>진행 상태</label><div class="pills" id="sdStatus">
+      <div class="pill" data-s="진행중">진행중</div><div class="pill" data-s="완료">완료</div><div class="pill" data-s="보관">보관</div></div></div>
+    <div class="field"><label>계약금액 (공사대금 총액 · 부가세 포함)</label><input id="sdContract" type="text" inputmode="numeric" placeholder="예: 55,000,000"></div>
+    <button class="btn btn-ghost" id="sdSaveContract">계약금액 저장</button>
+    <button class="btn btn-ghost" id="sdMembers" style="margin-top:9px">👥 현장 담당자 배정</button>
+    <div class="note" id="sdDelNote" style="margin-top:18px"></div>
+    <button class="btn btn-ghost" id="sdDelete" style="margin-top:10px;color:var(--coral)">🗑️ 이 현장 삭제</button>
+  </div>
 </div>
 
 <!-- GOAL SHEET -->
@@ -1251,6 +1325,7 @@ function render(){
   const be=$('#balance');be.classList.toggle('neg',bal<0);be.innerHTML=`${won(bal)}<span class="won">원</span>`;
   $('#incomeV').textContent=won(inc);$('#expenseV').textContent=won(exp);
   renderBudget(exp,list); renderInsight(list,inc,exp); renderAccounts(); renderDonut(list,exp); renderList(listSource()); renderFixedCard();
+  renderDashboard(); renderDashSites();
 }
 function renderBudget(exp,list){
   const c=$('#budgetCard'),b=state.budgets.total;
@@ -1359,22 +1434,8 @@ function renderList(list){
   f=f.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
   const total=f.length, CAP=400;
   if(total>CAP)f=f.slice(0,CAP);
-  const byDay={};f.forEach(t=>{(byDay[t.date]=byDay[t.date]||[]).push(t);});
-  let html=`<div class="ledgerhead"><span class="dr">차변 · 지출</span><span class="crd">대변 · 매출</span></div>`;
-  Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(day=>{
-    const items=byDay[day];
-    const dayIn=items.filter(t=>t.type==='in').reduce((a,b)=>a+b.amount,0);
-    const dayOut=items.filter(t=>t.type==='out').reduce((a,b)=>a+b.amount,0);
-    const d=new Date(day+'T00:00'),wd=WK[d.getDay()];
-    html+=`<div class="daygroup"><div class="dayhead"><span class="d">${filter.range==='all'?d.getFullYear()+'.':''}${d.getMonth()+1}.${pad(d.getDate())} (${wd})</span><span class="s">${dayOut?`<span class="do">차변 ${won(dayOut)}</span>`:''}${dayIn?`<span class="di" style="margin-left:8px">대변 ${won(dayIn)}</span>`:''}</span></div>`;
-    items.forEach(t=>{const acct=t.acct||state.accounts[0].name,isIn=t.type==='in';
-      const kind=t.tf?'tf':t.type;
-      html+=`<div class="tx t-${kind}" data-txid="${t.id}"><div class="ico">${t.ico||icoOf(t.type,t.cat)}</div>
-      <div class="meta"><div class="c"><span class="badge ${kind}">${t.tf?'이체':isIn?'매출':'매입'}</span>${esc(t.cat)}${t.rid?' <span style="color:var(--violet);font-size:11px">↻</span>':''}${t.cr?` <span style="color:var(--gold);font-size:11px">⏳${isIn?'미수':'미지급'}</span>`:''}${overdueDays(t)>0?` <span class="odue" style="font-size:11px">🔴 ${overdueDays(t)}일 연체</span>`:''}${t.vat?' <span style="color:var(--muted-2);font-size:10px">VAT</span>':''}${(t.att&&t.att.length)?` <span class="clip">📎${t.att.length}</span>`:''}</div>
-      <div class="m">${t.site?`<span style="color:var(--violet)">🏗️${esc(t.site)}</span> · `:''}${t.vendor?`<span style="color:var(--gold)">${esc(t.vendor)}</span> · `:''}<span class="ac">${acctIco(acct)} ${esc(acct)}</span> · ${esc(t.memo||'-')}</div></div>
-      <div class="amt2"><div class="col dr">${!isIn?won(t.amount):'<span class="ph">·</span>'}</div><div class="col crd">${isIn?won(t.amount):'<span class="ph">·</span>'}</div></div></div>`;});
-    html+='</div>';
-  });
+  const g=dayGroupsHtml(f,{showYear:filter.range==='all'});
+  let html=dayToggleBarHtml(g.days.length)+g.html;
   if(total>CAP)html+=`<div class="empty" style="padding:10px 0">최근 ${CAP}건만 표시 (전체 ${total}건) · 검색으로 좁혀보세요</div>`;
   el.innerHTML=html;
 }
@@ -1394,12 +1455,61 @@ function deleteTx(id){
     state.tx.push(...removed);save();render();renderStats();renderSiteTab();
   });
 }
-$('#list').addEventListener('click',e=>{
-  const del=e.target.closest('.del');
-  if(del){deleteTx(del.dataset.id);return;}
-  const row=e.target.closest('.tx');
-  if(row)openEdit(row.dataset.txid);
-});
+/* ── 날짜 아코디언 ──
+   접힌 상태에서는 그 날의 매출·매입 합계만 보인다. 펼치면 거래 하나하나.
+   펼친 날짜는 화면을 다시 그려도 유지된다(세션 동안). */
+const openDays=new Set();
+let daysAllOpen=false;
+function txRowHtml(t,opts){
+  opts=opts||{};
+  const acct=t.acct||state.accounts[0].name,isIn=t.type==='in',kind=t.tf?'tf':t.type;
+  return `<div class="tx t-${kind}" data-txid="${t.id}"><div class="ico">${t.ico||icoOf(t.type,t.cat)}</div>
+    <div class="meta"><div class="c"><span class="badge ${kind}">${t.tf?'이체':isIn?'매출':'매입'}</span>${esc(t.cat)}${t.rid?' <span style="color:var(--violet);font-size:11px">↻</span>':''}${t.cr?` <span style="color:var(--gold);font-size:11px">⏳${isIn?'미수':'미지급'}</span>`:''}${overdueDays(t)>0?` <span class="odue" style="font-size:11px">🔴 ${overdueDays(t)}일 연체</span>`:''}${t.vat?' <span style="color:var(--muted-2);font-size:10px">VAT</span>':''}${(t.att&&t.att.length)?` <span class="clip">📎${t.att.length}</span>`:''}</div>
+    <div class="m">${(t.site&&!opts.hideSite)?`<span style="color:var(--violet)">🏗️${esc(t.site)}</span> · `:''}${t.vendor?`<span style="color:var(--gold)">${esc(t.vendor)}</span> · `:''}<span class="ac">${acctIco(acct)} ${esc(acct)}</span> · ${esc(t.memo||'-')}</div></div>
+    <div class="amt2"><div class="col dr">${!isIn?won(t.amount):'<span class="ph">·</span>'}</div><div class="col crd">${isIn?won(t.amount):'<span class="ph">·</span>'}</div></div></div>`;
+}
+function dayGroupsHtml(f,opts){
+  opts=opts||{};
+  const byDay={};f.forEach(t=>{(byDay[t.date]=byDay[t.date]||[]).push(t);});
+  const days=Object.keys(byDay).sort((a,b)=>b.localeCompare(a));
+  let html='';
+  days.forEach(day=>{
+    const items=byDay[day];
+    const dayIn=items.filter(t=>t.type==='in'&&!t.tf).reduce((a,b)=>a+b.amount,0);
+    const dayOut=items.filter(t=>t.type==='out'&&!t.tf).reduce((a,b)=>a+b.amount,0);
+    const d=new Date(day+'T00:00'),wd=WK[d.getDay()];
+    const open=daysAllOpen||openDays.has(day);
+    html+=`<div class="daygroup ${open?'open':''}" data-day="${day}"><div class="dayhead2">
+      <span class="chev">▸</span>
+      <span class="d">${opts.showYear?d.getFullYear()+'.':''}${d.getMonth()+1}.${pad(d.getDate())} <small>(${wd})</small></span>
+      <span class="cnt">${items.length}건</span>
+      <span class="s">${dayIn?`<span class="di">매출 ${won(dayIn)}</span>`:''}${dayOut?`<span class="do">매입 ${won(dayOut)}</span>`:''}${(!dayIn&&!dayOut)?'<span class="ph">이체</span>':''}</span>
+    </div><div class="daybody">${items.map(t=>txRowHtml(t,opts)).join('')}</div></div>`;
+  });
+  return {html,days};
+}
+function dayToggleBarHtml(n){
+  if(!n)return '';
+  return `<div class="daybar"><span style="color:var(--muted-2)">날짜를 누르면 상세가 펼쳐집니다</span><span class="act" data-dayall="1">${daysAllOpen?'모두 접기':'모두 펼치기'}</span></div>`;
+}
+function toggleDay(group){
+  const day=group.dataset.day,on=group.classList.toggle('open');
+  if(on)openDays.add(day);else{openDays.delete(day);daysAllOpen=false;}
+}
+/* 목록 안 클릭 — 날짜 헤더(펼침/접힘) · 전체 토글 · 거래(수정) 을 한 곳에서 처리 */
+function bindLedgerClicks(el,onRow,rerender){
+  el.addEventListener('click',e=>{
+    const all=e.target.closest('[data-dayall]');
+    if(all){daysAllOpen=!daysAllOpen;if(!daysAllOpen)openDays.clear();rerender();return;}
+    const dh=e.target.closest('.dayhead2');
+    if(dh){toggleDay(dh.parentElement);return;}
+    const del=e.target.closest('.del');
+    if(del){deleteTx(del.dataset.id);return;}
+    const row=e.target.closest('.tx');
+    if(row)onRow(row.dataset.txid);
+  });
+}
+bindLedgerClicks($('#list'),id=>openEdit(id),()=>renderList(listSource()));
 
 /* ============ 렌더 : 통계 ============ */
 function renderStats(){renderBars();renderCatStat();renderVat();renderCorpTax();renderCashflow();renderSiteStat();renderVendorStat();renderGoals();}
@@ -1493,6 +1603,38 @@ function renderSiteStat(){
 }
 /* ============ 현장 상세 · 공사대금 ============ */
 let curSite='';
+/* 현장 = 프로젝트 화면. 거래 / 요약 / 원가 / 관리 네 칸. 누르면 바로 거래 관리부터. */
+let sdPane='tx',sdQ='',sdTypeF='all',txReturn=null;
+function setSdPane(p){
+  sdPane=p;
+  $$('#sdTabs button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  $$('#shSiteD .pj-pane').forEach(x=>x.classList.toggle('on',x.dataset.p===p));
+}
+$('#sdTabs').onclick=e=>{const b=e.target.closest('button');if(b)setSdPane(b.dataset.p);};
+$('#sdClose').onclick=()=>closeSheet('SiteD');
+$('#sdSearch').oninput=e=>{sdQ=e.target.value;renderSiteTx();};
+$('#sdType').onchange=e=>{sdTypeF=e.target.value;renderSiteTx();};
+function renderSdStrip(){
+  const o=siteSummary(curSite),el=$('#sdStrip');if(!el)return;
+  el.innerHTML=`<div><div class="k">매출 (기성)</div><div class="v" style="color:var(--teal)">${won(o.billed)}</div></div>
+    <div><div class="k">원가</div><div class="v" style="color:var(--coral)">${won(o.out)}</div></div>
+    <div><div class="k">이익${o.billed?` ${Math.round(o.profit/o.billed*100)}%`:''}</div><div class="v" style="color:${o.profit>=0?'var(--teal)':'var(--coral)'}">${won(o.profit)}</div></div>`;
+}
+function renderSiteTx(){
+  const el=$('#sdList');if(!el)return;
+  let f=state.tx.filter(t=>!t.tf&&t.site===curSite);
+  if(sdTypeF!=='all')f=f.filter(t=>sdTypeF==='cr'?t.cr:t.type===sdTypeF);
+  if(sdQ){const q=sdQ.toLowerCase();f=f.filter(t=>(t.memo||'').toLowerCase().includes(q)||t.cat.toLowerCase().includes(q)||(t.vendor||'').toLowerCase().includes(q));}
+  if(!f.length){
+    el.innerHTML=`<div class="card"><div class="empty" style="padding:16px 0"><span class="em">📭</span>${(sdQ||sdTypeF!=='all')?'조건에 맞는 거래가 없습니다':'이 현장의 거래가 아직 없습니다<br><span style="font-size:11.5px;color:var(--muted-2)">아래 버튼으로 기록하거나, 설정 › 발주서·CSV 가져오기</span>'}</div></div>`;
+    return;
+  }
+  f.sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+  const g=dayGroupsHtml(f,{showYear:true,hideSite:true});
+  el.innerHTML=dayToggleBarHtml(g.days.length)+g.html;
+}
+/* 현장 화면에서 거래를 누르면 수정 시트가 위에 뜨고, 닫으면 현장 화면으로 돌아온다 */
+bindLedgerClicks($('#sdList'),id=>{txReturn='site';closeSheet('SiteD');openEdit(id);},renderSiteTx);
 function openSiteSheet(name){
   curSite=name;
   $('#sdTitle').textContent='🏗️ '+name;
@@ -1502,8 +1644,11 @@ function openSiteSheet(name){
   $('#sdContract').disabled=!isMgr();
   $('#sdSaveContract').classList.toggle('hidden',!isMgr());
   $('#sdStatusField').classList.toggle('hidden',!isMgr());
+  $('#sdDelete').classList.toggle('hidden',!isMgr());
   renderSdStatus();
   $('#sdEditBudget').style.display=isMgr()?'':'none';
+  setSdPane(sdPane==='mgmt'?'tx':sdPane);
+  renderSdStrip();renderSiteTx();renderSdDelNote();
   renderSiteDetail();openSheet('SiteD');
   loadSiteBudget(name).then(()=>{if($('#shSiteD').classList.contains('on'))renderSiteDetail();}).catch(()=>{});
   if(window.BIZDB)refreshPO().then(()=>{if($('#shSiteD').classList.contains('on'))renderSiteDetail();}).catch(()=>{});
@@ -1539,18 +1684,14 @@ function renderSiteDetail(){
       ${notSum?`<button class="btn btn-ghost" id="sdGoPO" style="margin-top:10px;padding:9px;font-size:12.5px">발주서에서 가져오기 ›</button>`:''}
     </div>`;
   }
-  const txs=state.tx.filter(t=>!t.tf&&t.site===curSite).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).slice(0,30);
-  if(txs.length){
-    html+=`<div style="font-family:var(--font-d);font-size:11px;letter-spacing:1.5px;color:var(--muted);margin:16px 2px 8px">거래 내역 · 최근 ${txs.length}건</div>`+
-      txs.map(t=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 2px;border-top:1px solid var(--border);font-size:12.5px">
-        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.date.slice(5).replace('-','.')} · ${esc(t.cat)}${t.vendor?' · '+esc(t.vendor):''}${t.cr?' <b style="color:var(--gold);font-size:10.5px">외상</b>':''}</span>
-        <span style="font-family:var(--font-d);white-space:nowrap;font-variant-numeric:tabular-nums;color:${t.type==='in'?'var(--teal)':'var(--coral)'}">${t.type==='in'?'+':'−'}${won(t.amount)}</span></div>`).join('');
-  }else html+=`<div class="empty" style="padding:16px 0"><span class="em">📭</span>이 현장의 거래가 아직 없습니다</div>`;
+  const _cnt=state.tx.filter(t=>!t.tf&&t.site===curSite).length;
+  html+=`<div class="hintline" style="margin-top:14px">거래 ${_cnt}건 — 위 <b>거래</b> 탭에서 날짜별로 관리합니다</div>`;
   b.innerHTML=html;
   const gp=$('#sdGoPO');if(gp)gp.onclick=()=>{closeSheet('SiteD');openPO();};
   /* 표준 내역서의 두 장 — 원가계산서 · 집계표 */
   const cs=$('#sdCost');if(cs)cs.innerHTML=costSheetHtml(curSite);
   const tl=$('#sdTally');if(tl)tl.innerHTML=tallyHtml(curSite);
+  if(typeof renderSdStrip==='function')renderSdStrip();
 }
 /* 현장 상태는 직원 포털 work_sites 와 같은 값이라 바꾸면 양쪽에 바로 반영된다 */
 function renderSdStatus(){
@@ -1565,7 +1706,9 @@ function renderSdStatus(){
       try{
         await BIZDB.setSiteStatus(curSite,s);
         renderSdStatus();
-        if(s==='보관'){closeSheet('SiteD');}
+        /* 보관한 현장을 state.sites 에 남겨두면 다음 동기화가 '진행중'으로 되살린다 */
+        if(s==='보관'){state.sites=state.sites.filter(x=>x!==curSite);save();closeSheet('SiteD');}
+        else if(state.sites.indexOf(curSite)===-1){state.sites.push(curSite);save();}
         renderSiteTab();render();
         toast(`상태를 "${s}"(으)로 바꿨습니다`);
       }catch(e){toast('상태 변경 실패 · '+String(e.message||'').slice(0,40));}
@@ -1581,6 +1724,41 @@ $('#sdOnly').onclick=()=>{
   toast(`🏗️ ${curSite} 거래만 보는 중 · 위 필터에서 해제`);
 };
 $('#sdEditBudget').onclick=()=>{closeSheet('SiteD');openBudget(curSite);};
+/* ── 현장 삭제 ──
+   기록(거래·발주)이 붙은 현장은 지우지 않는다 — 직원 포털·발주서가 같은 행을 본다.
+   그런 현장은 '보관'으로 목록에서만 숨긴다. 기록이 하나도 없을 때만 실제 삭제. */
+function siteRefs(name){
+  return {tx:state.tx.filter(t=>t.site===name).length, po:poAll.filter(p=>poSiteName(p)===name&&p.status!=='취소').length};
+}
+function renderSdDelNote(){
+  const el=$('#sdDelNote');if(!el)return;
+  const r=siteRefs(curSite);
+  el.innerHTML=(r.tx||r.po)
+    ?`이 현장에는 <b>거래 ${r.tx}건${r.po?` · 발주 ${r.po}건`:''}</b>이 연결돼 있어 <b>삭제할 수 없습니다.</b> 삭제 버튼을 누르면 대신 <b>보관</b> 처리됩니다 — 목록에서 사라지고 기록은 그대로 남으며, 위 진행 상태에서 다시 꺼낼 수 있습니다.`
+    :`연결된 거래·발주가 없어 <b>완전히 삭제</b>됩니다. 되돌릴 수 없습니다.`;
+}
+$('#sdDelete').onclick=async()=>{
+  if(!isMgr()){toast('현장 삭제는 대표·관리자만 할 수 있습니다');return;}
+  const name=curSite,r=siteRefs(name);
+  if(r.tx||r.po){
+    if(!confirm(`"${name}" 에는 거래 ${r.tx}건${r.po?`·발주 ${r.po}건`:''}이 연결돼 있어 삭제할 수 없습니다.\n\n대신 [보관] 처리할까요? 목록에서 숨겨지고 기록은 남습니다.`))return;
+    try{
+      if(window.BIZDB&&BIZDB.siteId(name))await BIZDB.setSiteStatus(name,'보관');
+      state.sites=state.sites.filter(x=>x!==name);
+      save();closeSheet('SiteD');renderSiteTab();render();
+      toast(`"${name}" 을(를) 보관했습니다 · 현장 탭 › 전체 에서 볼 수 있습니다`);
+    }catch(e){toast('보관 실패 · '+String(e.message||'').slice(0,40));}
+    return;
+  }
+  if(!confirm(`"${name}" 현장을 삭제할까요?\n\n연결된 거래·발주가 없어 완전히 삭제됩니다. 되돌릴 수 없습니다.`))return;
+  try{
+    if(window.BIZDB&&BIZDB.deleteSite&&BIZDB.siteId(name))await BIZDB.deleteSite(name);
+  }catch(e){toast('삭제 실패 · '+String(e.message||'').slice(0,50));return;}
+  state.sites=state.sites.filter(x=>x!==name);
+  delete state.contracts[name];
+  save();closeSheet('SiteD');renderSiteTab();renderSiteChips();renderSitePills();render();
+  toast(`"${name}" 현장을 삭제했습니다`);
+};
 $('#sdMembers').onclick=()=>{closeSheet('SiteD');openMembers(curSite);};
 $('#sdSaveContract').onclick=()=>{
   const v=Number($('#sdContract').value.replace(/[^0-9]/g,''))||0;
@@ -1589,6 +1767,7 @@ $('#sdSaveContract').onclick=()=>{
 };
 $('#sdContract').oninput=e=>{let v=e.target.value.replace(/[^0-9]/g,'');e.target.value=v?Number(v).toLocaleString('ko-KR'):'';};
 $('#sdAddTx').onclick=()=>{
+  txReturn='site';
   closeSheet('SiteD');
   resetAddSheet();$('#dateInput').value=todayStr();form.site=curSite;form.cr=0;setType('in');form.acct=state.accounts[0].name;renderAcctPills();
   $('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='incl';$('#evidSel').value='세금계산서';
@@ -2400,7 +2579,11 @@ function syncRepHead(){
 
 /* ============ 시트/탭 ============ */
 function openSheet(id){$('#ov'+id).classList.add('on');$('#sh'+id).classList.add('on');}
-function closeSheet(id){$('#ov'+id).classList.remove('on');$('#sh'+id).classList.remove('on');}
+function closeSheet(id){
+  $('#ov'+id).classList.remove('on');$('#sh'+id).classList.remove('on');
+  /* 현장 화면에서 열었던 거래 시트가 닫히면(저장·취소 모두) 현장 화면으로 돌아간다 */
+  if(id==='Add'&&txReturn==='site'){txReturn=null;setTimeout(()=>{if(curSite)openSiteSheet(curSite);},80);}
+}
 ['Add','Recur','Fixed','Goal','Kakao','Notion','Biz','Evt','SiteD','Imp','Due','PO','Org','Claim','Member','Trash','Budget','Print','Acct'].forEach(id=>$('#ov'+id).onclick=()=>{closeSheet(id);if(id==='Add')resetAddSheet();});
 $('#fab').onclick=()=>{resetAddSheet();$('#dateInput').value=todayStr();form.site='';form.cr=0;form.pc='';form.ct='';form.inv='';setType('out');form.acct=state.accounts[0].name;renderAcctPills();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';$('#vatSel').value='none';$('#evidSel').value='세금계산서';renderSitePills();renderCrPills();updateMemoSugg();updateVendorSugg();openSheet('Add');setTimeout(()=>$('#amtInput').focus(),350);};
 $('#prevM').onclick=()=>{view.setMonth(view.getMonth()-1);render();};
@@ -3225,6 +3408,72 @@ $('#bgSave').onclick=async()=>{
     toast(`집계표 저장됨 · 공종 ${keep.length}개`);
   }catch(e){toast('저장 실패 · '+String(e.message||'').slice(0,50));}
 };
+
+/* ============ 홈 총괄 대시보드 ============
+   홈은 "지금 회사 상태를 한 눈에" — 현장 수·현금·받을 돈·줄 돈·연체·승인·세무 마감.
+   각 타일을 누르면 그 자리로 간다. */
+function goTab(t){const b=document.querySelector(`.nav button[data-tab="${t}"]`);if(b)b.click();}
+function renderDashboard(){
+  const el=$('#dashGrid');if(!el)return;
+  const mgr=isMgr();
+  const mine=(window.BIZDB&&BIZDB.mySiteNames)?BIZDB.mySiteNames():[];
+  const allNames=[...new Set([...state.sites,...state.tx.filter(t=>t.site).map(t=>t.site)])];
+  const scoped=mgr?allNames:allNames.filter(n=>mine.indexOf(n)!==-1||state.tx.some(t=>t.site===n));
+  const active=scoped.filter(n=>siteStatusOf(n)==='진행중');
+  const cash=state.accounts.reduce((s,a)=>s+balanceOf(a.name),0);
+  const recvL=creditList('in'),payL=creditList('out');
+  const recv=recvL.reduce((a,b)=>a+b.amount,0),pay=payL.reduce((a,b)=>a+b.amount,0);
+  const odR=recvL.filter(t=>overdueDays(t)>0).length,odP=payL.filter(t=>overdueDays(t)>0).length;
+  const pend=(typeof claims!=='undefined'?claims:[]).filter(c=>c.status==='submitted');
+  const myP=pend.filter(c=>c.claimant===myUid());
+  const tax=upcomingTax(14)[0];
+  const tile=(id,k,v,sub,cls)=>`<div class="dt ${cls||''}" data-go="${id}"><div class="k">${k}</div><div class="v">${v}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
+  el.innerHTML=
+    tile('site','진행 현장',`${active.length}<small> 곳</small>`,scoped.length!==active.length?`전체 ${scoped.length}곳`:'', 'teal')+
+    (mgr?tile('cash','계좌 잔액 합계',won(cash),`${state.accounts.length}개 계좌`,cash<0?'warn':''):tile('my','내 담당 현장',`${mine.length}<small> 곳</small>`,'','teal'))+
+    tile('recv','받을 돈',won(recv),odR?`🔴 연체 ${odR}건`:(recvL.length?`${recvL.length}건`:''),odR?'warn':'gold')+
+    tile('pay','줄 돈',won(pay),odP?`🔴 연체 ${odP}건`:(payL.length?`${payL.length}건`:''),odP?'warn':'')+
+    (mgr?tile('claim','경비 승인 대기',`${pend.length}<small> 건</small>`,pend.length?won(pend.reduce((a,b)=>a+b.amount,0))+'원':'',pend.length?'gold':'')
+        :tile('claim','내 경비 청구',`${myP.length}<small> 건</small>`,myP.length?'승인 대기':'',myP.length?'gold':''))+
+    tile('tax','다음 세무 마감',tax?(tax.dday===0?'오늘':`D-${tax.dday}`):'—',tax?esc(String(tax.t).replace(/🏗️ /,'').slice(0,18)):'14일 내 없음',tax&&tax.dday<=3?'warn':'');
+  el.querySelectorAll('.dt').forEach(d=>d.onclick=()=>{
+    const g=d.dataset.go;
+    if(g==='site'||g==='my')goTab('site');
+    else if(g==='cash'){homeMore=true;applyHomeMore();const a=$('#acctRow');if(a)a.scrollIntoView({behavior:'smooth',block:'center'});}
+    else if(g==='recv')openDue('in');
+    else if(g==='pay')openDue('out');
+    else if(g==='claim')goTab('benefit');
+    else if(g==='tax')goTab('cal');
+  });
+}
+function renderDashSites(){
+  const el=$('#dashSites');if(!el)return;
+  const mgr=isMgr();
+  const mine=(window.BIZDB&&BIZDB.mySiteNames)?BIZDB.mySiteNames():[];
+  const allNames=[...new Set([...state.sites,...state.tx.filter(t=>t.site).map(t=>t.site)])];
+  const names=(mgr?allNames:allNames.filter(n=>mine.indexOf(n)!==-1||state.tx.some(t=>t.site===n)))
+    .filter(n=>siteStatusOf(n)==='진행중');
+  const m=monthTx(view);
+  const rows=names.map(n=>{const l=m.filter(t=>t.site===n&&!t.tf);return {n,inc:sumIn(l),exp:sumOut(l),cnt:l.length};})
+    .sort((a,b)=>(b.inc+b.exp)-(a.inc+a.exp));
+  if(!rows.length){el.innerHTML=`<div class="empty" style="padding:14px 0"><span class="em">🏗️</span>진행중인 현장이 없습니다</div>`;return;}
+  const CAP=8;
+  el.innerHTML=rows.slice(0,CAP).map(r=>`<div class="dsrow" data-site="${esc(r.n)}">
+      <span class="nm">🏗️ ${esc(r.n)} <small style="color:var(--muted-2)">${r.cnt?r.cnt+'건':'이번 달 없음'}</small></span>
+      <span class="n in">${r.inc?'+'+won(r.inc):'·'}</span><span class="n out">${r.exp?'−'+won(r.exp):'·'}</span>
+    </div>`).join('')+(rows.length>CAP?`<div class="hintline" style="text-align:center">외 ${rows.length-CAP}곳 — 현장 탭에서 전체 보기</div>`:'');
+  el.querySelectorAll('.dsrow').forEach(r=>r.onclick=()=>openSiteSheet(r.dataset.site));
+}
+$('#dashSitesMore').onclick=()=>goTab('site');
+/* 분석 카드들은 접어 둔다 — 홈은 대시보드가 먼저 */
+let homeMore=false;try{homeMore=localStorage.getItem('bocbiz_home_more')==='1';}catch(e){}
+function applyHomeMore(){
+  const m=$('#homeMore'),a=$('#moreArrow');if(!m)return;
+  m.classList.toggle('hidden',!homeMore);
+  if(a)a.textContent=homeMore?'▾ 접기':'▸ 펼치기';
+}
+$('#moreToggle').onclick=()=>{homeMore=!homeMore;try{localStorage.setItem('bocbiz_home_more',homeMore?'1':'0');}catch(e){}applyHomeMore();};
+applyHomeMore();
 
 /* ============ 현장(프로젝트) 탭 ============
    장부를 거래 나열이 아니라 "프로젝트 단위"로 본다 — 인테리어는 현장이 원가·손익의 단위다.
