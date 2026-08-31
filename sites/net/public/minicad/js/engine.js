@@ -2824,7 +2824,13 @@ function addLinearLightTag(group,xPx,yPx,def,o){
 //  기구가 물리적으로 겹치는 것만 잡는다 — 간격이 촘촘한 배치를 중복으로 몰지 않기 위해.
 function lightOuterMm(o){
   if(!o) return 200;
-  if(o.type==='downlight'){const d=downlightDef(o);return d.size||200;}
+  // 2026-08-31 대표 보고: 방습등 점핑선이 다운라이트와 다르게 나온다.
+  //  방습등도 2"~6" 규격이 생겼는데 여기서는 라이브러리 기본값(350)을 그대로 써서,
+  //  3인치(95mm)짜리도 350 으로 잡혔다. 점핑선을 기구 밖에서 시작·끝내려고 이 값을
+  //  반지름으로 쓰므로, 선이 실제보다 많이 잘려 다운라이트와 길이가 달라 보였다.
+  //  (중복 경고 판정에도 같은 값을 쓰므로 함께 바로잡힌다)
+  if(o.type==='downlight') return downlightDef(o).size||200;
+  if(o.type==='bath_light') return bathLightDef(o).size||200;
   const b=LIGHT_LIB[o.type];
   return (b&&b.size)||200;
 }

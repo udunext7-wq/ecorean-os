@@ -3683,6 +3683,75 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('입면: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-08-31 대표 보고: 방습등 점핑선이 다운라이트와 다르게 나온다 ===
+  //  점핑선은 기구 밖에서 시작·끝내려고 lightOuterMm 를 반지름으로 쓴다.
+  //  방습등이 규격과 무관하게 늘 라이브러리 기본값(350)으로 잡혀 선이 짧게 잘렸다.
+  try{
+    const _bakJP={lights:STATE.lights.slice(),electric:STATE.electric.slice(),
+      showCircuits:STATE.showCircuits,selK:STATE.selectedKind,selI:STATE.selectedId,
+      box:STATE.boxSelection.slice()};
+    STATE.lights=[];STATE.electric=[];STATE.boxSelection=[];
+    STATE.selectedKind=null;STATE.selectedId=null;
+
+    // [J1] 규격이 있는 기구는 그 규격 크기를 쓴다 — 다운라이트와 같은 규약
+    [2,3,4,6].forEach(inch=>{
+      const dl={id:'jd'+inch,type:'downlight',x:0,y:0,angle:0,inch};
+      const bl={id:'jb'+inch,type:'bath_light',x:0,y:0,angle:0,inch};
+      assert('점핑선: 방습등 '+inch+'인치 크기가 다운라이트와 같다',
+        lightOuterMm(bl)===lightOuterMm(dl),lightOuterMm(bl)+' vs '+lightOuterMm(dl));
+      assert('점핑선: 방습등 '+inch+'인치는 도식 크기와 일치',
+        lightOuterMm(bl)===symbolDefOf('lights',bl).size,
+        lightOuterMm(bl)+' vs '+symbolDefOf('lights',bl).size);
+    });
+
+    // [J2] 실제로 그려지는 점핑선이 똑같아야 한다 (같은 간격이면 같은 길이)
+    const JY1=700000, JY2=702000, GAP=900;
+    const mkJ=(t,i,y)=>({id:t+'_'+i,type:t,x:700000+i*GAP,y,angle:0,inch:3});
+    const dls=[mkJ('downlight',0,JY1),mkJ('downlight',1,JY1)];
+    const bls=[mkJ('bath_light',0,JY2),mkJ('bath_light',1,JY2)];
+    dls[0].jumpIds=[dls[1].id];
+    bls[0].jumpIds=[bls[1].id];
+    STATE.lights.push(...dls,...bls);
+    STATE.showCircuits=true;
+    invalidateRenderCache();renderAll();
+    const _jl=groups.lights.find('.jump-line');
+    assert('점핑선: 두 벌 다 그려진다',_jl.length===2,'n='+_jl.length);
+    const _len=n=>{const p=n.points();return Math.hypot(p[2]-p[0],p[3]-p[1]);};
+    const _byY=y=>_jl.filter(n=>Math.abs(n.points()[1]-(STATE.offsetY+mmToPx(y)))<2)[0];
+    const nd=_byY(JY1), nb=_byY(JY2);
+    assert('점핑선: 다운라이트·방습등 선을 각각 찾는다',!!nd&&!!nb);
+    if(nd&&nb){
+      assert('점핑선: 길이가 같다',Math.abs(_len(nd)-_len(nb))<0.5,
+        _len(nd).toFixed(1)+' vs '+_len(nb).toFixed(1));
+      assert('점핑선: 굵기가 같다',nd.strokeWidth()===nb.strokeWidth()&&
+        nd.strokeWidth()===CIRCUIT_LINE_W);
+      assert('점핑선: 점선 모양이 같다',
+        JSON.stringify(nd.dash())===JSON.stringify(nb.dash())&&
+        JSON.stringify(nd.dash())===JSON.stringify(CIRCUIT_LINE_DASH));
+      assert('점핑선: 색이 같다',nd.stroke()===nb.stroke());
+    }
+
+    // [J3] 곁들여 — 중복 경고도 실제 규격으로 잰다 (3인치 방습등 200mm 간격은 겹침 아님)
+    STATE.lights=[{id:'jc1',type:'bath_light',x:800000,y:800000,angle:0,inch:3},
+                  {id:'jc2',type:'bath_light',x:800200,y:800000,angle:0,inch:3}];
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    assert('점핑선: 방습등 200mm 간격은 중복 아님',
+      duplicateLightGroups().ids.size===0,String(duplicateLightGroups().ids.size));
+    STATE.lights=[{id:'jc1',type:'bath_light',x:800000,y:800000,angle:0,inch:3},
+                  {id:'jc2',type:'bath_light',x:800040,y:800000,angle:0,inch:3}];
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    assert('점핑선: 방습등 40mm 간격은 중복',
+      duplicateLightGroups().ids.size>=2,String(duplicateLightGroups().ids.size));
+
+    STATE.lights=_bakJP.lights;STATE.electric=_bakJP.electric;
+    STATE.showCircuits=_bakJP.showCircuits;
+    STATE.selectedKind=_bakJP.selK;STATE.selectedId=_bakJP.selI;
+    STATE.boxSelection=_bakJP.box;
+    if(typeof invalidateDuplicateLights==='function') invalidateDuplicateLights();
+    invalidateRenderCache();renderAll();refreshUI();
+  }catch(e){
+    assert('점핑선: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-30: 보는 방향 고르기 + 절단선 입면도 (대표 지시) ===
   try{
     const _bakSC={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
