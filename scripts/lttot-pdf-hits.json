@@ -1,0 +1,92 @@
+[
+ {
+  "name": "용계역 푸르지오 아츠베르 1단지",
+  "file": "assets/plan-pdf/2021000416-0.pdf",
+  "pg": 19,
+  "segs": 4529,
+  "rects": 200,
+  "texts": 82,
+  "room": 52,
+  "dims": 0
+ },
+ {
+  "name": "용계역 푸르지오 아츠베르 2단지",
+  "file": "assets/plan-pdf/2021000417-0.pdf",
+  "pg": 19,
+  "segs": 4529,
+  "rects": 200,
+  "texts": 82,
+  "room": 52,
+  "dims": 0
+ },
+ {
+  "name": "포레나더샵 인천시청역",
+  "file": "assets/plan-pdf/2025000572-0.pdf",
+  "pg": 4,
+  "segs": 24083,
+  "rects": 50,
+  "texts": 215,
+  "room": 52,
+  "dims": 0
+ },
+ {
+  "name": "용계역 푸르지오 아츠베르 1단지",
+  "file": "assets/plan-pdf/2021000416-0.pdf",
+  "pg": 18,
+  "segs": 4317,
+  "rects": 190,
+  "texts": 79,
+  "room": 49,
+  "dims": 0
+ },
+ {
+  "name": "용계역 푸르지오 아츠베르 2단지",
+  "file": "assets/plan-pdf/2021000417-0.pdf",
+  "pg": 18,
+  "segs": 4317,
+  "rects": 190,
+  "texts": 79,
+  "room": 49,
+  "dims": 0
+ },
+ {
+  "name": "한화포레나 울산무거",
+  "file": "assets/plan-pdf/2025000364-0.pdf",
+  "pg": 5,
+  "segs": 7214,
+  "rects": 9,
+  "texts": 190,
+  "room": 47,
+  "dims": 0
+ },
+ {
+  "name": "한화포레나 울산무거",
+  "file": "assets/plan-pdf/2025000364-0.pdf",
+  "pg": 6,
+  "segs": 8765,
+  "rects": 287,
+  "texts": 119,
+  "room": 28,
+  "dims": 0
+ },
+ {
+  "name": "한화포레나 울산무거",
+  "file": "assets/plan-pdf/2025000364-0.pdf",
+  "pg": 2,
+  "segs": 25305,
+  "rects": 115,
+  "texts": 1416,
+  "room": 7,
+  "dims": 0
+ },
+ {
+  "name": "포레나더샵 인천시청역",
+  "file": "assets/plan-pdf/2025000572-0.pdf",
+  "pg": 2,
+  "segs": 32849,
+  "rects": 2768,
+  "texts": 1458,
+  "room": 6,
+  "dims": 381
+ }
+]
