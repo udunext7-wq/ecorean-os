@@ -87,6 +87,42 @@ function gapsBetween(list, tol, maxGap) {
   return gaps;
 }
 
+// 크롭이 '직교 2D 평면도' 인지 판정하는 특징값.
+//  · step : 바깥 윤곽이 계단형인가. 2D 평면도의 외곽은 축에 나란해 행마다 최좌단 x 가 그대로다.
+//           3D 아이소메트릭은 모서리가 기울어 행마다 밀린다. (실측: 2D 0.85~0.97 / 3D 0.33~0.37)
+//  · axis : 어두운 획이 긴 수평·수직 선에 속한 비율
+//  · dark : 잉크 밀도. 배너·사양표는 지나치게 높다
+function shapeStats(mask, w, h) {
+  const minRun = Math.max(6, Math.round(Math.min(w, h) * 0.03));
+  const run = new Uint8Array(w * h);
+  const scan = (outer, inner, idx) => {
+    for (let a = 0; a < outer; a++) {
+      let st = -1;
+      for (let b = 0; b <= inner; b++) {
+        const on = b < inner && mask[idx(a, b)];
+        if (on && st < 0) st = b;
+        if (!on && st >= 0) { if (b - st >= minRun) for (let k = st; k < b; k++) run[idx(a, k)] = 1; st = -1; }
+      }
+    }
+  };
+  scan(h, w, (y, x) => y * w + x);
+  scan(w, h, (x, y) => y * w + x);
+  let dark = 0, inRun = 0;
+  for (let i = 0; i < w * h; i++) if (mask[i]) { dark++; if (run[i]) inRun++; }
+
+  const L = [], R = [], T = [], B = [];
+  for (let y = 0; y < h; y++) { let a = -1, b = -1;
+    for (let x = 0; x < w; x++) if (mask[y * w + x]) { if (a < 0) a = x; b = x; }
+    L.push(a); R.push(b); }
+  for (let x = 0; x < w; x++) { let a = -1, b = -1;
+    for (let y = 0; y < h; y++) if (mask[y * w + x]) { if (a < 0) a = y; b = y; }
+    T.push(a); B.push(b); }
+  const flat = arr => { let same = 0, n = 0;
+    for (let i = 1; i < arr.length; i++) { if (arr[i] < 0 || arr[i - 1] < 0) continue; n++; if (arr[i] === arr[i - 1]) same++; }
+    return n ? same / n : 0; };
+  return { axis: dark ? inRun / dark : 0, dark: dark / (w * h), step: (flat(L) + flat(R) + flat(T) + flat(B)) / 4 };
+}
+
 export async function convert(file, opt = {}) {
   const area_m2 = opt.exclusive_area_m2 || null;
   const { regions, srcW, w: dw } = await detectRegions(file, { dilate: 14 });
@@ -105,6 +141,15 @@ export async function convert(file, opt = {}) {
   const mask = new Uint8Array(w * h);
   let darkPx = 0;
   for (let i = 0; i < w * h; i++) { mask[i] = data[i] < DARK ? 1 : 0; darkPx += mask[i]; }
+
+  // 이 크롭이 그릴 수 있는 도면인지 먼저 가린다 — 아니면 벽을 만들지 않는다
+  const shape = shapeStats(mask, w, h);
+  const aspect = w / h;
+  const shapeBad = [];
+  if (shape.step < 0.70) shapeBad.push(`3D 투시 추정(외곽 계단 ${shape.step.toFixed(2)})`);
+  if (shape.axis < 0.80) shapeBad.push(`직교 획 부족(${shape.axis.toFixed(2)})`);
+  if (shape.dark > 0.28) shapeBad.push(`잉크 과다(${shape.dark.toFixed(2)}) — 배너·사양표 추정`);
+  if (aspect > 2.1 || aspect < 0.45) shapeBad.push(`비율 이상(${aspect.toFixed(2)}) — 여러 도면이 한 영역`);
 
   const minLen = Math.round(Math.min(w, h) * 0.03);
   const maxThick = Math.round(Math.min(w, h) * 0.05);
@@ -164,6 +209,7 @@ export async function convert(file, opt = {}) {
     if (doorN < 6) warn.push(`개구부 표본 ${doorN}개`);
     else if (doorMed < 700 || doorMed > 1060) warn.push(`문폭 ${Math.round(doorMed)}mm`);
   }
+  warn.push(...shapeBad);
   const verified = !!mmPerPx && warn.length === 0;
 
   // ── 방(공간) 추출 ───────────────────────────────────────────────────
@@ -213,7 +259,7 @@ export async function convert(file, opt = {}) {
     work: { w, h },
     mm_per_px: mmPerPx,                      // 크롭 후 작업 해상도 기준
     bg_mm_per_px: mmPerPx ? mmPerPx * (Wd / w) : null,  // 원본 크롭 픽셀 기준(배경 이미지용)
-    interiorPx, medThickPx: medThick, thickMm, scaleBasis, doorMed, doorN,
+    interiorPx, medThickPx: medThick, thickMm, scaleBasis, doorMed, doorN, shape, aspect,
     regionCount: regions.length,
   };
 }
