@@ -73,7 +73,10 @@ ck(ws && near(ws.rot, 0), '남쪽 벽 회전 0');
 ck(ws.prims.length === 5, '남쪽 벽 상자 5개(3토막+문 인방+창턱, 창 위는 천장까지라 인방 없음): ' + ws.prims.length);
 const full = ws.prims.filter(p => p.h === 2400);
 ck(full.length === 3, '전체 높이 토막 3: ' + full.length);
-ck(near(full[0].w, 1050) && near(full[1].w, 1150) && near(full[2].w, 1100), '토막 폭 1050/1150/1100: ' + full.map(p => p.w).join('/'));
+// 끝 토막은 v2(6000,0)에서 꺾여 만나는 동쪽 벽(t100, 중심 정렬)의 바깥 면까지 49mm(50−1) 늘어난다 — 모서리 메움
+ck(near(full[0].w, 1050) && near(full[1].w, 1150) && near(full[2].w, 1149), '토막 폭 1050/1150/1149(모서리 메움): ' + full.map(p => p.w).join('/'));
+ck(ws.meta.ext[0] === 0 && near(ws.meta.ext[1], 49), '남쪽 벽 연장 [0,49]: ' + JSON.stringify(ws.meta.ext));
+ck(ws.prims.every(p => p.y === 0) && ws.meta.offset === 0, '중심 정렬은 오프셋 0');
 ck(ws.prims.some(p => near(p.z, 2100) && near(p.h, 300) && near(p.w, 900)), '문 인방 z2100 h300 w900');
 ck(ws.prims.some(p => near(p.z, 0) && near(p.h, 900) && near(p.w, 1800)), '창턱 아래 z0 h900 w1800');
 ck(ws.prims.some(p => near(p.z, 900 + 1500) && near(p.h, 0)) === false, '창 인방(h 0)은 만들지 않는다');
@@ -149,6 +152,47 @@ ck(S2.objects.length === S.objects.length, '래핑 문서도 동일 결과');
 // 빈 문서
 const S3 = MC3D.buildScene({}, LIBS);
 ck(S3.objects.length === 1 && S3.objects[0].kind === 'slab', '빈 문서 → 슬래브만');
+
+// ---- 벽 정렬 interior/exterior (2026-09-01) — 2D _wallAlignOffsetPx 규칙과 동일 ----
+//  정사각 방 4000×4000, 벽 4장을 시계방향(화면 y-down 기준)으로 그림 → 우측 법선(−uy,ux)이 방 안쪽
+const A = {
+  meta: { ceilingHeight_mm: 2400 },
+  vertices: [{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 4000, y: 0 }, { id: 'c', x: 4000, y: 4000 }, { id: 'd', x: 0, y: 4000 }],
+  spaces: [{ id: 's', name: '방', type: 'ROOM', vertexIds: ['a', 'b', 'c', 'd'], holes: [] }],
+  walls: [
+    { id: 'n', v1Id: 'a', v2Id: 'b', thickness: 100, alignment: 'interior' },   // 위: u=(1,0) → n=(0,1) 아래(방 안)
+    { id: 'e', v1Id: 'b', v2Id: 'c', thickness: 100, alignment: 'exterior' },   // 오른쪽: u=(0,1) → n=(−1,0) 왼쪽(방 안)
+    { id: 'sw', v1Id: 'c', v2Id: 'd', thickness: 200, alignment: 'center' },
+    { id: 'w', v1Id: 'd', v2Id: 'a', thickness: 100, alignment: 'interior' },
+  ],
+  openings: [{ id: 'dr', type: 'DOOR', subType: 'swing', x: 2000, y: 0, wallId: 'n', width_mm: 900, height_mm: 2100 }],
+};
+const SA = MC3D.buildScene(A, LIBS);
+const aw = id => SA.objects.find(o => o.id === id);
+ck(aw('n').meta.offset === 50 && aw('n').prims.every(p => p.y === 50), 'interior 일반벽: 몸체가 로컬 +y(방 안)로 t/2=50: ' + JSON.stringify(aw('n').meta));
+ck(aw('e').meta.offset === -50 && aw('e').prims.every(p => p.y === -50), 'exterior 일반벽: 몸체가 로컬 −y 로 −50: ' + aw('e').meta.offset);
+ck(aw('sw').meta.offset === 0 && aw('sw').prims.every(p => p.y === 0), 'center: 0');
+ck(aw('dr').prims.every(p => Math.abs(p.y - 50) <= 50 + 1) && aw('dr').prims.filter(p => p.color === MC3D.COLORS.doorFrame).every(p => p.y === 50), '문틀·문짝이 벽 정렬을 따라 함께 이동');
+// 모서리 메움: 위 벽(n) v2=b 에서 만나는 오른쪽 벽(e)은 exterior → 몸체가 x 3900~4000 대신 4000~... 아니라
+//  e 의 로컬 +y=(−1,0) 이고 off=−50 → 몸체 x ∈ [4000+50−50, 4000+50+50] = [4000,4100] → n 은 b 에서 +x 로 100−1 늘어야 한다
+ck(near(aw('n').meta.ext[1], 99), '위 벽 v2 연장 = 이웃(exterior) 바깥 면까지 99: ' + JSON.stringify(aw('n').meta.ext));
+//  위 벽(n) v1=a 에서 만나는 왼쪽 벽(w): w 는 d→a, u=(0,−1), 로컬 +y=(1,0), interior off=+50 → 몸체 x ∈ [0,100] → n 은 a 에서 −x 로 나갈 것이 없다(0)
+ck(aw('n').meta.ext[0] === 0, '위 벽 v1 연장 0 (이웃 몸체가 방 안쪽에만 있음): ' + JSON.stringify(aw('n').meta.ext));
+//  오른쪽 벽(e) v1=b 에서 만나는 위 벽(n): n 로컬 +y=(0,1), off=+50 → 몸체 y∈[0,100]; e 의 바깥 방향 d=−u=(0,−1) → 투영 최댓값 0 → 연장 0
+ck(aw('e').meta.ext[0] === 0, '오른쪽 벽 v1 연장 0: ' + JSON.stringify(aw('e').meta.ext));
+//  내력벽 무게중심 규칙: 내력벽 2장이 마주보면 각각 '안쪽'이 서로를 향한다
+const B = { meta: {}, walls: [
+  { id: 'b1', x1: 0, y1: 0, x2: 4000, y2: 0, thickness: 200, wallType: 'bearing', alignment: 'interior' },      // n=(0,1) → 무게중심(2000,2000) 쪽 → sign +1 → off +100
+  { id: 'b2', x1: 0, y1: 4000, x2: 4000, y2: 4000, thickness: 200, wallType: 'bearing', alignment: 'interior' }, // n=(0,1) → 무게중심은 −n 쪽 → sign −1 → off −100
+] };
+const SB = MC3D.buildScene(B, LIBS);
+const bw = id => SB.objects.find(o => o.id === id);
+ck(bw('b1').meta.offset === 100 && bw('b2').meta.offset === -100, '내력벽 interior: 무게중심 쪽으로 t/2 (+100 / −100): ' + bw('b1').meta.offset + '/' + bw('b2').meta.offset);
+B.walls.forEach(w => { w.alignment = 'exterior'; });
+const SB2 = MC3D.buildScene(B, LIBS);
+ck(SB2.objects.find(o => o.id === 'b1').meta.offset === -100 && SB2.objects.find(o => o.id === 'b2').meta.offset === 100, '내력벽 exterior: 무게중심 반대');
+const one = MC3D.buildScene({ meta: {}, walls: [B.walls[1]] }, LIBS).objects.find(o => o.id === 'b2');
+ck(one.meta.offset === -100, '내력벽 1장뿐이면 기본 규약(sign=+1) → exterior −100: ' + one.meta.offset);
 
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

@@ -116,16 +116,67 @@ function wallOpenings(wall,openings,walls){
     return best&&best.id===wall.id&&bd<=(num(wall.thickness,100)/2+120);
   });
 }
-function buildWall(w,D,spaceById){
+// ---- 벽 정렬 (2026-09-01) — MiniCAD 2D 의 _wallAlignOffsetPx 와 같은 규칙을 mm 로 ----
+//  로컬 +y = 진행방향 우측 법선 (−uy, ux). 그린 선(중심선)에서 몸체를 이만큼 옮긴다.
+//  일반벽: interior +t/2 · exterior −t/2 (클릭 방향 규약). 내력벽: 내력벽 무게중심 쪽이 '안'.
+function wallThk(w){ return Math.max(30,num(w.thickness,100)); }
+function bearingInteriorSign(w,D){
+  const bs=D.walls.filter(o=>o.wallType==='bearing'&&!o.isLine);
+  if(bs.length<=1) return 1;
+  let cx=0,cy=0; bs.forEach(o=>{cx+=(o.x1+o.x2)/2;cy+=(o.y1+o.y2)/2;}); cx/=bs.length; cy/=bs.length;
+  const dx=w.x2-w.x1, dy=w.y2-w.y1, len=Math.hypot(dx,dy);
+  if(len<1) return 1;
+  const nx=-dy/len, ny=dx/len;
+  return ((cx-(w.x1+w.x2)/2)*nx+(cy-(w.y1+w.y2)/2)*ny)>0?1:-1;
+}
+function wallAlignOffset(w,D){
+  if(w.isLine) return 0;
+  const a=w.alignment||'center';
+  if(a!=='interior'&&a!=='exterior') return 0;
+  const half=wallThk(w)/2;
+  if(w.wallType!=='bearing') return a==='interior'?half:-half;
+  const s=bearingInteriorSign(w,D);
+  return (a==='interior'?s:-s)*half;
+}
+// 모서리 메움 — 같은 꼭짓점에서 꺾여 만나는 이웃 벽의 바깥 면까지 이 벽 끝을 늘린다.
+//  정렬로 몸체가 밀리면 모서리에 빈 틈(또는 삐죽 나온 끝)이 생기므로, 이웃 몸체의 끝점을 이 벽 방향으로 투영한 최댓값만큼.
+//  d = 꼭짓점에서 바깥으로 향하는 단위벡터(v1 끝은 −u, v2 끝은 +u). 1mm 빼서 면이 겹쳐 떨리는 것을 막는다.
+function cornerExtension(w,end,D,offs){
+  const L=Math.hypot(w.x2-w.x1,w.y2-w.y1); if(!(L>1)) return 0;
+  const ux=(w.x2-w.x1)/L, uy=(w.y2-w.y1)/L;
+  const vx=end===1?w.x1:w.x2, vy=end===1?w.y1:w.y2;
+  const dx=end===1?-ux:ux, dy=end===1?-uy:uy;
+  const vid=end===1?w.v1Id:w.v2Id;
+  let ext=0;
+  D.walls.forEach(n=>{
+    if(n===w||n.isLine||n.id===w.id) return;
+    let shared=null;
+    if(vid&&(n.v1Id===vid||n.v2Id===vid)) shared=n.v1Id===vid?1:2;
+    else if(Math.hypot(n.x1-vx,n.y1-vy)<=2) shared=1;
+    else if(Math.hypot(n.x2-vx,n.y2-vy)<=2) shared=2;
+    if(!shared) return;
+    const nl=Math.hypot(n.x2-n.x1,n.y2-n.y1); if(!(nl>1)) return;
+    const nux=(n.x2-n.x1)/nl, nuy=(n.y2-n.y1)/nl;
+    if(Math.abs(nux*ux+nuy*uy)>0.995) return;           // 일직선으로 이어지는 벽은 틈이 없다
+    const nnx=-nuy, nny=nux;                               // 이웃의 로컬 +y
+    const off=offs[n.id]||0, half=wallThk(n)/2;
+    [off-half,off+half].forEach(s=>{ ext=Math.max(ext,s*(nnx*dx+nny*dy)); });
+  });
+  return ext>1?ext-1:0;
+}
+function buildWall(w,D,spaceById,offs){
   const L=Math.hypot(w.x2-w.x1,w.y2-w.y1);
   if(!(L>1)) return null;
-  const t=Math.max(30,num(w.thickness,100));
+  const t=wallThk(w);
   const sp=w.spaceId?spaceById[w.spaceId]:null;
   const H=Math.round(num(w.height_mm,0)||num(sp&&sp.ceilingHeight_mm,0)||D.ceilH);
   const rot=Math.atan2(w.y2-w.y1,w.x2-w.x1)*180/Math.PI;
   const ux=(w.x2-w.x1)/L, uy=(w.y2-w.y1)/L;
   const bearing=w.wallType==='bearing';
   const color=bearing?C.bearing:(WALL_COLORS[w.finishMaterial]||(w.wallType==='partition'?C.partition:WALL_COLORS.UNDECIDED));
+  offs=offs||{};
+  const off=offs[w.id]!==undefined?offs[w.id]:wallAlignOffset(w,D);
+  const ext1=cornerExtension(w,1,D,offs), ext2=cornerExtension(w,2,D,offs);
   const prims=[];
   // 개구부 — 벽을 따라간 거리 [left,right] + 높이 [z0,z1]
   const cuts=wallOpenings(w,D.openings,D.walls).map(o=>{
@@ -141,60 +192,61 @@ function buildWall(w,D,spaceById){
     return {o,isDoor,ow,oh,sill,along,left:Math.max(0,hole[0]),right:Math.min(L,hole[1]),z0:sill,z1:Math.min(H,sill+oh)};
   }).filter(c=>c.right-c.left>1).sort((a,b)=>a.left-b.left);
   // 벽 몸체 — 개구부 사이는 전체 높이, 개구부 위(인방)·아래(창턱)는 부분 높이
-  let cursor=0;
-  const seg=(a,b,z0,z1)=>{ if(b-a>1&&z1-z0>1) prims.push(box((a+b)/2,0,z0,b-a,t,z1-z0,color)); };
+  let cursor=-ext1;
+  const seg=(a,b,z0,z1)=>{ if(b-a>1&&z1-z0>1) prims.push(box((a+b)/2,off,z0,b-a,t,z1-z0,color)); };
   cuts.forEach(c=>{
     seg(cursor,c.left,0,H);
     seg(c.left,c.right,0,c.z0);        // 창턱 아래
     seg(c.left,c.right,c.z1,H);        // 인방
     cursor=Math.max(cursor,c.right);
   });
-  seg(cursor,L,0,H);
+  seg(cursor,L+ext2,0,H);
   // 개구부 객체(문짝·창틀·유리)는 별도 obj 로 — 클릭하면 이름이 보이도록
-  const openingObjs=cuts.map(c=>buildOpening(c,w,t,rot,ux,uy));
+  const openingObjs=cuts.map(c=>buildOpening(c,w,t,rot,off));
   return {
     wall:{id:w.id,kind:'wall',name:bearing?'내력벽':(w.wallType==='partition'?'가벽':'벽'),x:w.x1,y:w.y1,rot,flip:false,prims,
-      meta:{L:Math.round(L),t,H,material:w.finishMaterial||null,wallType:w.wallType||'standard'}},
+      meta:{L:Math.round(L),t,H,material:w.finishMaterial||null,wallType:w.wallType||'standard',alignment:w.alignment||'center',offset:off,ext:[ext1,ext2]}},
     openings:openingObjs,
   };
 }
-function buildOpening(c,w,t,rot,ux,uy){
+function buildOpening(c,w,t,rot,off){
   const o=c.o,isDoor=c.isDoor;
   const cx=(c.left+c.right)/2, hw=c.right-c.left, hh=c.z1-c.z0;
   const prims=[];
   const F=45; // 틀 두께
+  off=off||0; // 벽 정렬 오프셋 — 개구부도 벽 몸체와 함께 움직인다
   if(isDoor){
     const entry=o.subType==='entry';
     const leafCol=entry?C.entry:C.doorLeaf;
     const st=o.subType||'swing';
     // 문틀 — 양옆 + 위
-    prims.push(box(cx-hw/2+F/2,0,0,F,t+10,hh,C.doorFrame));
-    prims.push(box(cx+hw/2-F/2,0,0,F,t+10,hh,C.doorFrame));
-    prims.push(box(cx,0,hh-F,hw,t+10,F,C.doorFrame));
+    prims.push(box(cx-hw/2+F/2,off,0,F,t+10,hh,C.doorFrame));
+    prims.push(box(cx+hw/2-F/2,off,0,F,t+10,hh,C.doorFrame));
+    prims.push(box(cx,off,hh-F,hw,t+10,F,C.doorFrame));
     const iw=hw-2*F, ih=hh-F;
     if(st==='sliding'){
-      prims.push(box(cx-iw/4,-t/4,0,iw/2,36,ih,leafCol));
-      prims.push(box(cx+iw/4,t/4,0,iw/2,36,ih,leafCol));
+      prims.push(box(cx-iw/4,off-t/4,0,iw/2,36,ih,leafCol));
+      prims.push(box(cx+iw/4,off+t/4,0,iw/2,36,ih,leafCol));
     }else if(st==='folding'){
-      for(let i=0;i<3;i++) prims.push(box(cx-iw/2+iw/6+i*iw/3,(i%2?1:-1)*14,0,iw/3-6,36,ih,leafCol));
+      for(let i=0;i<3;i++) prims.push(box(cx-iw/2+iw/6+i*iw/3,off+(i%2?1:-1)*14,0,iw/3-6,36,ih,leafCol));
     }else{ // swing / entry / pocket(뚫린 쪽 한 짝)
-      prims.push(box(cx,0,0,iw,40,ih,leafCol));
+      prims.push(box(cx,off,0,iw,40,ih,leafCol));
       // 손잡이
-      prims.push(box(cx+iw/2-90,-30,1000,120,14,20,C.lampMetal));
-      prims.push(box(cx+iw/2-90,30,1000,120,14,20,C.lampMetal));
+      prims.push(box(cx+iw/2-90,off-30,1000,120,14,20,C.lampMetal));
+      prims.push(box(cx+iw/2-90,off+30,1000,120,14,20,C.lampMetal));
     }
   }else{
     const st=o.subType||'casement';
-    prims.push(box(cx-hw/2+F/2,0,c.z0,F,t+10,hh,C.winFrame));
-    prims.push(box(cx+hw/2-F/2,0,c.z0,F,t+10,hh,C.winFrame));
-    prims.push(box(cx,0,c.z1-F,hw,t+10,F,C.winFrame));
-    prims.push(box(cx,0,c.z0,hw,t+10,F,C.sill));
+    prims.push(box(cx-hw/2+F/2,off,c.z0,F,t+10,hh,C.winFrame));
+    prims.push(box(cx+hw/2-F/2,off,c.z0,F,t+10,hh,C.winFrame));
+    prims.push(box(cx,off,c.z1-F,hw,t+10,F,C.winFrame));
+    prims.push(box(cx,off,c.z0,hw,t+10,F,C.sill));
     const iw=hw-2*F, ih=hh-2*F;
-    prims.push(box(cx,0,c.z0+F,iw,12,ih,C.glass,{opacity:0.35,glass:true}));
+    prims.push(box(cx,off,c.z0+F,iw,12,ih,C.glass,{opacity:0.35,glass:true}));
     const n=st==='sliding2'?2:st==='sliding4'?4:st==='bay'?3:1;
-    for(let i=1;i<n;i++) prims.push(box(cx-iw/2+iw*i/n,0,c.z0+F,30,t-10,ih,C.winFrame));
+    for(let i=1;i<n;i++) prims.push(box(cx-iw/2+iw*i/n,off,c.z0+F,30,t-10,ih,C.winFrame));
     if(st==='sliding2'||st==='sliding4'){ // 미세기는 위아래 레일
-      prims.push(box(cx,0,c.z0+F,iw,t-10,18,C.winFrame));
+      prims.push(box(cx,off,c.z0+F,iw,t-10,18,C.winFrame));
     }
   }
   const name=isDoor?((o.subType==='entry')?'현관문':'문'):'창';
@@ -474,10 +526,11 @@ function buildScene(doc,libs){
     labels.push({id:s.id,x:c.x,y:c.y,z:1100,text:s.name||s.type||''});
     if(s.type==='STAIRS') objects.push(buildStairs(s,D));
   });
-  // 벽 + 개구부
+  // 벽 + 개구부 — 정렬 오프셋을 먼저 전부 구해 두어야 모서리 메움이 이웃 몸체를 볼 수 있다
+  const offs={}; D.walls.forEach(w=>{ if(!w.isLine) offs[w.id]=wallAlignOffset(w,D); });
   D.walls.forEach(w=>{
     if(w.isLine) return;
-    const r=buildWall(w,D,spaceById);
+    const r=buildWall(w,D,spaceById,offs);
     if(!r) return;
     objects.push(r.wall); r.openings.forEach(o=>objects.push(o));
   });
@@ -496,7 +549,7 @@ function buildScene(doc,libs){
 }
 
 const MC3D={buildScene,normalizeDoc,FLOOR_COLORS,WALL_COLORS,COLORS:C,
-  _internal:{buildWall,buildFurniture,buildLight,polyCentroid,polyBBox,pointInPoly}};
+  _internal:{buildWall,buildFurniture,buildLight,polyCentroid,polyBBox,pointInPoly,wallAlignOffset,cornerExtension,bearingInteriorSign}};
 if(typeof module!=='undefined'&&module.exports) module.exports=MC3D;
 root.MC3D=MC3D;
 })(typeof window!=='undefined'?window:globalThis);
