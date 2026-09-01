@@ -845,8 +845,10 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     if(r.plan_path){
       var planUrl=PUB+r.plan_path.split('/').map(encodeURIComponent).join('/');
       cadBtn.style.display='';
-      // 픽셀 추출 벽은 정확도 부족(재현 46%)으로 내렸다. 도면은 실축척 밑그림으로 열고 벽은 스냅으로 따라 그린다.
-      cadBtn.textContent='📐 MiniCAD로 열기 (원본 도면 밑그림)';
+      // 벽 좌표가 있는 문서(LH 구조도면 등 CAD 벡터 원본)와 밑그림 전용 문서를 문구로 구분한다
+      cadBtn.textContent=(r.plan_walls>0)
+        ? '📐 MiniCAD로 열기 (CAD 벡터 벽 '+r.plan_walls+'개 · 실치수)'
+        : '📐 MiniCAD로 열기 (원본 도면 밑그림)';
       cadBtn.href='/minicad/?plan='+encodeURIComponent(planUrl);
       bgBtn.textContent='🖼 밑그림으로만 열기';
       bgBtn.href=bgHref;
@@ -856,7 +858,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
         .then(function(d){
           if(!d||state.current!==r)return;
           var ver=d.meta&&d.meta.verified;
-          cadBtn.textContent=ver
+          if(!(r.plan_walls>0)) cadBtn.textContent=ver
             ? '📐 MiniCAD로 열기 (실축척 밑그림 · 문폭 검증 · 스냅 작도)'
             : '📐 MiniCAD로 열기 (밑그림 · 축척 미검증 → 스케일 보정 필요)';
           var svg=renderParsePreview(d);
