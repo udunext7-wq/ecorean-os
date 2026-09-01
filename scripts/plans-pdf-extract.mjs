@@ -15,12 +15,24 @@ export async function extractPage(file, pno) {
   const ol = await page.getOperatorList();
   const base = vp.transform;                     // PDF 좌표(원점 좌하) → 화면 좌표(원점 좌상)
   let ctm = base.slice(); const stack = [];
-  let lineWidth = 1;
+  let lineWidth = 1, stroke = '#000000', dashed = false;
+  const hex = (r, g, b) => '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  const colorOf = (a, cur) => {
+    if (!a || !a.length) return cur;
+    if (typeof a[0] === 'string') { const m = a[0].match(/^#[0-9a-f]{6}/i); return m ? m[0].toLowerCase() : cur; }
+    if (a.length >= 3) return hex(a[0], a[1], a[2]);
+    if (a.length === 1) { const g = a[0] <= 1 ? a[0] * 255 : a[0]; return hex(g, g, g); }
+    return cur;
+  };
   const segs = [], rects = [];
   for (let i = 0; i < ol.fnArray.length; i++) {
     const fn = ol.fnArray[i], args = ol.argsArray[i];
-    if (fn === OPS.save) stack.push({ ctm: ctm.slice(), lineWidth });
-    else if (fn === OPS.restore) { const s = stack.pop(); if (s) { ctm = s.ctm; lineWidth = s.lineWidth; } }
+    if (fn === OPS.save) stack.push({ ctm: ctm.slice(), lineWidth, stroke, dashed });
+    else if (fn === OPS.restore) { const s = stack.pop(); if (s) { ctm = s.ctm; lineWidth = s.lineWidth; stroke = s.stroke; dashed = s.dashed; } }
+    else if (fn === OPS.setDash) dashed = !!(args && args[0] && args[0].length)
+    else if (fn === OPS.setStrokeRGBColor || fn === OPS.setStrokeGray || fn === OPS.setStrokeCMYKColor) stroke = colorOf(args, stroke)
+    else if (fn === OPS.paintFormXObjectBegin) { stack.push({ ctm: ctm.slice(), lineWidth, stroke }); if (args && args[0] && args[0].length >= 6) ctm = mul(ctm, args[0]); }
+    else if (fn === OPS.paintFormXObjectEnd) { const s = stack.pop(); if (s) { ctm = s.ctm; lineWidth = s.lineWidth; stroke = s.stroke; } }
     else if (fn === OPS.transform) ctm = mul(ctm, args);
     else if (fn === OPS.setLineWidth) lineWidth = args[0];
     else if (fn === OPS.constructPath) {
@@ -35,11 +47,11 @@ export async function extractPage(file, pno) {
         while (k < c.length) {
           const tag = c[k++];
           if (tag === 0) { cur = ap(ctm, c[k], c[k + 1]); start = cur; pts.length = 0; pts.push(cur); k += 2; }
-          else if (tag === 1) { const p = ap(ctm, c[k], c[k + 1]); if (cur) segs.push({ a: cur, b: p, lw: lineWidth * sx, filled }); cur = p; pts.push(p); k += 2; }
-          else if (tag === 2) { const p = ap(ctm, c[k + 4], c[k + 5]); if (cur) segs.push({ a: cur, b: p, lw: lineWidth * sx, filled }); cur = p; pts.push(p); k += 6; }
-          else if (tag === 3) { const p = ap(ctm, c[k + 2], c[k + 3]); if (cur) segs.push({ a: cur, b: p, lw: lineWidth * sx, filled }); cur = p; pts.push(p); k += 4; }
+          else if (tag === 1) { const p = ap(ctm, c[k], c[k + 1]); if (cur) segs.push({ a: cur, b: p, lw: lineWidth * sx, filled, c: stroke, dashed }); cur = p; pts.push(p); k += 2; }
+          else if (tag === 2) { const p = ap(ctm, c[k + 4], c[k + 5]); if (cur) segs.push({ a: cur, b: p, lw: lineWidth * sx, filled, c: stroke, dashed }); cur = p; pts.push(p); k += 6; }
+          else if (tag === 3) { const p = ap(ctm, c[k + 2], c[k + 3]); if (cur) segs.push({ a: cur, b: p, lw: lineWidth * sx, filled, c: stroke, dashed }); cur = p; pts.push(p); k += 4; }
           else if (tag === 4) {
-            if (cur && start) segs.push({ a: cur, b: start, lw: lineWidth * sx, filled });
+            if (cur && start) segs.push({ a: cur, b: start, lw: lineWidth * sx, filled, c: stroke, dashed });
             // 닫힌 4점 경로 = 사각형(채움 사각형은 벽 후보)
             if (pts.length === 4 || (pts.length === 5 && Math.hypot(pts[4].x - pts[0].x, pts[4].y - pts[0].y) < 0.01)) rects.push({ p: pts.slice(0, 4), lw: lineWidth * sx, filled });
             cur = start;
