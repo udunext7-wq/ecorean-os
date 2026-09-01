@@ -259,6 +259,7 @@ export function toDoc(res, meta) {
       note: `LH 건축구조도면(CAD PDF) 벡터 좌표. 축척 1/${res.scale}(${res.scaleBasis}). 구조(내력)벽만 — 경량 칸막이벽·방 이름은 없다. 시공 전 실측 확인.`,
       verified: !!res.verified, warn: res.warn || [], source: 'LH 건축구조도면공개', source_file: basename(meta.file), source_page: res.page,
       scale: res.scale, scale_basis: res.scaleBasis, scale_note: res.scaleNote || null, mm_per_pt: res.mmPerPt, width_mm: res.widthMm, height_mm: res.heightMm,
+      outline_coverage: res.coverage != null ? +res.coverage.toFixed(3) : null,
       dim_check: res.bigDim ? { max_dim_text: res.bigDim, width_err: +(res.widthErr * 100).toFixed(2) + '%' } : null,
     },
     spaces: [], walls: res.walls, openings: [],
