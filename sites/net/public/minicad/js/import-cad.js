@@ -254,6 +254,43 @@ function cadDwgDbToPrims(db,opts){
  * @param opts {toMm, scale(r/길이 환산 배수), mode:'line'|'wall', closedToSpace:boolean, layers:Set|null, minLenMm:number, label:string}
  * @returns {walls,spaces,circles,arcs,texts} 생성 수
  */
+// 축 정렬 선분(mm) 배열 → 평행 쌍 → 벽 중심선. LH 구조도면 파서(scripts/plans-lh-parse.mjs)와 같은 규칙.
+//  · 두께 tMin~tMax(mm) 안에서 겹치는 평행선 쌍만 벽으로 본다 · 사이에 다른 선이 끼면 짝이 아니다
+//  · 같은 중심선·두께의 토막은 이어 붙인다
+function cadPairWalls(segsMm,opt){
+  opt=opt||{};const tMin=opt.tMin||80,tMax=opt.tMax||500,tol=opt.tol||25;
+  const H=[],V=[];
+  for(const s of segsMm){
+    const dx=Math.abs(s.x2-s.x1),dy=Math.abs(s.y2-s.y1);if(Math.hypot(dx,dy)<20) continue;
+    if(dy<=tol) H.push({c:(s.y1+s.y2)/2,a1:Math.min(s.x1,s.x2),a2:Math.max(s.x1,s.x2),layer:s.layer});
+    else if(dx<=tol) V.push({c:(s.x1+s.x2)/2,a1:Math.min(s.y1,s.y2),a2:Math.max(s.y1,s.y2),layer:s.layer});
+  }
+  const walls=[];
+  const pair=(list,horiz)=>{
+    list.sort((p,q)=>p.c-q.c);const used=new Set();
+    for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
+      const d=list[j].c-list[i].c;if(d>tMax) break;if(d<tMin) continue;
+      const o1=Math.max(list[i].a1,list[j].a1),o2=Math.min(list[i].a2,list[j].a2),ov=o2-o1;
+      if(ov<Math.min(tMin,150)) continue;
+      let blocked=false;
+      for(let k=i+1;k<j;k++){const m=list[k];if(Math.min(m.a2,o2)-Math.max(m.a1,o1)>ov*0.5){blocked=true;break;}}
+      if(blocked) continue;
+      const key=[Math.round(list[i].c),Math.round(list[j].c),Math.round(o1),Math.round(o2)].join(',');
+      if(used.has(key)) continue;used.add(key);
+      const c=(list[i].c+list[j].c)/2;
+      walls.push(horiz?{x1:o1,y1:c,x2:o2,y2:c,t:d,layer:list[i].layer}:{x1:c,y1:o1,x2:c,y2:o2,t:d,layer:list[i].layer});
+    }
+  };
+  pair(H,true);pair(V,false);
+  // 병합
+  const out=[];
+  for(const w of walls){
+    const horiz=Math.abs(w.y1-w.y2)<0.01,c=horiz?w.y1:w.x1,a1=horiz?w.x1:w.y1,a2=horiz?w.x2:w.y2;
+    const hit=out.find(o=>o.horiz===horiz&&Math.abs(o.c-c)<=tol&&Math.abs(o.t-w.t)<=tol&&a1<=o.a2+tol&&a2>=o.a1-tol);
+    if(hit){hit.a1=Math.min(hit.a1,a1);hit.a2=Math.max(hit.a2,a2);}else out.push({horiz,c,a1,a2,t:w.t,layer:w.layer});
+  }
+  return out.map(o=>o.horiz?{x1:o.a1,y1:o.c,x2:o.a2,y2:o.c,t:o.t,layer:o.layer}:{x1:o.c,y1:o.a1,x2:o.c,y2:o.a2,t:o.t,layer:o.layer});
+}
 function cadIngestPrims(prims,opts){
   const toMm=opts.toMm,k=opts.scale||1,minLen=opts.minLenMm!=null?opts.minLenMm:50;
   const allow=(layer)=>!opts.layers||opts.layers.has(layer);
@@ -291,6 +328,24 @@ function cadIngestPrims(prims,opts){
         waterproofRecommended:sp.waterproof?'CONDITIONAL':false,floorMaterial:dm.floor,color:sp.color,importedFrom:layerTag});
       polyAsSpace.add(idx);res.spaces++;
     });
+  }
+  if(opts.mode==='wallpair'){
+    const mmSegs=[];
+    (prims.segs||[]).forEach(s=>{
+      if(!allow(s.layer)) return;
+      if(s.polyId!=null&&polyAsSpace.has(s.polyId)) return;
+      const a=toMm(s.x1,s.y1),b=toMm(s.x2,s.y2);
+      mmSegs.push({x1:a[0],y1:a[1],x2:b[0],y2:b[1],layer:s.layer});
+    });
+    const paired=cadPairWalls(mmSegs,{tMin:opts.tMin||80,tMax:opts.tMax||500});
+    res.unpaired=mmSegs.length;
+    paired.forEach(p=>{
+      const len=Math.hypot(p.x2-p.x1,p.y2-p.y1);if(len<minLen){res.dropped++;return;}
+      const v1=vertexAt(p.x1,p.y1),v2=vertexAt(p.x2,p.y2);if(v1===v2){res.dropped++;return;}
+      const w=makeWallVEF(v1.id,v2.id,{thickness:Math.max(50,Math.round(p.t/10)*10),layerName:p.layer||layerTag,spaceId:null,wallType:'standard'});
+      w.importedFrom=layerTag;STATE.walls.push(w);res.walls++;
+    });
+    return res;
   }
   (prims.segs||[]).forEach(s=>{
     if(!allow(s.layer)) return;
@@ -388,7 +443,7 @@ function cadFinish(res,label){
   if(typeof zoomFit==='function') zoomFit(); else if(typeof renderAll==='function') renderAll();
   if(typeof refreshUI==='function') refreshUI();
   const parts=[];
-  if(res.walls) parts.push((res.mode==='wall'?'벽 ':'참조선 ')+res.walls+'개');
+  if(res.walls) parts.push((res.mode==='wallpair'?'벽(자동 인식) ':res.mode==='wall'?'벽 ':'참조선 ')+res.walls+'개');
   if(res.spaces) parts.push('공간 '+res.spaces+'개');
   if(res.circles) parts.push('원 '+res.circles+'개');
   if(res.arcs) parts.push('호 '+res.arcs+'개');
@@ -430,8 +485,9 @@ async function importPDFFile(file){
       ' <span style="color:var(--ink-3)">(종이 1mm = 실제 N mm. 모르면 1:100 후 📐 스케일 보정)</span></div>'+
     '<div id="cad-pdf-vec-opts">'+
       '<div class="field" style="margin-bottom:8px"><label class="field-label">선 종류</label> '+
-        '<label style="margin-right:12px"><input type="radio" name="cad-pdf-kind" value="line" checked> 참조선 (얇게, 추적용)</label>'+
-        '<label><input type="radio" name="cad-pdf-kind" value="wall"> 벽 (두께 '+STATE.wallThickness+'mm)</label></div>'+
+        '<label style="margin-right:12px"><input type="radio" name="cad-pdf-kind" value="wallpair" checked> 벽 자동 인식 (외곽선 두 줄 → 실제 두께)</label>'+
+        '<label style="margin-right:12px"><input type="radio" name="cad-pdf-kind" value="line"> 참조선 (얇게, 추적용)</label>'+
+        '<label><input type="radio" name="cad-pdf-kind" value="wall"> 벽 (외곽선마다 고정 두께 '+STATE.wallThickness+'mm)</label></div>'+
       '<div class="field" style="margin-bottom:8px"><label><input type="checkbox" id="cad-pdf-fills"> 채움 도형 외곽선도 포함 (해치·굵은 벽 표현이 채움인 PDF)</label></div>'+
       '<div class="field" style="margin-bottom:8px"><label><input type="checkbox" id="cad-pdf-closed"> 닫힌 도형(0.5㎡ 이상) → 공간으로</label></div>'+
       '<div class="field" style="margin-bottom:8px"><label class="field-label">최소 길이</label> <input type="number" id="cad-pdf-minlen" class="ipt" value="100" min="0" step="10" style="width:80px"> mm 미만 선 제외</div>'+
