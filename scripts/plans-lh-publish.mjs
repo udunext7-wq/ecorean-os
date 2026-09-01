@@ -45,7 +45,11 @@ let n = 0, ok = 0, fail = 0;
 for (const site of summary) {
   const complex = complexOf(site.name, site.list_no);
   const g = geo[site.list_no] || {};
-  for (const row of (site.rows || []).filter(r => r.ok)) {
+  // 같은 층 도면이 동(棟)마다 반복되는 단지가 많다 — 제목·크기·벽 수가 같은 것은 하나만 올린다
+  const seen = new Set();
+  for (const row of (site.rows || []).filter(r => r.ok && r.verified)) {
+    const key = `${row.title}|${Math.round(row.widthMm / 200)}|${Math.round(row.heightMm / 200)}|${Math.round(row.walls / 5)}`;
+    if (seen.has(key)) continue; seen.add(key);
     n++;
     const doc = JSON.parse(readFileSync(row.json, 'utf8'));
     if (!doc.meta.verified) continue;

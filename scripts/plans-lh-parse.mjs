@@ -96,14 +96,16 @@ function pairWalls(segs, mmPerPt, opt = {}) {
   return walls;
 }
 
-// 같은 중심선·같은 두께의 토막을 잇는다
-function mergeWalls(walls, tol) {
+// 같은 중심선·같은 두께의 토막을 잇는다.
+// gap: CAD 가 파선 선종을 짧은 실선 조각으로 내보내는 경우가 있어(벽이 점선처럼 끊김) 이 간격까지는 이어 붙인다.
+// 문 개구부(700mm 이상)는 잇지 않도록 300mm 안쪽으로 둔다.
+function mergeWalls(walls, tol, gap = 0) {
   const out = [];
-  for (const w of walls) {
+  for (const w of walls.slice().sort((p, q) => (p.horiz ? p.y1 : p.x1) - (q.horiz ? q.y1 : q.x1))) {
     const horiz = Math.abs(w.y1 - w.y2) < 0.01;
     const c = horiz ? w.y1 : w.x1, a1 = horiz ? w.x1 : w.y1, a2 = horiz ? w.x2 : w.y2;
-    const hit = out.find(o => o.horiz === horiz && Math.abs(o.c - c) <= tol && Math.abs(o.t - w.t) <= tol
-      && a1 <= o.a2 + tol && a2 >= o.a1 - tol);
+    const hit = out.find(o => o.horiz === horiz && Math.abs(o.c - c) <= tol && Math.abs(o.t - w.t) <= tol * 2
+      && a1 <= o.a2 + tol + gap && a2 >= o.a1 - tol - gap);
     if (hit) { hit.a1 = Math.min(hit.a1, a1); hit.a2 = Math.max(hit.a2, a2); }
     else out.push({ horiz, c, a1, a2, t: w.t });
   }
@@ -176,10 +178,31 @@ export async function parseUnitPage(file, page) {
   const buildAt = (S) => {
     const mmPerPt = PT_MM * S;
     const raw = pairWalls(wallSegs, mmPerPt);
-    const merged = mergeWalls(raw, 0.6);
+    const merged = mergeWalls(mergeWalls(raw, 0.6), 0.6, 300 / mmPerPt);   // 2회: 먼저 맞닿은 것, 다음 파선 간격
     const cl = clusters(merged, 40);
     if (!cl.length) return null;
     const main = cl[0];
+    // 재현율 — 주 도면 영역 안의 벽 외곽선 길이 중 벽 footprint 에 덮인 비율. 낮으면 벽을 놓친 것이다.
+    const bx0 = main.x0 - 2, by0 = main.y0 - 2, bx1 = main.x1 + 2, by1 = main.y1 + 2;
+    let outlineLen = 0, coveredLen = 0;
+    for (const sg of wallSegs) {
+      const hx = Math.abs(sg.b.y - sg.a.y) < 0.5, vx = Math.abs(sg.b.x - sg.a.x) < 0.5;
+      if (!hx && !vx) continue;
+      const mx = (sg.a.x + sg.b.x) / 2, my = (sg.a.y + sg.b.y) / 2;
+      if (mx < bx0 || mx > bx1 || my < by0 || my > by1) continue;
+      const L = Math.hypot(sg.b.x - sg.a.x, sg.b.y - sg.a.y); if (L < 1) continue;
+      outlineLen += L;
+      const c = hx ? my : mx, s1 = hx ? Math.min(sg.a.x, sg.b.x) : Math.min(sg.a.y, sg.b.y), s2 = hx ? Math.max(sg.a.x, sg.b.x) : Math.max(sg.a.y, sg.b.y);
+      let cov = 0;
+      for (const w of main.walls) {
+        const wh = Math.abs(w.y1 - w.y2) < 0.01; if (wh !== hx) continue;
+        const wc = wh ? w.y1 : w.x1; if (Math.abs(wc - c) > w.t / 2 + 1) continue;
+        const w1 = wh ? Math.min(w.x1, w.x2) : Math.min(w.y1, w.y2), w2 = wh ? Math.max(w.x1, w.x2) : Math.max(w.y1, w.y2);
+        cov = Math.max(cov, Math.min(w2, s2) - Math.max(w1, s1));
+      }
+      coveredLen += Math.max(0, Math.min(L, cov));
+    }
+    const coverage = outlineLen ? coveredLen / outlineLen : 0;
     const ox = main.x0, oy = main.y0;
     const R = v => Math.round(v * mmPerPt);
     const walls = main.walls.map((w, i) => ({
@@ -191,32 +214,35 @@ export async function parseUnitPage(file, page) {
     const lt = longWalls.map(w => w.thickness).sort((p, q) => p - q);
     const longThick = lt[lt.length >> 1] || null;
     const tks = walls.map(w => w.thickness).sort((p, q) => p - q);
-    return { mmPerPt, walls, main, widthMm, heightMm, longThick, clusters: cl.length, medianThick: tks[tks.length >> 1] || null, origin: { x: ox, y: oy } };
+    return { mmPerPt, walls, main, widthMm, heightMm, longThick, coverage, clusters: cl.length, medianThick: tks[tks.length >> 1] || null, origin: { x: ox, y: oy } };
   };
-  // 축척 검증 — 긴 벽 두께가 벽체 상식 범위(130~320mm)에 있고 세대 평면 크기이면 채택
+  // 축척·품질 검증 — 긴 벽 두께가 벽체 상식 범위(130~320mm), 세대 평면 크기, 외곽선 재현율 80% 이상
+  // 축척 선택은 두께·크기로만 한다 (재현율로 고르면 엉뚱한 축척이 '맞아 보일' 수 있다)
   const fits = r => r && r.longThick != null && r.longThick >= 130 && r.longThick <= 320 && r.widthMm >= 6000 && r.widthMm <= 60000 && r.heightMm >= 4000 && r.walls.length >= 20;
+  const COV_MIN = 0.5;   // 외곽선에는 100mm 난간·계단 상세도 섞여 있어 80% 는 정상 도면도 못 넘는다(실측 59~83%)
   let picked = null, first = null;
   for (const cand of scaleCandidates(d.texts, d.width)) {
     const r = buildAt(cand.S);
     if (!r) continue;
     if (!first) first = { ...r, scale: cand.S, scaleBasis: cand.basis };
     if (fits(r)) { picked = { ...r, scale: cand.S, scaleBasis: cand.basis }; break; }
-    // 두께 추정 단계에서 명시 표기와 다른 축척이 맞아떨어지면 그 사실을 남긴다
   }
   const r = picked || first;
   if (!r) return { ok: false, reason: '벽 쌍 없음' };
   const warn = [];
-  if (!picked) {
+  if (picked && r.coverage < COV_MIN) { warn.push(`외곽선 재현율 ${Math.round(r.coverage * 100)}% — 벽 누락`); picked = null; }
+  if (!picked && r.coverage >= COV_MIN) {
     if (r.longThick == null || r.longThick < 130 || r.longThick > 320) warn.push(`장벽 두께 ${r.longThick}mm — 축척 의심`);
     if (r.walls.length < 20) warn.push(`벽 ${r.walls.length}개 — 도면 아님(부재 일람·상세)`);
     if (r.widthMm < 6000 || r.heightMm < 4000) warn.push(`크기 ${r.widthMm}×${r.heightMm}mm — 세대 평면 아님`);
+    if (r.coverage < 0.8) warn.push(`외곽선 재현율 ${Math.round(r.coverage * 100)}% — 벽 누락`);
   }
   // 표기 축척과 다른 축척이 채택됐으면 남긴다 (한 장에 축척이 다른 도면이 섞인 경우가 있다)
   const explicitS = scaleOf(d.texts, d.width);
   const scaleNote = (picked && explicitS && explicitS.S !== r.scale) ? `표기 1/${explicitS.S} 대신 벽 두께로 1/${r.scale} 채택` : null;
   const widthErr = bigDim ? Math.abs(r.widthMm - bigDim) / bigDim : null;
   return {
-    ok: true, page, title, scale: r.scale, scaleBasis: r.scaleBasis, scaleNote, mmPerPt: r.mmPerPt, lw: +lwKey[0], longThick: r.longThick, warn, verified: !!picked,
+    ok: true, page, title, scale: r.scale, scaleBasis: r.scaleBasis, scaleNote, mmPerPt: r.mmPerPt, lw: +lwKey[0], longThick: r.longThick, coverage: r.coverage, warn, verified: !!picked,
     walls: r.walls, wallCount: r.walls.length, clusters: r.clusters,
     widthMm: r.widthMm, heightMm: r.heightMm, bigDim, widthErr, medianThick: r.medianThick,
     origin: r.origin, pageSize: { w: d.width, h: d.height },
