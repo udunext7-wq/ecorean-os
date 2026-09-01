@@ -20,7 +20,15 @@ sites/net/public/minicad/
     ├── touch.js        initTouch() — 태블릿 터치·S펜 레이어 + 통합 컨텍스트 메뉴
     ├── estimate.js     자동 견적서(단가표)
     └── tests.js        자체 테스트 (?test=1) — 커밋 전 통과 필수
+├── 3d/                 2026-09-01 3D 뷰 (별도 탭, Coohom 식 1단계) — [🧊 3D] 버튼 / `3d` 명령
+│   ├── index.html      뷰어 페이지 (library.js + build3d.js + importmap → view3d.js)
+│   ├── build3d.js      문서(JSON) → 3D 기본체 목록. THREE 무관 순수 계산 — 노드 테스트 tests/minicad-3d.cjs
+│   └── view3d.js       three.js 장면·조감/걷기·조명·클릭 이름표·PNG/GLB/JSON 내보내기
+└── vendor/three/       three.js r170 (module 빌드 + OrbitControls + GLTFExporter, MIT) — 외부 CDN 없음
 ```
+3D 동기화: MiniCAD `open3DView()`(ui.js) 가 문서를 localStorage `minicad.3d.doc` 로 넘기고 새 탭을 연다. 이후 `saveHistory`/undo/redo 가 `push3D()` 를 불러 BroadcastChannel `minicad-3d` 로 300ms 묶음 전송 → 3D 탭이 즉시 다시 조립한다. 3D 탭이 먼저 열려 있으면 `hello` 를 보내와 전송이 켜진다.
+3D 는 평면 데이터만으로 세운다 — 벽(두께·높이·마감색)/문·창(폭·높이·창턱, 인방·창턱 자동)/바닥·천장(공간 폴리곤)/가구·기구(종류별 높이 프로파일, build3d.js `FURN_H` 등)/조명(천장 높이에 부착, 발광 + 포인트라이트 최대 24)/기둥/계단(직선 도식). 벽 정렬(interior/exterior)은 아직 중심선으로만 세운다.
+GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이름` 으로 들어간다.
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 

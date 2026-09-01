@@ -3455,6 +3455,7 @@ function _paletteCommands(){
     {label:'🖨 바로 인쇄 (직전 설정으로)',kw:'print 인쇄 바로 출력',run:()=>printPlan()},
     {label:'⬚ 인쇄 영역 드래그로 지정',kw:'print 인쇄 영역 범위 부분 확대 crop',run:startPrintRegionPick},
     {label:'🖥 인쇄 영역 — 화면에서 잡기 (pf)',kw:'print 인쇄 영역 틀 화면 잡기 frame pf',run:()=>togglePrintFrame()},
+    {label:'🧊 3D 뷰 — 평면을 입체로, 별도 탭 (3d)',kw:'3d 3D 입체 three 뷰 걷기 조감 view',run:()=>open3DView()},
     {label:'📐 입면도 — 평면도에서 자동 생성 (el)',kw:'elevation 입면도 입면 el 벙 방위 단면',run:()=>openElevationDialog()},
     {label:'─ 절단선 긋기 — 보는 방향 직접 고르기 (K)',kw:'section 절단선 절단면 방향 입면 sc',run:()=>setTool('section')},
     {label:'🔌 선택한 조명을 스위치에 연결 (link)',kw:'circuit link 연결 조명 스위치 회로 다중',run:()=>startCircuitAttach()},
@@ -5258,6 +5259,44 @@ document.getElementById('btn-dim').addEventListener('click',toggleDim);
 document.getElementById('btn-circuits').addEventListener('click',toggleCircuits); // 2026-08-27
 (function(){const b=document.getElementById('btn-symlabel');if(b)b.addEventListener('click',cycleSymbolLabelMode);})(); // 2026-08-28
 (function(){const b=document.getElementById('btn-printframe');if(b)b.addEventListener('click',()=>togglePrintFrame());})(); // 2026-08-28
+// ===== 2026-09-01: 3D 뷰 (별도 탭, Coohom 식 1단계) =====
+//  [🧊 3D]/`3d` → 3d/index.html 을 새 탭으로. 문서는 localStorage 로 처음 넘기고,
+//  이후에는 BroadcastChannel('minicad-3d') 로 saveHistory 때마다(300ms 묶음) 흘려보내 평면 수정이 바로 입체에 반영된다.
+//  3D 탭이 먼저 열려 있으면 'hello' 를 보내오므로 그때부터 전송을 켠다. 페이로드는 buildAutosavePayload(경량).
+let _view3dChan=null,_view3dTimer=null,_view3dLive=false;
+function _view3dPayload(){
+  // getter(polygon·x1..y2)를 값으로 굳힌다 — structured clone 은 접근자를 못 옮길 수 있다
+  return JSON.parse(JSON.stringify(buildAutosavePayload()));
+}
+function _view3dChannel(){
+  if(_view3dChan) return _view3dChan;
+  if(typeof BroadcastChannel==='undefined') return null;
+  _view3dChan=new BroadcastChannel('minicad-3d');
+  _view3dChan.onmessage=e=>{ const m=e.data||{}; if(m.type==='hello'){_view3dLive=true;push3D(true);} };
+  return _view3dChan;
+}
+function push3D(now){
+  if(!_view3dLive) return;
+  if(_view3dTimer) clearTimeout(_view3dTimer);
+  const go=()=>{
+    _view3dTimer=null;
+    try{
+      const doc=_view3dPayload(), at=Date.now();
+      const ch=_view3dChannel();
+      if(ch) ch.postMessage({type:'doc',at,doc});
+      try{localStorage.setItem('minicad.3d.doc',JSON.stringify({at,data:doc}));}catch(_){}
+    }catch(e){ console.warn('[3D] 전송 실패',e); }
+  };
+  if(now) go(); else _view3dTimer=setTimeout(go,300);
+}
+function open3DView(){
+  _view3dChannel();
+  _view3dLive=true;
+  push3D(true);
+  const w=window.open('3d/index.html','minicad3d');
+  if(!w&&typeof showStatus==='function') showStatus('팝업이 막혔습니다 — 브라우저에서 이 사이트의 팝업을 허용하세요');
+}
+(function(){const b=document.getElementById('btn-3d');if(b)b.addEventListener('click',()=>open3DView());_view3dChannel();})();
 (function(){const b=document.getElementById('btn-elev');if(b)b.addEventListener('click',()=>openElevationDialog());})(); // 2026-08-30
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
@@ -5996,6 +6035,7 @@ function processCommand(rawCmd){
   // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
   if(/^(pf|인쇄영역)$/i.test(c)){togglePrintFrame();return;} // 2026-08-28
+  if(/^(3d|입체)$/i.test(c)){open3DView();return;} // 2026-09-01
   if(/^(el|elev|입면|입면도)$/i.test(c)){openElevationDialog();return;} // 2026-08-30
   if(/^(sc|section|절단|절단선)$/i.test(c)){setTool('section');return;} // 2026-08-30
   // 2026-08-29: 고른 조명들을 한 번에 — link=스위치에, chain=서로 점핑

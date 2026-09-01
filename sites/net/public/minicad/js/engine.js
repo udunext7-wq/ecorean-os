@@ -1062,6 +1062,8 @@ function saveHistory(){
   STATE.historyIdx=STATE.history.length-1;
   // 2026-08-24 v6.0: 변경 시 자동 저장 (ui.js, 2초 디바운스)
   if(typeof scheduleAutosave==='function') scheduleAutosave();
+  // 2026-09-01: 3D 탭이 열려 있으면 300ms 묶음으로 흘려보낸다 (ui.js push3D — 열려 있지 않으면 즉시 반환)
+  if(typeof push3D==='function') push3D();
 }
 function undo(){
   if(STATE.historyIdx<=0){showStatus('실행취소 불가');return;}
@@ -1069,6 +1071,7 @@ function undo(){
   Object.assign(STATE,JSON.parse(STATE.history[STATE.historyIdx]));
   reinstallVEFAll();
   renderAll();refreshUI();showStatus('실행취소');
+  if(typeof push3D==='function') push3D(); // 2026-09-01: 3D 탭 동기화
 }
 function redo(){
   if(STATE.historyIdx>=STATE.history.length-1){showStatus('재실행 불가');return;}
@@ -1076,6 +1079,7 @@ function redo(){
   Object.assign(STATE,JSON.parse(STATE.history[STATE.historyIdx]));
   reinstallVEFAll();
   renderAll();refreshUI();showStatus('재실행');
+  if(typeof push3D==='function') push3D(); // 2026-09-01: 3D 탭 동기화
 }
 
 // v5.9: 잠금 시각효과 — 반투명(0.30) + 점선만 사용 (배지 제거)
