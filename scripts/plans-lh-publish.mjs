@@ -25,7 +25,8 @@ function thumb(doc) {
   const x0 = Math.min(...W.map(w => Math.min(w.x1, w.x2))) - 300, y0 = Math.min(...W.map(w => Math.min(w.y1, w.y2))) - 300;
   const x1 = Math.max(...W.map(w => Math.max(w.x1, w.x2))) + 300, y1 = Math.max(...W.map(w => Math.max(w.y1, w.y2))) + 300;
   const lines = W.map(w => `<line x1="${w.x1}" y1="${w.y1}" x2="${w.x2}" y2="${w.y2}" stroke="#1A1814" stroke-width="${w.thickness}" stroke-linecap="square"/>`).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x0} ${y0} ${x1 - x0} ${y1 - y0}"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="#fbfaf6"/>${lines}</svg>`;
+  // mm 단위 viewBox 는 수만 px 로 래스터화돼 sharp 픽셀 상한을 넘는다 → 출력 크기를 명시한다
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${Math.max(200, Math.round(1200 * (y1 - y0) / (x1 - x0)))}" viewBox="${x0} ${y0} ${x1 - x0} ${y1 - y0}"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="#fbfaf6"/>${lines}</svg>`;
 }
 
 async function post(body) {

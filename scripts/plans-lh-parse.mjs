@@ -43,8 +43,12 @@ function scaleOf(texts, width) {
 }
 
 // 평행 외곽선 쌍 → 벽. 축 정렬 선만 다룬다(구조도면 벽은 직교).
+// 두 단계로 짝짓는다:
+//  1차: 두 면 사이에 다른 선이 없는 깨끗한 쌍만.
+//  2차: 1차에서 못 잡은 구간에 한해, 사이에 선이 있어도(벽 중심선을 같은 굵기로 그린 도면) 짝을 허용.
+//  tMin 125mm — 200mm 벽의 '면–중심선' 거리(100mm)를 벽으로 오인하지 않게 하는 하한.
 function pairWalls(segs, mmPerPt, opt = {}) {
-  const tMin = (opt.tMin || 100) / mmPerPt, tMax = (opt.tMax || 450) / mmPerPt;
+  const tMin = (opt.tMin || 125) / mmPerPt, tMax = (opt.tMax || 450) / mmPerPt;
   const H = [], V = [];
   for (const s of segs) {
     const dx = Math.abs(s.b.x - s.a.x), dy = Math.abs(s.b.y - s.a.y);
@@ -53,9 +57,11 @@ function pairWalls(segs, mmPerPt, opt = {}) {
     else if (dx < 0.5) V.push({ c: (s.a.x + s.b.x) / 2, a1: Math.min(s.a.y, s.b.y), a2: Math.max(s.a.y, s.b.y) });
   }
   const walls = [];
-  const pair = (list, horiz) => {
+  const pair = (list, horiz, allowBlocked, covered) => {
     list.sort((p, q) => p.c - q.c);
     const used = new Set();
+    // 이미 벽이 된 구간인가 (중심선 c, 구간 [o1,o2]) — 2차에서 중복 생성을 막는다
+    const isCovered = (c, o1, o2) => covered.some(w => Math.abs(w.c - c) <= 1.5 && Math.min(w.a2, o2) - Math.max(w.a1, o1) > (o2 - o1) * 0.6);
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
         const d = list[j].c - list[i].c;
@@ -64,21 +70,24 @@ function pairWalls(segs, mmPerPt, opt = {}) {
         const o1 = Math.max(list[i].a1, list[j].a1), o2 = Math.min(list[i].a2, list[j].a2);
         const ov = o2 - o1;
         if (ov < Math.min(4, tMin)) continue;
-        // 두 선 사이에 다른 외곽선이 끼어 있으면(벽 두 겹) 짝이 아니다
         let blocked = false;
-        for (let k = i + 1; k < j; k++) {
+        for (let k = i + 1; k < j && !allowBlocked; k++) {
           const m = list[k];
           if (Math.min(m.a2, o2) - Math.max(m.a1, o1) > ov * 0.5) { blocked = true; break; }
         }
         if (blocked) continue;
+        const c = (list[i].c + list[j].c) / 2;
+        if (allowBlocked && isCovered(c, o1, o2)) continue;
         const key = [Math.round(list[i].c), Math.round(list[j].c), Math.round(o1), Math.round(o2)].join(',');
         if (used.has(key)) continue; used.add(key);
-        const c = (list[i].c + list[j].c) / 2;
         walls.push(horiz ? { x1: o1, y1: c, x2: o2, y2: c, t: d } : { x1: c, y1: o1, x2: c, y2: o2, t: d });
       }
     }
   };
-  pair(H, true); pair(V, false);
+  const cov = (horiz) => walls.filter(w => horiz ? Math.abs(w.y1 - w.y2) < 0.01 : Math.abs(w.x1 - w.x2) < 0.01)
+    .map(w => horiz ? { c: w.y1, a1: Math.min(w.x1, w.x2), a2: Math.max(w.x1, w.x2) } : { c: w.x1, a1: Math.min(w.y1, w.y2), a2: Math.max(w.y1, w.y2) });
+  pair(H, true, false, []); pair(V, false, false, []);
+  pair(H, true, true, cov(true)); pair(V, false, true, cov(false));
   return walls;
 }
 
@@ -153,7 +162,8 @@ export async function parseUnitPage(file, page) {
   const longThick = lt[lt.length >> 1] || null;
   const warn = [];
   if (longThick != null && (longThick < 120 || longThick > 350)) warn.push(`장벽 두께 ${longThick}mm — 축척 의심`);
-  if (walls.length < 8) warn.push(`벽 ${walls.length}개 — 도면 아님`);
+  if (walls.length < 20) warn.push(`벽 ${walls.length}개 — 도면 아님(부재 일람·상세)`);
+  if (widthMm < 6000 || heightMm < 4000) warn.push(`크기 ${widthMm}×${heightMm}mm — 세대 평면 아님`);
   return {
     ok: true, page, title, scale: sc.S, scaleBasis: sc.basis, mmPerPt, lw: +lwKey[0], longThick, warn, verified: warn.length === 0,
     walls, wallCount: walls.length, clusters: cl.length,
@@ -170,7 +180,7 @@ export function toDoc(res, meta) {
       wallThickness: res.medianThick || 200,
       tool: 'ECOREAN LH 구조도면 벡터 파서 v1',
       note: `LH 건축구조도면(CAD PDF) 벡터 좌표. 축척 1/${res.scale}(${res.scaleBasis}). 구조(내력)벽만 — 경량 칸막이벽·방 이름은 없다. 시공 전 실측 확인.`,
-      verified: true, source: 'LH 건축구조도면공개', source_file: basename(meta.file), source_page: res.page,
+      verified: !!res.verified, warn: res.warn || [], source: 'LH 건축구조도면공개', source_file: basename(meta.file), source_page: res.page,
       scale: res.scale, mm_per_pt: res.mmPerPt, width_mm: res.widthMm, height_mm: res.heightMm,
       dim_check: res.bigDim ? { max_dim_text: res.bigDim, width_err: +(res.widthErr * 100).toFixed(2) + '%' } : null,
     },
