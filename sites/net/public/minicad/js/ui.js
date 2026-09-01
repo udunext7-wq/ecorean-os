@@ -2190,23 +2190,90 @@ function buildJSONProfile(profile){
 let _jsonTimer=null;
 function refreshJSON(){
   if(!_tabActive('json')){_jsonDirty=true;return;}
+  // 2026-09-01 대표 보고: JSON 탭을 켜 둔 채 도면을 만지면 컴퓨터가 느리다.
+  //  탭이 열려 있으면 고칠 때마다 문서 전체(수십만 줄)를 다시 만들어 붙이고 있었다.
+  //  한 번 만들어 보고 오래 걸리는 도면이면 그다음부터는 손으로 눌러 새로 고치게 한다.
+  //  (내보내기·복사는 언제나 그 자리에서 새로 만들므로 최신이 나간다)
+  if(_jsonLastMs>JSON_HEAVY_MS){
+    _jsonDirty=true;
+    const info=document.getElementById('json-info');
+    if(info&&info.dataset.stale!=='1'){
+      info.dataset.stale='1';
+      info.innerHTML='도면이 바뀌었습니다 — 아래 <b>↻ 새로 고침</b> 을 누르면 다시 읽습니다.'+
+        ' 큰 도면이라 자동 갱신을 멈춰 두었습니다 (그려 넣는 동안 느려지지 않게).'+
+        ' 내보내기·복사는 언제나 최신입니다.';
+    }
+    return;
+  }
   _jsonDirty=false;
   if(_jsonTimer) clearTimeout(_jsonTimer);
   _jsonTimer=setTimeout(refreshJSONNow,250);
+}
+// 2026-09-01 대표 보고: JSON 탭을 누르면 컴퓨터가 멈춘 듯 느리다.
+//  종전엔 전체 JSON(수 MB)을 통째로 정규식 4번 돌리고 innerHTML 로 밀어 넣었다.
+//  큰 도면이면 DOM 노드가 수만 개 생겨 브라우저가 그걸 그리느라 굳는다.
+//  → 화면에는 앞부분만 보여 주고, 실제로 필요한 건 '파일로 내보내기' 로 뽑는다.
+const JSON_PREVIEW_LINES=400;      // 화면에 띄우는 줄 수
+const JSON_PREVIEW_MAX=120000;     // 그래도 이보다 길면 자른다 (글자 수)
+let _jsonFullShown=false;
+const JSON_HEAVY_MS=120;   // 이보다 오래 걸리는 도면이면 자동 갱신을 멈춘다
+let _jsonLastMs=0;
+function _jsonHighlight(t){
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span class="s">"$1"</span>')
+    .replace(/: (-?\d+\.?\d*)/g,': <span class="n">$1</span>')
+    .replace(/: (true|false|null)/g,': <span class="b">$1</span>');
+}
+function jsonProfileNow(){
+  const _prof=document.getElementById('json-profile');
+  return _prof?_prof.value:'full';
+}
+function jsonTextNow(){ return JSON.stringify(buildJSONProfile(jsonProfileNow()),null,2); }
+function _jsonSizeLabel(n){
+  return (n<1024)?(n+' B'):(n<1024*1024)?((n/1024).toFixed(1)+' KB'):((n/1048576).toFixed(2)+' MB');
 }
 function refreshJSONNow(){
   if(_jsonTimer){clearTimeout(_jsonTimer);_jsonTimer=null;}
   if(!_tabActive('json')){_jsonDirty=true;return;}
   _jsonDirty=false;
-  const _prof=document.getElementById('json-profile');
-  const t=JSON.stringify(buildJSONProfile(_prof?_prof.value:'full'),null,2);
-  const h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
-    .replace(/: "([^"]*)"/g,': <span class="s">"$1"</span>')
-    .replace(/: (-?\d+\.?\d*)/g,': <span class="n">$1</span>')
-    .replace(/: (true|false|null)/g,': <span class="b">$1</span>');
-  document.getElementById('json-out').innerHTML=h;
+  const _t0=performance.now();
+  const t=jsonTextNow();
+  const lines=t.split('\n');
+  const big=(lines.length>JSON_PREVIEW_LINES)||(t.length>JSON_PREVIEW_MAX);
+  const info=document.getElementById('json-info');
+  if(info) info.innerHTML='크기 <b style="color:var(--gold,#C9A961)">'+_jsonSizeLabel(t.length)+
+    '</b> · '+lines.length.toLocaleString()+'줄'+
+    (big&&!_jsonFullShown?' — 화면에는 앞 '+JSON_PREVIEW_LINES+'줄만 보여 줍니다. 전체는 <b>파일로 내보내기</b>':'');
+  let shown=t;
+  if(big&&!_jsonFullShown){
+    shown=lines.slice(0,JSON_PREVIEW_LINES).join('\n')+
+      '\n\n… 이하 '+(lines.length-JSON_PREVIEW_LINES).toLocaleString()+'줄 생략 …';
+  }else if(shown.length>JSON_PREVIEW_MAX*4){
+    shown=shown.slice(0,JSON_PREVIEW_MAX*4)+'\n… 너무 길어 잘랐습니다 …';
+  }
+  document.getElementById('json-out').innerHTML=_jsonHighlight(shown);
+  _jsonLastMs=performance.now()-_t0;
+  if(info) info.dataset.stale='0';
+  const rb=document.getElementById('btn-json-refresh');
+  if(rb) rb.style.display=(_jsonLastMs>JSON_HEAVY_MS)?'':'none';
+  const fb=document.getElementById('btn-json-full');
+  if(fb){
+    fb.style.display=big?'':'none';
+    fb.textContent=_jsonFullShown?'앞부분만 보기':'전체 보기';
+  }
   refreshVideoSeqUI();
+}
+// 대표 지시: 복사해서 옮기지 말고 파일로 바로 뽑는다
+function exportJSONFile(){
+  const prof=jsonProfileNow();
+  const t=jsonTextNow();
+  const base=(STATE.projectName||'minicad').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
+  const d=new Date();
+  const stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+
+    '_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+  downloadText(t,base+'_'+prof+'_'+stamp+'.json','application/json');
+  cmdToast('JSON 파일로 내보냄 — '+_jsonSizeLabel(t.length)+' ('+prof+')');
 }
 
 // v5.8 Task 4: 영상 동선 순서 편집 UI (드래그 핸들)
@@ -5635,10 +5702,23 @@ document.getElementById('btn-export').addEventListener('click',()=>{
   if(_estimateDirty)refreshEstimate(); /* PERF: 지연 갱신 반영 */
 });
 document.getElementById('btn-copy-json').addEventListener('click',()=>{
-  const _prof=document.getElementById('json-profile'); // v5.9: 선택된 프로파일 그대로 복사
-  copyToClipboard(JSON.stringify(buildJSONProfile(_prof?_prof.value:'full'),null,2));
+  copyToClipboard(jsonTextNow()); // v5.9: 선택된 프로파일 그대로 복사
 });
-document.getElementById('json-profile')?.addEventListener('change',()=>refreshJSON()); // v5.9
+// 2026-09-01 대표 지시: 복사해서 옮기지 말고 파일로 바로 (JSON 탭이 느리던 문제)
+document.getElementById('btn-json-file')?.addEventListener('click',exportJSONFile);
+document.getElementById('btn-json-refresh')?.addEventListener('click',()=>{
+  if(_jsonTimer){clearTimeout(_jsonTimer);_jsonTimer=null;}
+  refreshJSONNow();
+});
+document.getElementById('btn-json-full')?.addEventListener('click',()=>{
+  _jsonFullShown=!_jsonFullShown;
+  if(_jsonFullShown) cmdToast('전체를 화면에 그립니다 — 큰 도면이면 잠깐 멈출 수 있습니다');
+  refreshJSONNow();
+});
+document.getElementById('json-profile')?.addEventListener('change',()=>{
+  _jsonFullShown=false;   // 프로파일을 바꾸면 다시 앞부분만
+  refreshJSON();
+}); // v5.9
 // 2026-08-22: 대표 지시 1번 — 태블릿에서 click 이 씹혀 모달이 안 닫히던 문제.
 //  click + pointerup(터치·펜) 이중 바인딩, 350ms 중복 제거로 두 이벤트가 다 와도 한 번만 실행.
 function _tapBind(el,fn){

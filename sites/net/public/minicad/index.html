@@ -379,8 +379,14 @@
             <option value="estimate">estimate — 견적엔진용 (물량+공간+개구부)</option>
             <option value="ai_render">ai_render — AI 생성용 (시맨틱+지오메트리)</option>
           </select></div>
+        <div id="json-info" class="hint" style="margin-bottom:6px"></div>
         <div class="json-out" id="json-out"></div>
-        <button class="btn sm gold" id="btn-copy-json" style="width:100%;margin-top:6px">→ 클립보드 복사</button>
+        <button class="btn sm gold" id="btn-json-file" style="width:100%;margin-top:6px">💾 파일로 내보내기 (.json)</button>
+        <div style="display:flex;gap:4px;margin-top:4px">
+          <button class="btn sm" id="btn-copy-json" style="flex:1">→ 클립보드 복사</button>
+          <button class="btn sm" id="btn-json-full" style="flex:1">전체 보기</button>
+          <button class="btn sm" id="btn-json-refresh" style="flex:1;display:none">↻ 새로 고침</button>
+        </div>
       </div>
     </div>
   </div>

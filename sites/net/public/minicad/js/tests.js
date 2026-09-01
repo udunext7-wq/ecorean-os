@@ -3903,6 +3903,88 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('조명분류: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-09-01 대표 보고: JSON 탭을 누르면 컴퓨터가 느리다 ===
+  //  전체를 화면에 밀어 넣던 것과, 고칠 때마다 다시 만들던 것 두 가지가 겹쳐 있었다.
+  try{
+    const _bakJS={lights:STATE.lights.slice(),full:_jsonFullShown,last:_jsonLastMs,
+      prof:(document.getElementById('json-profile')||{}).value};
+    const _tab=[...document.querySelectorAll('[data-tab]')].filter(b=>b.dataset.tab==='json')[0];
+    assert('JSON탭: 탭이 있다',!!_tab);
+    if(_tab){
+      _tab.click();
+      _jsonFullShown=false;_jsonLastMs=0;
+      // 큰 도면을 만든다 (조명 800개)
+      const JX=1200000;
+      for(let i=0;i<800;i++) STATE.lights.push({id:'js'+i,type:'downlight',
+        x:JX+(i%40)*300,y:JX+Math.floor(i/40)*300,angle:0,inch:3});
+      refreshJSONNow();
+      const out=document.getElementById('json-out');
+      const info=document.getElementById('json-info');
+      const full=jsonTextNow();
+
+      // [J1] 화면에는 앞부분만 — DOM 을 수만 개 만들지 않는다
+      assert('JSON탭: 앞부분만 그린다',out.textContent.length<full.length/3,
+        out.textContent.length+' / '+full.length);
+      assert('JSON탭: DOM 노드가 적다',out.querySelectorAll('*').length<3000,
+        String(out.querySelectorAll('*').length));
+      assert('JSON탭: 줄 수를 알려준다',/줄/.test(info.textContent)&&/KB|MB/.test(info.textContent),
+        info.textContent.slice(0,60));
+      assert('JSON탭: 생략했다고 적는다',out.textContent.indexOf('생략')>0);
+
+      // [J2] 전체 보기를 누르면 다 보여 준다 (원할 때만)
+      _jsonFullShown=true;refreshJSONNow();
+      assert('JSON탭: 전체 보기',out.textContent.length>full.length*0.9,
+        out.textContent.length+' / '+full.length);
+      _jsonFullShown=false;refreshJSONNow();
+
+      // [J3] 무거운 도면이면 자동 갱신을 멈춘다 — 그려 넣는 동안 안 느리게
+      _jsonLastMs=JSON_HEAVY_MS+1;
+      const _before=out.textContent.length;
+      const t0=performance.now();
+      for(let i=0;i<10;i++){
+        STATE.lights.push({id:'jz'+i,type:'downlight',x:JX,y:JX,angle:0,inch:3});
+        refreshJSON();
+      }
+      const dt=performance.now()-t0;
+      assert('JSON탭: 무거우면 자동 갱신 멈춤',dt<120,dt.toFixed(0)+'ms');
+      assert('JSON탭: 바뀌었다고 알려준다',
+        (document.getElementById('json-info')||{}).dataset.stale==='1',
+        String((document.getElementById('json-info')||{}).dataset.stale));
+      // 새로 고침을 누르면 다시 읽는다
+      _jsonLastMs=0;refreshJSONNow();
+      assert('JSON탭: 새로 고침하면 최신',
+        (document.getElementById('json-info')||{}).dataset.stale==='0');
+      assert('JSON탭: 가벼우면 자동 갱신 유지',(function(){
+        _jsonLastMs=1;let ok=false;
+        const _o=_jsonDirty;_jsonDirty=false;
+        refreshJSON();ok=(_jsonTimer!==null&&_jsonTimer!==undefined);
+        if(_jsonTimer){clearTimeout(_jsonTimer);_jsonTimer=null;}
+        _jsonDirty=_o;return ok;})());
+
+      // [J4] 파일로 내보내기 — 복사해 옮기지 않아도 된다
+      assert('JSON탭: 내보내기 버튼',!!document.getElementById('btn-json-file'));
+      let _dl=null;
+      const _origClick=HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click=function(){if(this.download)_dl={name:this.download,href:this.href};};
+      try{ exportJSONFile(); } finally { HTMLAnchorElement.prototype.click=_origClick; }
+      assert('JSON탭: 파일이 만들어진다',!!_dl&&/\.json$/.test(_dl.name),_dl?_dl.name:'없음');
+      assert('JSON탭: 이름에 프로파일·날짜',!!_dl&&_dl.name.indexOf('_full_')>0&&
+        /_\d{8}_\d{4}\.json$/.test(_dl.name),_dl?_dl.name:'없음');
+      assert('JSON탭: blob 로 내려받는다',!!_dl&&_dl.href.indexOf('blob:')===0);
+      // 화면이 앞부분만이어도 내보내는 건 전체다 — 대표가 파일로 뽑는 이유
+      _jsonFullShown=false;refreshJSONNow();
+      const _screen=document.getElementById('json-out').textContent.length;
+      const _file=jsonTextNow().length;
+      assert('JSON탭: 내보내기는 전체',_file>_screen*10,_screen+' 화면 / '+_file+' 파일');
+      assert('JSON탭: 내보낸 것이 제대로 된 JSON',(function(){
+        try{ const j=JSON.parse(jsonTextNow()); return Array.isArray(j.spaces)&&Array.isArray(j.lights); }
+        catch(_){ return false; }})());
+    }
+    STATE.lights=_bakJS.lights;_jsonFullShown=_bakJS.full;_jsonLastMs=_bakJS.last;
+    refreshUI();
+  }catch(e){
+    assert('JSON탭: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-08-30: 보는 방향 고르기 + 절단선 입면도 (대표 지시) ===
   try{
     const _bakSC={spaces:STATE.spaces.slice(),walls:STATE.walls.slice(),vertices:STATE.vertices.slice(),
