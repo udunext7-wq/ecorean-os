@@ -19,9 +19,14 @@ export async function listUnitPages(file) {
   for (let p = 1; p <= doc.numPages; p++) {
     const tc = await (await doc.getPage(p)).getTextContent();
     const txt = tc.items.map(i => i.str).join(' ');
-    // 도면명 칸에 '단위세대구조평면도(N층)' 이 있어야 평면 페이지다 — 배근도 페이지도 참조 문구로 같은 단어를 담고 있다
-    const m = txt.match(/단위세대\s*구조\s*평면도\s*\(([^)]*)\)/);
-    if (m && !/단위세대\s*(?:슬래브|벽체)\s*배근도\s*\(/.test(txt)) out.push({ page: p, title: m[0] });
+    // 도면명 표기가 단지마다 다르다: "단위세대구조평면도(3~5층)-1" / "단위세대 구조평면도-1" /
+    // "기준층(3~23층) 구조평면도-1" / "1층 구조평면도-2". '전체구조평면도'(동 전체 배치)와
+    // 주석의 "…구조평면도 참조" 는 제외한다. 최종 판정은 기하 검증(벽 수·크기)이 한다.
+    const cands = [...txt.matchAll(/(?:단위\s*세대\s*구조\s*평면도|기준층\s*(?:\([^)]*\))?\s*구조\s*평면도|(?:지상\s*)?\d+\s*층\s*구조\s*평면도)(?:\s*\([^)]*\))?(?:\s*-\s*\d)?(?!\s*참조)/g)]
+      .map(m => ({ s: m[0], i: m.index }))
+      .filter(m => !/전체\s*$/.test(txt.slice(Math.max(0, m.i - 8), m.i)));
+    const isRebar = /(?:슬래브|벽체|보)\s*배근도\s*(?:\(|-|\d)/.test(txt) && !/단위\s*세대\s*구조\s*평면도\s*\(/.test(txt);
+    if (cands.length && !isRebar) out.push({ page: p, title: cands[0].s.replace(/\s+/g, ' ') });
   }
   return { numPages: doc.numPages, pages: out };
 }
@@ -123,52 +128,98 @@ function clusters(walls, gap) {
   }).sort((a, b) => b.area - a.area);
 }
 
+// 축척 후보 — 표기 방식이 단지마다 달라 후보를 순서대로 모으고, 벽 두께로 실제 맞는 것을 고른다.
+//  ① 명시 표기 "A3:1/120" "축척=1/100(A3:200)"  ② 표(칸) 배치: "A3" 토큰과 같은 행의 "1/N" 토큰
+//  ③ 페이지의 모든 "1/N" (A3면 큰 값 우선)  ④ 흔한 축척 목록(숫자가 글꼴 외곽선이라 안 읽히는 도면)
+function scaleCandidates(texts, width) {
+  const isA3 = width < 1300;
+  const out = [];
+  const push = (S, basis) => { if (S >= 20 && S <= 400 && !out.some(o => o.S === S)) out.push({ S, basis }); };
+  const sc = scaleOf(texts, width);
+  if (sc) push(sc.S, sc.basis);
+  const tag = isA3 ? /^A3$/ : /^A1$/;
+  const ratio = /^1\s*[\/:]\s*(\d{2,3})$/;
+  for (const t of texts) {
+    if (!tag.test(t.str.trim())) continue;
+    let best = null;
+    for (const u of texts) {
+      const m = u.str.trim().match(ratio); if (!m) continue;
+      if (Math.abs(u.y - t.y) > 8 || u.x < t.x) continue;
+      const dx = u.x - t.x;
+      if (!best || dx < best.dx) best = { dx, S: +m[1] };
+    }
+    if (best) push(best.S, '표 배치');
+  }
+  const all = [...new Set(texts.map(t => (t.str.trim().match(ratio) || [])[1]).filter(Boolean).map(Number))].sort((x, y) => isA3 ? y - x : x - y);
+  for (const S of all) push(S, '1/N 토큰');
+  for (const S of [120, 100, 60, 150, 200, 80, 50, 40, 30]) push(S, '두께 추정');
+  return out;
+}
+
 export async function parseUnitPage(file, page) {
   const d = await extractPage(file, page);
-  const sc = scaleOf(d.texts, d.width);
-  if (!sc) return { ok: false, reason: '축척 표기 없음' };
-  const mmPerPt = PT_MM * sc.S;
   // 벽 외곽선 클래스 — 단지마다 굵기 체계가 다르다(담양 0.96pt, 다른 단지 0.72pt).
-  // 가장 많이 쓰인 가는 선(치수·해치) 굵기의 1.8배 이상인 클래스 중 총 길이가 가장 긴 것을 벽으로 본다.
+  // 가장 많이 쓰인 가는 선(치수·해치) 굵기의 1.4배 이상인 클래스 중 총 길이가 가장 긴 것을 벽으로 본다.
   const byLw = {};
-  for (const s of d.segs) { if (s.filled || s.dashed) continue; const k = s.lw.toFixed(2); byLw[k] = (byLw[k] || 0) + Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y); }
-  const sorted = Object.entries(byLw).sort((a, b) => b[1] - a[1]);
+  for (const sg of d.segs) { if (sg.filled || sg.dashed) continue; const k = sg.lw.toFixed(2); byLw[k] = (byLw[k] || 0) + Math.hypot(sg.b.x - sg.a.x, sg.b.y - sg.a.y); }
+  const sorted = Object.entries(byLw).sort((x, y) => y[1] - x[1]);
   if (!sorted.length) return { ok: false, reason: '획 없음' };
   const thinLw = +sorted[0][0];
-  const lwKey = sorted.filter(([k]) => +k >= Math.max(0.45, thinLw * 1.8))[0];
+  const lwKey = sorted.filter(([k]) => +k >= Math.max(0.45, thinLw * 1.4))[0];
   if (!lwKey) return { ok: false, reason: `굵은 획(벽) 없음 (가는 선 ${thinLw}pt)` };
-  const wallSegs = d.segs.filter(s => !s.filled && !s.dashed && s.lw.toFixed(2) === lwKey[0]);   // 파선(상부선) 제외
-  const raw = pairWalls(wallSegs, mmPerPt);
-  const merged = mergeWalls(raw, 0.6);
-  const cl = clusters(merged, 40);
-  if (!cl.length) return { ok: false, reason: '벽 쌍 없음' };
-  const main = cl[0];
-  const ox = main.x0, oy = main.y0;
-  const R = v => Math.round(v * mmPerPt);
-  const walls = main.walls.map((w, i) => ({
-    id: `w-lh-${i}`, x1: R(w.x1 - ox), y1: R(w.y1 - oy), x2: R(w.x2 - ox), y2: R(w.y2 - oy),
-    thickness: Math.max(50, Math.round(w.t * mmPerPt / 10) * 10),
-  })).filter(w => w.x1 !== w.x2 || w.y1 !== w.y2);
-  // 치수 문자 검증 — 도면 폭(외곽선 기준)과 가장 큰 가로 치수 문자 비교
-  const widthMm = Math.round((main.x1 - main.x0) * mmPerPt), heightMm = Math.round((main.y1 - main.y0) * mmPerPt);
+  const wallSegs = d.segs.filter(sg => !sg.filled && !sg.dashed && sg.lw.toFixed(2) === lwKey[0]);   // 파선(상부선) 제외
+  const title = (d.texts.map(t => t.str).join(' ').match(/(?:단위\s*세대\s*구조\s*평면도|기준층\s*(?:\([^)]*\))?\s*구조\s*평면도|(?:지상\s*)?\d+\s*층\s*구조\s*평면도)(?:\s*\([^)]*\))?(?:\s*-\s*\d)?/) || [''])[0].replace(/\s+/g, ' ');
   const dimVals = d.texts.map(t => +t.str.replace(/,/g, '').trim()).filter(v => v >= 1000 && v <= 60000);
   const bigDim = dimVals.length ? Math.max(...dimVals) : null;
-  const widthErr = bigDim ? Math.abs(widthMm - bigDim) / bigDim : null;
-  const title = (d.texts.map(t => t.str).join(' ').match(/단위세대\s*구조\s*평면도\s*\([^)]*\)[^\s]{0,4}/) || [''])[0];
-  const tks = walls.map(w => w.thickness).sort((a, b) => a - b);
-  // 축척 검증 — 긴 벽(상위 25%)의 두께 중앙값이 벽체 상식 범위를 벗어나면 축척을 잘못 읽은 것이다
-  const longWalls = walls.slice().sort((a, b) => Math.hypot(b.x2 - b.x1, b.y2 - b.y1) - Math.hypot(a.x2 - a.x1, a.y2 - a.y1)).slice(0, Math.max(4, walls.length >> 2));
-  const lt = longWalls.map(w => w.thickness).sort((a, b) => a - b);
-  const longThick = lt[lt.length >> 1] || null;
+
+  // 주어진 축척으로 벽을 만들어 본다
+  const buildAt = (S) => {
+    const mmPerPt = PT_MM * S;
+    const raw = pairWalls(wallSegs, mmPerPt);
+    const merged = mergeWalls(raw, 0.6);
+    const cl = clusters(merged, 40);
+    if (!cl.length) return null;
+    const main = cl[0];
+    const ox = main.x0, oy = main.y0;
+    const R = v => Math.round(v * mmPerPt);
+    const walls = main.walls.map((w, i) => ({
+      id: `w-lh-${i}`, x1: R(w.x1 - ox), y1: R(w.y1 - oy), x2: R(w.x2 - ox), y2: R(w.y2 - oy),
+      thickness: Math.max(50, Math.round(w.t * mmPerPt / 10) * 10),
+    })).filter(w => w.x1 !== w.x2 || w.y1 !== w.y2);
+    const widthMm = Math.round((main.x1 - main.x0) * mmPerPt), heightMm = Math.round((main.y1 - main.y0) * mmPerPt);
+    const longWalls = walls.slice().sort((p, q) => Math.hypot(q.x2 - q.x1, q.y2 - q.y1) - Math.hypot(p.x2 - p.x1, p.y2 - p.y1)).slice(0, Math.max(4, walls.length >> 2));
+    const lt = longWalls.map(w => w.thickness).sort((p, q) => p - q);
+    const longThick = lt[lt.length >> 1] || null;
+    const tks = walls.map(w => w.thickness).sort((p, q) => p - q);
+    return { mmPerPt, walls, main, widthMm, heightMm, longThick, clusters: cl.length, medianThick: tks[tks.length >> 1] || null, origin: { x: ox, y: oy } };
+  };
+  // 축척 검증 — 긴 벽 두께가 벽체 상식 범위(130~320mm)에 있고 세대 평면 크기이면 채택
+  const fits = r => r && r.longThick != null && r.longThick >= 130 && r.longThick <= 320 && r.widthMm >= 6000 && r.widthMm <= 60000 && r.heightMm >= 4000 && r.walls.length >= 20;
+  let picked = null, first = null;
+  for (const cand of scaleCandidates(d.texts, d.width)) {
+    const r = buildAt(cand.S);
+    if (!r) continue;
+    if (!first) first = { ...r, scale: cand.S, scaleBasis: cand.basis };
+    if (fits(r)) { picked = { ...r, scale: cand.S, scaleBasis: cand.basis }; break; }
+    // 두께 추정 단계에서 명시 표기와 다른 축척이 맞아떨어지면 그 사실을 남긴다
+  }
+  const r = picked || first;
+  if (!r) return { ok: false, reason: '벽 쌍 없음' };
   const warn = [];
-  if (longThick != null && (longThick < 120 || longThick > 350)) warn.push(`장벽 두께 ${longThick}mm — 축척 의심`);
-  if (walls.length < 20) warn.push(`벽 ${walls.length}개 — 도면 아님(부재 일람·상세)`);
-  if (widthMm < 6000 || heightMm < 4000) warn.push(`크기 ${widthMm}×${heightMm}mm — 세대 평면 아님`);
+  if (!picked) {
+    if (r.longThick == null || r.longThick < 130 || r.longThick > 320) warn.push(`장벽 두께 ${r.longThick}mm — 축척 의심`);
+    if (r.walls.length < 20) warn.push(`벽 ${r.walls.length}개 — 도면 아님(부재 일람·상세)`);
+    if (r.widthMm < 6000 || r.heightMm < 4000) warn.push(`크기 ${r.widthMm}×${r.heightMm}mm — 세대 평면 아님`);
+  }
+  // 표기 축척과 다른 축척이 채택됐으면 남긴다 (한 장에 축척이 다른 도면이 섞인 경우가 있다)
+  const explicitS = scaleOf(d.texts, d.width);
+  const scaleNote = (picked && explicitS && explicitS.S !== r.scale) ? `표기 1/${explicitS.S} 대신 벽 두께로 1/${r.scale} 채택` : null;
+  const widthErr = bigDim ? Math.abs(r.widthMm - bigDim) / bigDim : null;
   return {
-    ok: true, page, title, scale: sc.S, scaleBasis: sc.basis, mmPerPt, lw: +lwKey[0], longThick, warn, verified: warn.length === 0,
-    walls, wallCount: walls.length, clusters: cl.length,
-    widthMm, heightMm, bigDim, widthErr, medianThick: tks[tks.length >> 1] || null,
-    origin: { x: ox, y: oy }, pageSize: { w: d.width, h: d.height },
+    ok: true, page, title, scale: r.scale, scaleBasis: r.scaleBasis, scaleNote, mmPerPt: r.mmPerPt, lw: +lwKey[0], longThick: r.longThick, warn, verified: !!picked,
+    walls: r.walls, wallCount: r.walls.length, clusters: r.clusters,
+    widthMm: r.widthMm, heightMm: r.heightMm, bigDim, widthErr, medianThick: r.medianThick,
+    origin: r.origin, pageSize: { w: d.width, h: d.height },
   };
 }
 
@@ -181,7 +232,7 @@ export function toDoc(res, meta) {
       tool: 'ECOREAN LH 구조도면 벡터 파서 v1',
       note: `LH 건축구조도면(CAD PDF) 벡터 좌표. 축척 1/${res.scale}(${res.scaleBasis}). 구조(내력)벽만 — 경량 칸막이벽·방 이름은 없다. 시공 전 실측 확인.`,
       verified: !!res.verified, warn: res.warn || [], source: 'LH 건축구조도면공개', source_file: basename(meta.file), source_page: res.page,
-      scale: res.scale, mm_per_pt: res.mmPerPt, width_mm: res.widthMm, height_mm: res.heightMm,
+      scale: res.scale, scale_basis: res.scaleBasis, scale_note: res.scaleNote || null, mm_per_pt: res.mmPerPt, width_mm: res.widthMm, height_mm: res.heightMm,
       dim_check: res.bigDim ? { max_dim_text: res.bigDim, width_err: +(res.widthErr * 100).toFixed(2) + '%' } : null,
     },
     spaces: [], walls: res.walls, openings: [],
