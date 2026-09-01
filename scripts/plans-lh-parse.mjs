@@ -27,13 +27,18 @@ export async function listUnitPages(file) {
 }
 
 // 축척 — "축척:1/60(A3:1/120)" 처럼 표기. 페이지 크기가 A3(1191x842)면 A3 값을 쓴다.
+// 표기가 단지마다 다르다: "축척:1/60(A3:1/120)" / "축척=1/120(A1:60)" / "SCALE 1:100" …
+// 페이지가 A3(≈1191pt)면 A1 원도를 절반으로 줄인 것이라 두 분모 중 큰 값이 A3 축척이다.
 function scaleOf(texts, width) {
   const all = texts.map(t => t.str).join(' ');
-  const a3 = all.match(/A3\s*[:：]\s*1\s*\/\s*(\d+)/);
-  const a1 = all.match(/축\s*척\s*[:：]?\s*1\s*\/\s*(\d+)/);
   const isA3 = width < 1300;
-  if (isA3 && a3) return { S: +a3[1], basis: 'A3 표기' };
-  if (a1) return { S: +a1[1], basis: '표기' };
+  const explicit = isA3 ? all.match(/A3\s*[:：=]?\s*(?:1\s*[\/:])?\s*(\d{2,3})\b/) : all.match(/A1\s*[:：=]?\s*(?:1\s*[\/:])?\s*(\d{2,3})\b/);
+  if (explicit) return { S: +explicit[1], basis: isA3 ? 'A3 표기' : 'A1 표기' };
+  const near = [];
+  for (const m of all.matchAll(/(?:축\s*척|SCALE|Scale)[^0-9]{0,12}1\s*[\/:]\s*(\d{2,3})(?:\s*\(\s*A[13]\s*[:：]?\s*(?:1\s*[\/:])?\s*(\d{2,3})\s*\))?/g)) {
+    near.push(+m[1]); if (m[2]) near.push(+m[2]);
+  }
+  if (near.length) return { S: isA3 ? Math.max(...near) : Math.min(...near), basis: '축척 문구' };
   return null;
 }
 
@@ -114,11 +119,15 @@ export async function parseUnitPage(file, page) {
   const sc = scaleOf(d.texts, d.width);
   if (!sc) return { ok: false, reason: '축척 표기 없음' };
   const mmPerPt = PT_MM * sc.S;
-  // 벽 외곽선 클래스 = 굵기 0.8pt 이상 중 총 길이가 가장 긴 굵기
+  // 벽 외곽선 클래스 — 단지마다 굵기 체계가 다르다(담양 0.96pt, 다른 단지 0.72pt).
+  // 가장 많이 쓰인 가는 선(치수·해치) 굵기의 1.8배 이상인 클래스 중 총 길이가 가장 긴 것을 벽으로 본다.
   const byLw = {};
-  for (const s of d.segs) { if (s.filled || s.dashed || s.lw < 0.8) continue; const k = s.lw.toFixed(2); byLw[k] = (byLw[k] || 0) + Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y); }
-  const lwKey = Object.entries(byLw).sort((a, b) => b[1] - a[1])[0];
-  if (!lwKey) return { ok: false, reason: '굵은 획(벽) 없음' };
+  for (const s of d.segs) { if (s.filled || s.dashed) continue; const k = s.lw.toFixed(2); byLw[k] = (byLw[k] || 0) + Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y); }
+  const sorted = Object.entries(byLw).sort((a, b) => b[1] - a[1]);
+  if (!sorted.length) return { ok: false, reason: '획 없음' };
+  const thinLw = +sorted[0][0];
+  const lwKey = sorted.filter(([k]) => +k >= Math.max(0.45, thinLw * 1.8))[0];
+  if (!lwKey) return { ok: false, reason: `굵은 획(벽) 없음 (가는 선 ${thinLw}pt)` };
   const wallSegs = d.segs.filter(s => !s.filled && !s.dashed && s.lw.toFixed(2) === lwKey[0]);   // 파선(상부선) 제외
   const raw = pairWalls(wallSegs, mmPerPt);
   const merged = mergeWalls(raw, 0.6);
@@ -138,8 +147,15 @@ export async function parseUnitPage(file, page) {
   const widthErr = bigDim ? Math.abs(widthMm - bigDim) / bigDim : null;
   const title = (d.texts.map(t => t.str).join(' ').match(/단위세대\s*구조\s*평면도\s*\([^)]*\)[^\s]{0,4}/) || [''])[0];
   const tks = walls.map(w => w.thickness).sort((a, b) => a - b);
+  // 축척 검증 — 긴 벽(상위 25%)의 두께 중앙값이 벽체 상식 범위를 벗어나면 축척을 잘못 읽은 것이다
+  const longWalls = walls.slice().sort((a, b) => Math.hypot(b.x2 - b.x1, b.y2 - b.y1) - Math.hypot(a.x2 - a.x1, a.y2 - a.y1)).slice(0, Math.max(4, walls.length >> 2));
+  const lt = longWalls.map(w => w.thickness).sort((a, b) => a - b);
+  const longThick = lt[lt.length >> 1] || null;
+  const warn = [];
+  if (longThick != null && (longThick < 120 || longThick > 350)) warn.push(`장벽 두께 ${longThick}mm — 축척 의심`);
+  if (walls.length < 8) warn.push(`벽 ${walls.length}개 — 도면 아님`);
   return {
-    ok: true, page, title, scale: sc.S, scaleBasis: sc.basis, mmPerPt, lw: +lwKey[0],
+    ok: true, page, title, scale: sc.S, scaleBasis: sc.basis, mmPerPt, lw: +lwKey[0], longThick, warn, verified: warn.length === 0,
     walls, wallCount: walls.length, clusters: cl.length,
     widthMm, heightMm, bigDim, widthErr, medianThick: tks[tks.length >> 1] || null,
     origin: { x: ox, y: oy }, pageSize: { w: d.width, h: d.height },
