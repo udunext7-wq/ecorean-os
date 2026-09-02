@@ -4774,6 +4774,37 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('배치흐름: 테스트 예외 없음',false,e.message);
   }
+  // === [FL] 층 시트 (2026-09-03) — 층 분리 작업 + 한 문서 저장 ===
+  try{
+    const _flBak=buildAutosavePayload();                       // 끝나면 이걸로 원상복구
+    const _fl0=JSON.parse(JSON.stringify(_flBak));
+    _floorsEnsure();
+    const _n0=STATE.floors.length,_w0=STATE.walls.length,_act0=STATE.activeFloorId;
+    const f2=addFloor();                                        // 빈 층
+    assert('FL1: 층 추가 → 활성 전환',STATE.floors.length===_n0+1&&STATE.activeFloorId===f2.id);
+    assert('FL2: 새 층은 빈 도면',STATE.walls.length===0&&STATE.spaces.length===0);
+    addWall(100,100,3100,100);                                  // 2층에 벽 하나
+    assert('FL3: 새 층에 벽 작성',STATE.walls.length===1);
+    switchFloor(_act0);
+    assert('FL4: 원래 층 복귀 — 벽 수 보존',STATE.walls.length===_w0&&STATE.activeFloorId===_act0,'walls '+_w0+' → '+STATE.walls.length);
+    const _st=STATE.floors.find(f=>f.id===f2.id);
+    assert('FL5: 잠든 층은 스냅샷으로 보관(렌더 부담 0)',!!(_st&&_st.data&&_st.data.walls&&_st.data.walls.length===1));
+    const pj=buildAutosavePayload();
+    assert('FL6: 저장 페이로드에 전 층 포함(한 서버 도면)',Array.isArray(pj.floors)&&pj.floors.length===_n0+1&&
+      pj.floors.some(f=>f.active)&&pj.floors.filter(f=>!f.active).every(f=>!!f.data));
+    switchFloor(f2.id);
+    assert('FL7: 재전환 — 2층 벽 복원',STATE.walls.length===1);
+    const _hIdx=STATE.historyIdx;
+    switchFloor(_act0);switchFloor(f2.id);
+    assert('FL8: 층별 히스토리 보존',STATE.historyIdx===_hIdx);
+    switchFloor(_act0,{silent:true});
+    STATE.floors=STATE.floors.filter(f=>f.id!==f2.id);          // 테스트 층 제거 (confirm 없이)
+    renderFloorBar();
+    applyLoadedData(_fl0);                                      // 원상복구 (층 포함 왕복 검증 겸)
+    assert('FL9: 저장 왕복 후 층 수·활성 층 유지',STATE.floors.length===_n0&&STATE.activeFloorId===_act0&&STATE.walls.length===_w0);
+  }catch(e){
+    assert('FL: 층 시트 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

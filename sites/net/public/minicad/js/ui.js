@@ -2040,6 +2040,9 @@ function buildJSON(){
         furniture:STATE.furniture.length,fixtures:STATE.fixtures.length,lights:STATE.lights.length,electric:STATE.electric.length,hvac:STATE.hvac.length},
     },
     vertices:STATE.vertices,  // VEF: 공유 버텍스 원본
+    // 2026-09-03: 층 시트 — 최상위 배열 = 활성 층(기존 스키마 유지), 나머지 층은 floors[].data
+    floors:_floorsExport(),
+    activeFloorId:STATE.activeFloorId,
     meta:{
       project:STATE.projectName,
       unit:'mm',
@@ -2174,7 +2177,7 @@ function buildEstimateInput(){
 function buildJSONProfile(profile){
   const j=buildJSON();
   if(profile==='estimate'){
-    ['texts','measures','circles','arcs','curves','leaders','xlines','autoDetectedCycles','indices','relationships','layers','vertices','furniture','fixtures','lights','electric','hvac'].forEach(k=>delete j[k]);
+    ['texts','measures','circles','arcs','curves','leaders','xlines','autoDetectedCycles','indices','relationships','layers','vertices','furniture','fixtures','lights','electric','hvac','floors','activeFloorId'].forEach(k=>delete j[k]);
     if(j.meta){delete j.meta.aiPromptHints;delete j.meta.videoSequence;delete j.meta.ssotPipeline;}
     j.profile='estimate';
   }else if(profile==='ai_render'){
@@ -3326,6 +3329,7 @@ function buildAutosavePayload(){
       aiPromptHints:STATE.aiPromptHints,
       settings:buildDocSettings(),
     },
+    floors:_floorsExport(),activeFloorId:STATE.activeFloorId, // 2026-09-03: 층 시트
     spaces:STATE.spaces,walls:STATE.walls,openings:STATE.openings,
     furniture:STATE.furniture,fixtures:STATE.fixtures,lights:STATE.lights,
     electric:STATE.electric,hvac:STATE.hvac,texts:STATE.texts,measures:STATE.measures,
@@ -3388,6 +3392,18 @@ function applyLoadedData(d){
     if(typeof buildLayerUI==='function') buildLayerUI();
   }
   migrateLoadedState(d.schema||'ECOREAN.FloorPlan.v5.9');
+  // 2026-09-03: 층 시트 복원 — 최상위 배열이 활성 층, 나머지는 floors[].data 스냅샷 그대로
+  if(Array.isArray(d.floors)&&d.floors.length){
+    STATE.floors=d.floors.map(f=>({id:f.id,name:f.name||(f.level+'층'),level:f.level||1,
+      data:f.active?null:(f.data||{}),history:null,historyIdx:null}));
+    const act=d.floors.find(f=>f.active)||d.floors[0];
+    STATE.activeFloorId=act.id;
+    if(!d.floors.some(f=>f.active)) STATE.floors[0].data=null; // 활성 표기가 없는 옛 저장본 — 첫 층 = 최상위 배열
+  }else{
+    STATE.floors=[{id:'fl1',name:'1층',level:1,data:null,history:null,historyIdx:null}];
+    STATE.activeFloorId='fl1';
+  }
+  renderFloorBar();
   const pn=document.getElementById('project-name');if(pn)pn.value=STATE.projectName;
   const ch=document.getElementById('ceiling-height');if(ch)ch.value=STATE.ceilingHeight;
   saveHistory();renderAll();refreshUI();
@@ -3456,6 +3472,8 @@ function _paletteCommands(){
     {label:'⬚ 인쇄 영역 드래그로 지정',kw:'print 인쇄 영역 범위 부분 확대 crop',run:startPrintRegionPick},
     {label:'🖥 인쇄 영역 — 화면에서 잡기 (pf)',kw:'print 인쇄 영역 틀 화면 잡기 frame pf',run:()=>togglePrintFrame()},
     {label:'🧊 3D 뷰 — 평면을 입체로, 별도 탭 (3d)',kw:'3d 3D 입체 three 뷰 걷기 조감 view',run:()=>open3DView()},
+    {label:'📑 층 추가 — 빈 층 (fl add)',kw:'층 floor 시트 추가 add 2층 3층',run:()=>addFloor()},
+    {label:'📑 층 추가 — 현재 층 구조 복제 (fl copy)',kw:'층 floor 복제 copy 구조 벽',run:()=>addFloor({copy:true})},
     {label:'📐 입면도 — 평면도에서 자동 생성 (el)',kw:'elevation 입면도 입면 el 벙 방위 단면',run:()=>openElevationDialog()},
     {label:'─ 절단선 긋기 — 보는 방향 직접 고르기 (K)',kw:'section 절단선 절단면 방향 입면 sc',run:()=>setTool('section')},
     {label:'🔌 선택한 조명을 스위치에 연결 (link)',kw:'circuit link 연결 조명 스위치 회로 다중',run:()=>startCircuitAttach()},
@@ -5297,6 +5315,122 @@ function open3DView(){
   if(!w&&typeof showStatus==='function') showStatus('팝업이 막혔습니다 — 브라우저에서 이 사이트의 팝업을 허용하세요');
 }
 (function(){const b=document.getElementById('btn-3d');if(b)b.addEventListener('click',()=>open3DView());_view3dChannel();})();
+
+// ===== 2026-09-03: 층(Floor) 시트 =====
+//  대표 요구: 층마다 별도 시트(같은 시퀀스에 겹쳐 그리면 z 도 없고 버벅임) + 서버 도면은 하나.
+//  구조: 활성 층만 STATE 배열에 산다(렌더·도구·견적·인쇄 전부 활성 층 대상 → 다른 층은 렌더 비용 0).
+//        나머지 층은 floors[].data 에 JSON 스냅샷(undo 스냅샷과 같은 방식). 히스토리도 층별 보관.
+//  저장: buildJSON/buildAutosavePayload 에 floors 전체 포함 → 서버 저장·자동저장·3D 모두 한 문서.
+const FLOOR_FIELDS=['vertices','spaces','walls','openings','furniture','fixtures','lights','electric',
+  'texts','measures','circles','arcs','curves','hvac','leaders','xlines','pillars','sections'];
+function _floorsEnsure(){
+  if(!Array.isArray(STATE.floors)) STATE.floors=[];
+  if(!STATE.floors.length){STATE.floors=[{id:'fl1',name:'1층',level:1,data:null,history:null,historyIdx:null}];STATE.activeFloorId='fl1';}
+  if(!STATE.activeFloorId||!STATE.floors.some(f=>f.id===STATE.activeFloorId)) STATE.activeFloorId=STATE.floors[0].id;
+}
+function activeFloor(){_floorsEnsure();return STATE.floors.find(f=>f.id===STATE.activeFloorId);}
+function _floorSnapshot(){
+  const d={};FLOOR_FIELDS.forEach(k=>{d[k]=STATE[k]||[];});
+  d.estimateConfig=STATE.estimateConfig||{};d.bgImage=STATE.bgImage||null;
+  return JSON.parse(JSON.stringify(d)); // polygon·x1..y2 getter 를 값으로 굳힘 (undo 스냅샷과 동일)
+}
+function _floorStash(){const f=activeFloor();if(!f)return;f.data=_floorSnapshot();f.history=STATE.history;f.historyIdx=STATE.historyIdx;}
+function _floorLoad(f){
+  const d=f.data||{};
+  FLOOR_FIELDS.forEach(k=>{STATE[k]=Array.isArray(d[k])?d[k]:[];});
+  STATE.estimateConfig=d.estimateConfig||{};STATE.bgImage=d.bgImage||null;
+  STATE.selectedId=null;STATE.selectedKind=null;STATE.boxSelection=[];STATE.measureFirst=null;
+  STATE.history=Array.isArray(f.history)?f.history:[];STATE.historyIdx=(typeof f.historyIdx==='number')?f.historyIdx:-1;
+  f.data=null;f.history=null;f.historyIdx=null; // 활성 층의 SSoT 는 STATE — 이중 보관 금지
+  reinstallVEFAll();
+}
+function switchFloor(id,opts){
+  _floorsEnsure();
+  const to=STATE.floors.find(f=>f.id===id||String(f.level)===String(id)||f.name===id);
+  if(!to){showStatus('층 없음: '+id);return false;}
+  if(to.id===STATE.activeFloorId&&!(opts&&opts.force)) return true;
+  _floorStash();
+  STATE.activeFloorId=to.id;
+  _floorLoad(to);
+  if(!STATE.history.length) saveHistory();
+  renderAll();refreshUI();renderFloorBar();
+  if(!(opts&&opts.silent)) showStatus('📑 '+to.name+' (다른 층은 잠들어 있어 가볍습니다)');
+  if(typeof push3D==='function') push3D();
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
+  return true;
+}
+// 복제 시 id 재부여 — 층은 분리 로드라 화면 충돌은 없지만, 3D·서버에서 전 층이 한 문서에 섞이므로 유일해야 한다
+function _remapFloorIds(d,sfx){
+  const map={};
+  const ren=o=>{if(o&&o.id){map[o.id]=o.id+sfx;o.id=o.id+sfx;}};
+  ['vertices','spaces','walls','openings','pillars','furniture','fixtures','lights','electric','hvac'].forEach(k=>(d[k]||[]).forEach(ren));
+  (d.walls||[]).forEach(w=>{['v1Id','v2Id','spaceId'].forEach(k=>{if(w[k]&&map[w[k]])w[k]=map[w[k]];});});
+  (d.spaces||[]).forEach(s=>{if(Array.isArray(s.vertexIds))s.vertexIds=s.vertexIds.map(id=>map[id]||id);});
+  (d.openings||[]).forEach(o=>{['wallId','spaceId'].forEach(k=>{if(o[k]&&map[o[k]])o[k]=map[o[k]];});});
+  ['furniture','fixtures','lights','electric','hvac'].forEach(k=>(d[k]||[]).forEach(o=>{if(o.spaceId&&map[o.spaceId])o.spaceId=map[o.spaceId];}));
+  return d;
+}
+function addFloor(opts){
+  _floorsEnsure();
+  const lv=Math.max(0,...STATE.floors.map(f=>f.level||0))+1;
+  const f={id:'fl'+lv+'_'+Date.now().toString(36),name:lv+'층',level:lv,data:{},history:null,historyIdx:null};
+  if(opts&&opts.copy){
+    // 구조 복제: 벽·공간·기둥·문창 (가구·조명은 층마다 다르므로 제외)
+    const d=_floorSnapshot();
+    f.data=_remapFloorIds({vertices:d.vertices,spaces:d.spaces,walls:d.walls,openings:d.openings,pillars:d.pillars},'_'+lv+'f');
+  }
+  STATE.floors.push(f);
+  switchFloor(f.id,{silent:true});
+  showStatus('📑 '+f.name+' 추가'+(opts&&opts.copy?' (구조 복제)':''));
+  return f;
+}
+function deleteFloor(id){
+  _floorsEnsure();
+  if(STATE.floors.length<=1){showStatus('마지막 층은 지울 수 없습니다');return false;}
+  const f=STATE.floors.find(x=>x.id===id||String(x.level)===String(id)||x.name===id);
+  if(!f){showStatus('층 없음: '+id);return false;}
+  if(!confirm(f.name+' 층을 지웁니다. 되돌릴 수 없습니다.')) return false;
+  if(f.id===STATE.activeFloorId){
+    const other=STATE.floors.find(x=>x.id!==f.id);
+    switchFloor(other.id,{silent:true});
+  }
+  STATE.floors=STATE.floors.filter(x=>x.id!==f.id);
+  renderFloorBar();scheduleAutosave();
+  if(typeof push3D==='function') push3D();
+  showStatus('📑 '+f.name+' 삭제');
+  return true;
+}
+function renameFloor(id,name){
+  const f=STATE.floors.find(x=>x.id===id);if(!f)return;
+  const nm=(name||'').trim();if(!nm)return;
+  f.name=nm;renderFloorBar();scheduleAutosave();
+  if(typeof push3D==='function') push3D();
+}
+// 저장용 — 활성 층 데이터는 최상위 배열(기존 스키마 그대로), 나머지 층은 data 포함
+function _floorsExport(){
+  _floorsEnsure();
+  return STATE.floors.map(f=>f.id===STATE.activeFloorId
+    ?{id:f.id,name:f.name,level:f.level,active:true}
+    :{id:f.id,name:f.name,level:f.level,data:f.data||{}});
+}
+function renderFloorBar(){
+  const bar=document.getElementById('floor-bar');if(!bar)return;
+  _floorsEnsure();
+  bar.innerHTML='';
+  STATE.floors.slice().sort((a,b)=>(a.level||0)-(b.level||0)).forEach(f=>{
+    const b=document.createElement('button');
+    b.className='fl-tab'+(f.id===STATE.activeFloorId?' on':'');
+    b.textContent=f.name;
+    b.addEventListener('click',()=>switchFloor(f.id));
+    b.addEventListener('dblclick',()=>{const nm=prompt('층 이름',f.name);if(nm)renameFloor(f.id,nm);});
+    bar.appendChild(b);
+  });
+  const add=document.createElement('button');
+  add.className='fl-tab fl-add';add.textContent='+';add.title='층 추가 — 그냥 클릭=빈 층, Shift+클릭=현재 층 구조 복제';
+  add.addEventListener('click',e=>addFloor({copy:e.shiftKey}));
+  bar.appendChild(add);
+}
+(function(){renderFloorBar();})();
 (function(){const b=document.getElementById('btn-elev');if(b)b.addEventListener('click',()=>openElevationDialog());})(); // 2026-08-30
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
@@ -6036,6 +6170,18 @@ function processCommand(rawCmd){
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
   if(/^(pf|인쇄영역)$/i.test(c)){togglePrintFrame();return;} // 2026-08-28
   if(/^(3d|입체)$/i.test(c)){open3DView();return;} // 2026-09-01
+  // 2026-09-03: 층 시트 — fl / fl 2 / fl add / fl copy / fl del 2 / fl name 옥탑
+  {const m=c.match(/^(?:fl|층)(?:\s+(.+))?$/i);
+   if(m){
+     const a=(m[1]||'').trim();
+     if(!a){_floorsEnsure();showStatus('층: '+STATE.floors.map(f=>(f.id===STATE.activeFloorId?'▶':'')+f.name).join(' · ')+'  (fl 2 / fl add / fl copy / fl del 2 / fl name 이름)');}
+     else if(/^(add|추가)$/i.test(a)) addFloor();
+     else if(/^(copy|복제)$/i.test(a)) addFloor({copy:true});
+     else if(/^(del|삭제)\s+(.+)$/i.test(a)) deleteFloor(a.replace(/^(del|삭제)\s+/i,'').replace(/층$/,''));
+     else if(/^(name|이름)\s+(.+)$/i.test(a)) renameFloor(STATE.activeFloorId,a.replace(/^(name|이름)\s+/i,''));
+     else switchFloor(a.replace(/층$/,''));
+     return;
+   }}
   if(/^(el|elev|입면|입면도)$/i.test(c)){openElevationDialog();return;} // 2026-08-30
   if(/^(sc|section|절단|절단선)$/i.test(c)){setTool('section');return;} // 2026-08-30
   // 2026-08-29: 고른 조명들을 한 번에 — link=스위치에, chain=서로 점핑

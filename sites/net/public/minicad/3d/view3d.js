@@ -67,6 +67,8 @@ const ST={
   labelSprites:[],
   pickables:[],
   selected:null,
+  floors:[],           // 2026-09-03: 층 시트 [{id,name,level,z0,height}]
+  floorSel:'all',      // 'all' | floorId — 층 필터
   walk:{yaw:0,pitch:0,keys:{},eye:1.6,speed:2.2},
   lastDocAt:0,
 };
@@ -165,7 +167,7 @@ function build(doc){
   built.objects.forEach(obj=>{
     const g=new THREE.Group();
     g.name=obj.kind+':'+(obj.name||obj.id);
-    g.position.set(obj.x*MM,0,obj.y*MM);
+    g.position.set(obj.x*MM,(obj.z0||0)*MM,obj.y*MM); // z0 = 층 바닥 표고 (다층 적층)
     g.rotation.y=-(obj.rot||0)*Math.PI/180;
     if(obj.flip) g.scale.x=-1;
     g.userData.obj=obj;
@@ -188,11 +190,17 @@ function build(doc){
   built.labels.forEach(l=>{
     if(!l.text) return;
     const sp=makeLabel(l.text);
-    sp.position.set(l.x*MM,l.z*MM,l.y*MM);
+    sp.position.set(l.x*MM,(l.z+(l.z0||0))*MM,l.y*MM);
+    sp.userData.floorId=l.floorId;
     sp.visible=ST.labels&&ST.mode==='orbit';
     root.add(sp); ST.labelSprites.push(sp);
   });
   scene.add(root); ST.root=root;
+  // 층 필터 (2026-09-03) — 층이 2개 이상일 때만 버튼 노출
+  ST.floors=built.floors||[];
+  if(ST.floorSel!=='all'&&!ST.floors.some(f=>f.id===ST.floorSel)) ST.floorSel='all';
+  renderFloorButtons();
+  refreshVisibility();
   // 태양(그림자) 범위
   const b=built.bounds, cx=(b.minX+b.maxX)/2*MM, cz=(b.minY+b.maxY)/2*MM;
   const span=Math.max(b.maxX-b.minX,b.maxY-b.minY)*MM;
@@ -212,9 +220,9 @@ function fitView(){
     camera.position.set(cx+span*0.35,span*0.95+2,cz+span*0.85);
     orbit.update();
   }else{
-    const l=ST.built.labels[0];
+    const l=ST.built.labels.find(x=>floorOK(x.floorId))||ST.built.labels[0];
     const px=l?l.x*MM:cx, pz=l?l.y*MM:cz;
-    camera.position.set(px,ST.walk.eye,pz);
+    camera.position.set(px,_selFloorZ0()+ST.walk.eye,pz);
     ST.walk.yaw=Math.PI*0.75; ST.walk.pitch=-0.05;
     applyWalkCamera();
   }
@@ -235,7 +243,7 @@ function setMode(m){
     const dir=new THREE.Vector3(); camera.getWorldDirection(dir);
     ST.walk.yaw=Math.atan2(-dir.x,-dir.z);
     ST.walk.pitch=0;
-    camera.position.set(orbit.target.x,ST.walk.eye,orbit.target.z);
+    camera.position.set(orbit.target.x,_selFloorZ0()+ST.walk.eye,orbit.target.z);
     applyWalkCamera();
   }else{
     const dir=new THREE.Vector3(); camera.getWorldDirection(dir);
@@ -246,8 +254,38 @@ function setMode(m){
   refreshCeil(); refreshLabels();
   $('b-ceil').classList.toggle('on',ST.ceil[ST.mode]);
 }
-function refreshCeil(){ ST.ceilMeshes.forEach(g=>{g.visible=ST.ceil[ST.mode];}); }
-function refreshLabels(){ ST.labelSprites.forEach(s=>{s.visible=ST.labels&&ST.mode==='orbit';}); }
+// 2026-09-03: 천장·이름표·층 필터 가시성을 한 곳에서 (층 숨김이 천장 토글에 지워지지 않게)
+function floorOK(fid){ return ST.floorSel==='all'||fid===ST.floorSel; }
+function _selFloorZ0(){ const f=(ST.floors||[]).find(x=>x.id===ST.floorSel); return f?f.z0*MM:0; }
+function refreshVisibility(){
+  if(!ST.root) return;
+  ST.root.children.forEach(g=>{
+    if(g.isSprite){ g.visible=ST.labels&&ST.mode==='orbit'&&floorOK(g.userData.floorId); return; }
+    const o=g.userData.obj; if(!o) return;
+    let v=floorOK(o.floorId);
+    if(o.kind==='ceiling') v=v&&ST.ceil[ST.mode];
+    g.visible=v;
+  });
+}
+function refreshCeil(){ refreshVisibility(); }
+function refreshLabels(){ refreshVisibility(); }
+function renderFloorButtons(){
+  const el=$('floors'); if(!el) return;
+  el.innerHTML='';
+  if(!ST.floors||ST.floors.length<2) return;
+  const mk=(label,val,title)=>{
+    const b=document.createElement('button');
+    b.className='btn'+(ST.floorSel===val?' on':'');
+    b.textContent=label; if(title) b.title=title;
+    b.onclick=()=>{
+      ST.floorSel=val; renderFloorButtons(); refreshVisibility(); select(null);
+      if(ST.mode==='walk'&&val!=='all'){ camera.position.y=_selFloorZ0()+ST.walk.eye; applyWalkCamera(); }
+    };
+    el.appendChild(b);
+  };
+  mk('전층','all','모든 층을 쌓아서 본다');
+  ST.floors.slice().sort((a,b)=>(a.level||0)-(b.level||0)).forEach(f=>mk(f.name,f.id,'이 층만 보기'));
+}
 function setLights(on){
   ST.lightsOn=on;
   $('b-light').classList.toggle('on',on);
@@ -321,7 +359,8 @@ function stepWalk(dt){
   const fwd=new THREE.Vector3(-Math.sin(w.yaw),0,-Math.cos(w.yaw));
   const right=new THREE.Vector3(Math.cos(w.yaw),0,-Math.sin(w.yaw));
   camera.position.addScaledVector(fwd,fz*sp).addScaledVector(right,fx*sp);
-  camera.position.y=Math.max(0.3,Math.min(6,camera.position.y+up*sp));
+  const yMax=(ST.built&&ST.built.totalHeight?ST.built.totalHeight*MM:4)+2;
+  camera.position.y=Math.max(0.3,Math.min(yMax,camera.position.y+up*sp));
   applyWalkCamera();
 }
 
@@ -362,7 +401,8 @@ function pick(cx,cy){
   const g=hits[0].object.parent;
   if(ST.selected===g){ select(null); return; }
   select(g);
-  tip.innerHTML=describe(g.userData.obj);
+  const _o=g.userData.obj;
+  tip.innerHTML=(_o.floorName&&ST.floorSel==='all'?_o.floorName+' · ':'')+describe(_o);
   tip.style.display='block';
   tip.style.left=Math.min(cx+14,window.innerWidth-tip.offsetWidth-8)+'px';
   tip.style.top=Math.min(cy+14,window.innerHeight-tip.offsetHeight-8)+'px';

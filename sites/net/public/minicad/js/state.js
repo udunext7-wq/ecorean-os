@@ -52,6 +52,10 @@ const STATE={
   plus2D:false,
   // ===== v5.8: 영상 동선 커스텀 순서 (null=면적순 자동, array=사용자 지정 spaceId 배열) =====
   videoSequenceOrder:null,
+  // ===== 2026-09-03: 층(Floor) 시트 — 활성 층만 위 배열들에 로드, 나머지는 floors[].data 에 스냅샷 보관 =====
+  //  [{id,name,level, data:null(활성)|{vertices,spaces,...}, history,historyIdx}] — 한 문서(서버 도면 1개)에 전 층 저장
+  floors:[],
+  activeFloorId:null,
   // ===== v5.7: AI 생성 파이프라인 SSoT 메타 (이미지·영상 모델 프롬프트 힌트) =====
   aiPromptHints:{
     style:'modern_luxury',         // modern_luxury | scandinavian | industrial | wabi_sabi | korean_modern | minimal | classic | bohemian | mid_century | art_deco | contemporary | rustic | hotel_lux | natural_organic

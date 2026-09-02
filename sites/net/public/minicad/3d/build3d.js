@@ -500,9 +500,9 @@ function buildHvac(o,def,D,spaces){
 // 전체 조립
 // ---------------------------------------------------------------------------
 // libs = {FURNITURE_LIB, FIXFURN_LIB, FIXTURE_LIB, LIGHT_LIB, ELECTRIC_LIB, HVAC_FIRE_LIB} — 없으면 규격만으로 세운다
-function buildScene(doc,libs){
+// 한 층 조립 — D 는 normalizeDoc 결과. 다층 적층은 buildScene 이 맡는다 (2026-09-03)
+function buildFloorScene(D,libs){
   libs=libs||{};
-  const D=normalizeDoc(doc);
   const spaceById={}; D.spaces.forEach(s=>{spaceById[s.id]=s;});
   const objects=[];
   const labels=[];
@@ -546,6 +546,57 @@ function buildScene(doc,libs){
   return {bounds,ceilH:D.ceilH,project:D.meta.project||'',objects,labels,
     counts:{spaces:D.spaces.length,walls:D.walls.filter(w=>!w.isLine).length,openings:D.openings.length,
       furniture:D.furniture.length+D.fixtures.length,lights:D.lights.length}};
+}
+
+// ---------------------------------------------------------------------------
+// 다층(층 시트) 적층 — 2026-09-03
+//  문서에 floors[] 가 있으면 층마다 buildFloorScene 을 돌리고 z0(층 바닥 표고)를 부여한다.
+//  뷰어는 obj.z0 를 그룹 y 로 올려 쌓는다. 층높이 = 그 층의 최대 천장고 + 슬래브 300mm.
+// ---------------------------------------------------------------------------
+const SLAB_T=300;
+function splitFloors(d){
+  const fls=Array.isArray(d.floors)?d.floors.filter(f=>f&&(f.active||f.data)):null;
+  if(!fls||!fls.length) return [{id:'fl1',name:'',level:1,active:true,doc:d}];
+  const base=Object.assign({},d); delete base.floors;
+  return fls.slice().sort((a,b)=>(a.level||0)-(b.level||0)).map(f=>({
+    id:f.id||('fl'+(f.level||1)), name:f.name||((f.level||1)+'층'), level:f.level||1, active:!!f.active,
+    doc:f.active?base:Object.assign({},f.data||{},{meta:d.meta}),
+  }));
+}
+function floorHeightOf(D){
+  let h=D.ceilH||2400;
+  D.spaces.forEach(s=>{h=Math.max(h,num(s.ceilingHeight_mm,0));});
+  D.walls.forEach(w=>{if(!w.isLine)h=Math.max(h,num(w.height_mm,0));});
+  return h;
+}
+function buildScene(doc,libs){
+  libs=libs||{};
+  const d=doc&&doc.data&&!doc.walls&&!doc.floors?doc.data:doc||{};
+  const fls=splitFloors(d);
+  const multi=fls.length>1;
+  const objects=[],labels=[],floorsOut=[];
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  let z0=0,project='',ceilH=2400;
+  const counts={spaces:0,walls:0,openings:0,furniture:0,lights:0};
+  fls.forEach(f=>{
+    const D=normalizeDoc(f.doc);
+    project=project||D.meta.project||'';
+    ceilH=Math.max(ceilH,D.ceilH);
+    const one=buildFloorScene(D,libs);
+    one.objects.forEach(o=>{
+      o.z0=z0; o.floorId=f.id; o.floorName=f.name;
+      if(multi) o.id=f.id+':'+o.id;      // 층 간 id 충돌 방지 (한 층 문서는 기존 id 그대로)
+      objects.push(o);
+    });
+    one.labels.forEach(l=>{l.z0=z0;l.floorId=f.id;labels.push(l);});
+    Object.keys(counts).forEach(k=>{counts[k]+=one.counts[k]||0;});
+    minX=Math.min(minX,one.bounds.minX);minY=Math.min(minY,one.bounds.minY);
+    maxX=Math.max(maxX,one.bounds.maxX);maxY=Math.max(maxY,one.bounds.maxY);
+    const fh=floorHeightOf(D)+SLAB_T;
+    floorsOut.push({id:f.id,name:f.name||((f.level||1)+'층'),level:f.level,z0,height:fh,active:!!f.active});
+    z0+=fh;
+  });
+  return {bounds:{minX,minY,maxX,maxY},ceilH,project,objects,labels,floors:floorsOut,counts,totalHeight:z0};
 }
 
 const MC3D={buildScene,normalizeDoc,FLOOR_COLORS,WALL_COLORS,COLORS:C,

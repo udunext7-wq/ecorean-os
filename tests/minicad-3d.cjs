@@ -194,5 +194,40 @@ ck(SB2.objects.find(o => o.id === 'b1').meta.offset === -100 && SB2.objects.find
 const one = MC3D.buildScene({ meta: {}, walls: [B.walls[1]] }, LIBS).objects.find(o => o.id === 'b2');
 ck(one.meta.offset === -100, '내력벽 1장뿐이면 기본 규약(sign=+1) → exterior −100: ' + one.meta.offset);
 
+// ---- 층 시트(다층 적층) 2026-09-03 — floors[] 가 있으면 z0 로 쌓는다 ----
+//  1층 = 최상위 배열(active), 2층 = floors[].data. 1층 천장 2400 + 슬래브 300 → 2층 z0 = 2700
+const F2 = {
+  meta: { ceilingHeight_mm: 2400 },
+  vertices: [{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 5000, y: 0 }, { id: 'c', x: 5000, y: 4000 }, { id: 'd', x: 0, y: 4000 }],
+  spaces: [{ id: 's1', name: '거실', type: 'LIVING', vertexIds: ['a', 'b', 'c', 'd'], holes: [] }],
+  walls: [{ id: 'wA', v1Id: 'a', v2Id: 'b', thickness: 100 }],
+  lights: [{ id: 'lA', type: 'downlight', x: 1000, y: 1000, inch: 3 }],
+  activeFloorId: 'f1',
+  floors: [
+    { id: 'f1', name: '1층', level: 1, active: true },
+    { id: 'f2', name: '2층', level: 2, data: {
+      vertices: [{ id: 'a2', x: 0, y: 0 }, { id: 'b2', x: 5000, y: 0 }, { id: 'c2', x: 5000, y: 4000 }, { id: 'd2', x: 0, y: 4000 }],
+      spaces: [{ id: 's2', name: '침실', type: 'ROOM', vertexIds: ['a2', 'b2', 'c2', 'd2'], ceilingHeight_mm: 2300, holes: [] }],
+      walls: [{ id: 'wB', v1Id: 'a2', v2Id: 'b2', thickness: 100 }],
+      furniture: [{ id: 'fB', type: 'sofa3', x: 2000, y: 2000, angle: 0 }],
+    } },
+  ],
+};
+const SF = MC3D.buildScene(F2, LIBS);
+ck(SF.floors.length === 2 && SF.floors[0].z0 === 0 && SF.floors[1].z0 === 2700, '층 2 · 2층 z0=2700(2400+슬래브300): ' + JSON.stringify(SF.floors.map(f => [f.name, f.z0])));
+ck(near(SF.totalHeight, 2700 + 2400 + 300), '전체 높이 5400: ' + SF.totalHeight);
+const fWallA = SF.objects.find(o => o.id === 'f1:wA'), fWallB = SF.objects.find(o => o.id === 'f2:wB');
+ck(fWallA && fWallA.z0 === 0 && fWallA.floorId === 'f1', '1층 벽 id 접두 f1: + z0=0');
+ck(fWallB && fWallB.z0 === 2700 && fWallB.floorName === '2층', '2층 벽 z0=2700');
+ck(SF.objects.find(o => o.id === 'f2:fB'), '2층 가구가 한 장면에 있다');
+const fLightA = SF.objects.find(o => o.id === 'f1:lA');
+ck(fLightA && fLightA.prims[0].z === 2400 - 12 && fLightA.z0 === 0, '1층 조명은 층 내 천장(2400)에, 표고는 z0 로');
+const lbl2 = SF.labels.find(l => l.text === '침실');
+ck(lbl2 && lbl2.z0 === 2700, '2층 이름표 z0=2700');
+ck(SF.objects.filter(o => o.kind === 'slab').length === 2, '층마다 슬래브 1: ' + SF.objects.filter(o => o.kind === 'slab').length);
+ck(SF.counts.walls === 2 && SF.counts.spaces === 2, '층 합산 개수: ' + JSON.stringify(SF.counts));
+// 한 층 문서는 종전과 동일(id 접두 없음) — 위쪽 전체 단언들이 그 회귀 테스트다
+ck(byId('w_s') && !S.objects.some(o => /:/.test(o.id)), '단층 문서는 id 접두 없음');
+
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

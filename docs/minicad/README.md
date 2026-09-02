@@ -29,6 +29,15 @@ sites/net/public/minicad/
 3D 동기화: MiniCAD `open3DView()`(ui.js) 가 문서를 localStorage `minicad.3d.doc` 로 넘기고 새 탭을 연다. 이후 `saveHistory`/undo/redo 가 `push3D()` 를 불러 BroadcastChannel `minicad-3d` 로 300ms 묶음 전송 → 3D 탭이 즉시 다시 조립한다. 3D 탭이 먼저 열려 있으면 `hello` 를 보내와 전송이 켜진다.
 3D 는 평면 데이터만으로 세운다 — 벽(두께·높이·마감색)/문·창(폭·높이·창턱, 인방·창턱 자동)/바닥·천장(공간 폴리곤)/가구·기구(종류별 높이 프로파일, build3d.js `FURN_H` 등)/조명(천장 높이에 부착, 발광 + 포인트라이트 최대 24)/기둥/계단(직선 도식). 벽 정렬(interior/exterior)은 2D `_wallAlignOffsetPx` 와 같은 규칙(`wallAlignOffset`, 일반벽=우측 법선 ±t/2 · 내력벽=내력벽 무게중심 방향)으로 몸체를 밀고, 꺾여 만나는 모서리는 이웃 벽 바깥 면까지 끝을 늘려 메운다(`cornerExtension`).
 GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이름` 으로 들어간다.
+
+### 층(Floor) 시트 — 2026-09-03
+- 대표 요구: 층을 한 시퀀스에 겹쳐 그리면 z 도 없고 버벅임 → **층마다 별도 시트, 저장은 한 문서**.
+- 구조: **활성 층만 STATE 배열에 산다**(도구·렌더·견적·인쇄 전부 활성 층 대상 — 다른 층 렌더 비용 0). 잠든 층은 `STATE.floors[].data` 에 JSON 스냅샷(undo 스냅샷과 같은 방식), 히스토리도 층별 보관. 핵심 함수: `switchFloor`/`addFloor({copy})`/`deleteFloor`/`renameFloor`/`_floorsExport`(ui.js).
+- UI: 상단 브랜드 옆 `#floor-bar` 탭(클릭=전환, 더블클릭=이름, [+]=빈 층, Shift+[+]=구조 복제), 명령 `fl`·`fl 2`·`fl add`·`fl copy`·`fl del 2`·`fl name 이름`.
+- 저장 스키마: 최상위 배열 = 활성 층(기존 스키마 그대로) + `floors:[{id,name,level,active}|{...,data}]` + `activeFloorId` → 서버 저장(`buildJSON`)·자동저장(`buildAutosavePayload`)·3D 전송 모두 한 문서. 옛 저장본(floors 없음)은 1층짜리로 열린다. 견적 프로파일에서는 floors 제거.
+- 복제 시 `_remapFloorIds` 로 id 접미사 재부여(전 층이 한 문서/3D 에 섞이므로 유일해야 함).
+- 3D: `buildScene` 이 `splitFloors` 로 층을 나눠 층마다 `buildFloorScene` → `obj.z0`(층 바닥 표고 = 아래층 누적 층높이, 층높이=최대 천장고+슬래브 300mm) 로 적층. 다층이면 obj.id 에 `층id:` 접두. 뷰어는 층 필터 버튼(전층/층별), 걷기 모드는 선택 층 눈높이로.
+- 주의: 견적·인쇄·DXF·AI 번들은 **활성 층 기준** — 전 층 합산이 필요하면 층을 돌며 합쳐야 한다(미구현).
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 
