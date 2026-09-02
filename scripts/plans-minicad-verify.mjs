@@ -27,6 +27,12 @@ for (const f of files) {
     bgOnly++;
     if (d.walls.length) { err(f, '미검증인데 벽 좌표가 들어감 — 틀린 치수를 내보내면 안 된다'); continue; }
   }
+  // openings 검증 — mm 정수·타입·폭 범위 (openings 검증)
+  for (const o of (d.openings || [])) {
+    if (!['DOOR','WINDOW'].includes(o.type)) { err(f, '개구부 타입 이상 ' + o.type); break; }
+    if (![o.x, o.y, o.width_mm].every(Number.isInteger)) { err(f, '개구부 mm 정수 위반'); break; }
+    if (o.width_mm < 300 || o.width_mm > 4000) { err(f, '개구부 폭 이상 ' + o.width_mm); break; }
+  }
   for (const w of d.walls) {
     if (![w.x1, w.y1, w.x2, w.y2, w.thickness].every(Number.isInteger)) { err(f, 'mm 정수 위반'); break; }
     if (w.x1 === w.x2 && w.y1 === w.y2) { err(f, '길이 0 벽'); break; }

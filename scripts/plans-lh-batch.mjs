@@ -25,7 +25,7 @@ for (const it of list) {
     const out = `${OUT}/${it.list_no}-p${p.page}.json`;
     writeFileSync(out, JSON.stringify(doc));
     docs++;
-    rows.push({ page: p.page, title: r.title, ok: true, verified: !!r.verified, warn: r.warn || [], walls: r.wallCount, scale: r.scale, scaleBasis: r.scaleBasis, longThick: r.longThick, coverage: r.coverage != null ? +r.coverage.toFixed(3) : null, widthMm: r.widthMm, heightMm: r.heightMm, clusters: r.clusters, json: out });
+    rows.push({ page: p.page, title: r.title, ok: true, verified: !!r.verified, warn: r.warn || [], walls: r.wallCount, doors: r.doorCount || 0, windows: r.windowCount || 0, scale: r.scale, scaleBasis: r.scaleBasis, longThick: r.longThick, coverage: r.coverage != null ? +r.coverage.toFixed(3) : null, widthMm: r.widthMm, heightMm: r.heightMm, clusters: r.clusters, json: out });
   }
   summary.push({ list_no: it.list_no, name: it.name, numPages: lp.numPages, unitPages: lp.pages.length, rows });
   console.log(`  ${basename(f)} — 페이지 ${lp.numPages} · 단위세대평면 ${lp.pages.length} · 문서 ${rows.filter(x => x.ok).length}`);

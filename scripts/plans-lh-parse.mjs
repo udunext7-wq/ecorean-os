@@ -130,6 +130,56 @@ function clusters(walls, gap) {
   }).sort((a, b) => b.area - a.area);
 }
 
+// 개구부(문·창) — 같은 중심선 위 벽 토막 사이의 '틈'이 개구부다.
+// 창: 틈 안에 벽 중심선을 따라 틈의 50% 이상을 가로지르는 가는 평행선(창선)이 2개 이상 (실측: 창 2~3개, 문 0개).
+// 문: 창선 없는 600~1300mm 틈. 그 밖의 틈(코어 연결 등)은 지어내지 않고 건너뛴다.
+// 높이·설치고는 평면도에 없다 → 표준값을 넣되 doc note 에 명시한다.
+function detectOpenings(mainWalls, thinSegsMm) {
+  const lines = [];
+  for (const w of mainWalls) {
+    const horiz = w.y1 === w.y2;
+    const c = horiz ? w.y1 : w.x1, a1 = horiz ? Math.min(w.x1, w.x2) : Math.min(w.y1, w.y2), a2 = horiz ? Math.max(w.x1, w.x2) : Math.max(w.y1, w.y2);
+    let ln = lines.find(l => l.horiz === horiz && Math.abs(l.c - c) <= 30);
+    if (!ln) { ln = { horiz, c, t: w.thickness, items: [] }; lines.push(ln); }
+    ln.t = Math.max(ln.t, w.thickness);
+    ln.items.push({ a1, a2 });
+  }
+  const openings = [];
+  let nd = 0, nw = 0;
+  for (const ln of lines) {
+    ln.items.sort((p, q) => p.a1 - q.a1);
+    for (let i = 1; i < ln.items.length; i++) {
+      const g = ln.items[i].a1 - ln.items[i - 1].a2;
+      if (g < 400 || g > 3600) continue;
+      const from = ln.items[i - 1].a2, to = ln.items[i].a1;
+      let frame = 0;
+      for (const t of thinSegsMm) {
+        if (t.horiz !== ln.horiz) continue;
+        if (Math.abs(t.c - ln.c) > ln.t / 2 + 20) continue;
+        const ov = Math.min(t.a2, to) - Math.max(t.a1, from);
+        if (ov >= g * 0.5) frame++;
+      }
+      const isWin = frame >= 2;
+      if (!isWin && (g < 600 || g > 1300)) continue;   // 정체 불명의 큰 틈은 만들지 않는다
+      const mid = (from + to) / 2;
+      const W = Math.round(g / 10) * 10;
+      openings.push({
+        id: (isWin ? 'wn-lh-' : 'd-lh-') + (isWin ? ++nw : ++nd),
+        type: isWin ? 'WINDOW' : 'DOOR',
+        subType: isWin ? (W >= 1500 ? 'sliding2' : 'casement') : 'swing',
+        spaceId: null, wallId: null,
+        x: Math.round(ln.horiz ? mid : ln.c), y: Math.round(ln.horiz ? ln.c : mid),
+        width_mm: W,
+        height_mm: isWin ? 1200 : 2100, depth_mm: Math.round(ln.t),
+        sillHeight_mm: isWin ? 900 : null,
+        angle: ln.horiz ? 0 : 90,
+        subtractMode: isWin ? 'single' : 'double',
+      });
+    }
+  }
+  return openings;
+}
+
 // 축척 후보 — 표기 방식이 단지마다 달라 후보를 순서대로 모으고, 벽 두께로 실제 맞는 것을 고른다.
 //  ① 명시 표기 "A3:1/120" "축척=1/100(A3:200)"  ② 표(칸) 배치: "A3" 토큰과 같은 행의 "1/N" 토큰
 //  ③ 페이지의 모든 "1/N" (A3면 큰 값 우선)  ④ 흔한 축척 목록(숫자가 글꼴 외곽선이라 안 읽히는 도면)
@@ -174,6 +224,8 @@ export async function parseUnitPage(file, page) {
   const dimVals = d.texts.map(t => +t.str.replace(/,/g, '').trim()).filter(v => v >= 1000 && v <= 60000);
   const bigDim = dimVals.length ? Math.max(...dimVals) : null;
 
+  // 창선 후보 = 벽 클래스보다 가는 실선 (치수·해치와 섞여 있지만 '벽 중심선상 + 틈 관통' 조건이 걸러낸다)
+  const thinRaw = d.segs.filter(sg => !sg.filled && !sg.dashed && sg.lw < +lwKey[0] - 0.05);
   // 주어진 축척으로 벽을 만들어 본다
   const buildAt = (S) => {
     const mmPerPt = PT_MM * S;
@@ -214,7 +266,16 @@ export async function parseUnitPage(file, page) {
     const lt = longWalls.map(w => w.thickness).sort((p, q) => p - q);
     const longThick = lt[lt.length >> 1] || null;
     const tks = walls.map(w => w.thickness).sort((p, q) => p - q);
-    return { mmPerPt, walls, main, widthMm, heightMm, longThick, coverage, clusters: cl.length, medianThick: tks[tks.length >> 1] || null, origin: { x: ox, y: oy } };
+    const thinSegsMm = [];
+    for (const sg of thinRaw) {
+      const hz = Math.abs(sg.b.y - sg.a.y) < 0.5, vt = Math.abs(sg.b.x - sg.a.x) < 0.5;
+      if (!hz && !vt) continue;
+      thinSegsMm.push(hz
+        ? { horiz: true, c: ((sg.a.y + sg.b.y) / 2 - oy) * mmPerPt, a1: (Math.min(sg.a.x, sg.b.x) - ox) * mmPerPt, a2: (Math.max(sg.a.x, sg.b.x) - ox) * mmPerPt }
+        : { horiz: false, c: ((sg.a.x + sg.b.x) / 2 - ox) * mmPerPt, a1: (Math.min(sg.a.y, sg.b.y) - oy) * mmPerPt, a2: (Math.max(sg.a.y, sg.b.y) - oy) * mmPerPt });
+    }
+    const openings = detectOpenings(walls, thinSegsMm);
+    return { mmPerPt, walls, openings, main, widthMm, heightMm, longThick, coverage, clusters: cl.length, medianThick: tks[tks.length >> 1] || null, origin: { x: ox, y: oy } };
   };
   // 축척·품질 검증 — 긴 벽 두께가 벽체 상식 범위(130~320mm), 세대 평면 크기, 외곽선 재현율 80% 이상
   // 축척 선택은 두께·크기로만 한다 (재현율로 고르면 엉뚱한 축척이 '맞아 보일' 수 있다)
@@ -243,7 +304,7 @@ export async function parseUnitPage(file, page) {
   const widthErr = bigDim ? Math.abs(r.widthMm - bigDim) / bigDim : null;
   return {
     ok: true, page, title, scale: r.scale, scaleBasis: r.scaleBasis, scaleNote, mmPerPt: r.mmPerPt, lw: +lwKey[0], longThick: r.longThick, coverage: r.coverage, warn, verified: !!picked,
-    walls: r.walls, wallCount: r.walls.length, clusters: r.clusters,
+    walls: r.walls, wallCount: r.walls.length, openings: r.openings || [], doorCount: (r.openings || []).filter(o => o.type === 'DOOR').length, windowCount: (r.openings || []).filter(o => o.type === 'WINDOW').length, clusters: r.clusters,
     widthMm: r.widthMm, heightMm: r.heightMm, bigDim, widthErr, medianThick: r.medianThick,
     origin: r.origin, pageSize: { w: d.width, h: d.height },
   };
@@ -256,13 +317,13 @@ export function toDoc(res, meta) {
       project: `${meta.complex || basename(meta.file)} ${res.title}`.trim(), unit: 'mm', ceilingHeight_mm: 2300,
       wallThickness: res.medianThick || 200,
       tool: 'ECOREAN LH 구조도면 벡터 파서 v1',
-      note: `LH 건축구조도면(CAD PDF) 벡터 좌표. 축척 1/${res.scale}(${res.scaleBasis}). 구조(내력)벽만 — 경량 칸막이벽·방 이름은 없다. 시공 전 실측 확인.`,
+      note: `LH 건축구조도면(CAD PDF) 벡터 좌표. 축척 1/${res.scale}(${res.scaleBasis}). 구조(내력)벽 + 개구부(창=창선 검출·문=빈 틈). 문·창의 폭·위치는 도면값, 높이·설치고는 표준값(문 2100 / 창 1200·설치고 900). 경량 칸막이벽·방 이름은 없다. 시공 전 실측 확인.`,
       verified: !!res.verified, warn: res.warn || [], source: 'LH 건축구조도면공개', source_file: basename(meta.file), source_page: res.page,
       scale: res.scale, scale_basis: res.scaleBasis, scale_note: res.scaleNote || null, mm_per_pt: res.mmPerPt, width_mm: res.widthMm, height_mm: res.heightMm,
       outline_coverage: res.coverage != null ? +res.coverage.toFixed(3) : null,
       dim_check: res.bigDim ? { max_dim_text: res.bigDim, width_err: +(res.widthErr * 100).toFixed(2) + '%' } : null,
     },
-    spaces: [], walls: res.walls, openings: [],
+    spaces: [], walls: res.walls, openings: res.openings || [],
   };
 }
 
