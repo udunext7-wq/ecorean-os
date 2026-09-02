@@ -38,6 +38,14 @@ GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이
 - 복제 시 `_remapFloorIds` 로 id 접미사 재부여(전 층이 한 문서/3D 에 섞이므로 유일해야 함).
 - 3D: `buildScene` 이 `splitFloors` 로 층을 나눠 층마다 `buildFloorScene` → `obj.z0`(층 바닥 표고 = 아래층 누적 층높이, 층높이=최대 천장고+슬래브 300mm) 로 적층. 다층이면 obj.id 에 `층id:` 접두. 뷰어는 층 필터 버튼(전층/층별), 걷기 모드는 선택 층 눈높이로.
 - 주의: 견적·인쇄·DXF·AI 번들은 **활성 층 기준** — 전 층 합산이 필요하면 층을 돌며 합쳐야 한다(미구현).
+- 층 삭제: 활성 탭의 ✕(확인창) 또는 `fl del`(현재 층)/`fl del 2`. 마지막 한 층은 못 지운다.
+
+### 클립보드 Ctrl+C/V/X — 2026-09-03
+- 선택된 **모든 종류** 복사(`copySelection`): 공간은 소속 벽·문창·안의 객체 동반(`spaceContainedObjects`), 벽은 꼭짓점·그 벽의 문창 동반. 좌표 굳힘은 undo 스냅샷과 같은 JSON 왕복.
+- 붙여넣기(`pasteClipboard`): `_remapFloorIds` 로 id 재부여(v1Id/vertexIds/wallId/spaceId·회로 lightIds/lightGang/jumpIds 까지) → **마우스 커서 위치**로 이동(커서 없으면 +600mm) → reinstallVEF → 붙인 것들 선택 상태. 벽 없이 온 문창은 `findNearestWallId` 재부착. 잠금은 해제되어 붙는다.
+- 클립보드는 층 바깥(전역 `_clipboard` + localStorage `minicad.clipboard`) — **다른 층·다른 탭**에 붙여넣기 가능. Ctrl+X = 복사+삭제(잠긴 객체는 deleteSelected 가 걸러줌).
+- 키 가드: INPUT/TEXTAREA 포커스·텍스트 드래그 선택 중·인쇄 설정창 열림에는 브라우저 기본 동작 유지.
+- 테스트: tests.js [CP] 11건 (커서 위치·다중·공간 동반·층 건너·원상복구).
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 

@@ -4805,6 +4805,69 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('FL: 층 시트 테스트 예외 없음',false,e.message);
   }
+  // === [CP] 클립보드 Ctrl+C/V/X (2026-09-03) ===
+  try{
+    const _cpBak=JSON.parse(JSON.stringify(buildAutosavePayload()));   // 끝나면 원상복구
+    // 단일 가구 복사→붙여넣기 (커서 위치로)
+    STATE.furniture.push({id:'cp_f1',type:'sofa3',x:1000,y:1000,angle:0,spaceId:null});
+    STATE.selectedKind='furniture';STATE.selectedId='cp_f1';STATE.boxSelection=[];
+    assert('CP1: 복사',copySelection()===true);
+    _clipMouse={x:5000,y:5000};
+    const _nf=STATE.furniture.length;
+    assert('CP2: 붙여넣기 — 개수+1',pasteClipboard()===true&&STATE.furniture.length===_nf+1);
+    const _pf=STATE.furniture[STATE.furniture.length-1];
+    assert('CP3: 새 id + 커서 위치',_pf.id!=='cp_f1'&&Math.abs(_pf.x-5000)<=1&&Math.abs(_pf.y-5000)<=1,JSON.stringify({id:_pf.id,x:_pf.x,y:_pf.y}));
+    assert('CP4: 붙여넣은 것이 선택됨',STATE.boxSelection.length===1&&STATE.boxSelection[0].id===_pf.id);
+    // 다중(가구+조명) 복사
+    STATE.lights.push({id:'cp_l1',type:'downlight',x:1200,y:1000,inch:3,spaceId:null});
+    STATE.boxSelection=[{kind:'furniture',id:'cp_f1'},{kind:'lights',id:'cp_l1'}];
+    copySelection();
+    const _nf2=STATE.furniture.length,_nl2=STATE.lights.length;
+    pasteClipboard();
+    assert('CP5: 다중 붙여넣기',STATE.furniture.length===_nf2+1&&STATE.lights.length===_nl2+1);
+    // 공간 복사 = 벽·문창 동반
+    if(typeof polygonToVertexIds==='function'&&typeof makeSpaceVEF==='function'){
+      const _vids=polygonToVertexIds([{x:20000,y:20000},{x:23000,y:20000},{x:23000,y:23000},{x:20000,y:23000}]);
+      const _sp=makeSpaceVEF(_vids,{id:'cp_sp',name:'복사방',type:'ROOM'});
+      STATE.spaces.push(_sp);
+      STATE.walls.push(makeWallVEF(_vids[0],_vids[1],{id:'cp_w1',spaceId:'cp_sp',thickness:100}));
+      STATE.openings.push({id:'cp_o1',type:'DOOR',subType:'swing',x:21500,y:20000,wallId:'cp_w1',width_mm:900,height_mm:2100,spaceId:'cp_sp'});
+      reinstallVEFAll();
+      STATE.selectedKind='space';STATE.selectedId='cp_sp';STATE.boxSelection=[];
+      copySelection();
+      const _nw=STATE.walls.length,_no=STATE.openings.length,_ns=STATE.spaces.length;
+      _clipMouse={x:30000,y:30000};
+      pasteClipboard();
+      assert('CP6: 공간 복사 = 벽·문 동반',STATE.spaces.length===_ns+1&&STATE.walls.length===_nw+1&&STATE.openings.length===_no+1);
+      const _psp=STATE.spaces[STATE.spaces.length-1],_pw=STATE.walls[STATE.walls.length-1];
+      assert('CP7: 복사된 벽이 복사된 공간을 가리킴',_pw.spaceId===_psp.id&&_psp.id!=='cp_sp');
+      const _pc=_psp.polygon&&_psp.polygon.length?{x:_psp.polygon.reduce((s,p)=>s+p.x,0)/_psp.polygon.length,y:_psp.polygon.reduce((s,p)=>s+p.y,0)/_psp.polygon.length}:null;
+      assert('CP8: 공간이 커서 자리로 이동',!!_pc&&Math.abs(_pc.x-30000)<=800&&Math.abs(_pc.y-30000)<=800,JSON.stringify(_pc));
+    }else{assert('CP6: 공간 복사 = 벽·문 동반',false,'makeSpaceVEF 없음');}
+    // 층 건너 붙여넣기
+    const _act=STATE.activeFloorId;
+    const _f9=addFloor();
+    assert('CP9: 새 층은 비어 있음',STATE.furniture.length===0);
+    _clipMouse={x:2000,y:2000};
+    STATE.boxSelection=[];STATE.selectedKind=null;STATE.selectedId=null;
+    _clipboard=null;try{localStorage.removeItem('minicad.clipboard');}catch(_){}
+    STATE.floors.find(f=>f.id===_act); // (참조용)
+    // 1층에서 복사해 둔 것을 다시: 클립보드를 새로 만든다 — 가구 하나를 1층에서 복사
+    switchFloor(_act,{silent:true});
+    STATE.selectedKind='furniture';STATE.selectedId='cp_f1';STATE.boxSelection=[];
+    copySelection();
+    switchFloor(_f9.id,{silent:true});
+    pasteClipboard();
+    assert('CP10: 층 건너 붙여넣기',STATE.furniture.length===1&&STATE.furniture[0].id!=='cp_f1');
+    // 원상복구
+    switchFloor(_act,{silent:true});
+    STATE.floors=STATE.floors.filter(f=>f.id!==_f9.id);
+    _clipboard=null;try{localStorage.removeItem('minicad.clipboard');}catch(_){}
+    applyLoadedData(_cpBak);
+    assert('CP11: 원상복구',STATE.furniture.every(f=>f.id!=='cp_f1'));
+  }catch(e){
+    assert('CP: 클립보드 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

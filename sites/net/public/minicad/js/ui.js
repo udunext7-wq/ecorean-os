@@ -3474,6 +3474,10 @@ function _paletteCommands(){
     {label:'🧊 3D 뷰 — 평면을 입체로, 별도 탭 (3d)',kw:'3d 3D 입체 three 뷰 걷기 조감 view',run:()=>open3DView()},
     {label:'📑 층 추가 — 빈 층 (fl add)',kw:'층 floor 시트 추가 add 2층 3층',run:()=>addFloor()},
     {label:'📑 층 추가 — 현재 층 구조 복제 (fl copy)',kw:'층 floor 복제 copy 구조 벽',run:()=>addFloor({copy:true})},
+    {label:'📑 층 삭제 — 현재 층 (fl del)',kw:'층 floor 삭제 제거 빼기 del delete',run:()=>deleteFloor(STATE.activeFloorId)},
+    {label:'📋 복사 (Ctrl+C)',kw:'복사 copy 클립보드 clipboard ctrl c',run:()=>copySelection()},
+    {label:'📋 붙여넣기 (Ctrl+V)',kw:'붙여넣기 paste 클립보드 ctrl v',run:()=>pasteClipboard()},
+    {label:'✂ 잘라내기 (Ctrl+X)',kw:'잘라내기 cut 이동 ctrl x',run:()=>cutSelection()},
     {label:'📐 입면도 — 평면도에서 자동 생성 (el)',kw:'elevation 입면도 입면 el 벙 방위 단면',run:()=>openElevationDialog()},
     {label:'─ 절단선 긋기 — 보는 방향 직접 고르기 (K)',kw:'section 절단선 절단면 방향 입면 sc',run:()=>setTool('section')},
     {label:'🔌 선택한 조명을 스위치에 연결 (link)',kw:'circuit link 연결 조명 스위치 회로 다중',run:()=>startCircuitAttach()},
@@ -5363,11 +5367,18 @@ function switchFloor(id,opts){
 function _remapFloorIds(d,sfx){
   const map={};
   const ren=o=>{if(o&&o.id){map[o.id]=o.id+sfx;o.id=o.id+sfx;}};
-  ['vertices','spaces','walls','openings','pillars','furniture','fixtures','lights','electric','hvac'].forEach(k=>(d[k]||[]).forEach(ren));
+  ['vertices','spaces','walls','openings','pillars','furniture','fixtures','lights','electric','hvac',
+   'texts','measures','circles','arcs','curves','leaders','xlines','sections'].forEach(k=>(d[k]||[]).forEach(ren));
   (d.walls||[]).forEach(w=>{['v1Id','v2Id','spaceId'].forEach(k=>{if(w[k]&&map[w[k]])w[k]=map[w[k]];});});
   (d.spaces||[]).forEach(s=>{if(Array.isArray(s.vertexIds))s.vertexIds=s.vertexIds.map(id=>map[id]||id);});
   (d.openings||[]).forEach(o=>{['wallId','spaceId'].forEach(k=>{if(o[k]&&map[o[k]])o[k]=map[o[k]];});});
   ['furniture','fixtures','lights','electric','hvac'].forEach(k=>(d[k]||[]).forEach(o=>{if(o.spaceId&&map[o.spaceId])o.spaceId=map[o.spaceId];}));
+  // 회로 연결(스위치→조명·점핑)도 따라간다 — 함께 복사되지 않은 조명은 원본 id 유지(같은 층 원본에 연결)
+  (d.electric||[]).forEach(o=>{
+    if(Array.isArray(o.lightIds)) o.lightIds=o.lightIds.map(id=>map[id]||id);
+    if(o.lightGang&&typeof o.lightGang==='object'){const g={};Object.entries(o.lightGang).forEach(([k,v])=>{g[map[k]||k]=v;});o.lightGang=g;}
+  });
+  (d.lights||[]).forEach(o=>{if(Array.isArray(o.jumpIds))o.jumpIds=o.jumpIds.map(id=>map[id]||id);});
   return d;
 }
 function addFloor(opts){
@@ -5421,6 +5432,12 @@ function renderFloorBar(){
     const b=document.createElement('button');
     b.className='fl-tab'+(f.id===STATE.activeFloorId?' on':'');
     b.textContent=f.name;
+    if(f.id===STATE.activeFloorId&&STATE.floors.length>1){ // 활성 탭에서 바로 층 삭제 (확인창 있음)
+      const x=document.createElement('span');
+      x.textContent=' ✕';x.title='이 층 삭제';x.style.cssText='opacity:.65;margin-left:2px';
+      x.addEventListener('click',ev=>{ev.stopPropagation();deleteFloor(f.id);});
+      b.appendChild(x);
+    }
     b.addEventListener('click',()=>switchFloor(f.id));
     b.addEventListener('dblclick',()=>{const nm=prompt('층 이름',f.name);if(nm)renameFloor(f.id,nm);});
     bar.appendChild(b);
@@ -5431,6 +5448,125 @@ function renderFloorBar(){
   bar.appendChild(add);
 }
 (function(){renderFloorBar();})();
+
+// ===== 2026-09-03: 클립보드 — Ctrl+C 복사 / Ctrl+V 붙여넣기 / Ctrl+X 잘라내기 =====
+//  선택된 모든 종류(가구·기구·조명·전기·설비·글·치수·원·호·곡선·지시선·안내선·기둥·절단선·벽·공간)를 복사한다.
+//  공간을 복사하면 소속 벽·문창·안의 객체까지 함께. 클립보드는 층 바깥(전역+localStorage)에 살아서
+//  다른 층·다른 탭에 붙여넣기 가능. 붙는 위치 = 마우스 커서(없으면 원본에서 +600mm).
+const _CLIP_KIND2ARR={space:'spaces',wall:'walls',opening:'openings',furniture:'furniture',fixtures:'fixtures',
+  lights:'lights',electric:'electric',hvac:'hvac',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',
+  curves:'curves',leaders:'leaders',xlines:'xlines',pillars:'pillars',sections:'sections'};
+let _clipboard=null,_clipSeq=0,_clipMouse=null;
+function copySelection(){
+  const targets=getSelectedTargets();
+  if(!targets.length){showStatus('복사할 것을 먼저 선택하세요');return false;}
+  const d={vertices:[]};Object.values(_CLIP_KIND2ARR).forEach(k=>{d[k]=[];});
+  const seen=new Set();
+  const put=(arrName,o)=>{if(o&&o.id&&!seen.has(arrName+':'+o.id)){seen.add(arrName+':'+o.id);d[arrName].push(o);}};
+  const putVerts=ids=>ids.forEach(vid=>{if(!vid||seen.has('v:'+vid))return;const v=STATE.vertices.find(x=>x.id===vid);if(v){seen.add('v:'+vid);d.vertices.push(v);}});
+  targets.forEach(t=>{
+    const o=_findObjByKindId(t.kind,t.id);if(!o)return;
+    if(t.kind==='space'){
+      put('spaces',o);
+      if(Array.isArray(o.vertexIds)) putVerts(o.vertexIds);
+      STATE.walls.filter(w=>w.spaceId===o.id).forEach(w=>{put('walls',w);putVerts([w.v1Id,w.v2Id]);});
+      const cont=(typeof spaceContainedObjects==='function')?spaceContainedObjects(o.id):null;
+      if(cont) Object.entries(cont).forEach(([k,arr])=>(arr||[]).forEach(x=>put(k,x)));
+    }else if(t.kind==='wall'){
+      put('walls',o);putVerts([o.v1Id,o.v2Id]);
+      STATE.openings.filter(op=>op.wallId===o.id).forEach(op=>put('openings',op));
+    }else{
+      const arrName=_CLIP_KIND2ARR[t.kind];
+      if(arrName) put(arrName,o); else return;
+    }
+  });
+  // 중심 계산 (붙여넣기 이동량 기준)
+  const xs=[],ys=[];
+  const take=(x,y)=>{if(isFinite(x)&&isFinite(y)){xs.push(x);ys.push(y);}};
+  d.vertices.forEach(v=>take(v.x,v.y));
+  Object.entries(d).forEach(([k,arr])=>{if(k==='vertices')return;arr.forEach(o=>{
+    take(o.x,o.y);take(o.x1,o.y1);take(o.x2,o.y2);
+    (o.segments||[]).forEach(s=>{if(s.p0)take(s.p0.x,s.p0.y);if(s.p3)take(s.p3.x,s.p3.y);});
+    if(Array.isArray(o.points))for(let i=0;i+1<o.points.length;i+=2)take(o.points[i],o.points[i+1]);
+  });});
+  if(!xs.length) return false;
+  const clip={at:Date.now(),center:{x:Math.round((Math.min(...xs)+Math.max(...xs))/2),y:Math.round((Math.min(...ys)+Math.max(...ys))/2)},
+    data:JSON.parse(JSON.stringify(d))}; // getter 를 값으로 굳힘
+  _clipboard=clip;
+  try{localStorage.setItem('minicad.clipboard',JSON.stringify(clip));}catch(_){}
+  const n=Object.entries(clip.data).reduce((s,[k,a])=>s+(k==='vertices'?0:a.length),0);
+  showStatus('📋 복사 '+n+'개 — Ctrl+V 붙여넣기 (다른 층·다른 탭에서도)');
+  return true;
+}
+function _clipTranslate(d,dx,dy){
+  const mv=o=>{
+    if(typeof o.x==='number')o.x+=dx; if(typeof o.y==='number')o.y+=dy;
+    if(typeof o.x1==='number'){o.x1+=dx;o.y1+=dy;} if(typeof o.x2==='number'){o.x2+=dx;o.y2+=dy;}
+    (o.segments||[]).forEach(s=>['p0','p1','p2','p3'].forEach(p=>{if(s[p]){s[p].x+=dx;s[p].y+=dy;}}));
+    if(Array.isArray(o.points))for(let i=0;i+1<o.points.length;i+=2){o.points[i]+=dx;o.points[i+1]+=dy;}
+    if(Array.isArray(o.holes))o.holes.forEach(h=>(h||[]).forEach(p=>{p.x+=dx;p.y+=dy;}));
+  };
+  Object.entries(d).forEach(([k,arr])=>{
+    if(k==='vertices') arr.forEach(v=>{v.x+=dx;v.y+=dy;});
+    else arr.forEach(mv);
+  });
+}
+function pasteClipboard(){
+  let clip=_clipboard;
+  if(!clip){try{const raw=localStorage.getItem('minicad.clipboard');if(raw)clip=JSON.parse(raw);}catch(_){}}
+  if(!clip||!clip.data){showStatus('클립보드가 비어 있습니다 — Ctrl+C 로 먼저 복사');return false;}
+  const d=JSON.parse(JSON.stringify(clip.data));
+  _remapFloorIds(d,'_p'+(++_clipSeq)+Date.now().toString(36).slice(-3)); // id 재부여 (참조 포함)
+  const target=(_clipMouse&&isFinite(_clipMouse.x))?_clipMouse:{x:clip.center.x+600,y:clip.center.y+600};
+  _clipTranslate(d,Math.round(target.x-clip.center.x),Math.round(target.y-clip.center.y));
+  const kindOf={};Object.entries(_CLIP_KIND2ARR).forEach(([k,a])=>{kindOf[a]=k;});
+  const pasted=[];
+  (d.vertices||[]).forEach(v=>STATE.vertices.push(v));
+  Object.entries(d).forEach(([arrName,arr])=>{
+    if(arrName==='vertices')return;
+    (arr||[]).forEach(o=>{delete o.locked;STATE[arrName].push(o);pasted.push({kind:kindOf[arrName],id:o.id});});
+  });
+  if(!pasted.length){showStatus('붙여넣을 것이 없습니다');return false;}
+  reinstallVEFAll();
+  // 벽 없이 복사된 문·창은 가장 가까운 벽으로 재부착
+  (d.openings||[]).forEach(o=>{
+    const op=STATE.openings.find(x=>x.id===o.id);
+    if(op&&op.wallId&&!STATE.walls.some(w=>w.id===op.wallId))
+      op.wallId=(typeof findNearestWallId==='function')?findNearestWallId(op):null;
+  });
+  STATE.selectedKind=null;STATE.selectedId=null;
+  STATE.boxSelection=pasted.slice();
+  saveHistory();renderAll();refreshUI();
+  showStatus('📋 붙여넣기 '+pasted.length+'개');
+  return true;
+}
+function cutSelection(){
+  if(!getSelectedTargets().length){showStatus('잘라낼 것을 먼저 선택하세요');return false;}
+  if(!copySelection()) return false;
+  deleteSelected();
+  showStatus('✂ 잘라내기 — Ctrl+V 로 붙여넣기 (다른 층에도)');
+  return true;
+}
+// 마우스 위치 추적 (붙여넣기 지점) — 캔버스 위 마지막 커서의 mm 좌표
+(function(){
+  if(typeof stage==='undefined'||!stage||!stage.on) return;
+  stage.on('mousemove.clip',()=>{
+    const p=stage.getPointerPosition();if(!p)return;
+    _clipMouse={x:pxToMm(p.x-STATE.offsetX),y:pxToMm(p.y-STATE.offsetY)};
+  });
+})();
+document.addEventListener('keydown',e=>{
+  if(!(e.ctrlKey||e.metaKey)||e.altKey) return;
+  const k=(e.key||'').toLowerCase();
+  if(k!=='c'&&k!=='v'&&k!=='x') return;
+  const t=e.target;
+  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable)) return; // 글자 입력 중이면 브라우저 기본 동작
+  if((k==='c'||k==='x')&&window.getSelection&&String(window.getSelection())) return; // 텍스트를 긁어 복사 중이면 방해 금지
+  if(typeof _printDlgEl!=='undefined'&&_printDlgEl) return;
+  if(k==='c'){ if(copySelection()) e.preventDefault(); }
+  else if(k==='v'){ if(pasteClipboard()) e.preventDefault(); }
+  else { if(cutSelection()) e.preventDefault(); }
+});
 (function(){const b=document.getElementById('btn-elev');if(b)b.addEventListener('click',()=>openElevationDialog());})(); // 2026-08-30
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
@@ -6177,6 +6313,7 @@ function processCommand(rawCmd){
      if(!a){_floorsEnsure();showStatus('층: '+STATE.floors.map(f=>(f.id===STATE.activeFloorId?'▶':'')+f.name).join(' · ')+'  (fl 2 / fl add / fl copy / fl del 2 / fl name 이름)');}
      else if(/^(add|추가)$/i.test(a)) addFloor();
      else if(/^(copy|복제)$/i.test(a)) addFloor({copy:true});
+     else if(/^(del|삭제)$/i.test(a)) deleteFloor(STATE.activeFloorId);
      else if(/^(del|삭제)\s+(.+)$/i.test(a)) deleteFloor(a.replace(/^(del|삭제)\s+/i,'').replace(/층$/,''));
      else if(/^(name|이름)\s+(.+)$/i.test(a)) renameFloor(STATE.activeFloorId,a.replace(/^(name|이름)\s+/i,''));
      else switchFloor(a.replace(/층$/,''));
