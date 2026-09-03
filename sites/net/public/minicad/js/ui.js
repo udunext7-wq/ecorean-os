@@ -5577,7 +5577,11 @@ document.addEventListener('keydown',e=>{
 //  3D 뷰(별도 탭·분할 iframe 공통)가 BroadcastChannel 로 {type:'edit',op,kind,id,floorId,patch} 를 보내면
 //  여기서 평면 데이터에 반영한다. 활성 층이면 STATE(+undo 히스토리), 잠든 층이면 floors[].data 스냅샷에.
 function apply3DEdit(m){
-  if(!m||!m.kind||!m.id||!m.op) return false;
+  if(!m||!m.op) return false;
+  // 2026-09-03: 3D 쪽 Ctrl+Z/Y — 평면 히스토리와 한 몸으로 왕복
+  if(m.op==='undo'){undo();return true;}
+  if(m.op==='redo'){redo();return true;}
+  if(!m.kind||!m.id) return false;
   const arrName=_CLIP_KIND2ARR[m.kind];
   if(!arrName) return false;
   if(m.op==='delete'&&!['furniture','fixtures','lights','electric','hvac','pillars','opening'].includes(m.kind)) return false; // 벽·공간 삭제는 평면에서만

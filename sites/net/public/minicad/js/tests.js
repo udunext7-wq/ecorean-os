@@ -4880,6 +4880,11 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       &&STATE.furniture.find(o=>o.id==='ed_f1').x===2500);
     assert('ED2: 회전',apply3DEdit({type:'edit',op:'rotate',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{angle:375}})===true
       &&STATE.furniture.find(o=>o.id==='ed_f1').angle===15);
+    // 3D 쪽 Ctrl+Z/Y → undo/redo 왕복
+    assert('ED2b: undo 왕복',apply3DEdit({type:'edit',op:'undo'})===true
+      &&STATE.furniture.find(o=>o.id==='ed_f1').angle===0);
+    assert('ED2c: redo 왕복',apply3DEdit({type:'edit',op:'redo'})===true
+      &&STATE.furniture.find(o=>o.id==='ed_f1').angle===15);
     assert('ED3: 조명 인치 set',apply3DEdit({type:'edit',op:'set',kind:'lights',id:'ed_l1',floorId:_edAct,patch:{inch:5}})===true
       &&STATE.lights.find(o=>o.id==='ed_l1').inch===5);
     // 허용 밖 필드는 무시

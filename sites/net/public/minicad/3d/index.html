@@ -53,6 +53,25 @@
   #props .btn.danger{border-color:var(--orange);color:var(--orange)}
   #props .p-note{font-size:10.5px;color:var(--mute);margin-top:8px;line-height:1.45}
   #props .p-lock{color:var(--orange);font-size:11.5px;margin-top:6px}
+  /* 2026-09-03: 스케치업식 도구 바·수치입력(VCB)·페인트 팔레트 */
+  #tools{position:fixed;left:10px;top:56px;display:flex;flex-direction:column;gap:5px;z-index:5}
+  #tools .btn{width:42px;height:40px;font-size:16px;padding:0;text-align:center}
+  #paintpal{position:fixed;left:60px;top:56px;width:210px;max-height:calc(100vh - 130px);overflow-y:auto;display:none;z-index:5;
+    background:rgba(26,27,46,.95);border:1px solid var(--line);border-radius:11px;padding:10px;backdrop-filter:blur(8px)}
+  #paintpal .pp-cat{font-size:11px;color:var(--gold);font-weight:700;margin:7px 0 4px}
+  #paintpal .pp-cat:first-child{margin-top:0}
+  #paintpal .pp-grid{display:flex;flex-direction:column;gap:2px}
+  #paintpal .pp-it{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid transparent;color:var(--ink);
+    border-radius:7px;padding:4px 6px;font-size:11.5px;cursor:pointer;text-align:left;font-family:inherit}
+  #paintpal .pp-it:hover{border-color:var(--line)}
+  #paintpal .pp-it.on{background:#2E3150;border-color:var(--gold)}
+  #paintpal .pp-chip{width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.4);flex:none}
+  #vcb{position:fixed;right:12px;bottom:12px;display:none;align-items:center;gap:7px;z-index:6;
+    background:rgba(26,27,46,.95);border:1px solid var(--gold);border-radius:9px;padding:7px 11px}
+  #vcb .v-l{font-size:11.5px;color:var(--mute)}
+  #vcb .v-v{width:84px;background:#242640;border:1px solid var(--line);color:var(--lime);border-radius:6px;padding:4px 7px;
+    font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right}
+  #vcb .v-u{font-size:11.5px;color:var(--mute)}
   @media (max-width:640px){ .bar .title small{display:none} #hint{display:none} #props{width:200px} }
 </style>
 </head>
@@ -83,17 +102,28 @@
   <button class="btn sm" id="b-reload" title="MiniCAD 에서 도면을 다시 받는다">↻</button>
 </div>
 <div id="props"></div>
+<div id="tools">
+  <button class="btn on" data-t="select" title="선택 (Space) — 클릭=속성 · 끌면 이동">➤</button>
+  <button class="btn" data-t="move" title="이동 (M) — 클릭해 집고, 옮겨서 다시 클릭 · ←→ 축 고정 · 숫자=mm">✥</button>
+  <button class="btn" data-t="rotate" title="회전 (Q) — 클릭 후 좌우로, 클릭=확정 · 숫자=° · Shift=자유각">↻</button>
+  <button class="btn" data-t="pushpull" title="밀기끌기 (P) — 벽·천장을 클릭해 위아래로 · 숫자=mm">⇕</button>
+  <button class="btn" data-t="paint" title="페인트 (B) — 재질 고르고 벽/바닥/천장 클릭 (견적에도 반영)">🪣</button>
+  <button class="btn" data-t="erase" title="지우개 (E) — 클릭=삭제">🧽</button>
+  <button class="btn" data-t="tape" title="줄자 (T) — 두 점 거리 측정">📏</button>
+</div>
+<div id="paintpal"></div>
+<div id="vcb"><span class="v-l">이동</span><input class="v-v" inputmode="decimal" aria-label="수치 입력"><span class="v-u">mm</span></div>
 <div id="tip"></div>
-<div id="hint">클릭=선택·속성 | <b>객체 드래그=이동</b> · R=회전 · Del=삭제 (평면도에 바로 반영) | 더블클릭=그 방으로 줌 | 조감: 빈 곳 드래그 회전 · 휠 확대 | 걷기: W A S D · Q/E</div>
+<div id="hint"><b>스케치업식:</b> Space 선택 · M 이동 · Q 회전 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 | 동작 중 <b>숫자 입력=정확한 값</b> · ←→ 축 고정 · Esc 취소 | Ctrl+Z 실행취소(평면과 한 몸) | 더블클릭=줌 · 휠버튼=궤도 · 우클릭=팬</div>
 <div id="empty">아직 받은 도면이 없습니다.<br>MiniCAD 창에서 <b>🧊 3D</b> 버튼을 누르거나 명령창에 <b>3d</b> 를 입력하세요.<br><small>열어 두면 평면을 고칠 때마다 바로 반영되고, 여기서 고치면 평면에 반영됩니다.</small></div>
 <div id="walkpad">
   <button data-k="q">⇧</button><button data-k="w">▲</button><button data-k="e">⇩</button>
   <button data-k="a">◀</button><button data-k="s">▼</button><button data-k="d">▶</button>
 </div>
-<script src="../js/data.js?v=3d3"></script>
-<script src="../js/library.js?v=3d3"></script>
-<script src="build3d.js?v=3d3"></script>
+<script src="../js/data.js?v=3d4"></script>
+<script src="../js/library.js?v=3d4"></script>
+<script src="build3d.js?v=3d4"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d3"></script>
+<script type="module" src="view3d.js?v=3d4"></script>
 </body>
 </html>

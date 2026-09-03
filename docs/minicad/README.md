@@ -54,6 +54,16 @@ GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이
 - **유휴 렌더 0**: needRender 플래그 — 카메라·드래그·장면 변화 때만 render, `shadowMap.autoUpdate=false`(변화 시 needsUpdate). 대형 도면 자동 성능(메시 3500↑ 그림자 자동 OFF·pixelRatio 하향, 사용자가 그림자 버튼 만지면 자동 해제).
 - **조작**: 더블클릭=그 객체/방으로 줌, 시점 프리셋 ⌂⬓⬒◨(키 3/4/5/6), 🌗 주/야 무드, 걷기 유지.
 - 주의: 뷰어 구조가 root>층그룹>객체그룹 2단 — 스모크·테스트는 `MC3DVIEW.objCount()`/`ST.floorCache` 를 본다(`ST.root.children`=층 수). 3d/index.html 은 이제 data.js 도 로드(재질 드롭다운).
+
+### 스케치업식 도구 체계 (2026-09-03, 대표 결정: "스케치업과 동일 아니 그 이상")
+- 좌측 도구 바(#tools) + 단축키: **Space 선택 · M 이동 · Q 회전 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자**. 마우스: 휠버튼 드래그=궤도, 우클릭 드래그=팬, 휠=줌(+빈 곳 좌드래그 궤도 유지).
+- 방식도 스케치업식: **클릭-이동-클릭(스티키)**, 동작 중 **숫자 입력(VCB #vcb)=정확한 값**(이동 mm·회전 °·밀기끌기 mm, Enter 확정), 이동 중 **←→=축 고정**, Esc=취소, Shift+Z=전체 보기. 다음 클릭=확정(회전·밀기끌기·스티키 이동은 pointerdown 에서 commit).
+- 밀기끌기: 벽 클릭→위아래 = `height_mm`(미리보기는 그룹 scale.y), 천장 클릭 = 그 공간 `ceilingHeight_mm`. 25mm 스냅, 최소 300.
+- 페인트: 팔레트(#paintpal, 벽/바닥/천장 재질 — data.js)에서 고르고 면 클릭 → set finishMaterial/floorMaterial/ceilingMaterial (견적 연동).
+- 줄자: 두 점 클릭 → mm/m 표시 (THREE.Line, depthTest off).
+- **그 이상**: 모든 편집이 평면·견적 실시간 반영 + **Ctrl+Z/Y 가 MiniCAD 히스토리로 왕복**(apply3DEdit op:'undo'/'redo').
+- **함정(실제로 당함): 클래식 스크립트(data.js)의 최상위 const 는 `window.X` 로 안 잡힌다** — 모듈에서는 전역 렉시컬 식별자로 직접 참조(`typeof X!=='undefined'?X:null`, view3d.js MATS). window.WALL_MATERIALS 는 undefined 라 팔레트가 비어 있었다.
+- 도구 키(M/Q/P/B/E/T/Space)는 조감 모드에서만 — 걷기 모드의 Q/E(위아래)와 충돌 방지.
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 
