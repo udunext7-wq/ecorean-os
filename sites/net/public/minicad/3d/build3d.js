@@ -514,10 +514,7 @@ function buildFloorScene(D,libs){
   if(!isFinite(minX)){ [].concat(D.furniture,D.fixtures,D.lights).forEach(o=>grow(num(o.x,0),num(o.y,0))); }
   if(!isFinite(minX)){ minX=0;minY=0;maxX=1;maxY=1; }
   const bounds={minX,minY,maxX,maxY};
-  // 바닥판(전체) — 도면 밑을 받쳐주는 슬래브
-  objects.push({id:'_slab',kind:'slab',name:'바닥 슬래브',x:0,y:0,rot:0,flip:false,prims:[
-    {t:'poly',pts:[{x:minX-400,y:minY-400},{x:maxX+400,y:minY-400},{x:maxX+400,y:maxY+400},{x:minX-400,y:maxY+400}],holes:[],z:0,color:C.slab,side:'top'},
-    box((minX+maxX)/2,(minY+maxY)/2,-200,maxX-minX+800,maxY-minY+800,200,C.slab)]});
+  // 2026-09-03 대표 지시: 대지(전체 바닥 슬래브)는 만들지 않는다 — 방 바닥 폴리곤만
   // 공간 바닥·천장·라벨·계단
   D.spaces.forEach((s,i)=>{
     objects.push(buildFloor(s,D,i));

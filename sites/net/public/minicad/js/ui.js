@@ -5592,6 +5592,7 @@ function apply3DEdit(m){
   if(m.op==='undo'){undo();return true;}
   if(m.op==='redo'){redo();return true;}
   if(m.op==='add') return _apply3DAdd(m); // 3D 에서 새 객체 배치 (id 없음)
+  if(m.op==='addwall'||m.op==='addrect') return _apply3DWall(m); // 3D 선(L)/사각형(R) 도구 → 벽
   if(!m.kind||!m.id) return false;
   const arrName=_CLIP_KIND2ARR[m.kind];
   if(!arrName) return false;
@@ -5661,6 +5662,44 @@ function _apply3DAdd(m){
     f.data[arrName].push(o);
     scheduleAutosave();if(typeof push3D==='function')push3D();
   }
+  return true;
+}
+// 3D 선(L)·사각형(R) 도구 → 실제 벽 (스케치업 Line/Rectangle 대응)
+//  활성 층은 2D 와 같은 addWall 경로(공간 귀속·vertex 공유·교차 분할·히스토리 전부 동일)
+function _apply3DWall(m){
+  const p=m.patch||{};
+  const x1=Math.round(p.x1),y1=Math.round(p.y1),x2=Math.round(p.x2),y2=Math.round(p.y2);
+  if(![x1,y1,x2,y2].every(isFinite)) return false;
+  if(!m.floorId||m.floorId===STATE.activeFloorId){
+    if(typeof addWall!=='function') return false;
+    if(m.op==='addrect'){
+      if(Math.abs(x2-x1)<100||Math.abs(y2-y1)<100) return false;
+      addWall(x1,y1,x2,y1);addWall(x2,y1,x2,y2);addWall(x2,y2,x1,y2);addWall(x1,y2,x1,y1);
+      // addWall 4회의 히스토리를 한 단계로 (스케치업식: 사각형 = Ctrl+Z 한 번)
+      //  꼬리 기준 — 50개 상한(shift)에 걸려도 마지막 4개는 방금 푸시된 스냅샷이다
+      if(STATE.history.length>=4){STATE.history.splice(STATE.history.length-4,3);STATE.historyIdx=STATE.history.length-1;}
+      showStatus('🧊 3D 사각 벽 4면 추가');
+    }else{
+      if(Math.hypot(x2-x1,y2-y1)<100) return false;
+      addWall(x1,y1,x2,y2);
+      showStatus('🧊 3D 벽 추가 ('+Math.round(Math.hypot(x2-x1,y2-y1))+'mm)');
+    }
+    return true;
+  }
+  const f=(STATE.floors||[]).find(z=>z.id===m.floorId);
+  if(!f||!f.data) return false;
+  if(!Array.isArray(f.data.walls)) f.data.walls=[];
+  if(!Array.isArray(f.data.vertices)) f.data.vertices=[];
+  const seg=(ax,ay,bx,by)=>{
+    if(Math.hypot(bx-ax,by-ay)<100) return;
+    const v1={id:makeId('v'),x:ax,y:ay},v2={id:makeId('v'),x:bx,y:by};
+    f.data.vertices.push(v1,v2);
+    f.data.walls.push({id:makeId('w'),v1Id:v1.id,v2Id:v2.id,x1:ax,y1:ay,x2:bx,y2:by,
+      thickness:STATE.wallThickness||100,wallType:'standard',alignment:STATE.wallAlignment||'center',spaceId:null,layerName:''});
+  };
+  if(m.op==='addrect'){seg(x1,y1,x2,y1);seg(x2,y1,x2,y2);seg(x2,y2,x1,y2);seg(x1,y2,x1,y1);}
+  else seg(x1,y1,x2,y2);
+  scheduleAutosave();if(typeof push3D==='function')push3D();
   return true;
 }
 // 한 창 통합 — [🧊 3D] 클릭 = 우측 분할 패널 토글 (Shift+클릭 = 별도 탭)

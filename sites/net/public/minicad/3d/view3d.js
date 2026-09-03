@@ -601,8 +601,8 @@ function setTool(t){
   if(t==='add'&&ST.add&&ST.add.type) makeGhost();
   // 스케치업식 카메라 도구: H 팬 / Z 줌 은 좌클릭 드래그를 그 동작으로
   orbit.mouseButtons.LEFT=(t==='pan')?THREE.MOUSE.PAN:(t==='zoom')?THREE.MOUSE.DOLLY:THREE.MOUSE.ROTATE;
-  renderer.domElement.style.cursor={select:'default',move:'move',rotate:'grab',scale:'nwse-resize',pushpull:'ns-resize',paint:'copy',erase:'not-allowed',tape:'crosshair',pan:'grab',zoom:'zoom-in',add:'copy'}[t]||'default';
-  setStatus(statusLive,{select:'➤ 선택',move:'✥ 이동',rotate:'↻ 회전',scale:'⤢ 배율',pushpull:'⇕ 밀기끌기',paint:'🪣 페인트',erase:'🧽 지우개',tape:'📏 줄자',pan:'🖐 팬',zoom:'🔍 줌',add:'➕ 배치'}[t]||'');
+  renderer.domElement.style.cursor={select:'default',move:'move',rotate:'grab',scale:'nwse-resize',line:'crosshair',rect:'crosshair',pushpull:'ns-resize',paint:'copy',erase:'not-allowed',tape:'crosshair',pan:'grab',zoom:'zoom-in',add:'copy'}[t]||'default';
+  setStatus(statusLive,{select:'➤ 선택',move:'✥ 이동',rotate:'↻ 회전',scale:'⤢ 배율',line:'╱ 선(벽)',rect:'▭ 사각형(벽)',pushpull:'⇕ 밀기끌기',paint:'🪣 페인트',erase:'🧽 지우개',tape:'📏 줄자',pan:'🖐 팬',zoom:'🔍 줌',add:'➕ 배치'}[t]||'');
   // 하단 상태바 = 스케치업식 도구 안내 (수정자 포함)
   const hint=$('hint');
   if(hint) hint.innerHTML={
@@ -610,6 +610,8 @@ function setTool(t){
     move:'<b>이동</b> — 클릭해 집고 → 옮겨서 → 클릭 확정 · <b>Ctrl=복사</b> · ←→ 축 고정 · <b>숫자=거리(mm)</b> · Esc 취소',
     rotate:'<b>회전</b> — 객체 클릭 후 좌우로 · 클릭=확정 · 15° 스냅(Shift=자유각) · <b>숫자=각도</b> · Esc 취소',
     scale:'<b>배율</b> — 객체 클릭 후 위아래로 · 클릭=확정 · <b>숫자=배율</b>(예: 1.5) · 가구·기구·설비만',
+    line:'<b>선(벽)</b> — 클릭-클릭으로 벽을 이어 그림(평면에 실제 벽) · <b>숫자=길이(mm)</b> · 5° 안=직교 스냅 · Shift=강제 직교 · Esc/더블클릭=끝',
+    rect:'<b>사각형(벽)</b> — 두 모서리 클릭 = 벽 4면 (Ctrl+Z 한 번에 취소) · <b>숫자 무관, 코너로 크기</b>',
     pushpull:'<b>밀기끌기</b> — 벽·천장 클릭 후 위아래 · 클릭=확정 · <b>숫자=mm</b> · <b>더블클릭=직전 값 반복</b>',
     paint:'<b>페인트</b> — 왼쪽 팔레트에서 재질 고르고 벽/바닥/천장 클릭 (견적 연동)',
     erase:'<b>지우개</b> — 클릭=삭제 (벽·공간은 평면에서)',
@@ -676,6 +678,90 @@ function renderAddPal(){
     };
   });
 }
+// --- 선(L)·사각형(R) — 스케치업 Line/Rectangle: 3D 에서 벽을 그린다 ---
+function _hoverFloorId(e){
+  const hit=hitAt(e.clientX,e.clientY);
+  return (hit&&hit.object.userData.obj&&hit.object.userData.obj.floorId)||(ST.floorSel!=='all'?ST.floorSel:(ST.floors[0]&&ST.floors[0].id));
+}
+function _planePt(e,z0){
+  dragPlane.constant=-z0; rayFromEvent(e);
+  if(!ray.ray.intersectPlane(dragPlane,dragPt)) return null;
+  return {x:Math.round(dragPt.x/MM/10)*10, y:Math.round(dragPt.z/MM/10)*10};
+}
+function lineClick(e){
+  if(ST.op&&ST.op.type==='line'){ commitLine(vcbTyped()); return; }
+  const fid=_hoverFloorId(e);
+  const f=ST.floors.find(x=>x.id===fid), z0=f?f.z0*MM:0;
+  const p=_planePt(e,z0); if(!p) return;
+  const rect=(ST.tool==='rect');
+  const geo=new THREE.BufferGeometry().setFromPoints(new Array(rect?5:2).fill(0).map(()=>new THREE.Vector3(p.x*MM,z0+0.02,p.y*MM)));
+  const ln=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xD4FF3D,depthTest:false})); ln.renderOrder=999; scene.add(ln);
+  const gh=new THREE.Mesh(geoBox,new THREE.MeshStandardMaterial({color:0xD4FF3D,transparent:true,opacity:0.22,depthWrite:false}));
+  gh.visible=false; scene.add(gh);
+  ST.op={type:'line',rect,fid,z0,a:p,cur:p,line:ln,ghost:gh};
+  orbit.enabled=false;
+  vcbShow(rect?'사각형':'벽 길이',0,'mm');
+  invalidate();
+}
+function lineMove(e){
+  const op=ST.op; if(!op||op.type!=='line') return;
+  const p=_planePt(e,op.z0); if(!p) return;
+  let px=p.x,py=p.y;
+  if(!op.rect){
+    const dx=px-op.a.x, dy=py-op.a.y;
+    // 스케치업 추론식 직교: 축에 5° 안이면 붙는다 · Shift=강제 직교
+    if(e.shiftKey||Math.abs(dy)<Math.abs(dx)*0.09) py=op.a.y;
+    else if(Math.abs(dx)<Math.abs(dy)*0.09) px=op.a.x;
+  }
+  op.cur={x:px,y:py};
+  const pos=op.line.geometry.attributes.position;
+  const y3=op.z0+0.02;
+  if(op.rect){
+    pos.setXYZ(0,op.a.x*MM,y3,op.a.y*MM); pos.setXYZ(1,px*MM,y3,op.a.y*MM);
+    pos.setXYZ(2,px*MM,y3,py*MM); pos.setXYZ(3,op.a.x*MM,y3,py*MM); pos.setXYZ(4,op.a.x*MM,y3,op.a.y*MM);
+    vcbShow('▭ '+Math.abs(px-op.a.x)+'×'+Math.abs(py-op.a.y),'','mm');
+  }else{
+    pos.setXYZ(1,px*MM,y3,py*MM);
+    const len=Math.round(Math.hypot(px-op.a.x,py-op.a.y));
+    vcbShow('벽 길이',len,'mm');
+    // 반투명 벽 미리보기
+    if(len>50){
+      const th=0.1,H=2.4;
+      op.ghost.visible=true;
+      op.ghost.scale.set(len*MM,H,th);
+      op.ghost.position.set((op.a.x+px)/2*MM,op.z0+H/2,(op.a.y+py)/2*MM);
+      op.ghost.rotation.y=-Math.atan2(py-op.a.y,px-op.a.x);
+    }else op.ghost.visible=false;
+  }
+  pos.needsUpdate=true;
+  invalidate();
+}
+function commitLine(exact){
+  const op=ST.op; if(!op||op.type!=='line') return;
+  let a=op.a,cur=op.cur;
+  if(!op.rect&&exact!==null&&exact!==undefined&&exact>0){
+    const dx=cur.x-a.x,dy=cur.y-a.y,l=Math.hypot(dx,dy);
+    if(l>1) cur={x:Math.round(a.x+dx/l*exact),y:Math.round(a.y+dy/l*exact)};
+  }
+  if(!chan){ setStatus(false,'MiniCAD 창이 없어 벽을 못 만듭니다'); return; }
+  if(op.rect){
+    if(Math.abs(cur.x-a.x)<100||Math.abs(cur.y-a.y)<100){ setStatus(statusLive,'사각형이 너무 작습니다 (100mm+)'); return; }
+    chan.postMessage({type:'edit',op:'addrect',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
+    cancelOp();
+    setStatus(statusLive,'▭ 사각 벽 4면 → 평면 반영');
+  }else{
+    if(Math.hypot(cur.x-a.x,cur.y-a.y)<100){ setStatus(statusLive,'너무 짧습니다 (100mm+)'); return; }
+    chan.postMessage({type:'edit',op:'addwall',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
+    // 스케치업 Line 처럼 사슬 잇기 — 끝점이 새 시작점
+    op.a=cur;
+    const pos=op.line.geometry.attributes.position, y3=op.z0+0.02;
+    pos.setXYZ(0,cur.x*MM,y3,cur.y*MM); pos.setXYZ(1,cur.x*MM,y3,cur.y*MM); pos.needsUpdate=true;
+    op.ghost.visible=false;
+    vcbShow('벽 길이',0,'mm');
+    setStatus(statusLive,'╱ 벽 추가 → 이어서 클릭 (Esc·더블클릭=끝)');
+    invalidate();
+  }
+}
 function cancelOp(){
   const op=ST.op; ST.op=null; ST.axisLock=null; vcbHide();
   if(op){
@@ -687,6 +773,7 @@ function cancelOp(){
     if(op.type==='scale'&&op.g){ op.g.scale.x=op.baseSX; op.g.scale.z=op.baseSZ; }
     if(op.type==='pp'&&op.g){ op.g.scale.y=1; op.g.position.y=op.origY; }
     if(op.line){ scene.remove(op.line); if(op.line.geometry) op.line.geometry.dispose(); }
+    if(op.ghost){ scene.remove(op.ghost); }
     invalidate(true);
   }
   orbit.enabled=(ST.mode==='orbit');
@@ -697,6 +784,7 @@ function commitActive(exact){
   else if(op.type==='rotate') commitRotate(exact);
   else if(op.type==='scale') commitScale(exact);
   else if(op.type==='pp') commitPP(exact);
+  else if(op.type==='line') commitLine(exact);
 }
 // --- 이동 (Ctrl = 복사, 스케치업과 동일) ---
 function beginMove(g,obj,copy){
@@ -876,8 +964,8 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   drag={x:e.clientX,y:e.clientY,moved:false,id:e.pointerId,button:e.button};
   if(ST.mode==='walk'){ renderer.domElement.setPointerCapture(e.pointerId); return; }
   if(e.button!==0) return;
-  if(ST.op&&ST.op.type!=='tape'){                 // 스티키 동작은 다음 클릭 = 확정 (스케치업식)
-    if(ST.op.type==='move'&&!ST.op.sticky){}      // (버튼 눌러 끄는 중이면 pointerup 에서)
+  if(ST.op&&ST.op.type!=='tape'&&ST.op.type!=='line'){ // 스티키 동작은 다음 클릭 = 확정 (스케치업식)
+    if(ST.op.type==='move'&&!ST.op.sticky){}           // (버튼 눌러 끄는 중이면 pointerup 에서)
     else { commitActive(vcbTyped()); drag=null; return; }
   }
   const hit=hitAt(e.clientX,e.clientY);
@@ -901,6 +989,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
       break;
     case 'pan': case 'zoom': break; // 카메라 도구 — OrbitControls 가 처리
     case 'add': placeGhost(); break;
+    case 'line': case 'rect': lineClick(e); break;
     case 'pushpull': if(hit) beginPP(hit); break;
     case 'paint': if(hit) doPaint(hit); break;
     case 'erase': if(g&&obj){ select(g,{silent:true}); deleteSelected3D(); } break;
@@ -916,6 +1005,7 @@ renderer.domElement.addEventListener('pointermove',e=>{
     else if(ST.op.type==='scale') applyScale(e.clientY);
     else if(ST.op.type==='pp') applyPP(e.clientY);
     else if(ST.op.type==='tape') tapeMove(e);
+    else if(ST.op.type==='line') lineMove(e);
     return;
   }
   if(!drag||drag.id!==e.pointerId) return;
@@ -943,6 +1033,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
 });
 renderer.domElement.addEventListener('pointercancel',()=>{ if(ST.op&&ST.op.type!=='tape') cancelOp(); drag=null; });
 renderer.domElement.addEventListener('dblclick',e=>{
+  if(ST.op&&ST.op.type==='line'){ cancelOp(); setStatus(statusLive,'╱ 그리기 끝'); return; } // 스케치업: 더블클릭=사슬 끝
   const hit=hitAt(e.clientX,e.clientY);
   if(!hit) return;
   // 스케치업: 밀기끌기 도구에서 더블클릭 = 직전 값 반복
@@ -1066,6 +1157,8 @@ window.addEventListener('keydown',e=>{
     if(k==='e'){ setTool('erase'); return; }
     if(k==='t'){ setTool('tape'); return; }
     if(k==='r'&&ST.tool==='add'&&ST.add&&ST.add.ghost){ ST.add.rot=((ST.add.rot||0)+(e.shiftKey?-15:15)+360)%360; ST.add.ghost.rotation.y=-ST.add.rot*Math.PI/180; invalidate(); e.preventDefault(); return; }
+    if(k==='l'){ setTool('line'); return; }          // 스케치업 L=Line — 벽 그리기
+    if(k==='r'){ setTool('rect'); return; }          // 스케치업 R=Rectangle — 사각 벽
     if(k==='g'){ setTool('add'); return; }           // 배치 (스케치업 컴포넌트 자리)
     if(k==='o'){ setTool('select'); return; }        // 스케치업 O=궤도 (선택에서 항상 궤도)
     if(k==='h'){ setTool('pan'); return; }           // 스케치업 H=팬
@@ -1075,11 +1168,10 @@ window.addEventListener('keydown',e=>{
   }
   if(k==='1') setMode('orbit'); if(k==='2') setMode('walk');
   if(k==='3') setView('iso'); if(k==='4') setView('top'); if(k==='5') setView('front'); if(k==='6') setView('side');
-  if(k==='l') setLights(!ST.lightsOn);
-  if(k==='n') setNight(!ST.night);
+  if(k==='n') setNight(!ST.night); // (L 은 스케치업 Line 도구로 — 조명 토글은 💡 버튼)
   if(k==='c'){ ST.ceil[ST.mode]=!ST.ceil[ST.mode]; refreshVisibility(); $('b-ceil').classList.toggle('on',ST.ceil[ST.mode]); }
   if(k==='f'||(e.shiftKey&&k==='z')) fitView(); // Shift+Z = 전체 보기 (스케치업 Zoom Extents)
-  if(k==='r'&&ST.selected&&!ST.op){ rotateSelected(e.shiftKey?-15:15); e.preventDefault(); }
+  // (R 은 스케치업 Rectangle 도구로 — 회전은 Q 도구·속성 패널 버튼)
   if((k==='delete'||k==='backspace')&&ST.selected){ deleteSelected3D(); e.preventDefault(); }
   if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
 });

@@ -152,7 +152,7 @@ const S2 = MC3D.buildScene({ at: 1, data: doc }, LIBS);
 ck(S2.objects.length === S.objects.length, '래핑 문서도 동일 결과');
 // 빈 문서
 const S3 = MC3D.buildScene({}, LIBS);
-ck(S3.objects.length === 1 && S3.objects[0].kind === 'slab', '빈 문서 → 슬래브만');
+ck(S3.objects.length === 0, '빈 문서 → 객체 없음 (대지 슬래브 제거 — 2026-09-03 대표 지시)');
 
 // ---- 벽 정렬 interior/exterior (2026-09-01) — 2D _wallAlignOffsetPx 규칙과 동일 ----
 //  정사각 방 4000×4000, 벽 4장을 시계방향(화면 y-down 기준)으로 그림 → 우측 법선(−uy,ux)이 방 안쪽
@@ -225,7 +225,7 @@ const fLightA = SF.objects.find(o => o.id === 'f1:lA');
 ck(fLightA && fLightA.prims[0].z === 2400 - 12 && fLightA.z0 === 0, '1층 조명은 층 내 천장(2400)에, 표고는 z0 로');
 const lbl2 = SF.labels.find(l => l.text === '침실');
 ck(lbl2 && lbl2.z0 === 2700, '2층 이름표 z0=2700');
-ck(SF.objects.filter(o => o.kind === 'slab').length === 2, '층마다 슬래브 1: ' + SF.objects.filter(o => o.kind === 'slab').length);
+ck(SF.objects.filter(o => o.kind === 'slab').length === 0, '대지 슬래브 없음: ' + SF.objects.filter(o => o.kind === 'slab').length);
 ck(SF.counts.walls === 2 && SF.counts.spaces === 2, '층 합산 개수: ' + JSON.stringify(SF.counts));
 // 한 층 문서는 종전과 동일(id 접두 없음) — 위쪽 전체 단언들이 그 회귀 테스트다
 ck(byId('w_s') && !S.objects.some(o => /:/.test(o.id)), '단층 문서는 id 접두 없음');

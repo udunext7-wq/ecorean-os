@@ -4930,6 +4930,25 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     const _nl2=STATE.lights.length;
     assert('ED8g: 다운라이트 add = 인치 기본값',apply3DEdit({type:'edit',op:'add',kind:'lights',floorId:_edAct,patch:{type:'downlight',x:900,y:900}})===true
       &&STATE.lights.length===_nl2+1&&STATE.lights[STATE.lights.length-1].inch>=2);
+    // 3D 선(L)/사각형(R) → 벽
+    const _nw1=STATE.walls.length;
+    assert('EDw1: addwall — 2D addWall 경로',apply3DEdit({type:'edit',op:'addwall',floorId:_edAct,patch:{x1:20000,y1:20000,x2:23000,y2:20000}})===true
+      &&STATE.walls.length===_nw1+1);
+    const _nw2=STATE.walls.length;
+    assert('EDw2: addrect — 벽 4면',apply3DEdit({type:'edit',op:'addrect',floorId:_edAct,patch:{x1:25000,y1:25000,x2:28000,y2:27000}})===true
+      &&STATE.walls.length===_nw2+4);
+    apply3DEdit({type:'edit',op:'undo'});
+    assert('EDw2b: 사각형 = Ctrl+Z 한 번에 4면 취소',STATE.walls.length===_nw2,'walls '+_nw2+' → '+STATE.walls.length);
+    apply3DEdit({type:'edit',op:'redo'});
+    assert('EDw2c: redo 로 4면 복귀',STATE.walls.length===_nw2+4);
+    assert('EDw3: 100mm 미만 거부',apply3DEdit({type:'edit',op:'addwall',floorId:_edAct,patch:{x1:0,y1:0,x2:50,y2:0}})===false);
+    // 잠든 층에 벽 추가
+    const _edF2=addFloor();
+    switchFloor(_edAct,{silent:true});
+    assert('EDw4: 잠든 층 addwall',apply3DEdit({type:'edit',op:'addwall',floorId:_edF2.id,patch:{x1:0,y1:0,x2:3000,y2:0}})===true
+      &&STATE.floors.find(f=>f.id===_edF2.id).data.walls.length===1
+      &&STATE.floors.find(f=>f.id===_edF2.id).data.vertices.length===2);
+    STATE.floors=STATE.floors.filter(f=>f.id!==_edF2.id);renderFloorBar();
     // 삭제
     assert('ED9: 삭제',apply3DEdit({type:'edit',op:'delete',kind:'lights',id:'ed_l1',floorId:_edAct})===true
       &&!STATE.lights.some(o=>o.id==='ed_l1'));
