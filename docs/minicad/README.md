@@ -72,6 +72,10 @@ GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이
   - **3D 에서 새 객체 배치**: ➕ 도구 → #addpal(가구/위생/조명/전기/설비 전 라이브러리) → 고스트(가구는 buildFurniture 실형상, 반투명) → 바닥 클릭=배치(연속), R=회전, Esc=끝. 층은 커서 아래 객체의 층 자동. → `apply3DEdit op:'add'` → **ui.js `_apply3DAdd`**: 라이브러리 검증·makeId·findNearestSpace/makeLayerName·다운라이트 인치·선형등 length_mm, 잠든 층은 f.data 에.
   - **GLB**: 재질 이름 `MC_<hex>[_glass|_emit]`, 객체 그룹 extras.ecorean={kind,type,material(마감 코드),size_mm,wall_mm,floor} — Blender 파이썬이 코드→텍스처 자동 매핑 가능. 내보내기는 root.clone 후 sprite/광원 제거·userData 치환(원본 장면 무손상).
   - **함정 재발**: `LIBS` 도 window.FURNITURE_LIB 로 집다가 전부 null — **뷰어의 가구가 그동안 400×400 기본 상자로 세워지고 있었음**(이름·규격·팔레트 전멸). data.js/library.js 등 클래식 스크립트 const 는 반드시 typeof 전역 식별자로.
+- 2026-09-03 텍스처·전층 견적·Blender 렌더:
+  - **바닥 프로시저럴 텍스처**: build3d 바닥 프림에 `mcode`(floorMaterial) → 뷰어 `floorMat(code)` 가 캔버스 텍스처 생성(원목 널결/타일 줄눈 300·600각/마블 결/카펫 노이즈, 코드별 캐시). ShapeGeometry UV=m 단위라 `tex.repeat=1/S`(S=한 장의 실크기 m). 벽은 평색 유지.
+  - **전층 합산 견적**: `_withFloorData(f,fn)`(ui.js — 잠든 층 데이터로 STATE 배열만 잠시 스왑, finally 복원) + `buildAutoEstimateAll()`(estimate.js — priceKey 별 물량 합산·층별 내역). 견적 카드에 [현재 층|Σ 전층 합산] 토글, `sendToEstimateOS` 는 다층이면 `estimateAllFloors` 동봉. 테스트 [FE] 5건(스위처 누수 검사 포함).
+  - **Blender 2단계 (검증됨)**: `scripts/blender-glb-render.py` — `blender -b -P ... -- in.glb out.png [samples] [view=iso|front|top]`. GLB extras.ecorean/재질명 MC_* 로 유리·발광·바닥(원목 Wave/타일 Brick 노드) 자동 변환, 카메라 자동 프레이밍, Cycles+디노이즈. **Blender 5.2 로 실렌더 확인(151객체 48샘플 10초)**. GLB 는 3D 뷰 [⬇GLB] 또는 스모크가 만드는 test.glb.
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 

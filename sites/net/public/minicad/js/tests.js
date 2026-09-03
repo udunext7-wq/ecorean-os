@@ -4946,6 +4946,38 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('ED: 3D 편집 테스트 예외 없음',false,e.message);
   }
+  // === [FE] 전층 합산 견적 (2026-09-03) ===
+  try{
+    const _feBak=JSON.parse(JSON.stringify(buildAutosavePayload()));
+    _floorsEnsure();
+    const _feAct=STATE.activeFloorId;
+    const _feF=addFloor();                                   // 빈 2층 (활성)
+    if(typeof makeSpaceVEF==='function'&&typeof polygonToVertexIds==='function'){
+      const _v=polygonToVertexIds([{x:0,y:0},{x:3000,y:0},{x:3000,y:3000},{x:0,y:3000}]);
+      STATE.spaces.push(makeSpaceVEF(_v,{id:'fe_sp',name:'2층방',type:'ROOM',floorMaterial:'STRONG'}));
+      reinstallVEFAll();
+      const a2=buildAutoEstimate();
+      const _fl2=a2.items.find(i=>i.catalogKey==='FLOORING');
+      assert('FE1: 2층 단독 견적 — 바닥 9㎡',!!_fl2&&Math.abs(_fl2.quantity-9)<0.2,JSON.stringify(_fl2&&_fl2.quantity));
+      switchFloor(_feAct,{silent:true});                     // 1층으로 (2층은 잠듦)
+      const all=buildAutoEstimateAll();
+      const _flAll=all.items.find(i=>i.catalogKey==='FLOORING');
+      const cur=buildAutoEstimate();
+      const _flCur=cur.items.find(i=>i.catalogKey==='FLOORING');
+      assert('FE2: 전층 합산 = 현재 층 + 잠든 층',!!_flAll&&_flAll.quantity>=( (_flCur?_flCur.quantity:0)+9-0.2 ),
+        'all='+(_flAll&&_flAll.quantity)+' cur='+(_flCur&&_flCur.quantity));
+      assert('FE3: 층별 내역 2건',Array.isArray(all.floorBreakdown)&&all.floorBreakdown.length===2);
+      const chk=buildAutoEstimate();
+      assert('FE4: 합산 후 STATE 원상(스위처 누수 없음)',
+        JSON.stringify(chk.items.map(i=>[i.catalogKey,i.quantity]))===JSON.stringify(cur.items.map(i=>[i.catalogKey,i.quantity])));
+    }else{assert('FE1: 2층 단독 견적 — 바닥 9㎡',false,'makeSpaceVEF 없음');}
+    STATE.floors=STATE.floors.filter(f=>f.id!==_feF.id);
+    renderFloorBar();
+    applyLoadedData(_feBak);
+    assert('FE5: 원상복구',STATE.activeFloorId===_feAct&&!STATE.spaces.some(s=>s.id==='fe_sp'));
+  }catch(e){
+    assert('FE: 전층 견적 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

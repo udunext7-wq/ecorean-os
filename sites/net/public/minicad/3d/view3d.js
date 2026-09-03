@@ -114,6 +114,62 @@ function matFor(p){
   matCache.set(key,m);
   return m;
 }
+// --- 바닥 프로시저럴 텍스처 (2026-09-03) — 원목 널결·타일 줄눈·마블 결, 재질 코드별 캔버스 생성 ---
+const texCache=new Map();
+function _texCanvas(code){
+  const c=document.createElement('canvas'); c.width=256; c.height=256;
+  const x=c.getContext('2d');
+  const base=MC3D.FLOOR_COLORS[code]||'#C9B8A3';
+  x.fillStyle=base; x.fillRect(0,0,256,256);
+  const shade=a=>'rgba(0,0,0,'+a+')', lite=a=>'rgba(255,255,255,'+a+')';
+  const wood=rows=>{
+    const h=256/rows;
+    for(let r=0;r<rows;r++){
+      x.fillStyle=(r%2?shade(0.05):lite(0.045)); x.fillRect(0,r*h,256,h);
+      x.strokeStyle=shade(0.30); x.lineWidth=1.4;
+      x.beginPath(); x.moveTo(0,r*h+0.5); x.lineTo(256,r*h+0.5); x.stroke();      // 널 사이 줄
+      const off=(r*97)%256;
+      x.beginPath(); x.moveTo(off,r*h); x.lineTo(off,(r+1)*h); x.stroke();        // 마구리 조인트
+      x.strokeStyle=shade(0.06);
+      for(let i=0;i<5;i++){ const y=r*h+(i+0.5)*h/5; x.beginPath(); x.moveTo(0,y); x.bezierCurveTo(80,y+3,170,y-3,256,y+1); x.stroke(); } // 나뭇결
+    }
+  };
+  const tile=(n,groutA)=>{
+    const s=256/n;
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){ x.fillStyle=((i+j)%2?lite(0.035):shade(0.03)); x.fillRect(i*s,j*s,s,s); }
+    x.strokeStyle=shade(groutA); x.lineWidth=3;
+    for(let i=0;i<=n;i++){ x.beginPath(); x.moveTo(i*s,0); x.lineTo(i*s,256); x.stroke(); x.beginPath(); x.moveTo(0,i*s); x.lineTo(256,i*s); x.stroke(); }
+  };
+  const noise=(nn,a)=>{ for(let i=0;i<nn;i++){ x.fillStyle=(i%2?shade(a):lite(a)); x.fillRect(Math.random()*256,Math.random()*256,2,2); } };
+  let S=1.2; // 캔버스 한 장이 덮는 실제 크기(m)
+  if(/^(STRONG|WOOD|REINFORCED|WOOD_TILE)$/.test(code)) wood(4);
+  else if(/^(LVT|PVC)$/.test(code)){ wood(5); S=1.0; }
+  else if(code==='TILE_BATH'){ tile(4,0.28); S=1.2; }               // 300각
+  else if(/^(TILE_PORC|TILE_POLISHED)$/.test(code)){ tile(2,0.22); S=1.2; } // 600각
+  else if(code==='MARBLE'){
+    tile(1,0.10);
+    x.strokeStyle=lite(0.28); x.lineWidth=1.2;
+    for(let i=0;i<6;i++){ x.beginPath(); x.moveTo((i*43)%256,0); x.bezierCurveTo((i*91)%256,85,(i*137)%256,170,(i*61)%256,256); x.stroke(); }
+    S=1.6;
+  }
+  else if(code==='CARPET'){ noise(700,0.06); S=0.8; }
+  else { noise(400,0.05); S=1.0; }
+  return {canvas:c,S};
+}
+function floorMat(code){
+  let m=texCache.get(code);
+  if(m) return m;
+  const {canvas,S}=_texCanvas(code);
+  const tex=new THREE.CanvasTexture(canvas);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.colorSpace=THREE.SRGBColorSpace;
+  tex.repeat.set(1/S,1/S);                 // ShapeGeometry UV = m 단위 → 한 장 = S m
+  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  m=new THREE.MeshStandardMaterial({map:tex,metalness:0.02,side:THREE.DoubleSide,
+    roughness:/TILE|MARBLE|POLISH|EPOXY/.test(code)?0.35:0.8});
+  texCache.set(code,m);
+  return m;
+}
 const geoBox=new THREE.BoxGeometry(1,1,1);
 const geoCyl=new THREE.CylinderGeometry(1,1,1,28);
 const geoSph=new THREE.SphereGeometry(1,20,14);
@@ -140,7 +196,9 @@ function primMesh(p,obj){
     const shape=new THREE.Shape(p.pts.map(q=>new THREE.Vector2(q.x*MM,-q.y*MM)));
     (p.holes||[]).forEach(h=>{ if(h&&h.length>=3) shape.holes.push(new THREE.Path(h.map(q=>new THREE.Vector2(q.x*MM,-q.y*MM)))); });
     const g=new THREE.ShapeGeometry(shape);
-    const m=matFor(p).clone(); m.side=THREE.DoubleSide;
+    let m;
+    if(p.mcode){ m=floorMat(p.mcode); }                    // 바닥은 재질 코드 → 프로시저럴 텍스처
+    else { m=matFor(p).clone(); m.side=THREE.DoubleSide; }
     mesh=new THREE.Mesh(g,m);
     mesh.rotation.x=-Math.PI/2;
     mesh.position.y=p.z*MM;

@@ -110,6 +110,7 @@ ck(n1.prims.filter(p => p.color === MC3D.COLORS.winFrame && p.w === 30).length =
 ck(byId('sp1').prims[0].color === MC3D.FLOOR_COLORS.WOOD, '거실 바닥 원목 색');
 ck(byId('sp2_ceil').prims[0].z === 2300, '침실 천장 2300');
 ck(byId('sp1').prims[0].pts.length === 4, '바닥 폴리곤(VEF vertexIds → 좌표)');
+ck(byId('sp1').prims[0].mcode === 'WOOD', '바닥 프림에 재질 코드(텍스처용): ' + byId('sp1').prims[0].mcode);
 // 라벨
 ck(S.labels.length === 3 && S.labels.find(l => l.text === '거실' && near(l.x, 3000) && near(l.y, 2000)), '거실 라벨 중심(3000,2000)');
 

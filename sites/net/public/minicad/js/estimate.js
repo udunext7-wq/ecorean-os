@@ -73,17 +73,53 @@ function buildAutoEstimate(){
   };
 }
 
+// ===== 2026-09-03: 전층 합산 견적 — 잠든 층은 _withFloorData 로 그 층 데이터 위에서 산출 후 합산 =====
+let _aeAllFloors=false;
+function buildAutoEstimateAll(){
+  if(typeof _floorsEnsure==='function') _floorsEnsure();
+  const per=(STATE.floors||[]).map(f=>({name:f.name||'층',
+    ae:(f.id===STATE.activeFloorId)?buildAutoEstimate():_withFloorData(f,()=>buildAutoEstimate())}));
+  const byKey={},order=[];
+  per.forEach(p=>p.ae.items.forEach(it=>{
+    const k=it.priceKey;
+    if(!byKey[k]){byKey[k]=Object.assign({},it);order.push(k);}
+    else byKey[k].quantity=parseFloat((byKey[k].quantity+it.quantity).toFixed(4));
+  }));
+  const items=order.map(k=>{const it=byKey[k];
+    it.amount=(typeof it.unitPrice==='number')?Math.round(it.quantity*it.unitPrice):null;return it;});
+  const priced=items.filter(i=>i.amount!=null);
+  const subtotal=priced.reduce((s,i)=>s+i.amount,0);
+  const overheadPct=PRICE_TABLE.config.overheadPct||0,vatPct=PRICE_TABLE.config.vatPct||0;
+  const overhead=Math.round(subtotal*overheadPct/100);
+  const vat=Math.round((subtotal+overhead)*vatPct/100);
+  return {items,subtotal,overheadPct,overhead,vatPct,vat,total:subtotal+overhead+vat,
+    missingPriceCount:items.length-priced.length,
+    complete:items.length>0&&items.length===priced.length,
+    priceSource:'USER_PRICE_TABLE',allFloors:true,
+    floorBreakdown:per.map(p=>({name:p.name,subtotal:p.ae.subtotal,total:p.ae.total,items:p.ae.items.length}))};
+}
+
 // ===== 렌더링 (견적 탭 자동 견적서 카드) =====
 function fmtWon(n){return n==null?'—':n.toLocaleString('ko-KR');}
 function renderAutoEstimate(){
   const el=document.getElementById('auto-estimate');
   if(!el) return;
-  const ae=buildAutoEstimate();
+  const _multi=Array.isArray(STATE.floors)&&STATE.floors.length>1;
+  if(!_multi) _aeAllFloors=false;
+  const ae=(_multi&&_aeAllFloors)?buildAutoEstimateAll():buildAutoEstimate();
   if(ae.items.length===0){
     el.innerHTML='<div class="hint">공간을 그리면 견적이 자동 생성됩니다.</div>';
     return;
   }
-  let html='<table class="tbl"><thead><tr><th>항목</th><th style="text-align:right">수량</th><th style="text-align:right">단가(원)</th><th style="text-align:right">금액(원)</th></tr></thead><tbody>';
+  let html='';
+  if(_multi){ // 층 시트: 현재 층 / Σ 전층 합산 전환
+    html+='<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'
+      +'<button class="btn sm'+(!_aeAllFloors?' gold':'')+'" id="ae-floor-cur">현재 층</button>'
+      +'<button class="btn sm'+(_aeAllFloors?' gold':'')+'" id="ae-floor-all" title="모든 층의 물량을 합산한 견적">Σ 전층 합산</button></div>';
+    if(_aeAllFloors&&ae.floorBreakdown)
+      html+='<div class="hint" style="margin-bottom:5px">'+ae.floorBreakdown.map(f=>escapeHtml(f.name)+' '+fmtWon(f.total)+'원').join(' · ')+'</div>';
+  }
+  html+='<table class="tbl"><thead><tr><th>항목</th><th style="text-align:right">수량</th><th style="text-align:right">단가(원)</th><th style="text-align:right">금액(원)</th></tr></thead><tbody>';
   CAT_ORDER.forEach(cat=>{
     const group=ae.items.filter(i=>i.category===cat);
     if(group.length===0) return;
@@ -113,6 +149,9 @@ function renderAutoEstimate(){
     renderAutoEstimate();
     if(typeof refreshJSON==='function') refreshJSON();
   }));
+  const _fc=document.getElementById('ae-floor-cur'),_fa=document.getElementById('ae-floor-all');
+  if(_fc) _fc.addEventListener('click',()=>{_aeAllFloors=false;renderAutoEstimate();});
+  if(_fa) _fa.addEventListener('click',()=>{_aeAllFloors=true;renderAutoEstimate();});
   const oh=document.getElementById('ae-overhead-pct'),vt=document.getElementById('ae-vat-pct');
   if(oh) oh.addEventListener('change',e=>{const v=parseFloat(e.target.value);PRICE_TABLE.config.overheadPct=(isFinite(v)&&v>=0)?v:0;savePriceTable();renderAutoEstimate();});
   if(vt) vt.addEventListener('change',e=>{const v=parseFloat(e.target.value);PRICE_TABLE.config.vatPct=(isFinite(v)&&v>=0)?v:0;savePriceTable();renderAutoEstimate();});

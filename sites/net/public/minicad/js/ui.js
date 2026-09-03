@@ -5422,6 +5422,16 @@ function renameFloor(id,name){
   f.name=nm;renderFloorBar();scheduleAutosave();
   if(typeof push3D==='function') push3D();
 }
+// 잠든 층 데이터 위에서 순수 계산 실행 (렌더·히스토리 무관) — 전층 합산 견적 등
+function _withFloorData(f,fn){
+  if(!f||f.id===STATE.activeFloorId||!f.data) return fn();
+  const bak={};FLOOR_FIELDS.forEach(k=>{bak[k]=STATE[k];});
+  const bakE=STATE.estimateConfig;
+  FLOOR_FIELDS.forEach(k=>{STATE[k]=Array.isArray(f.data[k])?f.data[k]:[];});
+  STATE.estimateConfig=f.data.estimateConfig||{};
+  try{ return fn(); }
+  finally{ FLOOR_FIELDS.forEach(k=>{STATE[k]=bak[k];}); STATE.estimateConfig=bakE; }
+}
 // 저장용 — 활성 층 데이터는 최상위 배열(기존 스키마 그대로), 나머지 층은 data 포함
 function _floorsExport(){
   _floorsEnsure();
@@ -5682,6 +5692,10 @@ function sendToEstimateOS(silent){
   ['texts','measures','circles','arcs','curves','leaders','xlines','autoDetectedCycles','indices','relationships','vertices'].forEach(k=>delete j[k]);
   if(j.meta){delete j.meta.aiPromptHints;delete j.meta.videoSequence;delete j.meta.ssotPipeline;}
   j.profile='bridge';
+  // 2026-09-03: 층 시트 문서는 전층 합산 견적도 함께 전송 (견적OS 총액 산출용)
+  if(Array.isArray(STATE.floors)&&STATE.floors.length>1&&typeof buildAutoEstimateAll==='function'){
+    try{ j.estimateAllFloors=buildAutoEstimateAll(); }catch(_){}
+  }
   // 도면 스냅샷 PNG — 헌법: export 시 2.5D 강제 OFF (견적서 첨부용)
   let png=null;
   try{

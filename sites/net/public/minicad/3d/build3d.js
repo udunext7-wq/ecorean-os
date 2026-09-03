@@ -261,7 +261,7 @@ function buildFloor(s,D,idx){
   const color=s.materialColor||FLOOR_COLORS[s.floorMaterial]||FLOOR_COLORS.UNDECIDED;
   const name=s.name||s.type||'공간';
   return {id:s.id,kind:'floor',name,x:0,y:0,rot:0,flip:false,locked:!!s.locked,
-    prims:[{t:'poly',pts:s.polygon,holes:s.holes||[],z:0.5+idx*0.02,color,side:'top'}],
+    prims:[{t:'poly',pts:s.polygon,holes:s.holes||[],z:0.5+idx*0.02,color,side:'top',mcode:s.floorMaterial||'STRONG'}],
     meta:{type:s.type,floorMaterial:s.floorMaterial||null,ceilingMaterial:s.ceilingMaterial||null,ceilH:num(s.ceilingHeight_mm,0)||D.ceilH}};
 }
 function buildCeiling(s,D){
