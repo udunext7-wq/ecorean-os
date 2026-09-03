@@ -75,7 +75,13 @@ GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이
 - 2026-09-03 텍스처·전층 견적·Blender 렌더:
   - **바닥 프로시저럴 텍스처**: build3d 바닥 프림에 `mcode`(floorMaterial) → 뷰어 `floorMat(code)` 가 캔버스 텍스처 생성(원목 널결/타일 줄눈 300·600각/마블 결/카펫 노이즈, 코드별 캐시). ShapeGeometry UV=m 단위라 `tex.repeat=1/S`(S=한 장의 실크기 m). 벽은 평색 유지.
   - **전층 합산 견적**: `_withFloorData(f,fn)`(ui.js — 잠든 층 데이터로 STATE 배열만 잠시 스왑, finally 복원) + `buildAutoEstimateAll()`(estimate.js — priceKey 별 물량 합산·층별 내역). 견적 카드에 [현재 층|Σ 전층 합산] 토글, `sendToEstimateOS` 는 다층이면 `estimateAllFloors` 동봉. 테스트 [FE] 5건(스위처 누수 검사 포함).
-  - **Blender 2단계 (검증됨)**: `scripts/blender-glb-render.py` — `blender -b -P ... -- in.glb out.png [samples] [view=iso|front|top]`. GLB extras.ecorean/재질명 MC_* 로 유리·발광·바닥(원목 Wave/타일 Brick 노드) 자동 변환, 카메라 자동 프레이밍, Cycles+디노이즈. **Blender 5.2 로 실렌더 확인(151객체 48샘플 10초)**. GLB 는 3D 뷰 [⬇GLB] 또는 스모크가 만드는 test.glb.
+  - **Blender 2단계 (검증됨)**: `scripts/blender-glb-render.py` v2 — `blender -b -P ... -- in.glb out.png [samples] [view] [light]`
+    - view: `iso`(낮은 앙각 외관)·`front`·`top`·`room`(최대 방)·`room:거실`(이름 부분 일치 — **실내 눈높이 1.5m 광각 컷**)
+    - light: `day` / `night`(월드 어둡게 + 발광 40 — 조명 기구가 주인공)
+    - 재질: GLB 에 실려 온 바닥 캔버스 텍스처는 유지(광만 조정), 없을 때만 Wave/Brick 프로시저럴. MC_*_glass/_emit → 유리/발광
+    - extras 두 형태 수용: 정식 [⬇GLB]=`extras.ecorean`, 뷰어 루트 직접 parse=`extras.obj`(meta 포함) — `eco_of` 가 정규화
+    - **Blender 5.2 실증**: 외관 iso + 거실 실내 주간/야간 렌더 성공(다운라이트 점등·코브 글로우·창 주야 표현·널결 바닥, 방 8개 자동 인식, 64샘플 ~15초)
+    - 명령 예: `"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b -P scripts/blender-glb-render.py -- 도면.glb 거실.png 128 room:거실 night`
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 
