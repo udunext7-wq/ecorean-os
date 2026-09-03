@@ -4919,6 +4919,17 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     // 배율(S) — footprint w/h 덮어쓰기
     assert('ED8d: 배율 w/h set',apply3DEdit({type:'edit',op:'set',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{w:2640,h:1080}})===true
       &&STATE.furniture.find(o=>o.id==='ed_f1').w===2640);
+    // 3D 배치 (op:'add')
+    const _na=STATE.furniture.length;
+    assert('ED8e: add 배치',apply3DEdit({type:'edit',op:'add',kind:'furniture',floorId:_edAct,patch:{type:'sofa2',x:3300,y:3300,angle:90}})===true
+      &&STATE.furniture.length===_na+1
+      &&STATE.furniture[STATE.furniture.length-1].type==='sofa2'
+      &&STATE.furniture[STATE.furniture.length-1].angle===90
+      &&STATE.furniture[STATE.furniture.length-1].id!=='ed_f1');
+    assert('ED8f: 미등록 타입 add 거부',apply3DEdit({type:'edit',op:'add',kind:'furniture',floorId:_edAct,patch:{type:'nope_x',x:0,y:0}})===false);
+    const _nl2=STATE.lights.length;
+    assert('ED8g: 다운라이트 add = 인치 기본값',apply3DEdit({type:'edit',op:'add',kind:'lights',floorId:_edAct,patch:{type:'downlight',x:900,y:900}})===true
+      &&STATE.lights.length===_nl2+1&&STATE.lights[STATE.lights.length-1].inch>=2);
     // 삭제
     assert('ED9: 삭제',apply3DEdit({type:'edit',op:'delete',kind:'lights',id:'ed_l1',floorId:_edAct})===true
       &&!STATE.lights.some(o=>o.id==='ed_l1'));

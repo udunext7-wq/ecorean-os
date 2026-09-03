@@ -68,6 +68,10 @@ GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이
   - **[🧊 3D] 클릭 = 별도 창이 기본**(open3DView), Shift+클릭/`3d split`=분할 패널, `3d`=별도 창.
   - 스케치업 정합 추가: **S=배율**(가구·기구·설비 footprint w/h — apply3DEdit set 화이트리스트에 w/h, SCALABLE set), **O=궤도(선택) · H=팬 · Z=줌**(orbit.mouseButtons.LEFT 전환), **Ctrl+이동=복사**(op:'clone' — 사본 미리보기는 g.clone(true), MiniCAD 가 JSON 복제+makeId; movable 종류만), **밀기끌기 더블클릭=직전 값 반복**(ST.lastPP), 하단 #hint = 도구별 수정자 안내(스케치업 상태바 식).
   - 미구현(의미 모델과 충돌): Line/Rectangle/Circle/Arc 그리기(면·엣지 모델링), Offset, 그룹/컴포넌트 — 작도는 2D 평면이 담당.
+- 2026-09-03 배치(➕/G) + GLB 의미 탑재:
+  - **3D 에서 새 객체 배치**: ➕ 도구 → #addpal(가구/위생/조명/전기/설비 전 라이브러리) → 고스트(가구는 buildFurniture 실형상, 반투명) → 바닥 클릭=배치(연속), R=회전, Esc=끝. 층은 커서 아래 객체의 층 자동. → `apply3DEdit op:'add'` → **ui.js `_apply3DAdd`**: 라이브러리 검증·makeId·findNearestSpace/makeLayerName·다운라이트 인치·선형등 length_mm, 잠든 층은 f.data 에.
+  - **GLB**: 재질 이름 `MC_<hex>[_glass|_emit]`, 객체 그룹 extras.ecorean={kind,type,material(마감 코드),size_mm,wall_mm,floor} — Blender 파이썬이 코드→텍스처 자동 매핑 가능. 내보내기는 root.clone 후 sprite/광원 제거·userData 치환(원본 장면 무손상).
+  - **함정 재발**: `LIBS` 도 window.FURNITURE_LIB 로 집다가 전부 null — **뷰어의 가구가 그동안 400×400 기본 상자로 세워지고 있었음**(이름·규격·팔레트 전멸). data.js/library.js 등 클래식 스크립트 const 는 반드시 typeof 전역 식별자로.
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 

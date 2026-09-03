@@ -5581,6 +5581,7 @@ function apply3DEdit(m){
   // 2026-09-03: 3D 쪽 Ctrl+Z/Y — 평면 히스토리와 한 몸으로 왕복
   if(m.op==='undo'){undo();return true;}
   if(m.op==='redo'){redo();return true;}
+  if(m.op==='add') return _apply3DAdd(m); // 3D 에서 새 객체 배치 (id 없음)
   if(!m.kind||!m.id) return false;
   const arrName=_CLIP_KIND2ARR[m.kind];
   if(!arrName) return false;
@@ -5620,6 +5621,37 @@ function apply3DEdit(m){
   }
   if(ok) showStatus('🧊 3D 편집 반영 — '+m.op);
   return ok;
+}
+// 3D 배치(➕) — 라이브러리 객체를 3D 에서 새로 놓는다. addLibObject 의 핵심만 (레이어·공간 귀속·기본 규격)
+function _apply3DAdd(m){
+  const kind=m.kind,p=m.patch||{};
+  const arrName=_CLIP_KIND2ARR[kind];
+  if(!arrName||!['furniture','fixtures','lights','electric','hvac'].includes(kind)||!p.type) return false;
+  const L2={furniture:[typeof FURNITURE_LIB!=='undefined'?FURNITURE_LIB:null,typeof FIXFURN_LIB!=='undefined'?FIXFURN_LIB:null],
+    fixtures:[typeof FIXTURE_LIB!=='undefined'?FIXTURE_LIB:null],lights:[typeof LIGHT_LIB!=='undefined'?LIGHT_LIB:null],
+    electric:[typeof ELECTRIC_LIB!=='undefined'?ELECTRIC_LIB:null],hvac:[typeof HVAC_FIRE_LIB!=='undefined'?HVAC_FIRE_LIB:null]}[kind]||[];
+  const def=L2.filter(Boolean).map(T=>T[p.type]).find(Boolean);
+  if(!def) return false;                                // 라이브러리에 없는 타입 거부
+  const x=Math.round(p.x||0),y=Math.round(p.y||0);
+  const elem={furniture:'FURN',fixtures:'FIXT',lights:'LITE',electric:'ELEC',hvac:'HVAC'}[kind];
+  const o={id:makeId(kind.charAt(0)),type:p.type,x,y,angle:((Math.round(p.angle||0)%360)+360)%360,flipped:false,spaceId:null,layerName:''};
+  if(p.type==='downlight') o.inch=Math.round(STATE.downlightInch||DOWNLIGHT_INCH_DEFAULT||3);
+  if(typeof isLinearLight==='function'&&isLinearLight(p.type)) o.length_mm=linearLightLen({type:p.type});
+  if(!m.floorId||m.floorId===STATE.activeFloorId){
+    const sp=(typeof findNearestSpace==='function')?findNearestSpace({x,y}):null;
+    o.spaceId=sp?sp.id:null;
+    if(typeof makeLayerName==='function') o.layerName=makeLayerName(elem,sp);
+    STATE[arrName].push(o);
+    saveHistory();renderAll();refreshUI();
+    showStatus('🧊 3D 배치: '+(def.name||p.type));
+  }else{
+    const f=(STATE.floors||[]).find(z=>z.id===m.floorId);
+    if(!f||!f.data) return false;
+    if(!Array.isArray(f.data[arrName])) f.data[arrName]=[];
+    f.data[arrName].push(o);
+    scheduleAutosave();if(typeof push3D==='function')push3D();
+  }
+  return true;
 }
 // 한 창 통합 — [🧊 3D] 클릭 = 우측 분할 패널 토글 (Shift+클릭 = 별도 탭)
 let _pane3dInit=false;

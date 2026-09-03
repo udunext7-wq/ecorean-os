@@ -14,9 +14,15 @@ import {GLTFExporter} from '../vendor/three/GLTFExporter.js';
 
 const $=id=>document.getElementById(id);
 const MM=1/1000;
+// library.js 의 최상위 const 는 window 속성이 아니라 전역 렉시컬 바인딩 (MATS 와 같은 함정)
+/* global FURNITURE_LIB, FIXFURN_LIB, FIXTURE_LIB, LIGHT_LIB, ELECTRIC_LIB, HVAC_FIRE_LIB */
 const LIBS={
-  FURNITURE_LIB:window.FURNITURE_LIB,FIXFURN_LIB:window.FIXFURN_LIB,FIXTURE_LIB:window.FIXTURE_LIB,
-  LIGHT_LIB:window.LIGHT_LIB,ELECTRIC_LIB:window.ELECTRIC_LIB,HVAC_FIRE_LIB:window.HVAC_FIRE_LIB,
+  FURNITURE_LIB:typeof FURNITURE_LIB!=='undefined'?FURNITURE_LIB:null,
+  FIXFURN_LIB:typeof FIXFURN_LIB!=='undefined'?FIXFURN_LIB:null,
+  FIXTURE_LIB:typeof FIXTURE_LIB!=='undefined'?FIXTURE_LIB:null,
+  LIGHT_LIB:typeof LIGHT_LIB!=='undefined'?LIGHT_LIB:null,
+  ELECTRIC_LIB:typeof ELECTRIC_LIB!=='undefined'?ELECTRIC_LIB:null,
+  HVAC_FIRE_LIB:typeof HVAC_FIRE_LIB!=='undefined'?HVAC_FIRE_LIB:null,
 };
 const MAX_POINT_LIGHTS=24;
 // data.js 의 최상위 const 는 window 속성이 아니라 전역 렉시컬 바인딩 — typeof 로 안전하게 집는다
@@ -104,6 +110,7 @@ function matFor(p){
     m=new THREE.MeshStandardMaterial({color:col,roughness:0.86,metalness:0.02,transparent:(p.opacity??1)<1,opacity:p.opacity??1});
     if(p.emissive){ m.emissive=col.clone(); m.emissiveIntensity=ST.lightsOn?1.4:0; m.roughness=0.5; m.userData.emiss=true; }
   }
+  m.name='MC_'+String(p.color||'CCC').replace('#','')+(p.glass?'_glass':'')+(p.emissive?'_emit':''); // Blender 재질 매핑용 이름
   matCache.set(key,m);
   return m;
 }
@@ -528,13 +535,16 @@ function rayFromEvent(e){
 }
 function setTool(t){
   cancelOp();
+  clearGhost();
   ST.tool=t;
   document.querySelectorAll('#tools .btn').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   const pal=$('paintpal'); if(pal) pal.style.display=(t==='paint')?'block':'none';
+  const apal=$('addpal'); if(apal) apal.style.display=(t==='add')?'block':'none';
+  if(t==='add'&&ST.add&&ST.add.type) makeGhost();
   // 스케치업식 카메라 도구: H 팬 / Z 줌 은 좌클릭 드래그를 그 동작으로
   orbit.mouseButtons.LEFT=(t==='pan')?THREE.MOUSE.PAN:(t==='zoom')?THREE.MOUSE.DOLLY:THREE.MOUSE.ROTATE;
-  renderer.domElement.style.cursor={select:'default',move:'move',rotate:'grab',scale:'nwse-resize',pushpull:'ns-resize',paint:'copy',erase:'not-allowed',tape:'crosshair',pan:'grab',zoom:'zoom-in'}[t]||'default';
-  setStatus(statusLive,{select:'➤ 선택',move:'✥ 이동',rotate:'↻ 회전',scale:'⤢ 배율',pushpull:'⇕ 밀기끌기',paint:'🪣 페인트',erase:'🧽 지우개',tape:'📏 줄자',pan:'🖐 팬',zoom:'🔍 줌'}[t]||'');
+  renderer.domElement.style.cursor={select:'default',move:'move',rotate:'grab',scale:'nwse-resize',pushpull:'ns-resize',paint:'copy',erase:'not-allowed',tape:'crosshair',pan:'grab',zoom:'zoom-in',add:'copy'}[t]||'default';
+  setStatus(statusLive,{select:'➤ 선택',move:'✥ 이동',rotate:'↻ 회전',scale:'⤢ 배율',pushpull:'⇕ 밀기끌기',paint:'🪣 페인트',erase:'🧽 지우개',tape:'📏 줄자',pan:'🖐 팬',zoom:'🔍 줌',add:'➕ 배치'}[t]||'');
   // 하단 상태바 = 스케치업식 도구 안내 (수정자 포함)
   const hint=$('hint');
   if(hint) hint.innerHTML={
@@ -548,7 +558,65 @@ function setTool(t){
     tape:'<b>줄자</b> — 두 점 클릭 = 거리(mm) · Esc 초기화',
     pan:'<b>팬</b> — 끌어서 화면 이동 (우클릭 드래그와 같음)',
     zoom:'<b>줌</b> — 위아래로 끌어 확대/축소 (휠과 같음)',
+    add:'<b>배치</b> — 왼쪽 목록에서 골라 바닥 클릭 · R=회전 · 계속 배치 · Esc=끝 (평면·견적 반영)',
   }[t]||'';
+}
+// --- 배치 (➕) — 3D 에서 라이브러리 객체를 새로 놓는다 ---
+let _ghost=null;
+function clearGhost(){ if(_ghost){ scene.remove(_ghost); _ghost=null; if(ST.add) ST.add.ghost=null; invalidate(); } }
+function makeGhost(){
+  clearGhost();
+  const a=ST.add; if(!a||!a.type) return;
+  const g=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({color:0xD4FF3D,transparent:true,opacity:0.35,depthWrite:false});
+  try{
+    if(a.kind==='furniture'||a.kind==='fixtures'){
+      const built=MC3D._internal.buildFurniture({id:'_g',type:a.type,x:0,y:0,angle:0},a.def,a.kind,{ceilH:2400},[]);
+      built.prims.forEach(p=>{ const m=primMesh(p,{kind:'ghost',name:'',prims:[]}); if(m){ m.material=mat; m.castShadow=false; m.receiveShadow=false; g.add(m); } });
+    }else{
+      const w=((a.def&&(a.def.w||a.def.size))||300)*MM, d=((a.def&&(a.def.h||a.def.size))||300)*MM;
+      const m=new THREE.Mesh(geoBox,mat); m.scale.set(w,0.05,d); m.position.y=(a.kind==='lights')?2.3:0.5; g.add(m);
+    }
+  }catch(_){ const m=new THREE.Mesh(geoBox,mat); m.scale.setScalar(0.4); m.position.y=0.2; g.add(m); }
+  g.rotation.y=-(a.rot||0)*Math.PI/180;
+  g.visible=false;
+  scene.add(g); _ghost=g; a.ghost=g;
+}
+function ghostFollow(e){
+  const a=ST.add; if(!a||!a.ghost) return;
+  const hit=hitAt(e.clientX,e.clientY);
+  const fid=(hit&&hit.object.userData.obj&&hit.object.userData.obj.floorId)||(ST.floorSel!=='all'?ST.floorSel:(ST.floors[0]&&ST.floors[0].id));
+  const f=ST.floors.find(x=>x.id===fid);
+  const z0=f?f.z0*MM:0;
+  dragPlane.constant=-z0;
+  rayFromEvent(e);
+  if(!ray.ray.intersectPlane(dragPlane,dragPt)) return;
+  a.fid=fid;
+  a.ghost.position.set(Math.round(dragPt.x/MM/10)*10*MM,z0,Math.round(dragPt.z/MM/10)*10*MM);
+  a.ghost.visible=true;
+  invalidate();
+}
+function placeGhost(){
+  const a=ST.add; if(!a||!a.ghost||!a.ghost.visible) return;
+  const x=Math.round(a.ghost.position.x/MM), y=Math.round(a.ghost.position.z/MM);
+  if(!chan){ setStatus(false,'MiniCAD 창이 없어 배치 못함'); return; }
+  chan.postMessage({type:'edit',op:'add',kind:a.kind,floorId:a.fid,patch:{type:a.type,x,y,angle:a.rot||0}});
+  setStatus(statusLive,'➕ 배치 ('+x+', '+y+') — 계속 클릭해 더 놓기, Esc=끝');
+}
+function renderAddPal(){
+  const el=$('addpal'); if(!el) return;
+  const CATS=[['furniture','가구',LIBS.FURNITURE_LIB],['fixtures','주방·위생·가전',LIBS.FIXTURE_LIB],['lights','조명',LIBS.LIGHT_LIB],['electric','전기',LIBS.ELECTRIC_LIB],['hvac','공조·소방',LIBS.HVAC_FIRE_LIB]];
+  el.innerHTML=CATS.map(([k,label,TBL])=>TBL?('<div class="pp-cat">'+label+'</div><div class="pp-grid">'+
+    Object.entries(TBL).filter(([,v])=>!v.hidden).map(([kk,v])=>'<button class="pp-it'+((ST.add&&ST.add.kind===k&&ST.add.type===kk)?' on':'')+'" data-k="'+k+'" data-type="'+kk+'"><span class="pp-chip" style="background:'+(v.c||'#8B8B8B')+'"></span>'+(v.name||kk)+'</button>').join('')+'</div>'):'').join('');
+  el.querySelectorAll('.pp-it').forEach(b=>{
+    b.onclick=()=>{
+      const k=b.dataset.k,t=b.dataset.type;
+      const TBL={furniture:LIBS.FURNITURE_LIB,fixtures:LIBS.FIXTURE_LIB,lights:LIBS.LIGHT_LIB,electric:LIBS.ELECTRIC_LIB,hvac:LIBS.HVAC_FIRE_LIB}[k];
+      ST.add={kind:k,type:t,def:TBL&&TBL[t],rot:(ST.add&&ST.add.rot)||0,ghost:null,fid:null};
+      renderAddPal(); makeGhost();
+      setStatus(statusLive,'➕ '+((TBL[t]&&TBL[t].name)||t)+' — 바닥에 클릭해 배치');
+    };
+  });
 }
 function cancelOp(){
   const op=ST.op; ST.op=null; ST.axisLock=null; vcbHide();
@@ -774,6 +842,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
       if(movable){ select(g,{silent:true}); beginScale(g,obj,e.clientY); }
       break;
     case 'pan': case 'zoom': break; // 카메라 도구 — OrbitControls 가 처리
+    case 'add': placeGhost(); break;
     case 'pushpull': if(hit) beginPP(hit); break;
     case 'paint': if(hit) doPaint(hit); break;
     case 'erase': if(g&&obj){ select(g,{silent:true}); deleteSelected3D(); } break;
@@ -781,6 +850,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   }
 });
 renderer.domElement.addEventListener('pointermove',e=>{
+  if(ST.tool==='add'&&ST.add&&ST.add.ghost){ ghostFollow(e); }
   // 스티키 동작 — 버튼을 안 눌러도 따라온다 (클릭-이동-클릭)
   if(ST.op&&(!drag||drag.id!==e.pointerId)){
     if(ST.op.type==='move'&&ST.op.sticky) applyMoveFromEvent(e);
@@ -926,7 +996,7 @@ window.addEventListener('keydown',e=>{
     return;
   }
   if(e.key==='Enter'&&ST.op){ commitActive(vcbTyped()); return; }
-  if(k==='escape'){ if(ST.op) cancelOp(); else select(null); return; }
+  if(k==='escape'){ if(ST.op) cancelOp(); else if(ST.tool==='add') setTool('select'); else select(null); return; }
   ST.walk.keys[k]=true;
   if(ST.mode==='orbit'){
     if(k===' '){ setTool('select'); e.preventDefault(); return; }
@@ -937,6 +1007,8 @@ window.addEventListener('keydown',e=>{
     if(k==='b'){ setTool('paint'); return; }
     if(k==='e'){ setTool('erase'); return; }
     if(k==='t'){ setTool('tape'); return; }
+    if(k==='r'&&ST.tool==='add'&&ST.add&&ST.add.ghost){ ST.add.rot=((ST.add.rot||0)+(e.shiftKey?-15:15)+360)%360; ST.add.ghost.rotation.y=-ST.add.rot*Math.PI/180; invalidate(); e.preventDefault(); return; }
+    if(k==='g'){ setTool('add'); return; }           // 배치 (스케치업 컴포넌트 자리)
     if(k==='o'){ setTool('select'); return; }        // 스케치업 O=궤도 (선택에서 항상 궤도)
     if(k==='h'){ setTool('pan'); return; }           // 스케치업 H=팬
     if(k==='z'&&!e.shiftKey&&!e.ctrlKey){ setTool('zoom'); return; } // 스케치업 Z=줌
@@ -973,12 +1045,24 @@ function download(name,blobOrUrl){
 function fileStem(){ return ((ST.built&&ST.built.project)||'minicad').replace(/[\\/:*?"<>|]+/g,'_')+'_'+new Date().toISOString().slice(0,10); }
 function exportGLB(){
   if(!ST.root) return;
-  const hidden=[];
-  ST.root.traverse(o=>{ if((o.isSprite||o.isPointLight)&&o.visible){o.visible=false;hidden.push(o);} });
-  new GLTFExporter().parse(ST.root,res=>{
-    hidden.forEach(o=>{o.visible=true;}); invalidate();
+  // Blender 2단계용 사본 — 이름표·광원 제거, extras 에 의미 데이터(종류·재질 코드) 탑재
+  const exp=ST.root.clone(true);
+  const rm=[];
+  exp.traverse(o=>{
+    if(o.isSprite||o.isPointLight){ rm.push(o); return; }
+    const obj=o.userData&&o.userData.obj;
+    if(obj&&o.isGroup){
+      const mt=obj.meta||{};
+      o.userData={ecorean:{kind:obj.kind,id:obj.id,name:obj.name||'',floor:obj.floorName||'',
+        type:mt.type||null,material:mt.material||mt.floorMaterial||null,ceilingMaterial:mt.ceilingMaterial||null,
+        size_mm:(mt.w&&mt.d)?[mt.w,mt.d]:null,wall_mm:(mt.L?[mt.L,mt.t,mt.H]:null)}};
+    }else o.userData={};
+  });
+  rm.forEach(o=>{ if(o.parent) o.parent.remove(o); });
+  new GLTFExporter().parse(exp,res=>{
     download(fileStem()+'.glb',new Blob([res],{type:'model/gltf-binary'}));
-  },err=>{ hidden.forEach(o=>{o.visible=true;}); console.error(err); alert('GLB 내보내기 실패: '+(err&&err.message||err)); },{binary:true,onlyVisible:true});
+    setStatus(statusLive,'GLB 저장 — Blender 에서 File→Import→glTF (재질 이름 MC_*, extras.ecorean 에 재질 코드)');
+  },err=>{ console.error(err); alert('GLB 내보내기 실패: '+(err&&err.message||err)); },{binary:true,onlyVisible:true});
 }
 function exportJSON(){
   if(!ST.doc) return;
@@ -1047,6 +1131,7 @@ $('b-reload').onclick=()=>{ if(chan) chan.postMessage({type:'hello',at:Date.now(
 // 스케치업식 도구 바 (2026-09-03)
 document.querySelectorAll('#tools .btn').forEach(b=>{ b.addEventListener('click',()=>setTool(b.dataset.t)); });
 renderPaintPal();
+renderAddPal();
 
 window.addEventListener('resize',()=>{
   camera.aspect=view.clientWidth/view.clientHeight; camera.updateProjectionMatrix();
