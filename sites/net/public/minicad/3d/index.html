@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <!--
  ECOREAN MiniCAD 3D 뷰 — Copyright (c) 2026 ECOREAN. All Rights Reserved.
- 2026-09-01: MiniCAD 평면도를 그대로 입체로 (1단계: 실시간 3D 뷰 · 별도 탭)
-   - MiniCAD 창의 [🧊 3D] 버튼이 이 탭을 열고, 이후 도면을 고칠 때마다 BroadcastChannel 로 흘려보낸다
-   - three.js 는 vendor/three 에 동봉(외부 CDN 없음). 계산부는 build3d.js (노드 테스트 tests/minicad-3d.cjs)
+ 2026-09-01: 평면도를 그대로 입체로 (실시간 3D 뷰). BroadcastChannel 로 MiniCAD 와 양방향.
+ 2026-09-03 v2: 3D 직접 편집(끌어 이동·회전·삭제·속성 패널 → 평면 역반영), 층별 증분 재조립,
+   필요할 때만 렌더(유휴 시 GPU 0), 시점 프리셋, 주/야, 방 더블클릭 줌. MiniCAD 안 분할 패널로도 열린다.
 -->
 <html lang="ko">
 <head>
@@ -19,60 +19,81 @@
   html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:'Inter Tight','Inter','Noto Sans KR',system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
   #view{position:fixed;inset:0}
   #view canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
-  .bar{position:fixed;left:0;right:0;top:0;height:46px;display:flex;align-items:center;gap:6px;padding:0 10px;background:rgba(26,27,46,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);z-index:5;overflow-x:auto;white-space:nowrap}
-  .bar .title{font-weight:700;color:var(--gold);margin-right:6px;font-size:14px}
+  .bar{position:fixed;left:0;right:0;top:0;height:46px;display:flex;align-items:center;gap:5px;padding:0 8px;background:rgba(26,27,46,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);z-index:5;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+  .bar::-webkit-scrollbar{display:none}
+  .bar .title{font-weight:700;color:var(--gold);margin-right:4px;font-size:14px}
   .bar .title small{color:var(--mute);font-weight:400;margin-left:6px}
-  .btn{appearance:none;border:1px solid var(--line);background:#242640;color:var(--ink);border-radius:8px;padding:6px 10px;font-size:12.5px;cursor:pointer;line-height:1;font-family:inherit}
+  .btn{appearance:none;border:1px solid var(--line);background:#242640;color:var(--ink);border-radius:8px;padding:6px 9px;font-size:12.5px;cursor:pointer;line-height:1;font-family:inherit;flex:none}
   .btn:hover{border-color:var(--gold)}
   .btn.on{background:var(--gold);color:#1A1B2E;border-color:var(--gold);font-weight:700}
-  .btn.warn{border-color:var(--orange);color:var(--orange)}
-  .sep{width:1px;height:22px;background:var(--line);margin:0 4px;flex:none}
+  .btn.sm{padding:6px 7px;font-size:12px}
+  .sep{width:1px;height:22px;background:var(--line);margin:0 3px;flex:none}
   .grow{flex:1}
-  #status{font-size:11.5px;color:var(--mute)}
+  #status{font-size:11.5px;color:var(--mute);flex:none}
   #status.live::before{content:'●';color:var(--lime);margin-right:5px}
   #status.off::before{content:'●';color:#666;margin-right:5px}
   #tip{position:fixed;pointer-events:none;background:rgba(26,27,46,.95);border:1px solid var(--gold);color:var(--ink);padding:5px 9px;border-radius:7px;font-size:12px;display:none;z-index:6;white-space:nowrap}
   #tip small{color:var(--mute)}
-  #hint{position:fixed;left:12px;bottom:12px;font-size:11.5px;color:var(--mute);background:rgba(26,27,46,.8);border:1px solid var(--line);border-radius:8px;padding:6px 10px;z-index:5;max-width:min(92vw,520px);line-height:1.5}
+  #hint{position:fixed;left:12px;bottom:12px;font-size:11.5px;color:var(--mute);background:rgba(26,27,46,.8);border:1px solid var(--line);border-radius:8px;padding:6px 10px;z-index:5;max-width:min(92vw,560px);line-height:1.5}
   #empty{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:var(--mute);font-size:15px;line-height:1.8;z-index:4;padding:20px}
   #empty b{color:var(--gold)}
   #walkpad{position:fixed;right:14px;bottom:14px;display:none;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);gap:6px;z-index:5}
   #walkpad button{border:1px solid var(--line);background:rgba(36,38,64,.9);color:var(--ink);border-radius:10px;font-size:20px;touch-action:none}
   #walkpad button:active{background:var(--gold);color:#1A1B2E}
-  @media (max-width:640px){ .bar .title small{display:none} #hint{display:none} }
+  /* 2026-09-03: 선택 객체 속성 패널 — 3D 직접 편집 */
+  #props{position:fixed;right:12px;top:56px;width:238px;max-height:calc(100vh - 120px);overflow-y:auto;display:none;z-index:5;
+    background:rgba(26,27,46,.95);border:1px solid var(--line);border-radius:11px;padding:12px 13px;backdrop-filter:blur(8px)}
+  #props h4{margin:0 0 3px;font-size:13.5px;color:var(--gold)}
+  #props .p-sub{font-size:11px;color:var(--mute);margin-bottom:9px}
+  #props .p-row{display:flex;align-items:center;gap:6px;margin:6px 0}
+  #props label{font-size:11.5px;color:var(--mute);flex:0 0 62px}
+  #props input,#props select{flex:1;min-width:0;background:#242640;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 7px;font-size:12px;font-family:inherit}
+  #props .p-btns{display:flex;gap:5px;margin-top:9px;flex-wrap:wrap}
+  #props .p-btns .btn{flex:1;text-align:center;font-size:12px}
+  #props .btn.danger{border-color:var(--orange);color:var(--orange)}
+  #props .p-note{font-size:10.5px;color:var(--mute);margin-top:8px;line-height:1.45}
+  #props .p-lock{color:var(--orange);font-size:11.5px;margin-top:6px}
+  @media (max-width:640px){ .bar .title small{display:none} #hint{display:none} #props{width:200px} }
 </style>
 </head>
 <body>
 <div id="view"></div>
 <div class="bar">
-  <span class="title">🧊 MiniCAD 3D<small id="proj"></small></span>
-  <button class="btn on" id="b-orbit" title="위에서 돌려보기 — 드래그 회전 · 휠 확대 · 우클릭/두 손가락 이동">🛰 조감</button>
-  <button class="btn" id="b-walk" title="사람 눈높이(1.6m)로 걷기 — 드래그 둘러보기 · W A S D / 방향키 이동">🚶 걷기</button>
+  <span class="title">🧊 3D<small id="proj"></small></span>
+  <button class="btn on" id="b-orbit" title="위에서 돌려보기 — 드래그 회전 · 휠 확대 · 우클릭 이동 · 객체는 그냥 끌면 이동 (1)">🛰 조감</button>
+  <button class="btn" id="b-walk" title="사람 눈높이(1.6m)로 걷기 — 드래그 둘러보기 · W A S D 이동 (2)">🚶 걷기</button>
   <span class="sep"></span>
   <span id="floors" style="display:flex;gap:4px"></span>
-  <button class="btn on" id="b-light" title="조명 기구를 켜고 끈다 (발광 + 광원)">💡 조명</button>
-  <button class="btn" id="b-ceil" title="천장을 보인다/숨긴다 (조감은 숨김, 걷기는 보임이 기본)">⬛ 천장</button>
-  <button class="btn on" id="b-label" title="공간 이름표">🏷 이름</button>
-  <button class="btn on" id="b-shadow" title="그림자(느리면 끄기)">🌤 그림자</button>
+  <button class="btn sm" id="v-iso" title="아이소 전경 (3)">⌂</button>
+  <button class="btn sm" id="v-top" title="바로 위에서 (4)">⬓</button>
+  <button class="btn sm" id="v-front" title="정면 (5)">⬒</button>
+  <button class="btn sm" id="v-side" title="측면 (6)">◨</button>
   <span class="sep"></span>
-  <button class="btn" id="b-fit" title="도면 전체가 보이게">⤢ 전체</button>
-  <button class="btn" id="b-shot" title="지금 화면을 PNG 로 저장">📷 사진</button>
-  <button class="btn" id="b-glb" title="Blender 등으로 가져갈 수 있는 .glb 파일 (2단계 렌더용)">⬇ GLB</button>
-  <button class="btn" id="b-json" title="3D 기본체 목록(JSON) — 외부 렌더 파이프라인용">⬇ JSON</button>
+  <button class="btn on" id="b-light" title="조명 기구 켜기/끄기 (L)">💡</button>
+  <button class="btn" id="b-night" title="낮/밤 무드 — 밤에는 조명이 주인공">🌗</button>
+  <button class="btn" id="b-ceil" title="천장 보기/숨기기 (C)">⬛</button>
+  <button class="btn on" id="b-label" title="공간 이름표">🏷</button>
+  <button class="btn on" id="b-shadow" title="그림자 — 대형 도면은 자동으로 꺼짐">🌤</button>
+  <span class="sep"></span>
+  <button class="btn sm" id="b-shot" title="화면을 PNG 로 저장">📷</button>
+  <button class="btn sm" id="b-glb" title="Blender 용 .glb (2단계 렌더)">⬇GLB</button>
+  <button class="btn sm" id="b-json" title="3D 기본체 목록 JSON">⬇J</button>
   <span class="grow"></span>
   <span id="status" class="off">MiniCAD 연결 대기</span>
-  <button class="btn" id="b-reload" title="MiniCAD 에서 도면을 다시 받는다">↻</button>
+  <button class="btn sm" id="b-reload" title="MiniCAD 에서 도면을 다시 받는다">↻</button>
 </div>
+<div id="props"></div>
 <div id="tip"></div>
-<div id="hint">조감: 드래그 회전 · 휠 확대 · 우클릭 이동 · 클릭하면 이름 &nbsp;|&nbsp; 걷기: 드래그 둘러보기 · W A S D 이동 · Q/E 위아래</div>
-<div id="empty">아직 받은 도면이 없습니다.<br>MiniCAD 창에서 <b>🧊 3D</b> 버튼을 누르거나 명령창에 <b>3d</b> 를 입력하세요.<br><small>이 탭을 열어 두면 평면을 고칠 때마다 바로 반영됩니다.</small></div>
+<div id="hint">클릭=선택·속성 | <b>객체 드래그=이동</b> · R=회전 · Del=삭제 (평면도에 바로 반영) | 더블클릭=그 방으로 줌 | 조감: 빈 곳 드래그 회전 · 휠 확대 | 걷기: W A S D · Q/E</div>
+<div id="empty">아직 받은 도면이 없습니다.<br>MiniCAD 창에서 <b>🧊 3D</b> 버튼을 누르거나 명령창에 <b>3d</b> 를 입력하세요.<br><small>열어 두면 평면을 고칠 때마다 바로 반영되고, 여기서 고치면 평면에 반영됩니다.</small></div>
 <div id="walkpad">
   <button data-k="q">⇧</button><button data-k="w">▲</button><button data-k="e">⇩</button>
   <button data-k="a">◀</button><button data-k="s">▼</button><button data-k="d">▶</button>
 </div>
-<script src="../js/library.js?v=3d2"></script>
-<script src="build3d.js?v=3d2"></script>
+<script src="../js/data.js?v=3d3"></script>
+<script src="../js/library.js?v=3d3"></script>
+<script src="build3d.js?v=3d3"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d2"></script>
+<script type="module" src="view3d.js?v=3d3"></script>
 </body>
 </html>

@@ -3471,7 +3471,8 @@ function _paletteCommands(){
     {label:'🖨 바로 인쇄 (직전 설정으로)',kw:'print 인쇄 바로 출력',run:()=>printPlan()},
     {label:'⬚ 인쇄 영역 드래그로 지정',kw:'print 인쇄 영역 범위 부분 확대 crop',run:startPrintRegionPick},
     {label:'🖥 인쇄 영역 — 화면에서 잡기 (pf)',kw:'print 인쇄 영역 틀 화면 잡기 frame pf',run:()=>togglePrintFrame()},
-    {label:'🧊 3D 뷰 — 평면을 입체로, 별도 탭 (3d)',kw:'3d 3D 입체 three 뷰 걷기 조감 view',run:()=>open3DView()},
+    {label:'🧊 3D 분할 패널 — 한 창에서 2D|3D (3d)',kw:'3d 3D 입체 분할 패널 통합 view',run:()=>toggle3DPane()},
+    {label:'🧊 3D 별도 탭 (3d tab)',kw:'3d 3D 입체 탭 창 tab',run:()=>open3DView()},
     {label:'📑 층 추가 — 빈 층 (fl add)',kw:'층 floor 시트 추가 add 2층 3층',run:()=>addFloor()},
     {label:'📑 층 추가 — 현재 층 구조 복제 (fl copy)',kw:'층 floor 복제 copy 구조 벽',run:()=>addFloor({copy:true})},
     {label:'📑 층 삭제 — 현재 층 (fl del)',kw:'층 floor 삭제 제거 빼기 del delete',run:()=>deleteFloor(STATE.activeFloorId)},
@@ -5294,7 +5295,11 @@ function _view3dChannel(){
   if(_view3dChan) return _view3dChan;
   if(typeof BroadcastChannel==='undefined') return null;
   _view3dChan=new BroadcastChannel('minicad-3d');
-  _view3dChan.onmessage=e=>{ const m=e.data||{}; if(m.type==='hello'){_view3dLive=true;push3D(true);} };
+  _view3dChan.onmessage=e=>{
+    const m=e.data||{};
+    if(m.type==='hello'){_view3dLive=true;push3D(true);}
+    else if(m.type==='edit'){apply3DEdit(m);} // 2026-09-03: 3D 에서 고친 것을 평면에 반영
+  };
   return _view3dChan;
 }
 function push3D(now){
@@ -5318,7 +5323,7 @@ function open3DView(){
   const w=window.open('3d/index.html','minicad3d');
   if(!w&&typeof showStatus==='function') showStatus('팝업이 막혔습니다 — 브라우저에서 이 사이트의 팝업을 허용하세요');
 }
-(function(){const b=document.getElementById('btn-3d');if(b)b.addEventListener('click',()=>open3DView());_view3dChannel();})();
+(function(){const b=document.getElementById('btn-3d');if(b)b.addEventListener('click',e=>{if(e.shiftKey)open3DView();else toggle3DPane();});_view3dChannel();})();
 
 // ===== 2026-09-03: 층(Floor) 시트 =====
 //  대표 요구: 층마다 별도 시트(같은 시퀀스에 겹쳐 그리면 z 도 없고 버벅임) + 서버 도면은 하나.
@@ -5567,6 +5572,61 @@ document.addEventListener('keydown',e=>{
   else if(k==='v'){ if(pasteClipboard()) e.preventDefault(); }
   else { if(cutSelection()) e.preventDefault(); }
 });
+
+// ===== 2026-09-03: 3D 직접 편집 역반영 + 한 창 분할 패널 =====
+//  3D 뷰(별도 탭·분할 iframe 공통)가 BroadcastChannel 로 {type:'edit',op,kind,id,floorId,patch} 를 보내면
+//  여기서 평면 데이터에 반영한다. 활성 층이면 STATE(+undo 히스토리), 잠든 층이면 floors[].data 스냅샷에.
+function apply3DEdit(m){
+  if(!m||!m.kind||!m.id||!m.op) return false;
+  const arrName=_CLIP_KIND2ARR[m.kind];
+  if(!arrName) return false;
+  if(m.op==='delete'&&!['furniture','fixtures','lights','electric','hvac','pillars','opening'].includes(m.kind)) return false; // 벽·공간 삭제는 평면에서만
+  const ALLOW={space:['floorMaterial','ceilingMaterial','ceilingHeight_mm','name'],
+    wall:['height_mm','finishMaterial'],
+    opening:['width_mm','height_mm','sillHeight_mm'],
+    _:['x','y','angle','inch','length_mm']};
+  const applyTo=bag=>{
+    const arr=bag[arrName]; if(!Array.isArray(arr)) return false;
+    const idx=arr.findIndex(o=>o&&o.id===m.id); if(idx<0) return false;
+    const o=arr[idx];
+    if(o.locked){showStatus('잠금된 객체 — 3D 편집 불가');return false;}
+    if(m.op==='delete') arr.splice(idx,1);
+    else if(m.op==='move'&&m.patch){o.x=Math.round(m.patch.x);o.y=Math.round(m.patch.y);}
+    else if(m.op==='rotate'&&m.patch){o.angle=((Math.round(m.patch.angle)%360)+360)%360;}
+    else if(m.op==='set'&&m.patch){
+      const allow=ALLOW[m.kind]||ALLOW._;
+      allow.forEach(k=>{ if(k in m.patch){ const v=m.patch[k]; o[k]=(typeof v==='number'&&isFinite(v))?Math.round(v):(v||null); } });
+    }else return false;
+    return true;
+  };
+  let ok=false;
+  if(!m.floorId||m.floorId===STATE.activeFloorId){
+    ok=applyTo(STATE);
+    if(ok){reinstallVEFAll();saveHistory();renderAll();refreshUI();} // saveHistory 가 push3D 도 부른다
+  }else{
+    const f=(STATE.floors||[]).find(x=>x.id===m.floorId);
+    if(f&&f.data){ ok=applyTo(f.data); if(ok){scheduleAutosave();if(typeof push3D==='function')push3D();} }
+  }
+  if(ok) showStatus('🧊 3D 편집 반영 — '+m.op);
+  return ok;
+}
+// 한 창 통합 — [🧊 3D] 클릭 = 우측 분할 패널 토글 (Shift+클릭 = 별도 탭)
+let _pane3dInit=false;
+function toggle3DPane(force){
+  const pane=document.getElementById('pane3d');
+  if(!pane){open3DView();return;}
+  const on=(force!==undefined)?!!force:!document.body.classList.contains('split3d');
+  document.body.classList.toggle('split3d',on);
+  if(on&&!_pane3dInit){
+    _pane3dInit=true;
+    const ifr=document.getElementById('pane3d-frame');
+    if(ifr&&!ifr.src) ifr.src='3d/index.html';
+  }
+  if(on){_view3dChannel();_view3dLive=true;push3D(true);}
+  if(typeof handleResize==='function') handleResize();
+  showStatus(on?'🧊 3D 분할 — 그리면 즉시 입체, 3D 에서 고치면 평면 반영 (Shift+클릭=별도 탭, Esc 아님 버튼으로 닫기)':'3D 분할 닫음');
+  return on;
+}
 (function(){const b=document.getElementById('btn-elev');if(b)b.addEventListener('click',()=>openElevationDialog());})(); // 2026-08-30
 document.getElementById('btn-2_5d').addEventListener('click',toggle2_5D); // v5.7
 document.getElementById('btn-ai-bundle').addEventListener('click',exportAIBundle); // v5.7
@@ -6305,7 +6365,9 @@ function processCommand(rawCmd){
   // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
   if(/^(pf|인쇄영역)$/i.test(c)){togglePrintFrame();return;} // 2026-08-28
-  if(/^(3d|입체)$/i.test(c)){open3DView();return;} // 2026-09-01
+  if(/^(3d|입체)$/i.test(c)){toggle3DPane();return;} // 2026-09-03: 분할 패널 토글
+  if(/^3d\s+(tab|탭|창)$/i.test(c)){open3DView();return;} // 별도 탭
+  if(/^3d\s+(off|닫기)$/i.test(c)){toggle3DPane(false);return;}
   // 2026-09-03: 층 시트 — fl / fl 2 / fl add / fl copy / fl del 2 / fl name 옥탑
   {const m=c.match(/^(?:fl|층)(?:\s+(.+))?$/i);
    if(m){

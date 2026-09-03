@@ -748,3 +748,10 @@ body.pointer-coarse .cmd-help-btn{min-width:40px;min-height:36px}
 #floor-bar .fl-tab:hover{opacity:1;border-color:var(--gold,#C9A961)}
 #floor-bar .fl-tab.on{background:var(--gold,#C9A961);color:#1A1B2E;border-color:var(--gold,#C9A961);font-weight:700;opacity:1}
 #floor-bar .fl-add{padding:3px 7px;font-weight:700}
+
+/* ===== 2026-09-03: 3D 분할 패널 (한 창 통합 — [🧊 3D] 클릭으로 토글, iframe=3d/index.html) ===== */
+body.split3d .canvas-area{display:flex}
+body.split3d #canvas-container{width:50%!important;flex:0 0 50%}
+#pane3d{display:none;flex:1;min-width:0;position:relative;border-left:1px solid var(--stroke-2,#3D4466);background:#0E0F1A}
+body.split3d #pane3d{display:block}
+#pane3d iframe{position:absolute;inset:0;width:100%;height:100%;border:0}

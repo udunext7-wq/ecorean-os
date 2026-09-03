@@ -46,6 +46,14 @@ GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이
 - 클립보드는 층 바깥(전역 `_clipboard` + localStorage `minicad.clipboard`) — **다른 층·다른 탭**에 붙여넣기 가능. Ctrl+X = 복사+삭제(잠긴 객체는 deleteSelected 가 걸러줌).
 - 키 가드: INPUT/TEXTAREA 포커스·텍스트 드래그 선택 중·인쇄 설정창 열림에는 브라우저 기본 동작 유지.
 - 테스트: tests.js [CP] 11건 (커서 위치·다중·공간 동반·층 건너·원상복구).
+
+### 3D v2 — 직접 편집·한 창 분할·증분/유휴 렌더 (2026-09-03)
+- **한 창 통합**: [🧊 3D] 클릭 = 우측 분할 패널(`#pane3d` iframe → 3d/index.html, `body.split3d` + `handleResize()`), Shift+클릭/`3d tab` = 별도 탭, `3d off` 닫기. iframe 은 첫 열기에만 src 지정(지연 로드).
+- **3D 직접 편집**: 조감에서 가구·기구·조명·전기·설비·기둥을 **드래그=이동**(10mm 스냅, 층 바닥 평면 레이캐스트), R/속성패널=15° 회전, Del=삭제, 속성 패널(#props)에서 벽 높이·마감 / 공간 바닥재·천장재·천장고 / 문창 폭·높이·창턱 / 다운라이트 인치 수정 → BroadcastChannel `{type:'edit',op,kind,id,floorId,patch}` → **ui.js `apply3DEdit`** 가 평면에 반영(활성 층=STATE+saveHistory→undo 가능, 잠든 층=floors[].data, 잠금 보호, set 은 화이트리스트, 벽·공간 delete 거부). 반영 → push3D → 3D 재조립으로 루프 완결.
+- **층별 증분 재조립**: 뷰어가 `MC3D.splitFloors`+`buildFloorScene` 로 층마다 그룹을 만들고 층 JSON 해시가 같으면 재사용(`ST.floorCache`) — 한 층 수정 시 다른 층 메시는 그대로.
+- **유휴 렌더 0**: needRender 플래그 — 카메라·드래그·장면 변화 때만 render, `shadowMap.autoUpdate=false`(변화 시 needsUpdate). 대형 도면 자동 성능(메시 3500↑ 그림자 자동 OFF·pixelRatio 하향, 사용자가 그림자 버튼 만지면 자동 해제).
+- **조작**: 더블클릭=그 객체/방으로 줌, 시점 프리셋 ⌂⬓⬒◨(키 3/4/5/6), 🌗 주/야 무드, 걷기 유지.
+- 주의: 뷰어 구조가 root>층그룹>객체그룹 2단 — 스모크·테스트는 `MC3DVIEW.objCount()`/`ST.floorCache` 를 본다(`ST.root.children`=층 수). 3d/index.html 은 이제 data.js 도 로드(재질 드롭다운).
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 

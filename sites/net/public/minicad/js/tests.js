@@ -4868,6 +4868,57 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('CP: 클립보드 테스트 예외 없음',false,e.message);
   }
+  // === [ED] 3D 편집 역반영 apply3DEdit (2026-09-03) ===
+  try{
+    const _edBak=JSON.parse(JSON.stringify(buildAutosavePayload()));
+    _floorsEnsure();
+    const _edAct=STATE.activeFloorId;
+    STATE.furniture.push({id:'ed_f1',type:'sofa3',x:1000,y:1000,angle:0,spaceId:null});
+    STATE.lights.push({id:'ed_l1',type:'downlight',x:1500,y:1000,inch:3,spaceId:null});
+    // 이동·회전·속성
+    assert('ED1: 이동',apply3DEdit({type:'edit',op:'move',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{x:2500,y:2600}})===true
+      &&STATE.furniture.find(o=>o.id==='ed_f1').x===2500);
+    assert('ED2: 회전',apply3DEdit({type:'edit',op:'rotate',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{angle:375}})===true
+      &&STATE.furniture.find(o=>o.id==='ed_f1').angle===15);
+    assert('ED3: 조명 인치 set',apply3DEdit({type:'edit',op:'set',kind:'lights',id:'ed_l1',floorId:_edAct,patch:{inch:5}})===true
+      &&STATE.lights.find(o=>o.id==='ed_l1').inch===5);
+    // 허용 밖 필드는 무시
+    apply3DEdit({type:'edit',op:'set',kind:'lights',id:'ed_l1',floorId:_edAct,patch:{id:'hack',circuitOn:false,evil:1}});
+    const _l=STATE.lights.find(o=>o.id==='ed_l1');
+    assert('ED4: 화이트리스트 밖 필드 무시',!!_l&&!('evil' in _l)&&_l.circuitOn===undefined);
+    // 벽 높이·마감 / 공간 바닥재
+    if(STATE.walls.length){
+      const _w=STATE.walls[0];
+      assert('ED5: 벽 set',apply3DEdit({type:'edit',op:'set',kind:'wall',id:_w.id,floorId:_edAct,patch:{height_mm:2600,finishMaterial:'PAINT_WATER'}})===true
+        &&_w.height_mm===2600&&_w.finishMaterial==='PAINT_WATER');
+    }else assert('ED5: 벽 set',true);
+    if(STATE.spaces.length){
+      const _s=STATE.spaces[0];
+      assert('ED6: 공간 바닥재 set',apply3DEdit({type:'edit',op:'set',kind:'space',id:_s.id,floorId:_edAct,patch:{floorMaterial:'TILE_PORC'}})===true
+        &&_s.floorMaterial==='TILE_PORC');
+      assert('ED7: 공간 삭제는 거부',apply3DEdit({type:'edit',op:'delete',kind:'space',id:_s.id,floorId:_edAct})===false);
+    }else{assert('ED6: 공간 바닥재 set',true);assert('ED7: 공간 삭제는 거부',true);}
+    // 잠금 보호
+    STATE.furniture.find(o=>o.id==='ed_f1').locked=true;
+    assert('ED8: 잠금 이동 거부',apply3DEdit({type:'edit',op:'move',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{x:9,y:9}})===false
+      &&STATE.furniture.find(o=>o.id==='ed_f1').x===2500);
+    STATE.furniture.find(o=>o.id==='ed_f1').locked=false;
+    // 삭제
+    assert('ED9: 삭제',apply3DEdit({type:'edit',op:'delete',kind:'lights',id:'ed_l1',floorId:_edAct})===true
+      &&!STATE.lights.some(o=>o.id==='ed_l1'));
+    // 잠든 층에 편집 — 스냅샷에 반영
+    const _edF=addFloor();
+    STATE.furniture.push({id:'ed_f2',type:'chair',x:500,y:500,angle:0,spaceId:null});
+    switchFloor(_edAct,{silent:true});
+    assert('ED10: 잠든 층 이동',apply3DEdit({type:'edit',op:'move',kind:'furniture',id:'ed_f2',floorId:_edF.id,patch:{x:7000,y:7000}})===true
+      &&STATE.floors.find(f=>f.id===_edF.id).data.furniture[0].x===7000);
+    STATE.floors=STATE.floors.filter(f=>f.id!==_edF.id);
+    renderFloorBar();
+    applyLoadedData(_edBak);
+    assert('ED11: 원상복구',!STATE.furniture.some(o=>o.id==='ed_f1'));
+  }catch(e){
+    assert('ED: 3D 편집 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

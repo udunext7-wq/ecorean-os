@@ -204,7 +204,7 @@ function buildWall(w,D,spaceById,offs){
   // 개구부 객체(문짝·창틀·유리)는 별도 obj 로 — 클릭하면 이름이 보이도록
   const openingObjs=cuts.map(c=>buildOpening(c,w,t,rot,off));
   return {
-    wall:{id:w.id,kind:'wall',name:bearing?'내력벽':(w.wallType==='partition'?'가벽':'벽'),x:w.x1,y:w.y1,rot,flip:false,prims,
+    wall:{id:w.id,kind:'wall',name:bearing?'내력벽':(w.wallType==='partition'?'가벽':'벽'),x:w.x1,y:w.y1,rot,flip:false,prims,locked:!!w.locked,
       meta:{L:Math.round(L),t,H,material:w.finishMaterial||null,wallType:w.wallType||'standard',alignment:w.alignment||'center',offset:off,ext:[ext1,ext2]}},
     openings:openingObjs,
   };
@@ -260,9 +260,9 @@ function buildOpening(c,w,t,rot,off){
 function buildFloor(s,D,idx){
   const color=s.materialColor||FLOOR_COLORS[s.floorMaterial]||FLOOR_COLORS.UNDECIDED;
   const name=s.name||s.type||'공간';
-  return {id:s.id,kind:'floor',name,x:0,y:0,rot:0,flip:false,
+  return {id:s.id,kind:'floor',name,x:0,y:0,rot:0,flip:false,locked:!!s.locked,
     prims:[{t:'poly',pts:s.polygon,holes:s.holes||[],z:0.5+idx*0.02,color,side:'top'}],
-    meta:{type:s.type,floorMaterial:s.floorMaterial||null,ceilH:num(s.ceilingHeight_mm,0)||D.ceilH}};
+    meta:{type:s.type,floorMaterial:s.floorMaterial||null,ceilingMaterial:s.ceilingMaterial||null,ceilH:num(s.ceilingHeight_mm,0)||D.ceilH}};
 }
 function buildCeiling(s,D){
   const H=num(s.ceilingHeight_mm,0)||D.ceilH;
@@ -413,7 +413,7 @@ function buildFurniture(o,def,kind,D,spaces){
     prims=[box(0,0,z,w,d,H,col)];
     if(/^fridge|^washer|^dryer|^styler/.test(type)) prims.push(box(0,d/2-2,z+H*0.35,w-40,4,H*0.6,C.black,{opacity:0.9}));
   }
-  return {id:o.id,kind:kind==='fixtures'?'fixture':'furniture',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,
+  return {id:o.id,kind:kind==='fixtures'?'fixture':'furniture',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,
     meta:{type,w,d}};
 }
 
@@ -453,8 +453,8 @@ function buildLight(o,def,D,spaces){
     default: prims=[cyl(0,0,H-60,size/2,60,C.lamp,em)];
   }
   const lz=prims.reduce((m,p)=>p.emissive?Math.min(m,p.z):m,H); // 광원 높이(포인트라이트용)
-  return {id:o.id,kind:'light',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,
-    meta:{type,lightZ:Math.max(100,lz-30),on:o.circuitOn!==false,linear:L!==size?L:0}};
+  return {id:o.id,kind:'light',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,
+    meta:{type,inch:o.inch||null,lightZ:Math.max(100,lz-30),on:o.circuitOn!==false,linear:L!==size?L:0}};
 }
 const ELEC_Z={outlet_w:300,outlet_w4:300,outlet_f:0,outlet_220:300,outlet_wp:1100,outlet_usb:300,
   switch_1:1200,switch_2:1200,switch_3:1200,switch_4:1200,switch_5:1200,switch_6:1200,switch_3way:1200,dimmer:1200,
@@ -469,7 +469,7 @@ function buildElectric(o,def,D,spaces){
   else if(type==='wallpad') prims=[box(0,-12,z,300,24,200,C.black)];
   else if(type==='outlet_f') prims=[box(0,0,0,size,size,8,C.steel)];
   else prims=[box(0,-8,z,Math.min(size,140)*(type.startsWith('switch')?1:1)+(type==='outlet_w4'?80:0),16,Math.min(size,120),C.white)];
-  return {id:o.id,kind:'electric',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,meta:{type}};
+  return {id:o.id,kind:'electric',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,meta:{type}};
 }
 function buildHvac(o,def,D,spaces){
   const H=ceilAt(o,D,spaces);
@@ -493,7 +493,7 @@ function buildHvac(o,def,D,spaces){
     case 'emerg_bell': prims=[cyl(0,0,1600,Math.min(w,d)/2,40,'#C62828')]; break;
     default: prims=[box(0,0,H-40,w,d,40,C.white)];
   }
-  return {id:o.id,kind:'hvac',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,meta:{type}};
+  return {id:o.id,kind:'hvac',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,meta:{type}};
 }
 
 // ---------------------------------------------------------------------------
@@ -599,7 +599,7 @@ function buildScene(doc,libs){
   return {bounds:{minX,minY,maxX,maxY},ceilH,project,objects,labels,floors:floorsOut,counts,totalHeight:z0};
 }
 
-const MC3D={buildScene,normalizeDoc,FLOOR_COLORS,WALL_COLORS,COLORS:C,
+const MC3D={buildScene,normalizeDoc,splitFloors,floorHeightOf,buildFloorScene,SLAB_T,FLOOR_COLORS,WALL_COLORS,COLORS:C,
   _internal:{buildWall,buildFurniture,buildLight,polyCentroid,polyBBox,pointInPoly,wallAlignOffset,cornerExtension,bearingInteriorSign}};
 if(typeof module!=='undefined'&&module.exports) module.exports=MC3D;
 root.MC3D=MC3D;
