@@ -106,24 +106,27 @@
   <button class="btn on" data-t="select" title="선택 (Space) — 클릭=속성 · 끌면 이동">➤</button>
   <button class="btn" data-t="move" title="이동 (M) — 클릭해 집고, 옮겨서 다시 클릭 · ←→ 축 고정 · 숫자=mm">✥</button>
   <button class="btn" data-t="rotate" title="회전 (Q) — 클릭 후 좌우로, 클릭=확정 · 숫자=° · Shift=자유각">↻</button>
-  <button class="btn" data-t="pushpull" title="밀기끌기 (P) — 벽·천장을 클릭해 위아래로 · 숫자=mm">⇕</button>
+  <button class="btn" data-t="scale" title="배율 (S) — 가구를 클릭 후 위아래로 · 숫자=배율">⤢</button>
+  <button class="btn" data-t="pushpull" title="밀기끌기 (P) — 벽·천장을 클릭해 위아래로 · 숫자=mm · 더블클릭=직전 값 반복">⇕</button>
   <button class="btn" data-t="paint" title="페인트 (B) — 재질 고르고 벽/바닥/천장 클릭 (견적에도 반영)">🪣</button>
   <button class="btn" data-t="erase" title="지우개 (E) — 클릭=삭제">🧽</button>
   <button class="btn" data-t="tape" title="줄자 (T) — 두 점 거리 측정">📏</button>
+  <button class="btn" data-t="pan" title="팬 (H) — 끌어서 화면 이동">🖐</button>
+  <button class="btn" data-t="zoom" title="줌 (Z) — 위아래로 끌어 확대/축소 · Shift+Z=전체">🔍</button>
 </div>
 <div id="paintpal"></div>
 <div id="vcb"><span class="v-l">이동</span><input class="v-v" inputmode="decimal" aria-label="수치 입력"><span class="v-u">mm</span></div>
 <div id="tip"></div>
-<div id="hint"><b>스케치업식:</b> Space 선택 · M 이동 · Q 회전 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 | 동작 중 <b>숫자 입력=정확한 값</b> · ←→ 축 고정 · Esc 취소 | Ctrl+Z 실행취소(평면과 한 몸) | 더블클릭=줌 · 휠버튼=궤도 · 우클릭=팬</div>
+<div id="hint"><b>스케치업식:</b> Space 선택 · M 이동(<b>Ctrl=복사</b>) · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · H 팬 · Z 줌 | <b>숫자=정확한 값</b> · ←→ 축 고정 · Esc 취소 · Shift+Z 전체 | Ctrl+Z 실행취소(평면과 한 몸)</div>
 <div id="empty">아직 받은 도면이 없습니다.<br>MiniCAD 창에서 <b>🧊 3D</b> 버튼을 누르거나 명령창에 <b>3d</b> 를 입력하세요.<br><small>열어 두면 평면을 고칠 때마다 바로 반영되고, 여기서 고치면 평면에 반영됩니다.</small></div>
 <div id="walkpad">
   <button data-k="q">⇧</button><button data-k="w">▲</button><button data-k="e">⇩</button>
   <button data-k="a">◀</button><button data-k="s">▼</button><button data-k="d">▶</button>
 </div>
-<script src="../js/data.js?v=3d4"></script>
-<script src="../js/library.js?v=3d4"></script>
-<script src="build3d.js?v=3d4"></script>
+<script src="../js/data.js?v=3d5"></script>
+<script src="../js/library.js?v=3d5"></script>
+<script src="build3d.js?v=3d5"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d4"></script>
+<script type="module" src="view3d.js?v=3d5"></script>
 </body>
 </html>

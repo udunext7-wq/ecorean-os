@@ -64,6 +64,10 @@ GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이
 - **그 이상**: 모든 편집이 평면·견적 실시간 반영 + **Ctrl+Z/Y 가 MiniCAD 히스토리로 왕복**(apply3DEdit op:'undo'/'redo').
 - **함정(실제로 당함): 클래식 스크립트(data.js)의 최상위 const 는 `window.X` 로 안 잡힌다** — 모듈에서는 전역 렉시컬 식별자로 직접 참조(`typeof X!=='undefined'?X:null`, view3d.js MATS). window.WALL_MATERIALS 는 undefined 라 팔레트가 비어 있었다.
 - 도구 키(M/Q/P/B/E/T/Space)는 조감 모드에서만 — 걷기 모드의 Q/E(위아래)와 충돌 방지.
+- 2026-09-03 추가(대표 지시 "스케치업 구조 정확히 카피 + 3D 는 별도 창"):
+  - **[🧊 3D] 클릭 = 별도 창이 기본**(open3DView), Shift+클릭/`3d split`=분할 패널, `3d`=별도 창.
+  - 스케치업 정합 추가: **S=배율**(가구·기구·설비 footprint w/h — apply3DEdit set 화이트리스트에 w/h, SCALABLE set), **O=궤도(선택) · H=팬 · Z=줌**(orbit.mouseButtons.LEFT 전환), **Ctrl+이동=복사**(op:'clone' — 사본 미리보기는 g.clone(true), MiniCAD 가 JSON 복제+makeId; movable 종류만), **밀기끌기 더블클릭=직전 값 반복**(ST.lastPP), 하단 #hint = 도구별 수정자 안내(스케치업 상태바 식).
+  - 미구현(의미 모델과 충돌): Line/Rectangle/Circle/Arc 그리기(면·엣지 모델링), Offset, 그룹/컴포넌트 — 작도는 2D 평면이 담당.
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 

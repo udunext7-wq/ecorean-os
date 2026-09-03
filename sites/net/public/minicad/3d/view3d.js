@@ -531,14 +531,34 @@ function setTool(t){
   ST.tool=t;
   document.querySelectorAll('#tools .btn').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   const pal=$('paintpal'); if(pal) pal.style.display=(t==='paint')?'block':'none';
-  renderer.domElement.style.cursor={select:'default',move:'move',rotate:'grab',pushpull:'ns-resize',paint:'copy',erase:'not-allowed',tape:'crosshair'}[t]||'default';
-  setStatus(statusLive,{select:'➤ 선택 — 클릭=속성 · 끌면 이동',move:'✥ 이동 — 클릭해 집고, 옮겨서 다시 클릭 (←→ 축 고정 · 숫자=mm)',rotate:'↻ 회전 — 클릭 후 좌우로, 클릭=확정 (숫자=° · Shift=자유각)',pushpull:'⇕ 밀기끌기 — 벽·천장 클릭 후 위아래로 (숫자=mm)',paint:'🪣 페인트 — 재질 고르고 벽/바닥/천장 클릭',erase:'🧽 지우개 — 클릭=삭제',tape:'📏 줄자 — 두 점 클릭'}[t]||'');
+  // 스케치업식 카메라 도구: H 팬 / Z 줌 은 좌클릭 드래그를 그 동작으로
+  orbit.mouseButtons.LEFT=(t==='pan')?THREE.MOUSE.PAN:(t==='zoom')?THREE.MOUSE.DOLLY:THREE.MOUSE.ROTATE;
+  renderer.domElement.style.cursor={select:'default',move:'move',rotate:'grab',scale:'nwse-resize',pushpull:'ns-resize',paint:'copy',erase:'not-allowed',tape:'crosshair',pan:'grab',zoom:'zoom-in'}[t]||'default';
+  setStatus(statusLive,{select:'➤ 선택',move:'✥ 이동',rotate:'↻ 회전',scale:'⤢ 배율',pushpull:'⇕ 밀기끌기',paint:'🪣 페인트',erase:'🧽 지우개',tape:'📏 줄자',pan:'🖐 팬',zoom:'🔍 줌'}[t]||'');
+  // 하단 상태바 = 스케치업식 도구 안내 (수정자 포함)
+  const hint=$('hint');
+  if(hint) hint.innerHTML={
+    select:'<b>선택</b> — 클릭=속성 · 끌면 이동 · <b>Ctrl+끌기=복사</b> · Del=삭제 | Space M Q S P B E T · H팬 Z줌 · Shift+Z 전체',
+    move:'<b>이동</b> — 클릭해 집고 → 옮겨서 → 클릭 확정 · <b>Ctrl=복사</b> · ←→ 축 고정 · <b>숫자=거리(mm)</b> · Esc 취소',
+    rotate:'<b>회전</b> — 객체 클릭 후 좌우로 · 클릭=확정 · 15° 스냅(Shift=자유각) · <b>숫자=각도</b> · Esc 취소',
+    scale:'<b>배율</b> — 객체 클릭 후 위아래로 · 클릭=확정 · <b>숫자=배율</b>(예: 1.5) · 가구·기구·설비만',
+    pushpull:'<b>밀기끌기</b> — 벽·천장 클릭 후 위아래 · 클릭=확정 · <b>숫자=mm</b> · <b>더블클릭=직전 값 반복</b>',
+    paint:'<b>페인트</b> — 왼쪽 팔레트에서 재질 고르고 벽/바닥/천장 클릭 (견적 연동)',
+    erase:'<b>지우개</b> — 클릭=삭제 (벽·공간은 평면에서)',
+    tape:'<b>줄자</b> — 두 점 클릭 = 거리(mm) · Esc 초기화',
+    pan:'<b>팬</b> — 끌어서 화면 이동 (우클릭 드래그와 같음)',
+    zoom:'<b>줌</b> — 위아래로 끌어 확대/축소 (휠과 같음)',
+  }[t]||'';
 }
 function cancelOp(){
   const op=ST.op; ST.op=null; ST.axisLock=null; vcbHide();
   if(op){
-    if(op.type==='move'&&op.g){ op.g.position.x=op.orig.x; op.g.position.z=op.orig.z; }
+    if(op.type==='move'&&op.g){
+      if(op.copy){ if(op.g.parent) op.g.parent.remove(op.g); }        // 복사 미리보기 제거
+      else { op.g.position.x=op.orig.x; op.g.position.z=op.orig.z; }
+    }
     if(op.type==='rotate'&&op.g){ op.g.rotation.y=-(op.obj.rot||0)*Math.PI/180; }
+    if(op.type==='scale'&&op.g){ op.g.scale.x=op.baseSX; op.g.scale.z=op.baseSZ; }
     if(op.type==='pp'&&op.g){ op.g.scale.y=1; op.g.position.y=op.origY; }
     if(op.line){ scene.remove(op.line); if(op.line.geometry) op.line.geometry.dispose(); }
     invalidate(true);
@@ -549,16 +569,19 @@ function commitActive(exact){
   const op=ST.op; if(!op) return;
   if(op.type==='move') commitMove(exact);
   else if(op.type==='rotate') commitRotate(exact);
+  else if(op.type==='scale') commitScale(exact);
   else if(op.type==='pp') commitPP(exact);
 }
-// --- 이동 ---
-function beginMove(g,obj){
+// --- 이동 (Ctrl = 복사, 스케치업과 동일) ---
+function beginMove(g,obj,copy){
   const ent=ST.floorCache[obj.floorId];
   dragPlane.constant=-(ent?ent.z0*MM:0);
   ray.ray.intersectPlane(dragPlane,dragPt);
-  ST.op={type:'move',g,obj,orig:{x:g.position.x,z:g.position.z},off:{x:g.position.x-dragPt.x,z:g.position.z-dragPt.z},moved:false,sticky:false};
+  let tg=g;
+  if(copy){ tg=g.clone(true); g.parent.add(tg); }                     // 복사 미리보기 (원본은 그대로)
+  ST.op={type:'move',g:tg,obj,copy:!!copy,orig:{x:g.position.x,z:g.position.z},off:{x:g.position.x-dragPt.x,z:g.position.z-dragPt.z},moved:false,sticky:false};
   orbit.enabled=false;
-  vcbShow('이동',0,'mm');
+  vcbShow(copy?'복사':'이동',0,'mm');
 }
 function applyMoveFromEvent(e){
   const op=ST.op; if(!op||op.type!=='move') return;
@@ -581,12 +604,44 @@ function commitMove(exact){
     if(len>1e-6){ op.g.position.x=op.orig.x+dx/len*exact*MM; op.g.position.z=op.orig.z+dz/len*exact*MM; }
   }
   const x=Math.round(op.g.position.x/MM), y=Math.round(op.g.position.z/MM);
-  op.obj.x=x; op.obj.y=y;
-  const g=op.g,obj=op.obj;
+  const g=op.g,obj=op.obj,copy=op.copy;
   ST.op=null; ST.axisLock=null; vcbHide(); orbit.enabled=(ST.mode==='orbit');
-  sendEdit('move',obj,{x,y});
-  select(g,{silent:true});
-  setStatus(statusLive,'이동 → 평면 반영 ('+x+', '+y+')');
+  if(copy){
+    if(g.parent) g.parent.remove(g);                                  // 진짜 사본은 재조립으로 온다
+    sendEdit('clone',obj,{x,y});
+    setStatus(statusLive,'복사 → 평면 반영 ('+x+', '+y+')');
+  }else{
+    obj.x=x; obj.y=y;
+    sendEdit('move',obj,{x,y});
+    select(g,{silent:true});
+    setStatus(statusLive,'이동 → 평면 반영 ('+x+', '+y+')');
+  }
+}
+// --- 배율 (S · 스케치업 Scale) — 가구·기구·설비 footprint ---
+const SCALABLE=new Set(['furniture','fixture','hvac']);
+function beginScale(g,obj,cy){
+  if(!SCALABLE.has(obj.kind)){ setStatus(statusLive,'배율은 가구·기구·설비만 (조명 규격은 인치·길이로)'); return; }
+  ST.op={type:'scale',g,obj,startY:cy,factor:1,baseSX:g.scale.x,baseSZ:g.scale.z,baseW:(obj.meta&&obj.meta.w)||400,baseD:(obj.meta&&obj.meta.d)||400};
+  orbit.enabled=false;
+  vcbShow('배율','1.00','×');
+}
+function applyScale(cy){
+  const op=ST.op; if(!op||op.type!=='scale') return;
+  let f=1+(op.startY-cy)*0.005;
+  f=Math.max(0.2,Math.min(5,Math.round(f*20)/20));                    // 0.05 스냅
+  op.factor=f;
+  op.g.scale.x=op.baseSX*f; op.g.scale.z=op.baseSZ*f;
+  vcbShow('배율',f.toFixed(2),'×');
+  invalidate(true);
+}
+function commitScale(exact){
+  const op=ST.op; if(!op||op.type!=='scale') return;
+  const f=(exact!==null&&exact!==undefined&&exact>0)?exact:op.factor;
+  op.g.scale.x=op.baseSX; op.g.scale.z=op.baseSZ;
+  const obj=op.obj;
+  ST.op=null; vcbHide(); orbit.enabled=(ST.mode==='orbit');
+  sendEdit('set',obj,{w:Math.max(50,Math.round(op.baseW*f)),h:Math.max(50,Math.round(op.baseD*f))});
+  setStatus(statusLive,'⤢ 배율 ×'+f.toFixed(2)+' → 평면 반영');
 }
 // --- 회전 ---
 function beginRotate(g,obj,cx){ ST.op={type:'rotate',g,obj,base:obj.rot||0,startX:cx,ang:0}; orbit.enabled=false; vcbShow('회전',0,'°'); }
@@ -638,6 +693,7 @@ function commitPP(exact){
   const obj=op.obj,mode=op.mode;
   if(op.g){ op.g.scale.y=1; op.g.position.y=op.origY; }
   ST.op=null; vcbHide(); orbit.enabled=(ST.mode==='orbit');
+  ST.lastPP=d; // 스케치업: 더블클릭 = 직전 밀기끌기 반복
   if(mode==='wall') sendEdit('set',obj,{height_mm:nv});
   else sendEdit('set',{kind:'floor',id:String(obj.id).replace(/_ceil$/,''),floorId:obj.floorId},{ceilingHeight_mm:nv});
   setStatus(statusLive,'⇕ 높이 '+nv+'mm → 평면 반영');
@@ -704,16 +760,20 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   const movable=obj&&MOVABLE.has(obj.kind)&&!obj.locked;
   switch(ST.tool){
     case 'select':
-      if(movable){ beginMove(g,obj); renderer.domElement.setPointerCapture(e.pointerId); }
+      if(movable){ beginMove(g,obj,e.ctrlKey||e.metaKey); renderer.domElement.setPointerCapture(e.pointerId); }
       else if(obj&&obj.locked&&MOVABLE.has(obj.kind)) setStatus(statusLive,'잠금된 객체 — 이동 불가');
       break;
     case 'move':
-      if(movable){ select(g,{silent:true}); beginMove(g,obj); renderer.domElement.setPointerCapture(e.pointerId); }
+      if(movable){ select(g,{silent:true}); beginMove(g,obj,e.ctrlKey||e.metaKey); renderer.domElement.setPointerCapture(e.pointerId); }
       break;
     case 'rotate':
       if(movable){ select(g,{silent:true}); beginRotate(g,obj,e.clientX); }
       else if(obj&&obj.locked) setStatus(statusLive,'잠금된 객체');
       break;
+    case 'scale':
+      if(movable){ select(g,{silent:true}); beginScale(g,obj,e.clientY); }
+      break;
+    case 'pan': case 'zoom': break; // 카메라 도구 — OrbitControls 가 처리
     case 'pushpull': if(hit) beginPP(hit); break;
     case 'paint': if(hit) doPaint(hit); break;
     case 'erase': if(g&&obj){ select(g,{silent:true}); deleteSelected3D(); } break;
@@ -725,6 +785,7 @@ renderer.domElement.addEventListener('pointermove',e=>{
   if(ST.op&&(!drag||drag.id!==e.pointerId)){
     if(ST.op.type==='move'&&ST.op.sticky) applyMoveFromEvent(e);
     else if(ST.op.type==='rotate') applyRotate(e.clientX,e.shiftKey);
+    else if(ST.op.type==='scale') applyScale(e.clientY);
     else if(ST.op.type==='pp') applyPP(e.clientY);
     else if(ST.op.type==='tape') tapeMove(e);
     return;
@@ -755,7 +816,14 @@ renderer.domElement.addEventListener('pointerup',e=>{
 renderer.domElement.addEventListener('pointercancel',()=>{ if(ST.op&&ST.op.type!=='tape') cancelOp(); drag=null; });
 renderer.domElement.addEventListener('dblclick',e=>{
   const hit=hitAt(e.clientX,e.clientY);
-  if(hit) zoomTo(hit.object.parent);
+  if(!hit) return;
+  // 스케치업: 밀기끌기 도구에서 더블클릭 = 직전 값 반복
+  if(ST.tool==='pushpull'&&typeof ST.lastPP==='number'&&ST.lastPP!==0){
+    const obj=hit.object.userData.obj;
+    if(obj&&obj.kind==='wall'&&!obj.locked){ sendEdit('set',obj,{height_mm:Math.max(300,obj.meta.H+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; }
+    if(obj&&obj.kind==='ceiling'){ const base=Math.round((obj.prims&&obj.prims[0]&&obj.prims[0].z)||2400); sendEdit('set',{kind:'floor',id:String(obj.id).replace(/_ceil$/,''),floorId:obj.floorId},{ceilingHeight_mm:Math.max(300,base+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; }
+  }
+  zoomTo(hit.object.parent);
 });
 function rotateSelected(deg){
   const g=ST.selected; if(!g) return;
@@ -864,10 +932,14 @@ window.addEventListener('keydown',e=>{
     if(k===' '){ setTool('select'); e.preventDefault(); return; }
     if(k==='m'){ setTool('move'); return; }
     if(k==='q'){ setTool('rotate'); return; }
+    if(k==='s'&&!e.ctrlKey){ setTool('scale'); return; }
     if(k==='p'){ setTool('pushpull'); return; }
     if(k==='b'){ setTool('paint'); return; }
     if(k==='e'){ setTool('erase'); return; }
     if(k==='t'){ setTool('tape'); return; }
+    if(k==='o'){ setTool('select'); return; }        // 스케치업 O=궤도 (선택에서 항상 궤도)
+    if(k==='h'){ setTool('pan'); return; }           // 스케치업 H=팬
+    if(k==='z'&&!e.shiftKey&&!e.ctrlKey){ setTool('zoom'); return; } // 스케치업 Z=줌
     if(k==='arrowright'){ if(ST.op&&ST.op.type==='move'){ ST.axisLock=(ST.axisLock==='x')?null:'x'; setStatus(statusLive,'축 고정: '+(ST.axisLock==='x'?'가로(X)':'해제')); e.preventDefault(); return; } }
     if(k==='arrowleft'){ if(ST.op&&ST.op.type==='move'){ ST.axisLock=(ST.axisLock==='y')?null:'y'; setStatus(statusLive,'축 고정: '+(ST.axisLock==='y'?'세로(Y)':'해제')); e.preventDefault(); return; } }
   }

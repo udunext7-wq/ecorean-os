@@ -4908,6 +4908,17 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('ED8: 잠금 이동 거부',apply3DEdit({type:'edit',op:'move',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{x:9,y:9}})===false
       &&STATE.furniture.find(o=>o.id==='ed_f1').x===2500);
     STATE.furniture.find(o=>o.id==='ed_f1').locked=false;
+    // 복사(스케치업 Ctrl+이동) — 원본 그대로 + 새 id 가 지정 위치에
+    const _nfc=STATE.furniture.length;
+    assert('ED8b: clone',apply3DEdit({type:'edit',op:'clone',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{x:4000,y:4100}})===true
+      &&STATE.furniture.length===_nfc+1
+      &&STATE.furniture.find(o=>o.id==='ed_f1').x===2500
+      &&STATE.furniture[STATE.furniture.length-1].x===4000
+      &&STATE.furniture[STATE.furniture.length-1].id!=='ed_f1');
+    assert('ED8c: 벽·공간은 clone 거부',apply3DEdit({type:'edit',op:'clone',kind:'wall',id:(STATE.walls[0]||{}).id||'x',floorId:_edAct,patch:{x:0,y:0}})===false);
+    // 배율(S) — footprint w/h 덮어쓰기
+    assert('ED8d: 배율 w/h set',apply3DEdit({type:'edit',op:'set',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{w:2640,h:1080}})===true
+      &&STATE.furniture.find(o=>o.id==='ed_f1').w===2640);
     // 삭제
     assert('ED9: 삭제',apply3DEdit({type:'edit',op:'delete',kind:'lights',id:'ed_l1',floorId:_edAct})===true
       &&!STATE.lights.some(o=>o.id==='ed_l1'));

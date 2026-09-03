@@ -3471,8 +3471,8 @@ function _paletteCommands(){
     {label:'🖨 바로 인쇄 (직전 설정으로)',kw:'print 인쇄 바로 출력',run:()=>printPlan()},
     {label:'⬚ 인쇄 영역 드래그로 지정',kw:'print 인쇄 영역 범위 부분 확대 crop',run:startPrintRegionPick},
     {label:'🖥 인쇄 영역 — 화면에서 잡기 (pf)',kw:'print 인쇄 영역 틀 화면 잡기 frame pf',run:()=>togglePrintFrame()},
-    {label:'🧊 3D 분할 패널 — 한 창에서 2D|3D (3d)',kw:'3d 3D 입체 분할 패널 통합 view',run:()=>toggle3DPane()},
-    {label:'🧊 3D 별도 탭 (3d tab)',kw:'3d 3D 입체 탭 창 tab',run:()=>open3DView()},
+    {label:'🧊 3D 별도 창 (3d)',kw:'3d 3D 입체 창 탭 view',run:()=>open3DView()},
+    {label:'🧊 3D 분할 패널 — 한 창에서 2D|3D (3d split)',kw:'3d 3D 입체 분할 패널 통합 split',run:()=>toggle3DPane()},
     {label:'📑 층 추가 — 빈 층 (fl add)',kw:'층 floor 시트 추가 add 2층 3층',run:()=>addFloor()},
     {label:'📑 층 추가 — 현재 층 구조 복제 (fl copy)',kw:'층 floor 복제 copy 구조 벽',run:()=>addFloor({copy:true})},
     {label:'📑 층 삭제 — 현재 층 (fl del)',kw:'층 floor 삭제 제거 빼기 del delete',run:()=>deleteFloor(STATE.activeFloorId)},
@@ -5323,7 +5323,7 @@ function open3DView(){
   const w=window.open('3d/index.html','minicad3d');
   if(!w&&typeof showStatus==='function') showStatus('팝업이 막혔습니다 — 브라우저에서 이 사이트의 팝업을 허용하세요');
 }
-(function(){const b=document.getElementById('btn-3d');if(b)b.addEventListener('click',e=>{if(e.shiftKey)open3DView();else toggle3DPane();});_view3dChannel();})();
+(function(){const b=document.getElementById('btn-3d');if(b)b.addEventListener('click',e=>{if(e.shiftKey)toggle3DPane();else open3DView();});_view3dChannel();})(); // 2026-09-03 대표 지시: 별도 창이 기본, 분할은 Shift
 
 // ===== 2026-09-03: 층(Floor) 시트 =====
 //  대표 요구: 층마다 별도 시트(같은 시퀀스에 겹쳐 그리면 z 도 없고 버벅임) + 서버 도면은 하나.
@@ -5585,16 +5585,23 @@ function apply3DEdit(m){
   const arrName=_CLIP_KIND2ARR[m.kind];
   if(!arrName) return false;
   if(m.op==='delete'&&!['furniture','fixtures','lights','electric','hvac','pillars','opening'].includes(m.kind)) return false; // 벽·공간 삭제는 평면에서만
+  if(m.op==='clone'&&!['furniture','fixtures','lights','electric','hvac','pillars'].includes(m.kind)) return false;
   const ALLOW={space:['floorMaterial','ceilingMaterial','ceilingHeight_mm','name'],
     wall:['height_mm','finishMaterial'],
     opening:['width_mm','height_mm','sillHeight_mm'],
-    _:['x','y','angle','inch','length_mm']};
+    _:['x','y','angle','inch','length_mm','w','h']}; // w/h = 3D 배율(S) — footprint 덮어쓰기
   const applyTo=bag=>{
     const arr=bag[arrName]; if(!Array.isArray(arr)) return false;
     const idx=arr.findIndex(o=>o&&o.id===m.id); if(idx<0) return false;
     const o=arr[idx];
-    if(o.locked){showStatus('잠금된 객체 — 3D 편집 불가');return false;}
-    if(m.op==='delete') arr.splice(idx,1);
+    if(o.locked&&m.op!=='clone'){showStatus('잠금된 객체 — 3D 편집 불가');return false;}
+    if(m.op==='clone'&&m.patch){ // 스케치업 Ctrl+이동 = 복사
+      const c=JSON.parse(JSON.stringify(o));
+      c.id=(typeof makeId==='function')?makeId(arrName.charAt(0)):o.id+'_c'+Date.now().toString(36);
+      c.x=Math.round(m.patch.x);c.y=Math.round(m.patch.y);delete c.locked;
+      arr.push(c);
+    }
+    else if(m.op==='delete') arr.splice(idx,1);
     else if(m.op==='move'&&m.patch){o.x=Math.round(m.patch.x);o.y=Math.round(m.patch.y);}
     else if(m.op==='rotate'&&m.patch){o.angle=((Math.round(m.patch.angle)%360)+360)%360;}
     else if(m.op==='set'&&m.patch){
@@ -6369,8 +6376,8 @@ function processCommand(rawCmd){
   // 2026-08-27: 'cir' 은 원(circle) 도구 단축키와 충돌해 도달하지 못했다 → wire/배선/회로 로 변경
   if(/^(wire|배선|회로)$/i.test(c)){toggleCircuits();return;}
   if(/^(pf|인쇄영역)$/i.test(c)){togglePrintFrame();return;} // 2026-08-28
-  if(/^(3d|입체)$/i.test(c)){toggle3DPane();return;} // 2026-09-03: 분할 패널 토글
-  if(/^3d\s+(tab|탭|창)$/i.test(c)){open3DView();return;} // 별도 탭
+  if(/^(3d|입체)$/i.test(c)){open3DView();return;} // 2026-09-03 대표 지시: 별도 창이 기본
+  if(/^3d\s+(split|분할)$/i.test(c)){toggle3DPane();return;} // 분할 패널은 옵션
   if(/^3d\s+(off|닫기)$/i.test(c)){toggle3DPane(false);return;}
   // 2026-09-03: 층 시트 — fl / fl 2 / fl add / fl copy / fl del 2 / fl name 옥탑
   {const m=c.match(/^(?:fl|층)(?:\s+(.+))?$/i);
