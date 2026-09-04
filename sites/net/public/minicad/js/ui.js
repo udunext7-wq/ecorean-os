@@ -5286,6 +5286,7 @@ document.getElementById('btn-circuits').addEventListener('click',toggleCircuits)
 //  [🧊 3D]/`3d` → 3d/index.html 을 새 탭으로. 문서는 localStorage 로 처음 넘기고,
 //  이후에는 BroadcastChannel('minicad-3d') 로 saveHistory 때마다(300ms 묶음) 흘려보내 평면 수정이 바로 입체에 반영된다.
 //  3D 탭이 먼저 열려 있으면 'hello' 를 보내오므로 그때부터 전송을 켠다. 페이로드는 buildAutosavePayload(경량).
+const MC_PROTO=4; // 미니캐드↔미니폼 메시지 프로토콜 버전 — op 추가/변경 시 양쪽(view3d.js MF_PROTO) 같이 올릴 것
 let _view3dChan=null,_view3dTimer=null,_view3dLive=false;
 function _view3dPayload(){
   // getter(polygon·x1..y2)를 값으로 굳힌다 — structured clone 은 접근자를 못 옮길 수 있다
@@ -5297,7 +5298,10 @@ function _view3dChannel(){
   _view3dChan=new BroadcastChannel('minicad-3d');
   _view3dChan.onmessage=e=>{
     const m=e.data||{};
-    if(m.type==='hello'){_view3dLive=true;push3D(true);}
+    if(m.type==='hello'){
+      if(m.proto&&m.proto!==MC_PROTO) showStatus('⚠ 미니폼 버전이 다릅니다 — 미니캐드·미니폼 창을 모두 새로고침(F5) 하세요');
+      _view3dLive=true;push3D(true);
+    }
     else if(m.type==='edit'){apply3DEdit(m);} // 2026-09-03: 3D 에서 고친 것을 평면에 반영
   };
   return _view3dChan;
@@ -5310,7 +5314,7 @@ function push3D(now){
     try{
       const doc=_view3dPayload(), at=Date.now();
       const ch=_view3dChannel();
-      if(ch) ch.postMessage({type:'doc',at,doc});
+      if(ch) ch.postMessage({type:'doc',at,doc,proto:MC_PROTO});
       try{localStorage.setItem('minicad.3d.doc',JSON.stringify({at,data:doc}));}catch(_){}
     }catch(e){ console.warn('[3D] 전송 실패',e); }
   };
@@ -5588,6 +5592,11 @@ document.addEventListener('keydown',e=>{
 //  여기서 평면 데이터에 반영한다. 활성 층이면 STATE(+undo 히스토리), 잠든 층이면 floors[].data 스냅샷에.
 function apply3DEdit(m){
   if(!m||!m.op) return false;
+  // 버전 어긋남 자가 진단 — 옛 창이 모르는 명령을 조용히 삼키지 않는다 (2026-09-04: "면이 생성 안 됨" 원인)
+  if(!['undo','redo','add','addwall','addrect','addspace','splitspace','move','rotate','delete','set','clone'].includes(m.op)){
+    showStatus('⚠ 알 수 없는 3D 명령('+m.op+') — 미니캐드 창을 새로고침(F5) 하세요');
+    return false;
+  }
   // 2026-09-03: 3D 쪽 Ctrl+Z/Y — 평면 히스토리와 한 몸으로 왕복
   if(m.op==='undo'){undo();return true;}
   if(m.op==='redo'){redo();return true;}

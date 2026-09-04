@@ -4969,6 +4969,7 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       &&STATE.floors.find(f=>f.id===_edF3.id).data.spaces.length===1
       &&STATE.floors.find(f=>f.id===_edF3.id).data.walls.length===4);
     STATE.floors=STATE.floors.filter(f=>f.id!==_edF3.id);renderFloorBar();
+    assert('EDf6: 알 수 없는 op = 조용히 무시하지 않고 거부+안내',apply3DEdit({type:'edit',op:'nope_op_x'})===false);
     // 삭제
     assert('ED9: 삭제',apply3DEdit({type:'edit',op:'delete',kind:'lights',id:'ed_l1',floorId:_edAct})===true
       &&!STATE.lights.some(o=>o.id==='ed_l1'));

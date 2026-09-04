@@ -1359,14 +1359,18 @@ function loadStored(){
   }catch(e){ console.warn('[3D] 저장본 읽기 실패',e); }
   return false;
 }
+const MF_PROTO=4; // 미니캐드(ui.js MC_PROTO)와 짝 — 어긋나면 새로고침 안내
 function connect(){
   if(typeof BroadcastChannel==='undefined') return;
   chan=new BroadcastChannel('minicad-3d');
   chan.onmessage=e=>{
     const m=e.data||{};
-    if(m.type==='doc') acceptDoc({at:m.at,data:m.doc},'live');
+    if(m.type==='doc'){
+      if(m.proto&&m.proto!==MF_PROTO){ setStatus(false,'⚠ 버전 불일치 — 미니캐드·미니폼 창을 모두 새로고침(F5)'); }
+      acceptDoc({at:m.at,data:m.doc},'live');
+    }
   };
-  chan.postMessage({type:'hello',at:Date.now()});
+  chan.postMessage({type:'hello',at:Date.now(),proto:MF_PROTO});
 }
 window.addEventListener('storage',e=>{ if(e.key==='minicad.3d.doc'&&e.newValue){ try{acceptDoc(JSON.parse(e.newValue),'live');}catch(_){} } });
 
