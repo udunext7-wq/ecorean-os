@@ -47,6 +47,9 @@ GLB 내보내기는 2단계(Blender/AI 렌더)용 — 객체 이름이 `kind:이
 - 키 가드: INPUT/TEXTAREA 포커스·텍스트 드래그 선택 중·인쇄 설정창 열림에는 브라우저 기본 동작 유지.
 - 테스트: tests.js [CP] 11건 (커서 위치·다중·공간 동반·층 건너·원상복구).
 
+### 미니폼(MiniForm) = 3D 모듈 제품명 (2026-09-04 대표 명명)
+UI 표기·대화 모두 "미니폼". 코드 식별자(3d/ 경로·MC3D·명령 `3d`)는 유지.
+
 ### 3D v2 — 직접 편집·한 창 분할·증분/유휴 렌더 (2026-09-03)
 - **한 창 통합**: [🧊 3D] 클릭 = 우측 분할 패널(`#pane3d` iframe → 3d/index.html, `body.split3d` + `handleResize()`), Shift+클릭/`3d tab` = 별도 탭, `3d off` 닫기. iframe 은 첫 열기에만 src 지정(지연 로드).
 - **3D 직접 편집**: 조감에서 가구·기구·조명·전기·설비·기둥을 **드래그=이동**(10mm 스냅, 층 바닥 평면 레이캐스트), R/속성패널=15° 회전, Del=삭제, 속성 패널(#props)에서 벽 높이·마감 / 공간 바닥재·천장재·천장고 / 문창 폭·높이·창턱 / 다운라이트 인치 수정 → BroadcastChannel `{type:'edit',op,kind,id,floorId,patch}` → **ui.js `apply3DEdit`** 가 평면에 반영(활성 층=STATE+saveHistory→undo 가능, 잠든 층=floors[].data, 잠금 보호, set 은 화이트리스트, 벽·공간 delete 거부). 반영 → push3D → 3D 재조립으로 루프 완결.

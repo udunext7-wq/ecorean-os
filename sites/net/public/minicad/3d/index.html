@@ -10,7 +10,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>MiniCAD 3D</title>
+<title>미니폼 MiniForm</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%A7%8A%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="../fonts/fonts.css">
 <style>
@@ -78,7 +78,7 @@
 <body>
 <div id="view"></div>
 <div class="bar">
-  <span class="title">🧊 3D<small id="proj"></small></span>
+  <span class="title">🧊 미니폼<small id="proj"></small></span>
   <button class="btn on" id="b-orbit" title="위에서 돌려보기 — 드래그 회전 · 휠 확대 · 우클릭 이동 · 객체는 그냥 끌면 이동 (1)">🛰 조감</button>
   <button class="btn" id="b-walk" title="사람 눈높이(1.6m)로 걷기 — 드래그 둘러보기 · W A S D 이동 (2)">🚶 걷기</button>
   <span class="sep"></span>
@@ -122,15 +122,15 @@
 <div id="vcb"><span class="v-l">이동</span><input class="v-v" inputmode="decimal" aria-label="수치 입력"><span class="v-u">mm</span></div>
 <div id="tip"></div>
 <div id="hint"><b>스케치업식:</b> Space 선택 · <b>L 선(벽 그리기)</b> · R 사각형 · M 이동(Ctrl=복사) · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · H 팬 · Z 줌 | <b>숫자=정확한 값</b> · Esc 취소 · Shift+Z 전체 | Ctrl+Z 실행취소</div>
-<div id="empty">아직 받은 도면이 없습니다.<br>MiniCAD 창에서 <b>🧊 3D</b> 버튼을 누르거나 명령창에 <b>3d</b> 를 입력하세요.<br><small>열어 두면 평면을 고칠 때마다 바로 반영되고, 여기서 고치면 평면에 반영됩니다.</small></div>
+<div id="empty">아직 받은 도면이 없습니다.<br>MiniCAD 창에서 <b>🧊 미니폼</b> 버튼을 누르거나 명령창에 <b>3d</b> 를 입력하세요.<br><small>열어 두면 평면을 고칠 때마다 바로 반영되고, 여기서 고치면 평면에 반영됩니다.</small></div>
 <div id="walkpad">
   <button data-k="q">⇧</button><button data-k="w">▲</button><button data-k="e">⇩</button>
   <button data-k="a">◀</button><button data-k="s">▼</button><button data-k="d">▶</button>
 </div>
-<script src="../js/data.js?v=3d8"></script>
-<script src="../js/library.js?v=3d8"></script>
-<script src="build3d.js?v=3d8"></script>
+<script src="../js/data.js?v=3d9"></script>
+<script src="../js/library.js?v=3d9"></script>
+<script src="build3d.js?v=3d9"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d8"></script>
+<script type="module" src="view3d.js?v=3d9"></script>
 </body>
 </html>
