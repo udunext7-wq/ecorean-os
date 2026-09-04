@@ -5593,6 +5593,7 @@ function apply3DEdit(m){
   if(m.op==='redo'){redo();return true;}
   if(m.op==='add') return _apply3DAdd(m); // 3D 에서 새 객체 배치 (id 없음)
   if(m.op==='addwall'||m.op==='addrect') return _apply3DWall(m); // 3D 선(L)/사각형(R) 도구 → 벽
+  if(m.op==='addspace'||m.op==='splitspace') return _apply3DFace(m); // 점·선·면 구조: 면 생성 / 면 위 선 = 분할
   if(!m.kind||!m.id) return false;
   const arrName=_CLIP_KIND2ARR[m.kind];
   if(!arrName) return false;
@@ -5699,6 +5700,44 @@ function _apply3DWall(m){
   };
   if(m.op==='addrect'){seg(x1,y1,x2,y1);seg(x2,y1,x2,y2);seg(x2,y2,x1,y2);seg(x1,y2,x1,y1);}
   else seg(x1,y1,x2,y2);
+  scheduleAutosave();if(typeof push3D==='function')push3D();
+  return true;
+}
+// 점·선·면 구조 (2026-09-04 대표 지시) — 미니폼 사각형=면(공간) 생성, 면 위의 선=면 분할.
+//  2D 엔진 그대로 사용: addSpace(면+점+선 일괄 생성·그룹), addLine(가로지르면 분할·아니면 참조선).
+function _apply3DFace(m){
+  const p=m.patch||{};
+  const x1=Math.round(p.x1),y1=Math.round(p.y1),x2=Math.round(p.x2),y2=Math.round(p.y2);
+  if(![x1,y1,x2,y2].every(isFinite)) return false;
+  if(!m.floorId||m.floorId===STATE.activeFloorId){
+    if(m.op==='addspace'){
+      if(Math.abs(x2-x1)<300||Math.abs(y2-y1)<300){showStatus('면이 너무 작습니다 (300mm+)');return false;}
+      if(typeof addSpace!=='function') return false;
+      addSpace([{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2}]);
+      renderAll();refreshUI();
+      showStatus('🧊 면(공간) 생성 — 점·선·면이 한 그룹');
+    }else{
+      if(typeof addLine!=='function') return false;
+      if(Math.hypot(x2-x1,y2-y1)<50) return false;
+      addLine(x1,y1,x2,y2); // 면을 가로지르면 분할, 아니면 참조선 — 2D 와 동일 규칙
+    }
+    return true;
+  }
+  const f=(STATE.floors||[]).find(z=>z.id===m.floorId);
+  if(!f||!f.data) return false;
+  if(m.op==='splitspace'){showStatus('잠든 층의 면 분할은 그 층으로 전환 후 해주세요');return false;}
+  if(Math.abs(x2-x1)<300||Math.abs(y2-y1)<300) return false;
+  ['vertices','spaces','walls'].forEach(k=>{if(!Array.isArray(f.data[k]))f.data[k]=[];});
+  const pts=[{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2}];
+  const vids=pts.map(q=>{const v={id:makeId('v'),x:q.x,y:q.y};f.data.vertices.push(v);return v.id;});
+  const sid=makeId('sp');
+  f.data.spaces.push({id:sid,vertexIds:vids,polygon:pts,holes:[],name:'방',type:'ROOM',typeIndex:1,
+    layerName:'',floorMaterial:'STRONG',ceilingMaterial:'GYPSUM',ceilingHeight_mm:null});
+  for(let i=0;i<4;i++){
+    f.data.walls.push({id:makeId('w'),v1Id:vids[i],v2Id:vids[(i+1)%4],
+      x1:pts[i].x,y1:pts[i].y,x2:pts[(i+1)%4].x,y2:pts[(i+1)%4].y,
+      thickness:STATE.wallThickness||100,wallType:'standard',alignment:STATE.wallAlignment||'center',spaceId:sid,layerName:''});
+  }
   scheduleAutosave();if(typeof push3D==='function')push3D();
   return true;
 }

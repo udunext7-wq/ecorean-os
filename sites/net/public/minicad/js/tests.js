@@ -4949,6 +4949,26 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       &&STATE.floors.find(f=>f.id===_edF2.id).data.walls.length===1
       &&STATE.floors.find(f=>f.id===_edF2.id).data.vertices.length===2);
     STATE.floors=STATE.floors.filter(f=>f.id!==_edF2.id);renderFloorBar();
+    // 점·선·면 구조: 면 생성(addspace) + 면 위 선 = 분할(splitspace)
+    const _ns1=STATE.spaces.length,_nwF=STATE.walls.length;
+    assert('EDf1: addspace — 면 1 + 벽 4 (점·선·면 그룹)',
+      apply3DEdit({type:'edit',op:'addspace',floorId:_edAct,patch:{x1:30000,y1:30000,x2:34000,y2:33000}})===true
+      &&STATE.spaces.length===_ns1+1&&STATE.walls.length===_nwF+4);
+    assert('EDf2: splitspace — 면을 가로지른 선 = 2면으로 분할',
+      apply3DEdit({type:'edit',op:'splitspace',floorId:_edAct,patch:{x1:32000,y1:29500,x2:32000,y2:33500}})===true
+      &&STATE.spaces.length===_ns1+2); // 1 제거 + 2 추가
+    const _twoNew=STATE.spaces.slice(-2);
+    assert('EDf3: 분할된 각 면이 자기 벽(선) 소유',
+      STATE.walls.filter(w=>_twoNew.some(s=>s.id===w.spaceId)).length>=8);
+    const _edF3=addFloor();
+    switchFloor(_edAct,{silent:true});
+    assert('EDf4: 잠든 층 splitspace 거부(안내)',
+      apply3DEdit({type:'edit',op:'splitspace',floorId:_edF3.id,patch:{x1:0,y1:0,x2:1000,y2:0}})===false);
+    assert('EDf5: 잠든 층 addspace — 스냅샷에 면+벽4',
+      apply3DEdit({type:'edit',op:'addspace',floorId:_edF3.id,patch:{x1:0,y1:0,x2:3300,y2:3300}})===true
+      &&STATE.floors.find(f=>f.id===_edF3.id).data.spaces.length===1
+      &&STATE.floors.find(f=>f.id===_edF3.id).data.walls.length===4);
+    STATE.floors=STATE.floors.filter(f=>f.id!==_edF3.id);renderFloorBar();
     // 삭제
     assert('ED9: 삭제',apply3DEdit({type:'edit',op:'delete',kind:'lights',id:'ed_l1',floorId:_edAct})===true
       &&!STATE.lights.some(o=>o.id==='ed_l1'));

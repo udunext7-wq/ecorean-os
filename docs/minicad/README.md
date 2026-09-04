@@ -59,6 +59,14 @@ UI 표기·대화 모두 "미니폼". 코드 식별자(3d/ 경로·MC3D·명령 
 - 천장/이름표 토글은 `toggleCeil`/`toggleLabels` 로 일원화(툴바·메뉴·스타일 패널 공용), 상태 동기화는 `refreshStylePanel`.
 - 스모크 검사: menus=8·traySecs=5·axes·instr.
 
+### 점·선·면 구조 (2026-09-04 대표 지시 — 스케치업 기하 모델)
+- **매핑**: 점=Vertex(STATE.vertices) · 선=벽/Edge(walls, v1Id/v2Id 공유) · 면=공간/Face(spaces, vertexIds) · **그룹=공간 단위**(면이 생기면 점·선·면+내부 배치가 spaceId 로 한 그룹 — 복사/삭제/이동 동반).
+- **미니폼 R(사각형) = 면 생성**: op `addspace` → 2D `addSpace(polygon)` 그대로(점 4·선 4·면 1 일괄, 그룹) — 종전 '벽 4면(addrect)'에서 격상. 잠든 층은 스냅샷에 직접 생성.
+- **미니폼 L(선) = 면 위에서 분할**: 뷰어 `segHitsSpace` 가 선분이 면을 가로지르는지 판정(양끝 내부/경계 교차 2회) → op `splitspace` → 2D `addLine`(분할·못 가로지르면 참조선, 잠긴 공간 보호). 빈 곳이면 종전대로 `addwall`. 잠든 층 분할은 거부+안내.
+- **점·선·면 스냅(추론)**: `snap3` — 끝점(초록 ≤180mm) > 중간점(청록 ≤160) > 선 위(빨강 ≤120) > 10mm 격자. 스냅 마커 구체 + VCB 라벨에 스냅 이름. 스냅이 직교 추론보다 우선(스케치업과 동일). 데이터는 build 때 층별 `ST.snapData`(verts/walls/spaces/stats).
+- **Entity Info 그룹 요약**: 면 선택 시 "그룹: 면 1 · 선(벽) N · 배치 N" (snapData.stats).
+- 스모크: snapF=2·snapEnd=endpoint·snapSplit=공간id·snapWall=null. 테스트 [EDf] 5건(면 생성/분할/각 면 벽 소유/잠든 층).
+
 ### 3D v2 — 직접 편집·한 창 분할·증분/유휴 렌더 (2026-09-03)
 - **한 창 통합**: [🧊 3D] 클릭 = 우측 분할 패널(`#pane3d` iframe → 3d/index.html, `body.split3d` + `handleResize()`), Shift+클릭/`3d tab` = 별도 탭, `3d off` 닫기. iframe 은 첫 열기에만 src 지정(지연 로드).
 - **3D 직접 편집**: 조감에서 가구·기구·조명·전기·설비·기둥을 **드래그=이동**(10mm 스냅, 층 바닥 평면 레이캐스트), R/속성패널=15° 회전, Del=삭제, 속성 패널(#props)에서 벽 높이·마감 / 공간 바닥재·천장재·천장고 / 문창 폭·높이·창턱 / 다운라이트 인치 수정 → BroadcastChannel `{type:'edit',op,kind,id,floorId,patch}` → **ui.js `apply3DEdit`** 가 평면에 반영(활성 층=STATE+saveHistory→undo 가능, 잠든 층=floors[].data, 잠금 보호, set 은 화이트리스트, 벽·공간 delete 거부). 반영 → push3D → 3D 재조립으로 루프 완결.

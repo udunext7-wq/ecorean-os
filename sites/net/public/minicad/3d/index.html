@@ -151,8 +151,8 @@
     <hr><div class="mi" data-cmd="fit">전체 보기<span class="acc">Shift+Z</span></div>
   </div></div>
   <div class="menu"><button>그리기</button><div class="drop">
-    <div class="mi" data-cmd="tool-line">선 (벽)<span class="acc">L</span></div>
-    <div class="mi" data-cmd="tool-rect">사각형 (벽 4면)<span class="acc">R</span></div>
+    <div class="mi" data-cmd="tool-line">선 — 면 위=분할 · 빈 곳=벽<span class="acc">L</span></div>
+    <div class="mi" data-cmd="tool-rect">사각형 — 면 생성<span class="acc">R</span></div>
   </div></div>
   <div class="menu"><button>도구</button><div class="drop">
     <div class="mi" data-cmd="tool-select">선택<span class="acc">Space</span></div>
@@ -209,8 +209,8 @@
 <div id="tools">
   <button class="btn on" data-t="select" title="선택 (Space) — 클릭=속성 · 끌면 이동 · Ctrl=복사">➤</button>
   <div class="tsep"></div>
-  <button class="btn" data-t="line" title="선 (L) — 클릭-클릭 벽 그리기 · 숫자=길이 · Esc/더블클릭=끝">╱</button>
-  <button class="btn" data-t="rect" title="사각형 (R) — 두 모서리 = 벽 4면">▭</button>
+  <button class="btn" data-t="line" title="선 (L) — 면 위를 가로지르면 면 분할 · 빈 곳=벽 · 점/선 스냅 · 숫자=길이">╱</button>
+  <button class="btn" data-t="rect" title="사각형 (R) — 두 모서리 = 면 생성 (점·선·면 한 그룹)">▭</button>
   <div class="tsep"></div>
   <button class="btn" data-t="move" title="이동 (M) — 클릭-이동-클릭 · Ctrl=복사 · ←→ 축 고정">✥</button>
   <button class="btn" data-t="pushpull" title="밀기끌기 (P) — 벽·천장 높이 · 더블클릭=반복">⇕</button>
@@ -258,8 +258,8 @@
   <h3>미니폼 단축키 (스케치업과 동일)</h3>
   <table>
     <tr><td>Space</td><td>선택</td></tr>
-    <tr><td>L</td><td>선 — 벽 그리기 (숫자=길이, 5° 직교 스냅, Shift=강제 직교)</td></tr>
-    <tr><td>R</td><td>사각형 — 벽 4면</td></tr>
+    <tr><td>L</td><td>선 — 면 위를 가로지르면 <b>면 분할</b> · 빈 곳=벽 (끝점·중간점·선 스냅, 숫자=길이)</td></tr>
+    <tr><td>R</td><td>사각형 — <b>면 생성</b> (점 4·선 4·면 1 = 한 그룹)</td></tr>
     <tr><td>M</td><td>이동 (Ctrl=복사, ←→=축 고정, 숫자=거리)</td></tr>
     <tr><td>Q</td><td>회전 (15° 스냅, Shift=자유각, 숫자=각도)</td></tr>
     <tr><td>S</td><td>배율 (숫자=배율)</td></tr>
@@ -282,10 +282,10 @@
   <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
 </div></div>
 
-<script src="../js/data.js?v=3d10"></script>
-<script src="../js/library.js?v=3d10"></script>
-<script src="build3d.js?v=3d10"></script>
+<script src="../js/data.js?v=3d11"></script>
+<script src="../js/library.js?v=3d11"></script>
+<script src="build3d.js?v=3d11"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d10"></script>
+<script type="module" src="view3d.js?v=3d11"></script>
 </body>
 </html>

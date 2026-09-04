@@ -92,6 +92,7 @@ const ST={
   tool:'select', op:null, axisLock:null,
   paint:{cat:'wall',code:'WP_SILK'},
   axes:true,          // 2026-09-04 스케치업식 축 표시 (X빨강·평면Y초록·높이 파랑)
+  snapData:{},        // 2026-09-04 점·선·면 스냅용 층별 기하 {fid:{verts,walls,spaces,stats}}
   walk:{yaw:0,pitch:0,keys:{},eye:1.6,speed:2.2},
   lastDocAt:0,
 };
@@ -266,6 +267,16 @@ function build(doc){
   fls.forEach(f=>{
     const D=MC3D.normalizeDoc(f.doc);
     project=project||D.meta.project||'';
+    // 점·선·면 스냅 데이터 (2026-09-04) — 층별 점(끝점)·선(벽)·면(공간)과 그룹 통계
+    ST.snapData[f.id]={
+      verts:D.walls.filter(w=>!w.isLine).flatMap(w=>[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]),
+      walls:D.walls.filter(w=>!w.isLine).map(w=>({x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2})),
+      spaces:D.spaces.map(s=>({id:s.id,poly:s.polygon})),
+      stats:(()=>{const st={};D.spaces.forEach(s=>{st[s.id]={walls:0,items:0};});
+        D.walls.forEach(w=>{if(w.spaceId&&st[w.spaceId])st[w.spaceId].walls++;});
+        [D.furniture,D.fixtures,D.lights,D.electric,D.hvac].forEach(arr=>arr.forEach(o=>{if(o.spaceId&&st[o.spaceId])st[o.spaceId].items++;}));
+        return st;})(),
+    };
     ceilH=Math.max(ceilH,D.ceilH);
     const fh=MC3D.floorHeightOf(D)+MC3D.SLAB_T;
     const hash=strHash(JSON.stringify(f.doc||{}));
@@ -297,7 +308,7 @@ function build(doc){
     floorsOut.push({id:f.id,name:f.name||((f.level||1)+'층'),level:f.level||1,z0,height:fh,active:!!f.active});
     z0+=fh;
   });
-  Object.keys(ST.floorCache).forEach(k=>{ if(!keep.has(k)){ disposeGroup(ST.floorCache[k].group); delete ST.floorCache[k]; } });
+  Object.keys(ST.floorCache).forEach(k=>{ if(!keep.has(k)){ disposeGroup(ST.floorCache[k].group); delete ST.floorCache[k]; delete ST.snapData[k]; } });
   ST.floors=floorsOut;
   if(ST.floorSel!=='all'&&!floorsOut.some(f=>f.id===ST.floorSel)) ST.floorSel='all';
   ST.built={bounds:{minX,minY,maxX,maxY},ceilH,project,floors:floorsOut,counts,totalHeight:z0};
@@ -632,8 +643,8 @@ function setTool(t){
     move:'<b>이동</b> — 클릭해 집고 → 옮겨서 → 클릭 확정 · <b>Ctrl=복사</b> · ←→ 축 고정 · <b>숫자=거리(mm)</b> · Esc 취소',
     rotate:'<b>회전</b> — 객체 클릭 후 좌우로 · 클릭=확정 · 15° 스냅(Shift=자유각) · <b>숫자=각도</b> · Esc 취소',
     scale:'<b>배율</b> — 객체 클릭 후 위아래로 · 클릭=확정 · <b>숫자=배율</b>(예: 1.5) · 가구·기구·설비만',
-    line:'<b>선(벽)</b> — 클릭-클릭으로 벽을 이어 그림(평면에 실제 벽) · <b>숫자=길이(mm)</b> · 5° 안=직교 스냅 · Shift=강제 직교 · Esc/더블클릭=끝',
-    rect:'<b>사각형(벽)</b> — 두 모서리 클릭 = 벽 4면 (Ctrl+Z 한 번에 취소) · <b>숫자 무관, 코너로 크기</b>',
+    line:'<b>선</b> — 클릭-클릭 사슬 · <b>면 위를 가로지르면 면이 나뉨</b> · 빈 곳=벽 · 끝점(초록)/중간점(청록)/선 위(빨강) 스냅 · 숫자=길이 · Esc/더블클릭=끝',
+    rect:'<b>사각형</b> — 두 모서리 클릭 = <b>면 생성</b>(점 4·선 4·면 1 이 한 그룹) · 스냅 흡착 · Ctrl+Z 한 번에 취소',
     pushpull:'<b>밀기끌기</b> — 벽·천장 클릭 후 위아래 · 클릭=확정 · <b>숫자=mm</b> · <b>더블클릭=직전 값 반복</b>',
     paint:'<b>페인트</b> — 왼쪽 팔레트에서 재질 고르고 벽/바닥/천장 클릭 (견적 연동)',
     erase:'<b>지우개</b> — 클릭=삭제 (벽·공간은 평면에서)',
@@ -710,13 +721,71 @@ function _hoverFloorId(e){
 function _planePt(e,z0){
   dragPlane.constant=-z0; rayFromEvent(e);
   if(!ray.ray.intersectPlane(dragPlane,dragPt)) return null;
-  return {x:Math.round(dragPt.x/MM/10)*10, y:Math.round(dragPt.z/MM/10)*10};
+  return {x:dragPt.x/MM, y:dragPt.z/MM}; // 원시 mm — 스냅(snap3)이 반올림·흡착을 맡는다
+}
+// --- 점·선·면 스냅 (스케치업 추론) — 끝점(초록) > 중간점(청록) > 선 위(빨강) > 10mm 격자 ---
+function closestOnSeg(p,w){
+  const dx=w.x2-w.x1,dy=w.y2-w.y1,l2=dx*dx+dy*dy;
+  if(l2<1e-9) return {x:w.x1,y:w.y1};
+  let t=((p.x-w.x1)*dx+(p.y-w.y1)*dy)/l2; t=Math.max(0,Math.min(1,t));
+  return {x:w.x1+t*dx,y:w.y1+t*dy};
+}
+function segIntersect(a,b,c,d){
+  const s=(p,q,r)=>(q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x);
+  const d1=s(c,d,a),d2=s(c,d,b),d3=s(a,b,c),d4=s(a,b,d);
+  return ((d1>0&&d2<0)||(d1<0&&d2>0))&&((d3>0&&d4<0)||(d3<0&&d4>0));
+}
+function snap3(fid,p){
+  const sd=ST.snapData[fid];
+  const grid={x:Math.round(p.x/10)*10,y:Math.round(p.y/10)*10,kind:'grid'};
+  if(!sd) return grid;
+  let best=null;
+  sd.verts.forEach(v=>{const d=Math.hypot(v.x-p.x,v.y-p.y); if(d<=180&&(!best||d<best.d)) best={x:v.x,y:v.y,d,kind:'endpoint'};});
+  if(!best) sd.walls.forEach(w=>{const mx=(w.x1+w.x2)/2,my=(w.y1+w.y2)/2;const d=Math.hypot(mx-p.x,my-p.y); if(d<=160&&(!best||d<best.d)) best={x:mx,y:my,d,kind:'midpoint'};});
+  if(!best){
+    let bd=120,bp=null;
+    sd.walls.forEach(w=>{const q=closestOnSeg(p,w);const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;bp=q;}});
+    if(bp) best={x:bp.x,y:bp.y,d:bd,kind:'edge'};
+  }
+  return best?{x:Math.round(best.x),y:Math.round(best.y),kind:best.kind}:grid;
+}
+const SNAP_COL={endpoint:0x2FA84F,midpoint:0x35C2CF,edge:0xE24C4C};
+const SNAP_NAME={endpoint:'끝점',midpoint:'중간점',edge:'선 위'};
+let snapMk=null;
+function showSnap(s,z0){
+  if(s.kind==='grid'){ hideSnap(); return; }
+  if(!snapMk){
+    snapMk=new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false}));
+    snapMk.scale.setScalar(0.045); snapMk.renderOrder=1000; scene.add(snapMk);
+  }
+  snapMk.material.color.setHex(SNAP_COL[s.kind]||0xffffff);
+  snapMk.position.set(s.x*MM,z0+0.03,s.y*MM);
+  snapMk.visible=true;
+  invalidate();
+}
+function hideSnap(){ if(snapMk&&snapMk.visible){ snapMk.visible=false; invalidate(); } }
+// 선분이 그 층의 어떤 면(공간)을 지나는가 — 지나면 splitspace(면 분할)
+function segHitsSpace(fid,a,c){
+  const sd=ST.snapData[fid]; if(!sd) return null;
+  const inPoly=MC3D._internal.pointInPoly;
+  for(const s of sd.spaces){
+    if(!s.poly||s.poly.length<3) continue;
+    const inA=inPoly(a,s.poly), inC=inPoly(c,s.poly);
+    if(inA&&inC) return s.id;
+    let hits=0;
+    for(let i=0;i<s.poly.length;i++){
+      if(segIntersect(a,c,s.poly[i],s.poly[(i+1)%s.poly.length])) hits++;
+    }
+    if(hits>=2||((inA||inC)&&hits>=1)) return s.id;
+  }
+  return null;
 }
 function lineClick(e){
   if(ST.op&&ST.op.type==='line'){ commitLine(vcbTyped()); return; }
   const fid=_hoverFloorId(e);
   const f=ST.floors.find(x=>x.id===fid), z0=f?f.z0*MM:0;
-  const p=_planePt(e,z0); if(!p) return;
+  const raw=_planePt(e,z0); if(!raw) return;
+  const p=snap3(fid,raw); showSnap(p,z0); // 시작점도 점·선에 흡착
   const rect=(ST.tool==='rect');
   const geo=new THREE.BufferGeometry().setFromPoints(new Array(rect?5:2).fill(0).map(()=>new THREE.Vector3(p.x*MM,z0+0.02,p.y*MM)));
   const ln=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xD4FF3D,depthTest:false})); ln.renderOrder=999; scene.add(ln);
@@ -729,14 +798,17 @@ function lineClick(e){
 }
 function lineMove(e){
   const op=ST.op; if(!op||op.type!=='line') return;
-  const p=_planePt(e,op.z0); if(!p) return;
-  let px=p.x,py=p.y;
-  if(!op.rect){
+  const raw=_planePt(e,op.z0); if(!raw) return;
+  const sp=snap3(op.fid,raw);           // 점·선 흡착이 직교 추론보다 우선 (스케치업과 동일)
+  let px=sp.x,py=sp.y;
+  if(!op.rect&&sp.kind==='grid'){
     const dx=px-op.a.x, dy=py-op.a.y;
     // 스케치업 추론식 직교: 축에 5° 안이면 붙는다 · Shift=강제 직교
     if(e.shiftKey||Math.abs(dy)<Math.abs(dx)*0.09) py=op.a.y;
     else if(Math.abs(dx)<Math.abs(dy)*0.09) px=op.a.x;
   }
+  showSnap({x:px,y:py,kind:sp.kind},op.z0);
+  op.snapKind=sp.kind;
   op.cur={x:px,y:py};
   const pos=op.line.geometry.attributes.position;
   const y3=op.z0+0.02;
@@ -747,7 +819,7 @@ function lineMove(e){
   }else{
     pos.setXYZ(1,px*MM,y3,py*MM);
     const len=Math.round(Math.hypot(px-op.a.x,py-op.a.y));
-    vcbShow('벽 길이',len,'mm');
+    vcbShow((op.snapKind&&op.snapKind!=='grid'?SNAP_NAME[op.snapKind]+' · ':'')+'길이',len,'mm');
     // 반투명 벽 미리보기
     if(len>50){
       const th=0.1,H=2.4;
@@ -769,13 +841,17 @@ function commitLine(exact){
   }
   if(!chan){ setStatus(false,'MiniCAD 창이 없어 벽을 못 만듭니다'); return; }
   if(op.rect){
-    if(Math.abs(cur.x-a.x)<100||Math.abs(cur.y-a.y)<100){ setStatus(statusLive,'사각형이 너무 작습니다 (100mm+)'); return; }
-    chan.postMessage({type:'edit',op:'addrect',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
+    if(Math.abs(cur.x-a.x)<300||Math.abs(cur.y-a.y)<300){ setStatus(statusLive,'면이 너무 작습니다 (300mm+)'); return; }
+    // 점·선·면 구조: 사각형 = 면(공간) 생성 — 점 4·선 4·면 1 이 한 그룹으로
+    chan.postMessage({type:'edit',op:'addspace',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
     cancelOp();
-    setStatus(statusLive,'▭ 사각 벽 4면 → 평면 반영');
+    setStatus(statusLive,'▭ 면 생성 → 점·선·면 한 그룹 (평면 반영)');
   }else{
     if(Math.hypot(cur.x-a.x,cur.y-a.y)<100){ setStatus(statusLive,'너무 짧습니다 (100mm+)'); return; }
-    chan.postMessage({type:'edit',op:'addwall',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
+    const sid=segHitsSpace(op.fid,a,cur);
+    // 면 위(가로지름) = 면 분할 (스케치업: 면 위의 선은 면을 나눈다) / 빈 곳 = 벽
+    chan.postMessage({type:'edit',op:sid?'splitspace':'addwall',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
+    if(sid) setStatus(statusLive,'╱ 면 분할 → 두 면으로 (평면 반영)');
     // 스케치업 Line 처럼 사슬 잇기 — 끝점이 새 시작점
     op.a=cur;
     const pos=op.line.geometry.attributes.position, y3=op.z0+0.02;
@@ -798,6 +874,7 @@ function cancelOp(){
     if(op.type==='pp'&&op.g){ op.g.scale.y=1; op.g.position.y=op.origY; }
     if(op.line){ scene.remove(op.line); if(op.line.geometry) op.line.geometry.dispose(); }
     if(op.ghost){ scene.remove(op.ghost); }
+    hideSnap();
     invalidate(true);
   }
   orbit.enabled=(ST.mode==='orbit');
@@ -1117,6 +1194,8 @@ function renderProps(obj){
     html+=`<div class="p-row"><label>바닥재</label><select data-f="floorMaterial">${matOptions(MATS.FLOOR,m.floorMaterial||'STRONG')}</select></div>`;
     html+=`<div class="p-row"><label>천장재</label><select data-f="ceilingMaterial">${matOptions(MATS.CEIL,m.ceilingMaterial||'GYPSUM')}</select></div>`;
     html+=`<div class="p-row"><label>천장고</label><input type="number" step="50" data-f="ceilingHeight_mm" value="${m.ceilH}"> <span style="font-size:11px">mm</span></div>`;
+    const _st=ST.snapData[obj.floorId]&&ST.snapData[obj.floorId].stats&&ST.snapData[obj.floorId].stats[obj.id];
+    if(_st) html+=`<div class="p-row"><label>그룹</label><span style="font-size:12px">면 1 · 선(벽) ${_st.walls} · 배치 ${_st.items}</span></div>`;
   }else if(obj.kind==='door'||obj.kind==='window'){
     html+=`<div class="p-row"><label>폭</label><input type="number" step="50" data-f="width_mm" value="${m.w}"></div>`;
     html+=`<div class="p-row"><label>높이</label><input type="number" step="50" data-f="height_mm" value="${m.h}"></div>`;
@@ -1414,7 +1493,7 @@ connect();
 if(!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
 // 테스트·디버그 훅
 window.MC3DVIEW={ST,scene,camera,renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
-  sendEdit,rotateSelected,deleteSelected3D,setTool,commitActive,cancelOp,menuCmd,openTraySec,setAxes,
+  sendEdit,rotateSelected,deleteSelected3D,setTool,commitActive,cancelOp,menuCmd,openTraySec,setAxes,snap3,segHitsSpace,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   objCount:()=>{let n=0;ST.root&&ST.root.children.forEach(fg=>{n+=fg.children.length;});return n;}};
