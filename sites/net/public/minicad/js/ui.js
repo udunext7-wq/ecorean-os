@@ -5640,7 +5640,10 @@ function apply3DEdit(m){
     const f=(STATE.floors||[]).find(x=>x.id===m.floorId);
     if(f&&f.data){ ok=applyTo(f.data); if(ok){scheduleAutosave();if(typeof push3D==='function')push3D();} }
   }
-  if(ok) showStatus('🧊 3D 편집 반영 — '+m.op);
+  if(ok){
+    showStatus('🧊 3D 편집 반영 — '+m.op);
+    if(typeof push3D==='function') push3D(true); // 3D 발 편집은 300ms 묶음 없이 즉시 회신
+  }
   return ok;
 }
 // 3D 배치(➕) — 라이브러리 객체를 3D 에서 새로 놓는다. addLibObject 의 핵심만 (레이어·공간 귀속·기본 규격)
@@ -5665,6 +5668,7 @@ function _apply3DAdd(m){
     STATE[arrName].push(o);
     saveHistory();renderAll();refreshUI();
     showStatus('🧊 3D 배치: '+(def.name||p.type));
+    if(typeof push3D==='function') push3D(true); // 즉시 회신
   }else{
     const f=(STATE.floors||[]).find(z=>z.id===m.floorId);
     if(!f||!f.data) return false;
@@ -5694,6 +5698,7 @@ function _apply3DWall(m){
       addWall(x1,y1,x2,y2);
       showStatus('🧊 3D 벽 추가 ('+Math.round(Math.hypot(x2-x1,y2-y1))+'mm)');
     }
+    if(typeof push3D==='function') push3D(true); // 즉시 회신
     return true;
   }
   const f=(STATE.floors||[]).find(z=>z.id===m.floorId);
@@ -5730,6 +5735,7 @@ function _apply3DFace(m){
       if(Math.hypot(x2-x1,y2-y1)<50) return false;
       addLine(x1,y1,x2,y2); // 면을 가로지르면 분할, 아니면 참조선 — 2D 와 동일 규칙
     }
+    if(typeof push3D==='function') push3D(true); // 3D 발 편집은 즉시 회신 (딜레이 제거)
     return true;
   }
   const f=(STATE.floors||[]).find(z=>z.id===m.floorId);

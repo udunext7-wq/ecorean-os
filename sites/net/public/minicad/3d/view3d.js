@@ -93,6 +93,7 @@ const ST={
   paint:{cat:'wall',code:'WP_SILK'},
   axes:true,          // 2026-09-04 스케치업식 축 표시 (X빨강·평면Y초록·높이 파랑)
   snapData:{},        // 2026-09-04 점·선·면 스냅용 층별 기하 {fid:{verts,walls,spaces,stats}}
+  pendingG:[],        // 낙관적 미리보기 — 생성 직후 임시 고스트, 다음 재조립 때 실물로 교체
   walk:{yaw:0,pitch:0,keys:{},eye:1.6,speed:2.2},
   lastDocAt:0,
 };
@@ -256,6 +257,7 @@ function addObjGroup(parent,obj){
 }
 function build(doc){
   ST.doc=doc;
+  ST.pendingG.forEach(g=>{ scene.remove(g); }); ST.pendingG=[]; // 실물이 왔으니 임시 고스트 제거
   const d=(doc&&doc.data&&!doc.walls&&!doc.floors)?doc.data:doc||{};
   if(!ST.root){ ST.root=new THREE.Group(); ST.root.name='MiniCAD'; scene.add(ST.root); }
   const fls=MC3D.splitFloors(d);
@@ -619,6 +621,11 @@ function vcbShow(label,val,unit){
 }
 function vcbHide(){ if(vcb){vcb.style.display='none';vcb.querySelector('.v-v').value='';} }
 function vcbTyped(){ const i=vcb&&vcb.querySelector('.v-v'); const v=i?parseFloat(i.value):NaN; return isFinite(v)?v:null; }
+function vcbPair(){ // 사각형 치수 입력 "3000,2000" · "3000x2000" (스케치업 Measurements)
+  const i=vcb&&vcb.querySelector('.v-v'); if(!i) return null;
+  const m=String(i.value).match(/([\d.]+)\s*[,xX*]\s*([\d.]+)/);
+  return m?{w:parseFloat(m[1]),h:parseFloat(m[2])}:null;
+}
 function rayFromEvent(e){
   const r=renderer.domElement.getBoundingClientRect();
   const nd=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
@@ -627,6 +634,7 @@ function rayFromEvent(e){
 function setTool(t){
   cancelOp();
   clearGhost();
+  hideSnap();
   ST.tool=t;
   document.querySelectorAll('#tools .btn').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   if(t==='paint') openTraySec('mat');    // 트레이(우측)의 재질 패널 열기 — 스케치업 Default Tray
@@ -792,9 +800,32 @@ function lineClick(e){
   const gh=new THREE.Mesh(geoBox,new THREE.MeshStandardMaterial({color:0xD4FF3D,transparent:true,opacity:0.22,depthWrite:false}));
   gh.visible=false; scene.add(gh);
   ST.op={type:'line',rect,fid,z0,a:p,cur:p,line:ln,ghost:gh};
+  // 첫 점 고정 표시 — 점이 찍혔음을 분명하게
+  const smk=new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xD4FF3D,depthTest:false}));
+  smk.scale.setScalar(0.055); smk.renderOrder=1000;
+  smk.position.set(p.x*MM,z0+0.03,p.y*MM);
+  scene.add(smk); ST.op.startMk=smk;
   orbit.enabled=false;
-  vcbShow(rect?'사각형':'벽 길이',0,'mm');
+  vcbShow(rect?'가로,세로':'벽 길이','', 'mm');
   invalidate();
+}
+// 낙관적 미리보기 — 평면 반영 응답이 오기 전까지 방금 만든 것을 즉시 보여준다 (딜레이 체감 제거)
+function spawnPendingRect(a,c,z0){
+  const g=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({color:0xC9A961,transparent:true,opacity:0.35,depthWrite:false});
+  const w=Math.abs(c.x-a.x)*MM,h=Math.abs(c.y-a.y)*MM,cx=(a.x+c.x)/2*MM,cy=(a.y+c.y)/2*MM;
+  const fl=new THREE.Mesh(geoBox,mat); fl.scale.set(w,0.02,h); fl.position.set(cx,z0+0.01,cy); g.add(fl);
+  const mkw=(x,zc,ww,dd)=>{const m2=new THREE.Mesh(geoBox,mat);m2.scale.set(ww,2.4,dd);m2.position.set(x,z0+1.2,zc);g.add(m2);};
+  mkw(cx,a.y*MM,w,0.1); mkw(cx,c.y*MM,w,0.1); mkw(a.x*MM,cy,0.1,h); mkw(c.x*MM,cy,0.1,h);
+  scene.add(g); ST.pendingG.push(g); invalidate(true);
+}
+function spawnPendingWall(a,c,z0){
+  const len=Math.hypot(c.x-a.x,c.y-a.y)*MM; if(len<0.05) return;
+  const m2=new THREE.Mesh(geoBox,new THREE.MeshStandardMaterial({color:0xC9A961,transparent:true,opacity:0.4,depthWrite:false}));
+  m2.scale.set(len,2.4,0.1);
+  m2.position.set((a.x+c.x)/2*MM,z0+1.2,(a.y+c.y)/2*MM);
+  m2.rotation.y=-Math.atan2(c.y-a.y,c.x-a.x);
+  scene.add(m2); ST.pendingG.push(m2); invalidate(true);
 }
 function lineMove(e){
   const op=ST.op; if(!op||op.type!=='line') return;
@@ -815,7 +846,17 @@ function lineMove(e){
   if(op.rect){
     pos.setXYZ(0,op.a.x*MM,y3,op.a.y*MM); pos.setXYZ(1,px*MM,y3,op.a.y*MM);
     pos.setXYZ(2,px*MM,y3,py*MM); pos.setXYZ(3,op.a.x*MM,y3,py*MM); pos.setXYZ(4,op.a.x*MM,y3,op.a.y*MM);
-    vcbShow('▭ '+Math.abs(px-op.a.x)+'×'+Math.abs(py-op.a.y),'','mm');
+    // 크기를 반투명 면 고스트로 (대표 피드백: 사이즈가 고스트 형태로 보이게)
+    const gw=Math.abs(px-op.a.x),gh2=Math.abs(py-op.a.y);
+    if(gw>10&&gh2>10){
+      op.ghost.visible=true;
+      op.ghost.material.opacity=0.18;
+      op.ghost.material.color.setHex(0xD4FF3D);
+      op.ghost.scale.set(gw*MM,0.02,gh2*MM);
+      op.ghost.position.set((op.a.x+px)/2*MM,op.z0+0.012,(op.a.y+py)/2*MM);
+      op.ghost.rotation.y=0;
+    }else op.ghost.visible=false;
+    vcbShow('▭ '+gw+'×'+gh2+' (입력: 가로,세로)','','mm');
   }else{
     pos.setXYZ(1,px*MM,y3,py*MM);
     const len=Math.round(Math.hypot(px-op.a.x,py-op.a.y));
@@ -841,19 +882,26 @@ function commitLine(exact){
   }
   if(!chan){ setStatus(false,'MiniCAD 창이 없어 벽을 못 만듭니다'); return; }
   if(op.rect){
-    if(Math.abs(cur.x-a.x)<300||Math.abs(cur.y-a.y)<300){ setStatus(statusLive,'면이 너무 작습니다 (300mm+)'); return; }
-    // 점·선·면 구조: 사각형 = 면(공간) 생성 — 점 4·선 4·면 1 이 한 그룹으로
+    const pr=vcbPair(); // 치수 입력 "3000,2000" → 첫 점에서 정확한 크기 (끌던 방향 부호)
+    if(pr&&pr.w>0&&pr.h>0){
+      const sx=(cur.x>=a.x)?1:-1, sy=(cur.y>=a.y)?1:-1;
+      cur={x:Math.round(a.x+sx*pr.w),y:Math.round(a.y+sy*pr.h)};
+    }
+    if(Math.abs(cur.x-a.x)<300||Math.abs(cur.y-a.y)<300){ setStatus(statusLive,'면이 너무 작습니다 (300mm+) — 수치는 "가로,세로"'); return; }
+    spawnPendingRect(a,cur,op.z0); // 즉시 보여주고, 실물은 재조립으로 교체
     chan.postMessage({type:'edit',op:'addspace',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
     cancelOp();
-    setStatus(statusLive,'▭ 면 생성 → 점·선·면 한 그룹 (평면 반영)');
+    setStatus(statusLive,'▭ 면 생성 '+Math.abs(cur.x-a.x)+'×'+Math.abs(cur.y-a.y)+' → 점·선·면 한 그룹');
   }else{
     if(Math.hypot(cur.x-a.x,cur.y-a.y)<100){ setStatus(statusLive,'너무 짧습니다 (100mm+)'); return; }
     const sid=segHitsSpace(op.fid,a,cur);
     // 면 위(가로지름) = 면 분할 (스케치업: 면 위의 선은 면을 나눈다) / 빈 곳 = 벽
+    if(!sid) spawnPendingWall(a,cur,op.z0); // 벽은 즉시 임시 표시
     chan.postMessage({type:'edit',op:sid?'splitspace':'addwall',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
     if(sid) setStatus(statusLive,'╱ 면 분할 → 두 면으로 (평면 반영)');
     // 스케치업 Line 처럼 사슬 잇기 — 끝점이 새 시작점
     op.a=cur;
+    if(op.startMk) op.startMk.position.set(cur.x*MM,op.z0+0.03,cur.y*MM);
     const pos=op.line.geometry.attributes.position, y3=op.z0+0.02;
     pos.setXYZ(0,cur.x*MM,y3,cur.y*MM); pos.setXYZ(1,cur.x*MM,y3,cur.y*MM); pos.needsUpdate=true;
     op.ghost.visible=false;
@@ -874,6 +922,7 @@ function cancelOp(){
     if(op.type==='pp'&&op.g){ op.g.scale.y=1; op.g.position.y=op.origY; }
     if(op.line){ scene.remove(op.line); if(op.line.geometry) op.line.geometry.dispose(); }
     if(op.ghost){ scene.remove(op.ghost); }
+    if(op.startMk){ scene.remove(op.startMk); }
     hideSnap();
     invalidate(true);
   }
@@ -1099,6 +1148,13 @@ renderer.domElement.addEventListener('pointerdown',e=>{
 });
 renderer.domElement.addEventListener('pointermove',e=>{
   if(ST.tool==='add'&&ST.add&&ST.add.ghost){ ghostFollow(e); }
+  // 첫 클릭 전에도 스냅 마커 표시 (스케치업 추론 — 호버만으로 끝점/중간점/선에 흡착 예고)
+  if((ST.tool==='line'||ST.tool==='rect')&&!ST.op&&ST.mode==='orbit'){
+    const fid=_hoverFloorId(e);
+    const f=ST.floors.find(x=>x.id===fid), z0=f?f.z0*MM:0;
+    const raw=_planePt(e,z0);
+    if(raw) showSnap(snap3(fid,raw),z0);
+  }
   // 스티키 동작 — 버튼을 안 눌러도 따라온다 (클릭-이동-클릭)
   if(ST.op&&(!drag||drag.id!==e.pointerId)){
     if(ST.op.type==='move'&&ST.op.sticky) applyMoveFromEvent(e);
@@ -1244,7 +1300,7 @@ window.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&k==='s'){ screenshot(); e.preventDefault(); return; } // Ctrl+S = PNG 저장
   if(e.key==='?'){ showKeys(true); e.preventDefault(); return; }                    // ? = 단축키표
   // 동작 중 숫자 입력 → VCB 로 (스케치업 수치 입력)
-  if(ST.op&&ST.op.type!=='tape'&&/^[0-9.\-]$/.test(e.key)){
+  if(ST.op&&ST.op.type!=='tape'&&/^[0-9.,\-]$/.test(e.key)){
     const i=vcb&&vcb.querySelector('.v-v');
     if(i){ i.value=e.key; i.focus(); e.preventDefault(); }
     return;
