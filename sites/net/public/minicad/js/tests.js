@@ -5018,6 +5018,22 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('FE: 전층 견적 테스트 예외 없음',false,e.message);
   }
+  // === [AX] 원점 좌표축 (2026-09-04) — 미니폼과 동일 기준점 (0,0) 표기 ===
+  try{
+    const _gBak=STATE.showGrid;
+    STATE.showGrid=true;drawGrid();
+    const ax1=bgLayer.find('.axis');
+    assert('AX1: 좌표축 노드 존재(X·Y·원점)',ax1.length>=3);
+    const _ax=bgLayer.findOne('#axis-x'),_ay=bgLayer.findOne('#axis-y'),_ao=bgLayer.findOne('#axis-o');
+    assert('AX2: X축은 세계 y=0(화면 offsetY) 위',!!_ax&&Math.abs(_ax.points()[1]-STATE.offsetY)<0.5);
+    assert('AX3: Y축은 세계 x=0(화면 offsetX) 위',!!_ay&&Math.abs(_ay.points()[0]-STATE.offsetX)<0.5);
+    assert('AX4: 원점 링 위치',!!_ao&&Math.abs(_ao.x()-STATE.offsetX)<0.5&&Math.abs(_ao.y()-STATE.offsetY)<0.5);
+    STATE.showGrid=false;drawGrid();
+    assert('AX5: 그리드를 꺼도 기준점은 남는다',bgLayer.find('.axis').length>=3);
+    STATE.showGrid=_gBak;drawGrid();
+  }catch(e){
+    assert('AX: 좌표축 테스트 예외 없음',false,e.message);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

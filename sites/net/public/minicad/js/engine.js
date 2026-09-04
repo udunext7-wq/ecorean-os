@@ -696,6 +696,16 @@ function drawGrid(){
   // v5.9: 배경 이미지 (그리드보다 뒤에 깔림)
   const bgImg=ensureBgImageNode();
   if(bgImg) bgLayer.add(bgImg);
+  // 2026-09-04 대표 지시: 미니폼과 동일한 원점 좌표축을 평면에도 — (0,0) 이 기준점
+  //  X=빨강(가로) · Y=초록(세로) · 파란 링=높이축(Z) 상징. 그리드를 꺼도 남고, 인쇄(_pm)에는 안 찍힌다.
+  {
+    const w0=stage.width(),h0=stage.height();
+    const ox=STATE.offsetX, oy=STATE.offsetY; // 화면상의 세계 원점 (0,0)
+    bgLayer.add(new Konva.Line({name:'axis',id:'axis-x',points:[0,oy,w0,oy],stroke:'#E24C4C',strokeWidth:1.2,opacity:0.55,listening:false}));
+    bgLayer.add(new Konva.Line({name:'axis',id:'axis-y',points:[ox,0,ox,h0],stroke:'#4CAF50',strokeWidth:1.2,opacity:0.55,listening:false}));
+    bgLayer.add(new Konva.Circle({name:'axis',id:'axis-o',x:ox,y:oy,radius:5,stroke:'#4C7DE2',strokeWidth:2,opacity:0.9,listening:false}));
+    bgLayer.add(new Konva.Circle({name:'axis',x:ox,y:oy,radius:1.6,fill:'#F5F1EB',listening:false}));
+  }
   if(!STATE.showGrid){bgLayer.batchDraw();return;}
   const w=stage.width(),h=stage.height();
   const gpx=mmToPx(STATE.gridSize);
