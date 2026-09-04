@@ -189,7 +189,7 @@ function buildWall(w,D,spaceById,offs){
     // 포켓도어: 전체 폭의 절반만 뚫리고 나머지 절반은 벽 속 포켓(벽이 남는다)
     let hole=[left,right];
     if(isDoor&&o.subType==='pocket') hole=o.flipped?[along,right]:[left,along];
-    return {o,isDoor,ow,oh,sill,along,left:Math.max(0,hole[0]),right:Math.min(L,hole[1]),z0:sill,z1:Math.min(H,sill+oh)};
+    return {o,isDoor,ow,oh,sill,along,L,left:Math.max(0,hole[0]),right:Math.min(L,hole[1]),z0:sill,z1:Math.min(H,sill+oh)};
   }).filter(c=>c.right-c.left>1).sort((a,b)=>a.left-b.left);
   // 벽 몸체 — 개구부 사이는 전체 높이, 개구부 위(인방)·아래(창턱)는 부분 높이
   let cursor=-ext1;
@@ -205,7 +205,8 @@ function buildWall(w,D,spaceById,offs){
   const openingObjs=cuts.map(c=>buildOpening(c,w,t,rot,off));
   return {
     wall:{id:w.id,kind:'wall',name:bearing?'내력벽':(w.wallType==='partition'?'가벽':'벽'),x:w.x1,y:w.y1,rot,flip:false,prims,locked:!!w.locked,
-      meta:{L:Math.round(L),t,H,material:w.finishMaterial||null,wallType:w.wallType||'standard',alignment:w.alignment||'center',offset:off,ext:[ext1,ext2]}},
+      meta:{L:Math.round(L),t,H,material:w.finishMaterial||null,wallType:w.wallType||'standard',alignment:w.alignment||'center',offset:off,ext:[ext1,ext2],
+        spaceId:w.spaceId||null,x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2}}, // 2026-09-04 계층 선택(방 더블클릭)·벽 이웃 선택용
     openings:openingObjs,
   };
 }
@@ -251,7 +252,8 @@ function buildOpening(c,w,t,rot,off){
   }
   const name=isDoor?((o.subType==='entry')?'현관문':'문'):'창';
   return {id:o.id,kind:isDoor?'door':'window',name:name+' '+Math.round(c.ow)+'×'+Math.round(c.oh),
-    x:w.x1,y:w.y1,rot,flip:false,prims,meta:{subType:o.subType||null,w:c.ow,h:c.oh,sill:c.sill}};
+    x:w.x1,y:w.y1,rot,flip:false,prims,meta:{subType:o.subType||null,w:c.ow,h:c.oh,sill:c.sill,
+      wall:{id:w.id,x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,L:Math.round(c.L)},along:Math.round(c.along),ox:o.x,oy:o.y}}; // 2026-09-04 벽 위 슬라이드 이동용
 }
 
 // ---------------------------------------------------------------------------

@@ -232,5 +232,19 @@ ck(SF.counts.walls === 2 && SF.counts.spaces === 2, '층 합산 개수: ' + JSON
 // 한 층 문서는 종전과 동일(id 접두 없음) — 위쪽 전체 단언들이 그 회귀 테스트다
 ck(byId('w_s') && !S.objects.some(o => /:/.test(o.id)), '단층 문서는 id 접두 없음');
 
+// 2026-09-04 프로토콜 짝 — 미니캐드(ui.js MC_PROTO) 와 미니폼(view3d.js MF_PROTO) 이 같은 버전, 캐시 버스터 갱신
+const uiSrc = fs.readFileSync(path.join(ROOT, 'js', 'ui.js'), 'utf8');
+const v3Src = fs.readFileSync(path.join(ROOT, '3d', 'view3d.js'), 'utf8');
+const mcP = (uiSrc.match(/const MC_PROTO\s*=\s*(\d+)/) || [])[1], mfP = (v3Src.match(/const MF_PROTO\s*=\s*(\d+)/) || [])[1];
+ck(mcP && mfP && mcP === mfP, '프로토콜 짝: MC_PROTO=' + mcP + ' MF_PROTO=' + mfP);
+const opsList = (uiSrc.match(/\[('undo'[^\]]*)\]\.includes\(m\.op\)/) || [])[1] || '';
+['batch', 'addspace', 'addcircle', 'splitspace', 'lock', 'clone', 'rotate', 'set', 'add', 'delete'].forEach(op => ck(opsList.includes("'" + op + "'"), 'ui.js 허용 op: ' + op));
+['addspace', 'addcircle', 'addwall', 'splitspace', 'lock', 'clone', 'rotate', 'batch'].forEach(op => ck(new RegExp("['\"]" + op + "['\"]").test(v3Src), 'view3d.js 가 ' + op + ' 를 보낸다'));
+const idx3d = fs.readFileSync(path.join(ROOT, '3d', 'index.html'), 'utf8');
+const bust = (idx3d.match(/view3d\.js\?v=([\w]+)/) || [])[1];
+ck(bust && idx3d.split('?v=' + bust).length - 1 >= 4, '3d/index.html 캐시 버스터 4곳 일치: ' + bust);
+['ctxmenu', 'selbox', '#tags', '#outliner', '#scenes', 'st-sun', 'data-sec="tags"', 'data-sec="outline"', 'data-sec="scenes"', 'data-t="circle"', 'data-t="arc"', 'data-t="offset"', 'data-t="orbit"', 'data-cmd="xray"', 'data-cmd="save"'].forEach(k => ck(idx3d.includes(k), '3d/index.html 에 ' + k));
+['setXray', 'renderOutliner', 'sceneAdd', 'saveFeedback', 'pasteClip', 'boxSelect', 'addGuide', 'offsetPoly', 'arcPts', 'vcbPostOn'].forEach(fn => ck(v3Src.includes('function ' + fn + '('), 'view3d.js 함수 ' + fn));
+
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

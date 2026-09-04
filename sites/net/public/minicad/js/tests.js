@@ -4972,6 +4972,76 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       &&STATE.floors.find(f=>f.id===_edF3.id).data.walls.length===4);
     STATE.floors=STATE.floors.filter(f=>f.id!==_edF3.id);renderFloorBar();
     assert('EDf6: 알 수 없는 op = 조용히 무시하지 않고 거부+안내',apply3DEdit({type:'edit',op:'nope_op_x'})===false);
+    // === 2026-09-04 스케치업 동등화 프로토콜 5 ===
+    // batch — 여러 op 가 Ctrl+Z 한 번
+    STATE.furniture.push({id:'ed_b1',type:'chair',x:100,y:100,angle:0,spaceId:null});
+    STATE.furniture.push({id:'ed_b2',type:'chair',x:200,y:200,angle:0,spaceId:null});
+    saveHistory();
+    const _hb=STATE.history.length;
+    assert('EDb1: batch 이동 2건',apply3DEdit({type:'edit',op:'batch',label:'이동',ops:[
+        {op:'move',kind:'furniture',id:'ed_b1',floorId:_edAct,patch:{x:1100,y:1100}},
+        {op:'move',kind:'furniture',id:'ed_b2',floorId:_edAct,patch:{x:1200,y:1200}}]})===true
+      &&STATE.furniture.find(o=>o.id==='ed_b1').x===1100&&STATE.furniture.find(o=>o.id==='ed_b2').x===1200);
+    assert('EDb2: batch = 히스토리 최대 1단계 증가 (50 상한 shift 포함)',STATE.history.length<=Math.min(_hb+1,50)&&STATE.historyIdx===STATE.history.length-1,'hist '+_hb+' → '+STATE.history.length);
+    apply3DEdit({type:'edit',op:'undo'});
+    assert('EDb3: batch Ctrl+Z 한 번에 둘 다 복귀',STATE.furniture.find(o=>o.id==='ed_b1').x===100&&STATE.furniture.find(o=>o.id==='ed_b2').x===200);
+    apply3DEdit({type:'edit',op:'redo'});
+    assert('EDb4: batch 안의 undo/redo·빈 batch 거부',apply3DEdit({type:'edit',op:'batch',ops:[{op:'undo'}]})===false&&apply3DEdit({type:'edit',op:'batch',ops:[]})===false);
+    // 다중 회전(공전) — angle 과 함께 x,y 도 반영
+    assert('EDr1: rotate x,y 동반',apply3DEdit({type:'edit',op:'rotate',kind:'furniture',id:'ed_b1',floorId:_edAct,patch:{angle:90,x:1500,y:1600}})===true
+      &&STATE.furniture.find(o=>o.id==='ed_b1').angle===90&&STATE.furniture.find(o=>o.id==='ed_b1').x===1500&&STATE.furniture.find(o=>o.id==='ed_b1').y===1600);
+    assert('EDr2: rotate x,y 없으면 위치 유지',apply3DEdit({type:'edit',op:'rotate',kind:'furniture',id:'ed_b1',floorId:_edAct,patch:{angle:180}})===true
+      &&STATE.furniture.find(o=>o.id==='ed_b1').x===1500);
+    // lock / unlock (스케치업 Lock)
+    assert('EDl1: lock',apply3DEdit({type:'edit',op:'lock',kind:'furniture',id:'ed_b1',floorId:_edAct,patch:{locked:true}})===true
+      &&STATE.furniture.find(o=>o.id==='ed_b1').locked===true);
+    assert('EDl2: 잠긴 것도 unlock 가능',apply3DEdit({type:'edit',op:'lock',kind:'furniture',id:'ed_b1',floorId:_edAct,patch:{locked:false}})===true
+      &&STATE.furniture.find(o=>o.id==='ed_b1').locked===false);
+    // add — 인치·띄움 규격 동반 (Ctrl+C/V)
+    const _na2=STATE.lights.length;
+    assert('EDa1: add 인치·elev 동반',apply3DEdit({type:'edit',op:'add',kind:'lights',floorId:_edAct,patch:{type:'downlight',x:700,y:700,inch:6,elev_mm:120}})===true
+      &&STATE.lights.length===_na2+1&&STATE.lights[STATE.lights.length-1].inch===6&&STATE.lights[STATE.lights.length-1].elev_mm===120);
+    // 벽 두께 (미니폼 벽 옆면 밀기끌기)
+    if(STATE.walls.length){
+      const _wt=STATE.walls[0];
+      assert('EDt1: 벽 thickness set',apply3DEdit({type:'edit',op:'set',kind:'wall',id:_wt.id,floorId:_edAct,patch:{thickness:200}})===true&&_wt.thickness===200);
+    }else assert('EDt1: 벽 thickness set',true);
+    // 문·창 벽 위 슬라이드 (x,y set)
+    if(STATE.openings.length){
+      const _op=STATE.openings[0], _ox=_op.x;
+      assert('EDo1: 개구부 x,y set',apply3DEdit({type:'edit',op:'set',kind:'opening',id:_op.id,floorId:_edAct,patch:{x:_ox+10,y:_op.y}})===true&&_op.x===_ox+10);
+      apply3DEdit({type:'edit',op:'set',kind:'opening',id:_op.id,floorId:_edAct,patch:{x:_ox,y:_op.y}});
+    }else assert('EDo1: 개구부 x,y set',true);
+    // 다각형 면(pts) + 사슬 벽 흡수(absorb) + merge = Ctrl+Z 한 번 (선 L 사슬 닫힘)
+    const _nsP=STATE.spaces.length, _nwP=STATE.walls.length, _hP=STATE.history.length;
+    apply3DEdit({type:'edit',op:'addwall',floorId:_edAct,patch:{x1:40000,y1:40000,x2:44000,y2:40000}});
+    apply3DEdit({type:'edit',op:'addwall',floorId:_edAct,patch:{x1:44000,y1:40000,x2:44000,y2:43000}});
+    assert('EDp1: 사슬 벽 2',STATE.walls.length===_nwP+2);
+    assert('EDp2: addspace pts+absorb — ㄱ자 면 1·벽 5, 사슬 벽 흡수(중복 없음)',
+      apply3DEdit({type:'edit',op:'addspace',floorId:_edAct,patch:{pts:[{x:40000,y:40000},{x:44000,y:40000},{x:44000,y:43000},{x:42000,y:43000},{x:42000,y:41500},{x:40000,y:41500}],absorb:true,merge:3}})===true
+      &&STATE.spaces.length===_nsP+1&&STATE.walls.length===_nwP+6,'spaces +'+(STATE.spaces.length-_nsP)+' walls +'+(STATE.walls.length-_nwP));
+    assert('EDp3: merge=3 → 히스토리 최대 1단계 증가 (50 상한 shift 포함)',STATE.history.length<=Math.min(_hP+1,50)&&STATE.historyIdx===STATE.history.length-1,'hist '+_hP+' → '+STATE.history.length);
+    apply3DEdit({type:'edit',op:'undo'});
+    assert('EDp4: Ctrl+Z 한 번에 사슬+면 모두 취소',STATE.spaces.length===_nsP&&STATE.walls.length===_nwP,'spaces '+STATE.spaces.length+' walls '+STATE.walls.length);
+    apply3DEdit({type:'edit',op:'redo'});
+    assert('EDp5: pts 3개 미만·너무 작은 면 거부',apply3DEdit({type:'edit',op:'addspace',floorId:_edAct,patch:{pts:[{x:0,y:0},{x:1,y:1}]}})===false
+      &&apply3DEdit({type:'edit',op:'addspace',floorId:_edAct,patch:{pts:[{x:0,y:0},{x:100,y:0},{x:100,y:100}]}})===false);
+    // 원(C) → 면
+    const _nsC=STATE.spaces.length;
+    assert('EDc1: addcircle',apply3DEdit({type:'edit',op:'addcircle',floorId:_edAct,patch:{cx:50000,cy:50000,r:1500}})===true&&STATE.spaces.length===_nsC+1);
+    assert('EDc2: r<150 거부',apply3DEdit({type:'edit',op:'addcircle',floorId:_edAct,patch:{cx:0,cy:0,r:100}})===false);
+    const _edF4=addFloor(); switchFloor(_edAct,{silent:true});
+    assert('EDc3: 잠든 층 addcircle = 다각형 스냅샷',apply3DEdit({type:'edit',op:'addcircle',floorId:_edF4.id,patch:{cx:1000,cy:1000,r:800}})===true
+      &&STATE.floors.find(f=>f.id===_edF4.id).data.spaces.length===1);
+    STATE.floors=STATE.floors.filter(f=>f.id!==_edF4.id);renderFloorBar();
+    // save 메시지 = 즉시 자동저장
+    const _ch=(typeof _view3dChannel==='function')?_view3dChannel():null;
+    if(_ch&&_ch.onmessage){
+      let _saved=false; const _bakNow=_autosaveNow; _autosaveNow=function(){_saved=true;};
+      try{ _ch.onmessage({data:{type:'save'}}); }finally{ _autosaveNow=_bakNow; }
+      assert('EDs1: save 메시지 → 즉시 저장',_saved===true);
+    }else assert('EDs1: save 메시지 → 즉시 저장',true);
+    STATE.furniture=STATE.furniture.filter(o=>o.id!=='ed_b1'&&o.id!=='ed_b2');
     // 삭제
     assert('ED9: 삭제',apply3DEdit({type:'edit',op:'delete',kind:'lights',id:'ed_l1',floorId:_edAct})===true
       &&!STATE.lights.some(o=>o.id==='ed_l1'));

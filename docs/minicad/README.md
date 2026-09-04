@@ -109,6 +109,18 @@ UI 표기·대화 모두 "미니폼". 코드 식별자(3d/ 경로·MC3D·명령 
     - extras 두 형태 수용: 정식 [⬇GLB]=`extras.ecorean`, 뷰어 루트 직접 parse=`extras.obj`(meta 포함) — `eco_of` 가 정규화
     - **Blender 5.2 실증**: 외관 iso + 거실 실내 주간/야간 렌더 성공(다운라이트 점등·코브 글로우·창 주야 표현·널결 바닥, 방 8개 자동 인식, 64샘플 ~15초)
     - 명령 예: `"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b -P scripts/blender-glb-render.py -- 도면.glb 거실.png 128 room:거실 night`
+- 2026-09-04 **스케치업 동등화 완료 (인터페이스·도구·이동 컨트롤 전부, 프로토콜 5)** — 대표 지시 "인터페이스 및 모든 도구·이동 컨트롤을 스케치업과 동일하게, 미니캐드 호환 병행":
+  - **선택**: Shift/Ctrl+클릭 추가·제거(`select(g,{toggle})`), **선택 상자**(`boxSelect` — →끌기=완전 포함, ←끌기=걸침 점선 `#selbox.cross`), 더블클릭=방(면+벽) `selectSpaceGroup` / 벽 이웃 `selectWallNeighbors`, 트리플=층 전체, Ctrl+A `selectAll`. 다중 선택 Entity Info 요약(종류별 개수·일괄 회전/잠금/복사/삭제/숨기기), 이동·회전(대표 중심 공전 — ui.js rotate 가 x,y 동반)·페인트·삭제 전부 다중 적용, `sendBatch` → ui.js `_apply3DBatch`(Ctrl+Z 한 번, `histSeq` 로 50 상한과 무관).
+  - **우클릭 메뉴** `showCtx`(#ctxmenu — 개체정보·지우기·숨기기·잠금·회전·방/이웃 선택·전체보기·모두 보이기), Del/Backspace, **Shift+H 숨기기 · 편집▸모두 보이기**(`ST.hidden`), **잠금** op `lock`.
+  - **Ctrl+C/X/V**: `copySel` → `ST.clip`(종류·규격·상대 위치), `pasteClip(ST.lastPtr)` = 마우스 위치에 batch add(인치·elev·w/h·flipped 동반 — `_apply3DAdd` 확장). **Ctrl+S = 평면 저장**(`{type:'save'}` → ui.js `_autosaveNow`), Ctrl+Shift+S=PNG.
+  - **그리기**: L 선 사슬(`ST.op.chain`, 시작점 복귀=면 `addspace {pts,absorb,merge}` — 사슬 벽 흡수·Ctrl+Z 한 번), **C 원**(`addcircle {cx,cy,r}` → 2D `addCircleSpace`, `6s`=다각형), **A 호**(3클릭 → 벽 조각 batch, `arcPts`), **F 오프셋**(`offsetPoly` 안쪽 면), **D 치수 · 문자**(3D 주석 `ST.annots`). 추론: 끝점>원점>교차점>중간점>선/안내선, 픽셀 기준 반경(`mmPerPx`), **Shift=방향 고정**, ←→ 축, **↓ = 가까운 벽에 평행/수직**(`_guideDirAt`), from-점 추론(점선), 50mm 내 닫힘 힌트. VCB: `[x,y]` 절대·`<dx,dy>` 상대·`3000,2000` 사각형·음수=반대.
+  - **줄자 T = 안내선**: 선/중간점에서 시작 → 평행 안내선(숫자=간격), Shift=두 점 안내선, `ST.guides`(점선 0x9A9AFF)·스냅 'guide'·편집▸안내선 삭제.
+  - **VCB 후속 입력**(`vcbPostOn/Enter`): 동작 확정 직후 숫자=되돌려 그 값으로, **x3 · *3 · /3 = 배열 복사**(`arrayCopy` — 외부/내부 배열, `ST.lastMove`).
+  - **문·창 = 벽 위 슬라이드**(`beginSlide`, build3d meta.wall/along → `set {x,y}`), **밀기끌기 벽 옆면 = 두께**(`set {thickness}` 30..600), 회전 도구 2단계(중심 클릭→각도기 `_protractor`), 배율 Shift=비균등.
+  - **카메라**: 궤도 도구 O(좌드래그), 배면/좌/우(7/8/9), **이전/다음 시점**(`camPush/camPrev/camNext`), **평행 투영**(`setOrtho` — OrthographicCamera 교체·`_orthoFit`), Shift+Z 전체.
+  - **표시**: **X-ray**(X — `setXray`, 재질 공유 대비 `material.userData._xr` 에 원본 저장), 태양 시각 슬라이더 `#st-sun`(`setSunT` → 그림자 방향·길이), **태그(레이어)** `#tags`(`TAG_OF`·`ST.tags` → `refreshVisibility`), **아웃라이너** `#outliner`(층>객체, 클릭 선택·더블클릭 확대, 열려 있을 때만 렌더 `_olDirty`), **장면** `#scenes`(localStorage `minicad.3d.scenes` — 시점·모드·투영·야간·천장·X-ray·태양·층).
+  - **단축키 표(?)·메뉴·툴바(19 버튼)·트레이 8 섹션** 갱신. `MC3DVIEW` 는 `get camera()`(카메라 교체 대응) + select/boxSelect/sendBatch/setOrtho/setXray/copySel/pasteClip/addGuide/sceneAdd/… 노출.
+  - 검증: `tests/minicad-3d.cjs`(프로토콜 짝·op 목록·index.html DOM·함수 존재), `?test=1` [ED] +25건(batch/rotate xy/lock/add 규격/thickness/opening xy/addspace pts·absorb·merge/addcircle/save), `cdp-3d.cjs` SKETCHUP 블록(전체선택·상자·우클릭·X-ray·투영·장면·아웃라이너·복사/붙여넣기·단축키). 캐시 `tablet103` / `3d17`.
 `engine.js` 가 전역(stage, container, groups…)을 만들고 tools/ui/touch 가 이름으로 참조 — **include 순서 변경 금지**.
 초기화: `index.html initApp()` → `initKonva()` → `initTools()` → `initUI()` → `initTouch()`.
 

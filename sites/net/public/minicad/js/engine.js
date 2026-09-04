@@ -1072,6 +1072,7 @@ function saveHistory(){
   STATE.history.push(snap);
   if(STATE.history.length>50) STATE.history.shift();
   STATE.historyIdx=STATE.history.length-1;
+  STATE.histSeq=(STATE.histSeq||0)+1; // 2026-09-04: 푸시 횟수 — 미니폼 batch 가 몇 단계를 한 단계로 접을지 센다 (50개 상한과 무관)
   // 2026-08-24 v6.0: 변경 시 자동 저장 (ui.js, 2초 디바운스)
   if(typeof scheduleAutosave==='function') scheduleAutosave();
   // 2026-09-01: 3D 탭이 열려 있으면 300ms 묶음으로 흘려보낸다 (ui.js push3D — 열려 있지 않으면 즉시 반환)
