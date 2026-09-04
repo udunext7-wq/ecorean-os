@@ -247,7 +247,7 @@ function disposeGroup(g){
 function addObjGroup(parent,obj){
   const g=new THREE.Group();
   g.name=obj.kind+':'+(obj.name||obj.id);
-  g.position.set(obj.x*MM,0,obj.y*MM);
+  g.position.set(obj.x*MM,(obj.elev||0)*MM,obj.y*MM); // elev = 바닥에서 띄움 (Z 자유)
   g.rotation.y=-(obj.rot||0)*Math.PI/180;
   if(obj.flip) g.scale.x=-1;
   g.userData.obj=obj;
@@ -648,7 +648,7 @@ function setTool(t){
   const hint=$('hint');
   if(hint) hint.innerHTML={
     select:'<b>선택</b> — 클릭=속성 · 끌면 이동 · <b>Ctrl+끌기=복사</b> · Del=삭제 | Space M Q S P B E T · H팬 Z줌 · Shift+Z 전체',
-    move:'<b>이동</b> — 클릭해 집고 → 옮겨서 → 클릭 확정 · <b>Ctrl=복사</b> · ←→ 축 고정 · <b>숫자=거리(mm)</b> · Esc 취소',
+    move:'<b>이동</b> — 클릭-이동-클릭 · <b>Ctrl=복사</b> · ←→=X/Y 고정 · <b>↑=높이(Z) 고정</b>(위아래로 띄우기) · <b>숫자=거리/높이</b> · Esc 취소',
     rotate:'<b>회전</b> — 객체 클릭 후 좌우로 · 클릭=확정 · 15° 스냅(Shift=자유각) · <b>숫자=각도</b> · Esc 취소',
     scale:'<b>배율</b> — 객체 클릭 후 위아래로 · 클릭=확정 · <b>숫자=배율</b>(예: 1.5) · 가구·기구·설비만',
     line:'<b>선</b> — 클릭-클릭 사슬 · <b>면 위를 가로지르면 면이 나뉨</b> · 빈 곳=벽 · 끝점(초록)/중간점(청록)/선 위(빨강) 스냅 · 숫자=길이 · Esc/더블클릭=끝',
@@ -952,7 +952,7 @@ function commitActive(exact){
 // --- 이동 (Ctrl = 복사, 스케치업과 동일) ---
 function beginMove(g,obj,copy){
   const ent=ST.floorCache[obj.floorId];
-  dragPlane.constant=-(ent?ent.z0*MM:0);
+  dragPlane.constant=-((ent?ent.z0*MM:0)+((obj.elev||0)*MM)); // 띄워진 객체는 그 높이 평면에서 끈다
   ray.ray.intersectPlane(dragPlane,dragPt);
   let tg=g;
   if(copy){ tg=g.clone(true); g.parent.add(tg); }                     // 복사 미리보기 (원본은 그대로)
@@ -962,6 +962,18 @@ function beginMove(g,obj,copy){
 }
 function applyMoveFromEvent(e){
   const op=ST.op; if(!op||op.type!=='move') return;
+  // 2026-09-04: ↑키 = 파란 Z축 고정 — 위아래로 끌어 바닥에서 띄우기 (숫자=정확 높이)
+  if(ST.axisLock==='z'){
+    if(op.zRefY==null){ op.zRefY=e.clientY; op.zBase=(op.elev!=null?op.elev:(op.obj.elev||0)); }
+    const d=Math.round((op.zRefY-e.clientY)*5/10)*10;   // 5mm/px · 10mm 스냅
+    op.elev=Math.max(0,op.zBase+d);
+    op.g.position.y=op.elev*MM+((ST.floorCache[op.obj.floorId]||{z0:0}).z0||0)*MM;
+    op.moved=true; op.zMoved=true;
+    hideSnap();
+    vcbShow('높이(바닥에서)',op.elev,'mm');
+    invalidate(true);
+    return;
+  }
   rayFromEvent(e);
   if(!ray.ray.intersectPlane(dragPlane,dragPt)) return;
   let x=dragPt.x+op.off.x, z=dragPt.z+op.off.z;
@@ -979,6 +991,17 @@ function applyMoveFromEvent(e){
 }
 function commitMove(exact){
   const op=ST.op; if(!op||op.type!=='move') return;
+  if(op.zMoved&&!op.copy){                       // Z 이동 확정 — elev_mm 로 평면 데이터에 저장
+    if(exact!==null&&exact!==undefined) op.elev=Math.max(0,Math.round(exact));
+    const g=op.g,obj=op.obj;
+    const x=Math.round(g.position.x/MM), y=Math.round(g.position.z/MM);
+    obj.elev=op.elev; obj.x=x; obj.y=y;
+    ST.op=null; ST.axisLock=null; vcbHide(); hideSnap(); orbit.enabled=(ST.mode==='orbit');
+    sendEdit('set',obj,{x,y,elev_mm:op.elev});
+    select(g,{silent:true});
+    setStatus(statusLive,'⬆ 높이 '+op.elev+'mm (바닥에서) → 평면 데이터 반영');
+    return;
+  }
   if(exact!==null&&exact!==undefined){          // 입력 거리 — 지금 끌던 방향으로 정확히
     const dx=op.g.position.x-op.orig.x, dz=op.g.position.z-op.orig.z;
     const len=Math.hypot(dx,dz);
@@ -1266,6 +1289,7 @@ function renderProps(obj){
   if(obj.locked){ html+='<div class="p-lock">🔒 잠금된 객체 — 보기만 가능</div>'; props.innerHTML=html; props.style.display='block'; return; }
   if(MOVABLE.has(obj.kind)){
     html+=`<div class="p-row"><label>위치</label><span style="font-size:12px">${Math.round(obj.x)}, ${Math.round(obj.y)} mm</span></div>`;
+    html+=`<div class="p-row"><label>띄움(Z)</label><input type="number" step="10" min="0" data-f="elev_mm" value="${obj.elev||0}"> <span style="font-size:11px">mm</span></div>`;
     if(obj.kind==='light'&&m.inch) html+=`<div class="p-row"><label>인치</label><select data-f="inch">${[2,3,4,5,6].map(i=>`<option value="${i}"${i===m.inch?' selected':''}>${i}"</option>`).join('')}</select></div>`;
     if(m.linear) html+=`<div class="p-row"><label>길이</label><input type="number" step="100" data-f="length_mm" value="${m.linear}"> <span style="font-size:11px">mm</span></div>`;
     html+=`<div class="p-btns"><button class="btn" data-a="rotl" title="반시계 15° (Shift+R)">↺ 15°</button><button class="btn" data-a="rotr" title="시계 15° (R)">↻ 15°</button></div>`;
@@ -1358,8 +1382,9 @@ window.addEventListener('keydown',e=>{
     if(k==='o'){ setTool('select'); return; }        // 스케치업 O=궤도 (선택에서 항상 궤도)
     if(k==='h'){ setTool('pan'); return; }           // 스케치업 H=팬
     if(k==='z'&&!e.shiftKey&&!e.ctrlKey){ setTool('zoom'); return; } // 스케치업 Z=줌
-    if(k==='arrowright'){ if(ST.op&&ST.op.type==='move'){ ST.axisLock=(ST.axisLock==='x')?null:'x'; setStatus(statusLive,'축 고정: '+(ST.axisLock==='x'?'가로(X)':'해제')); e.preventDefault(); return; } }
-    if(k==='arrowleft'){ if(ST.op&&ST.op.type==='move'){ ST.axisLock=(ST.axisLock==='y')?null:'y'; setStatus(statusLive,'축 고정: '+(ST.axisLock==='y'?'세로(Y)':'해제')); e.preventDefault(); return; } }
+    if(k==='arrowright'){ if(ST.op&&ST.op.type==='move'){ ST.axisLock=(ST.axisLock==='x')?null:'x'; setStatus(statusLive,'축 고정: '+(ST.axisLock==='x'?'가로(X·빨강)':'해제')); e.preventDefault(); return; } }
+    if(k==='arrowleft'){ if(ST.op&&ST.op.type==='move'){ ST.axisLock=(ST.axisLock==='y')?null:'y'; setStatus(statusLive,'축 고정: '+(ST.axisLock==='y'?'세로(Y·초록)':'해제')); e.preventDefault(); return; } }
+    if(k==='arrowup'){ if(ST.op&&ST.op.type==='move'){ ST.axisLock=(ST.axisLock==='z')?null:'z'; if(ST.axisLock==='z')ST.op.zRefY=null; setStatus(statusLive,'축 고정: '+(ST.axisLock==='z'?'높이(Z·파랑) — 위아래로 끌어 띄우기, 숫자=정확 높이':'해제')); e.preventDefault(); return; } }
   }
   if(k==='1') setMode('orbit'); if(k==='2') setMode('walk');
   if(k==='3') setView('iso'); if(k==='4') setView('top'); if(k==='5') setView('front'); if(k==='6') setView('side');

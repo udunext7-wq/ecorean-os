@@ -44,6 +44,7 @@ const doc = {
     { id: 'f3', type: 'unknown_thing', x: 7500, y: 2000, angle: 0, spaceId: 'sp2' },     // 라이브러리에 없는 타입 → 규격 기본값 상자
     { id: 'f4', type: 'wardrobe', x: 8500, y: 3500, angle: 0, spaceId: 'sp2' },
     { id: 'f5', type: 'wall_600', x: 500, y: 300, angle: 0, spaceId: 'sp1' },
+    { id: 'f6', type: 'side_table', x: 5200, y: 3500, angle: 0, spaceId: 'sp1', elev_mm: 800 }, // Z 띄움
   ],
   fixtures: [{ id: 'x1', type: 'toilet', x: 500, y: 3500, angle: 0, spaceId: 'sp1' }],
   lights: [
@@ -125,6 +126,7 @@ ck(bed && bed.prims.length === 1 && bed.prims[0].w === 400 && bed.prims[0].h ===
 ck(byId('f4').prims[0].h === 2100 && byId('f4').prims[0].w === 2000, '장롱 2000×600×2100');
 const wc = byId('f5');
 ck(wc.prims[0].z === 1450 && wc.prims[0].h === 700, '상부장 z1450 h700');
+ck(byId('f6').elev === 800 && byId('f1').elev === 0, 'Z 띄움(elev_mm) — f6=800 · 기본 0: ' + byId('f6').elev);
 const toilet = byId('x1');
 ck(toilet && toilet.kind === 'fixture' && toilet.prims.length === 3 && toilet.prims[0].z === 380, '양변기: 탱크+보울+시트');
 

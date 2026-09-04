@@ -5611,7 +5611,7 @@ function apply3DEdit(m){
   const ALLOW={space:['floorMaterial','ceilingMaterial','ceilingHeight_mm','name'],
     wall:['height_mm','finishMaterial'],
     opening:['width_mm','height_mm','sillHeight_mm'],
-    _:['x','y','angle','inch','length_mm','w','h']}; // w/h = 3D 배율(S) — footprint 덮어쓰기
+    _:['x','y','angle','inch','length_mm','w','h','elev_mm']}; // w/h=배율 · elev_mm=바닥에서 띄움(Z 자유)
   const applyTo=bag=>{
     const arr=bag[arrName]; if(!Array.isArray(arr)) return false;
     const idx=arr.findIndex(o=>o&&o.id===m.id); if(idx<0) return false;

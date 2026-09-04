@@ -4919,6 +4919,8 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     // 배율(S) — footprint w/h 덮어쓰기
     assert('ED8d: 배율 w/h set',apply3DEdit({type:'edit',op:'set',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{w:2640,h:1080}})===true
       &&STATE.furniture.find(o=>o.id==='ed_f1').w===2640);
+    assert('EDz1: 높이(elev_mm) set — Z 자유',apply3DEdit({type:'edit',op:'set',kind:'furniture',id:'ed_f1',floorId:_edAct,patch:{elev_mm:850}})===true
+      &&STATE.furniture.find(o=>o.id==='ed_f1').elev_mm===850);
     // 3D 배치 (op:'add')
     const _na=STATE.furniture.length;
     assert('ED8e: add 배치',apply3DEdit({type:'edit',op:'add',kind:'furniture',floorId:_edAct,patch:{type:'sofa2',x:3300,y:3300,angle:90}})===true

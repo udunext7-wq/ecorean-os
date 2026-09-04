@@ -277,7 +277,7 @@ function buildPillar(p,D,spaces){
   if(p.shape==='circle') prims.push(cyl(0,0,0,w/2,H,C.concrete));
   else if(p.shape==='L'){ prims.push(box(0,-h/2+t/2,0,w,t,H,C.concrete)); prims.push(box(-w/2+t/2,0,0,t,h,H,C.concrete)); }
   else prims.push(box(0,0,0,w,h,H,C.concrete));
-  return {id:p.id,kind:'pillar',name:'기둥',x:p.x,y:p.y,rot:num(p.rotation,0),flip:false,prims};
+  return {id:p.id,kind:'pillar',name:'기둥',x:p.x,y:p.y,rot:num(p.rotation,0),flip:false,prims,elev:Math.round(num(p.elev_mm,0))};
 }
 function buildStairs(s,D){
   const st=s.stair||{};
@@ -414,6 +414,7 @@ function buildFurniture(o,def,kind,D,spaces){
     if(/^fridge|^washer|^dryer|^styler/.test(type)) prims.push(box(0,d/2-2,z+H*0.35,w-40,4,H*0.6,C.black,{opacity:0.9}));
   }
   return {id:o.id,kind:kind==='fixtures'?'fixture':'furniture',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,
+    elev:Math.max(0,Math.round(num(o.elev_mm,0))), // 2026-09-04: 바닥에서 띄우는 높이(Z 자유)
     meta:{type,w,d}};
 }
 
@@ -454,6 +455,7 @@ function buildLight(o,def,D,spaces){
   }
   const lz=prims.reduce((m,p)=>p.emissive?Math.min(m,p.z):m,H); // 광원 높이(포인트라이트용)
   return {id:o.id,kind:'light',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,
+    elev:Math.round(num(o.elev_mm,0)),
     meta:{type,inch:o.inch||null,lightZ:Math.max(100,lz-30),on:o.circuitOn!==false,linear:L!==size?L:0}};
 }
 const ELEC_Z={outlet_w:300,outlet_w4:300,outlet_f:0,outlet_220:300,outlet_wp:1100,outlet_usb:300,
@@ -469,7 +471,7 @@ function buildElectric(o,def,D,spaces){
   else if(type==='wallpad') prims=[box(0,-12,z,300,24,200,C.black)];
   else if(type==='outlet_f') prims=[box(0,0,0,size,size,8,C.steel)];
   else prims=[box(0,-8,z,Math.min(size,140)*(type.startsWith('switch')?1:1)+(type==='outlet_w4'?80:0),16,Math.min(size,120),C.white)];
-  return {id:o.id,kind:'electric',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,meta:{type}};
+  return {id:o.id,kind:'electric',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,elev:Math.round(num(o.elev_mm,0)),meta:{type}};
 }
 function buildHvac(o,def,D,spaces){
   const H=ceilAt(o,D,spaces);
@@ -493,7 +495,7 @@ function buildHvac(o,def,D,spaces){
     case 'emerg_bell': prims=[cyl(0,0,1600,Math.min(w,d)/2,40,'#C62828')]; break;
     default: prims=[box(0,0,H-40,w,d,40,C.white)];
   }
-  return {id:o.id,kind:'hvac',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,meta:{type}};
+  return {id:o.id,kind:'hvac',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,elev:Math.round(num(o.elev_mm,0)),meta:{type}};
 }
 
 // ---------------------------------------------------------------------------
