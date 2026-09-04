@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <!--
- ECOREAN MiniCAD 3D 뷰 — Copyright (c) 2026 ECOREAN. All Rights Reserved.
- 2026-09-01: 평면도를 그대로 입체로 (실시간 3D 뷰). BroadcastChannel 로 MiniCAD 와 양방향.
- 2026-09-03 v2: 3D 직접 편집(끌어 이동·회전·삭제·속성 패널 → 평면 역반영), 층별 증분 재조립,
-   필요할 때만 렌더(유휴 시 GPU 0), 시점 프리셋, 주/야, 방 더블클릭 줌. MiniCAD 안 분할 패널로도 열린다.
+ ECOREAN 미니폼(MiniForm) — MiniCAD 3D 모듈. Copyright (c) 2026 ECOREAN. All Rights Reserved.
+ 2026-09-01: 평면도를 그대로 입체로 (실시간 3D). BroadcastChannel 로 MiniCAD 와 양방향.
+ 2026-09-03: 직접 편집·층 적층·증분/유휴 렌더·스케치업식 도구·텍스처·Blender GLB.
+ 2026-09-04: 스케치업 인터페이스 구조 전면 카피 (대표 지시) —
+   메뉴 바(파일·편집·보기·카메라·그리기·도구·창·도움말) + 우측 Default Tray(개체 정보·재질·
+   구성요소·스타일·강사) + Large Tool Set 순서 좌측 툴바 + 축 표시 + Measurements(VCB) + 상태바.
 -->
 <html lang="ko">
 <head>
@@ -19,31 +21,50 @@
   html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:'Inter Tight','Inter','Noto Sans KR',system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
   #view{position:fixed;inset:0}
   #view canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
-  .bar{position:fixed;left:0;right:0;top:0;height:46px;display:flex;align-items:center;gap:5px;padding:0 8px;background:rgba(26,27,46,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);z-index:5;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
-  .bar::-webkit-scrollbar{display:none}
-  .bar .title{font-weight:700;color:var(--gold);margin-right:4px;font-size:14px}
-  .bar .title small{color:var(--mute);font-weight:400;margin-left:6px}
   .btn{appearance:none;border:1px solid var(--line);background:#242640;color:var(--ink);border-radius:8px;padding:6px 9px;font-size:12.5px;cursor:pointer;line-height:1;font-family:inherit;flex:none}
   .btn:hover{border-color:var(--gold)}
   .btn.on{background:var(--gold);color:#1A1B2E;border-color:var(--gold);font-weight:700}
   .btn.sm{padding:6px 7px;font-size:12px}
   .sep{width:1px;height:22px;background:var(--line);margin:0 3px;flex:none}
   .grow{flex:1}
+  /* ===== 스케치업식 메뉴 바 (2026-09-04) ===== */
+  #menubar{position:fixed;left:0;right:0;top:0;height:30px;display:flex;align-items:stretch;gap:0;padding:0 6px;
+    background:#141527;border-bottom:1px solid var(--line);z-index:8;font-size:12.5px}
+  #menubar .mtitle{display:flex;align-items:center;font-weight:800;color:var(--gold);padding:0 10px 0 4px;font-size:13px}
+  .menu{position:relative;display:flex;align-items:center}
+  .menu>button{appearance:none;border:0;background:transparent;color:var(--ink);padding:0 11px;height:100%;cursor:pointer;font-family:inherit;font-size:12.5px}
+  .menu>button:hover,.menu.open>button{background:#2A2C4A}
+  .menu .drop{display:none;position:absolute;left:0;top:30px;min-width:218px;background:#1E2036;border:1px solid var(--line);
+    border-radius:0 0 10px 10px;box-shadow:0 10px 34px rgba(0,0,0,.55);padding:5px;z-index:9}
+  .menu.open .drop{display:block}
+  .drop .mi{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+  .drop .mi:hover{background:#2E3150}
+  .drop .mi .acc{color:var(--mute);font-size:11px;font-family:'JetBrains Mono',monospace}
+  .drop .mi.chk::before{content:'✓ ';color:var(--lime);width:14px}
+  .drop .mi.unchk::before{content:'';display:inline-block;width:14px}
+  .drop hr{border:0;border-top:1px solid var(--line);margin:5px 4px}
+  /* ===== 툴바 (기존) ===== */
+  .bar{position:fixed;left:0;right:0;top:30px;height:44px;display:flex;align-items:center;gap:5px;padding:0 8px;background:rgba(26,27,46,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);z-index:5;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+  .bar::-webkit-scrollbar{display:none}
   #status{font-size:11.5px;color:var(--mute);flex:none}
   #status.live::before{content:'●';color:var(--lime);margin-right:5px}
   #status.off::before{content:'●';color:#666;margin-right:5px}
-  #tip{position:fixed;pointer-events:none;background:rgba(26,27,46,.95);border:1px solid var(--gold);color:var(--ink);padding:5px 9px;border-radius:7px;font-size:12px;display:none;z-index:6;white-space:nowrap}
-  #tip small{color:var(--mute)}
-  #hint{position:fixed;left:12px;bottom:12px;font-size:11.5px;color:var(--mute);background:rgba(26,27,46,.8);border:1px solid var(--line);border-radius:8px;padding:6px 10px;z-index:5;max-width:min(92vw,560px);line-height:1.5}
-  #empty{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:var(--mute);font-size:15px;line-height:1.8;z-index:4;padding:20px}
-  #empty b{color:var(--gold)}
-  #walkpad{position:fixed;right:14px;bottom:14px;display:none;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);gap:6px;z-index:5}
-  #walkpad button{border:1px solid var(--line);background:rgba(36,38,64,.9);color:var(--ink);border-radius:10px;font-size:20px;touch-action:none}
-  #walkpad button:active{background:var(--gold);color:#1A1B2E}
-  /* 2026-09-03: 선택 객체 속성 패널 — 3D 직접 편집 */
-  #props{position:fixed;right:12px;top:56px;width:238px;max-height:calc(100vh - 120px);overflow-y:auto;display:none;z-index:5;
-    background:rgba(26,27,46,.95);border:1px solid var(--line);border-radius:11px;padding:12px 13px;backdrop-filter:blur(8px)}
-  #props h4{margin:0 0 3px;font-size:13.5px;color:var(--gold)}
+  /* ===== Large Tool Set (좌측) ===== */
+  #tools{position:fixed;left:10px;top:84px;display:flex;flex-direction:column;gap:4px;z-index:5}
+  #tools .btn{width:42px;height:38px;font-size:16px;padding:0;text-align:center}
+  #tools .tsep{height:1px;background:var(--line);margin:3px 4px}
+  /* ===== Default Tray (우측 — 스케치업 기본 트레이) ===== */
+  #tray{position:fixed;right:10px;top:84px;bottom:12px;width:254px;z-index:5;display:flex;flex-direction:column;gap:6px;overflow-y:auto;scrollbar-width:thin}
+  body.tray-off #tray{display:none}
+  .tsec{background:rgba(26,27,46,.95);border:1px solid var(--line);border-radius:11px;backdrop-filter:blur(8px);flex:none}
+  .tsec .th{padding:8px 11px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;display:flex;justify-content:space-between}
+  .tsec .th::after{content:'▸';color:var(--mute)}
+  .tsec.open .th::after{content:'▾'}
+  .tsec .tb{display:none;padding:4px 11px 11px;border-top:1px solid var(--line)}
+  .tsec.open .tb{display:block}
+  .tsec .tb{max-height:340px;overflow-y:auto;scrollbar-width:thin}
+  /* 개체 정보 */
+  #props h4{margin:2px 0 3px;font-size:13.5px;color:var(--gold)}
   #props .p-sub{font-size:11px;color:var(--mute);margin-bottom:9px}
   #props .p-row{display:flex;align-items:center;gap:6px;margin:6px 0}
   #props label{font-size:11.5px;color:var(--mute);flex:0 0 62px}
@@ -51,86 +72,220 @@
   #props .p-btns{display:flex;gap:5px;margin-top:9px;flex-wrap:wrap}
   #props .p-btns .btn{flex:1;text-align:center;font-size:12px}
   #props .btn.danger{border-color:var(--orange);color:var(--orange)}
-  #props .p-note{font-size:10.5px;color:var(--mute);margin-top:8px;line-height:1.45}
+  #props .p-note{font-size:10.5px;color:var(--mute);margin-top:6px;line-height:1.45}
   #props .p-lock{color:var(--orange);font-size:11.5px;margin-top:6px}
-  /* 2026-09-03: 스케치업식 도구 바·수치입력(VCB)·페인트 팔레트 */
-  #tools{position:fixed;left:10px;top:56px;display:flex;flex-direction:column;gap:5px;z-index:5}
-  #tools .btn{width:42px;height:40px;font-size:16px;padding:0;text-align:center}
-  #paintpal,#addpal{position:fixed;left:60px;top:56px;width:210px;max-height:calc(100vh - 130px);overflow-y:auto;display:none;z-index:5;
-    background:rgba(26,27,46,.95);border:1px solid var(--line);border-radius:11px;padding:10px;backdrop-filter:blur(8px)}
-  #paintpal .pp-cat,#addpal .pp-cat{font-size:11px;color:var(--gold);font-weight:700;margin:7px 0 4px}
-  #paintpal .pp-cat:first-child,#addpal .pp-cat:first-child{margin-top:0}
-  #paintpal .pp-grid,#addpal .pp-grid{display:flex;flex-direction:column;gap:2px}
-  #paintpal .pp-it,#addpal .pp-it{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid transparent;color:var(--ink);
+  /* 재질·구성요소 목록 */
+  .pp-cat{font-size:11px;color:var(--gold);font-weight:700;margin:7px 0 4px}
+  .pp-grid{display:flex;flex-direction:column;gap:2px}
+  .pp-it{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid transparent;color:var(--ink);
     border-radius:7px;padding:4px 6px;font-size:11.5px;cursor:pointer;text-align:left;font-family:inherit}
-  #paintpal .pp-it:hover,#addpal .pp-it:hover{border-color:var(--line)}
-  #paintpal .pp-it.on,#addpal .pp-it.on{background:#2E3150;border-color:var(--gold)}
-  #paintpal .pp-chip,#addpal .pp-chip{width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.4);flex:none}
+  .pp-it:hover{border-color:var(--line)}
+  .pp-it.on{background:#2E3150;border-color:var(--gold)}
+  .pp-chip{width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.4);flex:none}
+  /* 스타일 패널 */
+  #stylepanel{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding-top:8px}
+  #stylepanel .btn{font-size:11.5px;text-align:left}
+  /* 강사 */
+  #instructor{font-size:11.5px;color:var(--mute);line-height:1.55;padding-top:6px}
+  #instructor b{color:var(--ink)}
+  /* VCB·상태바·기타 */
   #vcb{position:fixed;right:12px;bottom:12px;display:none;align-items:center;gap:7px;z-index:6;
     background:rgba(26,27,46,.95);border:1px solid var(--gold);border-radius:9px;padding:7px 11px}
+  body:not(.tray-off) #vcb{right:274px}
   #vcb .v-l{font-size:11.5px;color:var(--mute)}
   #vcb .v-v{width:84px;background:#242640;border:1px solid var(--line);color:var(--lime);border-radius:6px;padding:4px 7px;
     font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right}
   #vcb .v-u{font-size:11.5px;color:var(--mute)}
-  @media (max-width:640px){ .bar .title small{display:none} #hint{display:none} #props{width:200px} }
+  #tip{position:fixed;pointer-events:none;background:rgba(26,27,46,.95);border:1px solid var(--gold);color:var(--ink);padding:5px 9px;border-radius:7px;font-size:12px;display:none;z-index:6;white-space:nowrap}
+  #tip small{color:var(--mute)}
+  #hint{position:fixed;left:12px;bottom:12px;font-size:11.5px;color:var(--mute);background:rgba(26,27,46,.8);border:1px solid var(--line);border-radius:8px;padding:6px 10px;z-index:5;max-width:min(60vw,520px);line-height:1.5}
+  #empty{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:var(--mute);font-size:15px;line-height:1.8;z-index:4;padding:20px}
+  #empty b{color:var(--gold)}
+  #walkpad{position:fixed;right:14px;bottom:14px;display:none;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);gap:6px;z-index:6}
+  body:not(.tray-off) #walkpad{right:276px}
+  #walkpad button{border:1px solid var(--line);background:rgba(36,38,64,.9);color:var(--ink);border-radius:10px;font-size:20px;touch-action:none}
+  #walkpad button:active{background:var(--gold);color:#1A1B2E}
+  /* 단축키표 모달 */
+  #keysmodal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:20}
+  #keysmodal .kbox{background:#1A1B2E;border:1px solid var(--line);border-radius:14px;padding:20px 24px;max-height:84vh;overflow-y:auto;width:min(92vw,560px)}
+  #keysmodal h3{margin:0 0 10px;color:var(--gold);font-size:15px}
+  #keysmodal table{width:100%;border-collapse:collapse;font-size:12.5px}
+  #keysmodal td{padding:4px 6px;border-bottom:1px solid #262845}
+  #keysmodal td:first-child{font-family:'JetBrains Mono',monospace;color:var(--lime);width:120px}
+  @media (max-width:760px){ #tray{display:none} #hint{display:none} }
 </style>
 </head>
 <body>
 <div id="view"></div>
+
+<!-- ===== 메뉴 바 (스케치업 구조) ===== -->
+<div id="menubar">
+  <span class="mtitle">🧊 미니폼</span>
+  <div class="menu"><button>파일</button><div class="drop">
+    <div class="mi" data-cmd="shot">이미지 내보내기 (PNG)<span class="acc">Ctrl+S</span></div>
+    <div class="mi" data-cmd="glb">3D 모델 내보내기 (GLB — Blender)</div>
+    <div class="mi" data-cmd="json">데이터 내보내기 (JSON)</div>
+    <hr><div class="mi" data-cmd="reload">MiniCAD 에서 도면 다시 받기</div>
+  </div></div>
+  <div class="menu"><button>편집</button><div class="drop">
+    <div class="mi" data-cmd="undo">실행취소<span class="acc">Ctrl+Z</span></div>
+    <div class="mi" data-cmd="redo">재실행<span class="acc">Ctrl+Y</span></div>
+    <hr><div class="mi" data-cmd="del">삭제<span class="acc">Del</span></div>
+    <div class="mi" data-cmd="deselect">선택 해제<span class="acc">Esc</span></div>
+  </div></div>
+  <div class="menu"><button>보기</button><div class="drop">
+    <div class="mi" data-cmd="light" id="mi-light">조명 기구</div>
+    <div class="mi" data-cmd="night" id="mi-night">야간 무드<span class="acc">N</span></div>
+    <div class="mi" data-cmd="ceil" id="mi-ceil">천장<span class="acc">C</span></div>
+    <div class="mi" data-cmd="label" id="mi-label">공간 이름표</div>
+    <div class="mi" data-cmd="shadow" id="mi-shadow">그림자</div>
+    <div class="mi" data-cmd="axes" id="mi-axes">축 표시</div>
+  </div></div>
+  <div class="menu"><button>카메라</button><div class="drop">
+    <div class="mi" data-cmd="orbit">조감 (궤도)<span class="acc">1</span></div>
+    <div class="mi" data-cmd="walk">걷기 (눈높이)<span class="acc">2</span></div>
+    <hr><div class="mi" data-cmd="iso">아이소 전경<span class="acc">3</span></div>
+    <div class="mi" data-cmd="top">평면 (위)<span class="acc">4</span></div>
+    <div class="mi" data-cmd="front">정면<span class="acc">5</span></div>
+    <div class="mi" data-cmd="side">측면<span class="acc">6</span></div>
+    <hr><div class="mi" data-cmd="fit">전체 보기<span class="acc">Shift+Z</span></div>
+  </div></div>
+  <div class="menu"><button>그리기</button><div class="drop">
+    <div class="mi" data-cmd="tool-line">선 (벽)<span class="acc">L</span></div>
+    <div class="mi" data-cmd="tool-rect">사각형 (벽 4면)<span class="acc">R</span></div>
+  </div></div>
+  <div class="menu"><button>도구</button><div class="drop">
+    <div class="mi" data-cmd="tool-select">선택<span class="acc">Space</span></div>
+    <div class="mi" data-cmd="tool-move">이동 / 복사<span class="acc">M · Ctrl</span></div>
+    <div class="mi" data-cmd="tool-rotate">회전<span class="acc">Q</span></div>
+    <div class="mi" data-cmd="tool-scale">배율<span class="acc">S</span></div>
+    <div class="mi" data-cmd="tool-pushpull">밀기끌기<span class="acc">P</span></div>
+    <hr><div class="mi" data-cmd="tool-paint">페인트 (재질)<span class="acc">B</span></div>
+    <div class="mi" data-cmd="tool-erase">지우개<span class="acc">E</span></div>
+    <div class="mi" data-cmd="tool-tape">줄자<span class="acc">T</span></div>
+    <div class="mi" data-cmd="tool-add">구성요소 배치<span class="acc">G</span></div>
+    <hr><div class="mi" data-cmd="tool-pan">팬<span class="acc">H</span></div>
+    <div class="mi" data-cmd="tool-zoom">줌<span class="acc">Z</span></div>
+  </div></div>
+  <div class="menu"><button>창</button><div class="drop">
+    <div class="mi" data-cmd="tray" id="mi-tray">기본 트레이</div>
+    <hr><div class="mi" data-cmd="sec-info">개체 정보</div>
+    <div class="mi" data-cmd="sec-mat">재질</div>
+    <div class="mi" data-cmd="sec-comp">구성요소</div>
+    <div class="mi" data-cmd="sec-style">스타일·표시</div>
+    <div class="mi" data-cmd="sec-instr">강사</div>
+  </div></div>
+  <div class="menu"><button>도움말</button><div class="drop">
+    <div class="mi" data-cmd="keys">단축키 목록<span class="acc">?</span></div>
+  </div></div>
+</div>
+
+<!-- ===== 툴바 ===== -->
 <div class="bar">
-  <span class="title">🧊 미니폼<small id="proj"></small></span>
-  <button class="btn on" id="b-orbit" title="위에서 돌려보기 — 드래그 회전 · 휠 확대 · 우클릭 이동 · 객체는 그냥 끌면 이동 (1)">🛰 조감</button>
-  <button class="btn" id="b-walk" title="사람 눈높이(1.6m)로 걷기 — 드래그 둘러보기 · W A S D 이동 (2)">🚶 걷기</button>
+  <button class="btn on" id="b-orbit" title="조감 — 드래그 회전 · 휠 확대 · 우클릭 팬 (1)">🛰 조감</button>
+  <button class="btn" id="b-walk" title="걷기 — 눈높이 1.6m · W A S D (2)">🚶 걷기</button>
   <span class="sep"></span>
   <span id="floors" style="display:flex;gap:4px"></span>
-  <button class="btn sm" id="v-iso" title="아이소 전경 (3)">⌂</button>
-  <button class="btn sm" id="v-top" title="바로 위에서 (4)">⬓</button>
+  <button class="btn sm" id="v-iso" title="아이소 (3)">⌂</button>
+  <button class="btn sm" id="v-top" title="위 (4)">⬓</button>
   <button class="btn sm" id="v-front" title="정면 (5)">⬒</button>
   <button class="btn sm" id="v-side" title="측면 (6)">◨</button>
   <span class="sep"></span>
   <button class="btn on" id="b-light" title="조명 기구 켜기/끄기">💡</button>
-  <button class="btn" id="b-night" title="낮/밤 무드 — 밤에는 조명이 주인공">🌗</button>
-  <button class="btn" id="b-ceil" title="천장 보기/숨기기 (C)">⬛</button>
+  <button class="btn" id="b-night" title="낮/밤 무드 (N)">🌗</button>
+  <button class="btn" id="b-ceil" title="천장 (C)">⬛</button>
   <button class="btn on" id="b-label" title="공간 이름표">🏷</button>
-  <button class="btn on" id="b-shadow" title="그림자 — 대형 도면은 자동으로 꺼짐">🌤</button>
+  <button class="btn on" id="b-shadow" title="그림자">🌤</button>
   <span class="sep"></span>
-  <button class="btn sm" id="b-shot" title="화면을 PNG 로 저장">📷</button>
-  <button class="btn sm" id="b-glb" title="Blender 용 .glb (2단계 렌더)">⬇GLB</button>
-  <button class="btn sm" id="b-json" title="3D 기본체 목록 JSON">⬇J</button>
+  <button class="btn sm" id="b-shot" title="PNG 저장 (Ctrl+S)">📷</button>
+  <button class="btn sm" id="b-glb" title="Blender 용 .glb">⬇GLB</button>
+  <button class="btn sm" id="b-json" title="3D 데이터 JSON">⬇J</button>
   <span class="grow"></span>
   <span id="status" class="off">MiniCAD 연결 대기</span>
-  <button class="btn sm" id="b-reload" title="MiniCAD 에서 도면을 다시 받는다">↻</button>
+  <button class="btn sm" id="b-reload" title="도면 다시 받기">↻</button>
 </div>
-<div id="props"></div>
+
+<!-- ===== Large Tool Set (스케치업 순서) ===== -->
 <div id="tools">
-  <button class="btn on" data-t="select" title="선택 (Space) — 클릭=속성 · 끌면 이동">➤</button>
-  <button class="btn" data-t="move" title="이동 (M) — 클릭해 집고, 옮겨서 다시 클릭 · ←→ 축 고정 · 숫자=mm">✥</button>
-  <button class="btn" data-t="rotate" title="회전 (Q) — 클릭 후 좌우로, 클릭=확정 · 숫자=° · Shift=자유각">↻</button>
-  <button class="btn" data-t="scale" title="배율 (S) — 가구를 클릭 후 위아래로 · 숫자=배율">⤢</button>
-  <button class="btn" data-t="line" title="선 (L) — 클릭-클릭으로 벽을 이어 그림 · 숫자=길이 · Esc/더블클릭=끝">╱</button>
-  <button class="btn" data-t="rect" title="사각형 (R) — 두 모서리 클릭 = 벽 4면">▭</button>
-  <button class="btn" data-t="pushpull" title="밀기끌기 (P) — 벽·천장을 클릭해 위아래로 · 숫자=mm · 더블클릭=직전 값 반복">⇕</button>
-  <button class="btn" data-t="paint" title="페인트 (B) — 재질 고르고 벽/바닥/천장 클릭 (견적에도 반영)">🪣</button>
-  <button class="btn" data-t="erase" title="지우개 (E) — 클릭=삭제">🧽</button>
-  <button class="btn" data-t="tape" title="줄자 (T) — 두 점 거리 측정">📏</button>
-  <button class="btn" data-t="pan" title="팬 (H) — 끌어서 화면 이동">🖐</button>
-  <button class="btn" data-t="zoom" title="줌 (Z) — 위아래로 끌어 확대/축소 · Shift+Z=전체">🔍</button>
-  <button class="btn" data-t="add" title="배치 (G) — 라이브러리에서 골라 바닥 클릭 · R=회전 · Esc=끝">➕</button>
+  <button class="btn on" data-t="select" title="선택 (Space) — 클릭=속성 · 끌면 이동 · Ctrl=복사">➤</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="line" title="선 (L) — 클릭-클릭 벽 그리기 · 숫자=길이 · Esc/더블클릭=끝">╱</button>
+  <button class="btn" data-t="rect" title="사각형 (R) — 두 모서리 = 벽 4면">▭</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="move" title="이동 (M) — 클릭-이동-클릭 · Ctrl=복사 · ←→ 축 고정">✥</button>
+  <button class="btn" data-t="pushpull" title="밀기끌기 (P) — 벽·천장 높이 · 더블클릭=반복">⇕</button>
+  <button class="btn" data-t="rotate" title="회전 (Q) — 15° 스냅 · Shift=자유각">↻</button>
+  <button class="btn" data-t="scale" title="배율 (S) — 가구·기구·설비">⤢</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="tape" title="줄자 (T) — 두 점 거리">📏</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="paint" title="페인트 (B) — 재질 골라 면 클릭">🪣</button>
+  <button class="btn" data-t="erase" title="지우개 (E)">🧽</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="add" title="구성요소 배치 (G) — 골라서 바닥 클릭 · R=회전">➕</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="pan" title="팬 (H)">🖐</button>
+  <button class="btn" data-t="zoom" title="줌 (Z) · Shift+Z=전체">🔍</button>
 </div>
-<div id="addpal"></div>
-<div id="paintpal"></div>
+
+<!-- ===== Default Tray ===== -->
+<div id="tray">
+  <div class="tsec open" data-sec="info"><div class="th">개체 정보</div><div class="tb" id="props"></div></div>
+  <div class="tsec" data-sec="mat"><div class="th">재질</div><div class="tb" id="paintpal"></div></div>
+  <div class="tsec" data-sec="comp"><div class="th">구성요소</div><div class="tb" id="addpal"></div></div>
+  <div class="tsec open" data-sec="style"><div class="th">스타일 · 표시</div><div class="tb"><div id="stylepanel">
+    <button class="btn" id="st-light">💡 조명</button>
+    <button class="btn" id="st-night">🌗 야간</button>
+    <button class="btn" id="st-ceil">⬛ 천장</button>
+    <button class="btn" id="st-label">🏷 이름표</button>
+    <button class="btn" id="st-shadow">🌤 그림자</button>
+    <button class="btn" id="st-axes">⊹ 축</button>
+  </div></div></div>
+  <div class="tsec open" data-sec="instr"><div class="th">강사</div><div class="tb" id="instructor"></div></div>
+</div>
+
 <div id="vcb"><span class="v-l">이동</span><input class="v-v" inputmode="decimal" aria-label="수치 입력"><span class="v-u">mm</span></div>
 <div id="tip"></div>
-<div id="hint"><b>스케치업식:</b> Space 선택 · <b>L 선(벽 그리기)</b> · R 사각형 · M 이동(Ctrl=복사) · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · H 팬 · Z 줌 | <b>숫자=정확한 값</b> · Esc 취소 · Shift+Z 전체 | Ctrl+Z 실행취소</div>
+<div id="hint"><b>스케치업식:</b> Space 선택 · L 선 · R 사각형 · M 이동(Ctrl=복사) · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · G 배치 · H 팬 · Z 줌 | 숫자=정확값 · Esc 취소 · ?=단축키표</div>
 <div id="empty">아직 받은 도면이 없습니다.<br>MiniCAD 창에서 <b>🧊 미니폼</b> 버튼을 누르거나 명령창에 <b>3d</b> 를 입력하세요.<br><small>열어 두면 평면을 고칠 때마다 바로 반영되고, 여기서 고치면 평면에 반영됩니다.</small></div>
 <div id="walkpad">
   <button data-k="q">⇧</button><button data-k="w">▲</button><button data-k="e">⇩</button>
   <button data-k="a">◀</button><button data-k="s">▼</button><button data-k="d">▶</button>
 </div>
-<script src="../js/data.js?v=3d9"></script>
-<script src="../js/library.js?v=3d9"></script>
-<script src="build3d.js?v=3d9"></script>
+
+<!-- ===== 단축키표 ===== -->
+<div id="keysmodal"><div class="kbox">
+  <h3>미니폼 단축키 (스케치업과 동일)</h3>
+  <table>
+    <tr><td>Space</td><td>선택</td></tr>
+    <tr><td>L</td><td>선 — 벽 그리기 (숫자=길이, 5° 직교 스냅, Shift=강제 직교)</td></tr>
+    <tr><td>R</td><td>사각형 — 벽 4면</td></tr>
+    <tr><td>M</td><td>이동 (Ctrl=복사, ←→=축 고정, 숫자=거리)</td></tr>
+    <tr><td>Q</td><td>회전 (15° 스냅, Shift=자유각, 숫자=각도)</td></tr>
+    <tr><td>S</td><td>배율 (숫자=배율)</td></tr>
+    <tr><td>P</td><td>밀기끌기 — 벽·천장 높이 (숫자=mm, 더블클릭=직전 값 반복)</td></tr>
+    <tr><td>B</td><td>페인트 — 재질</td></tr>
+    <tr><td>E</td><td>지우개</td></tr>
+    <tr><td>T</td><td>줄자</td></tr>
+    <tr><td>G</td><td>구성요소 배치 (R=회전)</td></tr>
+    <tr><td>O / H / Z</td><td>궤도 / 팬 / 줌</td></tr>
+    <tr><td>Shift+Z</td><td>전체 보기 (Zoom Extents)</td></tr>
+    <tr><td>1 / 2</td><td>조감 / 걷기</td></tr>
+    <tr><td>3 4 5 6</td><td>아이소 · 위 · 정면 · 측면</td></tr>
+    <tr><td>N / C</td><td>야간 무드 / 천장</td></tr>
+    <tr><td>Ctrl+Z / Y</td><td>실행취소 / 재실행 (평면과 한 몸)</td></tr>
+    <tr><td>Ctrl+S</td><td>PNG 저장</td></tr>
+    <tr><td>Del</td><td>삭제</td></tr>
+    <tr><td>Esc</td><td>취소 · 선택 해제</td></tr>
+    <tr><td>W A S D · Q/E</td><td>걷기 이동 · 위/아래</td></tr>
+  </table>
+  <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
+</div></div>
+
+<script src="../js/data.js?v=3d10"></script>
+<script src="../js/library.js?v=3d10"></script>
+<script src="build3d.js?v=3d10"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d9"></script>
+<script type="module" src="view3d.js?v=3d10"></script>
 </body>
 </html>

@@ -91,6 +91,7 @@ const ST={
   // 2026-09-03 스케치업식 도구: select|move|rotate|pushpull|paint|erase|tape
   tool:'select', op:null, axisLock:null,
   paint:{cat:'wall',code:'WP_SILK'},
+  axes:true,          // 2026-09-04 스케치업식 축 표시 (X빨강·평면Y초록·높이 파랑)
   walk:{yaw:0,pitch:0,keys:{},eye:1.6,speed:2.2},
   lastDocAt:0,
 };
@@ -312,10 +313,31 @@ function build(doc){
   sun.position.set(cx+span*0.5,span*0.9+z0*MM+6,cz+span*0.35);
   sun.target.position.set(cx,0,cz);
   const sc=sun.shadow.camera; sc.left=-span*0.8; sc.right=span*0.8; sc.top=span*0.8; sc.bottom=-span*0.8; sc.near=0.5; sc.far=span*3+z0*MM+20; sc.updateProjectionMatrix();
-  $('proj').textContent=project?' · '+project:'';
+  const projEl=$('proj'); if(projEl) projEl.textContent=project?' · '+project:'';
   $('empty').style.display='none';
+  buildAxes();
   invalidate(true);
 }
+// --- 축 표시 (스케치업 R/G/B) — X=빨강, 평면 Y=초록, 높이=파랑 ---
+let axesGrp=null;
+function buildAxes(){
+  if(axesGrp){ scene.remove(axesGrp); axesGrp.traverse(o=>{if(o.geometry)o.geometry.dispose();}); }
+  axesGrp=new THREE.Group(); axesGrp.name='axes';
+  const b=ST.built?ST.built.bounds:{minX:-5000,minY:-5000,maxX:5000,maxY:5000};
+  const S=Math.max(b.maxX-b.minX,b.maxY-b.minY,4000)*MM*0.9+3;
+  const mk=(a,c,col)=>{
+    const g=new THREE.BufferGeometry().setFromPoints([a,c]);
+    const l=new THREE.Line(g,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0.55}));
+    axesGrp.add(l);
+  };
+  const y=0.005;
+  mk(new THREE.Vector3(-S,y,0),new THREE.Vector3(S,y,0),0xE24C4C);   // X 빨강
+  mk(new THREE.Vector3(0,y,-S),new THREE.Vector3(0,y,S),0x4CAF50);   // 평면 Y 초록
+  mk(new THREE.Vector3(0,0,0),new THREE.Vector3(0,S*0.6,0),0x4C7DE2);// 높이 파랑
+  axesGrp.visible=ST.axes;
+  scene.add(axesGrp);
+}
+function setAxes(on){ ST.axes=on; if(axesGrp) axesGrp.visible=on; refreshStylePanel(); invalidate(); }
 function rebuildPickables(){
   ST.pickables=[];
   ST.root&&ST.root.traverse(o=>{ if(o.isMesh&&o.userData.obj&&o.userData.obj.kind!=='slab') ST.pickables.push(o); });
@@ -596,8 +618,8 @@ function setTool(t){
   clearGhost();
   ST.tool=t;
   document.querySelectorAll('#tools .btn').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  const pal=$('paintpal'); if(pal) pal.style.display=(t==='paint')?'block':'none';
-  const apal=$('addpal'); if(apal) apal.style.display=(t==='add')?'block':'none';
+  if(t==='paint') openTraySec('mat');    // 트레이(우측)의 재질 패널 열기 — 스케치업 Default Tray
+  if(t==='add') openTraySec('comp');
   if(t==='add'&&ST.add&&ST.add.type) makeGhost();
   // 스케치업식 카메라 도구: H 팬 / Z 줌 은 좌클릭 드래그를 그 동작으로
   orbit.mouseButtons.LEFT=(t==='pan')?THREE.MOUSE.PAN:(t==='zoom')?THREE.MOUSE.DOLLY:THREE.MOUSE.ROTATE;
@@ -618,8 +640,9 @@ function setTool(t){
     tape:'<b>줄자</b> — 두 점 클릭 = 거리(mm) · Esc 초기화',
     pan:'<b>팬</b> — 끌어서 화면 이동 (우클릭 드래그와 같음)',
     zoom:'<b>줌</b> — 위아래로 끌어 확대/축소 (휠과 같음)',
-    add:'<b>배치</b> — 왼쪽 목록에서 골라 바닥 클릭 · R=회전 · 계속 배치 · Esc=끝 (평면·견적 반영)',
+    add:'<b>배치</b> — 오른쪽 구성요소에서 골라 바닥 클릭 · R=회전 · 계속 배치 · Esc=끝 (평면·견적 반영)',
   }[t]||'';
+  const ins=$('instructor'); if(ins&&hint) ins.innerHTML=hint.innerHTML; // 강사 패널(스케치업 Instructor)
 }
 // --- 배치 (➕) — 3D 에서 라이브러리 객체를 새로 놓는다 ---
 let _ghost=null;
@@ -671,6 +694,7 @@ function renderAddPal(){
   el.querySelectorAll('.pp-it').forEach(b=>{
     b.onclick=()=>{
       const k=b.dataset.k,t=b.dataset.type;
+      if(ST.tool!=='add') setTool('add'); // 스케치업: 구성요소 고르면 배치 도구
       const TBL={furniture:LIBS.FURNITURE_LIB,fixtures:LIBS.FIXTURE_LIB,lights:LIBS.LIGHT_LIB,electric:LIBS.ELECTRIC_LIB,hvac:LIBS.HVAC_FIRE_LIB}[k];
       ST.add={kind:k,type:t,def:TBL&&TBL[t],rot:(ST.add&&ST.add.rot)||0,ghost:null,fid:null};
       renderAddPal(); makeGhost();
@@ -918,7 +942,7 @@ function renderPaintPal(){
   const cats=[['wall','벽 마감',MATS.WALL],['floor','바닥재',MATS.FLOOR],['ceil','천장재',MATS.CEIL]];
   pal.innerHTML=cats.map(([cat,label,TBL])=>TBL?('<div class="pp-cat">'+label+'</div><div class="pp-grid">'+
     Object.entries(TBL).map(([k,v])=>'<button class="pp-it'+((ST.paint.cat===cat&&ST.paint.code===k)?' on':'')+'" data-cat="'+cat+'" data-code="'+k+'"><span class="pp-chip" style="background:'+(MC3D.WALL_COLORS[k]||MC3D.FLOOR_COLORS[k]||'#B9B2A6')+'"></span>'+(v.name||k)+'</button>').join('')+'</div>'):'').join('');
-  pal.querySelectorAll('.pp-it').forEach(b=>{ b.onclick=()=>{ ST.paint={cat:b.dataset.cat,code:b.dataset.code}; renderPaintPal(); }; });
+  pal.querySelectorAll('.pp-it').forEach(b=>{ b.onclick=()=>{ ST.paint={cat:b.dataset.cat,code:b.dataset.code}; renderPaintPal(); if(ST.tool!=='paint') setTool('paint'); }; }); // 스케치업: 재질 고르면 페인트 도구
 }
 function doPaint(hit){
   const obj=hit.object.userData.obj; if(!obj) return;
@@ -1074,7 +1098,7 @@ function matOptions(TBL,cur){
   return Object.entries(TBL).map(([k,v])=>`<option value="${k}"${k===cur?' selected':''}>${v.name||k}</option>`).join('');
 }
 function renderProps(obj){
-  if(!obj){ props.style.display='none'; props.innerHTML=''; return; }
+  if(!obj){ props.innerHTML='<div class="p-note">객체를 클릭하면 여기서 정보·수정 (스케치업 Entity Info)</div>'; return; } // 트레이 상주
   const m=obj.meta||{};
   let html=`<h4>${obj.name||obj.kind}</h4><div class="p-sub">${obj.floorName||''}${obj.floorName?' · ':''}${m.type||obj.kind}</div>`;
   if(obj.locked){ html+='<div class="p-lock">🔒 잠금된 객체 — 보기만 가능</div>'; props.innerHTML=html; props.style.display='block'; return; }
@@ -1138,6 +1162,8 @@ window.addEventListener('keydown',e=>{
     if(chan) chan.postMessage({type:'edit',op:(k==='y'||e.shiftKey)?'redo':'undo'});
     e.preventDefault(); return;
   }
+  if((e.ctrlKey||e.metaKey)&&k==='s'){ screenshot(); e.preventDefault(); return; } // Ctrl+S = PNG 저장
+  if(e.key==='?'){ showKeys(true); e.preventDefault(); return; }                    // ? = 단축키표
   // 동작 중 숫자 입력 → VCB 로 (스케치업 수치 입력)
   if(ST.op&&ST.op.type!=='tape'&&/^[0-9.\-]$/.test(e.key)){
     const i=vcb&&vcb.querySelector('.v-v');
@@ -1145,7 +1171,12 @@ window.addEventListener('keydown',e=>{
     return;
   }
   if(e.key==='Enter'&&ST.op){ commitActive(vcbTyped()); return; }
-  if(k==='escape'){ if(ST.op) cancelOp(); else if(ST.tool==='add') setTool('select'); else select(null); return; }
+  if(k==='escape'){
+    const km=$('keysmodal');
+    if(km&&km.style.display==='flex'){ showKeys(false); return; }
+    if(document.querySelector('.menu.open')){ closeMenus(); return; }
+    if(ST.op) cancelOp(); else if(ST.tool==='add') setTool('select'); else select(null); return;
+  }
   ST.walk.keys[k]=true;
   if(ST.mode==='orbit'){
     if(k===' '){ setTool('select'); e.preventDefault(); return; }
@@ -1283,6 +1314,85 @@ document.querySelectorAll('#tools .btn').forEach(b=>{ b.addEventListener('click'
 renderPaintPal();
 renderAddPal();
 
+// ===== 2026-09-04 스케치업 인터페이스: 메뉴 바 · Default Tray · 스타일 패널 · 단축키표 =====
+function openTraySec(name){
+  document.body.classList.remove('tray-off');
+  const sec=document.querySelector('.tsec[data-sec="'+name+'"]');
+  if(sec){ sec.classList.add('open'); sec.scrollIntoView({block:'nearest'}); }
+  refreshStylePanel();
+}
+function setTray(on){ document.body.classList.toggle('tray-off',!on); refreshStylePanel(); invalidate(); }
+function refreshStylePanel(){
+  const set=(id,on)=>{ const el=$(id); if(el) el.classList.toggle('on',!!on); };
+  set('st-light',ST.lightsOn); set('st-night',ST.night); set('st-ceil',ST.ceil[ST.mode]);
+  set('st-label',ST.labels); set('st-shadow',ST.shadows); set('st-axes',ST.axes);
+  const mi=(id,on)=>{ const el=$(id); if(el){ el.classList.toggle('chk',!!on); el.classList.toggle('unchk',!on); } };
+  mi('mi-light',ST.lightsOn); mi('mi-night',ST.night); mi('mi-ceil',ST.ceil[ST.mode]);
+  mi('mi-label',ST.labels); mi('mi-shadow',ST.shadows); mi('mi-axes',ST.axes);
+  mi('mi-tray',!document.body.classList.contains('tray-off'));
+}
+function toggleCeil(){ ST.ceil[ST.mode]=!ST.ceil[ST.mode]; refreshVisibility(); const b=$('b-ceil'); if(b) b.classList.toggle('on',ST.ceil[ST.mode]); }
+function toggleLabels(){ ST.labels=!ST.labels; refreshVisibility(); const b=$('b-label'); if(b) b.classList.toggle('on',ST.labels); }
+function showKeys(on){ const m=$('keysmodal'); if(m) m.style.display=on?'flex':'none'; }
+function closeMenus(){ document.querySelectorAll('.menu.open').forEach(m=>m.classList.remove('open')); }
+function menuCmd(cmd){
+  if(cmd.startsWith('tool-')){ setTool(cmd.slice(5)); return; }
+  switch(cmd){
+    case 'shot': screenshot(); break;
+    case 'glb': exportGLB(); break;
+    case 'json': exportJSON(); break;
+    case 'reload': if(chan) chan.postMessage({type:'hello',at:0}); loadStored(); break;
+    case 'undo': if(chan) chan.postMessage({type:'edit',op:'undo'}); break;
+    case 'redo': if(chan) chan.postMessage({type:'edit',op:'redo'}); break;
+    case 'del': deleteSelected3D(); break;
+    case 'deselect': select(null); break;
+    case 'light': setLights(!ST.lightsOn); break;
+    case 'night': setNight(!ST.night); break;
+    case 'ceil': toggleCeil(); break;
+    case 'label': toggleLabels(); break;
+    case 'shadow': setShadows(!ST.shadows); break;
+    case 'axes': setAxes(!ST.axes); break;
+    case 'orbit': setMode('orbit'); break;
+    case 'walk': setMode('walk'); break;
+    case 'iso': case 'top': case 'front': case 'side': setView(cmd); break;
+    case 'fit': fitView(); break;
+    case 'tray': setTray(document.body.classList.contains('tray-off')); break;
+    case 'sec-info': openTraySec('info'); break;
+    case 'sec-mat': openTraySec('mat'); break;
+    case 'sec-comp': openTraySec('comp'); break;
+    case 'sec-style': openTraySec('style'); break;
+    case 'sec-instr': openTraySec('instr'); break;
+    case 'keys': showKeys(true); break;
+  }
+  refreshStylePanel();
+}
+document.querySelectorAll('#menubar .menu>button').forEach(btn=>{
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const m=btn.parentElement, was=m.classList.contains('open');
+    closeMenus(); if(!was) m.classList.add('open');
+  });
+  btn.addEventListener('mouseenter',()=>{ // 스케치업: 메뉴 하나 열려 있으면 호버로 전환
+    if(document.querySelector('.menu.open')){ closeMenus(); btn.parentElement.classList.add('open'); }
+  });
+});
+document.querySelectorAll('#menubar .mi').forEach(mi=>{
+  mi.addEventListener('click',e=>{ e.stopPropagation(); closeMenus(); menuCmd(mi.dataset.cmd); });
+});
+document.addEventListener('click',()=>closeMenus());
+document.querySelectorAll('.tsec .th').forEach(th=>{
+  th.addEventListener('click',()=>{ th.parentElement.classList.toggle('open'); });
+});
+const _stWire={'st-light':()=>setLights(!ST.lightsOn),'st-night':()=>setNight(!ST.night),'st-ceil':toggleCeil,
+  'st-label':toggleLabels,'st-shadow':()=>setShadows(!ST.shadows),'st-axes':()=>setAxes(!ST.axes)};
+Object.entries(_stWire).forEach(([id,fn])=>{ const b=$(id); if(b) b.onclick=()=>{ fn(); refreshStylePanel(); }; });
+const _kc=$('keys-close'); if(_kc) _kc.onclick=()=>showKeys(false);
+const _bc2=$('b-ceil'); if(_bc2) _bc2.onclick=toggleCeil;      // 툴바 천장/이름표도 공용 토글로 일원화
+const _bl2=$('b-label'); if(_bl2) _bl2.onclick=toggleLabels;
+renderProps(null);
+setTool('select');            // 강사·커서·상태 초기화
+refreshStylePanel();
+
 window.addEventListener('resize',()=>{
   camera.aspect=view.clientWidth/view.clientHeight; camera.updateProjectionMatrix();
   renderer.setSize(view.clientWidth,view.clientHeight);
@@ -1304,6 +1414,7 @@ connect();
 if(!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
 // 테스트·디버그 훅
 window.MC3DVIEW={ST,scene,camera,renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
-  sendEdit,rotateSelected,deleteSelected3D,setTool,commitActive,cancelOp,
+  sendEdit,rotateSelected,deleteSelected3D,setTool,commitActive,cancelOp,menuCmd,openTraySec,setAxes,
+  axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   objCount:()=>{let n=0;ST.root&&ST.root.children.forEach(fg=>{n+=fg.children.length;});return n;}};
