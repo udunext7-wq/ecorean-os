@@ -748,6 +748,8 @@ function snap3(fid,p){
   const grid={x:Math.round(p.x/10)*10,y:Math.round(p.y/10)*10,kind:'grid'};
   if(!sd) return grid;
   let best=null;
+  // 원점(0,0) 기준점 스냅 — 끝점과 같은 우선순위 (2026-09-04 대표 지시)
+  {const d0=Math.hypot(p.x,p.y); if(d0<=180) best={x:0,y:0,d:d0,kind:'origin'};}
   sd.verts.forEach(v=>{const d=Math.hypot(v.x-p.x,v.y-p.y); if(d<=180&&(!best||d<best.d)) best={x:v.x,y:v.y,d,kind:'endpoint'};});
   if(!best) sd.walls.forEach(w=>{const mx=(w.x1+w.x2)/2,my=(w.y1+w.y2)/2;const d=Math.hypot(mx-p.x,my-p.y); if(d<=160&&(!best||d<best.d)) best={x:mx,y:my,d,kind:'midpoint'};});
   if(!best){
@@ -757,8 +759,8 @@ function snap3(fid,p){
   }
   return best?{x:Math.round(best.x),y:Math.round(best.y),kind:best.kind}:grid;
 }
-const SNAP_COL={endpoint:0x2FA84F,midpoint:0x35C2CF,edge:0xE24C4C};
-const SNAP_NAME={endpoint:'끝점',midpoint:'중간점',edge:'선 위'};
+const SNAP_COL={endpoint:0x2FA84F,midpoint:0x35C2CF,edge:0xE24C4C,origin:0x4C7DE2};
+const SNAP_NAME={endpoint:'끝점',midpoint:'중간점',edge:'선 위',origin:'원점(0,0)'};
 let snapMk=null;
 function showSnap(s,z0){
   if(s.kind==='grid'){ hideSnap(); return; }

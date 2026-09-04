@@ -5031,6 +5031,12 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     STATE.showGrid=false;drawGrid();
     assert('AX5: 그리드를 꺼도 기준점은 남는다',bgLayer.find('.axis').length>=3);
     STATE.showGrid=_gBak;drawGrid();
+    // 원점 스냅 — 2D 도 (0,0) 에 흡착
+    const _sBak=STATE.snap.endpoint,_cBak=STATE.ctrlPressed;
+    STATE.snap.endpoint=true;STATE.ctrlPressed=false;
+    const _r0=snapToEndpoint({x:40,y:-30});
+    assert('AX6: 원점(0,0) 스냅',_r0.snapped===true&&_r0.pt.x===0&&_r0.pt.y===0,JSON.stringify(_r0.pt));
+    STATE.snap.endpoint=_sBak;STATE.ctrlPressed=_cBak;
   }catch(e){
     assert('AX: 좌표축 테스트 예외 없음',false,e.message);
   }

@@ -66,6 +66,7 @@ UI 표기·대화 모두 "미니폼". 코드 식별자(3d/ 경로·MC3D·명령 
 - **점·선·면 스냅(추론)**: `snap3` — 끝점(초록 ≤180mm) > 중간점(청록 ≤160) > 선 위(빨강 ≤120) > 10mm 격자. 스냅 마커 구체 + VCB 라벨에 스냅 이름. 스냅이 직교 추론보다 우선(스케치업과 동일). 데이터는 build 때 층별 `ST.snapData`(verts/walls/spaces/stats).
 - **Entity Info 그룹 요약**: 면 선택 시 "그룹: 면 1 · 선(벽) N · 배치 N" (snapData.stats).
 - 스모크: snapF=2·snapEnd=endpoint·snapSplit=공간id·snapWall=null. 테스트 [EDf] 5건(면 생성/분할/각 면 벽 소유/잠든 층).
+- 2026-09-04 원점 기준점: 2D drawGrid 에 X빨강/Y초록 축선+파란 원점 링(#axis-*, 그리드 off 유지·인쇄 제외) + **양쪽 원점(0,0) 스냅** — 2D snapToEndpoint 에 원점 후보(끝점과 동급), 미니폼 snap3 kind 'origin'(파랑 마커 '원점(0,0)'). 테스트 [AX] 6건·스모크 snapOrg.
 - 2026-09-04 사각형 UX(대표 피드백): 호버 스냅 마커(클릭 전), 첫 점 고정 구슬(startMk), 크기=반투명 면 고스트, **치수 입력 `가로,세로`**(vcbPair, 끌던 방향 부호), **생성 딜레이 제거** — 3D 발 편집은 `push3D(true)` 즉시 회신 + 낙관적 고스트(pendingG, 다음 build 때 실물 교체). E2E cdp-face 가 msPlan(평면 반영)/msRound(실물 교체) 실측.
 
 ### 3D v2 — 직접 편집·한 창 분할·증분/유휴 렌더 (2026-09-03)

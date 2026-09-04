@@ -143,6 +143,8 @@ function snapToEndpoint(mm,excludeIds){
   const _skip=id=>!!(_ex&&id&&_ex.has(id));
   const threshold=Math.max(300,snapRadiusMm()); // 2026-08-19: 터치·줌아웃 시 반경 확대 (마우스 100%에선 기존 300mm 유지)
   let nearest=null,minD=threshold;
+  // 2026-09-04 대표 지시: 원점(0,0) 기준점에도 스냅 — 미니폼 좌표축과 동일 기준
+  {const d0=Math.hypot(mm.x,mm.y); if(d0<minD){minD=d0;nearest={x:0,y:0};}}
   // 공간 폴리곤 점
   STATE.spaces.forEach(s=>{if(_skip(s.id))return;s.polygon.forEach(p=>{
     const dx=p.x-mm.x,dy=p.y-mm.y;
