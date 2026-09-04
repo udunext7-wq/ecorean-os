@@ -694,7 +694,10 @@ function ghostFollow(e){
   rayFromEvent(e);
   if(!ray.ray.intersectPlane(dragPlane,dragPt)) return;
   a.fid=fid;
-  a.ghost.position.set(Math.round(dragPt.x/MM/10)*10*MM,z0,Math.round(dragPt.z/MM/10)*10*MM);
+  // 배치 고스트도 점·선·원점 스냅 (2026-09-04)
+  const s=snap3(fid,{x:dragPt.x/MM,y:dragPt.z/MM},z0);
+  if(s.kind!=='grid') showSnap(s,z0); else hideSnap();
+  a.ghost.position.set(s.x*MM,z0,s.y*MM);
   a.ghost.visible=true;
   invalidate();
 }
@@ -743,17 +746,25 @@ function segIntersect(a,b,c,d){
   const d1=s(c,d,a),d2=s(c,d,b),d3=s(a,b,c),d4=s(a,b,d);
   return ((d1>0&&d2<0)||(d1<0&&d2>0))&&((d3>0&&d4<0)||(d3<0&&d4>0));
 }
-function snap3(fid,p){
+function snap3(fid,p,z0m){
   const sd=ST.snapData[fid];
   const grid={x:Math.round(p.x/10)*10,y:Math.round(p.y/10)*10,kind:'grid'};
   if(!sd) return grid;
+  // 2026-09-04: 허용 반경을 화면 픽셀 기준으로 (스케치업식) — 줌을 빼도 14px 안이면 잡힌다
+  //  종전 mm 고정(180)은 줌아웃 시 몇 px 로 쪼그라들어 "스냅이 안 잡힌다" 체감의 원인
+  const wp=new THREE.Vector3(p.x*MM,z0m||0,p.y*MM);
+  const dist=camera.position.distanceTo(wp);
+  const mmpp=(2*dist*Math.tan(camera.fov*Math.PI/360))/Math.max(1,renderer.domElement.clientHeight)/MM;
+  const T_END=Math.min(2500,Math.max(60,14*mmpp));
+  const T_MID=Math.min(2200,Math.max(50,12*mmpp));
+  const T_EDGE=Math.min(1800,Math.max(40,10*mmpp));
   let best=null;
-  // 원점(0,0) 기준점 스냅 — 끝점과 같은 우선순위 (2026-09-04 대표 지시)
-  {const d0=Math.hypot(p.x,p.y); if(d0<=180) best={x:0,y:0,d:d0,kind:'origin'};}
-  sd.verts.forEach(v=>{const d=Math.hypot(v.x-p.x,v.y-p.y); if(d<=180&&(!best||d<best.d)) best={x:v.x,y:v.y,d,kind:'endpoint'};});
-  if(!best) sd.walls.forEach(w=>{const mx=(w.x1+w.x2)/2,my=(w.y1+w.y2)/2;const d=Math.hypot(mx-p.x,my-p.y); if(d<=160&&(!best||d<best.d)) best={x:mx,y:my,d,kind:'midpoint'};});
+  // 원점(0,0) 기준점 스냅 — 끝점과 같은 우선순위
+  {const d0=Math.hypot(p.x,p.y); if(d0<=T_END) best={x:0,y:0,d:d0,kind:'origin'};}
+  sd.verts.forEach(v=>{const d=Math.hypot(v.x-p.x,v.y-p.y); if(d<=T_END&&(!best||d<best.d)) best={x:v.x,y:v.y,d,kind:'endpoint'};});
+  if(!best) sd.walls.forEach(w=>{const mx=(w.x1+w.x2)/2,my=(w.y1+w.y2)/2;const d=Math.hypot(mx-p.x,my-p.y); if(d<=T_MID&&(!best||d<best.d)) best={x:mx,y:my,d,kind:'midpoint'};});
   if(!best){
-    let bd=120,bp=null;
+    let bd=T_EDGE,bp=null;
     sd.walls.forEach(w=>{const q=closestOnSeg(p,w);const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;bp=q;}});
     if(bp) best={x:bp.x,y:bp.y,d:bd,kind:'edge'};
   }
@@ -795,7 +806,7 @@ function lineClick(e){
   const fid=_hoverFloorId(e);
   const f=ST.floors.find(x=>x.id===fid), z0=f?f.z0*MM:0;
   const raw=_planePt(e,z0); if(!raw) return;
-  const p=snap3(fid,raw); showSnap(p,z0); // 시작점도 점·선에 흡착
+  const p=snap3(fid,raw,z0); showSnap(p,z0); // 시작점도 점·선에 흡착 (픽셀 기준 반경)
   const rect=(ST.tool==='rect');
   const geo=new THREE.BufferGeometry().setFromPoints(new Array(rect?5:2).fill(0).map(()=>new THREE.Vector3(p.x*MM,z0+0.02,p.y*MM)));
   const ln=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xD4FF3D,depthTest:false})); ln.renderOrder=999; scene.add(ln);
@@ -832,7 +843,7 @@ function spawnPendingWall(a,c,z0){
 function lineMove(e){
   const op=ST.op; if(!op||op.type!=='line') return;
   const raw=_planePt(e,op.z0); if(!raw) return;
-  const sp=snap3(op.fid,raw);           // 점·선 흡착이 직교 추론보다 우선 (스케치업과 동일)
+  const sp=snap3(op.fid,raw,op.z0);     // 점·선 흡착이 직교 추론보다 우선 (스케치업과 동일)
   let px=sp.x,py=sp.y;
   if(!op.rect&&sp.kind==='grid'){
     const dx=px-op.a.x, dy=py-op.a.y;
@@ -954,12 +965,16 @@ function applyMoveFromEvent(e){
   rayFromEvent(e);
   if(!ray.ray.intersectPlane(dragPlane,dragPt)) return;
   let x=dragPt.x+op.off.x, z=dragPt.z+op.off.z;
+  // 2026-09-04: 이동 중에도 점·선·원점 스냅 (잡은 객체의 기준점이 흡착 — 스케치업 Move 추론)
+  const z0m=-dragPlane.constant;
+  const s=snap3(op.obj.floorId,{x:x/MM,y:z/MM},z0m);
+  if(s.kind!=='grid'){ x=s.x*MM; z=s.y*MM; showSnap(s,z0m); }
+  else { hideSnap(); const g10=v=>Math.round(v/MM/10)*10*MM; x=g10(x); z=g10(z); }
   if(ST.axisLock==='x') z=op.orig.z;
   if(ST.axisLock==='y') x=op.orig.x;
-  const snap=v=>Math.round(v/MM/10)*10*MM;
-  op.g.position.x=snap(x); op.g.position.z=snap(z);
+  op.g.position.x=x; op.g.position.z=z;
   op.moved=true;
-  vcbShow('이동',Math.round(Math.hypot(op.g.position.x-op.orig.x,op.g.position.z-op.orig.z)/MM),'mm');
+  vcbShow((s.kind!=='grid'?SNAP_NAME[s.kind]+' · ':'')+'이동',Math.round(Math.hypot(x-op.orig.x,z-op.orig.z)/MM),'mm');
   invalidate(true);
 }
 function commitMove(exact){
@@ -972,6 +987,7 @@ function commitMove(exact){
   const x=Math.round(op.g.position.x/MM), y=Math.round(op.g.position.z/MM);
   const g=op.g,obj=op.obj,copy=op.copy;
   ST.op=null; ST.axisLock=null; vcbHide(); orbit.enabled=(ST.mode==='orbit');
+  hideSnap();
   if(copy){
     if(g.parent) g.parent.remove(g);                                  // 진짜 사본은 재조립으로 온다
     sendEdit('clone',obj,{x,y});
@@ -1083,9 +1099,19 @@ function doPaint(hit){
   setStatus(statusLive,'🪣 재질 적용 → 평면·견적 반영');
 }
 // --- 줄자 ---
+function _tapeSnap(hit){ // 줄자도 점·선·원점에 흡착 — 수평 좌표만 스냅, 높이는 표면 유지
+  const p=hit.point.clone();
+  const obj=hit.object.userData.obj;
+  const fid=obj?obj.floorId:(ST.floorSel!=='all'?ST.floorSel:(ST.floors[0]&&ST.floors[0].id));
+  const f=ST.floors.find(x=>x.id===fid), z0=f?f.z0*MM:0;
+  const s=snap3(fid,{x:p.x/MM,y:p.z/MM},z0);
+  if(s.kind!=='grid'){ p.x=s.x*MM; p.z=s.y*MM; showSnap(s,z0); }
+  else hideSnap();
+  return p;
+}
 function tapeClick(hit){
   if(!hit) return;
-  const p=hit.point.clone();
+  const p=_tapeSnap(hit);
   if(!ST.op||ST.op.type!=='tape'){
     const geo=new THREE.BufferGeometry().setFromPoints([p,p.clone()]);
     const line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xD4FF3D,depthTest:false}));
@@ -1105,9 +1131,10 @@ function tapeClick(hit){
 function tapeMove(e){
   const op=ST.op; if(!op||op.type!=='tape') return;
   const hit=hitAt(e.clientX,e.clientY); if(!hit) return;
+  const p=_tapeSnap(hit);
   const pos=op.line.geometry.attributes.position;
-  pos.setXYZ(1,hit.point.x,hit.point.y,hit.point.z); pos.needsUpdate=true;
-  vcbShow('줄자',Math.round(op.a.distanceTo(hit.point)/MM),'mm');
+  pos.setXYZ(1,p.x,p.y,p.z); pos.needsUpdate=true;
+  vcbShow('줄자',Math.round(op.a.distanceTo(p)/MM),'mm');
   invalidate();
 }
 // --- 포인터 흐름 ---
@@ -1155,7 +1182,7 @@ renderer.domElement.addEventListener('pointermove',e=>{
     const fid=_hoverFloorId(e);
     const f=ST.floors.find(x=>x.id===fid), z0=f?f.z0*MM:0;
     const raw=_planePt(e,z0);
-    if(raw) showSnap(snap3(fid,raw),z0);
+    if(raw) showSnap(snap3(fid,raw,z0),z0);
   }
   // 스티키 동작 — 버튼을 안 눌러도 따라온다 (클릭-이동-클릭)
   if(ST.op&&(!drag||drag.id!==e.pointerId)){
