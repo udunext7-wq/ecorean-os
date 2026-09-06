@@ -715,8 +715,9 @@ function loadStore(){
   if(!Array.isArray(projects))projects=[];
 }
 function saveStore(){
-  try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){console.warn("저장실패",e)}
-  cloudPush(STORE_KEY,projects);
+  // localStorage 는 '화면을 빨리 그리기 위한 캐시'일 뿐이다. 정본은 서버(pms_projects).
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){console.warn("캐시 저장 실패",e)}
+  projSyncDirty(); // 바뀐 프로젝트만 서버에 저장 (충돌 감지 포함)
   if(!_histLock)histPush();
 }
 
@@ -2412,7 +2413,8 @@ var CLOUD={
 function cloudHeaders(){return{"Content-Type":"application/json"}}
 function cloudTsGet(){try{return JSON.parse(localStorage.getItem("boc_cloud_ts")||"{}")}catch(e){return{}}}
 function cloudTsSet(k,ts){try{var m=cloudTsGet();m[k]=ts;localStorage.setItem("boc_cloud_ts",JSON.stringify(m))}catch(e){}}
-function cloudDot(ok){
+// ok: true 동기화됨 / false 문제 / null 진행 중.  text 를 주면 그 문구로 표시한다.
+function cloudDot(ok,text){
   var el=document.getElementById("cloudDot");
   if(!el){
     el=document.createElement("span");el.id="cloudDot";
@@ -2420,7 +2422,10 @@ function cloudDot(ok){
     var h=document.querySelector("header h1");
     if(h)h.appendChild(el);
   }
-  if(el){el.textContent=ok?"☁ 동기화됨":"⚠ 오프라인(로컬저장)";el.style.color=ok?"#7dd3a8":"#e8b84a"}
+  if(el){
+    el.textContent = text ? ((ok===false?"⚠ ":"")+text) : (ok?"☁ 동기화됨":"⚠ 오프라인 — 읽기 전용");
+    el.style.color = ok===false ? "#e8b84a" : (ok===null ? "#9fb0bf" : "#7dd3a8");
+  }
 }
 function cloudPush(key,obj){
   if(!CLOUD.ready)return;
@@ -2440,17 +2445,14 @@ function cloudInit(){
   fetch(CLOUD.api,{credentials:"same-origin",headers:cloudHeaders()})
     .then(function(r){return r.ok?r.json():Promise.reject("HTTP "+r.status)})
     .then(function(rows){
-      var ts=cloudTsGet(),adoptedProjects=false,have={};
+      var ts=cloudTsGet(),have={};
       rows.forEach(function(row){
         have[row.key]=1;
         var localTs=ts[row.key];
         if(localTs&&new Date(row.updated_at)<=new Date(localTs))return; // 로컬이 같거나 최신
         // 클라우드가 더 최신 → 채택
-        if(row.key===STORE_KEY&&!currentProj&&Array.isArray(row.data)){
-          projects=row.data;
-          try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){}
-          adoptedProjects=true;
-        }else if(row.key===UCAT_KEY&&row.data){
+        // (프로젝트 본문은 2026-09-07 부터 pms_projects 행 단위로 옮겨 여기서 다루지 않는다)
+        if(row.key===UCAT_KEY&&row.data){
           try{localStorage.setItem(UCAT_KEY,JSON.stringify(row.data))}catch(e){}
           loadUserCats();
         }else if(row.key===UTMPL_KEY&&row.data){
@@ -2460,12 +2462,10 @@ function cloudInit(){
         cloudTsSet(row.key,row.updated_at);
       });
       CLOUD.ready=true;
-      if(adoptedProjects){renderProjects();toast("☁ 클라우드 데이터를 불러왔습니다")}
-      // 클라우드에 없거나 로컬이 더 최신인 키는 업로드
-      if(!have[STORE_KEY]||!adoptedProjects)cloudPush(STORE_KEY,projects);
+      // 종전에는 여기서 조건 없이 로컬을 업로드해, 화면을 열기만 해도 남의 수정본을
+      // 내 옛 데이터로 덮어썼다(2026-09-07 제거). 없는 키만 최초 1회 올린다.
       if(!have[UCAT_KEY])cloudPush(UCAT_KEY,userCats);
       if(!have[UTMPL_KEY])cloudPush(UTMPL_KEY,userTemplates);
-      cloudDot(true);
     })
     .catch(function(e){
       CLOUD.ready=true; // 이후 저장분은 푸시 시도 (재연결 대비)
@@ -2474,51 +2474,198 @@ function cloudInit(){
     });
 }
 
+// ================================================================
+// 공정표 서버 동기화 — /api/pms/projects (pms_projects, 1프로젝트=1행)
+// 2026-09-07: 종전에는 프로젝트 전체를 44KB 한 덩어리로 저장해 두 컴퓨터가 서로를 덮어썼다.
+//   ① 서버가 정본, localStorage 는 캐시  ② 바뀐 프로젝트만 저장  ③ 저장 시 기준 시각을 보내 충돌 감지
+//   ④ 15초 폴링으로 남의 수정 자동 반영  ⑤ 서버 연결이 끊기면 읽기 전용(따로 쌓이지 않게)
+// ================================================================
+var PROJ={api:"/api/pms/projects",ready:false,offline:false,synced:{},timers:{},retry:{},lastSync:null,pollMs:15000};
+
+function projIndexById(id){for(var i=0;i<projects.length;i++){if(projects[i]&&projects[i].id===id)return i}return -1}
+function projMark(p,ts){PROJ.synced[p.id]={json:JSON.stringify(p),updatedAt:ts}}
+function projCache(){try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){}}
+
+/* 서버 목록 전체를 받아 정본으로 삼는다 (부팅·재연결) */
+function projFetchAll(){
+  return fetch(PROJ.api,{credentials:"same-origin"})
+    .then(function(r){if(!r.ok)throw new Error(r.status===401?"로그인이 필요합니다":"HTTP "+r.status);return r.json()})
+    .then(function(j){
+      var rows=j.projects||[];
+      projects=rows.map(function(row){return row.data});
+      PROJ.synced={};
+      rows.forEach(function(row){PROJ.synced[row.id]={json:JSON.stringify(row.data),updatedAt:row.updated_at}});
+      PROJ.lastSync=j.serverTime;PROJ.ready=true;
+      projCache();projOnline();
+      if(repairLegacyMeta())saveStore(); // 구버전 저장본 보정분은 곧바로 서버에도 반영
+      if(currentProj){var k=projIndexById(currentProj.id);if(k>=0)openProject(k);else if(typeof backToList==="function")backToList()}
+      renderProjects();
+      return true;
+    })
+    .catch(function(e){PROJ.ready=false;projOffline(e&&e.message?e.message:String(e));return false});
+}
+
+/* 바뀐 프로젝트만 서버로 (없어진 프로젝트는 삭제) */
+function projSyncDirty(){
+  if(!PROJ.ready||PROJ.offline)return;
+  var seen={};
+  projects.forEach(function(p){
+    if(!p||!p.id)return;
+    seen[p.id]=1;
+    var s=PROJ.synced[p.id];
+    if(s&&s.json===JSON.stringify(p))return;
+    clearTimeout(PROJ.timers[p.id]);
+    PROJ.timers[p.id]=setTimeout(function(){projPush(p.id)},600);
+  });
+  Object.keys(PROJ.synced).forEach(function(id){if(!seen[id])projRemove(id)});
+}
+
+function projPush(id,keepalive){
+  var i=projIndexById(id);if(i<0)return;
+  var p=projects[i],s=PROJ.synced[id];
+  PROJ.timers[id]=null;
+  cloudDot(null,"저장 중…");
+  var opt={method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+           body:JSON.stringify({project:p,base:s?s.updatedAt:null})};
+  if(keepalive)opt.keepalive=true;
+  return fetch(PROJ.api,opt)
+    .then(function(r){return r.json().then(function(j){if(!r.ok)throw{code:r.status,msg:j.message||j.error||("HTTP "+r.status)};return j})})
+    .then(function(j){
+      if(j.status==="CONFLICT"){projConflict(id,j);return}
+      projMark(p,j.updatedAt);PROJ.retry[id]=0;
+      if(!PROJ.lastSync||j.updatedAt>PROJ.lastSync)PROJ.lastSync=j.updatedAt;
+      cloudDot(true);
+    })
+    .catch(function(e){
+      if(e&&(e.code===401||e.code===403)){projOffline(e.msg||"저장 권한이 없습니다");return}
+      PROJ.retry[id]=(PROJ.retry[id]||0)+1;
+      cloudDot(false,PROJ.retry[id]<=3?"저장 실패 — 재시도 중":"저장 실패");
+      if(PROJ.retry[id]<=3)PROJ.timers[id]=setTimeout(function(){projPush(id)},2500*PROJ.retry[id]);
+    });
+}
+
+function projRemove(id,_retry){
+  var s=PROJ.synced[id];delete PROJ.synced[id];
+  fetch(PROJ.api+"?id="+encodeURIComponent(id)+(s&&s.updatedAt?"&base="+encodeURIComponent(s.updatedAt):""),
+        {method:"DELETE",credentials:"same-origin"})
+    .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})
+    .then(function(j){if(j&&j.updatedAt&&(!PROJ.lastSync||j.updatedAt>PROJ.lastSync))PROJ.lastSync=j.updatedAt;cloudDot(true)})
+    .catch(function(){
+      // 실패하면 서버에는 남아 다음 폴링에 되살아난다 → 3초 뒤 한 번 더 시도하고, 그래도 안 되면 알린다
+      if(!_retry){setTimeout(function(){projRemove(id,true)},3000);return}
+      cloudDot(false,"삭제 동기화 실패");
+      if(s)PROJ.synced[id]=s; // 다음 저장 때 다시 삭제를 시도하도록 되돌린다
+    });
+}
+
+/* 충돌 — 다른 사람이 먼저 저장한 경우 */
+function projConflict(id,res){
+  var i=projIndexById(id),p=i>=0?projects[i]:null,nm=p&&p.name?p.name:id;
+  var take=confirm('"'+nm+'" 공정표를 다른 사람이 먼저 수정했습니다.\n\n[확인] 서버 버전을 불러옵니다 (내 방금 변경은 버려집니다)\n[취소] 내 버전으로 덮어씁니다 (상대 변경이 사라집니다)');
+  if(take){projApplyRemote(id,res.serverData,res.updatedAt,true);toast("서버 버전을 불러왔습니다")}
+  else{PROJ.synced[id]={json:"",updatedAt:null};projPush(id);toast("내 버전으로 덮어썼습니다")}
+}
+
+/* 서버 버전을 화면에 반영 */
+function projApplyRemote(id,data,updatedAt,reopen){
+  var i=projIndexById(id);
+  if(!data){if(i>=0)projects.splice(i,1);delete PROJ.synced[id];}
+  else if(i>=0)projects[i]=data;else projects.push(data);
+  if(data)PROJ.synced[id]={json:JSON.stringify(data),updatedAt:updatedAt};
+  projCache();
+  var open=currentProj&&currentProj.id===id;
+  renderProjects();
+  if(open&&reopen){var k=projIndexById(id);if(k>=0)openProject(k)}
+}
+
+/* 남의 수정 가져오기 (15초 주기 + 창 복귀 시) */
+function projPoll(){
+  if(!PROJ.ready||PROJ.offline||document.hidden)return;
+  fetch(PROJ.api+"?since="+encodeURIComponent(PROJ.lastSync||new Date(0).toISOString()),{credentials:"same-origin"})
+    .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})
+    .then(function(j){
+      PROJ.lastSync=j.serverTime;
+      (j.projects||[]).forEach(function(row){
+        var s=PROJ.synced[row.id];
+        if(s&&s.updatedAt===row.updated_at)return;           // 내가 올린 것
+        if(row.deleted_at){projApplyRemote(row.id,null,row.updated_at,false);return}
+        if(currentProj&&currentProj.id===row.id){projRemoteBanner(row);return} // 편집 중이면 물어보고 반영
+        projApplyRemote(row.id,row.data,row.updated_at,false);
+      });
+    })
+    .catch(function(){});
+}
+
+/* 편집 중인 공정표가 서버에서 바뀐 경우 — 덮지 않고 알림만 */
+function projRemoteBanner(row){
+  var el=document.getElementById("remoteBanner");
+  if(!el){
+    el=document.createElement("div");el.id="remoteBanner";
+    el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9998;background:#1c2532;color:#e7eef5;border:1px solid #e8b84a;border-radius:8px;padding:10px 14px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.35)";
+    document.body.appendChild(el);
+  }
+  el.innerHTML='';
+  var who=row.updated_email?row.updated_email.split("@")[0]+" 님이":"다른 사람이";
+  var t=document.createElement("span");t.textContent="⚠ 이 공정표를 "+who+" 방금 수정했습니다. ";
+  var b=document.createElement("button");b.className="btn";b.style.cssText="margin-left:8px;font-size:11px";b.textContent="서버 버전 불러오기";
+  b.onclick=function(){projApplyRemote(row.id,row.data,row.updated_at,true);el.remove();toast("서버 버전을 불러왔습니다")};
+  var c=document.createElement("button");c.className="btn";c.style.cssText="margin-left:6px;font-size:11px";c.textContent="나중에";
+  c.onclick=function(){el.remove()};
+  el.appendChild(t);el.appendChild(b);el.appendChild(c);
+}
+
+/* 서버 미연결 = 읽기 전용 (몰래 로컬에만 쌓여 컴퓨터마다 달라지는 것을 막는다) */
+function projOffline(reason){
+  PROJ.offline=true;cloudDot(false,"오프라인 — 읽기 전용");
+  var m=document.getElementById("offlineMask");
+  if(!m){
+    m=document.createElement("div");m.id="offlineMask";
+    m.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(8,12,18,.55);display:flex;align-items:center;justify-content:center";
+    var box=document.createElement("div");
+    box.style.cssText="background:#141b25;color:#e7eef5;border:1px solid #e8b84a;border-radius:12px;padding:22px 26px;max-width:460px;text-align:center;font-size:13px;line-height:1.7";
+    box.innerHTML='<div style="font-size:15px;font-weight:700;color:#f0deb9;margin-bottom:8px">서버에 연결되지 않았습니다 — 읽기 전용</div>'+
+      '<div id="offlineWhy" style="color:#9fb0bf;font-size:12px"></div>'+
+      '<div style="color:#9fb0bf;font-size:12px;margin-top:8px">이 상태에서 수정하면 다른 컴퓨터와 내용이 어긋납니다.<br>연결을 되살린 뒤 편집해 주세요.</div>';
+    var again=document.createElement("button");again.className="btn";again.textContent="다시 연결";
+    again.style.cssText="margin-top:14px";
+    again.onclick=function(){again.disabled=true;again.textContent="연결 중…";projFetchAll().then(function(ok){if(!ok){again.disabled=false;again.textContent="다시 연결"}})};
+    var login=document.createElement("a");login.className="btn";login.textContent="로그인 화면";
+    login.href="/login?next=/pms/";login.style.cssText="margin:14px 0 0 8px;text-decoration:none";
+    box.appendChild(again);box.appendChild(login);m.appendChild(box);document.body.appendChild(m);
+  }
+  var why=document.getElementById("offlineWhy");if(why)why.textContent=reason||"";
+  m.style.display="flex";
+}
+function projOnline(){
+  PROJ.offline=false;
+  var m=document.getElementById("offlineMask");if(m)m.style.display="none";
+  cloudDot(true);
+}
+/* 탭을 닫거나 숨길 때 대기 중인 저장을 즉시 밀어넣는다 (0.8초 디바운스 유실 방지) */
+function projFlush(){
+  Object.keys(PROJ.timers).forEach(function(id){
+    if(!PROJ.timers[id])return;
+    clearTimeout(PROJ.timers[id]);PROJ.timers[id]=null;projPush(id,true);
+  });
+}
+
 loadStore();
 loadUserTemplates();
 loadUserCats();
-if(projects.length===0){
-  projects.push({
-    id:"prj_sample_1",name:"칠원동 566-1 단독주택 신축",addr:"평택시 칠원동 566-1",
-    area:"389.67",floors:"지상2층",struct:"RC구조",startDate:"2026-05-29",
-    tmpl:"rc_new",note:"fck27MPa SD400 매트기초THK500",created:new Date().toISOString(),
-    phases:JSON.parse(JSON.stringify(TEMPLATES.rc_new))
+// 2026-09-07: 샘플·칠원동 골조·쌍용동 프로젝트 '자동 재주입'을 제거했다.
+//   부팅 때마다 없으면 새로 만들던 코드라, 지운 프로젝트가 되살아나고 컴퓨터마다 목록이 달라졌다.
+//   프로젝트 목록의 정본은 서버(pms_projects)다. 아래 보정은 서버본을 받은 뒤에 실행된다.
+function repairLegacyMeta(){
+  // 칠원동 골조 — 면적연동 메타데이터가 빠진 구버전 저장본만 보정 (없으면 새로 만들지 않는다)
+  var fp=projects.filter(function(p){return p&&p.id==="prj_frame_chilwon"})[0];
+  if(!fp||!fp.phases||fp.phases.some(function(ph){return ph.baseCrew}))return false;
+  var meta={};
+  TEMPLATES.frame_rc.forEach(function(t){meta[t.id]=t});
+  fp.phases.forEach(function(ph){
+    var t=meta[ph.id];
+    if(t){["baseCrew","fixCrew","cap","prop","baseDur","areaBase","cure"].forEach(function(k){if(t[k]!==undefined)ph[k]=t[k]})}
   });
-  projects.push({
-    id:"prj_sample_2",name:"칠원동 566-1 실내건축",addr:"평택시 칠원동 566-1",
-    area:"389.67",floors:"지상2층",struct:"RC구조",startDate:"2026-09-15",
-    tmpl:"interior",note:"건축 골조 완료 후 착수",created:new Date().toISOString(),
-    phases:JSON.parse(JSON.stringify(TEMPLATES.interior))
-  });
-}
-// 칠원동 골조(이팀장 순서, 면적연동) — 없으면 자동 추가
-if(!projects.some(function(p){return p.id==="prj_frame_chilwon"})){
-  projects.push({
-    id:"prj_frame_chilwon",name:"칠원동 566-1 골조공사(이팀장)",addr:"평택시 칠원동 566-1",
-    area:"389.67",floors:"지상2층",struct:"RC구조",startDate:"2026-05-29",
-    tmpl:"frame_rc",note:"이팀장 골조 진행순서 / 면적 연동 인원·일수 자동조정 / 타설후 양생1일",created:new Date().toISOString(),
-    phases:JSON.parse(JSON.stringify(TEMPLATES.frame_rc))
-  });
-}else{
-  // 기존 골조 프로젝트가 면적연동 메타데이터 없으면 복구 (구버전 저장본 호환)
-  var fp=projects.find(function(p){return p.id==="prj_frame_chilwon"});
-  if(fp&&fp.phases&&!fp.phases.some(function(ph){return ph.baseCrew})){
-    var meta={};
-    TEMPLATES.frame_rc.forEach(function(t){meta[t.id]=t});
-    fp.phases.forEach(function(ph){
-      var t=meta[ph.id];
-      if(t){["baseCrew","fixCrew","cap","prop","baseDur","areaBase","cure"].forEach(function(k){if(t[k]!==undefined)ph[k]=t[k]})}
-    });
-  }
-}
-// 쌍용동 프로젝트 — localStorage에 없으면 자동 추가 (기존 사용자도 보이도록)
-if(!projects.some(function(p){return p.id==="prj_ssangyong"})){
-  projects.push({
-    id:"prj_ssangyong",name:"쌍용동 단독주택 인테리어",addr:"천안시 쌍용동",
-    area:"198",floors:"지상2층",struct:"RC구조(골조완료)",startDate:"2026-07-01",
-    tmpl:"interior",note:"60평 2층 / RC골조 이후 인테리어 전체 / 게이트3개(방수·난방·하자)",created:new Date().toISOString(),
-    phases:JSON.parse(JSON.stringify(BUILTIN_SSANGYONG))
-  });
+  return true;
 }
 // 키보드: Delete/Backspace로 선택 공정 삭제
 document.addEventListener("keydown",function(e){
@@ -2555,14 +2702,17 @@ document.addEventListener("pointerdown",function(e){
   if(e.target.closest&&(e.target.closest(".gbar")||e.target.closest("#tip")))return;
   hideTip();
 });
-saveStore();
-renderProjects();
+renderProjects();  // 캐시로 즉시 그리고, 곧바로 서버 정본으로 교체한다
 updateTodayBadge();setInterval(updateTodayBadge,60000);
-/* 견적OS 탭에서 전송하고 돌아왔을 때 즉시 감지 — 클라우드 연결 실패와 무관하게 동작해야 하므로 먼저 건다 */
-wpBridgeCheck();
-window.addEventListener("focus",wpBridgeCheck);
-window.addEventListener("storage",function(e){if(e.key==="ecorean_wp_bridge_v1")wpBridgeCheck()});
-cloudInit();
+cloudInit();       // 레이어·내 템플릿 (프로젝트 본문은 아래 projFetchAll 담당)
+
+/* 서버 정본을 받은 뒤에 견적OS 브리지를 확인한다 (먼저 하면 새로 만든 프로젝트가 교체되며 사라진다) */
+projFetchAll().then(function(ok){ if(ok)wpBridgeCheck() });  // 읽기 전용(오프라인)일 때는 새 공정표를 만들지 않는다
+window.addEventListener("focus",function(){ if(!PROJ.offline)wpBridgeCheck(); projPoll() });
+window.addEventListener("storage",function(e){if(e.key==="ecorean_wp_bridge_v1"&&!PROJ.offline)wpBridgeCheck()});
+document.addEventListener("visibilitychange",function(){ if(document.hidden)projFlush(); else projPoll() });
+window.addEventListener("pagehide",projFlush);
+setInterval(projPoll,PROJ.pollMs);
 </script>
 </body>
 </html>
