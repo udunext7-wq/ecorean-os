@@ -15,6 +15,7 @@ sites/net/public/minicad/
     ├── data.js         SPACE_TYPES / FLOOR_MATERIALS / WALL_MATERIALS / 라이브러리 데이터
     ├── library.js      라이브러리 심볼 도형
     ├── engine.js       Konva 스테이지·그룹·renderAll·VEF·스냅
+    ├── sketch.js       2026-09-04 점·선·면 스케치 엔진 + 자유 매스 (순수 계산, node require 가능 — tests/minicad-3d.cjs 가 직접 검증)
     ├── tools.js        initTools() — 도구/이벤트(mousedown·touchstart…)·contextmenu·키보드
     ├── ui.js           initUI() — 패널·명령창·JSON·견적·refreshUI(포커스 보존 래퍼)
     ├── touch.js        initTouch() — 태블릿 터치·S펜 레이어 + 통합 컨텍스트 메뉴
@@ -61,13 +62,23 @@ UI 표기·대화 모두 "미니폼". 코드 식별자(3d/ 경로·MC3D·명령 
 
 ### 점·선·면 구조 (2026-09-04 대표 지시 — 스케치업 기하 모델)
 - **매핑**: 점=Vertex(STATE.vertices) · 선=벽/Edge(walls, v1Id/v2Id 공유) · 면=공간/Face(spaces, vertexIds) · **그룹=공간 단위**(면이 생기면 점·선·면+내부 배치가 spaceId 로 한 그룹 — 복사/삭제/이동 동반).
-- **미니폼 R(사각형) = 면 생성**: op `addspace` → 2D `addSpace(polygon)` 그대로(점 4·선 4·면 1 일괄, 그룹) — 종전 '벽 4면(addrect)'에서 격상. 잠든 층은 스냅샷에 직접 생성.
-- **미니폼 L(선) = 면 위에서 분할**: 뷰어 `segHitsSpace` 가 선분이 면을 가로지르는지 판정(양끝 내부/경계 교차 2회) → op `splitspace` → 2D `addLine`(분할·못 가로지르면 참조선, 잠긴 공간 보호). 빈 곳이면 종전대로 `addwall`. 잠든 층 분할은 거부+안내.
+- ~~**미니폼 R(사각형) = 면 생성**: op `addspace`~~ → **2026-09-04 프로토콜 6 에서 `sketchrect`(스케치 면)로 대체** — 아래 "점·선·면 → 매스" 참조. `addspace`/`addwall`/`addcircle` op 는 호환용으로만 남음(뷰어는 더 이상 보내지 않음, 테스트가 금지 확인).
+- **미니폼 L(선) = 면 위에서 분할**: 뷰어 `segHitsSpace` 가 선분이 면을 가로지르는지 판정(양끝 내부/경계 교차 2회) → op `splitspace` → 2D `addLine`(분할·못 가로지르면 참조선, 잠긴 공간 보호). ~~빈 곳이면 `addwall`~~ → 빈 곳이면 `sketchline`(스케치 선). 잠든 층 분할은 거부+안내.
 - **점·선·면 스냅(추론)**: `snap3` — 끝점(초록 ≤180mm) > 중간점(청록 ≤160) > 선 위(빨강 ≤120) > 10mm 격자. 스냅 마커 구체 + VCB 라벨에 스냅 이름. 스냅이 직교 추론보다 우선(스케치업과 동일). 데이터는 build 때 층별 `ST.snapData`(verts/walls/spaces/stats).
 - **Entity Info 그룹 요약**: 면 선택 시 "그룹: 면 1 · 선(벽) N · 배치 N" (snapData.stats).
 - 스모크: snapF=2·snapEnd=endpoint·snapSplit=공간id·snapWall=null. 테스트 [EDf] 5건(면 생성/분할/각 면 벽 소유/잠든 층).
 - 2026-09-04 원점 기준점: 2D drawGrid 에 X빨강/Y초록 축선+파란 원점 링(#axis-*, 그리드 off 유지·인쇄 제외) + **양쪽 원점(0,0) 스냅** — 2D snapToEndpoint 에 원점 후보(끝점과 동급), 미니폼 snap3 kind 'origin'(파랑 마커 '원점(0,0)'). 테스트 [AX] 6건·스모크 snapOrg.
 - 2026-09-04 사각형 UX(대표 피드백): 호버 스냅 마커(클릭 전), 첫 점 고정 구슬(startMk), 크기=반투명 면 고스트, **치수 입력 `가로,세로`**(vcbPair, 끌던 방향 부호), **생성 딜레이 제거** — 3D 발 편집은 `push3D(true)` 즉시 회신 + 낙관적 고스트(pendingG, 다음 build 때 실물 교체). E2E cdp-face 가 msPlan(평면 반영)/msRound(실물 교체) 실측.
+
+### 점·선·면 → 매스 (2026-09-04 대표 지시 — "선·사각형·원이 바로 객체가 되면 안 된다", 프로토콜 6)
+- **원칙(스케치업 동일)**: 선·사각형·원·호·다각형 도구는 **객체를 만들지 않는다**. ① 점(x,y)+선 → ② 선 고리가 닫히면 **면**(자동 검출) → ③ 면에 **Z** 를 주면 객체. 2D·미니폼 어느 쪽에서 그려도 같은 규칙(왕복 동기화).
+- **엔진 `js/sketch.js`**(state.js 뒤·engine.js 앞 로드): `STATE.sketchPts[{id,x,y}]`·`sketchEdges[{id,a,b}]`(평면 그래프 — 교차·접합 자동 분할)·`sketchFaces[{id,pts}]`(`skDetectFaces` 최소 고리). API `skAddEdge/skAddRect/skAddCircle/skAddPoly/skRemove(kind,id)/skRemoveEdge/skRemoveFace/skClear/skFaceArea/skFacePoly/skEdgePts/skObb/skGuessKind`(폭≤450·길이/폭≥2.5 = 벽) / `skExtrude(faceId,z,as)` / `massFromPoly` / `massConvert(id,as)` / `massAbsPoly`. 스냅샷·자동저장·JSON·층 시트 모두 네 배열을 포함(옛 문서는 빈 배열로 보정).
+- **면 + Z 의 기본 결과 = 자유 매스**(`STATE.masses` `{id,name:'매스N',x,y,angle,pts(상대),h_mm,elev_mm,color,locked}`, 2D kind `masses`, 3D kind `mass`, 회색 `#B9C6D2`). 스케치업 푸시/풀 솔리드와 같이 **이동·회전·복제(Ctrl+끌기)·P 로 더 밀기·띄움(elev_mm 적층)·잠금**이 자유롭고, 필요할 때 **공간(바닥·천장·둘레 벽, 천장고=Z)** 또는 **벽(높이=Z·두께=짧은 변)** 으로 전환(`massConvert` — 2D 속성 패널 [공간으로]/[벽으로], 미니폼 속성 패널·우클릭 "매스 → 공간/벽"). `as` 옵션: `solid`(기본)·`space`·`wall`·`auto`(skGuessKind).
+- **2D 흐름**: 도구로 그리면 `skAfterFace` → 면 선택 + 명령창 `sk-z` 모드("Z 높이(mm):", Esc = 면만 유지) / 면 선택 시 속성 패널에 Z·무엇으로(매스/공간/벽/자동)·[⬆ 객체 생성]·[면 삭제]. 명령 `sk on|off|clear`, `ex 2700`(선택 면 올리기). `sk off` = 옛 즉시 객체 생성(`STATE.sketchMode=false`). 그리기 스냅은 스케치 점·선 중점도 후보. 선택 우선순위 점 > 선 > 매스 둘레 > 면 안쪽. 렌더 그룹 `groups.masses`(공간 위·벽 아래)·`groups.sketch`(벽 위).
+- **미니폼 흐름**: L/R/C/호/옵셋 → `sketchline{x1,y1,x2,y2}` / `sketchrect{x1,y1,x2,y2}` / `sketchcircle{cx,cy,r,n}` / `sketchpoly{pts}` (낙관적 고스트 `spawnPendingSketchLine/spawnPendingFace`, 다음 build 때 실물 교체). 선 고리가 닫히면 면 고스트. **P(밀기끌기)를 스케치 면에** → 프리즘 고스트 끌기(VCB 숫자 입력 가능) → `extrude{id,z,as:'solid'}`(활성 층만; 잠든 층은 거부+안내). 매스에 P = `set h_mm`, 더블클릭 = 직전 Z 반복(`ST.lastPP`). 속성 패널: 면 = Z 입력+[객체 생성], 매스 = 이름·색·높이(Z)·띄움·회전·공간/벽 전환. 삭제 = `sketchdel{kind,id}`(스케치) / `delete kind:'masses'`.
+- **build3d.js**: `normalizeDoc` 가 sketchPts/sketchEdges(좌표 풀어 둠)/sketchFaces(`{id,polygon}`)/masses 를 정규화 → `buildSketchFace`(반투명 판 z=2·투명도 0.30) / `buildSketchEdge`(막대 18×14) / `buildSketchPt`(원기둥 r32) / `buildMass`(`{t:'prism',pts,h,z}` → ExtrudeGeometry, elev·angle 반영, 이름표 '매스N H h'). 층 높이·범위 계산에 매스 포함(적층 시 뚫림 방지). counts `sketch`·`masses`.
+- **프로토콜 6 op**(`MC_PROTO=6`/`MF_PROTO=6`): `sketchline sketchrect sketchcircle sketchpoly extrude sketchdel sketchclear massconvert` — ui.js `_apply3DSketch`. 매스 편집은 기존 generic op(`move/set(h_mm,elev_mm,name,color)/delete/clone/lock/rotate`)에 `kind:'masses'`.
+- **검증**: `tests/minicad-3d.cjs`(sketch.js 엔진 + 프로토콜 짝 + 조립 좌표/회전/라벨), `?test=1` **[SK] 39건**(면 검출·분할·삭제·extrude solid/space/wall/auto·massConvert·undo·자동저장 왕복·apply3DEdit 전 op·잠든 층), `cdp-3d.cjs` SKETCH 블록(R/L/C 가 sketch* 만 보냄·P=extrude·매스 set/massconvert·sketchdel·addspace/addwall/addcircle 금지), `cdp-face.cjs` 점·선·면 → 매스 E2E(3D 사각형 → 2D 면 25ms → Z → 매스 → undo 왕복). 캐시 `tablet104` / `3d18`.
 
 ### 3D v2 — 직접 편집·한 창 분할·증분/유휴 렌더 (2026-09-03)
 - **한 창 통합**: [🧊 3D] 클릭 = 우측 분할 패널(`#pane3d` iframe → 3d/index.html, `body.split3d` + `handleResize()`), Shift+클릭/`3d tab` = 별도 탭, `3d off` 닫기. iframe 은 첫 열기에만 src 지정(지연 로드).

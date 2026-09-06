@@ -5112,6 +5112,111 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('AX: 좌표축 테스트 예외 없음',false,e.message);
   }
+  // === [SK] 점·선·면 스케치 + 매스 (2026-09-04 프로토콜 6) — 선/사각형/원은 면까지만, Z 를 줘야 객체 ===
+  try{
+    const _skBak=JSON.parse(JSON.stringify(buildAutosavePayload()));
+    _floorsEnsure();
+    const _skAct=STATE.activeFloorId;
+    STATE.sketchPts=[];STATE.sketchEdges=[];STATE.sketchFaces=[];STATE.masses=[];
+    const _n0={sp:STATE.spaces.length,w:STATE.walls.length};
+    // 1) 선 → 점·선만 · 고리가 닫히면 면 (공간·벽은 생기지 않는다)
+    skAddEdge(20000,20000,24000,20000);skAddEdge(24000,20000,24000,23000);skAddEdge(24000,23000,20000,23000);
+    assert('SK1: 선 3개 = 점 4·선 3·면 0',STATE.sketchFaces.length===0&&STATE.sketchEdges.length===3&&STATE.sketchPts.length===4);
+    skAddEdge(20000,23000,20000,20000);
+    assert('SK2: 고리 닫힘 → 면 1 (공간·벽 불변)',STATE.sketchFaces.length===1&&STATE.spaces.length===_n0.sp&&STATE.walls.length===_n0.w);
+    assert('SK3: 면적 12㎡',Math.round(skFaceArea(STATE.sketchFaces[0]))===12000000);
+    skAddEdge(20000,20000,24000,23000);
+    assert('SK4: 면 위 대각선 → 면 2·선 5',STATE.sketchFaces.length===2&&STATE.sketchEdges.length===5);
+    const _dg=STATE.sketchEdges.find(e=>{const q=skEdgePts(e);return q&&Math.min(q.a.x,q.b.x)===20000&&Math.max(q.a.x,q.b.x)===24000&&Math.min(q.a.y,q.b.y)===20000&&Math.max(q.a.y,q.b.y)===23000;});
+    assert('SK5: 대각선 삭제 → 면 1 로 합쳐짐',!!_dg&&skRemove('sketchEdges',_dg.id)&&STATE.sketchFaces.length===1);
+    // 2) 사각형·원 도구는 면만
+    skClear();
+    const _fr=skAddRect(30000,30000,33000,31500);
+    assert('SK6: 사각형 → 면 1 · 4.5㎡',!!_fr&&STATE.sketchFaces.length===1&&Math.round(skFaceArea(_fr))===4500000);
+    const _fc=skAddCircle(40000,40000,1500,24);
+    assert('SK7: 원 → 24각 면',!!_fc&&_fc.pts.length===24&&STATE.sketchFaces.length===2);
+    assert('SK8: 면까지는 객체 없음',STATE.spaces.length===_n0.sp&&STATE.walls.length===_n0.w&&STATE.masses.length===0);
+    saveHistory();
+    // 3) 면 + Z → 매스(기본, 스케치업 밀기끌기) — Ctrl+Z 한 번에 면으로
+    const _made=skExtrude(_fr.id,900,'solid');
+    assert('SK9: 면+Z(900) → 매스 1 · 면은 소비',!!_made&&_made.kind==='masses'&&STATE.masses.length===1&&STATE.masses[0].h_mm===900&&STATE.sketchFaces.length===1);
+    assert('SK10: 매스 = 중심 + 상대 꼭짓점',STATE.masses[0].x===31500&&STATE.masses[0].y===30750&&STATE.masses[0].pts.length===4);
+    assert('SK11: 매스 선택',STATE.selectedKind==='masses'&&STATE.selectedId===STATE.masses[0].id);
+    undo();
+    assert('SK12: Ctrl+Z 한 번 → 면 2 복귀·매스 0',STATE.masses.length===0&&STATE.sketchFaces.length===2,'faces='+STATE.sketchFaces.length);
+    // 4) 면 + Z → 공간 (천장고=z · 둘레 벽 높이=z) — Ctrl+Z 한 번
+    const _fr2=STATE.sketchFaces.find(f=>f.pts.length===4);
+    const _made2=skExtrude(_fr2.id,2600,'space');
+    const _sp=_made2&&STATE.spaces.find(x=>x.id===_made2.id);
+    assert('SK13: 면+Z(2600) → 공간 천장고 2600',!!_sp&&_sp.ceilingHeight_mm===2600&&STATE.spaces.length===_n0.sp+1);
+    const _spW=STATE.walls.filter(w=>w.spaceId===_sp.id);
+    assert('SK14: 둘레 벽 4 · 높이 2600',_spW.length===4&&_spW.every(w=>w.height_mm===2600),'walls='+_spW.length);
+    undo();
+    assert('SK15: Ctrl+Z 한 번 → 공간·벽 사라지고 면 복귀',STATE.spaces.length===_n0.sp&&STATE.walls.length===_n0.w&&STATE.sketchFaces.length===2);
+    // 5) 가늘고 긴 면 + auto → 벽 (두께 = 폭)
+    const _fw=skAddRect(50000,50000,53000,50150);
+    assert('SK16: 3000×150 → wall 판정',skGuessKind(_fw)==='wall');
+    const _made3=skExtrude(_fw.id,2400,'auto');
+    const _wl=_made3&&STATE.walls.find(w=>w.id===_made3.id);
+    assert('SK17: auto → 벽 두께 150 · 높이 2400',!!_wl&&_made3.kind==='wall'&&_wl.thickness===150&&_wl.height_mm===2400);
+    undo();
+    // 6) 매스 → 공간 전환 (천장고 = 매스 높이), Ctrl+Z 한 번
+    const _fr3=STATE.sketchFaces.find(f=>f.pts.length===4&&Math.round(skFaceArea(f))===4500000);
+    const _m3=skExtrude(_fr3.id,2700,'solid');
+    const _cv=massConvert(_m3.id,'space');
+    assert('SK18: 매스 → 공간 (천장고 2700)',!!_cv&&_cv.kind==='space'&&STATE.masses.length===0&&STATE.spaces.find(x=>x.id===_cv.id).ceilingHeight_mm===2700);
+    undo();
+    assert('SK19: 전환 Ctrl+Z 한 번 → 매스 복귀',STATE.masses.length===1&&STATE.spaces.length===_n0.sp);
+    // 7) 매스 이동·회전·삭제 (미니폼 → 미니캐드 generic op)
+    const _mid=STATE.masses[0].id;
+    assert('SK20: 매스 이동(3D move)',apply3DEdit({type:'edit',op:'move',kind:'masses',id:_mid,floorId:_skAct,patch:{x:60000,y:60000}})===true&&STATE.masses[0].x===60000);
+    assert('SK21: 매스 높이·띄움(3D set)',apply3DEdit({type:'edit',op:'set',kind:'masses',id:_mid,floorId:_skAct,patch:{h_mm:1200,elev_mm:300}})===true&&STATE.masses[0].h_mm===1200&&STATE.masses[0].elev_mm===300);
+    assert('SK22: 매스 삭제(3D delete)',apply3DEdit({type:'edit',op:'delete',kind:'masses',id:_mid,floorId:_skAct})===true&&STATE.masses.length===0);
+    // 8) 저장 → 불러오기 왕복
+    skClear();skAddRect(70000,70000,72000,71000);const _mm=massFromPoly([{x:0,y:0},{x:1000,y:0},{x:1000,y:1000},{x:0,y:1000}],800);
+    const _pay=JSON.parse(JSON.stringify(buildAutosavePayload()));
+    assert('SK23: 저장 페이로드에 스케치·매스',Array.isArray(_pay.sketchFaces)&&_pay.sketchFaces.length===1&&Array.isArray(_pay.masses)&&_pay.masses.length===1);
+    applyLoadedData(JSON.parse(JSON.stringify(_pay)));
+    assert('SK24: 불러오기 후 스케치·매스 유지',STATE.sketchFaces.length===1&&STATE.sketchPts.length===4&&STATE.masses.length===1&&STATE.masses[0].h_mm===800);
+    // 9) 미니폼 → 미니캐드 프로토콜 6 op
+    skClear();STATE.masses=[];
+    assert('SK25: sketchline 4개 → 면',['20000,20000,24000,20000','24000,20000,24000,23000','24000,23000,20000,23000','20000,23000,20000,20000']
+      .every(t=>{const a=t.split(',').map(Number);return apply3DEdit({type:'edit',op:'sketchline',floorId:_skAct,patch:{x1:a[0],y1:a[1],x2:a[2],y2:a[3]}})===true;})&&STATE.sketchFaces.length===1);
+    assert('SK26: sketchrect',apply3DEdit({type:'edit',op:'sketchrect',floorId:_skAct,patch:{x1:0,y1:0,x2:3000,y2:2000}})===true&&STATE.sketchFaces.length===2);
+    assert('SK27: sketchcircle',apply3DEdit({type:'edit',op:'sketchcircle',floorId:_skAct,patch:{cx:10000,cy:10000,r:1200,n:16}})===true&&STATE.sketchFaces.length===3);
+    assert('SK28: sketchpoly',apply3DEdit({type:'edit',op:'sketchpoly',floorId:_skAct,patch:{pts:[{x:80000,y:80000},{x:83000,y:80000},{x:83000,y:82000},{x:81000,y:82000},{x:81000,y:84000},{x:80000,y:84000}]}})===true&&STATE.sketchFaces.length===4);
+    const _f4=STATE.sketchFaces.find(f=>f.pts.length===6);
+    assert('SK29: extrude(3D) → 매스 · 선택',apply3DEdit({type:'edit',op:'extrude',floorId:_skAct,patch:{id:_f4.id,z:2500,as:'solid'}})===true&&STATE.masses.length===1&&STATE.masses[0].h_mm===2500&&STATE.sketchFaces.length===3);
+    assert('SK30: massconvert(3D) → 벽/공간',apply3DEdit({type:'edit',op:'massconvert',floorId:_skAct,patch:{id:STATE.masses[0].id,as:'space'}})===true&&STATE.masses.length===0&&STATE.spaces.length===_n0.sp+1);
+    undo();undo();
+    const _fe=STATE.sketchFaces[0];
+    assert('SK31: sketchdel(3D)',apply3DEdit({type:'edit',op:'sketchdel',kind:'sketchFaces',id:_fe.id,floorId:_skAct})===true&&!STATE.sketchFaces.some(f=>f.id===_fe.id));
+    assert('SK32: 너무 짧은 sketchline 거부',apply3DEdit({type:'edit',op:'sketchline',floorId:_skAct,patch:{x1:0,y1:0,x2:3,y2:0}})===false);
+    assert('SK33: 미지 op 거부',apply3DEdit({type:'edit',op:'sketchbogus',floorId:_skAct,patch:{}})===false);
+    // 10) 잠든 층 — 스케치는 되고 extrude 는 거부
+    const _skF=addFloor();
+    switchFloor(_skAct,{silent:true});
+    const _slp=STATE.floors.find(f=>f.id===_skF.id);
+    assert('SK34: 잠든 층 sketchrect → 그 층 data 에',apply3DEdit({type:'edit',op:'sketchrect',floorId:_skF.id,patch:{x1:0,y1:0,x2:2000,y2:2000}})===true&&_slp.data.sketchFaces.length===1);
+    assert('SK35: 잠든 층 extrude 거부',apply3DEdit({type:'edit',op:'extrude',floorId:_skF.id,patch:{id:_slp.data.sketchFaces[0].id,z:1000,as:'solid'}})===false);
+    STATE.floors=STATE.floors.filter(f=>f.id!==_skF.id);
+    renderFloorBar();
+    // 11) 3D 조립 — 면·선·점·매스가 객체로
+    if(typeof MC3D!=='undefined'&&MC3D.buildFloorScene){
+      skClear();STATE.masses=[];skAddRect(0,0,3000,2000);massFromPoly([{x:5000,y:0},{x:7000,y:0},{x:7000,y:1000},{x:5000,y:1000}],1500);
+      const _sc=MC3D.buildFloorScene(MC3D.normalizeDoc(buildAutosavePayload()),{FURNITURE_LIB,FIXFURN_LIB,FIXTURE_LIB,LIGHT_LIB,ELECTRIC_LIB,HVAC_FIRE_LIB});
+      const _k=k=>_sc.objects.filter(o=>o.kind===k);
+      assert('SK36: 3D 조립 면 1·선 4·점 4·매스 1',_k('sketchFace').length===1&&_k('sketchEdge').length===4&&_k('sketchPt').length===4&&_k('mass').length===1,JSON.stringify(_sc.counts));
+      const _pm=_k('mass')[0];
+      assert('SK37: 매스 = prism 높이 1500 · 중심 (6000,500)',_pm.prims[0].t==='prism'&&_pm.prims[0].h===1500&&_pm.x===6000&&_pm.y===500);
+    }else assert('SK36: 3D 조립 (2D 페이지엔 MC3D 미적재 — node tests/minicad-3d.cjs 가 검증)',true);
+    // 12) 레거시(sketchMode=false) 스위치가 남아 있다
+    assert('SK38: sketchMode 기본 켜짐',STATE.sketchMode!==false);
+    applyLoadedData(_skBak);
+    assert('SK39: 원상복구',STATE.activeFloorId===_skAct&&(STATE.masses||[]).length===_skBak.masses.length);
+  }catch(e){
+    assert('SK: 점·선·면 테스트 예외 없음',false,e.message+' @ '+String(e.stack||'').split('\n')[1]);
+  }
   // 결과
   const total=pass+fail,color=fail?'#E2725B':'#7BA05B';
   console.group('%c ECOREAN v5.8 Test Suite','background:'+color+';color:#fff;font-weight:bold;padding:4px 8px');

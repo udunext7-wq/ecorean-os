@@ -47,7 +47,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=tablet103">
+<link rel="stylesheet" href="css/style.css?v=tablet104">
 </head>
 <body>
 <div id="loading"><div class="spinner"></div><div class="msg">ECOREAN MiniCAD v6.0 로딩…</div></div>
@@ -180,8 +180,8 @@
       <div class="psec-head" onclick="toggleSection(this)"><div class="psec-label">도구</div><span class="psec-chevron">▾</span></div>
       <div class="tool-grid">
         <button class="tool-btn active" data-tool="select"><span class="ti">↖</span><span>선택</span><span class="tk">V</span></button>
-        <button class="tool-btn" data-tool="rect"><span class="ti">▭</span><span>사각공간</span><span class="tk">R</span></button>
-        <button class="tool-btn" data-tool="circlespace"><span class="ti">⬤</span><span>원형공간</span><span class="tk">C</span></button>
+        <button class="tool-btn" data-tool="rect" title="사각형 → 면 → Z 입력 시 객체"><span class="ti">▭</span><span>사각형</span><span class="tk">R</span></button>
+        <button class="tool-btn" data-tool="circlespace"><span class="ti">⬤</span><span>원</span><span class="tk">C</span></button>
         <button class="tool-btn" data-tool="polygon"><span class="ti">⬡</span><span>다각공간</span><span class="tk">P</span></button>
         <button class="tool-btn" data-tool="wall"><span class="ti">▬</span><span>벽</span><span class="tk">B</span></button>
         <button class="tool-btn" data-tool="gabyeok" title="내력벽 — 일반 벽과 자동 분할/공간 경계 영향 없음"><span class="ti">▤</span><span>내력벽</span><span class="tk">S</span></button>
@@ -617,17 +617,18 @@
   </div>
 </div>
 
-<script src="js/state.js?v=tablet103"></script>
-<script src="js/data.js?v=tablet103"></script>
-<script src="js/library.js?v=tablet103"></script>
-<script src="js/engine.js?v=tablet103"></script>
-<script src="js/tools.js?v=tablet103"></script>
-<script src="js/ui.js?v=tablet103"></script>
-<script src="js/layout.js?v=tablet103"></script>
-<script src="js/touch.js?v=tablet103"></script>
-<script src="js/import-cad.js?v=tablet103"></script>
-<script src="js/estimate.js?v=tablet103"></script>
-<script src="js/tests.js?v=tablet103"></script>
+<script src="js/state.js?v=tablet104"></script>
+<script src="js/data.js?v=tablet104"></script>
+<script src="js/library.js?v=tablet104"></script>
+<script src="js/engine.js?v=tablet104"></script>
+<script src="js/tools.js?v=tablet104"></script>
+<script src="js/sketch.js?v=tablet104"></script>
+<script src="js/ui.js?v=tablet104"></script>
+<script src="js/layout.js?v=tablet104"></script>
+<script src="js/touch.js?v=tablet104"></script>
+<script src="js/import-cad.js?v=tablet104"></script>
+<script src="js/estimate.js?v=tablet104"></script>
+<script src="js/tests.js?v=tablet104"></script>
 <script>
 'use strict';
 // ===== v5.9: 저작권 보호 — EULA, 우클릭 차단, 워터마크, 콘솔 경고 =====

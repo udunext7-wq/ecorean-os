@@ -26,6 +26,12 @@ const STATE={
   hvac:[], // v5.6: 공조/소방
   leaders:[], // v5.9: 지시선 (LE 명령)
   xlines:[], // v5.9: 무한 안내선 (AutoCAD XLINE) — {id,x1,y1,x2,y2} 두 점이 방향, 무한 연장·가는 실선
+  // 2026-09-04 점·선·면 모델 (스케치업 동일) — 선·사각형·원 도구는 먼저 스케치(점/선)가 되고, 닫힌 고리 = 면, 면에 Z = 객체
+  sketchPts:[],   // {id,x,y}            점 — x,y 만
+  sketchEdges:[], // {id,a,b}            선 — 점 id 둘 (평면 그래프: 교차·접합 자동 분할)
+  sketchFaces:[], // {id,pts:[ptId..]}   면 — 선 고리에서 자동 검출 (skDetectFaces)
+  masses:[],      // {id,name,x,y,angle,pts(상대),h_mm,elev_mm,color} 자유 매스 — 면+Z 의 기본 결과 (스케치업 솔리드), 공간·벽으로 변환 가능
+  sketchMode:true, // false = 옛 즉시 객체 생성 (명령 sk off)
   // 2026-08-30: 절단선 (입면 방향선) — 대표 지시 "방향을 내가 고르고 절단면에서 자유롭게"
   //  {id,x1,y1,x2,y2, side:+1|-1 (선의 어느 쪽을 보는가), depth_mm (절단면에서 볼 깊이), name}
   sections:[],
@@ -41,7 +47,7 @@ const STATE={
   shiftPressed:false,
   ctrlPressed:false, // v5.9: Ctrl 누르면 자석 스냅 일시 OFF
   history:[],historyIdx:-1,measureFirst:null,
-  layers:{walls:true,spaces:true,openings:true,furniture:true,fixtures:true,lights:true,electric:true,dimensions:true,text:true,circles:true,arcs:true,curves:true,hvac:true,leaders:true,xlines:true,pillars:true,sections:true},
+  layers:{walls:true,spaces:true,openings:true,furniture:true,fixtures:true,lights:true,electric:true,dimensions:true,text:true,circles:true,arcs:true,curves:true,hvac:true,leaders:true,xlines:true,pillars:true,sections:true,sketch:true,masses:true},
   estimateConfig:{},
   cmdHistory:[],cmdHistoryIdx:-1,
   cmdMode:null,cmdData:{}, // v5.1: 단계별 프롬프트 모드

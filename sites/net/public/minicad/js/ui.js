@@ -313,6 +313,7 @@ function buildLayerUI(){
     furniture:['가구','#8B7239'],fixtures:['위생/주방','#5BA0D4'],lights:['조명','#D4B872'],
     electric:['전기','#7BA05B'],hvac:['공조/소방','#9B7AC9'],circles:['원/타원','#C9A961'],arcs:['아크','#D4B872'],curves:['자유곡선','#7BA05B'],
     pillars:['기둥 (RC)','#D4D4D4'],
+    sketch:['스케치 (점·선·면)','#E8D48B'],masses:['매스 (면+Z)','#B9C6D2'], // 2026-09-04 점·선·면
     dimensions:['치수','#B8B0A0'],text:['주석','#F5F1EB'],leaders:['지시선','#A8D8A8'],xlines:['안내선 (무한)','#4FC3D9'],
     sections:['절단선','#C0392B']};
   Object.entries(labels).forEach(([k,[name,color]])=>{
@@ -570,7 +571,7 @@ function refreshDetail(){
     const _kn={space:'공간',wall:'벽',opening:'문·창',furniture:'가구',fixtures:'위생/주방',
       lights:'조명',electric:'전기',hvac:'공조/소방',texts:'텍스트',measures:'치수',
       circles:'원',arcs:'아크',curves:'공선',leaders:'지시선',xlines:'안내선',pillars:'기둥',
-      sections:'절단선'};
+      sections:'절단선',sketchPts:'점',sketchEdges:'선',sketchFaces:'면',masses:'매스'};
     const _cnt={};
     STATE.boxSelection.forEach(b=>{_cnt[b.kind]=(_cnt[b.kind]||0)+1;});
     const _lit=selectedLightIds();
@@ -905,6 +906,83 @@ function refreshDetail(){
     document.getElementById('sc-open').addEventListener('click',()=>
       openElevationDialog(null,{mode:'section',sectionId:sc.id}));
     document.getElementById('sc-del').addEventListener('click',deleteSelected);
+  }
+  // 2026-09-04 점·선·면: 면 → Z 입력으로 객체 (매스/공간/벽)
+  else if(STATE.selectedKind==='sketchFaces'){
+    const f=(STATE.sketchFaces||[]).find(x=>x.id===STATE.selectedId);
+    if(!f) return;
+    const area=skFaceArea(f)/1e6, per=Math.round(skFacePerimeter(f));
+    const guess=skGuessKind(f);
+    const z0=STATE.ceilingHeight_mm||2400;
+    dc.innerHTML=
+      '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">면</strong> — '+
+        area.toFixed(2)+'㎡ · 둘레 '+per+'mm · 점 '+f.pts.length+'개</p>'+
+      '<div class="field"><label class="field-label">Z 높이 (mm) — 입력하면 객체가 됩니다</label>'+
+        '<input type="text" inputmode="decimal" id="sk-z" value="'+z0+'"></div>'+
+      '<div class="field"><label class="field-label">무엇으로</label><select id="sk-as">'+
+        '<option value="solid">매스 (자유 — 스케치업 솔리드)</option>'+
+        '<option value="space">공간 (둘레 벽 · 천장고 = Z)</option>'+
+        '<option value="wall">벽 (높이 = Z · 두께 = 짧은 변)</option>'+
+        '<option value="auto">자동 (지금 판정: '+(guess==='wall'?'벽':'공간')+')</option></select></div>'+
+      '<button class="btn sm gold" id="sk-ex" style="width:100%;margin-top:6px;font-weight:700">⬆ 객체 생성 (Enter)</button>'+
+      '<button class="btn danger sm" id="sk-del" style="width:100%;margin-top:5px">면 삭제 (Del)</button>'+
+      '<div class="hint" style="margin-top:8px">면은 아직 객체가 아닙니다. 미니폼(3D)에서 밀기끌기(P)로 올려도 같은 결과.</div>';
+    const doEx=()=>{
+      const z=evalDim(document.getElementById('sk-z').value);
+      if(!isFinite(z)||z<10){showStatus('양수 Z(mm) 입력');return;}
+      const as=document.getElementById('sk-as').value;
+      const made=skExtrude(f.id,z,as);
+      showStatus(made?('⬆ 면 → '+({masses:'매스',space:'공간',wall:'벽'}[made.kind]||made.kind)+' Z='+Math.round(z)):'객체 생성 실패 (면이 너무 작음)');
+    };
+    document.getElementById('sk-ex').addEventListener('click',doEx);
+    document.getElementById('sk-z').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doEx();}});
+    document.getElementById('sk-del').addEventListener('click',deleteSelected);
+  }
+  else if(STATE.selectedKind==='sketchEdges'){
+    const e=(STATE.sketchEdges||[]).find(x=>x.id===STATE.selectedId);
+    if(!e) return;
+    dc.innerHTML=
+      '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">선</strong> — 길이 '+Math.round(skEdgeLen(e))+'mm</p>'+
+      '<button class="btn danger sm" id="sk-del" style="width:100%;margin-top:5px">선 삭제 (Del)</button>'+
+      '<div class="hint" style="margin-top:8px">선은 x,y 만 가집니다. 선이 닫히면 면이 자동으로 생깁니다.</div>';
+    document.getElementById('sk-del').addEventListener('click',deleteSelected);
+  }
+  else if(STATE.selectedKind==='sketchPts'){
+    const p=(STATE.sketchPts||[]).find(x=>x.id===STATE.selectedId);
+    if(!p) return;
+    dc.innerHTML=
+      '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">점</strong></p>'+
+      '<div style="display:flex;gap:6px"><div class="field" style="flex:1"><label class="field-label">X (mm)</label><input type="text" inputmode="decimal" id="sk-px" value="'+p.x+'"></div>'+
+      '<div class="field" style="flex:1"><label class="field-label">Y (mm)</label><input type="text" inputmode="decimal" id="sk-py" value="'+p.y+'"></div></div>'+
+      '<button class="btn danger sm" id="sk-del" style="width:100%;margin-top:5px">점 삭제 (Del)</button>';
+    const mv=()=>{const x=evalDim(document.getElementById('sk-px').value),y=evalDim(document.getElementById('sk-py').value);
+      if(!isFinite(x)||!isFinite(y)) return; p.x=Math.round(x);p.y=Math.round(y);skDetectFaces();saveHistory();renderAll();refreshUI();};
+    document.getElementById('sk-px').addEventListener('change',mv);
+    document.getElementById('sk-py').addEventListener('change',mv);
+    document.getElementById('sk-del').addEventListener('click',deleteSelected);
+  }
+  else if(STATE.selectedKind==='masses'){
+    const m=(STATE.masses||[]).find(x=>x.id===STATE.selectedId);
+    if(!m) return;
+    dc.innerHTML=
+      '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">매스</strong> — '+(massArea(m)/1e6).toFixed(2)+'㎡ · 점 '+m.pts.length+'개</p>'+
+      '<div class="field"><label class="field-label">이름</label><input type="text" id="ms-name" value="'+escapeHtml(m.name||'')+'"></div>'+
+      '<div style="display:flex;gap:6px"><div class="field" style="flex:1"><label class="field-label">높이 H (mm)</label><input type="text" inputmode="decimal" id="ms-h" value="'+(m.h_mm||0)+'"></div>'+
+      '<div class="field" style="flex:1"><label class="field-label">바닥에서 띄움 (mm)</label><input type="text" inputmode="decimal" id="ms-el" value="'+(m.elev_mm||0)+'"></div></div>'+
+      '<div style="display:flex;gap:6px"><div class="field" style="flex:1"><label class="field-label">각도</label><input type="text" inputmode="decimal" id="ms-ang" value="'+(m.angle||0)+'"></div>'+
+      '<div class="field" style="flex:1"><label class="field-label">색</label><input type="color" id="ms-col" value="'+(m.color||'#B9C6D2')+'" style="width:100%;height:28px"></div></div>'+
+      '<div style="display:flex;gap:4px;margin-top:6px"><button class="btn sm" id="ms-sp" style="flex:1">공간으로</button><button class="btn sm" id="ms-wl" style="flex:1">벽으로</button></div>'+
+      '<button class="btn danger sm" id="ms-del" style="width:100%;margin-top:5px">삭제 (Del)</button>'+
+      '<div class="hint" style="margin-top:8px">매스 = 면에 Z 를 준 자유 덩어리. 3D 에서 이동·회전·밀기끌기 가능. 필요하면 공간·벽으로 바꿉니다.</div>';
+    const num=(id,dflt)=>{const v=evalDim(document.getElementById(id).value);return isFinite(v)?Math.round(v):dflt;};
+    document.getElementById('ms-name').addEventListener('change',e=>{m.name=e.target.value.trim()||m.name;saveHistory();renderAll();refreshUI();});
+    document.getElementById('ms-h').addEventListener('change',()=>{m.h_mm=Math.max(10,num('ms-h',m.h_mm));saveHistory();renderAll();refreshUI();});
+    document.getElementById('ms-el').addEventListener('change',()=>{m.elev_mm=num('ms-el',0);saveHistory();renderAll();refreshUI();});
+    document.getElementById('ms-ang').addEventListener('change',()=>{m.angle=((num('ms-ang',0)%360)+360)%360;saveHistory();renderAll();refreshUI();});
+    document.getElementById('ms-col').addEventListener('change',e=>{m.color=e.target.value;saveHistory();renderAll();refreshUI();});
+    document.getElementById('ms-sp').addEventListener('click',()=>{const r=massConvert(m.id,'space');showStatus(r?'매스 → 공간 (천장고 '+m.h_mm+')':'변환 실패 (면적 0.09㎡ 미만)');});
+    document.getElementById('ms-wl').addEventListener('click',()=>{const r=massConvert(m.id,'wall');showStatus(r?'매스 → 벽 (높이 '+m.h_mm+')':'변환 실패');});
+    document.getElementById('ms-del').addEventListener('click',deleteSelected);
   }
   else{
     const kn={wall:'벽',furniture:'가구',fixtures:'위생/주방',lights:'조명',electric:'전기',texts:'텍스트',measures:'치수',xlines:'안내선 (무한)',leaders:'지시선',circles:'원',arcs:'아크',curves:'곡선',hvac:'공조/소방',pillars:'기둥',sections:'절단선'};
@@ -2122,6 +2200,7 @@ function buildJSON(){
     xlines:STATE.xlines||[], // v5.9: 무한 안내선
     pillars:STATE.pillars||[], // v5.9: 기둥 (RC)
     sections:STATE.sections||[], // 2026-08-30: 절단선 (입면 방향선)
+    sketchPts:STATE.sketchPts||[],sketchEdges:STATE.sketchEdges||[],sketchFaces:STATE.sketchFaces||[],masses:STATE.masses||[], // 2026-09-04 점·선·면·매스
     autoDetectedCycles:autoCycles, // v5.7
     relationships, // v5.7
     indices, // v5.7
@@ -2177,11 +2256,11 @@ function buildEstimateInput(){
 function buildJSONProfile(profile){
   const j=buildJSON();
   if(profile==='estimate'){
-    ['texts','measures','circles','arcs','curves','leaders','xlines','autoDetectedCycles','indices','relationships','layers','vertices','furniture','fixtures','lights','electric','hvac','floors','activeFloorId'].forEach(k=>delete j[k]);
+    ['texts','measures','circles','arcs','curves','leaders','xlines','sketchPts','sketchEdges','sketchFaces','masses','autoDetectedCycles','indices','relationships','layers','vertices','furniture','fixtures','lights','electric','hvac','floors','activeFloorId'].forEach(k=>delete j[k]);
     if(j.meta){delete j.meta.aiPromptHints;delete j.meta.videoSequence;delete j.meta.ssotPipeline;}
     j.profile='estimate';
   }else if(profile==='ai_render'){
-    ['measures','xlines','leaders','estimateInput','indices','autoDetectedCycles','layers','vertices'].forEach(k=>delete j[k]);
+    ['measures','xlines','leaders','sketchPts','sketchEdges','sketchFaces','estimateInput','indices','autoDetectedCycles','layers','vertices'].forEach(k=>delete j[k]);
     j.profile='ai_render';
   }else{
     j.profile='full';
@@ -2344,7 +2423,7 @@ function refreshVideoSeqUI(){
 }
 
 // ===== 회전·복제·삭제 =====
-function getArr(kind){return{space:STATE.spaces,wall:STATE.walls,opening:STATE.openings,furniture:STATE.furniture,fixtures:STATE.fixtures,lights:STATE.lights,electric:STATE.electric,texts:STATE.texts,measures:STATE.measures,circles:STATE.circles,arcs:STATE.arcs,curves:STATE.curves,hvac:STATE.hvac,leaders:STATE.leaders,xlines:STATE.xlines,pillars:STATE.pillars,sections:STATE.sections}[kind];}
+function getArr(kind){return{space:STATE.spaces,wall:STATE.walls,opening:STATE.openings,furniture:STATE.furniture,fixtures:STATE.fixtures,lights:STATE.lights,electric:STATE.electric,texts:STATE.texts,measures:STATE.measures,circles:STATE.circles,arcs:STATE.arcs,curves:STATE.curves,hvac:STATE.hvac,leaders:STATE.leaders,xlines:STATE.xlines,pillars:STATE.pillars,sections:STATE.sections,sketchPts:STATE.sketchPts,sketchEdges:STATE.sketchEdges,sketchFaces:STATE.sketchFaces,masses:STATE.masses}[kind];}
 
 // v5.7: 다중 선택 헬퍼 — boxSelection 우선, 비어있으면 단일 selected
 function getSelectedTargets(){
@@ -2436,6 +2515,7 @@ function deleteSelected(){
       });
     }else if(t.kind==='wall'){STATE.walls=STATE.walls.filter(x=>x.id!==t.id);}
     else if(t.kind==='opening'){STATE.openings=STATE.openings.filter(x=>x.id!==t.id);}
+    else if(t.kind==='sketchPts'||t.kind==='sketchEdges'||t.kind==='sketchFaces'){skRemove(t.kind,t.id);} // 2026-09-04 점·선·면
     else{
       const arr=getArr(t.kind);
       if(arr){const idx=arr.findIndex(x=>x.id===t.id);if(idx>=0) arr.splice(idx,1);}
@@ -3335,6 +3415,7 @@ function buildAutosavePayload(){
     electric:STATE.electric,hvac:STATE.hvac,texts:STATE.texts,measures:STATE.measures,
     circles:STATE.circles,arcs:STATE.arcs,curves:STATE.curves||[],
     leaders:STATE.leaders||[],xlines:STATE.xlines||[],pillars:STATE.pillars||[],
+    sketchPts:STATE.sketchPts||[],sketchEdges:STATE.sketchEdges||[],sketchFaces:STATE.sketchFaces||[],masses:STATE.masses||[], // 2026-09-04 점·선·면·매스 (3D 에도 감)
   };
 }
 // --- [안정] 자동 저장 (2초 디바운스) + 복구 제안 ---
@@ -3366,6 +3447,8 @@ function applyLoadedData(d){
   STATE.circles=d.circles||[];STATE.arcs=d.arcs||[];STATE.hvac=d.hvac||[];
   STATE.leaders=d.leaders||[];STATE.xlines=d.xlines||[];STATE.curves=d.curves||[];STATE.pillars=d.pillars||[];
   STATE.sections=d.sections||[]; // 2026-08-30: 절단선 (옛 저장본엔 없다)
+  STATE.sketchPts=d.sketchPts||[];STATE.sketchEdges=d.sketchEdges||[];STATE.sketchFaces=d.sketchFaces||[];STATE.masses=d.masses||[]; // 2026-09-04 점·선·면·매스
+  if(typeof skDetectFaces==='function') skDetectFaces(); // 면은 선에서 다시 검출 (저장본 불일치 방지)
   if(d.meta&&d.meta.aiPromptHints) STATE.aiPromptHints={...STATE.aiPromptHints,...d.meta.aiPromptHints};
   // 2026-08-26: 문서 설정 복원 (저장 당시 스펙 유지 — 없으면 현재 값 유지)
   const _set=d.meta&&d.meta.settings;
@@ -5286,7 +5369,7 @@ document.getElementById('btn-circuits').addEventListener('click',toggleCircuits)
 //  [🧊 3D]/`3d` → 3d/index.html 을 새 탭으로. 문서는 localStorage 로 처음 넘기고,
 //  이후에는 BroadcastChannel('minicad-3d') 로 saveHistory 때마다(300ms 묶음) 흘려보내 평면 수정이 바로 입체에 반영된다.
 //  3D 탭이 먼저 열려 있으면 'hello' 를 보내오므로 그때부터 전송을 켠다. 페이로드는 buildAutosavePayload(경량).
-const MC_PROTO=5; // 미니캐드↔미니폼 메시지 프로토콜 버전 — op 추가/변경 시 양쪽(view3d.js MF_PROTO) 같이 올릴 것
+const MC_PROTO=6; // 2026-09-04 점·선·면(스케치 op·extrude·매스) // 미니캐드↔미니폼 메시지 프로토콜 버전 — op 추가/변경 시 양쪽(view3d.js MF_PROTO) 같이 올릴 것
 let _view3dChan=null,_view3dTimer=null,_view3dLive=false;
 function _view3dPayload(){
   // getter(polygon·x1..y2)를 값으로 굳힌다 — structured clone 은 접근자를 못 옮길 수 있다
@@ -5336,7 +5419,8 @@ function open3DView(){
 //        나머지 층은 floors[].data 에 JSON 스냅샷(undo 스냅샷과 같은 방식). 히스토리도 층별 보관.
 //  저장: buildJSON/buildAutosavePayload 에 floors 전체 포함 → 서버 저장·자동저장·3D 모두 한 문서.
 const FLOOR_FIELDS=['vertices','spaces','walls','openings','furniture','fixtures','lights','electric',
-  'texts','measures','circles','arcs','curves','hvac','leaders','xlines','pillars','sections'];
+  'texts','measures','circles','arcs','curves','hvac','leaders','xlines','pillars','sections',
+  'sketchPts','sketchEdges','sketchFaces','masses']; // 2026-09-04 점·선·면·매스
 function _floorsEnsure(){
   if(!Array.isArray(STATE.floors)) STATE.floors=[];
   if(!STATE.floors.length){STATE.floors=[{id:'fl1',name:'1층',level:1,data:null,history:null,historyIdx:null}];STATE.activeFloorId='fl1';}
@@ -5378,7 +5462,9 @@ function _remapFloorIds(d,sfx){
   const map={};
   const ren=o=>{if(o&&o.id){map[o.id]=o.id+sfx;o.id=o.id+sfx;}};
   ['vertices','spaces','walls','openings','pillars','furniture','fixtures','lights','electric','hvac',
-   'texts','measures','circles','arcs','curves','leaders','xlines','sections'].forEach(k=>(d[k]||[]).forEach(ren));
+   'texts','measures','circles','arcs','curves','leaders','xlines','sections','sketchPts','sketchEdges','sketchFaces','masses'].forEach(k=>(d[k]||[]).forEach(ren));
+  (d.sketchEdges||[]).forEach(e=>{['a','b'].forEach(k=>{if(e[k]&&map[e[k]])e[k]=map[e[k]];});}); // 2026-09-04 선→점 참조
+  (d.sketchFaces||[]).forEach(f=>{if(Array.isArray(f.pts))f.pts=f.pts.map(id=>map[id]||id);});
   (d.walls||[]).forEach(w=>{['v1Id','v2Id','spaceId'].forEach(k=>{if(w[k]&&map[w[k]])w[k]=map[w[k]];});});
   (d.spaces||[]).forEach(s=>{if(Array.isArray(s.vertexIds))s.vertexIds=s.vertexIds.map(id=>map[id]||id);});
   (d.openings||[]).forEach(o=>{['wallId','spaceId'].forEach(k=>{if(o[k]&&map[o[k]])o[k]=map[o[k]];});});
@@ -5475,7 +5561,8 @@ function renderFloorBar(){
 //  다른 층·다른 탭에 붙여넣기 가능. 붙는 위치 = 마우스 커서(없으면 원본에서 +600mm).
 const _CLIP_KIND2ARR={space:'spaces',wall:'walls',opening:'openings',furniture:'furniture',fixtures:'fixtures',
   lights:'lights',electric:'electric',hvac:'hvac',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',
-  curves:'curves',leaders:'leaders',xlines:'xlines',pillars:'pillars',sections:'sections'};
+  curves:'curves',leaders:'leaders',xlines:'xlines',pillars:'pillars',sections:'sections',
+  masses:'masses',sketchPts:'sketchPts',sketchEdges:'sketchEdges',sketchFaces:'sketchFaces'}; // 2026-09-04 (3D 편집 대상 매핑에도 쓰인다)
 let _clipboard=null,_clipSeq=0,_clipMouse=null;
 function copySelection(){
   const targets=getSelectedTargets();
@@ -5613,7 +5700,8 @@ function _apply3DBatch(m){
 function apply3DEdit(m){
   if(!m||!m.op) return false;
   // 버전 어긋남 자가 진단 — 옛 창이 모르는 명령을 조용히 삼키지 않는다 (2026-09-04: "면이 생성 안 됨" 원인)
-  if(!['undo','redo','add','addwall','addrect','addspace','splitspace','addcircle','move','rotate','delete','set','clone','lock','batch'].includes(m.op)){
+  if(!['undo','redo','add','addwall','addrect','addspace','splitspace','addcircle','move','rotate','delete','set','clone','lock','batch',
+       'sketchline','sketchrect','sketchcircle','sketchpoly','extrude','sketchdel','sketchclear','massconvert'].includes(m.op)){ // 프로토콜 6: 점·선·면
     showStatus('⚠ 알 수 없는 3D 명령('+m.op+') — 미니캐드 창을 새로고침(F5) 하세요');
     return false;
   }
@@ -5624,14 +5712,16 @@ function apply3DEdit(m){
   if(m.op==='add') return _apply3DAdd(m); // 3D 에서 새 객체 배치 (id 없음)
   if(m.op==='addwall'||m.op==='addrect') return _apply3DWall(m); // 3D 선(L)/사각형(R) 도구 → 벽
   if(m.op==='addspace'||m.op==='splitspace'||m.op==='addcircle') return _apply3DFace(m); // 점·선·면 구조: 면 생성 / 면 위 선 = 분할 / 원(C)
+  if(m.op.startsWith('sketch')||m.op==='extrude'||m.op==='massconvert') return _apply3DSketch(m); // 2026-09-04 프로토콜 6: 스케치(점·선·면) + 면→객체
   if(!m.kind||!m.id) return false;
   const arrName=_CLIP_KIND2ARR[m.kind];
   if(!arrName) return false;
-  if(m.op==='delete'&&!['furniture','fixtures','lights','electric','hvac','pillars','opening'].includes(m.kind)) return false; // 벽·공간 삭제는 평면에서만
-  if(m.op==='clone'&&!['furniture','fixtures','lights','electric','hvac','pillars'].includes(m.kind)) return false;
+  if(m.op==='delete'&&!['furniture','fixtures','lights','electric','hvac','pillars','opening','masses'].includes(m.kind)) return false; // 벽·공간 삭제는 평면에서만
+  if(m.op==='clone'&&!['furniture','fixtures','lights','electric','hvac','pillars','masses'].includes(m.kind)) return false;
   const ALLOW={space:['floorMaterial','ceilingMaterial','ceilingHeight_mm','name'],
     wall:['height_mm','finishMaterial','thickness'], // thickness = 미니폼 벽 옆면 밀기끌기
     opening:['width_mm','height_mm','sillHeight_mm','x','y'], // x/y = 벽 위 슬라이드 (미니폼 Move)
+    masses:['h_mm','elev_mm','name','color','x','y','angle'], // 2026-09-04 매스 — 밀기끌기(h_mm)·띄움·이동·회전
     _:['x','y','angle','inch','length_mm','w','h','elev_mm']}; // w/h=배율 · elev_mm=바닥에서 띄움(Z 자유)
   const applyTo=bag=>{
     const arr=bag[arrName]; if(!Array.isArray(arr)) return false;
@@ -5744,6 +5834,66 @@ function _apply3DWall(m){
 }
 // 점·선·면 구조 (2026-09-04 대표 지시) — 미니폼 사각형=면(공간) 생성, 면 위의 선=면 분할.
 //  2D 엔진 그대로 사용: addSpace(면+점+선 일괄 생성·그룹), addLine(가로지르면 분할·아니면 참조선).
+// 2026-09-04 프로토콜 6 — 미니폼 선(L)/사각형(R)/원(C)/호(A)/옵셋(F) 은 객체가 아니라 스케치(점·선)가 되고,
+//  닫힌 고리 = 면(자동), 면에 밀기끌기(P) = extrude → 매스(기본)/공간/벽. 잠든 층에도 스케치는 그린다(extrude 만 활성 층).
+function _apply3DSketch(m){
+  const p=m.patch||{};
+  const active=!m.floorId||m.floorId===STATE.activeFloorId;
+  const fl=active?null:(STATE.floors||[]).find(x=>x.id===m.floorId);
+  const bag=active?STATE:(fl&&fl.data);
+  if(!bag) return false;
+  const N=v=>Math.round(Number(v));
+  const fin=(...a)=>a.every(v=>isFinite(v));
+  let ok=false,label='';
+  if(m.op==='sketchline'){
+    const x1=N(p.x1),y1=N(p.y1),x2=N(p.x2),y2=N(p.y2);
+    if(!fin(x1,y1,x2,y2)||Math.hypot(x2-x1,y2-y1)<10) return false;
+    ok=skAddEdge(x1,y1,x2,y2,bag).length>0;label='선';
+  }else if(m.op==='sketchrect'){
+    const x1=N(p.x1),y1=N(p.y1),x2=N(p.x2),y2=N(p.y2);
+    if(!fin(x1,y1,x2,y2)) return false;
+    if(Math.abs(x2-x1)<10||Math.abs(y2-y1)<10){showStatus('사각형이 너무 작습니다');return false;}
+    ok=!!skAddRect(x1,y1,x2,y2,bag);label='사각형 → 면';
+  }else if(m.op==='sketchcircle'){
+    const cx=N(p.cx),cy=N(p.cy),r=N(p.r);
+    if(!fin(cx,cy,r)||r<10){showStatus('원이 너무 작습니다');return false;}
+    ok=!!skAddCircle(cx,cy,r,p.n||32,bag);label='원 → 면';
+  }else if(m.op==='sketchpoly'){
+    if(!Array.isArray(p.pts)||p.pts.length<3) return false;
+    const pts=p.pts.map(q=>({x:N(q.x),y:N(q.y)}));
+    if(!pts.every(q=>fin(q.x,q.y))) return false;
+    const f=pts[0],l=pts[pts.length-1]; if(pts.length>3&&Math.hypot(f.x-l.x,f.y-l.y)<30) pts.pop();
+    if(pts.length<3) return false;
+    ok=!!skAddPoly(pts,bag);label='다각형 → 면';
+  }else if(m.op==='sketchdel'){
+    if(!m.kind||!m.id) return false;
+    ok=skRemove(m.kind,m.id,bag);label='스케치 삭제';
+  }else if(m.op==='sketchclear'){
+    ok=skClear(bag)>0;label='스케치 비움';
+  }else if(m.op==='extrude'){
+    if(!active){showStatus('잠든 층의 면은 그 층으로 전환 후 올려주세요');return false;}
+    const z=N(p.z); if(!isFinite(z)||z<10) return false;
+    if(!p.id) return false;
+    const made=skExtrude(p.id,z,p.as||'solid');
+    if(!made){showStatus('면 → 객체 실패 (면이 너무 작거나 없음)');return false;}
+    if(typeof push3D==='function'&&!_3dBatch) push3D(true); // skExtrude 가 saveHistory 로 이미 밀었지만 즉시 회신
+    showStatus('⬆ 면 → '+({masses:'매스',space:'공간',wall:'벽'}[made.kind]||made.kind)+' Z='+z);
+    return true;
+  }else if(m.op==='massconvert'){ // 매스 → 공간/벽 (미니폼 속성 패널·우클릭)
+    if(!active){showStatus('잠든 층의 매스는 그 층으로 전환 후 바꿔주세요');return false;}
+    if(!p.id) return false;
+    const made=massConvert(p.id,p.as||'auto');
+    if(!made){showStatus('매스 전환 실패 (너무 작거나 없음)');return false;}
+    if(typeof push3D==='function'&&!_3dBatch) push3D(true);
+    showStatus('매스 → '+({space:'공간',wall:'벽'}[made.kind]||made.kind));
+    return true;
+  }else return false;
+  if(!ok) return false;
+  if(active){saveHistory();renderAll();refreshUI();}
+  else{scheduleAutosave();if(typeof push3D==='function')push3D();}
+  if(!_3dBatch){showStatus('✏ '+label+(active?'':' (잠든 층)'));if(typeof push3D==='function')push3D(true);}
+  return true;
+}
 function _apply3DFace(m){
   const p=m.patch||{};
   // 2026-09-04: 다각형 면 — 미니폼 선(L) 사슬이 닫히면 pts 배열로 온다 (ㄱ자·ㄷ자 방). 원(C)은 addcircle.
@@ -5850,7 +6000,7 @@ function sendToEstimateOS(silent){
   // estimate 프로파일은 배치 객체(lights/electric/fixtures)까지 제거하므로 브리지는 자체 경량화:
   // 작도 보조·AI 메타만 제거하고 배치 객체는 유지 (견적OS 전기/설비/가구 매핑에 필요)
   const j=buildJSON();
-  ['texts','measures','circles','arcs','curves','leaders','xlines','autoDetectedCycles','indices','relationships','vertices'].forEach(k=>delete j[k]);
+  ['texts','measures','circles','arcs','curves','leaders','xlines','sketchPts','sketchEdges','sketchFaces','masses','autoDetectedCycles','indices','relationships','vertices'].forEach(k=>delete j[k]);
   if(j.meta){delete j.meta.aiPromptHints;delete j.meta.videoSequence;delete j.meta.ssotPipeline;}
   j.profile='bridge';
   // 2026-09-03: 층 시트 문서는 전층 합산 견적도 함께 전송 (견적OS 총액 산출용)
@@ -6280,6 +6430,7 @@ document.getElementById('btn-clear-all').addEventListener('click',()=>{
   STATE.furniture=[];STATE.fixtures=[];STATE.lights=[];STATE.electric=[];
   STATE.texts=[];STATE.measures=[];STATE.estimateConfig={};
   STATE.xlines=[]; // v5.9: 무한 안내선도 함께 삭제
+  STATE.sketchPts=[];STATE.sketchEdges=[];STATE.sketchFaces=[];STATE.masses=[]; // 2026-09-04 점·선·면·매스
   STATE.selectedKind=null;STATE.selectedId=null;
   saveHistory();renderAll();refreshUI();showStatus('전체 삭제');
 });
@@ -6458,11 +6609,11 @@ window.addEventListener('resize',handleResize);
 // ===== AutoCAD 스타일 명령어 시스템 =====
 const CMD_HINTS={
   select:'선택(V): 클릭=단일 / 드래그=박스(좌→우 Window/우→좌 Crossing) / Del=일괄삭제',
-  rect:'사각공간(R): 클릭 → 폭 → 높이 / 또는 드래그',
+  rect:'사각형(R): 클릭 → 폭 → 높이 / 또는 드래그 → 면 → Z 입력 시 객체',
   polygon:'다각공간(P): 꼭짓점 수 입력 → 중심 클릭 → 반지름(mm) 입력',
-  circlespace:'원형공간(G): 중심 클릭 → 반지름(mm) Enter / 또는 드래그',
+  circlespace:'원(G): 중심 클릭 → 반지름(mm) Enter / 또는 드래그 → 면 → Z 입력 시 객체',
   wall:'벽(B): 클릭+클릭 또는 클릭→길이 입력 (두께 100mm)',
-  line:'선(L): 클릭+클릭 또는 클릭→길이 입력 / 공간 내부 → 공간 분할',
+  line:'선(L): 클릭+클릭 또는 클릭→길이 입력 / 선이 닫히면 면 / 공간 내부 → 공간 분할',
   door:'문(D): 공간/벽 가까이 클릭 → 자동 각도 정렬',
   window:'창(W): 공간/벽 가까이 클릭 → 자동 각도 정렬',
   furniture:'1 가구: 라이브러리 선택 → 클릭',
@@ -6559,6 +6710,24 @@ function processCommand(rawCmd){
     updateOrthoFAB();
     const cb=document.querySelector('input[data-snap="ortho"]');
     if(cb) cb.checked=STATE.snap.ortho;
+    return;
+  }
+  // 2026-09-04 점·선·면: sk off = 옛 즉시 객체 생성, sk on = 스케치(기본), sk clear = 스케치 비움, ex[Z] = 선택 면 올리기
+  if(/^sk(\s+(on|off|clear))?$/i.test(c)){
+    const a=(c.split(/\s+/)[1]||'').toLowerCase();
+    if(a==='off'){STATE.sketchMode=false;cmdToast('스케치 모드 OFF — 선·사각형·원이 바로 객체가 됩니다');}
+    else if(a==='clear'){const n=skClear();saveHistory();renderAll();refreshUI();cmdToast('스케치 '+n+'개 비움');}
+    else{STATE.sketchMode=true;cmdToast('스케치 모드 ON — 점·선 → 면 → Z 입력 시 객체');}
+    return;
+  }
+  if(/^(ex|extrude|pp)(\s+\S+)?$/i.test(c)){
+    const zs=c.split(/\s+/)[1];
+    let fid=STATE.selectedKind==='sketchFaces'?STATE.selectedId:null;
+    if(!fid&&(STATE.sketchFaces||[]).length===1) fid=STATE.sketchFaces[0].id;
+    if(!fid){cmdToast('면을 먼저 선택하세요');return;}
+    if(zs){const z=evalDim(zs);if(!isFinite(z)||z<10){cmdToast('양수 Z(mm)');return;}const r=skExtrude(fid,z,'solid');cmdToast(r?'면 → 매스 Z='+Math.round(z):'실패');return;}
+    selectObj('sketchFaces',fid);
+    enterCmdMode('sk-z',{faceId:fid},'Z 높이(mm):','면 완성 — Z 입력 시 객체(매스) / Esc=면만 유지');
     return;
   }
   // v5.3: 트림 / 브레이크 도구 진입
@@ -6678,6 +6847,13 @@ function processCommand(rawCmd){
   cmdToast('알 수 없는 명령: '+c+' — / 또는 ? 로 도움말');
 }
 
+// 2026-09-04 점·선·면: 면이 완성되면 선택하고 Z 입력을 기다린다 (Esc → 면만 남김)
+function skAfterFace(f,what){
+  if(!f) return;
+  selectObj('sketchFaces',f.id);
+  enterCmdMode('sk-z',{faceId:f.id,as:'solid'},'Z 높이(mm):',(what||'면')+' 완성 — Z 입력 시 객체(매스) / Esc=면만 유지');
+  showStatus('✏ '+(what||'면')+' → 면 '+(skFaceArea(f)/1e6).toFixed(2)+'㎡ — Z 높이를 입력하면 객체가 됩니다');
+}
 function handleCmdModeInput(c){
   const mode=STATE.cmdMode;
   // 공통: 'esc'/'cancel' 입력으로 취소
@@ -6700,11 +6876,30 @@ function handleCmdModeInput(c){
     return true;
   }
 
+  // ===== sk-z: 면 완성 직후 Z 입력 → 객체 (2026-09-04 점·선·면) =====
+  if(mode==='sk-z'){
+    const num=evalDim(c);
+    if(!isFinite(num)||num<10){cmdToast('양수 Z 높이(mm) 입력 — Esc 면 면만 유지');return true;}
+    const fid=STATE.cmdData&&STATE.cmdData.faceId;
+    const as=(STATE.cmdData&&STATE.cmdData.as)||'solid';
+    exitCmdMode();
+    const made=fid?skExtrude(fid,num,as):null;
+    cmdToast(made?('면 → '+({masses:'매스',space:'공간',wall:'벽'}[made.kind]||made.kind)+' Z='+Math.round(num)):'객체 생성 실패');
+    return true;
+  }
   // ===== circlespace-r: 원형공간 반지름 =====
   if(mode==='circlespace-r'){
     const num=evalDim(c); // 2026-08-27: 계산식 허용
     if(!isFinite(num)||num<=0){cmdToast('양수 반지름(mm) 입력');return true;}
     const{cx,cy}=STATE.cmdData;
+    if(STATE.sketchMode!==false){ // 2026-09-04 점·선·면: 원 → 면 (Z 입력 대기)
+      const f=skAddCircle(cx,cy,num);
+      drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+      exitCmdMode();
+      saveHistory();renderAll();refreshUI();
+      if(f) skAfterFace(f,'원 r='+Math.round(num));
+      return true;
+    }
     addCircleSpace(cx,cy,num);
     drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
     exitCmdMode();
@@ -6764,6 +6959,14 @@ function handleCmdModeInput(c){
     const h=Math.round(num);
     const w=STATE.cmdData.w;
     const start=(drawState&&drawState.type==='rect')?drawState.start:{x:0,y:0};
+    if(STATE.sketchMode!==false){ // 2026-09-04 점·선·면: 사각형 → 면 (Z 입력 대기)
+      const f=skAddRect(start.x,start.y,start.x+w,start.y+h);
+      drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+      exitCmdMode();
+      saveHistory();renderAll();refreshUI();
+      if(f) skAfterFace(f,'사각형 '+w+'×'+h+'mm');
+      return true;
+    }
     addSpace([
       {x:start.x,y:start.y},{x:start.x+w,y:start.y},
       {x:start.x+w,y:start.y+h},{x:start.x,y:start.y+h},
@@ -7373,7 +7576,7 @@ function _restoreFieldFocusTo(oldEl){
 const _origEnter=enterCmdMode;
 enterCmdMode=function(mode,data,promptLabel,hintText){
   _origEnter(mode,data,promptLabel,hintText);
-  if(['rect-w','rect-h','wall-len','measure-rel'].includes(mode)){
+  if(['rect-w','rect-h','wall-len','measure-rel','sk-z'].includes(mode)){
     showQuickChips(mode);
   }else{
     hideQuickChips();

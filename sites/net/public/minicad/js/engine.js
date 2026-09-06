@@ -23,13 +23,15 @@ groups={
   hvac:new Konva.Group(), // v5.6
   leaders:new Konva.Group(), // v5.9
   xlines:new Konva.Group(), // v5.9: 무한 안내선 (XLINE)
+  masses:new Konva.Group(), // 2026-09-04: 자유 매스 (면+Z 결과) — 공간 위·벽 아래
+  sketch:new Konva.Group(), // 2026-09-04: 점·선·면 스케치 — 벽 위 (클릭 선택)
   sections:new Konva.Group(), // 2026-08-30: 절단선 (입면 방향선)
   pillars:new Konva.Group(), // v5.9: 기둥 (RC) — 내력벽과 함께 최상단
   spaceHandles:new Konva.Group(), // v5.9: 공간 vertex 편집 핸들 (선택 시만 표시, 가장 위 z-order)
   printFrame:new Konva.Group(), // 2026-08-28: 화면에서 잡는 인쇄 영역 틀 (최상단, 인쇄엔 미포함)
 };
 // v5.9: 공간(fill 배경) → 벽(상단) 순서 — 벽이 위에 그려져 클릭 가능, 공간 fill에 가려지지 않음
-mainLayer.add(groups.spaces);mainLayer.add(groups.walls);mainLayer.add(groups.openings);
+mainLayer.add(groups.spaces);mainLayer.add(groups.masses);mainLayer.add(groups.walls);mainLayer.add(groups.openings);
 mainLayer.add(groups.fixtures);mainLayer.add(groups.furniture);mainLayer.add(groups.electric);
 mainLayer.add(groups.lights);mainLayer.add(groups.dimensions);mainLayer.add(groups.text);
 mainLayer.add(groups.circles);mainLayer.add(groups.arcs); // v5.3
@@ -37,6 +39,7 @@ mainLayer.add(groups.curves); // v5.9: 자유곡선
 mainLayer.add(groups.hvac); // v5.6
 mainLayer.add(groups.leaders); // v5.9
 mainLayer.add(groups.xlines); // v5.9: 무한 안내선 — 벽 위, 핸들 아래 (클릭 선택 가능)
+mainLayer.add(groups.sketch); // 2026-09-04: 점·선·면 스케치 — 벽 위 (면 Z 입력 전 상태)
 mainLayer.add(groups.sections); // 2026-08-30: 절단선 — 도면 위에서 잘 보여야 하므로 벽 위
 mainLayer.add(groups.pillars); // v5.9: 기둥 — 벽 위로
 mainLayer.add(groups.spaceHandles); // v5.9: 핸들이 가장 위 — 벽보다 위에서 클릭 가능
@@ -151,6 +154,9 @@ function snapToEndpoint(mm,excludeIds){
     const d=Math.sqrt(dx*dx+dy*dy);
     if(d<minD){minD=d;nearest={x:p.x,y:p.y};}
   });});
+  // 2026-09-04 점·선·면: 스케치 점 + 선 중점 (고리를 닫아 면을 만들 때 필요)
+  (STATE.sketchPts||[]).forEach(p=>{const d=Math.hypot(p.x-mm.x,p.y-mm.y);if(d<minD){minD=d;nearest={x:p.x,y:p.y};}});
+  (STATE.sketchEdges||[]).forEach(e=>{const q=(typeof skEdgePts==='function')?skEdgePts(e):null;if(!q)return;const p={x:(q.a.x+q.b.x)/2,y:(q.a.y+q.b.y)/2};const d=Math.hypot(p.x-mm.x,p.y-mm.y);if(d<minD){minD=d;nearest=p;}});
   // 벽 끝점 + 중점 — 도구별 격리: 일반 벽 그리기 중엔 내력벽 무시, 내력벽 그리기 중엔 일반벽 무시
   const _isDrawingBearing=STATE.selectedTool==='gabyeok';
   const _isDrawingRegular=STATE.selectedTool==='wall'||STATE.selectedTool==='line';
@@ -1066,6 +1072,7 @@ function saveHistory(){
     electric:STATE.electric,texts:STATE.texts,measures:STATE.measures,
     circles:STATE.circles,arcs:STATE.arcs,hvac:STATE.hvac,
     leaders:STATE.leaders,sections:STATE.sections,
+    sketchPts:STATE.sketchPts||[],sketchEdges:STATE.sketchEdges||[],sketchFaces:STATE.sketchFaces||[],masses:STATE.masses||[], // 2026-09-04 점·선·면·매스
     estimateConfig:STATE.estimateConfig,
   });
   STATE.history=STATE.history.slice(0,STATE.historyIdx+1);
@@ -3762,6 +3769,9 @@ function renderAll(){
   _rif('curves',  sig('curves', (J?J(STATE.curves||[]):'')+sSpaces),()=>renderCurves());
   _rif('leaders', sig('leaders',J?J(STATE.leaders):''),     ()=>renderLeaders());
   _rif('xlines',  sig('xlines', J?J(STATE.xlines||[]):''),  ()=>renderXlines());
+  // 2026-09-04 점·선·면 스케치 + 자유 매스 — 세 종류 선택 상태를 모두 서명에 포함
+  _rif('sketch',  sig('sketchFaces',(J?J([STATE.sketchPts||[],STATE.sketchEdges||[],STATE.sketchFaces||[]]):'')+selK('sketchEdges')+selK('sketchPts')), ()=>renderSketch());
+  _rif('masses',  sig('masses', J?J(STATE.masses||[]):''),  ()=>renderMasses());
   _rif('sections',sig('sections',J?J(STATE.sections||[]):''),()=>renderSections());
   _rif('pillars', sig('pillars',J?J(STATE.pillars||[]):''), ()=>renderPillars());
   // v5.9: 자동 면적 라벨 비활성화 — 공간 공유 변 사이 부분영역마다 라벨이 생겨 도면이 어지러움

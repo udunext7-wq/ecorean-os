@@ -414,7 +414,20 @@ function addLine(x1,y1,x2,y2){
     setTimeout(()=>flashSplitSpaces(newIds),16);
     return;
   }
-  // 3) 분할 안 되면 참조선(isLine)으로 추가 (기존)
+  // 3) 분할 안 되면 — 2026-09-04 점·선·면: 스케치 선(점 두 개 + 선). 고리가 닫히면 면 → Z 입력 대기
+  if(STATE.sketchMode!==false){
+    const before=new Set((STATE.sketchFaces||[]).map(f=>f.id));
+    const made=skAddEdge(x1,y1,x2,y2);
+    if(!made.length) return;
+    saveHistory();renderAll();refreshUI();
+    const fresh=(STATE.sketchFaces||[]).filter(f=>!before.has(f.id));
+    if(fresh.length){
+      const f=fresh.reduce((a,b)=>skFaceArea(a)>=skFaceArea(b)?a:b);
+      skAfterFace(f,'선 '+fresh.length+'면 닫힘');
+    }else showStatus('✏ 선 '+Math.round(Math.hypot(x2-x1,y2-y1))+'mm — 점 '+(STATE.sketchPts||[]).length+'·선 '+(STATE.sketchEdges||[]).length+' (닫히면 면)');
+    return;
+  }
+  // 3') 옛 방식: 참조선(isLine) — sk off
   const mid={x:(x1+x2)/2,y:(y1+y2)/2};
   const sp=findNearestSpace(mid);
   const v1=ensureVertex(x1,y1),v2=ensureVertex(x2,y2);
@@ -756,6 +769,13 @@ function endRect(){
   const minX=Math.min(start.x,current.x),maxX=Math.max(start.x,current.x);
   const minY=Math.min(start.y,current.y),maxY=Math.max(start.y,current.y);
   if(maxX-minX>=100&&maxY-minY>=100){
+    if(STATE.sketchMode!==false){ // 2026-09-04 점·선·면: 사각형은 먼저 면 — Z 입력 시 객체
+      const f=skAddRect(minX,minY,maxX,maxY);
+      drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+      saveHistory();renderAll();refreshUI();
+      skAfterFace(f,'사각형 '+(maxX-minX)+'×'+(maxY-minY)+'mm');
+      return;
+    }
     addSpace([{x:minX,y:minY},{x:maxX,y:minY},{x:maxX,y:maxY},{x:minX,y:maxY}]);
   }
   drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
@@ -923,10 +943,17 @@ function endCircleSpace(){
   const c=drawState.center,p=drawState.current;
   const r=Math.hypot(p.x-c.x,p.y-c.y);
   if(r>=100){
+    if(STATE.sketchMode!==false){ // 2026-09-04 점·선·면: 원은 먼저 면 — Z 입력 시 객체
+      const f=skAddCircle(c.x,c.y,r);
+      drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+      saveHistory();renderAll();refreshUI();
+      skAfterFace(f,'원 r='+Math.round(r));
+      return;
+    }
     addCircleSpace(c.x,c.y,r);
   }else{
     // 클릭만 했으면 수치 입력 모드
-    enterCmdMode('circlespace-r',{cx:c.x,cy:c.y},'반지름(mm):','원형공간 반지름 입력 후 Enter');
+    enterCmdMode('circlespace-r',{cx:c.x,cy:c.y},'반지름(mm):','원 반지름 입력 후 Enter');
     return;
   }
   drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
@@ -1049,6 +1076,11 @@ function _boxSelGeom(key,o){
     return {pts,closed:false};
   }
   if(key==='pillars') return {pts:_rotPts(o.x,o.y,o.width||500,o.height||500,o.rotation),closed:true};
+  // 2026-09-04 점·선·면·매스
+  if(key==='sketchPts') return {pts:[{x:o.x,y:o.y}],closed:false};
+  if(key==='sketchEdges'){const q=skEdgePts(o);return q?{pts:[{x:q.a.x,y:q.a.y},{x:q.b.x,y:q.b.y}],closed:false}:{pts:[],closed:false};}
+  if(key==='sketchFaces') return {pts:skFacePoly(o),closed:true};
+  if(key==='masses') return {pts:massAbsPoly(o),closed:true};
   if(key==='openings') return {pts:_rotPts(o.x,o.y,o.width_mm||900,o.depth_mm||200,o.angle),closed:true};
   if(key==='texts') return {pts:[{x:o.x,y:o.y}],closed:false};
   // 라이브러리 객체 — 실제 크기(회전 반영) 사각형
@@ -1090,6 +1122,7 @@ function finishBoxSelection(){
     circles:o=>hit('circles',o), arcs:o=>hit('arcs',o), hvac:o=>hit('hvac',o),
     leaders:o=>hit('leaders',o), curves:o=>hit('curves',o), pillars:o=>hit('pillars',o),
     sections:o=>hit('sections',o), // 2026-08-30: 절단선
+    sketchFaces:o=>hit('sketchFaces',o), sketchEdges:o=>hit('sketchEdges',o), sketchPts:o=>hit('sketchPts',o), masses:o=>hit('masses',o), // 2026-09-04
     // 무한 안내선: 길이가 무한이라 Window 로는 절대 포함될 수 없음 → Crossing 에서 관통 판정만
     xlines:xl=>{
       if(!isCrossing) return false;
@@ -1099,10 +1132,10 @@ function finishBoxSelection(){
       return pos>0&&neg>0;
     },
   };
-  const map={walls:'wall',spaces:'space',openings:'opening',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac',leaders:'leaders',xlines:'xlines',curves:'curves',pillars:'pillars',sections:'sections'};
+  const map={walls:'wall',spaces:'space',openings:'opening',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac',leaders:'leaders',xlines:'xlines',curves:'curves',pillars:'pillars',sections:'sections',sketchFaces:'sketchFaces',sketchEdges:'sketchEdges',sketchPts:'sketchPts',masses:'masses'};
   let added=0;
   Object.entries(tests).forEach(([key,fn])=>{
-    STATE[key].forEach(o=>{if(fn(o)){STATE.boxSelection.push({kind:map[key],id:o.id});added++;}});
+    (STATE[key]||[]).forEach(o=>{if(fn(o)){STATE.boxSelection.push({kind:map[key],id:o.id});added++;}});
   });
   // 중복 제거
   const seen=new Set();
@@ -1116,7 +1149,7 @@ function finishBoxSelection(){
 // v5.3: 다중 삭제
 function deleteBoxSelection(){
   if(STATE.boxSelection.length===0) return false;
-  const groups2={wall:'walls',space:'spaces',opening:'openings',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac',leaders:'leaders',xlines:'xlines',curves:'curves',pillars:'pillars',sections:'sections'};
+  const groups2={wall:'walls',space:'spaces',opening:'openings',furniture:'furniture',fixtures:'fixtures',lights:'lights',electric:'electric',texts:'texts',measures:'measures',circles:'circles',arcs:'arcs',hvac:'hvac',leaders:'leaders',xlines:'xlines',curves:'curves',pillars:'pillars',sections:'sections',sketchFaces:'sketchFaces',sketchEdges:'sketchEdges',sketchPts:'sketchPts',masses:'masses'};
   // 2026-08-24: 잠금 강화 — 잠긴 객체는 삭제 대상에서 제외 (대표 지시)
   const _lockedSkip=STATE.boxSelection.filter(b=>{
     const arr=STATE[groups2[b.kind]];const o=arr&&arr.find(x=>x.id===b.id);return o&&o.locked;
@@ -1137,6 +1170,8 @@ function deleteBoxSelection(){
       ['furniture','fixtures','lights','electric','hvac'].forEach(k=>{
         STATE[k]=STATE[k].filter(o=>o.spaceId!==b.id);
       });
+    }else if(b.kind==='sketchFaces'||b.kind==='sketchEdges'||b.kind==='sketchPts'){
+      skRemove(b.kind,b.id); // 2026-09-04: 스케치는 그래프 정리 (면 삭제 = 전용 선 제거)
     }else{
       STATE[arrName]=STATE[arrName].filter(x=>x.id!==b.id);
     }
@@ -1662,6 +1697,12 @@ function handleEraser(pos){
     const dx=xl.x2-xl.x1, dy=xl.y2-xl.y1, len=Math.hypot(dx,dy)||1;
     tryHit('xlines',xl,Math.abs((mm.x-xl.x1)*dy-(mm.y-xl.y1)*dx)/len);
   });
+  // 2026-09-04 점·선·면·매스 — 점 > 선 > 매스 둘레 > 면(안쪽 클릭) 순
+  (STATE.sketchPts||[]).forEach(p=>tryHit('sketchPts',p,Math.hypot(mm.x-p.x,mm.y-p.y)));
+  (STATE.sketchEdges||[]).forEach(e=>{const q=skEdgePts(e);if(q)tryHit('sketchEdges',e,pointToSegmentDist(mm,q.a,q.b));});
+  (STATE.masses||[]).forEach(m=>{const poly=massAbsPoly(m);for(let i=0;i<poly.length;i++)tryHit('masses',m,pointToSegmentDist(mm,poly[i],poly[(i+1)%poly.length]));});
+  if(!best){const mf=(STATE.masses||[]).find(m=>ptInPoly(mm,massAbsPoly(m)));if(mf)best={kind:'masses',obj:mf};}
+  if(!best){const sf=skFaceAt(mm.x,mm.y);if(sf)best={kind:'sketchFaces',obj:sf};}
 
   // 공간 에지 (벽보다 낮은 우선순위)
   if(!best||bestD>50){
@@ -1690,13 +1731,15 @@ function handleEraser(pos){
     STATE.walls=STATE.walls.filter(x=>x.id!==obj.id);
   }else if(kind==='opening'){
     STATE.openings=STATE.openings.filter(x=>x.id!==obj.id);
+  }else if(kind==='sketchFaces'||kind==='sketchEdges'||kind==='sketchPts'){
+    skRemove(kind,obj.id); // 2026-09-04
   }else{
     const arr=getArr(kind);
     if(arr){const idx=arr.findIndex(x=>x.id===obj.id);if(idx>=0)arr.splice(idx,1);}
   }
   cleanupOrphanVertices();
   saveHistory();renderAll();refreshUI();
-  const names={space:'공간',wall:'벽/선',opening:'문/창',furniture:'가구',fixtures:'위생',lights:'조명',electric:'전기',hvac:'공조',texts:'텍스트',measures:'치수',circles:'원',arcs:'아크'};
+  const names={space:'공간',wall:'벽/선',opening:'문/창',furniture:'가구',fixtures:'위생',lights:'조명',electric:'전기',hvac:'공조',texts:'텍스트',measures:'치수',circles:'원',arcs:'아크',sketchPts:'점',sketchEdges:'선',sketchFaces:'면',masses:'매스'};
   cmdToast((names[kind]||'객체')+' 삭제됨');
 }
 // 헬퍼: 선분 매개변수 t (0~1)
@@ -2637,6 +2680,8 @@ function findObjById(id){
     {arr:STATE.xlines||[],kind:'xlines'},        // v5.9: 무한 안내선
     {arr:STATE.curves||[],kind:'curves'},        // v5.9: 자유곡선
     {arr:STATE.pillars||[],kind:'pillars'},      // v5.9: 기둥
+    {arr:STATE.masses||[],kind:'masses'},        // 2026-09-04: 매스
+    {arr:STATE.sketchFaces||[],kind:'sketchFaces'},{arr:STATE.sketchEdges||[],kind:'sketchEdges'},{arr:STATE.sketchPts||[],kind:'sketchPts'}, // 2026-09-04: 점·선·면
   ];
   for(const m of map){
     const obj=m.arr.find(o=>o.id===id);

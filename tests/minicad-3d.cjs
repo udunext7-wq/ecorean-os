@@ -238,13 +238,79 @@ const v3Src = fs.readFileSync(path.join(ROOT, '3d', 'view3d.js'), 'utf8');
 const mcP = (uiSrc.match(/const MC_PROTO\s*=\s*(\d+)/) || [])[1], mfP = (v3Src.match(/const MF_PROTO\s*=\s*(\d+)/) || [])[1];
 ck(mcP && mfP && mcP === mfP, '프로토콜 짝: MC_PROTO=' + mcP + ' MF_PROTO=' + mfP);
 const opsList = (uiSrc.match(/\[('undo'[^\]]*)\]\.includes\(m\.op\)/) || [])[1] || '';
-['batch', 'addspace', 'addcircle', 'splitspace', 'lock', 'clone', 'rotate', 'set', 'add', 'delete'].forEach(op => ck(opsList.includes("'" + op + "'"), 'ui.js 허용 op: ' + op));
-['addspace', 'addcircle', 'addwall', 'splitspace', 'lock', 'clone', 'rotate', 'batch'].forEach(op => ck(new RegExp("['\"]" + op + "['\"]").test(v3Src), 'view3d.js 가 ' + op + ' 를 보낸다'));
+['batch', 'addspace', 'addcircle', 'splitspace', 'lock', 'clone', 'rotate', 'set', 'add', 'delete',
+  'sketchline', 'sketchrect', 'sketchcircle', 'sketchpoly', 'extrude', 'sketchdel', 'sketchclear', 'massconvert'].forEach(op => ck(opsList.includes("'" + op + "'"), 'ui.js 허용 op: ' + op));
+// 2026-09-04 프로토콜 6: 선·사각형·원·호·오프셋은 스케치(면)까지만 보내고, Z 는 extrude — 미니폼이 addwall/addspace 를 직접 만들지 않는다
+['sketchline', 'sketchrect', 'sketchcircle', 'sketchpoly', 'extrude', 'sketchdel', 'massconvert', 'splitspace', 'lock', 'clone', 'rotate', 'batch'].forEach(op => ck(new RegExp("['\"]" + op + "['\"]").test(v3Src), 'view3d.js 가 ' + op + ' 를 보낸다'));
+['addwall', 'addspace', 'addcircle'].forEach(op => ck(!new RegExp("op:\\s*['\"]" + op + "['\"]").test(v3Src), 'view3d.js 가 ' + op + ' 를 직접 보내지 않는다(면 → Z 규칙)'));
+ck(/MOVABLE=new Set\([^)]*'mass'/.test(v3Src) && /mass:'masses'/.test(v3Src) && /sketchFace:'sketchFaces'/.test(v3Src), 'view3d.js 매스 이동 가능 + KINDMAP 스케치·매스');
 const idx3d = fs.readFileSync(path.join(ROOT, '3d', 'index.html'), 'utf8');
 const bust = (idx3d.match(/view3d\.js\?v=([\w]+)/) || [])[1];
 ck(bust && idx3d.split('?v=' + bust).length - 1 >= 4, '3d/index.html 캐시 버스터 4곳 일치: ' + bust);
 ['ctxmenu', 'selbox', '#tags', '#outliner', '#scenes', 'st-sun', 'data-sec="tags"', 'data-sec="outline"', 'data-sec="scenes"', 'data-t="circle"', 'data-t="arc"', 'data-t="offset"', 'data-t="orbit"', 'data-cmd="xray"', 'data-cmd="save"'].forEach(k => ck(idx3d.includes(k), '3d/index.html 에 ' + k));
-['setXray', 'renderOutliner', 'sceneAdd', 'saveFeedback', 'pasteClip', 'boxSelect', 'addGuide', 'offsetPoly', 'arcPts', 'vcbPostOn'].forEach(fn => ck(v3Src.includes('function ' + fn + '('), 'view3d.js 함수 ' + fn));
+['setXray', 'renderOutliner', 'sceneAdd', 'saveFeedback', 'pasteClip', 'boxSelect', 'addGuide', 'offsetPoly', 'arcPts', 'vcbPostOn',
+  'spawnPendingFace', 'spawnPendingSketchLine', 'prismGhost', 'massConvert3D'].forEach(fn => ck(v3Src.includes('function ' + fn + '('), 'view3d.js 함수 ' + fn));
+
+// ---- 2026-09-04 점·선·면 스케치 엔진(js/sketch.js) + 매스 조립 ------------------------------------------
+//  선은 점·선(x,y)만, 고리가 닫히면 면, 면에 Z 를 주면 객체(기본 = 자유 매스). 평면 그래프 유지(T·X 분할, 공선 겹침, 중복 제거)
+const SK = require(path.join(ROOT, 'js', 'sketch.js'));
+{
+  const bag = {};
+  SK.skAddEdge(0, 0, 4000, 0, bag); SK.skAddEdge(4000, 0, 4000, 3000, bag); SK.skAddEdge(4000, 3000, 0, 3000, bag);
+  ck(SK.skCount(bag).faces === 0, 'SK 3변 = 면 없음');
+  SK.skAddEdge(0, 3000, 0, 0, bag);
+  let cnt = SK.skCount(bag);
+  ck(cnt.faces === 1 && cnt.edges === 4 && cnt.pts === 4, 'SK 사각 고리 → 면 1: ' + JSON.stringify(cnt));
+  ck(Math.round(SK.skFaceArea(bag.sketchFaces[0], bag)) === 12000000, 'SK 면적 12㎡');
+  const fid = bag.sketchFaces[0].id;
+  SK.skAddEdge(0, 0, 4000, 3000, bag); cnt = SK.skCount(bag);
+  ck(cnt.faces === 2 && cnt.edges === 5 && cnt.pts === 4, 'SK 대각선 → 면 2·선 5: ' + JSON.stringify(cnt));
+  ck(!bag.sketchFaces.some(f => f.id === fid), 'SK 분할되면 원래 면 id 사라짐');
+  SK.skAddEdge(-500, 1500, 4500, 1500, bag); cnt = SK.skCount(bag);
+  ck(cnt.faces === 4 && cnt.pts === 9, 'SK 가로선 교차(T·X 분할) → 면 4·점 9: ' + JSON.stringify(cnt));
+  const before = cnt.faces; SK.skAddEdge(2000, 3000, 2000, 3800, bag);
+  ck(SK.skCount(bag).faces === before, 'SK 막다른 가지 → 면 수 불변');
+  const e = bag.sketchEdges.find(x => { const q = SK.skEdgePts(x, bag); return q && q.a.y === 3000 && q.b.y === 3000 && Math.min(q.a.x, q.b.x) === 0; });
+  const fB = SK.skCount(bag).faces; SK.skRemoveEdge(e.id, bag);
+  ck(SK.skCount(bag).faces === fB - 1, 'SK 변 삭제 → 면 -1 (선을 지우면 면이 풀린다)');
+  SK.skClear(bag);
+  const f = SK.skAddRect(1000, 1000, 4000, 2500, bag);
+  ck(f && SK.skCount(bag).faces === 1 && Math.round(SK.skFaceArea(f, bag)) === 4500000, 'SK skAddRect → 면 1 · 4.5㎡');
+  ck(SK.skGuessKind(f, bag) === 'space', 'SK 3000×1500 → space');
+  const f2 = SK.skAddRect(6000, 0, 9000, 150, bag);
+  ck(f2 && SK.skGuessKind(f2, bag) === 'wall', 'SK 3000×150 → wall');
+  const o = SK.skObb(SK.skFacePoly(f2, bag)); ck(Math.round(o.len) === 3000 && Math.round(o.wid) === 150, 'SK OBB 3000×150');
+  const fc = SK.skAddCircle(20000, 20000, 1500, 24, bag);
+  ck(fc && fc.pts.length === 24, 'SK 원 → 24각 면');
+  ck(SK.skRemoveFace(fc.id, bag) && SK.skCount(bag).faces === 2, 'SK 면 삭제 → 둘레 선 정리');
+  SK.skClear(bag); SK.skAddRect(0, 0, 2000, 2000, bag); SK.skAddRect(1000, 1000, 3000, 3000, bag);
+  cnt = SK.skCount(bag); ck(cnt.faces === 3 && cnt.pts === 10 && cnt.edges === 12, 'SK 겹친 사각 2 → 면 3·점 10·선 12: ' + JSON.stringify(cnt));
+  SK.skClear(bag); SK.skAddEdge(0, 0, 3000, 0, bag); SK.skAddEdge(1000, 0, 5000, 0, bag);
+  cnt = SK.skCount(bag); ck(cnt.edges === 3 && cnt.pts === 4, 'SK 공선 겹침 → 선 3·점 4: ' + JSON.stringify(cnt));
+  const m = SK.massFromPoly([{ x: 0, y: 0 }, { x: 2000, y: 0 }, { x: 2000, y: 1000 }, { x: 0, y: 1000 }], 900, bag);
+  ck(m.x === 1000 && m.y === 500 && m.pts.length === 4 && Math.round(SK.massArea(m)) === 2000000, 'SK massFromPoly 중심·상대좌표');
+  m.angle = 90; const ap = SK.massAbsPoly(m); ck(ap[0].x === 1500 && ap[0].y === -500, 'SK massAbsPoly 회전 90°');
+  // 3D 조립: 스케치 면·선·점 + 매스 → 객체 (면은 바닥 위 2mm 반투명 판, 매스는 prism)
+  const skBag = {}; SK.skAddRect(0, 0, 3000, 2000, skBag);
+  const skDoc = { meta: { ceilingHeight_mm: 2400 }, vertices: [], spaces: [], walls: [],
+    sketchPts: skBag.sketchPts, sketchEdges: skBag.sketchEdges, sketchFaces: skBag.sketchFaces,
+    masses: [{ id: 'ms1', name: '매스1', x: 6000, y: 500, angle: 90, pts: [{ x: -1000, y: -500 }, { x: 1000, y: -500 }, { x: 1000, y: 500 }, { x: -1000, y: 500 }], h_mm: 1500, elev_mm: 300, color: '#B9C6D2' }] };
+  const SS = MC3D.buildFloorScene(MC3D.normalizeDoc(skDoc), LIBS);
+  const kk = k => SS.objects.filter(x => x.kind === k);
+  ck(kk('sketchFace').length === 1 && kk('sketchEdge').length === 4 && kk('sketchPt').length === 4 && kk('mass').length === 1, 'SK 조립: 면 1·선 4·점 4·매스 1 ' + JSON.stringify(SS.counts));
+  ck(SS.counts.sketch === 9 && SS.counts.masses === 1, 'SK counts sketch=9 masses=1');
+  const sf = kk('sketchFace')[0];
+  ck(sf.prims[0].t === 'poly' && sf.prims[0].z === 2 && sf.prims[0].opacity < 1 && near(sf.meta.area, 6000000), 'SK 면 = z 2mm 반투명 poly · 6㎡');
+  const se = kk('sketchEdge').find(x => near(x.meta.L, 3000));
+  ck(se && se.prims[0].t === 'box' && near(se.prims[0].w, 3000) && se.prims[0].h < 30, 'SK 선 = 3000 얇은 막대');
+  const ms = kk('mass')[0];
+  ck(ms.prims[0].t === 'prism' && ms.prims[0].h === 1500 && ms.elev === 300 && ms.rot === 90 && ms.x === 6000, 'SK 매스 = prism H1500 · 띄움 300 · 회전 90');
+  ck(near(MC3D._internal.massAbsPoly(skDoc.masses[0])[0].x, 6500) && near(MC3D._internal.massAbsPoly(skDoc.masses[0])[0].y, -500), 'SK 매스 절대 꼭짓점(회전 반영)');
+  ck(SS.labels.some(l => /매스1 H1500/.test(l.text)), 'SK 매스 이름표 "매스1 H1500"');
+  ck(near(SS.bounds.maxX, 6500) && near(SS.bounds.minY, -500) && SS.bounds.maxY >= 2000, 'SK 범위가 스케치·매스(회전 90° → x 5500~6500) 포함: ' + JSON.stringify(SS.bounds));
+  const skF = MC3D.buildScene(skDoc, LIBS);
+  ck(skF.totalHeight >= 1800, 'SK 층 높이에 매스(띄움 300 + H1500) 반영: ' + skF.totalHeight);
+}
 
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

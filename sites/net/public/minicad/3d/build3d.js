@@ -15,6 +15,9 @@
 //         { t:'cyl', x,y,z, r,h, color, ... }                       세로 원기둥
 //         { t:'sphere', x,y,z, r, color }
 //         { t:'poly', pts:[{x,y}], holes:[[{x,y}]], z, color, side:'top'|'bottom' }   수평 다각형(바닥·천장)
+//         { t:'prism', pts:[{x,y}], z, h, color }                      다각형 기둥(매스 = 면 + Z) 2026-09-04
+//  2026-09-04 점·선·면: 문서의 sketchPts/sketchEdges/sketchFaces 는 kind 'sketchPt'|'sketchEdge'|'sketchFace' 로,
+//  masses 는 kind 'mass' 로 나간다. 면은 바닥에 얇게 깔린 반투명 판 — 뷰어에서 P(밀기끌기)로 Z 를 주면 매스가 된다.
 // ============================================================================
 (function(root){
 
@@ -96,12 +99,50 @@ function normalizeDoc(doc){
     return o;
   }).filter(s=>s.polygon.length>=3);
   const meta=d.meta||{};
+  // 2026-09-04 점·선·면 스케치 + 매스 — id 참조를 좌표로 풀어 둔다
+  const spt={}; const sketchPts=(d.sketchPts||[]).filter(p=>p&&isFinite(p.x)&&isFinite(p.y)).map(p=>{const o={id:p.id,x:num(p.x,0),y:num(p.y,0)};spt[p.id]=o;return o;});
+  const sketchEdges=(d.sketchEdges||[]).map(e=>{const a=spt[e.a],b=spt[e.b];return (a&&b)?{id:e.id,a:e.a,b:e.b,x1:a.x,y1:a.y,x2:b.x,y2:b.y}:null;}).filter(Boolean);
+  const sketchFaces=(d.sketchFaces||[]).map(f=>{const poly=(f.pts||[]).map(id=>spt[id]).filter(Boolean).map(p=>({x:p.x,y:p.y}));return poly.length>=3?{id:f.id,polygon:poly}:null;}).filter(Boolean);
+  const masses=(d.masses||[]).filter(m=>m&&Array.isArray(m.pts)&&m.pts.length>=3).map(m=>Object.assign({},m,{x:num(m.x,0),y:num(m.y,0),angle:num(m.angle,0),h_mm:Math.max(1,num(m.h_mm,2400)),elev_mm:num(m.elev_mm,0),pts:m.pts.map(p=>({x:num(p.x,0),y:num(p.y,0)}))}));
   return {
     meta, spaces, walls,
     openings:d.openings||[], furniture:d.furniture||[], fixtures:d.fixtures||[],
     lights:d.lights||[], electric:d.electric||[], hvac:d.hvac||[], pillars:d.pillars||[],
+    sketchPts, sketchEdges, sketchFaces, masses,
     ceilH:num(meta.ceilingHeight_mm,2400),
   };
+}
+
+// ---------------------------------------------------------------------------
+// 2026-09-04 점·선·면 스케치 + 매스
+// ---------------------------------------------------------------------------
+const SK={face:'#D4FF3D',edge:'#E8D48B',pt:'#F5F1EB',mass:'#B9C6D2'};
+function polyAreaAbs(poly){let a=0;for(let i=0,j=poly.length-1;i<poly.length;j=i++)a+=(poly[j].x+poly[i].x)*(poly[j].y-poly[i].y);return Math.abs(a/2);}
+function buildSketchFace(f){
+  const c=polyCentroid(f.polygon);
+  return {id:f.id,kind:'sketchFace',name:'면',x:0,y:0,rot:0,flip:false,
+    prims:[{t:'poly',pts:f.polygon,holes:[],z:2,color:SK.face,opacity:0.30,side:'top'}],
+    meta:{area:polyAreaAbs(f.polygon),cx:c.x,cy:c.y,poly:f.polygon}};
+}
+function buildSketchEdge(e){
+  const L=Math.hypot(e.x2-e.x1,e.y2-e.y1);
+  const rot=Math.atan2(e.y2-e.y1,e.x2-e.x1)*180/Math.PI;
+  return {id:e.id,kind:'sketchEdge',name:'선',x:(e.x1+e.x2)/2,y:(e.y1+e.y2)/2,rot,flip:false,
+    prims:[{t:'box',x:0,y:0,z:0,w:Math.max(L,1),d:18,h:14,color:SK.edge}],
+    meta:{L,x1:e.x1,y1:e.y1,x2:e.x2,y2:e.y2,a:e.a,b:e.b}};
+}
+function buildSketchPt(p){
+  return {id:p.id,kind:'sketchPt',name:'점',x:p.x,y:p.y,rot:0,flip:false,
+    prims:[{t:'cyl',x:0,y:0,z:0,r:32,h:22,color:SK.pt}],meta:{}};
+}
+function buildMass(m){
+  return {id:m.id,kind:'mass',name:m.name||'매스',x:m.x,y:m.y,rot:m.angle,flip:false,locked:!!m.locked,elev:Math.round(m.elev_mm),
+    prims:[{t:'prism',pts:m.pts,z:0,h:m.h_mm,color:m.color||SK.mass}],
+    meta:{h_mm:m.h_mm,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:m.color||SK.mass}};
+}
+function massAbsPoly(m){
+  const r=m.angle*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
+  return m.pts.map(p=>({x:m.x+p.x*c-p.y*s,y:m.y+p.x*s+p.y*c}));
 }
 
 // ---------------------------------------------------------------------------
@@ -515,6 +556,8 @@ function buildFloorScene(D,libs){
   const grow=(x,y)=>{minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);};
   D.spaces.forEach(s=>s.polygon.forEach(p=>grow(p.x,p.y)));
   D.walls.forEach(w=>{grow(w.x1,w.y1);grow(w.x2,w.y2);});
+  (D.sketchPts||[]).forEach(p=>grow(p.x,p.y));                          // 2026-09-04 스케치·매스도 범위에
+  (D.masses||[]).forEach(m=>massAbsPoly(m).forEach(p=>grow(p.x,p.y)));
   if(!isFinite(minX)){ [].concat(D.furniture,D.fixtures,D.lights).forEach(o=>grow(num(o.x,0),num(o.y,0))); }
   if(!isFinite(minX)){ minX=0;minY=0;maxX=1;maxY=1; }
   const bounds={minX,minY,maxX,maxY};
@@ -544,9 +587,15 @@ function buildFloorScene(D,libs){
   D.lights.forEach(o=>objects.push(buildLight(o,libDef(o.type,[libs.LIGHT_LIB]),D,D.spaces)));
   D.electric.forEach(o=>objects.push(buildElectric(o,libDef(o.type,[libs.ELECTRIC_LIB]),D,D.spaces)));
   D.hvac.forEach(o=>objects.push(buildHvac(o,libDef(o.type,[libs.HVAC_FIRE_LIB]),D,D.spaces)));
+  // 2026-09-04 점·선·면 스케치(면 → 선 → 점 순: 위에 그려지는 것이 나중) + 매스
+  (D.sketchFaces||[]).forEach(f=>objects.push(buildSketchFace(f)));
+  (D.sketchEdges||[]).forEach(e=>objects.push(buildSketchEdge(e)));
+  (D.sketchPts||[]).forEach(p=>objects.push(buildSketchPt(p)));
+  (D.masses||[]).forEach(m=>{ objects.push(buildMass(m)); const c=polyCentroid(massAbsPoly(m)); labels.push({id:m.id,x:c.x,y:c.y,z:m.elev_mm+m.h_mm+80,text:(m.name||'매스')+' H'+Math.round(m.h_mm)}); });
   return {bounds,ceilH:D.ceilH,project:D.meta.project||'',objects,labels,
     counts:{spaces:D.spaces.length,walls:D.walls.filter(w=>!w.isLine).length,openings:D.openings.length,
-      furniture:D.furniture.length+D.fixtures.length,lights:D.lights.length}};
+      furniture:D.furniture.length+D.fixtures.length,lights:D.lights.length,
+      sketch:(D.sketchPts||[]).length+(D.sketchEdges||[]).length+(D.sketchFaces||[]).length,masses:(D.masses||[]).length}};
 }
 
 // ---------------------------------------------------------------------------
@@ -568,6 +617,7 @@ function floorHeightOf(D){
   let h=D.ceilH||2400;
   D.spaces.forEach(s=>{h=Math.max(h,num(s.ceilingHeight_mm,0));});
   D.walls.forEach(w=>{if(!w.isLine)h=Math.max(h,num(w.height_mm,0));});
+  (D.masses||[]).forEach(m=>{h=Math.max(h,num(m.elev_mm,0)+num(m.h_mm,0));}); // 2026-09-04 매스
   return h;
 }
 function buildScene(doc,libs){
@@ -578,7 +628,7 @@ function buildScene(doc,libs){
   const objects=[],labels=[],floorsOut=[];
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   let z0=0,project='',ceilH=2400;
-  const counts={spaces:0,walls:0,openings:0,furniture:0,lights:0};
+  const counts={spaces:0,walls:0,openings:0,furniture:0,lights:0,sketch:0,masses:0};
   fls.forEach(f=>{
     const D=normalizeDoc(f.doc);
     project=project||D.meta.project||'';
@@ -601,7 +651,7 @@ function buildScene(doc,libs){
 }
 
 const MC3D={buildScene,normalizeDoc,splitFloors,floorHeightOf,buildFloorScene,SLAB_T,FLOOR_COLORS,WALL_COLORS,COLORS:C,
-  _internal:{buildWall,buildFurniture,buildLight,polyCentroid,polyBBox,pointInPoly,wallAlignOffset,cornerExtension,bearingInteriorSign}};
+  _internal:{buildWall,buildFurniture,buildLight,polyCentroid,polyBBox,pointInPoly,wallAlignOffset,cornerExtension,bearingInteriorSign,buildSketchFace,buildSketchEdge,buildSketchPt,buildMass,massAbsPoly}};
 if(typeof module!=='undefined'&&module.exports) module.exports=MC3D;
 root.MC3D=MC3D;
 })(typeof window!=='undefined'?window:globalThis);
