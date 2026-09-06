@@ -273,9 +273,12 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
     <div>
       <h2 style="font-size:18px">프로젝트 목록</h2>
-      <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. 데이터는 브라우저에 자동 저장됩니다.</p>
+      <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. <b style="color:#185fa5">공정표는 서버에 저장되어 모든 직원이 같은 내용을 봅니다.</b></p>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button class="btn" id="srvSaveBtn2" onclick="projSaveNow()" style="font-size:11px;padding:6px 14px;font-weight:700"
+              title="지금 서버에 저장합니다. 저장하면 다른 직원이 같은 내용을 봅니다">☁ 서버 저장</button>
+      <span id="srvSaveInfo2" style="font-size:11px;color:#666"></span>
       <button class="btn btn-g" style="font-size:11px;padding:6px 14px" onclick="openWpInbox()" title="견적OS에서 전송된 견적으로 정밀 공정표를 만듭니다">📥 견적 연동 <span id="wpInboxDot"></span></button>
       <button class="btn btn-b" style="font-size:11px;padding:6px 14px" onclick="document.getElementById('fileIn').click()">📥 JSON 프로젝트 가져오기</button>
     </div>
@@ -292,6 +295,9 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
 <div id="scheduleView">
   <div class="bar-top">
     <button class="btn" onclick="backToList()">← 목록</button>
+    <button class="btn" id="srvSaveBtn" onclick="projSaveNow()" title="지금 서버에 저장합니다. 저장하면 다른 직원이 같은 내용을 봅니다"
+            style="margin-left:8px;font-weight:700">☁ 서버 저장</button>
+    <span id="srvSaveInfo" style="font-size:11px;color:#666;margin-left:6px"></span>
     <label style="margin-left:10px">착공일</label>
     <input type="date" id="startDate" onchange="updateStartDate()">
     <label style="margin-left:10px">연면적(㎡)</label>
@@ -303,7 +309,7 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
     <span id="areaHint" style="font-size:10px;color:#888;margin-left:4px"></span>
     <button class="btn" style="margin-left:10px" onclick="openAdd()">+ 공정추가</button>
     <button class="btn" onclick="resetAllStatus()">진행상태 초기화</button>
-    <button class="btn btn-b" onclick="saveProjectFile()">💾 이 프로젝트 저장</button>
+    <button class="btn btn-b" onclick="saveProjectFile()" title="내 컴퓨터에 JSON 파일로 내려받습니다 (서버 저장과 다릅니다)">⬇ 파일로 내려받기</button>
     <button class="btn btn-g" onclick="openPrintBox()">🖨 간트 인쇄</button>
     <button class="btn btn-g" onclick="printAll()" title="간트+공정상세+자재발주+인력투입 전체를 페이지별로 인쇄">🖨 전체 인쇄</button>
     <button class="btn" onclick="saveAsTemplate()" title="현재 공정표를 내 템플릿으로 저장">📑 템플릿 저장</button>
@@ -718,6 +724,7 @@ function saveStore(){
   // localStorage 는 '화면을 빨리 그리기 위한 캐시'일 뿐이다. 정본은 서버(pms_projects).
   try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){console.warn("캐시 저장 실패",e)}
   projSyncDirty(); // 바뀐 프로젝트만 서버에 저장 (충돌 감지 포함)
+  updateSaveUi();  // 저장 버튼이 지금 상태를 항상 말해주도록
   if(!_histLock)histPush();
 }
 
@@ -2485,23 +2492,78 @@ var PROJ={api:"/api/pms/projects",ready:false,offline:false,synced:{},timers:{},
           saveMs:120,             // 저장은 사실상 즉시 (연속 드래그·타이핑만 묶는다)
           sbUrl:"https://gdcfqbdgubgpzusbtftf.supabase.co",
           sbKey:"sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ",
-          sb:null,rt:null,live:false};
+          sb:null,rt:null,live:false,
+          saving:0,failed:false,lastSavedAt:null};
 
 function projIndexById(id){for(var i=0;i<projects.length;i++){if(projects[i]&&projects[i].id===id)return i}return -1}
+function hhmmss(d){return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)+":"+("0"+d.getSeconds()).slice(-2)}
+
+/* ── 서버 저장 버튼 (2026-09-07 대표 지시: "언제 저장되는지 눈에 보여야 한다") ──
+   자동 저장은 안전망으로 계속 돌지만, 지금 상태가 저장됨인지 아닌지는 버튼이 항상 말해준다. */
+function projDirtyIds(){
+  var out=[];
+  projects.forEach(function(p){
+    if(!p||!p.id)return;
+    var s=PROJ.synced[p.id];
+    if(!s||s.json!==JSON.stringify(p))out.push(p.id);
+  });
+  Object.keys(PROJ.synced).forEach(function(id){if(projIndexById(id)<0)out.push(id)}); // 삭제 대기
+  return out;
+}
+function projSaveNow(){
+  if(PROJ.offline){toast("서버에 연결되어 있지 않습니다 — '다시 연결'을 먼저 눌러 주세요");return}
+  if(!PROJ.ready){toast("서버 자료를 아직 불러오는 중입니다");return}
+  var ids=projDirtyIds();
+  if(!ids.length){
+    toast("이미 서버에 저장되어 있습니다"+(PROJ.lastSavedAt?" (마지막 저장 "+hhmmss(PROJ.lastSavedAt)+")":"")+" — 다른 직원도 지금 열면 이 내용을 봅니다");
+    updateSaveUi();return;
+  }
+  projSyncDirty();  // 변경분 예약 (삭제는 즉시 실행)
+  projFlush();      // 예약된 저장을 기다리지 않고 바로 전송
+  updateSaveUi();
+  toast("서버에 저장하는 중… ("+ids.length+"건)");
+}
+// 상태별 색 — 공정표 툴바는 어두운 배경(#333), 목록 화면은 밝은 배경이라 글자색을 나눠 쓴다
+var SAVE_TONE={
+  ok  :{onDark:"#7dd3a8",onLight:"#1e7a4b",bg:"#e6f6ec"},
+  warn:{onDark:"#f5c451",onLight:"#8a6d1f",bg:"#fdf3d6"},
+  err :{onDark:"#ff8f85",onLight:"#c0392b",bg:"#fde8e6"},
+  busy:{onDark:"#9fc7ff",onLight:"#185fa5",bg:"#dbeafe"},
+  idle:{onDark:"#cfd6dd",onLight:"#666666",bg:"#eeeeee"}
+};
+function updateSaveUi(){
+  var dirty=(PROJ.ready&&!PROJ.offline)?projDirtyIds().length:0,label,txt,tone;
+  if(PROJ.offline){label="☁ 서버 저장";txt="오프라인 — 읽기 전용";tone="warn"}
+  else if(!PROJ.ready){label="☁ 서버 저장";txt="불러오는 중…";tone="idle"}
+  else if(PROJ.saving>0){label="저장 중…";txt="서버로 보내는 중";tone="busy"}
+  else if(PROJ.failed){label="☁ 다시 저장";txt="저장 실패 — 버튼을 눌러 주세요";tone="err"}
+  else if(dirty>0){label="☁ 서버 저장 ("+dirty+")";txt="저장 안 된 변경 "+dirty+"건";tone="warn"}
+  else{label="☁ 저장됨";tone="ok";
+       txt=(PROJ.lastSavedAt?"저장 완료 "+hhmmss(PROJ.lastSavedAt):"서버와 같음")+" · 다른 직원도 이 내용을 봅니다"+(PROJ.live?" (실시간)":"")}
+  var t=SAVE_TONE[tone];
+  [["srvSaveBtn","srvSaveInfo",true],["srvSaveBtn2","srvSaveInfo2",false]].forEach(function(x){
+    var b=document.getElementById(x[0]),i=document.getElementById(x[1]);
+    if(b){b.textContent=label;b.style.background=t.bg;b.style.color=t.onLight;b.style.borderColor=t.onLight}
+    if(i){i.textContent=txt;i.style.color=x[2]?t.onDark:t.onLight}
+  });
+}
 function projMark(p,ts){PROJ.synced[p.id]={json:JSON.stringify(p),updatedAt:ts}}
 function projCache(){try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){}}
 
 /* 서버 목록 전체를 받아 정본으로 삼는다 (부팅·재연결) */
 function projFetchAll(){
-  return fetch(PROJ.api,{credentials:"same-origin"})
+  var req;
+  // fetch 가 없거나 즉시 예외를 던지는 환경에서도 이후 부팅 코드(이벤트·주기 작업)가 살아 있어야 한다
+  try{req=fetch(PROJ.api,{credentials:"same-origin"})}catch(e){req=Promise.reject(e)}
+  return req
     .then(function(r){if(!r.ok)throw new Error(r.status===401?"로그인이 필요합니다":"HTTP "+r.status);return r.json()})
     .then(function(j){
       var rows=j.projects||[];
       projects=rows.map(function(row){return row.data});
       PROJ.synced={};
       rows.forEach(function(row){PROJ.synced[row.id]={json:JSON.stringify(row.data),updatedAt:row.updated_at}});
-      PROJ.lastSync=j.serverTime;PROJ.ready=true;
-      projCache();projOnline();
+      PROJ.lastSync=j.serverTime;PROJ.ready=true;PROJ.failed=false;
+      projCache();projOnline();updateSaveUi();
       if(repairLegacyMeta())saveStore(); // 구버전 저장본 보정분은 곧바로 서버에도 반영
       if(currentProj){var k=projIndexById(currentProj.id);if(k>=0)openProject(k);else if(typeof backToList==="function")backToList()}
       renderProjects();
@@ -2529,6 +2591,7 @@ function projPush(id,keepalive){
   var i=projIndexById(id);if(i<0)return;
   var p=projects[i],s=PROJ.synced[id];
   PROJ.timers[id]=null;
+  PROJ.saving++;updateSaveUi();
   cloudDot(null,"저장 중…");
   var opt={method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
            body:JSON.stringify({project:p,base:s?s.updatedAt:null})};
@@ -2536,17 +2599,20 @@ function projPush(id,keepalive){
   return fetch(PROJ.api,opt)
     .then(function(r){return r.json().then(function(j){if(!r.ok)throw{code:r.status,msg:j.message||j.error||("HTTP "+r.status)};return j})})
     .then(function(j){
-      if(j.status==="CONFLICT"){projConflict(id,j);return}
-      projMark(p,j.updatedAt);PROJ.retry[id]=0;
+      PROJ.saving--;
+      if(j.status==="CONFLICT"){projConflict(id,j);updateSaveUi();return}
+      projMark(p,j.updatedAt);PROJ.retry[id]=0;PROJ.failed=false;PROJ.lastSavedAt=new Date();
       if(!PROJ.lastSync||j.updatedAt>PROJ.lastSync)PROJ.lastSync=j.updatedAt;
-      var t=new Date();
-      cloudDot(true,"저장됨 "+("0"+t.getHours()).slice(-2)+":"+("0"+t.getMinutes()).slice(-2)+":"+("0"+t.getSeconds()).slice(-2)+(PROJ.live?" · 실시간 공유":""));
+      cloudDot(true,"저장됨 "+hhmmss(PROJ.lastSavedAt)+(PROJ.live?" · 실시간 공유":""));
+      updateSaveUi();
     })
     .catch(function(e){
+      PROJ.saving--;
       if(e&&(e.code===401||e.code===403)){projOffline(e.msg||"저장 권한이 없습니다");return}
-      PROJ.retry[id]=(PROJ.retry[id]||0)+1;
+      PROJ.retry[id]=(PROJ.retry[id]||0)+1;PROJ.failed=true;
       cloudDot(false,PROJ.retry[id]<=3?"저장 실패 — 재시도 중":"저장 실패");
       if(PROJ.retry[id]<=3)PROJ.timers[id]=setTimeout(function(){projPush(id)},2500*PROJ.retry[id]);
+      updateSaveUi();
     });
 }
 
@@ -2690,7 +2756,7 @@ function projOffline(reason){
     box.appendChild(again);box.appendChild(login);m.appendChild(box);document.body.appendChild(m);
   }
   var why=document.getElementById("offlineWhy");if(why)why.textContent=reason||"";
-  m.style.display="flex";
+  m.style.display="flex";updateSaveUi();
 }
 function projOnline(){
   PROJ.offline=false;
@@ -2771,6 +2837,8 @@ document.addEventListener("visibilitychange",function(){ if(document.hidden)proj
 window.addEventListener("pagehide",projFlush);
 setInterval(function(){ if(!PROJ.live)projPoll() },PROJ.pollMs);  // 실시간이 붙어 있으면 굳이 조회하지 않는다
 setInterval(function(){ if(PROJ.live)projPoll() },60000);         // 실시간이어도 1분마다 한 번은 대조
+setInterval(updateSaveUi,2000);                                  // 저장 버튼 표시 갱신
+updateSaveUi();
 </script>
 </body>
 </html>
