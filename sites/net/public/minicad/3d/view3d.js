@@ -140,7 +140,7 @@ const texCache=new Map();
 function _texCanvas(code){
   const c=document.createElement('canvas'); c.width=256; c.height=256;
   const x=c.getContext('2d');
-  const base=MC3D.FLOOR_COLORS[code]||'#C9B8A3';
+  const base=MC3D.FLOOR_COLORS[code]||MC3D.WALL_COLORS[code]||'#C9B8A3';
   x.fillStyle=base; x.fillRect(0,0,256,256);
   const shade=a=>'rgba(0,0,0,'+a+')', lite=a=>'rgba(255,255,255,'+a+')';
   const wood=rows=>{
@@ -228,7 +228,7 @@ function primMesh(p,obj){
     if(!p.pts||p.pts.length<3) return null;
     const shape=new THREE.Shape(p.pts.map(q=>new THREE.Vector2(q.x*MM,-q.y*MM)));
     const g=new THREE.ExtrudeGeometry(shape,{depth:Math.max(p.h,1)*MM,bevelEnabled:false});
-    mesh=new THREE.Mesh(g,matFor(p));
+    mesh=new THREE.Mesh(g,p.mcode?floorMat(p.mcode):matFor(p));   // 프리폼 재질 (렌더 전용)
     mesh.rotation.x=-Math.PI/2;                              // 로컬 +z(깊이) → 세계 +y(위)
     mesh.position.y=(p.z||0)*MM;
   }else if(p.t==='face3'){
@@ -258,8 +258,9 @@ function primMesh(p,obj){
       const u=pos.getX(i),v=pos.getY(i);
       pos.setXYZ(i,(O.x+EX.x*u+EY.x*v)*MM,(O.z+EX.z*u+EY.z*v)*MM,(O.y+EX.y*u+EY.y*v)*MM);
     }
+    if(p.mcode){ const uva=g.attributes.uv; for(let i=0;i<uva.count;i++) uva.setXY(i,uva.getX(i)*MM,uva.getY(i)*MM); }
     g.computeVertexNormals(); g.computeBoundingSphere();
-    const hm=matFor(p).clone(); hm.side=THREE.DoubleSide;
+    const hm=(p.mcode?floorMat(p.mcode):matFor(p)).clone(); hm.side=THREE.DoubleSide;
     mesh=new THREE.Mesh(g,hm);
   }else if(p.t==='edge3'){
     const a=new THREE.Vector3(p.a.x*MM,p.a.z*MM,p.a.y*MM);
@@ -289,9 +290,24 @@ function primMesh(p,obj){
     }
     const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    if(p.mcode){                                             // 프리폼 재질 — 삼각형 주법선 축으로 박스 투영 UV (m 단위)
+      const uv=new Float32Array(pos.length/3*2);
+      for(let t=0;t<pos.length;t+=9){
+        const ux=pos[t+3]-pos[t],uy=pos[t+4]-pos[t+1],uz=pos[t+5]-pos[t+2];
+        const vx=pos[t+6]-pos[t],vy=pos[t+7]-pos[t+1],vz=pos[t+8]-pos[t+2];
+        const nx=Math.abs(uy*vz-uz*vy),ny=Math.abs(uz*vx-ux*vz),nz=Math.abs(ux*vy-uy*vx);
+        for(let j=0;j<3;j++){
+          const X=pos[t+j*3],Y=pos[t+j*3+1],Z=pos[t+j*3+2],o2=(t/9*3+j)*2;
+          if(ny>=nx&&ny>=nz){ uv[o2]=X; uv[o2+1]=Z; }
+          else if(nx>=nz){ uv[o2]=Z; uv[o2+1]=Y; }
+          else { uv[o2]=X; uv[o2+1]=Y; }
+        }
+      }
+      g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+    }
     g.computeVertexNormals();                                // 면마다 법선 — 지붕 물매가 음영으로 보인다
     g.computeBoundingSphere();
-    const mm=matFor(p).clone(); mm.side=THREE.DoubleSide;    // 안쪽에서 봐도 보이게 (걷기 모드)
+    const mm=(p.mcode?floorMat(p.mcode):matFor(p)).clone(); mm.side=THREE.DoubleSide;   // 안쪽에서 봐도 보이게
     mesh=new THREE.Mesh(g,mm);
   }
   if(!mesh) return null;
@@ -1348,6 +1364,11 @@ function ffApply(m){
       if(m.op==='lock'){ mass.locked=!!p.locked; ok=true; label=p.locked?'잠금':'잠금 해제'; break; }
       const ALLOW=['h_mm','elev_mm','name','color','x','y','angle'];
       let n=0;
+      if(p.mat!==undefined){                            // 프리폼 재질 — 렌더 전용, 견적 무관
+        if(p.mat===null) delete mass.mat;
+        else mass.mat=String(p.mat).slice(0,40);
+        n++;
+      }
       ALLOW.forEach(k=>{ if(p[k]!==undefined){
         mass[k]=(k==='name'||k==='color')?p[k]:N(p[k]);
         if(k==='h_mm') mass[k]=Math.max(10,mass[k]);
@@ -2878,7 +2899,11 @@ function samplePaint(hit){
   const obj=hit.object.userData.obj; if(!obj) return;
   const m=obj.meta||{};
   let c=null;
-  if(obj.kind==='wall'&&m.material) c={cat:'wall',code:m.material};
+  if(obj.kind==='mass'&&m.mat){
+    const cat=(MATS.FLOOR&&MATS.FLOOR[m.mat])?'floor':(MATS.WALL&&MATS.WALL[m.mat])?'wall':(MATS.CEIL&&MATS.CEIL[m.mat])?'ceil':'floor';
+    c={cat,code:m.mat};
+  }
+  else if(obj.kind==='wall'&&m.material) c={cat:'wall',code:m.material};
   else if(obj.kind==='floor') c={cat:'floor',code:m.floorMaterial||'STRONG'};
   else if(obj.kind==='ceiling'){ const fl=findGroup(obj.floorId,String(obj.id).replace(/_ceil$/,'')); const fm=fl&&fl.userData.obj.meta; c={cat:'ceil',code:(fm&&fm.ceilingMaterial)||'GYPSUM'}; }
   if(!c){ setStatus(statusLive,'추출할 재질이 없습니다'); return; }
@@ -2891,6 +2916,14 @@ function doPaint(hit,e){
   if(e&&e.altKey){ samplePaint(hit); return; }
   const obj=hit.object.userData.obj; if(!obj) return;
   const c=ST.paint;
+  if(ST.ffOn&&obj.kind==='mass'&&obj.floorId==='freeform'){   // 프리폼: 매스 재질 — 어느 분류든 칠해진다
+    const tg=(ST.selSet.size>1&&ST.selSet.has(hit.object.parent))
+      ?[...ST.selSet].map(g=>g.userData.obj).filter(o=>o&&o.kind==='mass'&&o.floorId==='freeform'):[obj];
+    emitEdit({type:'edit',op:'batch',label:'재질',
+      ops:tg.map(o=>({op:'set',kind:'masses',id:o.id,floorId:'freeform',patch:{mat:c.code}}))});
+    setStatus(statusLive,'🪣 프리폼 재질 '+c.code+(tg.length>1?' × '+tg.length:'')+' — 렌더 전용 (견적 무관)');
+    return;
+  }
   const targets=(ST.selSet.size>1&&ST.selSet.has(hit.object.parent))?[...ST.selSet].map(g=>g.userData.obj):[obj]; // 다중 선택 위 클릭 = 한 번에
   const ops=[];
   targets.forEach(o=>{
@@ -3330,6 +3363,10 @@ function renderProps(obj,opts){
            <div class="p-btns"><button class="btn" data-a="ceiloff">평천장으로 되돌리기</button></div>`
         : `<div class="p-btns"><button class="btn" data-a="ceilon" title="이 매스 아래 방의 천장으로 삼습니다 — 천장 ㎡ 가 경사 실면적이 되어 견적에 반영됩니다">▣ 아래 방의 천장으로</button></div>`;
     }
+    if(ST.ffOn&&m.mat){                                 // 프리폼 재질 (B 로 칠함)
+      html+=`<div class="p-row"><label>재질</label><span style="font-size:11px">🪣 ${m.mat}
+        <button class="btn" data-a="matclr" style="padding:1px 8px;margin-left:6px">지움</button></span></div>`;
+    }
     if(ST.ffOn&&m.gid){                                 // 프리폼 ⑤: 그룹·컴포넌트
       html+=`<div class="p-row"><label>그룹</label><span style="font-size:11px;color:#C9A961">⛓ ${_ffGroupOf(m.gid).length}개가 한 몸</span></div>`;
       html+=`<div class="p-btns"><button class="btn" data-a="ungrp">그룹 풀기</button>
@@ -3409,6 +3446,7 @@ function renderProps(obj,opts){
       else if(a==='del') deleteSelected3D();
       else if(a==='lock') lockSelected(true);
       else if(a==='copy') copySel();
+      else if(a==='matclr'){ emitEdit({type:'edit',op:'set',kind:'masses',id:obj.id,floorId:'freeform',patch:{mat:null}}); }
       else if(a==='ungrp'){ emitEdit({type:'edit',op:'ungroup',floorId:'freeform',patch:{gid:obj.meta.gid}}); }
       else if(a==='csave'){
         const nm=window.prompt('컴포넌트 이름','수납장');

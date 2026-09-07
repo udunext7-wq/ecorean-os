@@ -263,11 +263,11 @@ function massCutPrims(m,S,ctx,col){
       verts.push(A0,B0,B1,A1);
       tris.push([k,k+1,k+2],[k,k+2,k+3]);
     }
-    prims.push({t:'mesh',verts,tris,z:0,color:_dim(col,0.78),cut:true});   // 주머니 옆벽은 어둡게 — 파임이 읽힌다
+    prims.push({t:'mesh',verts,tris,z:0,color:_dim(col,0.78),mcode:m.mat||null,cut:true});   // 주머니 옆벽 (재질이 있으면 그대로 이어진다)
     if(!c.through){
       // 주머니 바닥 — 파냄 평면을 d 만큼 안으로 민 판
       const bo={x:c.plane.origin.x-c.plane.n.x*c.d,y:c.plane.origin.y-c.plane.n.y*c.d,z:c.plane.origin.z-c.plane.n.z*c.d};
-      prims.push({t:'face3h',plane:{origin:bo,ex:c.plane.ex,ey:c.plane.ey},outer:c.uv,holes:[],color:_dim(col,0.86),cut:true});
+      prims.push({t:'face3h',plane:{origin:bo,ex:c.plane.ex,ey:c.plane.ey},outer:c.uv,holes:[],color:_dim(col,0.86),mcode:m.mat||null,cut:true});
     }else{
       // 관통 — 반대쪽(나란한) 면에도 구멍
       S.faces.forEach((f,fi)=>{
@@ -294,7 +294,7 @@ function massCutPrims(m,S,ctx,col){
         return {x:q.u,y:q.v};
       });
     });
-    prims.push({t:'face3h',plane:{origin:fr.origin,ex:fr.ex,ey:fr.ey},outer,holes,color:col});
+    prims.push({t:'face3h',plane:{origin:fr.origin,ex:fr.ex,ey:fr.ey},outer,holes,color:col,mcode:m.mat||null});
   });
   return {holed,prims};
 }
@@ -313,8 +313,8 @@ function buildMass(m){
   const hasCuts=Array.isArray(m.cuts)&&m.cuts.length>0;
   if(massIsPrismOf(m)&&!hasCuts){
     // 수직 각기둥 — 종전 그대로 (가볍고 빠르다)
-    return Object.assign(base,{prims:[{t:'prism',pts:m.pts,z:0,h:H,color:col}],
-      meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false,z:zgrip,gid:m.gid||null}});
+    return Object.assign(base,{prims:[{t:'prism',pts:m.pts,z:0,h:H,color:col,mcode:m.mat||null}],
+      meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false,z:zgrip,gid:m.gid||null,mat:m.mat||null}});
   }
   // 자유 다면체 — 꼭짓점마다 높이가 다르다 (빗천장·박공·꺾인 천장)
   const S=massSolidOf(m,ctx);
@@ -326,9 +326,9 @@ function buildMass(m){
   });
   const q=(_sk('massQuantities')||(()=>({})))(m,ctx);
   return Object.assign(base,{
-    prims:[{t:'mesh',verts:S.verts,tris,faces:S.faces.map(f=>({role:f.role,tilt:f.tilt})),z:0,color:col}]
+    prims:[{t:'mesh',verts:S.verts,tris,faces:S.faces.map(f=>({role:f.role,tilt:f.tilt})),z:0,color:col,mcode:m.mat||null}]
       .concat(cutFx?cutFx.prims:[]),
-    meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:true,gid:m.gid||null,
+    meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:true,gid:m.gid||null,mat:m.mat||null,
       qty:q,faces:S.faces.length,maxTilt:q.maxTilt||0,z:zgrip,
       slopes:(_sk('massSlopes')||(()=>[]))(m,ctx)}});
 }

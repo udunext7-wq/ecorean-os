@@ -676,6 +676,25 @@ ck(/FF\._gidMap/.test(v3Src),'프리폼⑤: 그룹 복사는 새 그룹으로 (�
 ck(/gid:m\.gid\|\|null/.test(b3Src),'프리폼⑤: 조립이 gid 를 실어 준다');
 ck(/_ffCompsPal/.test(v3Src)&&/data-comp/.test(v3Src),'프리폼⑤: 구성요소 칸에 내 컴포넌트·스탬프');
 ck(/ST\.stampComp/.test(v3Src),'프리폼⑤: 클릭 스탬프 모드 (Esc=끝)');
+// 프리폼 재질 (렌더 전용) 계약
+ck(/p\.mat!==undefined/.test(v3Src),'프리폼 재질: set 이 mat 을 안다 (null=지움)');
+ck(/p\.mcode\?floorMat\(p\.mcode\)/.test(v3Src),'프리폼 재질: 프리즘·다면체가 텍스처로 그려진다');
+ck(/박스 투영 UV/.test(v3Src),'프리폼 재질: 다면체 UV 는 박스 투영');
+ck(/mcode:m\.mat\|\|null/.test(b3Src),'프리폼 재질: 조립이 mat 를 prim 에 싣는다');
+{
+  // 조립 실측 — mat 이 프리즘 prim 과 벽감 프림까지 흐른다
+  const free = { masses: [] };
+  const bm = SK.massFromPoly([{x:0,y:0},{x:4000,y:0},{x:4000,y:3000},{x:0,y:3000}], 2400, free);
+  bm.mat = 'WOOD';
+  SK.massAddCut(bm, SK.planeFrom({x:0,y:0,z:0},{x:0,y:-1,z:0}),
+    [{x:1000,y:800},{x:2600,y:800},{x:2600,y:1800},{x:1000,y:1800}], 250, {ch:2400});
+  const sc = MC3D.buildScene({schema:'x',meta:{ceilingHeight_mm:2400},vertices:[],spaces:[],walls:[],openings:[],
+    furniture:[],fixtures:[],lights:[],electric:[],hvac:[],pillars:[],sketchPts:[],sketchEdges:[],sketchFaces:[],
+    masses:free.masses},{});
+  const mo = sc.objects.find(o => o.kind === 'mass');
+  ck(mo.prims.every(p => p.mcode === 'WOOD') && mo.meta.mat === 'WOOD',
+    '프리폼 재질: 본체·주머니·구멍 면 전부에 mat 이 실린다 (' + mo.prims.length + '개 prim)');
+}
 
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');
