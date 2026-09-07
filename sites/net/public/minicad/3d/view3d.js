@@ -953,7 +953,7 @@ function setTool(t){
   const hint=$('hint');
   if(hint) hint.innerHTML={
     select:'<b>선택</b> — 클릭=선택 · <b>Shift/Ctrl+클릭=추가</b> · 끌기=선택 상자(←방향은 걸치기) · 더블클릭=방/연결벽 · 트리플=전체 · 배치물 끌기=이동 · Ctrl+끌기=복사 · Del · 우클릭=메뉴',
-    move:'<b>이동</b> — 클릭-이동-클릭 · <b>Ctrl=복사</b>(뒤에 x3 · /3 = 배열) · ←→=X/Y 고정 · <b>↑=높이(Z)</b> · <b>숫자=거리</b>(2.5m·250cm) · 문·창은 벽 위로 · Esc 취소',
+    move:'<b>이동</b> — 클릭-이동-클릭 · <b style="color:#7FA8D4">↑=높이(Z) 위아래로 띄우기</b> · ←→=X/Y 고정 · <b>Ctrl=복사</b>(뒤에 x3 · /3 = 배열) · <b>숫자=정확한 값</b>(2.5m·250cm) · 문·창은 벽 위로 · Esc 취소',
     rotate:'<b>회전</b> — 객체 클릭 → 기준점 클릭 → 각도 (각도기) · 15° 스냅(Shift=자유각) · <b>숫자=각도</b> · Esc 취소',
     scale:'<b>배율</b> — 객체 클릭 후 위아래로 (Shift=가로/세로 따로) · 클릭=확정 · <b>숫자=배율</b>(1.5) · 가구·기구·설비만',
     line:'<b>선</b> — 클릭-클릭 사슬 = <b>점·선</b>(x,y) · <b>고리가 닫히면 면</b> · 바닥 위=분할 · <b>Shift=방향 고정</b> · ←→=축 고정 · ↓=벽에 평행/수직 · 숫자=길이 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · Esc/더블클릭=끝',
@@ -1530,7 +1530,10 @@ function beginMove(g,obj,copy){
   const me=mk(g,obj);
   ST.op={type:'move',g:me.g,obj,copy:!!copy,orig:me.orig,off:{x:g.position.x-dragPt.x,z:g.position.z-dragPt.z},moved:false,sticky:false,extras};
   opOrbit(true);
-  vcbShow((copy?'복사':'이동')+(extras.length?' ('+(extras.length+1)+'개)':''),0,'mm');
+  // 2026-09-07 대표 물음 "z 축으로는 이동되지 않는다" — 되기는 되는데(↑ 로 파란 축 고정)
+  //  안내가 하단 줄 가운데 묻혀 있어 찾기 어려웠다. 끌기 시작하는 그 자리에 적는다.
+  vcbShow((copy?'복사':'이동')+(extras.length?' ('+(extras.length+1)+'개)':'')+'  ·  ↑=높이(Z)',0,'mm');
+  setStatus(statusLive,'✥ '+(copy?'복사':'이동')+' — 바닥에서 끕니다. 위로 띄우려면 <b>↑</b>(파란 Z축), ←→=가로·세로 고정, 숫자=정확한 값');
 }
 function applyMoveFromEvent(e){
   const op=ST.op; if(!op||op.type!=='move') return;
@@ -1544,7 +1547,7 @@ function applyMoveFromEvent(e){
     op.extras.forEach(it=>{ it.g.position.y=Math.max(0,(it.obj.elev||0)+(op.elev-(op.obj.elev||0)))*MM+z0; });
     op.moved=true; op.zMoved=true;
     hideSnap();
-    vcbShow('높이(바닥에서)',op.elev,'mm');
+    vcbShow('높이(바닥에서)  ·  마우스 위아래 · 숫자=정확히',op.elev,'mm');
     invalidate(true);
     return;
   }
@@ -1563,7 +1566,7 @@ function applyMoveFromEvent(e){
   const ddx=x-op.orig.x, ddz=z-op.orig.z;
   op.extras.forEach(it=>{ it.g.position.x=it.orig.x+ddx; it.g.position.z=it.orig.z+ddz; });
   op.moved=true;
-  vcbShow((s.kind!=='grid'?SNAP_NAME[s.kind]+' · ':'')+(ST.axisLock?'축 고정 · ':op.shiftLock?'방향 고정 · ':'')+(op.copy?'복사':'이동'),Math.round(Math.hypot(ddx,ddz)/MM),'mm');
+  vcbShow((s.kind!=='grid'?SNAP_NAME[s.kind]+' · ':'')+(ST.axisLock?'축 고정 · ':op.shiftLock?'방향 고정 · ':'')+(op.copy?'복사':'이동')+(ST.axisLock?'':'  ·  ↑=높이(Z)'),Math.round(Math.hypot(ddx,ddz)/MM),'mm');
   invalidate(true);
 }
 function commitMove(exact){

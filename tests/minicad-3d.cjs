@@ -396,5 +396,17 @@ const SK = require(path.join(ROOT, 'js', 'sketch.js'));
     'Z 뒤틀린 사각은 접힘으로 잡힌다');
 }
 
+// ---- 2026-09-07 Z 이동 (대표 물음 "z 축으로는 이동되지 않는다") ----------------------------
+//  되기는 된다 — ↑ 로 파란 축에 고정하면 위아래로 끌어 띄우고 elev_mm 로 평면에 저장된다.
+//  안내가 하단 줄 가운데 묻혀 있어 못 찾았던 것. 그 길이 끊기지 않게 고정해 둔다.
+ck(/axisLock==='z'/.test(v3Src), 'Z 이동: 파란 축 고정 분기가 있다');
+ck(/arrowup.*axisLock=\(ST\.axisLock==='z'\)\?null:'z'/.test(v3Src.replace(/\s+/g, ' ')),
+  'Z 이동: ↑ 키가 Z 축을 고정한다');
+ck(/op\.zMoved[\s\S]{0,400}elev_mm/.test(v3Src), 'Z 이동: 확정하면 elev_mm 으로 평면에 보낸다');
+ck(/move:'<b>이동<\/b>[^']*↑=높이\(Z\)/.test(v3Src), 'Z 이동: 도구 안내에 ↑=높이(Z) 가 앞쪽에 적혀 있다');
+ck(/vcbShow\(\(copy\?'복사':'이동'\)[^;]*↑=높이\(Z\)/.test(v3Src),
+  'Z 이동: 끌기를 시작하는 자리(VCB)에도 ↑ 안내');
+ck(/MOVABLE=new Set\([^)]*'mass'/.test(v3Src), 'Z 이동: 매스가 이동 대상');
+
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');
