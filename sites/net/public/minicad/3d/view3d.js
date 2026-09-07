@@ -1186,6 +1186,7 @@ function ff3Move(e){
 const FF_SCHEMA='ECOREAN.FreeForm.v1';
 let FF=null;   // {base, free:{sketchPts,sketchEdges,sketchFaces,masses}, hist, histPos, group, planLatest, planDirty}
 function ffCtx(){ return {ch:(ST.built&&ST.built.ceilH)||2400,fh:2800,fl:0}; }
+const FF_PLACE=['furniture','fixtures','lights','electric','hvac'];   // 프리폼 스테이징 배치물
 function ffKey(){ return 'minicad.freeform.'+(((ST.built&&ST.built.project)||'기본').replace(/\s+/g,'_')); }
 // 프리폼에서 편집해도 되는 것 — 자유 층뿐. 밑그림은 평면(미니캐드)의 것이다.
 function ffEditable(o){ return !ST.ffOn||!o||o.floorId==='freeform'; }
@@ -1220,7 +1221,9 @@ function ffRender(){
   if(!FF) return;
   ST.pendingG.forEach(disposeGhost); ST.pendingG=[];
   const freeDoc={meta:{project:'프리폼',ceilingHeight_mm:ffCtx().ch},
-    vertices:[],spaces:[],walls:[],openings:[],furniture:[],fixtures:[],lights:[],electric:[],hvac:[],pillars:[],
+    vertices:[],spaces:[],walls:[],openings:[],pillars:[],
+    furniture:FF.free.furniture||[],fixtures:FF.free.fixtures||[],lights:FF.free.lights||[],
+    electric:FF.free.electric||[],hvac:FF.free.hvac||[],
     sketchPts:FF.free.sketchPts,sketchEdges:FF.free.sketchEdges,sketchFaces:FF.free.sketchFaces,masses:FF.free.masses,
     planes:FF.free.planes||[]};
   const D=MC3D.normalizeDoc(JSON.parse(JSON.stringify(freeDoc)));
@@ -1250,6 +1253,7 @@ function ffRender(){
   reselect();
   renderOutliner();
   renderAddPal();                               // 프리폼 ⑤: 내 컴포넌트 목록도 갱신
+  retunePointLights();                          // 스테이징 조명이 실제로 빛난다
   ffAutosave();
   invalidate(true);
 }
@@ -1359,6 +1363,16 @@ function ffApply(m){
       ok=true; label='꼭짓점 '+vs.length+'개 = CH'+(off>=0?'+':'')+off; break;
     }
     case 'move': case 'set': case 'rotate': case 'lock': {
+      if(FF_PLACE.includes(m.kind)){                    // 프리폼 스테이징 배치물
+        const o=(bag[m.kind]||[]).find(x=>x&&x.id===m.id);
+        if(!o) return no('밑그림 배치물은 평면(미니캐드)에서 고칩니다');
+        if(m.op==='lock'){ o.locked=!!p.locked; ok=true; label=p.locked?'잠금':'잠금 해제'; break; }
+        let nn=0;
+        ['x','y','angle','inch','length_mm','w','h','elev_mm'].forEach(k=>{
+          if(p[k]!==undefined&&isFinite(Number(p[k]))){ o[k]=N(p[k]); nn++; } });
+        if(p.flipped!==undefined){ o.flipped=!!p.flipped; nn++; }
+        ok=nn>0; label=m.op==='move'?'이동':(m.op==='rotate'?'회전':'수정'); break;
+      }
       if(m.kind!=='masses') return no('밑그림은 평면(미니캐드)에서 고칩니다');
       const mass=massOf(m.id); if(!mass) return no('밑그림 매스는 평면에서');
       if(m.op==='lock'){ mass.locked=!!p.locked; ok=true; label=p.locked?'잠금':'잠금 해제'; break; }
@@ -1376,6 +1390,15 @@ function ffApply(m){
       ok=n>0; label=m.op==='move'?'이동':'수정'; break;
     }
     case 'clone': {
+      if(FF_PLACE.includes(m.kind)){                    // 배치물 복제 (Ctrl+끌기·붙여넣기)
+        const src=(bag[m.kind]||[]).find(x=>x&&x.id===m.id);
+        if(!src) return no('밑그림 배치물은 평면에서');
+        const cp=JSON.parse(JSON.stringify(src));
+        cp.id=m.kind.charAt(0)+'f_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
+        cp.x=isFinite(Number(p.x))?N(p.x):src.x+300;
+        cp.y=isFinite(Number(p.y))?N(p.y):src.y+300;
+        bag[m.kind].push(cp); madeId=cp.id; ok=true; label='복제'; break;
+      }
       if(m.kind!=='masses') return no('복제는 프리폼 매스만');
       const src=massOf(m.id); if(!src) return no('밑그림 매스는 평면에서');
       const cp=JSON.parse(JSON.stringify(src));
@@ -1390,6 +1413,11 @@ function ffApply(m){
       bag.masses.push(cp); madeId=cp.id; ok=true; label='복제'; break;
     }
     case 'delete': {
+      if(FF_PLACE.includes(m.kind)){
+        const i=(bag[m.kind]||[]).findIndex(x=>x&&x.id===m.id);
+        if(i<0) return no('밑그림 배치물은 평면에서 지웁니다');
+        bag[m.kind].splice(i,1); ok=true; label='삭제'; break;
+      }
       if(m.kind!=='masses') return no('밑그림은 평면(미니캐드)에서 지웁니다');
       const i=(bag.masses||[]).findIndex(x=>x&&x.id===m.id);
       if(i<0) return no('밑그림 매스는 평면에서 지웁니다');
@@ -1482,7 +1510,21 @@ function ffApply(m){
     }
     case 'massconvert': return no('프리폼에서는 매스 그대로 씁니다 — 공간·벽 전환은 연동 뷰(평면)의 일');
     case 'ceilmass': return no('천장 지정은 평면(견적)의 일 — 연동 뷰에서');
-    case 'add': return no('프리폼 1단계는 스케치·매스입니다 — 배치물은 다음 단계');
+    case 'add': {                                       // 프리폼 스테이징 — 가구·조명을 자유 층에
+      if(!FF_PLACE.includes(m.kind)||!p.type) return false;
+      const T={furniture:[LIBS.FURNITURE_LIB,LIBS.FIXFURN_LIB],fixtures:[LIBS.FIXTURE_LIB],
+        lights:[LIBS.LIGHT_LIB],electric:[LIBS.ELECTRIC_LIB],hvac:[LIBS.HVAC_FIRE_LIB]}[m.kind]||[];
+      const def=T.filter(Boolean).map(t=>t&&t[p.type]).find(Boolean);
+      if(!def) return no('라이브러리에 없는 종류: '+p.type);
+      if(!Array.isArray(bag[m.kind])) bag[m.kind]=[];
+      const o={id:m.kind.charAt(0)+'f_'+Date.now()+'_'+Math.floor(Math.random()*1e4),
+        type:p.type,x:N(p.x)||0,y:N(p.y)||0,angle:((N(p.angle)||0)%360+360)%360,
+        flipped:!!p.flipped,spaceId:null,layerName:''};
+      ['inch','length_mm','w','h','elev_mm'].forEach(k=>{ if(isFinite(Number(p[k]))) o[k]=N(p[k]); });
+      bag[m.kind].push(o);
+      madeId=o.id; ok=true; label='배치: '+(def.name||p.type)+' (스테이징 — 견적 무관)';
+      break;
+    }
     default: return no('프리폼이 모르는 명령: '+m.op);
   }
   if(!ok) return false;
@@ -1544,7 +1586,8 @@ function ffEnter(opts){
   if(!ST.doc){ setStatus(false,'평면 문서가 아직 없습니다 — 미니캐드에서 먼저 열어주세요'); return; }
   const saved=(!opts||!opts.fresh)?ffLoadLocal():null;
   FF={base:JSON.parse(JSON.stringify(ST.doc)),
-      free:(saved&&saved.free)||{sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[],comps:[]},
+      free:(saved&&saved.free)||{sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[],comps:[],
+        furniture:[],fixtures:[],lights:[],electric:[],hvac:[]},
       hist:[],histPos:-1,group:null,planLatest:null,planDirty:false,mute:false};
   if(saved&&saved.base) FF.base=saved.base;   // 저장본이 있으면 그때 굳힌 밑그림 그대로
   ST.ffOn=true;
@@ -1585,7 +1628,8 @@ function ffRebase(){
 }
 function ffNew(){
   if(!ST.ffOn||!FF) return;
-  FF.free={sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[],comps:[]};
+  FF.free={sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[],comps:[],
+    furniture:[],fixtures:[],lights:[],electric:[],hvac:[]};
   ffCommit('새로 시작 (자유 층 비움)');
 }
 let chan=null;

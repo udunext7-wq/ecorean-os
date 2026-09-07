@@ -676,6 +676,13 @@ ck(/FF\._gidMap/.test(v3Src),'프리폼⑤: 그룹 복사는 새 그룹으로 (�
 ck(/gid:m\.gid\|\|null/.test(b3Src),'프리폼⑤: 조립이 gid 를 실어 준다');
 ck(/_ffCompsPal/.test(v3Src)&&/data-comp/.test(v3Src),'프리폼⑤: 구성요소 칸에 내 컴포넌트·스탬프');
 ck(/ST\.stampComp/.test(v3Src),'프리폼⑤: 클릭 스탬프 모드 (Esc=끝)');
+// 프리폼 스테이징 (배치물) 계약
+ck(/const FF_PLACE=\['furniture','fixtures','lights','electric','hvac'\]/.test(v3Src),
+  '프리폼 스테이징: 배치물 5종이 자유 층에 산다');
+ck(/case 'add': \{/.test(v3Src)&&!/배치물은 다음 단계/.test(v3Src),
+  '프리폼 스테이징: add 가 로컬로 배치한다 (거부 문구 제거)');
+ck(/FF_PLACE\.includes\(m\.kind\)/.test(v3Src),'프리폼 스테이징: 이동·복제·삭제도 배치물을 안다');
+ck(/retunePointLights\(\);\s*\/\/ 스테이징 조명/.test(v3Src),'프리폼 스테이징: 조명이 실제로 빛난다');
 // 프리폼 재질 (렌더 전용) 계약
 ck(/p\.mat!==undefined/.test(v3Src),'프리폼 재질: set 이 mat 을 안다 (null=지움)');
 ck(/p\.mcode\?floorMat\(p\.mcode\)/.test(v3Src),'프리폼 재질: 프리즘·다면체가 텍스처로 그려진다');
