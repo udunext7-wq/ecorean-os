@@ -505,5 +505,22 @@ ck(/function setSkyImage\(url\)/.test(v3Src) && /uHasTex/.test(v3Src),
 ck(/setNight\(on\)[\s\S]{0,400}applySkyColors\(\)/.test(v3Src) || /applyMood[\s\S]{0,600}applySkyColors\(\)/.test(v3Src),
   '하늘: 주·야 전환을 배경도 따른다');
 
+// ---- 2026-09-07 프리폼 (대표 결정 "미니폼은 자유 렌더링 — 밑그림으로 굳히고 독립") ----
+//  핵심 계약: 편집이 나가는 길은 emitEdit 하나. 프리폼이 켜지면 채널 대신 ffApply 가
+//  자유 층에 그 자리에서 적용한다. 직접 postMessage 가 하나라도 남으면 그 op 은
+//  프리폼에서 몰래 평면으로 새어 나간다 — 그래서 소스에서 직접 전송 0건을 강제한다.
+ck(!/chan\.postMessage\(\{type:'edit'/.test(v3Src),
+  '프리폼: 편집 직접 전송 0건 — 전부 emitEdit 를 거친다');
+ck(/function emitEdit\(m\)\{\s*if\(ST\.ffOn\) return ffApply\(m\);/.test(v3Src),
+  '프리폼: emitEdit 가 모드에 따라 갈라진다');
+['sketchline','sketchrect','sketchcircle','sketchpoly','extrude','setz','settop','zref','delete','clone','batch']
+  .forEach(op=>ck(new RegExp("case '"+op+"'").test(v3Src),'프리폼: ffApply 가 '+op+' 을 안다'));
+ck(/if\(ST\.ffOn\)\{\s*\/\/ 프리폼: 평면 갱신은 받아만 둔다/.test(v3Src)||/평면 갱신은 받아만 둔다/.test(v3Src),
+  '프리폼: 평면 갱신은 자동 적용 안 됨 (acceptDoc 가드)');
+ck(/&&ffEditable\(obj\)/.test(v3Src),'프리폼: 밑그림은 이동 못 잡는다');
+ck(/FF_SCHEMA='ECOREAN\.FreeForm\.v1'/.test(v3Src),'프리폼: 자기 문서 스키마');
+ck(/massconvert': return no\(/.test(v3Src)&&/ceilmass': return no\(/.test(v3Src),
+  '프리폼: 공간·벽 전환과 천장 지정은 평면(견적)의 일로 거부');
+
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

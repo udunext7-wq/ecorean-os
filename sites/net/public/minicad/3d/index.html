@@ -153,6 +153,11 @@
     <hr><div class="mi" data-cmd="shot">이미지 내보내기 (PNG)<span class="acc">Ctrl+Shift+S</span></div>
     <div class="mi" data-cmd="glb">3D 모델 내보내기 (GLB — Blender)</div>
     <div class="mi" data-cmd="json">데이터 내보내기 (JSON)</div>
+    <hr><div class="mi" data-cmd="ff" id="mi-ff" title="평면을 밑그림으로 굳히고 자유롭게 빚는 모드 — 여기서 그린 것은 여기 남고 평면·견적에는 안 갑니다">🧊 프리폼 모드 (자유 모델)</div>
+    <div class="mi" data-cmd="ff-rebase">평면 다시 불러오기 (밑그림만 갱신)</div>
+    <div class="mi" data-cmd="ff-save">프리폼 파일 저장…</div>
+    <div class="mi" data-cmd="ff-open">프리폼 파일 열기…</div>
+    <div class="mi" data-cmd="ff-new">프리폼 새로 시작 (자유 층 비움)</div>
     <hr><div class="mi" data-cmd="reload">MiniCAD 에서 도면 다시 받기</div>
   </div></div>
   <div class="menu"><button>편집</button><div class="drop">
@@ -260,6 +265,7 @@
   <button class="btn sm" id="b-shot" title="PNG 저장 (Ctrl+Shift+S)">📷</button>
   <button class="btn sm" id="b-glb" title="Blender 용 .glb">⬇GLB</button>
   <button class="btn sm" id="b-json" title="3D 데이터 JSON">⬇J</button>
+  <button class="btn sm" id="b-ff" title="프리폼 — 평면을 밑그림으로 굳히고 자유롭게 빚는 모드 (견적은 평면이, 렌더링은 여기가)">🧊 프리폼</button>
   <span class="grow"></span>
   <span id="status" class="off">MiniCAD 연결 대기</span>
   <button class="btn sm" id="b-reload" title="도면 다시 받기">↻</button>
@@ -362,12 +368,12 @@
   <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
 </div></div>
 
-<script src="../js/data.js?v=3d24"></script>
-<script src="../js/library.js?v=3d24"></script>
+<script src="../js/data.js?v=3d25"></script>
+<script src="../js/library.js?v=3d25"></script>
 <!-- 2026-09-07: 매스 다면체(z 값) 계산은 2D 와 같은 파일을 쓴다 — 두 벌로 두면 평면과 3D 가 어긋난다 -->
-<script src="../js/sketch.js?v=3d24"></script>
-<script src="build3d.js?v=3d24"></script>
+<script src="../js/sketch.js?v=3d25"></script>
+<script src="build3d.js?v=3d25"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d24"></script>
+<script type="module" src="view3d.js?v=3d25"></script>
 </body>
 </html>

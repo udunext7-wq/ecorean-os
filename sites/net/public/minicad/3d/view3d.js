@@ -91,7 +91,7 @@ function opOrbit(on){ orbit.touches.ONE=on?null:THREE.TOUCH.ROTATE; }
 // 상태
 // ---------------------------------------------------------------------------
 const ST={
-  mode:'orbit', lightsOn:true, night:false, sky:'sky',   // 2026-09-07 배경: 하늘·바닥 / 단색 / 그림
+  mode:'orbit', lightsOn:true, night:false, sky:'sky', ffOn:false,   // 2026-09-07 프리폼   // 2026-09-07 배경: 하늘·바닥 / 단색 / 그림
   ceil:{orbit:false,walk:true}, labels:true,
   shadows:true, shadowsAuto:true,           // 사용자가 손대기 전엔 자동 성능 조절 대상
   floorSel:'all', floors:[],
@@ -472,7 +472,7 @@ function autoPerf(){
 // ---------------------------------------------------------------------------
 // 가시성 (층 필터·천장·이름표 한 곳에서)
 // ---------------------------------------------------------------------------
-function floorOK(fid){ return ST.floorSel==='all'||fid===ST.floorSel; }
+function floorOK(fid){ if(fid==='freeform') return true; return ST.floorSel==='all'||fid===ST.floorSel; }
 function _selFloorZ0(){ const f=ST.floors.find(x=>x.id===ST.floorSel); return f?f.z0*MM:0; }
 function refreshVisibility(){
   if(!ST.root) return;
@@ -850,6 +850,11 @@ function describe(obj){
   return `${obj.name} <small>${m.type||obj.kind}</small>`;
 }
 function findGroup(floorId,id){
+  if(floorId==='freeform'){                                 // 프리폼 자유 층 (층 캐시 밖)
+    let f=null;
+    FF&&FF.group&&FF.group.children.forEach(g=>{ if(!f&&g.userData.obj&&String(g.userData.obj.id)===String(id)) f=g; });
+    return f;
+  }
   const ent=ST.floorCache[floorId]; if(!ent) return null;
   let found=null;
   ent.group.children.forEach(g=>{ if(!found&&g.userData.obj&&String(g.userData.obj.id)===String(id)) found=g; });
@@ -967,10 +972,319 @@ function boxSelect(x0,y0,x1,y1,e){
   selectGroups(gs,{add,remove:minus});
   setStatus(statusLive,'선택 '+ST.selSet.size+'개'+(crossing?' (걸치기)':''));
 }
+// ---------------------------------------------------------------------------
+// 프리폼 (2026-09-07 대표 결정)
+//  "견적은 어디까지나 미니캐드에서 결정. 미니폼은 미니캐드 정보를 근거로 스케치업처럼
+//   자유롭게 렌더링을 잡기 위한 것. 보낸 자료는 처음 밑그림으로만 남고 독립적으로
+//   서비스되어야 스케치업 같은 효과가 난다."
+//
+//  구조 — 모드를 가른다 (연동을 버리는 게 아니다):
+//   · 연동 뷰(기본): 지금 그대로 — 여기서 고치면 평면에 반영 (프로토콜 8)
+//   · 프리폼 모드: 들어가는 순간 평면이 **밑그림 층**으로 굳는다. 그 위에 그리는
+//     스케치·매스는 **자유 층** — 프리폼 자신의 문서·자신의 되돌리기(Ctrl+Z)를 가진다.
+//     평면으로는 아무것도 자동으로 안 보낸다. 평면이 바뀌어도 자동으로 안 받는다 —
+//     [평면 다시 불러오기] 를 누르면 밑그림 층만 갈아 끼우고 자유 층은 그대로 남는다.
+//     (스케치업·아키캐드·레빗이 도면과 모델을 잇는 방식과 같다 — 자동 병합이 아니라
+//      명시적 재기준. 자동 병합은 업계도 안 한다.)
+//
+//  구현의 핵심 한 수: 편집이 나가는 길이 emitEdit 하나다. 연동 뷰에서는 채널로
+//  보내고, 프리폼에서는 같은 op 을 ffApply 가 **그 자리에서** 자유 층에 적용한다.
+//  계산은 sketch.js 함수들(bag 인자)을 그대로 부른다 — 미니캐드의 _apply3DSketch 와
+//  같은 코드가 같은 답을 낸다. 도구·스냅·VCB·그립은 한 벌 그대로 두 모드를 섬긴다.
+// ---------------------------------------------------------------------------
+const FF_SCHEMA='ECOREAN.FreeForm.v1';
+let FF=null;   // {base, free:{sketchPts,sketchEdges,sketchFaces,masses}, hist, histPos, group, planLatest, planDirty}
+function ffCtx(){ return {ch:(ST.built&&ST.built.ceilH)||2400,fh:2800,fl:0}; }
+function ffKey(){ return 'minicad.freeform.'+(((ST.built&&ST.built.project)||'기본').replace(/\s+/g,'_')); }
+// 프리폼에서 편집해도 되는 것 — 자유 층뿐. 밑그림은 평면(미니캐드)의 것이다.
+function ffEditable(o){ return !ST.ffOn||!o||o.floorId==='freeform'; }
+// 편집이 나가는 유일한 길
+function emitEdit(m){
+  if(ST.ffOn) return ffApply(m);
+  if(chan) chan.postMessage(m);
+  return true;
+}
+function ffSnapshot(){ return JSON.stringify(FF.free); }
+function ffCommit(label){
+  if(!FF) return;
+  FF.hist=FF.hist.slice(0,FF.histPos+1);
+  FF.hist.push(ffSnapshot());
+  if(FF.hist.length>120) FF.hist.shift();
+  FF.histPos=FF.hist.length-1;
+  ffRender();
+  if(label) setStatus(true,'🧊 '+label+' (프리폼)');
+}
+function ffUndo(){
+  if(!FF||FF.histPos<=0){ setStatus(true,'🧊 더 물릴 것이 없습니다 (프리폼)'); return true; }
+  FF.histPos--; FF.free=JSON.parse(FF.hist[FF.histPos]);
+  ffRender(); setStatus(true,'↶ 프리폼 취소'); return true;
+}
+function ffRedo(){
+  if(!FF||FF.histPos>=FF.hist.length-1){ setStatus(true,'🧊 더 되돌릴 것이 없습니다'); return true; }
+  FF.histPos++; FF.free=JSON.parse(FF.hist[FF.histPos]);
+  ffRender(); setStatus(true,'↷ 프리폼 재실행'); return true;
+}
+// 자유 층을 화면에 — 밑그림(층 캐시)과 별도의 그룹으로. z0=0 (땅에서부터 자유).
+function ffRender(){
+  if(!FF) return;
+  ST.pendingG.forEach(disposeGhost); ST.pendingG=[];
+  const freeDoc={meta:{project:'프리폼',ceilingHeight_mm:ffCtx().ch},
+    vertices:[],spaces:[],walls:[],openings:[],furniture:[],fixtures:[],lights:[],electric:[],hvac:[],pillars:[],
+    sketchPts:FF.free.sketchPts,sketchEdges:FF.free.sketchEdges,sketchFaces:FF.free.sketchFaces,masses:FF.free.masses};
+  const D=MC3D.normalizeDoc(JSON.parse(JSON.stringify(freeDoc)));
+  const one=MC3D.buildFloorScene(D,LIBS);
+  if(FF.group) disposeGroup(FF.group);
+  const fg=new THREE.Group();
+  fg.name='floor:freeform';
+  fg.userData.floorId='freeform';
+  one.objects.forEach(o=>{ o.floorId='freeform'; o.floorName='프리폼'; addObjGroup(fg,o); });
+  one.labels.forEach(l=>{
+    if(!l.text) return;
+    const sp=makeLabel(l.text);
+    sp.position.set(l.x*MM,l.z*MM,l.y*MM);
+    fg.add(sp);
+  });
+  ST.root.add(fg);
+  FF.group=fg;
+  // 자유 층 스냅 — 그린 것끼리 이어 붙을 수 있게
+  const mpolys=(D.masses||[]).map(m=>MC3D._internal.massAbsPoly(m));
+  ST.snapData.freeform={
+    verts:(D.sketchPts||[]).map(p=>({x:p.x,y:p.y})).concat(mpolys.flat()),
+    walls:(D.sketchEdges||[]).map(e=>({x1:e.x1,y1:e.y1,x2:e.x2,y2:e.y2}))
+      .concat(mpolys.flatMap(q=>q.map((p,i)=>({x1:p.x,y1:p.y,x2:q[(i+1)%q.length].x,y2:q[(i+1)%q.length].y})))),
+    spaces:[],sketchFaces:(D.sketchFaces||[]).map(x=>({id:x.id,poly:x.polygon})),stats:{}};
+  rebuildPickables();
+  refreshVisibility();
+  reselect();
+  renderOutliner();
+  ffAutosave();
+  invalidate(true);
+}
+// 스냅 자료 — 프리폼에서는 자유 층 + 1층 밑그림을 함께 본다 (밑그림에 이어 그리는 게 보통이라)
+function _snapDataOf(fid){
+  const sd=ST.snapData[fid];
+  if(!(ST.ffOn&&fid==='freeform')) return sd;
+  const g=ST.floors[0]&&ST.snapData[ST.floors[0].id];
+  if(!sd) return g;
+  if(!g) return sd;
+  return {verts:sd.verts.concat(g.verts),walls:sd.walls.concat(g.walls),
+    spaces:[],sketchFaces:sd.sketchFaces,stats:{}};
+}
+// 프로토콜 op 을 자유 층에 그 자리에서 적용 — 미니캐드 _apply3DSketch 의 프리폼판.
+//  같은 sketch.js 함수를 부르므로 두 모드가 같은 답을 낸다.
+function ffApply(m){
+  if(!FF||!m||!m.op) return false;
+  const bag=FF.free, p=m.patch||{};
+  const N=v=>Math.round(Number(v));
+  const fin=(...a)=>a.every(v=>isFinite(v));
+  const ctx=ffCtx();
+  const massOf=id=>(bag.masses||[]).find(x=>x&&x.id===id);
+  const no=t=>{ setStatus(true,'🧊 '+t); return false; };
+  let ok=false,label='',madeId=null;
+  switch(m.op){
+    case 'undo': return ffUndo();
+    case 'redo': return ffRedo();
+    case 'batch': {
+      let n=0; FF.mute=true;
+      (m.ops||[]).forEach(o=>{ if(ffApply(Object.assign({type:'edit'},o))) n++; });
+      FF.mute=false;
+      if(n){ ffCommit((m.label||'묶음')+' '+n+'건'); return true; }
+      return no('밑그림은 평면(미니캐드)에서 고칩니다 — 프리폼에서는 자유 층만');
+    }
+    case 'splitspace':                       // 프리폼에 방 분할은 없다 — 그냥 선이다
+    case 'sketchline': {
+      const x1=N(p.x1),y1=N(p.y1),x2=N(p.x2),y2=N(p.y2);
+      if(!fin(x1,y1,x2,y2)||Math.hypot(x2-x1,y2-y1)<10) return false;
+      ok=skAddEdge(x1,y1,x2,y2,bag).length>0; label='선'; break;
+    }
+    case 'sketchrect': {
+      const x1=N(p.x1),y1=N(p.y1),x2=N(p.x2),y2=N(p.y2);
+      if(!fin(x1,y1,x2,y2)||Math.abs(x2-x1)<10||Math.abs(y2-y1)<10) return false;
+      ok=!!skAddRect(Math.min(x1,x2),Math.min(y1,y2),Math.max(x1,x2),Math.max(y1,y2),bag);
+      label='사각형 → 면'; break;
+    }
+    case 'sketchcircle': {
+      const cx=N(p.cx),cy=N(p.cy),r=N(p.r);
+      if(!fin(cx,cy,r)||r<10) return false;
+      ok=!!skAddCircle(cx,cy,r,p.n||32,bag); label='원 → 면'; break;
+    }
+    case 'sketchpoly': {
+      if(!Array.isArray(p.pts)||p.pts.length<3) return false;
+      const pts=p.pts.map(q=>({x:N(q.x),y:N(q.y)}));
+      if(!pts.every(q=>fin(q.x,q.y))) return false;
+      const f0=pts[0],l0=pts[pts.length-1];
+      if(pts.length>3&&Math.hypot(f0.x-l0.x,f0.y-l0.y)<30) pts.pop();
+      if(pts.length<3) return false;
+      ok=!!skAddPoly(pts,bag); label='다각형 → 면'; break;
+    }
+    case 'sketchdel': ok=skRemove(m.kind,m.id,bag); label='스케치 삭제'; break;
+    case 'sketchclear': ok=skClear(bag)>0; label='스케치 비움'; break;
+    case 'extrude': {
+      const f=skFaceById(p.id,bag);
+      if(!f) return no('그 면은 밑그림입니다 — 프리폼 면만 올릴 수 있습니다');
+      const z=N(p.z); if(!isFinite(z)||z<10) return false;
+      const poly=skFacePoly(f,bag); if(poly.length<3) return false;
+      _skConsumeFace(f,bag);
+      const mm=massFromPoly(poly,z,bag);
+      madeId=mm.id; ok=true; label='면 → 매스 Z='+z;
+      break;
+    }
+    case 'setz': {
+      const mass=massOf(p.id); if(!mass) return no('밑그림 매스는 평면에서 — 프리폼 매스만');
+      const vs=Array.isArray(p.verts)?p.verts:[]; if(!vs.length) return false;
+      let n=0;
+      vs.forEach(v=>{ const i=N(v&&v.i),z=N(v&&v.z);
+        if(isFinite(i)&&isFinite(z)&&z>=0){ massVertZ(mass,i,z,ctx); n++; } });
+      ok=n>0; label='꼭짓점 z '+(vs[0]&&N(vs[0].z))+'mm'; break;
+    }
+    case 'settop': {
+      const mass=massOf(p.id); if(!mass) return no('밑그림 매스는 평면에서');
+      const z=N(p.z); if(!isFinite(z)) return false;
+      massSetTop(mass,z,ctx); ok=true; label='윗면 Z '+z; break;
+    }
+    case 'zref': {
+      const mass=massOf(p.id); if(!mass) return no('밑그림 매스는 평면에서');
+      const r=String(p.r||'ch'); if(!['ch','fh','fl'].includes(r)) return false;
+      const off=N(p.o)||0;
+      const vs=Array.isArray(p.verts)?p.verts:[]; if(!vs.length) return false;
+      vs.forEach(i=>massVertZ(mass,N(i),{r,o:off},ctx));
+      ok=true; label='꼭짓점 '+vs.length+'개 = CH'+(off>=0?'+':'')+off; break;
+    }
+    case 'move': case 'set': case 'rotate': case 'lock': {
+      if(m.kind!=='masses') return no('밑그림은 평면(미니캐드)에서 고칩니다');
+      const mass=massOf(m.id); if(!mass) return no('밑그림 매스는 평면에서');
+      if(m.op==='lock'){ mass.locked=!!p.locked; ok=true; label=p.locked?'잠금':'잠금 해제'; break; }
+      const ALLOW=['h_mm','elev_mm','name','color','x','y','angle'];
+      let n=0;
+      ALLOW.forEach(k=>{ if(p[k]!==undefined){
+        mass[k]=(k==='name'||k==='color')?p[k]:N(p[k]);
+        if(k==='h_mm') mass[k]=Math.max(10,mass[k]);
+        n++; } });
+      ok=n>0; label=m.op==='move'?'이동':'수정'; break;
+    }
+    case 'clone': {
+      if(m.kind!=='masses') return no('복제는 프리폼 매스만');
+      const src=massOf(m.id); if(!src) return no('밑그림 매스는 평면에서');
+      const cp=JSON.parse(JSON.stringify(src));
+      cp.id='ms_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
+      cp.x=isFinite(Number(p.x))?N(p.x):src.x+300;
+      cp.y=isFinite(Number(p.y))?N(p.y):src.y+300;
+      bag.masses.push(cp); madeId=cp.id; ok=true; label='복제'; break;
+    }
+    case 'delete': {
+      if(m.kind!=='masses') return no('밑그림은 평면(미니캐드)에서 지웁니다');
+      const i=(bag.masses||[]).findIndex(x=>x&&x.id===m.id);
+      if(i<0) return no('밑그림 매스는 평면에서 지웁니다');
+      bag.masses.splice(i,1); ok=true; label='삭제'; break;
+    }
+    case 'massconvert': return no('프리폼에서는 매스 그대로 씁니다 — 공간·벽 전환은 연동 뷰(평면)의 일');
+    case 'ceilmass': return no('천장 지정은 평면(견적)의 일 — 연동 뷰에서');
+    case 'add': return no('프리폼 1단계는 스케치·매스입니다 — 배치물은 다음 단계');
+    default: return no('프리폼이 모르는 명령: '+m.op);
+  }
+  if(!ok) return false;
+  if(!FF.mute){
+    ffCommit(label);
+    if(madeId){                              // 새로 만든 것을 바로 잡아 준다 (스케치업 손버릇)
+      const g=FF.group&&FF.group.children.find(x=>x.userData.obj&&String(x.userData.obj.id)===String(madeId));
+      if(g) select(g,{silent:true});
+    }
+  }
+  return true;
+}
+// 저장·복원 — 프리폼은 자기 문서를 가진다
+function ffAutosave(){
+  if(!FF) return;
+  try{ localStorage.setItem(ffKey(),JSON.stringify({schema:FF_SCHEMA,at:Date.now(),base:FF.base,free:FF.free})); }catch(_){ }
+}
+function ffLoadLocal(){
+  try{
+    const raw=localStorage.getItem(ffKey());
+    if(!raw) return null;
+    const j=JSON.parse(raw);
+    return (j&&j.schema===FF_SCHEMA&&j.free)?j:null;
+  }catch(_){ return null; }
+}
+function ffExportFile(){
+  if(!FF) return;
+  download(fileStem()+'_freeform.json',
+    new Blob([JSON.stringify({schema:FF_SCHEMA,at:Date.now(),base:FF.base,free:FF.free},null,1)],{type:'application/json'}));
+  setStatus(true,'🧊 프리폼 파일 저장 — 열기는 파일 ▸ 프리폼 파일 열기');
+}
+function ffImportFile(){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='.json,application/json';
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=()=>{
+      try{
+        const j=JSON.parse(String(fr.result));
+        if(!j||j.schema!==FF_SCHEMA||!j.free) throw new Error('프리폼 파일이 아닙니다');
+        if(!ST.ffOn) ffEnter({fresh:true});
+        FF.base=j.base||FF.base;
+        FF.free=j.free;
+        build(FF.base);
+        FF.hist=[]; FF.histPos=-1; ffCommit('파일 열기');
+      }catch(e){ setStatus(false,'프리폼 파일을 읽지 못했습니다: '+e.message); }
+    };
+    fr.readAsText(f);
+  };
+  inp.click();
+}
+function ffEnter(opts){
+  if(ST.ffOn) return;
+  if(!ST.doc){ setStatus(false,'평면 문서가 아직 없습니다 — 미니캐드에서 먼저 열어주세요'); return; }
+  const saved=(!opts||!opts.fresh)?ffLoadLocal():null;
+  FF={base:JSON.parse(JSON.stringify(ST.doc)),
+      free:(saved&&saved.free)||{sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[]},
+      hist:[],histPos:-1,group:null,planLatest:null,planDirty:false,mute:false};
+  if(saved&&saved.base) FF.base=saved.base;   // 저장본이 있으면 그때 굳힌 밑그림 그대로
+  ST.ffOn=true;
+  select(null);
+  build(FF.base);
+  FF.hist=[ffSnapshot()]; FF.histPos=0;
+  ffRender();
+  const b=$('b-ff'); if(b) b.classList.add('on');
+  document.title='프리폼 — '+((ST.built&&ST.built.project)||'미니폼');
+  setStatus(true,'🧊 프리폼 — 평면은 밑그림으로 굳었습니다. 여기서 그린 것은 여기 남고(자체 Ctrl+Z), 평면으로는 아무것도 안 보냅니다'+
+    (saved?' · 저장본 복원됨 (새로 시작: 파일 ▸ 프리폼 새로 시작)':''));
+}
+function ffExit(){
+  if(!ST.ffOn) return;
+  ffAutosave();
+  const latest=FF&&FF.planLatest;
+  if(FF&&FF.group) disposeGroup(FF.group);
+  const base=FF&&FF.base;
+  FF=null; ST.ffOn=false;
+  delete ST.snapData.freeform;
+  select(null);
+  const b=$('b-ff'); if(b) b.classList.remove('on');
+  document.title='미니폼 — MiniCAD 3D';
+  if(latest) acceptDoc(latest,'live');
+  else{ if(base) build(base); chan&&chan.postMessage({type:'hello',at:Date.now(),proto:MF_PROTO}); }
+  rebuildPickables();
+  setStatus(true,'연동 뷰 복귀 — 여기서 고치면 평면에 반영 (프리폼은 저장돼 있습니다: 파일 ▸ 프리폼 모드)');
+}
+function ffRebase(){
+  if(!ST.ffOn||!FF) return;
+  if(!FF.planLatest){ setStatus(true,'🧊 굳힌 뒤 바뀐 평면이 없습니다'); return; }
+  FF.base=JSON.parse(JSON.stringify(FF.planLatest.data!==undefined?FF.planLatest.data:FF.planLatest));
+  FF.planLatest=null; FF.planDirty=false;
+  build(FF.base);
+  ffRender();
+  ffAutosave();
+  setStatus(true,'🧊 밑그림을 최신 평면으로 갈았습니다 — 자유 층은 그대로');
+}
+function ffNew(){
+  if(!ST.ffOn||!FF) return;
+  FF.free={sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[]};
+  ffCommit('새로 시작 (자유 층 비움)');
+}
 let chan=null;
 function sendEdit(op,obj,patch){
-  if(!chan){ setStatus(false,'MiniCAD 창이 없어 반영 못함'); return false; }
-  chan.postMessage({type:'edit',op,kind:KINDMAP[obj.kind],id:obj.id,floorId:obj.floorId,patch:patch||{}});
+  if(!chan&&!ST.ffOn){ setStatus(false,'MiniCAD 창이 없어 반영 못함'); return false; }
+  emitEdit({type:'edit',op,kind:KINDMAP[obj.kind],id:obj.id,floorId:obj.floorId,patch:patch||{}});
   return true;
 }
 function hitAt(cx,cy){
@@ -1050,8 +1364,8 @@ function vcbSides(){ // 원 도구: "6s" = 다각형 변 수
 function sendBatch(ops,label){
   if(!chan){ setStatus(false,'MiniCAD 창이 없어 반영 못함'); return false; }
   if(!ops.length) return false;
-  if(ops.length===1){ const o=ops[0]; chan.postMessage({type:'edit',op:o.op,kind:o.kind,id:o.id,floorId:o.floorId,patch:o.patch||{}}); return true; }
-  chan.postMessage({type:'edit',op:'batch',label:label||'',ops});
+  if(ops.length===1){ const o=ops[0]; emitEdit({type:'edit',op:o.op,kind:o.kind,id:o.id,floorId:o.floorId,patch:o.patch||{}}); return true; }
+  emitEdit({type:'edit',op:'batch',label:label||'',ops});
   return true;
 }
 // --- 확정 뒤 재입력 (스케치업: 동작 확정 직후 숫자를 치면 되돌려 그 값으로 다시) · Ctrl+복사 뒤 xN · /N = 배열 복사 ---
@@ -1069,9 +1383,9 @@ function vcbPostEnter(){
   if(!lc||!raw){ vcbHide(); return; }
   const a1=raw.match(/^([x*\/])\s*(\d+)$/i), a2=raw.match(/^(\d+)\s*([x*\/])$/i);
   if(a1||a2){ const n=parseInt(a1?a1[2]:a2[1],10), div=(a1?a1[1]:a2[2])==='/'; arrayCopy(n,div); vcbHide(); return; }
-  if(chan) chan.postMessage({type:'edit',op:'undo'});      // 방금 확정한 것을 물리고
+  if(chan) emitEdit({type:'edit',op:'undo'});      // 방금 확정한 것을 물리고
   const ok=lc.apply(raw); lc.seq++;                        // 새 값으로 다시 (실패하면 되돌린 것을 복구)
-  if(ok===false){ if(chan) chan.postMessage({type:'edit',op:'redo'}); setStatus(statusLive,'재입력 값을 이해 못했습니다: '+raw); }
+  if(ok===false){ if(chan) emitEdit({type:'edit',op:'redo'}); setStatus(statusLive,'재입력 값을 이해 못했습니다: '+raw); }
   vcbHide();
 }
 function arrayCopy(n,div){
@@ -1169,7 +1483,7 @@ function placeGhost(){
   const a=ST.add; if(!a||!a.ghost||!a.ghost.visible) return;
   const x=Math.round(a.ghost.position.x/MM), y=Math.round(a.ghost.position.z/MM);
   if(!chan){ setStatus(false,'MiniCAD 창이 없어 배치 못함'); return; }
-  chan.postMessage({type:'edit',op:'add',kind:a.kind,floorId:a.fid,patch:{type:a.type,x,y,angle:a.rot||0}});
+  emitEdit({type:'edit',op:'add',kind:a.kind,floorId:a.fid,patch:{type:a.type,x,y,angle:a.rot||0}});
   setStatus(statusLive,'➕ 배치 ('+x+', '+y+') — 계속 클릭해 더 놓기, Esc=끝');
 }
 function renderAddPal(){
@@ -1190,6 +1504,7 @@ function renderAddPal(){
 }
 // --- 선(L)·사각형(R) — 스케치업 Line/Rectangle: 3D 에서 벽을 그린다 ---
 function _hoverFloorId(e){
+  if(ST.ffOn) return 'freeform';   // 프리폼: 그리기는 자유 층에, 땅(z0=0)에서부터
   const hit=hitAt(e.clientX,e.clientY);
   return (hit&&hit.object.userData.obj&&hit.object.userData.obj.floorId)||(ST.floorSel!=='all'?ST.floorSel:(ST.floors[0]&&ST.floors[0].id));
 }
@@ -1211,7 +1526,7 @@ function segIntersect(a,b,c,d){
   return ((d1>0&&d2<0)||(d1<0&&d2>0))&&((d3>0&&d4<0)||(d3<0&&d4>0));
 }
 function snap3(fid,p,z0m,extra){
-  const sd=ST.snapData[fid];
+  const sd=_snapDataOf(fid);
   const grid={x:Math.round(p.x/10)*10,y:Math.round(p.y/10)*10,kind:'grid'};
   if(!sd) return grid;
   // 2026-09-04: 허용 반경을 화면 픽셀 기준으로 (스케치업식) — 줌을 빼도 14px 안이면 잡힌다
@@ -1430,13 +1745,13 @@ function commitLine(exact){
     if(Math.abs(cur.x-a.x)<100||Math.abs(cur.y-a.y)<100){ setStatus(statusLive,'면이 너무 작습니다 (100mm+) — 수치는 "가로,세로"'); return; }
     spawnPendingFace([{x:a.x,y:a.y},{x:cur.x,y:a.y},{x:cur.x,y:cur.y},{x:a.x,y:cur.y}],op.z0); // 즉시 보여주고, 실물은 재조립으로 교체
     const fid=op.fid, A={x:a.x,y:a.y};
-    chan.postMessage({type:'edit',op:'sketchrect',floorId:fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}}); // 2026-09-04 점·선·면: 사각형 = 면 (Z 는 P 로)
+    emitEdit({type:'edit',op:'sketchrect',floorId:fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}}); // 2026-09-04 점·선·면: 사각형 = 면 (Z 는 P 로)
     cancelOp();
     setStatus(statusLive,'▭ 면 '+Math.abs(cur.x-a.x)+'×'+Math.abs(cur.y-a.y)+' — P(밀기끌기)로 Z 를 주면 매스');
     const sx=(cur.x>=A.x)?1:-1, sy=(cur.y>=A.y)?1:-1;
     setLast('가로,세로','mm',raw=>{ const m=String(raw).match(/^(-?[\d.]+\s*(?:mm|cm|m)?)\s*[,xX*]\s*(-?[\d.]+\s*(?:mm|cm|m)?)$/i); if(!m) return false;
       const w=parseLen(m[1]),h=parseLen(m[2]); if(!(w>=100&&h>=100)) return false;
-      chan.postMessage({type:'edit',op:'sketchrect',floorId:fid,patch:{x1:A.x,y1:A.y,x2:Math.round(A.x+sx*w),y2:Math.round(A.y+sy*h)}}); return true; });
+      emitEdit({type:'edit',op:'sketchrect',floorId:fid,patch:{x1:A.x,y1:A.y,x2:Math.round(A.x+sx*w),y2:Math.round(A.y+sy*h)}}); return true; });
   }else{
     if(Math.hypot(cur.x-a.x,cur.y-a.y)<100){ setStatus(statusLive,'너무 짧습니다 (100mm+)'); return; }
     // 시작점으로 돌아오면 폐합 = 면 (스케치업: 닫힌 선 고리는 면이 된다) — 보낸 벽들을 흡수해 한 그룹으로
@@ -1444,7 +1759,7 @@ function commitLine(exact){
     if(op.chain.length>=3&&Math.hypot(cur.x-c0.x,cur.y-c0.y)<=50){
       // 2026-09-04 점·선·면: 마지막 변은 스케치 선으로 보내면 평면 쪽 그래프가 고리를 닫아 면을 만든다 (앞서 보낸 선들과 합쳐 한 면)
       spawnPendingFace(op.chain.map(p=>({x:p.x,y:p.y})),op.z0);
-      chan.postMessage({type:'edit',op:'sketchline',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:c0.x,y2:c0.y}});
+      emitEdit({type:'edit',op:'sketchline',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:c0.x,y2:c0.y}});
       cancelOp();
       setStatus(statusLive,'╱ 고리 닫힘 → 면 — P(밀기끌기)로 Z 를 주면 매스 (선은 Ctrl+Z 한 번씩)');
       return;
@@ -1452,7 +1767,7 @@ function commitLine(exact){
     const sid=segHitsSpace(op.fid,a,cur);
     // 면(공간) 위를 가로지름 = 면 분할 (스케치업: 면 위의 선은 면을 나눈다) / 그 밖 = 스케치 선 (점 2 + 선 1, 고리가 닫히면 면)
     if(!sid) spawnPendingSketchLine(a,cur,op.z0);
-    chan.postMessage({type:'edit',op:sid?'splitspace':'sketchline',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
+    emitEdit({type:'edit',op:sid?'splitspace':'sketchline',floorId:op.fid,patch:{x1:a.x,y1:a.y,x2:cur.x,y2:cur.y}});
     if(sid){ setStatus(statusLive,'╱ 면 분할 → 두 면으로 (평면 반영)'); op.chain=[cur]; op.sent=0; }
     else { op.chain.push(cur); op.sent++; }
     // 스케치업 Line 처럼 사슬 잇기 — 끝점이 새 시작점
@@ -1468,7 +1783,7 @@ function commitLine(exact){
     const dx=cur.x-A.x,dy=cur.y-A.y,l=Math.hypot(dx,dy);
     ST.lastCommit={label:'길이',unit:'mm',seq:0,apply:raw=>{ const v=parseLen(raw); if(v==null||v===0||wasSplit) return false;
       const nx=Math.round(A.x+dx/l*v), ny=Math.round(A.y+dy/l*v);
-      chan.postMessage({type:'edit',op:'sketchline',floorId:fid,patch:{x1:A.x,y1:A.y,x2:nx,y2:ny}});
+      emitEdit({type:'edit',op:'sketchline',floorId:fid,patch:{x1:A.x,y1:A.y,x2:nx,y2:ny}});
       if(ST.op&&ST.op.type==='line'){ ST.op.a={x:nx,y:ny}; ST.op.chain[ST.op.chain.length-1]={x:nx,y:ny}; if(ST.op.startMk) ST.op.startMk.position.set(nx*MM,ST.op.z0+0.03,ny*MM); }
       return true; }};
   }
@@ -1505,10 +1820,10 @@ function commitCircle(exact){
   const c=op.c, fid=op.fid, z0=op.z0, n=sides||32;
   const poly=(N)=>Array.from({length:N},(_,i)=>{const t=i/N*Math.PI*2-Math.PI/2; return {x:Math.round(c.x+Math.cos(t)*r),y:Math.round(c.y+Math.sin(t)*r)};});
   spawnPendingFace(poly(n),z0);
-  chan.postMessage({type:'edit',op:'sketchcircle',floorId:fid,patch:{cx:c.x,cy:c.y,r,n}}); // 2026-09-04 점·선·면: 원 = 면 (Z 는 P 로)
+  emitEdit({type:'edit',op:'sketchcircle',floorId:fid,patch:{cx:c.x,cy:c.y,r,n}}); // 2026-09-04 점·선·면: 원 = 면 (Z 는 P 로)
   setStatus(statusLive,'○ '+(sides?sides+'각형':'원')+' 면 r='+r+' — P(밀기끌기)로 Z 를 주면 매스');
   cancelOp();
-  setLast('반지름','mm',raw=>{ const v=parseLen(raw); if(v==null||v<100) return false; chan.postMessage({type:'edit',op:'sketchcircle',floorId:fid,patch:{cx:c.x,cy:c.y,r:Math.round(v),n}}); return true; });
+  setLast('반지름','mm',raw=>{ const v=parseLen(raw); if(v==null||v<100) return false; emitEdit({type:'edit',op:'sketchcircle',floorId:fid,patch:{cx:c.x,cy:c.y,r:Math.round(v),n}}); return true; });
 }
 // --- 호 (A · 스케치업 2-Point Arc) — 시작·끝·볼록 3클릭 → 벽 조각 사슬 (batch = Ctrl+Z 한 번) ---
 function arcPts(a,b,bulge,n){
@@ -1609,9 +1924,9 @@ function commitOffset(exact){
   const pts=offsetPoly(op.poly,d), fid=op.fid, z0=op.z0, poly=op.poly;
   if(Math.abs(polyArea(pts))<300*300){ setStatus(statusLive,'오프셋 결과 면이 너무 작습니다'); return; }
   spawnPendingFace(pts,z0);
-  chan.postMessage({type:'edit',op:'sketchpoly',floorId:fid,patch:{pts}}); // 2026-09-04 점·선·면: 오프셋 결과 = 스케치 면
+  emitEdit({type:'edit',op:'sketchpoly',floorId:fid,patch:{pts}}); // 2026-09-04 점·선·면: 오프셋 결과 = 스케치 면
   cancelOp(); setStatus(statusLive,'⧉ 오프셋 '+d+'mm → 새 면 (P 로 Z · Ctrl+Z 한 번)');
-  setLast('오프셋','mm',raw=>{ const v=parseLen(raw); if(v==null||Math.abs(v)<50) return false; chan.postMessage({type:'edit',op:'sketchpoly',floorId:fid,patch:{pts:offsetPoly(poly,Math.round(v))}}); return true; });
+  setLast('오프셋','mm',raw=>{ const v=parseLen(raw); if(v==null||Math.abs(v)<50) return false; emitEdit({type:'edit',op:'sketchpoly',floorId:fid,patch:{pts:offsetPoly(poly,Math.round(v))}}); return true; });
 }
 // --- 치수(D)·문자 — 3D 표시용 주석 (평면 미반영) ---
 function dimClick(hit){
@@ -1723,6 +2038,7 @@ function buildGrips(){
   if(arr.length!==1){ invalidate(); return; }
   const g=arr[0], o=g.userData.obj;
   if(!o||o.kind!=='mass'||o.locked||!o.meta||!o.meta.z||!o.meta.z.top){ invalidate(); return; }
+  if(!ffEditable(o)){ invalidate(); return; }               // 프리폼: 밑그림 매스에는 그립 없음
   if(!(ST.tool==='select'||ST.tool==='move'||ST.tool==='pushpull')){ invalidate(); return; }
   const z0=_massZ0(o);
   const gs=_gripSize(o)/GRIP_R;
@@ -1861,7 +2177,7 @@ function applyVertZ(clientY){
   if(t) setStatus(statusLive,'⇕ z '+z+'mm · ∠'+t.tilt+'° · 물매 '+t.pitch+'/10');
 }
 function _vzSend(obj,idxs,z){
-  chan&&chan.postMessage({type:'edit',op:'setz',floorId:obj.floorId,
+  emitEdit({type:'edit',op:'setz',floorId:obj.floorId,
     patch:{id:obj.id,verts:idxs.map(vi=>({i:vi,z}))}});
 }
 function commitVertZ(exact){
@@ -1877,7 +2193,7 @@ function commitVertZ(exact){
   if(ref){
     // 숫자가 아니라 '천장고에서 얼마' 로 적어 둔다 — 천장고가 바뀌면 따라 움직인다
     const off=Math.round(z-(ctx.ch||2400));
-    chan&&chan.postMessage({type:'edit',op:'zref',floorId:obj.floorId,
+    emitEdit({type:'edit',op:'zref',floorId:obj.floorId,
       patch:{id:obj.id,verts:idxs,r:'ch',o:off}});
     setStatus(statusLive,'⇕ 꼭짓점 = CH'+(off>=0?'+':'')+off+' ('+z+'mm) — 천장고를 고치면 따라 움직입니다');
   }else{
@@ -2103,6 +2419,7 @@ function _floorAwake(fid){ const f=ST.floors.find(x=>x.id===fid); return !f||f.a
 function _sleepNote(what){ setStatus(statusLive,'잠든 층의 '+what+' — 미니캐드에서 그 층으로 전환한 뒤 해주세요'); }
 function beginPP(hit){
   const obj=hit.object.userData.obj, g=hit.object.parent;
+  if(ST.ffOn&&!ffEditable(obj)){ setStatus(statusLive,'🧊 밑그림은 평면(미니캐드)에서 — 프리폼에서는 자유 층만 밉니다'); return; }
   let t=null;
   const n=hit.face&&hit.face.normal?hit.face.normal.clone().transformDirection(hit.object.matrixWorld):null;
   if(obj.kind==='wall'&&!obj.locked){
@@ -2166,7 +2483,7 @@ function commitPP(exact){
     if(op.g) op.g.visible=false;                        // 면은 소비된다
     _opDone();
     ST.lastPP=z;
-    chan&&chan.postMessage({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z,as:'solid'}});
+    emitEdit({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z,as:'solid'}});
     setStatus(statusLive,'⬆ 면 → 매스 Z='+z+'mm (스케치업 밀기끌기) — 이동·회전·P 로 더 밀기 · 우측 속성에서 공간/벽 전환');
     return;
   }
@@ -2206,6 +2523,8 @@ function samplePaint(hit){
   setStatus(statusLive,'💧 재질 추출: '+c.code+' — 클릭해서 칠하기');
 }
 function doPaint(hit,e){
+  const _po=hit&&hit.object&&hit.object.userData.obj;
+  if(ST.ffOn&&!ffEditable(_po)){ setStatus(statusLive,'🧊 밑그림 칠은 평면에서 — 프리폼 매스는 속성의 색으로'); return; }
   if(e&&e.altKey){ samplePaint(hit); return; }
   const obj=hit.object.userData.obj; if(!obj) return;
   const c=ST.paint;
@@ -2321,8 +2640,8 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   const hit=hitAt(e.clientX,e.clientY);
   const obj=hit&&hit.object.userData.obj;
   const g=hit&&hit.object.parent;
-  const movable=obj&&MOVABLE.has(obj.kind)&&!obj.locked;
-  const opening=obj&&(obj.kind==='door'||obj.kind==='window')&&!obj.locked&&obj.meta&&obj.meta.wall;
+  const movable=obj&&MOVABLE.has(obj.kind)&&!obj.locked&&ffEditable(obj);   // 프리폼: 밑그림은 못 잡는다
+  const opening=obj&&(obj.kind==='door'||obj.kind==='window')&&!obj.locked&&obj.meta&&obj.meta.wall&&ffEditable(obj);
   const mod=e.ctrlKey||e.metaKey||e.shiftKey;
   const grab=()=>{ if(!ST.selSet.has(g)) select(g,{silent:true}); };
   switch(ST.tool){
@@ -2447,7 +2766,7 @@ renderer.domElement.addEventListener('dblclick',e=>{
     if(obj&&obj.kind==='wall'&&!obj.locked){ sendEdit('set',obj,{height_mm:Math.max(300,obj.meta.H+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; }
     if(obj&&obj.kind==='ceiling'){ const base=Math.round((obj.prims&&obj.prims[0]&&obj.prims[0].z)||2400); sendEdit('set',{kind:'floor',id:String(obj.id).replace(/_ceil$/,''),floorId:obj.floorId},{ceilingHeight_mm:Math.max(300,base+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; }
     if(obj&&obj.kind==='mass'&&!obj.locked){ sendEdit('set',obj,{h_mm:Math.max(10,Math.round((obj.meta&&obj.meta.h_mm)||0)+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; } // 2026-09-04
-    if(obj&&obj.kind==='sketchFace'&&ST.lastPP>=10&&chan){ chan.postMessage({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z:ST.lastPP,as:'solid'}}); setStatus(statusLive,'⬆ 면 → 매스 Z='+ST.lastPP+' (반복)'); return; }
+    if(obj&&obj.kind==='sketchFace'&&ST.lastPP>=10&&chan){ emitEdit({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z:ST.lastPP,as:'solid'}}); setStatus(statusLive,'⬆ 면 → 매스 Z='+ST.lastPP+' (반복)'); return; }
   }
   if(ST.tool==='select'&&obj){                                // 스케치업: 더블클릭 = 그룹 안으로 (방 전체 / 연결된 벽)
     if(obj.kind==='floor'){ selectSpaceGroup(obj.floorId,obj.id); return; }
@@ -2458,6 +2777,8 @@ renderer.domElement.addEventListener('dblclick',e=>{
 });
 // --- 지우개 (E) — 끌면서 지나간 것 모으기 → 떼면 한 번에 (Shift = 숨기기) ---
 function eraseCollect(g){
+  const _eo=g&&g.userData.obj;
+  if(_eo&&!ffEditable(_eo)) return;                          // 프리폼: 밑그림은 지우개도 비켜 간다
   if(!drag||!drag.erase||!g||!g.userData.obj) return;
   const o=g.userData.obj;
   if(!(MOVABLE.has(o.kind)||o.kind==='door'||o.kind==='window'||SKETCH_KINDS.has(o.kind))){ if(!drag.erase.size) setStatus(statusLive,'벽·바닥은 평면에서 지우세요 (Shift+지우개 = 숨기기)'); if(!drag.erase.size&&drag&&!drag.moved) drag.hideOnly=g; return; }
@@ -2485,7 +2806,7 @@ function showCtx(e){
     items.push(['info','개체 정보',()=>openTraySec('info')]);
     items.push(['-']);
     if(MOVABLE.has(sel.kind)||sel.kind==='door'||sel.kind==='window'||SKETCH_KINDS.has(sel.kind)) items.push(['del','지우기'+(n>1?' ('+n+'개)':'')+'\tDel',deleteSelected3D]);
-    if(sel.kind==='sketchFace') items.push(['ext','면 → 매스 (Z 입력)',()=>{ if(!_floorAwake(sel.floorId)){ _sleepNote('면은 올릴 수 없습니다'); return; } const z=window.prompt('Z 높이(mm)',String(ST.lastPP>=10?ST.lastPP:2400)); const v=parseLen(z); if(v>=10&&chan) chan.postMessage({type:'edit',op:'extrude',floorId:sel.floorId,patch:{id:sel.id,z:Math.round(v),as:'solid'}}); }]);
+    if(sel.kind==='sketchFace') items.push(['ext','면 → 매스 (Z 입력)',()=>{ if(!_floorAwake(sel.floorId)){ _sleepNote('면은 올릴 수 없습니다'); return; } const z=window.prompt('Z 높이(mm)',String(ST.lastPP>=10?ST.lastPP:2400)); const v=parseLen(z); if(v>=10&&chan) emitEdit({type:'edit',op:'extrude',floorId:sel.floorId,patch:{id:sel.id,z:Math.round(v),as:'solid'}}); }]);
     if(sel.kind==='mass'){ items.push(['tosp','매스 → 공간',()=>massConvert3D(sel,'space')]); items.push(['towl','매스 → 벽',()=>massConvert3D(sel,'wall')]); }
     items.push(['hide','숨기기\tShift+H',hideSelected]);
     if(MOVABLE.has(sel.kind)) items.push(['lock',sel.locked?'잠금 해제':'잠금',()=>lockSelected(!sel.locked)]);
@@ -2525,10 +2846,10 @@ function rotateSelected(deg){
 function ceilMass3D(o,off){
   if(!chan||!o||o.kind!=='mass') return;
   if(!_floorAwake(o.floorId)){ _sleepNote('천장 지정은 할 수 없습니다'); return; }
-  chan.postMessage({type:'edit',op:'ceilmass',floorId:o.floorId,patch:{id:o.id,off:!!off}});
+  emitEdit({type:'edit',op:'ceilmass',floorId:o.floorId,patch:{id:o.id,off:!!off}});
   setStatus(statusLive,off?'평천장으로 되돌림 (평면 반영)':'▣ 아래 방의 천장으로 — 천장 물량이 경사 실면적으로 (평면 반영)');
 }
-function massConvert3D(o,as){ if(!chan||!o||o.kind!=='mass') return; if(!_floorAwake(o.floorId)){ _sleepNote('매스는 바꿀 수 없습니다'); return; } chan.postMessage({type:'edit',op:'massconvert',floorId:o.floorId,patch:{id:o.id,as}}); setStatus(statusLive,'매스 → '+(as==='wall'?'벽':'공간')+' 전환 (평면 반영)'); }
+function massConvert3D(o,as){ if(!chan||!o||o.kind!=='mass') return; if(!_floorAwake(o.floorId)){ _sleepNote('매스는 바꿀 수 없습니다'); return; } emitEdit({type:'edit',op:'massconvert',floorId:o.floorId,patch:{id:o.id,as}}); setStatus(statusLive,'매스 → '+(as==='wall'?'벽':'공간')+' 전환 (평면 반영)'); }
 function deleteGroups(gs){
   const ok=gs.filter(g=>{ const o=g.userData.obj; return o&&(MOVABLE.has(o.kind)||o.kind==='door'||o.kind==='window'||SKETCH_KINDS.has(o.kind))&&!o.locked; });
   if(!ok.length){ setStatus(statusLive,'벽·바닥은 평면에서 지우세요'); return; }
@@ -2612,13 +2933,15 @@ function renderProps(obj,opts){
     html+=`<div class="p-row"><label>색</label><input type="color" data-f="color" value="${m.color||'#B9C6D2'}"></div>`;
     html+=`<div class="p-btns"><button class="btn" data-a="rotl" title="반시계 15° (Shift+R)">↺ 15°</button><button class="btn" data-a="rotr" title="시계 15° (R)">↻ 15°</button><button class="btn" data-a="lock">🔒 잠금</button></div>`;
     // 2026-09-07 Z축 4층: 기울어진 매스는 방의 천장으로 삼을 수 있다 (천장 물량이 경사 실면적으로)
-    if(m.solid){
+    if(m.solid&&!ST.ffOn){
       html+=m.ceilOf
         ? `<div class="p-row"><label>천장</label><span style="font-size:12px;color:#C9A961">▣ <b>${m.ceilOf}</b> 의 천장</span></div>
            <div class="p-btns"><button class="btn" data-a="ceiloff">평천장으로 되돌리기</button></div>`
         : `<div class="p-btns"><button class="btn" data-a="ceilon" title="이 매스 아래 방의 천장으로 삼습니다 — 천장 ㎡ 가 경사 실면적이 되어 견적에 반영됩니다">▣ 아래 방의 천장으로</button></div>`;
     }
-    html+=`<div class="p-btns"><button class="btn" data-a="tosp">▣ 공간으로</button><button class="btn" data-a="towl">▬ 벽으로</button><button class="btn danger" data-a="del">🗑 삭제</button></div>`;
+    html+=ST.ffOn
+      ?`<div class="p-btns"><button class="btn danger" data-a="del">🗑 삭제</button></div>`
+      :`<div class="p-btns"><button class="btn" data-a="tosp">▣ 공간으로</button><button class="btn" data-a="towl">▬ 벽으로</button><button class="btn danger" data-a="del">🗑 삭제</button></div>`;
     html+=`<div class="p-note"><b style="color:#7FA8D4">파란 점(꼭짓점)을 끌면 그 점만 위아래로</b> — Shift=모서리 두 점 · Ctrl=천장고에 매달기(CH-300) · 숫자=정확한 높이 · 더블클릭=직전 높이 반복.<br>끌기=이동 · ↑=띄우기 · Q 회전 · P 윗면=높이 · Ctrl+끌기=복제 — 필요할 때 공간(바닥·천장·벽)이나 벽으로 바꿉니다.</div>`;
   }else if(obj.kind==='sketchFace'){
     html+=`<div class="p-row"><label>면적</label><span style="font-size:12px">${((m.area||0)/1e6).toFixed(2)} ㎡ · 꼭짓점 ${(m.poly||[]).length}</span></div>`;
@@ -2690,7 +3013,7 @@ function renderProps(obj,opts){
       else if(a==='ext'){ const zi=props.querySelector('[data-f="_z"]'), ai=props.querySelector('[data-f="_as"]'); const z=Math.round(Number(zi&&zi.value)); // 2026-09-04 면 → 객체
         if(!(z>=10)){ setStatus(statusLive,'Z 높이 10mm+'); return; }
         if(!_floorAwake(obj.floorId)){ _sleepNote('면은 올릴 수 없습니다'); return; }
-        if(chan){ chan.postMessage({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z,as:(ai&&ai.value)||'solid'}}); ST.lastPP=z; setStatus(statusLive,'⬆ 면 → 객체 Z='+z); } }
+        if(chan){ emitEdit({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z,as:(ai&&ai.value)||'solid'}}); ST.lastPP=z; setStatus(statusLive,'⬆ 면 → 객체 Z='+z); } }
     });
   });
 }
@@ -2710,7 +3033,7 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase(), ctrl=e.ctrlKey||e.metaKey;
   // Ctrl+Z / Ctrl+Y — MiniCAD 히스토리로 실행취소/재실행 (스케치업 그 이상: 평면과 한 몸)
   if(ctrl&&(k==='z'||k==='y')){
-    if(chan) chan.postMessage({type:'edit',op:(k==='y'||e.shiftKey)?'redo':'undo'});
+    if(chan) emitEdit({type:'edit',op:(k==='y'||e.shiftKey)?'redo':'undo'});
     e.preventDefault(); return;
   }
   if(ctrl&&k==='s'){ if(e.shiftKey) screenshot(); else saveFeedback(); e.preventDefault(); return; } // Ctrl+S = 저장(평면) · Ctrl+Shift+S = PNG
@@ -2840,6 +3163,7 @@ function screenshot(){
   download(fileStem()+'_3d.png',renderer.domElement.toDataURL('image/png'));
 }
 function saveFeedback(){ // Ctrl+S = 평면(미니캐드) 저장 — 3D 는 평면의 뷰이므로 저장은 평면이 한다
+  if(ST.ffOn){ ffAutosave(); setStatus(true,'🧊 프리폼 저장(브라우저 자동) — 파일로는 파일 ▸ 프리폼 파일 저장'); return; }
   if(!chan){ setStatus(false,'MiniCAD 창이 없어 저장 요청 불가 (PNG 는 Ctrl+Shift+S)'); return; }
   chan.postMessage({type:'save',at:Date.now()});
   setStatus(statusLive,'💾 저장 요청 → 미니캐드 (PNG 는 Ctrl+Shift+S)');
@@ -2854,6 +3178,11 @@ function setStatus(live,txt){ statusLive=live; _statusTxt=txt; status.className=
 function acceptDoc(payload,src){
   const doc=payload&&payload.data?payload.data:payload;
   if(!doc||typeof doc!=='object') return false;
+  if(ST.ffOn){                                              // 프리폼: 평면 갱신은 받아만 둔다
+    if(FF){ FF.planLatest=payload; FF.planDirty=true; }
+    setStatus(true,'🧊 프리폼 · ⚠ 평면이 바뀌었습니다 — 파일 ▸ 평면 다시 불러오기 (밑그림만 갱신·자유 층 유지)');
+    return false;
+  }
   const at=(payload&&payload.at)||Date.now();
   if(at<ST.lastDocAt) return false;
   ST.lastDocAt=at;
@@ -2979,6 +3308,7 @@ $('b-shadow').onclick=()=>setShadows(!ST.shadows);
 $('b-shot').onclick=screenshot;
 $('b-glb').onclick=exportGLB;
 $('b-json').onclick=exportJSON;
+$('b-ff').onclick=()=>{ ST.ffOn?ffExit():ffEnter(); };   // 2026-09-07 프리폼
 $('b-reload').onclick=()=>{ if(chan) chan.postMessage({type:'hello',at:Date.now()}); loadStored(); };
 // 스케치업식 도구 바 (2026-09-03)
 document.querySelectorAll('#tools .btn').forEach(b=>{ b.addEventListener('click',()=>setTool(b.dataset.t)); });
@@ -3003,6 +3333,7 @@ function refreshStylePanel(){
   const mi=(id,on)=>{ const el=$(id); if(el){ el.classList.toggle('chk',!!on); el.classList.toggle('unchk',!on); } };
   mi('mi-light',ST.lightsOn); mi('mi-night',ST.night); mi('mi-ceil',ST.ceil[ST.mode]);
   mi('mi-sky',ST.sky!=='plain');
+  mi('mi-ff',ST.ffOn);
   mi('mi-label',ST.labels); mi('mi-shadow',ST.shadows); mi('mi-axes',ST.axes);
   mi('mi-xray',ST.xray); mi('mi-ortho',ST.ortho);
   mi('mi-tray',!document.body.classList.contains('tray-off'));
@@ -3019,8 +3350,8 @@ function menuCmd(cmd){
     case 'glb': exportGLB(); break;
     case 'json': exportJSON(); break;
     case 'reload': if(chan) chan.postMessage({type:'hello',at:0}); loadStored(); break;
-    case 'undo': if(chan) chan.postMessage({type:'edit',op:'undo'}); break;
-    case 'redo': if(chan) chan.postMessage({type:'edit',op:'redo'}); break;
+    case 'undo': if(chan) emitEdit({type:'edit',op:'undo'}); break;
+    case 'redo': if(chan) emitEdit({type:'edit',op:'redo'}); break;
     case 'del': deleteSelected3D(); break;
     case 'deselect': select(null); break;
     case 'selectall': selectAll(); break;
@@ -3043,6 +3374,11 @@ function menuCmd(cmd){
     case 'sec-scenes': openTraySec('scenes'); break;
     case 'sec-tags': openTraySec('tags'); break;
     case 'save': saveFeedback(); break;
+    case 'ff': ST.ffOn?ffExit():ffEnter(); break;           // 2026-09-07 프리폼
+    case 'ff-rebase': ffRebase(); break;
+    case 'ff-save': ffExportFile(); break;
+    case 'ff-open': ffImportFile(); break;
+    case 'ff-new': ffNew(); break;
     case 'light': setLights(!ST.lightsOn); break;
     case 'night': setNight(!ST.night); break;
     case 'sky': setSky(ST.sky==='plain'?'sky':'plain'); break;                 // 2026-09-07
@@ -3120,6 +3456,7 @@ if(!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연
 // 테스트·디버그 훅
 window.MC3DVIEW={ST,scene,get camera(){return camera;},renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
   setSky,setSkyImage,buildSky,drawFrame,
+  ffEnter,ffExit,ffApply,ffRebase,ffNew,ffExportFile,emitEdit,get FF(){return FF;},
   buildGrips,beginVertZ,applyVertZ,commitVertZ,_gripAt,_massWorld,get grips(){return gripsGrp;},
   sendEdit,sendBatch,rotateSelected,deleteSelected3D,setTool,commitActive,cancelOp,menuCmd,openTraySec,setAxes,snap3,segHitsSpace,
   select,selectGroups,selectAll,boxSelect,selectSpaceGroup,selectWallNeighbors,findGroup,
