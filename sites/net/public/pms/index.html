@@ -10,57 +10,100 @@
 <script src="/boc-wp.js"></script>
 <title>BOC 공정관리 시스템</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📋</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
+/* ── 디자인 토큰 (2026-09-08 정돈) ──────────────────────────────
+   색은 웜 뉴트럴 위에 금색 하나만 액센트로 쓴다. 정보 위계는 크기가 아니라 명도로 만든다. */
+:root{
+  --ink:#23201b;        /* 본문 글자 */
+  --ink-2:#6b6355;      /* 보조 */
+  --ink-3:#a49a86;      /* 흐림 */
+  --paper:#ffffff;      /* 카드 */
+  --ground:#f6f4ef;     /* 바탕 */
+  --line:#e9e4d9;       /* 헤어라인 */
+  --line-2:#d9d2c2;     /* 진한 선 */
+  --deep:#1b1e26;       /* 헤더·간트 머리 */
+  --deep-2:#262a34;     /* 그보다 옅은 딥 */
+  --gold:#b8983f;       /* 액센트 */
+  --gold-2:#e0c886;     /* 밝은 액센트 */
+  --gold-bg:#fbf6e9;    /* 액센트 배경 */
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sh-1:0 1px 2px rgba(28,24,16,.04);
+  --sh-2:0 2px 4px rgba(28,24,16,.05),0 10px 24px rgba(28,24,16,.06);
+}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{min-height:100vh}
 body.sched-mode{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
-body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#eee;color:#222;font-size:13px}
-body.sched-mode{background:#f7f5f0}
-header{background:#1a1a2e;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
-header h1{font-size:15px;font-weight:700}
-header small{font-size:10px;opacity:.7;display:block}
-.bar-top{background:#333;color:#fff;padding:6px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px}
-.bar-top label{opacity:.7}
-.bar-top input[type=date],.bar-top select{background:#555;border:1px solid #666;color:#fff;padding:2px 6px;border-radius:3px;font-size:11px}
-.btn{padding:4px 12px;border:1px solid #c9a84c;background:none;color:#c9a84c;border-radius:3px;cursor:pointer;font-size:10px;font-weight:600}
-.btn:hover{background:#c9a84c;color:#1a1a2e}
-.btn-g{border-color:#1d9e75;color:#1d9e75}.btn-g:hover{background:#1d9e75;color:#fff}
-.btn-r{border-color:#e24b4a;color:#e24b4a}.btn-r:hover{background:#e24b4a;color:#fff}
-.btn-b{border-color:#185fa5;color:#185fa5}.btn-b:hover{background:#185fa5;color:#fff}
+body{font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  background:var(--ground);color:var(--ink);font-size:13px;letter-spacing:-.15px;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body.sched-mode{background:var(--ground)}
+header{background:linear-gradient(180deg,var(--deep-2),var(--deep));color:#fff;padding:13px 20px;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 2px 10px rgba(0,0,0,.16)}
+header h1{font-size:16px;font-weight:700;letter-spacing:-.4px}
+header small{font-size:10.5px;opacity:.62;display:block;margin-top:2px;letter-spacing:0}
+.bar-top{background:#f9f7f2;color:var(--ink);padding:9px 16px;display:flex;gap:8px;align-items:center;
+  flex-wrap:wrap;font-size:11px;border-bottom:1px solid var(--line)}
+.bar-top label{color:var(--ink-3);font-size:10.5px;font-weight:600;letter-spacing:0}
+.bar-top input[type=date],.bar-top select,.bar-top input[type=number]{
+  background:#fff;border:1px solid var(--line-2);color:var(--ink);padding:5px 9px;border-radius:var(--r-sm);
+  font-size:11.5px;font-family:inherit}
+.bar-top input:focus,.bar-top select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,152,63,.14)}
+.bar-sep{width:1px;height:20px;background:var(--line-2);margin:0 3px;flex:0 0 auto}
+/* 버튼 — 기본은 조용한 고스트, 강조가 필요한 것만 색을 쓴다 */
+.btn{padding:6px 13px;border:1px solid var(--line-2);background:#fff;color:var(--ink-2);
+  border-radius:var(--r-pill);cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;
+  letter-spacing:-.2px;transition:background .14s,border-color .14s,color .14s,box-shadow .14s;white-space:nowrap}
+.btn:hover{border-color:var(--gold);color:var(--ink);background:var(--gold-bg)}
+.btn:active{transform:translateY(.5px)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn-g{border-color:#bcdccd;color:#1c7d5c;background:#f4fbf8}.btn-g:hover{background:#e7f6ef;border-color:#1c7d5c;color:#155f46}
+.btn-r{border-color:#f0c9c6;color:#c0453f;background:#fdf5f4}.btn-r:hover{background:#fbeae8;border-color:#c0453f}
+.btn-b{border-color:#c6d7ec;color:#1a5490;background:#f4f8fd}.btn-b:hover{background:#e9f1fa;border-color:#1a5490}
 
 /* === PROJECT LIST VIEW === */
-#projectView{padding:24px;max-width:1100px;margin:0 auto}
+#projectView{padding:28px 24px 40px;max-width:1240px;margin:0 auto}
+#projectView h2{font-size:19px;font-weight:700;letter-spacing:-.5px}
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-top:16px}
-.proj-card{background:#fff;border-radius:10px;padding:16px;border:1px solid #ddd;cursor:pointer;transition:.15s;position:relative}
-.proj-card:hover{border-color:#c9a84c;box-shadow:0 4px 14px rgba(0,0,0,.1);transform:translateY(-2px)}
-.proj-card h3{font-size:14px;margin-bottom:4px}
-.proj-card .addr{font-size:11px;color:#888;margin-bottom:8px}
-.proj-card .meta{display:flex;gap:8px;flex-wrap:wrap;font-size:10px}
-.proj-card .meta span{background:#f5f3ee;padding:2px 8px;border-radius:10px;color:#666}
-.proj-card .tmpl-tag{position:absolute;top:12px;right:12px;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700}
-.proj-card .del-x{position:absolute;bottom:10px;right:12px;color:#ccc;font-size:14px;cursor:pointer;padding:4px}
-.proj-card .del-x:hover{color:#e24b4a}
-.new-card{background:none;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;min-height:120px;font-size:13px;color:#888}
-.new-card:hover{border-color:#c9a84c;color:#c9a84c}
-.empty-msg{text-align:center;padding:60px 20px;color:#999}
+.proj-card{background:var(--paper);border-radius:var(--r-md);padding:16px 18px;border:1px solid var(--line);
+  cursor:pointer;transition:border-color .16s,box-shadow .16s,transform .16s;position:relative;box-shadow:var(--sh-1);overflow:hidden}
+.proj-card:hover{border-color:var(--gold-2);box-shadow:var(--sh-2);transform:translateY(-1px)}
+.proj-card h3{font-size:14px;font-weight:700;letter-spacing:-.3px;margin-bottom:4px;padding-right:64px}
+.proj-card .addr{font-size:11px;color:var(--ink-3);margin-bottom:9px}
+.proj-card .meta{display:flex;gap:6px;flex-wrap:wrap;font-size:10px}
+.proj-card .meta span{background:var(--ground);padding:3px 9px;border-radius:var(--r-pill);color:var(--ink-2);border:1px solid var(--line)}
+.proj-card .tmpl-tag{position:absolute;top:14px;right:14px;font-size:9px;padding:3px 9px;border-radius:var(--r-pill);font-weight:700;letter-spacing:0}
+.proj-card .del-x{position:absolute;bottom:12px;right:12px;color:#d8d2c6;font-size:14px;cursor:pointer;padding:4px;line-height:1}
+.proj-card .del-x:hover{color:#c0453f}
+.new-card{background:none;border:1px dashed var(--line-2);box-shadow:none;display:flex;align-items:center;
+  justify-content:center;min-height:104px;font-size:12.5px;color:var(--ink-3);font-weight:600}
+.new-card:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-bg)}
+.empty-msg{text-align:center;padding:60px 20px;color:var(--ink-3)}
 
 /* === SCHEDULE VIEW === */
 #scheduleView{display:none;background:#fff}
 body.sched-mode #scheduleView{display:flex !important;flex-direction:column;flex:1 1 auto;min-height:0}
-.tabs{display:flex;background:#fff;border-bottom:2px solid #ddd;padding:0 12px}
-.tab{padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:#888;transition:.15s}
-.tab:hover{color:#222}.tab.on{color:#1a1a2e;border-bottom-color:#1a1a2e}
+.tabs{display:flex;background:var(--paper);border-bottom:1px solid var(--line);padding:0 14px;gap:2px}
+.tab{padding:11px 18px 10px;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent;
+  margin-bottom:-1px;color:var(--ink-3);transition:color .15s,border-color .15s;letter-spacing:-.2px}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);border-bottom-color:var(--gold)}
 .panel{display:none;background:#fff}
 body.sched-mode .panel.on{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
 .tabs{background:#fff}
-.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;padding:8px 12px;background:#f5f3ee}
-.info-box{background:#fff;border-radius:5px;padding:8px;border:1px solid #ddd}
-.info-l{font-size:9px;color:#888}.info-v{font-size:18px;font-weight:700}.info-u{font-size:9px;color:#888}
-.gw{overflow:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0;border:1px solid #ccc;background:#fff;width:100%}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;padding:12px 16px;
+  background:var(--ground);border-bottom:1px solid var(--line)}
+.info-box{background:var(--paper);border-radius:var(--r-sm);padding:10px 12px;border:1px solid var(--line);box-shadow:var(--sh-1)}
+.info-l{font-size:9.5px;color:var(--ink-3);font-weight:600;letter-spacing:.2px}
+.info-v{font-size:19px;font-weight:700;letter-spacing:-.6px;font-variant-numeric:tabular-nums;margin-top:1px}
+.info-u{font-size:9.5px;color:var(--ink-3);margin-left:2px}
+.gw{overflow:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0;border-top:1px solid var(--line);background:#fff;width:100%}
 table.gantt{border-collapse:separate;border-spacing:0}
-table.gantt th.fix,table.gantt td.fix{position:-webkit-sticky;position:sticky;left:0;z-index:10;background:#fff;border-right:2px solid #bbb}
+table.gantt th.fix,table.gantt td.fix{position:-webkit-sticky;position:sticky;left:0;z-index:10;background:#fff;border-right:1px solid var(--line-2)}
 table.gantt th.fix2,table.gantt td.fix2{position:-webkit-sticky;position:sticky;left:200px;z-index:10;background:#fff;border-right:1px solid #ddd}
-table.gantt th.fix3,table.gantt td.fix3{position:-webkit-sticky;position:sticky;left:278px;z-index:10;background:#fff;border-right:2px solid #bbb}
+table.gantt th.fix3,table.gantt td.fix3{position:-webkit-sticky;position:sticky;left:278px;z-index:10;background:#fff;border-right:1px solid var(--line-2)}
 table.gantt thead th{position:-webkit-sticky;position:sticky;z-index:15}
 table.gantt thead tr:nth-child(1) th{top:0}
 table.gantt thead tr:nth-child(2) th{top:22px}
@@ -112,16 +155,14 @@ table.gantt thead th.lh.lh-b{border-bottom:2px solid #444}
    2026-09-07 2차: 달력이 잘리지 않도록 행을 내용에 맞춰 늘리고(고정 높이 제거),
    마지막 주를 통째로 그린다. 색은 절제하고 대비를 키워 한눈에 분간되게 한다. */
 .dash{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;margin-top:16px;align-items:start}
-.dash-card{background:#fff;border:1px solid #ece8de;border-radius:14px;padding:18px 20px;
-  box-shadow:0 1px 2px rgba(30,25,15,.03),0 10px 28px rgba(30,25,15,.05)}
+.dash-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px;box-shadow:var(--sh-2)}
 
 /* 달력 머리 */
 .cal-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
-.cal-title{font-size:20px;font-weight:700;letter-spacing:-.3px;min-width:132px;color:#2b2620}
+.cal-title{font-size:21px;font-weight:700;letter-spacing:-.6px;min-width:136px;color:var(--ink)}
 .cal-title small{font-size:12px;font-weight:500;color:#a49a86;margin-left:6px}
-.cal-nav{border:1px solid #e6e1d6;background:#fff;border-radius:999px;width:30px;height:30px;cursor:pointer;
-  font-size:12px;color:#6b6355;line-height:1;transition:.15s}
-.cal-nav:hover{background:#faf7ef;border-color:#d8cfb8;color:#2b2620}
+.cal-nav{border:1px solid var(--line-2);background:#fff;border-radius:var(--r-pill);width:30px;height:30px;cursor:pointer;font-size:12px;color:var(--ink-2);line-height:1;transition:.15s}
+.cal-nav:hover{background:var(--gold-bg);border-color:var(--gold);color:var(--ink)}
 .cal-sum{font-size:11.5px;color:#8b8271;margin:2px 0 12px}
 .cal-legend{display:flex;gap:12px;font-size:11px;color:#7a7263;flex-wrap:wrap;margin:0 0 12px}
 .cal-legend .lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
@@ -131,8 +172,7 @@ table.gantt thead th.lh.lh-b{border-bottom:2px solid #444}
 
 /* 달력 격자 — 주(週)마다 칸 위에 '가로로 이어지는' 막대를 띄운다 (2026-09-07 대표 지시)
    막대는 칸 사이 틈 위를 지나가므로 여러 날에 걸친 공정이 끊기지 않고 한 줄로 보인다. */
-.cal-grid{border:1px solid #edeae1;border-radius:12px;overflow:hidden;background:#edeae1;
-  display:flex;flex-direction:column;gap:1px}
+.cal-grid{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--line);display:flex;flex-direction:column;gap:1px}
 .cal-dows{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:#edeae1}
 .cal-week{position:relative;background:#edeae1}
 .cal-cells{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px}
@@ -148,7 +188,7 @@ table.gantt thead th.lh.lh-b{border-bottom:2px solid #444}
 .cal-bar.done{opacity:.6;filter:grayscale(.35)}
 .cal-bar:hover{box-shadow:0 2px 8px rgba(30,25,15,.22);z-index:3}
 .cal-overflow{position:absolute;right:6px;bottom:-1px;font-size:9px;color:#a49a86}
-.cal-dow{background:#fbfaf7;text-align:center;font-size:11px;font-weight:600;padding:9px 0;color:#8b8271;letter-spacing:.5px}
+.cal-dow{background:#fbf9f5;text-align:center;font-size:11px;font-weight:700;padding:9px 0;color:var(--ink-3);letter-spacing:.6px}
 .cal-dow.sun{color:#d4534e}.cal-dow.sat{color:#3f72c9}
 .cal-cell{background:#fff;padding:6px 7px 6px;font-size:11px;cursor:pointer;display:flex;flex-direction:column;gap:3px;
   transition:background .12s,box-shadow .12s;min-width:0;min-height:var(--rowH,104px)}
@@ -178,10 +218,10 @@ table.gantt thead th.lh.lh-b{border-bottom:2px solid #444}
 /* 우측 현장 목록 */
 .dash-side{position:sticky;top:12px}
 .side-head{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
-.side-head h3{font-size:15px;color:#2b2620}
+.side-head h3{font-size:15px;font-weight:700;letter-spacing:-.3px;color:var(--ink)}
 .side-head small{color:#a49a86;font-size:11.5px}
 .proj-list{display:flex;flex-direction:column;gap:10px}
-.proj-list .proj-card{padding:13px 15px;border-radius:12px;border-color:#ece8de}
+.proj-list .proj-card{padding:14px 16px;border-radius:var(--r-md);border-color:var(--line)}
 .proj-list .proj-card h3{font-size:13.5px}
 .proj-list .proj-card::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--pc,#c9a84c)}
 .proj-bar{height:5px;border-radius:3px;background:#f0ede6;margin-top:9px;overflow:hidden}
@@ -268,12 +308,13 @@ tr.prow.row-sel td.today-col{background:linear-gradient(rgba(139,92,246,.16),rgb
 .cp-dot{width:7px;height:7px;border-radius:50%;background:#e24b4a;display:inline-block;margin-right:4px;vertical-align:baseline}
 .pn{font-weight:600;cursor:pointer;font-size:11px;line-height:1.25}.pn:hover{color:#185fa5;text-decoration:underline}.pn.is-cp{color:#e24b4a}
 .dur-edit{width:34px;text-align:center;border:1px solid #ddd;border-radius:2px;font-size:11px;padding:1px;background:none}
-.mh{background:#1a1a2e;color:#fff;font-size:10px;text-align:center;height:22px;line-height:1.25;padding:2px 4px}
-.lh{background:#000 !important;color:#fff !important;padding:4px 6px !important}
+.mh{background:var(--deep-2);color:#fff;font-size:10px;text-align:center;height:22px;line-height:1.25;padding:2px 4px;
+  font-weight:600;letter-spacing:.2px}
+.lh{background:var(--deep) !important;color:#fff !important;padding:4px 6px !important}
 .lh .lh-t{font-weight:800;font-size:12.5px;color:#fff;letter-spacing:-0.3px;line-height:18px}
 .lh .lh-s{font-size:9px;font-weight:400;color:#bbb;margin-top:1px}
-.wkh{background:#e0ddd5;color:#666;font-size:9px;text-align:center;height:22px}
-.dayh{position:relative;font-size:9px;text-align:center;height:30px;line-height:1.1;background:#f5f3ee;color:#555}
+.wkh{background:#efece4;color:var(--ink-2);font-size:9px;text-align:center;height:22px;font-weight:600}
+.dayh{position:relative;font-size:9px;text-align:center;height:30px;line-height:1.1;background:#faf8f3;color:var(--ink-2)}
 .dayh.we{background:#ede9e0}
 .dayh.today{background:rgba(139,92,246,.10);box-shadow:inset 0 0 0 1.5px #8b5cf6}
 .dayh .dwl{font-size:8px;line-height:1;opacity:.8;margin-top:1px}
@@ -289,11 +330,11 @@ tr.prow.row-sel td.today-col{background:linear-gradient(rgba(139,92,246,.16),rgb
 .layer-reset{cursor:pointer;font-size:10px;color:#888;border:1px solid #ddd;border-radius:4px;padding:1px 6px;background:#fff}
 .layer-reset:hover{color:#444;border-color:#bbb}
 /* 분류 범례 — 화면에선 숨기고(세로 패널로 대체) 인쇄에서만 표시 */
-.cat-legend{display:none;padding:5px 12px;background:#fafafa;border-bottom:1px solid #eee;flex-wrap:wrap;gap:4px 12px;font-size:10px}
+.cat-legend{display:none;padding:6px 14px;background:#fbf9f5;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:4px 12px;font-size:10px}
 /* 항상 보이는 세로 레이어 패널 */
 .gantt-row{display:flex;flex:1 1 auto;min-height:0}
 .gantt-row>.gw{min-width:0;border-left:none}
-.layer-panel{flex:0 0 196px;width:196px;display:flex;flex-direction:column;min-height:0;border:1px solid #ccc;border-right:none;background:#fafafa;overflow:hidden}
+.layer-panel{flex:0 0 196px;width:196px;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--line);border-right:1px solid var(--line);background:#fbf9f5;overflow:hidden}
 .layer-panel.collapsed{display:none}
 .lp-head{display:flex;align-items:center;gap:6px;padding:6px 8px;background:#1a1a2e;color:#fff;font-size:11px;font-weight:700;white-space:nowrap}
 .lp-head .lp-title{flex:1;overflow:hidden;text-overflow:ellipsis}
@@ -321,7 +362,7 @@ tr.prow.cat-flash td{animation:catFlash 1.5s ease-out}
 table.gantt tbody tr:not(.cat-hdr):hover td{background:#faf6e8 !important}
 .mod-wrap{padding:12px;overflow:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0}
 table.mod{width:100%;border-collapse:collapse;font-size:12px}
-table.mod th{background:#1a1a2e;color:#fff;padding:6px 10px;font-size:10px;text-align:center;border:1px solid #333;position:sticky;top:0;z-index:2}
+table.mod th{background:var(--deep-2);color:#fff;padding:8px 10px;font-size:10px;font-weight:600;letter-spacing:.2px;text-align:center;border:1px solid var(--deep);position:sticky;top:0;z-index:2}
 table.mod td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:middle}
 table.mod tr:hover{background:#faf6e8}
 table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;padding:4px 10px}
@@ -330,9 +371,9 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
 .tip.vis{display:block}
 .mo-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;justify-content:center;align-items:center}
 .mo-bg.open{display:flex}
-.mo{background:#fff;border-radius:10px;padding:20px;width:92%;max-width:520px;max-height:85vh;overflow-y:auto}
-.mo h3{margin-bottom:12px}.mo label{display:block;font-size:11px;color:#888;margin:8px 0 3px}
-.mo input,.mo select,.mo textarea{width:100%;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px}
+.mo{background:var(--paper);border-radius:var(--r-lg);padding:24px;width:92%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 60px rgba(20,16,8,.28)}
+.mo h3{margin-bottom:14px;font-size:16px;font-weight:700;letter-spacing:-.4px}.mo label{display:block;font-size:10.5px;color:var(--ink-3);font-weight:600;margin:10px 0 4px;letter-spacing:0}
+.mo input,.mo select,.mo textarea{width:100%;padding:8px 11px;border:1px solid var(--line-2);border-radius:var(--r-sm);font-size:12.5px;font-family:inherit;color:var(--ink);background:#fff}.mo input:focus,.mo select:focus,.mo textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,152,63,.14)}
 .mo textarea{height:80px;resize:vertical}
 .mo-btns{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
 .mo .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -469,12 +510,14 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
     <span id="areaHint" style="font-size:10px;color:#888;margin-left:4px"></span>
     <button class="btn" style="margin-left:10px" onclick="openAdd()">+ 공정추가</button>
     <!-- 간트 축척 — 모바일에서 하루 폭을 줄여 전체가 보이게 (2026-09-07) -->
+    <span class="bar-sep"></span>
     <span class="zoom-grp">
       <button class="btn" onclick="zoomOut()" title="간트 축소 (하루 폭 줄이기)">🔍−</button>
       <span id="zoomVal" style="font-size:10px;opacity:.85;min-width:52px;display:inline-block;text-align:center">26px/일</span>
       <button class="btn" onclick="zoomIn()" title="간트 확대 (하루 폭 늘리기)">🔍+</button>
       <button class="btn" onclick="zoomFit()" title="공사 전체 기간을 화면 폭에 맞춥니다">↔ 화면맞춤</button>
     </span>
+    <span class="bar-sep"></span>
     <button class="btn" id="projLockBtn" onclick="projLockClick()" style="font-weight:700">🔓 잠금 없음</button>
     <button class="btn tools-toggle" onclick="toggleTools()" id="toolsTgBtn" title="나머지 도구 펼치기/접기">⋯ 도구</button>
     <span class="tools-more" id="toolsMore">
@@ -495,7 +538,7 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
     <div class="tab" onclick="showTab('crew',this)">👷 인력투입</div>
   </div>
   <div class="panel on" id="p_gantt"><div class="print-title" id="printTitle1">📊 간트차트</div>
-<div class="gantt-hint" style="padding:5px 12px;background:#f9f7f0;font-size:11px;color:#777;border-bottom:1px solid #eee">💡 <b>⠿ 드래그</b> = 순서 이동 · <b>행 클릭</b> = 선택 후 <b>Delete</b> 삭제 · <b>공정명 클릭</b> = 편집 · <b>바 드래그</b> = 일정 이동 · <b>바 양끝</b> = 기간 조정 · <b>휠 클릭+드래그</b> = 화면 이동</div>
+<div class="gantt-hint" style="padding:7px 14px;background:#fbf9f5;font-size:11px;color:#8b8271;border-bottom:1px solid var(--line)">💡 <b>⠿ 드래그</b> = 순서 이동 · <b>행 클릭</b> = 선택 후 <b>Delete</b> 삭제 · <b>공정명 클릭</b> = 편집 · <b>바 드래그</b> = 일정 이동 · <b>바 양끝</b> = 기간 조정 · <b>휠 클릭+드래그</b> = 화면 이동</div>
 <div id="catLegend" class="cat-legend"></div>
 <div class="gantt-row"><div id="layerPanel" class="layer-panel"></div><div class="gw" id="ganttWrap"></div></div></div>
   <div class="panel" id="p_detail"><div class="print-title">📋 공정 상세 내역</div><div class="mod-wrap" id="detailWrap"></div></div>
