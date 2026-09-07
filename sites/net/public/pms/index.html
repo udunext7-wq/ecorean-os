@@ -76,10 +76,28 @@ table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-i
 .hdr-tg.left{left:4px}
 .hdr-tg.right{right:4px}
 /* 좁은 화면(모바일): 공정명 고정 컬럼 폭 축소 + 고정 오프셋 동기화 → 간트 공간 확보 */
-@media (max-width:600px){
-  table.gantt td.fix,table.gantt th.fix{min-width:150px;max-width:150px}
-  table.gantt th.fix2,table.gantt td.fix2{left:150px}
-  table.gantt th.fix3,table.gantt td.fix3{left:228px}
+@media (max-width:700px){
+  table.gantt td.fix,table.gantt th.fix{min-width:140px;max-width:140px;font-size:10px}
+  table.gantt th.fix2,table.gantt td.fix2{left:140px}
+  table.gantt th.fix3,table.gantt td.fix3{left:218px}
+  table.gantt th{padding:2px 3px}
+  .gbar-text{font-size:7px}
+  .gbar-out{font-size:8px}
+}
+@media (max-width:430px){
+  /* 폰: 공정명 + 간트만 남긴다 (일수·기간은 ⋯도구 옆 ◀ 버튼으로 다시 펼칠 수 있음) */
+  table.gantt td.fix,table.gantt th.fix{min-width:108px;max-width:108px;font-size:9.5px}
+  table.gantt th.fix2,table.gantt td.fix2{left:108px}
+  table.gantt th.fix3,table.gantt td.fix3{left:186px}
+  table.gantt td{height:26px}
+}
+/* 툴바 — 모바일에서는 자주 쓰는 것만 남기고 나머지는 '⋯ 도구'로 접는다 */
+.tools-toggle{display:none}
+@media (max-width:700px){
+  .tools-toggle{display:inline-flex}
+  .bar-top .tools-more{display:none;flex-wrap:wrap;gap:6px;width:100%}
+  .bar-top .tools-more.open{display:flex}
+  .zoom-grp{display:inline-flex;align-items:center;gap:4px;margin-left:auto}
 }
 table.gantt th{padding:3px 4px;font-weight:600;white-space:nowrap}
 table.gantt td{padding:0;border-bottom:1px solid #f0f0f0;height:28px;vertical-align:middle}
@@ -88,7 +106,8 @@ table.gantt td.fix .fix-inner{display:flex;align-items:center;gap:0;line-height:
 table.gantt td.fix .pn{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
 table.gantt td.fix2{min-width:78px;max-width:78px;text-align:center;font-size:11px;color:#666}
 table.gantt td.fix3{min-width:80px;max-width:80px;text-align:center;font-size:10px;color:#888}
-.dc{min-width:26px;max-width:26px;width:26px;position:relative;border-left:1px solid rgba(0,0,0,.06)}
+/* 하루 폭은 --dpx 하나로 관리한다 (JS 의 DPX 와 항상 같은 값 — 2026-09-07 반응형) */
+.dc{min-width:var(--dpx,26px);max-width:var(--dpx,26px);width:var(--dpx,26px);position:relative;border-left:1px solid rgba(0,0,0,.06)}
 .dc.we{background:rgba(0,0,0,.04)}.dc.sat{background:rgba(37,99,235,.07)}.dc.sun{background:rgba(226,75,74,.07)}.dc.wk{border-left:1px solid #ddd}.dc.mn{border-left:2px solid #aaa}
 .dc.today-col{background:rgba(139,92,246,.07);box-shadow:inset 1px 0 0 rgba(139,92,246,.55),inset -1px 0 0 rgba(139,92,246,.55)}
 tr.cat-hdr td{background:#333 !important;color:#fff;font-weight:700;font-size:11px;height:24px;padding:0 10px !important}
@@ -308,12 +327,22 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
     <input type="range" id="speedInput" min="1" max="2" step="0.1" value="1" style="width:90px;vertical-align:middle" oninput="updateSpeed()" title="인력을 늘려 공기 단축 (적정 100% → 최대 200%)">
     <span id="areaHint" style="font-size:10px;color:#888;margin-left:4px"></span>
     <button class="btn" style="margin-left:10px" onclick="openAdd()">+ 공정추가</button>
-    <button class="btn" onclick="resetAllStatus()">진행상태 초기화</button>
-    <button class="btn btn-b" onclick="saveProjectFile()" title="내 컴퓨터에 JSON 파일로 내려받습니다 (서버 저장과 다릅니다)">⬇ 파일로 내려받기</button>
-    <button class="btn btn-g" onclick="openPrintBox()">🖨 간트 인쇄</button>
-    <button class="btn btn-g" onclick="printAll()" title="간트+공정상세+자재발주+인력투입 전체를 페이지별로 인쇄">🖨 전체 인쇄</button>
-    <button class="btn" onclick="saveAsTemplate()" title="현재 공정표를 내 템플릿으로 저장">📑 템플릿 저장</button>
-    <button class="btn btn-g" onclick="openWpInbox()" title="견적OS 견적을 이 공정표에 반영 — 일수·인력·자재를 실물량으로 재산출">🔗 견적 반영</button>
+    <!-- 간트 축척 — 모바일에서 하루 폭을 줄여 전체가 보이게 (2026-09-07) -->
+    <span class="zoom-grp">
+      <button class="btn" onclick="zoomOut()" title="간트 축소 (하루 폭 줄이기)">🔍−</button>
+      <span id="zoomVal" style="font-size:10px;opacity:.85;min-width:52px;display:inline-block;text-align:center">26px/일</span>
+      <button class="btn" onclick="zoomIn()" title="간트 확대 (하루 폭 늘리기)">🔍+</button>
+      <button class="btn" onclick="zoomFit()" title="공사 전체 기간을 화면 폭에 맞춥니다">↔ 화면맞춤</button>
+    </span>
+    <button class="btn tools-toggle" onclick="toggleTools()" id="toolsTgBtn" title="나머지 도구 펼치기/접기">⋯ 도구</button>
+    <span class="tools-more" id="toolsMore">
+      <button class="btn" onclick="resetAllStatus()">진행상태 초기화</button>
+      <button class="btn btn-b" onclick="saveProjectFile()" title="내 컴퓨터에 JSON 파일로 내려받습니다 (서버 저장과 다릅니다)">⬇ 파일로 내려받기</button>
+      <button class="btn btn-g" onclick="openPrintBox()">🖨 간트 인쇄</button>
+      <button class="btn btn-g" onclick="printAll()" title="간트+공정상세+자재발주+인력투입 전체를 페이지별로 인쇄">🖨 전체 인쇄</button>
+      <button class="btn" onclick="saveAsTemplate()" title="현재 공정표를 내 템플릿으로 저장">📑 템플릿 저장</button>
+      <button class="btn btn-g" onclick="openWpInbox()" title="견적OS 견적을 이 공정표에 반영 — 일수·인력·자재를 실물량으로 재산출">🔗 견적 반영</button>
+    </span>
   </div>
   <div id="estLinkBar" style="display:none"></div>
   <div id="infoArea" class="info"></div>
@@ -714,7 +743,59 @@ TEMPLATES.blank=[
 var STORE_KEY="boc_projects_v1";
 var projects=[];      // [{id, name, addr, area, floors, struct, startDate, tmpl, note, created, phases:[...]}]
 var currentProj=null; // 현재 열린 프로젝트
-var editIdx=-1, DPX=26;
+var editIdx=-1;
+
+/* ── 간트 축척 (2026-09-07 반응형) ─────────────────────────────────────
+   하루 폭 DPX 는 화면 크기에 맞춰 자동으로 정해지고, 🔍−/🔍+ 로 단계 조정한다.
+   CSS 는 --dpx 를 보므로 표와 막대가 어긋나지 않는다. 폰에서는 하루 9px 부터 시작. */
+var DPX=26, GZOOM=0;
+try{var _gz=parseInt(localStorage.getItem("boc_gzoom")||"0",10);if(_gz>=-4&&_gz<=5)GZOOM=_gz}catch(e){}
+function baseDpx(){
+  var w=window.innerWidth||1200;
+  return w<=430?9:(w<=700?12:(w<=1000?18:26));
+}
+function setDpx(v){
+  DPX=Math.max(5,Math.min(48,Math.round(v)));
+  document.documentElement.style.setProperty("--dpx",DPX+"px");
+  var el=document.getElementById("zoomVal");if(el)el.textContent=DPX+"px/일";
+}
+function saveZoom(){try{localStorage.setItem("boc_gzoom",String(GZOOM))}catch(e){}}
+function applyZoom(render){
+  setDpx(baseDpx()*Math.pow(1.25,GZOOM));
+  if(render!==false&&currentProj&&typeof recalc==="function")recalc();
+}
+function zoomIn(){GZOOM=Math.min(5,GZOOM+1);saveZoom();applyZoom()}
+function zoomOut(){GZOOM=Math.max(-4,GZOOM-1);saveZoom();applyZoom()}
+/* 공사 전체 기간이 화면 폭에 들어오도록 하루 폭을 역산한다 */
+function zoomFit(){
+  var wrap=document.getElementById("ganttWrap");
+  if(!wrap||!currentProj){toast("공정표를 먼저 여세요");return}
+  var days=wrap.querySelectorAll("table.gantt thead th.dayh").length;
+  if(!days)return;
+  var fixW=0,ths=wrap.querySelectorAll("table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3");
+  for(var i=0;i<ths.length;i++){if(ths[i].offsetParent!==null)fixW+=ths[i].offsetWidth}
+  var avail=wrap.clientWidth-fixW-6;
+  if(avail<40)return;
+  setDpx(avail/days);
+  GZOOM=Math.round(Math.log(DPX/baseDpx())/Math.log(1.25));
+  saveZoom();
+  if(typeof recalc==="function")recalc();
+  toast("전체 "+days+"일을 화면 폭에 맞췄습니다 ("+DPX+"px/일)");
+}
+function toggleTools(){
+  var m=document.getElementById("toolsMore");if(!m)return;
+  m.classList.toggle("open");
+  var b=document.getElementById("toolsTgBtn");if(b)b.textContent=m.classList.contains("open")?"⋯ 접기":"⋯ 도구";
+}
+/* 화면 회전·창 크기 변경 시 하루 폭 재계산 */
+var _rzT=null;
+window.addEventListener("resize",function(){
+  clearTimeout(_rzT);
+  _rzT=setTimeout(function(){
+    var old=DPX;applyZoom(false);
+    if(DPX!==old&&currentProj&&typeof recalc==="function")recalc();
+  },250);
+});
 
 function loadStore(){
   try{var raw=localStorage.getItem(STORE_KEY);if(raw)projects=JSON.parse(raw)}catch(e){projects=[]}
@@ -1294,6 +1375,8 @@ function updatePreview(){
 // ── 전체 인쇄: 간트 + 공정상세 + 자재발주 + 인력투입 (페이지별) ──
 function printAll(){
   if(!currentProj){alert("공정표를 먼저 여세요");return}
+  var _dpxSaved=DPX;              // 인쇄는 화면 축척(모바일 축소)과 무관하게 기본 크기로
+  if(DPX<26)setDpx(26);
   recalc(); // 모든 탭(자재·인력·상세) 최신 렌더 보장
   var old=document.getElementById("printDyn");if(old)old.remove();
   document.body.classList.remove("print-gantt");
@@ -1308,9 +1391,14 @@ function printAll(){
     '#ganttWrap{overflow:visible !important}}';
   document.head.appendChild(st);
   window.print();
-  setTimeout(function(){var s=document.getElementById("printDyn");if(s)s.remove();},500);
+  setTimeout(function(){
+    var s=document.getElementById("printDyn");if(s)s.remove();
+    if(_dpxSaved!==DPX){setDpx(_dpxSaved);recalc()}   // 화면 축척 복원
+  },500);
 }
 function doPrintGantt(){
+  var _dpxSaved=DPX;              // 인쇄 전 기본 축척으로 (모바일에서 작게 인쇄되는 것 방지)
+  if(DPX<26){setDpx(26);recalc()}
   var scale=parseInt(document.getElementById("pScale").value)/100;
   var orient=document.getElementById("pOrient").value;
   var size=document.getElementById("pSize").value;
@@ -1340,6 +1428,7 @@ function doPrintGantt(){
   setTimeout(function(){
     document.body.classList.remove("print-gantt");
     document.body.classList.remove("print-split");
+    if(_dpxSaved!==DPX){setDpx(_dpxSaved);recalc()}   // 화면 축척 복원
   },500);
 }
 // ── 면적 연동: 인원/일수 자동 조정 ──
@@ -2825,6 +2914,14 @@ document.addEventListener("pointerdown",function(e){
   if(e.target.closest&&(e.target.closest(".gbar")||e.target.closest("#tip")))return;
   hideTip();
 });
+/* 모바일 기본값 (2026-09-07) — 좁은 화면에서는 '공정명 + 간트'만 남겨 간트가 실제로 보이게 한다.
+   사용자가 공정명 헤더의 ◀/▶ 버튼으로 언제든 되돌릴 수 있다. */
+if(window.innerWidth<=700){
+  if(!colsCollapsed)toggleCols();
+  if(!layerPanelCollapsed)toggleLayerPanel();
+}
+applyZoom(false);  // 화면 크기에 맞는 하루 폭을 먼저 정한 뒤 그린다
+
 renderProjects();  // 캐시로 즉시 그리고, 곧바로 서버 정본으로 교체한다
 updateTodayBadge();setInterval(updateTodayBadge,60000);
 cloudInit();       // 레이어·내 템플릿 (프로젝트 본문은 아래 projFetchAll 담당)
