@@ -91,6 +91,58 @@ table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-i
   table.gantt th.fix3,table.gantt td.fix3{left:186px}
   table.gantt td{height:26px}
 }
+
+/* ── 대시보드 (2026-09-07 대표 지시: 캘린더 + 우측 세로 프로젝트) ── */
+.dash{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;margin-top:16px;align-items:start}
+.dash-card{background:#fff;border:1px solid #e3e0d8;border-radius:12px;padding:14px 16px}
+.cal-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.cal-title{font-size:17px;font-weight:700;min-width:118px}
+.cal-nav{border:1px solid #ddd;background:#fff;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:13px}
+.cal-nav:hover{background:#f5f3ee}
+.cal-legend{display:flex;gap:10px;font-size:10px;color:#888;margin-left:auto;flex-wrap:wrap}
+.cal-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px;vertical-align:-1px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#e8e5dd;border:1px solid #e8e5dd;border-radius:8px;overflow:hidden}
+.cal-dow{background:#faf9f6;text-align:center;font-size:11px;font-weight:700;padding:6px 0;color:#666}
+.cal-dow.sun{color:#e24b4a}.cal-dow.sat{color:#2563eb}
+.cal-cell{background:#fff;min-height:96px;padding:5px 6px;font-size:11px;cursor:pointer;position:relative;transition:.12s}
+.cal-cell:hover{background:#fcfbf7}
+.cal-cell.out{background:#faf9f7;color:#bbb}
+.cal-cell.today{box-shadow:inset 0 0 0 2px #c9a84c}
+.cal-cell.sel{background:#fdf8ec}
+.cal-d{font-weight:700;font-size:12px}
+.cal-cell.sun .cal-d,.cal-cell.hol .cal-d{color:#e24b4a}
+.cal-cell.sat .cal-d{color:#2563eb}
+.cal-hol{font-size:9.5px;color:#e24b4a;margin-top:1px;line-height:1.25;word-break:keep-all}
+.cal-hol.mem{color:#9a8f7a}
+.cal-ev{margin-top:3px;display:flex;flex-direction:column;gap:2px}
+.cal-ev span{display:block;font-size:9.5px;line-height:1.35;padding:1px 4px;border-radius:3px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-more{font-size:9px;color:#999}
+.dash-side{position:sticky;top:10px}
+.side-head{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+.side-head h3{font-size:14px}
+.side-head small{color:#999;font-size:11px}
+.proj-list{display:flex;flex-direction:column;gap:10px}
+.proj-list .proj-card{padding:12px 14px}
+.proj-list .proj-card h3{font-size:13px}
+.proj-bar{height:5px;border-radius:3px;background:#eee;margin-top:8px;overflow:hidden}
+.proj-bar i{display:block;height:100%;background:linear-gradient(90deg,#c9a84c,#e0c477)}
+.proj-when{font-size:10px;color:#888;margin-top:5px}
+.day-panel{margin-top:12px;border-top:1px solid #eee;padding-top:10px;font-size:12px}
+.day-panel h4{font-size:13px;margin-bottom:6px}
+.day-row{display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px dashed #eee}
+.day-row i{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
+.day-row .pj{color:#999;font-size:10.5px}
+@media (max-width:900px){
+  .dash{grid-template-columns:1fr}
+  .dash-side{position:static}
+  .cal-cell{min-height:74px}
+  .cal-ev span{font-size:9px}
+}
+@media (max-width:520px){
+  .cal-cell{min-height:58px;padding:3px}
+  .cal-hol{display:none}
+  .cal-ev span{font-size:0;padding:0;height:4px;border-radius:2px}
+}
 /* 편집 잠김 상태 — 편집 도구를 흐리게 하고 드래그를 막는다 (열람·확대·인쇄는 그대로) */
 body.view-only .gbar{cursor:default}
 body.view-only .drag-h,body.view-only .gbar::after{opacity:.45}
@@ -313,7 +365,31 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
     <button class="btn btn-g" style="font-size:11px;padding:5px 12px" onclick="openWpInbox()">공정표 만들기</button>
     <button class="btn" style="font-size:11px;padding:5px 10px" onclick="dismissWpBanner()">나중에</button>
   </div>
-  <div class="proj-grid" id="projGrid"></div>
+
+  <!-- 대시보드: 좌 캘린더 / 우 프로젝트 세로 목록 (2026-09-07 대표 지시) -->
+  <div class="dash">
+    <section class="dash-card">
+      <div class="cal-head">
+        <button class="cal-nav" onclick="calMove(-1)" title="이전 달">◀</button>
+        <div class="cal-title" id="calTitle">—</div>
+        <button class="cal-nav" onclick="calMove(1)" title="다음 달">▶</button>
+        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="calToday()">오늘</button>
+        <div class="cal-legend">
+          <span><i style="background:#e24b4a"></i>공휴일</span>
+          <span><i style="background:#9a8f7a"></i>기념일</span>
+          <span><i style="background:#c9a84c"></i>오늘</span>
+          <span id="calSrc"></span>
+        </div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="day-panel" id="calDay"></div>
+    </section>
+
+    <aside class="dash-side">
+      <div class="side-head"><h3>진행 현장</h3><small id="projCount"></small></div>
+      <div class="proj-list" id="projGrid"></div>
+    </aside>
+  </div>
 </div>
 
 <!-- ============ SCHEDULE VIEW ============ -->
@@ -1035,6 +1111,103 @@ function refreshTmplDropdown(){
 // ================================================================
 // PROJECT LIST VIEW
 // ================================================================
+
+/* ── 대시보드 캘린더 (2026-09-07 대표 지시) ─────────────────────────────
+   좌측: 실제 달력 — 한국 공휴일·기념일 + 그날 진행 중인 공정을 함께 표시
+   공휴일 원천: /api/calendar/holidays (구글 공개 한국 공휴일 ICS 를 서버가 받아 캐시) */
+var CAL={y:new Date().getFullYear(),m:new Date().getMonth(),sel:null,hol:{},loaded:false,loading:false};
+var PROJ_COLORS=["#c9a84c","#5b8def","#2fa87a","#e2734b","#8b6ad6","#d95f8a","#3aa3b8","#7a8b3a"];
+function calKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function calToday(){var t=new Date();CAL.y=t.getFullYear();CAL.m=t.getMonth();CAL.sel=calKey(t);renderCal()}
+function calMove(n){
+  var d=new Date(CAL.y,CAL.m+n,1);CAL.y=d.getFullYear();CAL.m=d.getMonth();
+  renderCal();calLoadHolidays();   // 해가 바뀌면 그 구간을 채운다
+}
+function calLoadHolidays(){
+  if(CAL.loading)return;
+  var need=[CAL.y-1,CAL.y,CAL.y+1].some(function(y){return !CAL.hol["_y"+y]});
+  if(!need)return;
+  CAL.loading=true;
+  fetch("/api/calendar/holidays?from="+(CAL.y-1)+"-01-01&to="+(CAL.y+1)+"-12-31",{credentials:"same-origin"})
+    .then(function(r){return r.ok?r.json():Promise.reject(r.status)})
+    .then(function(j){
+      (j.holidays||[]).forEach(function(h){CAL.hol[h.day]={n:h.name,k:h.kind,off:h.is_off}});
+      [CAL.y-1,CAL.y,CAL.y+1].forEach(function(y){CAL.hol["_y"+y]=1});
+      CAL.loaded=true;
+      var el=document.getElementById("calSrc");
+      if(el)el.textContent="한국 공휴일·기념일 "+(j.count||0)+"일 반영";
+      renderCal();
+    })
+    .catch(function(){var el=document.getElementById("calSrc");if(el)el.textContent="공휴일을 불러오지 못했습니다"})
+    .then(function(){CAL.loading=false});
+}
+/* 그 달에 걸치는 모든 프로젝트의 공정 → 날짜별 목록 (남의 프로젝트는 건드리지 않는다) */
+function calEvents(y,m){
+  var map={};
+  projects.forEach(function(p,pi){
+    if(!p||!p.phases||!p.phases.length)return;
+    var r=computeSchedule(p,null,false);
+    var color=PROJ_COLORS[pi%PROJ_COLORS.length];
+    p.phases.forEach(function(ph){
+      var s0=r.es[ph.id],e0=r.ef[ph.id];
+      if(s0==null||e0==null)return;
+      for(var k=s0;k<Math.max(e0,s0+1);k++){
+        var d=new Date(r.sd.getTime()+k*864e5);
+        if(d.getFullYear()!==y||d.getMonth()!==m)continue;
+        var key=calKey(d);
+        (map[key]||(map[key]=[])).push({pi:pi,pj:p.name,n:ph.nm||ph.name||"공정",c:ph.color||color,st:ph.status});
+      }
+    });
+  });
+  return map;
+}
+function renderCal(){
+  var grid=document.getElementById("calGrid");if(!grid)return;
+  var title=document.getElementById("calTitle");
+  if(title)title.textContent=CAL.y+"년 "+(CAL.m+1)+"월";
+  var first=new Date(CAL.y,CAL.m,1),start=new Date(first.getTime()-first.getDay()*864e5);
+  var todayK=calKey(new Date()),ev=calEvents(CAL.y,CAL.m);
+  var h="";
+  ["일","월","화","수","목","금","토"].forEach(function(w,i){
+    h+='<div class="cal-dow'+(i===0?" sun":(i===6?" sat":""))+'">'+w+'</div>';
+  });
+  for(var i=0;i<42;i++){
+    var d=new Date(start.getTime()+i*864e5),key=calKey(d),out=d.getMonth()!==CAL.m;
+    var hol=CAL.hol[key],dw=d.getDay(),list=ev[key]||[];
+    if(i>=35&&out)continue;                       // 마지막 줄이 통째로 다음 달이면 생략
+    var cls="cal-cell"+(out?" out":"")+(dw===0?" sun":(dw===6?" sat":""))+
+            (hol&&hol.off?" hol":"")+(key===todayK?" today":"")+(key===CAL.sel?" sel":"");
+    h+='<div class="'+cls+'" onclick="calPick(&quot;'+key+'&quot;)">';
+    h+='<div class="cal-d">'+d.getDate()+'</div>';
+    if(hol)h+='<div class="cal-hol'+(hol.off?"":" mem")+'">'+esc(hol.n)+'</div>';
+    if(list.length){
+      h+='<div class="cal-ev">';
+      list.slice(0,3).forEach(function(e){h+='<span style="background:'+e.c+'" title="'+esc(e.pj+" · "+e.n)+'">'+esc(e.n)+'</span>'});
+      if(list.length>3)h+='<div class="cal-more">+'+(list.length-3)+'</div>';
+      h+='</div>';
+    }
+    h+='</div>';
+  }
+  grid.innerHTML=h;
+  renderCalDay(ev);
+}
+function calPick(key){CAL.sel=key;renderCal()}
+function renderCalDay(ev){
+  var box=document.getElementById("calDay");if(!box)return;
+  if(!CAL.sel){box.innerHTML='<div style="color:#999;font-size:11.5px">날짜를 누르면 그날 진행되는 공정을 봅니다.</div>';return}
+  var d=new Date(CAL.sel+"T00:00:00"),hol=CAL.hol[CAL.sel],list=(ev||calEvents(d.getFullYear(),d.getMonth()))[CAL.sel]||[];
+  var h='<h4>'+d.getFullYear()+"."+(d.getMonth()+1)+"."+d.getDate()+" ("+WD[d.getDay()]+")";
+  if(hol)h+=' <span style="color:'+(hol.off?"#e24b4a":"#9a8f7a")+';font-size:12px">· '+esc(hol.n)+(hol.off?" (휴무)":"")+'</span>';
+  h+='</h4>';
+  if(!list.length)h+='<div style="color:#999;font-size:11.5px">진행 중인 공정이 없습니다.</div>';
+  list.forEach(function(e){
+    h+='<div class="day-row"><i style="background:'+e.c+'"></i><div><div>'+esc(e.n)+'</div>'+
+       '<div class="pj">'+esc(e.pj)+'</div></div>'+
+       '<button class="btn" style="margin-left:auto;font-size:10px;padding:3px 8px" onclick="openProject('+e.pi+')">열기</button></div>';
+  });
+  box.innerHTML=h;
+}
+
 function renderProjects(){
   var grid=document.getElementById("projGrid");
   var h='';
@@ -1049,9 +1222,16 @@ function renderProjects(){
     if(p.area)h+='<span>'+p.area+'㎡</span>';
     if(p.floors)h+='<span>'+esc(p.floors)+'</span>';
     if(p.struct)h+='<span>'+esc(p.struct)+'</span>';
-    h+='<span>착공 '+p.startDate+'</span>';
     h+='<span>'+phaseCount+'개 공정</span>';
     h+='</div>';
+    // 공기·진행률 (대시보드용 — 남의 프로젝트를 건드리지 않고 계산만 한다)
+    var r=computeSchedule(p,null,false);
+    var done=0;(p.phases||[]).forEach(function(ph){if(ph.status==="done")done++});
+    var pct=phaseCount?Math.round(done/phaseCount*100):0;
+    var e=new Date(r.sd.getTime()+r.td*864e5);
+    h+='<div class="proj-when">'+p.startDate+' → '+calKey(e)+' · '+r.td+'일';
+    h+=' · 진행 '+pct+'%</div>';
+    h+='<div class="proj-bar"><i style="width:'+pct+'%;background:'+PROJ_COLORS[i%PROJ_COLORS.length]+'"></i></div>';
     h+='<span class="del-x" onclick="event.stopPropagation();deleteProject('+i+')">✕</span>';
     h+='</div>';
   });
@@ -1059,6 +1239,9 @@ function renderProjects(){
   var utCount=Object.keys(userTemplates).length;
   h+='<div class="proj-card new-card" style="border-color:#c9a84c;color:#c9a84c" onclick="openTmplManager()">📑 내 템플릿 관리'+(utCount?' ('+utCount+')':'')+'</div>';
   grid.innerHTML=h;
+  var c=document.getElementById("projCount");
+  if(c)c.textContent=projects.length+"개 현장";
+  renderCal();   // 캘린더도 같은 자료를 보므로 함께 갱신
 }
 // 템플릿 관리 모달
 function openTmplManager(){
@@ -1654,31 +1837,40 @@ function freezeAll(){
     if(!p.lock&&p._ds)p.lock=fmLock(p._ds);
   });
 }
-function recalc(){
-  if(!currentProj)return;
-  applyCatColors();   // 프로젝트별 사용자 지정 분류색 반영
-  var DATA=currentProj.phases;
-  var sd=getSD(),es={},ef={};
+/* 공정 일정 계산 — 간트(recalc)와 대시보드 캘린더가 같은 로직을 쓴다 (2026-09-07 분리)
+   assign=false 면 프로젝트를 건드리지 않고 결과만 돌려준다(대시보드가 남의 프로젝트를 더럽히지 않도록). */
+function computeSchedule(proj,sdOverride,assign){
+  var DATA=(proj&&proj.phases)||[];
+  var base=sdOverride||new Date(((proj&&proj.startDate)||new Date().toISOString().slice(0,10))+"T00:00:00");
+  var es={},ef={};
   DATA.forEach(function(p){es[p.id]=0;ef[p.id]=0});
-  // lock(시작일고정)이 있으면 착공일로부터의 일수로 환산
-  function lockDay(p){
+  function lockDay(p){                      // lock(시작일고정)은 착공일로부터의 일수로 환산
     if(!p.lock)return null;
-    var ld=new Date(p.lock+"T00:00:00");
-    return Math.round((ld-sd)/864e5);
+    return Math.round((new Date(p.lock+"T00:00:00")-base)/864e5);
   }
   for(var iter=0;iter<DATA.length*2;iter++)DATA.forEach(function(p){
     var mx=0;
-    p.dep.forEach(function(d){if(ef[d]>mx)mx=ef[d]});
-    var off=p.offset?parseInt(p.offset):0;       // 착수지연(일)
+    (p.dep||[]).forEach(function(d){if(ef[d]>mx)mx=ef[d]});
+    var off=p.offset?parseInt(p.offset):0;   // 착수지연(일)
     var start=mx+off;
     var lk=lockDay(p);
-    if(lk!==null)start=lk;                         // 시작일 고정이 최우선
+    if(lk!==null)start=lk;                   // 시작일 고정이 최우선
     if(start>es[p.id]||lk!==null){es[p.id]=start;ef[p.id]=start+p.dur}
     else if(!ef[p.id])ef[p.id]=es[p.id]+p.dur;
   });
   var td=0;DATA.forEach(function(p){if(ef[p.id]>td)td=ef[p.id]});
-  DATA.forEach(function(p){p._sd=es[p.id];p._ed=ef[p.id];p._ds=new Date(sd.getTime()+es[p.id]*864e5);p._de=new Date(sd.getTime()+ef[p.id]*864e5)});
-  renderInfo(td,sd);renderGantt(td,sd);renderDetail();renderMat(sd);renderCrew();
+  if(assign!==false)DATA.forEach(function(p){
+    p._sd=es[p.id];p._ed=ef[p.id];
+    p._ds=new Date(base.getTime()+es[p.id]*864e5);p._de=new Date(base.getTime()+ef[p.id]*864e5);
+  });
+  return {sd:base,td:td,es:es,ef:ef};
+}
+
+function recalc(){
+  if(!currentProj)return;
+  applyCatColors();   // 프로젝트별 사용자 지정 분류색 반영
+  var r=computeSchedule(currentProj,getSD(),true);
+  renderInfo(r.td,r.sd);renderGantt(r.td,r.sd);renderDetail();renderMat(r.sd);renderCrew();
   saveStore();
 }
 
@@ -3056,7 +3248,9 @@ if(window.innerWidth<=700){
 }
 applyZoom(false);  // 화면 크기에 맞는 하루 폭을 먼저 정한 뒤 그린다
 
+CAL.sel=calKey(new Date());   // 대시보드는 오늘을 선택한 상태로 시작
 renderProjects();  // 캐시로 즉시 그리고, 곧바로 서버 정본으로 교체한다
+calLoadHolidays(); // 한국 공휴일·기념일 (서버가 캐시, 없으면 원본에서 자동 수집)
 updateTodayBadge();setInterval(updateTodayBadge,60000);
 cloudInit();       // 레이어·내 템플릿 (프로젝트 본문은 아래 projFetchAll 담당)
 
