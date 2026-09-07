@@ -91,7 +91,7 @@ function opOrbit(on){ orbit.touches.ONE=on?null:THREE.TOUCH.ROTATE; }
 // 상태
 // ---------------------------------------------------------------------------
 const ST={
-  mode:'orbit', lightsOn:true, night:false,
+  mode:'orbit', lightsOn:true, night:false, sky:'sky',   // 2026-09-07 배경: 하늘·바닥 / 단색 / 그림
   ceil:{orbit:false,walk:true}, labels:true,
   shadows:true, shadowsAuto:true,           // 사용자가 손대기 전엔 자동 성능 조절 대상
   floorSel:'all', floors:[],
@@ -550,6 +550,156 @@ function setLights(on){
   matCache.forEach(m=>{ if(m.userData.emiss) m.emissiveIntensity=on?1.4:0; });
   applyMood();
 }
+// ---------------------------------------------------------------------------
+// 하늘·바닥 배경 (2026-09-07 대표 지시 — 스케치업처럼)
+//  스케치업은 배경을 지평선에서 하늘과 바닥으로 갈라 칠한다. 그래야 어느 쪽이
+//  위인지, 카메라가 얼마나 기울었는지가 한눈에 들어온다 — 단색 배경에서는
+//  아무리 돌려도 돌아가는 느낌이 안 난다.
+//  구현: 큰 공으로 두르지 않고, 화면을 통째로 덮는 판 한 장을 본 장면보다 먼저 그린다.
+//   · 공으로 두르면 카메라 far(=400) 밖으로 나간 만큼 통째로 잘린다 — 실제로
+//     반지름 900 으로 두르자 배경이 그대로 새까맣게 남았다. 화면 덮개는 잘릴 far 가 없다.
+//   · 색은 '카메라에서 그 픽셀을 향한 세계 방향'의 높이 성분으로 정한다. 그 값이 0 인
+//     곳이 곧 참 지평선이라, 돌리든 걷든 지평선이 세계 바닥면(y=0)과 늘 맞는다.
+//   · 평행투영은 모든 픽셀의 방향이 같아 이 계산이 한 색으로 뭉갠다. 그래서 평행투영일
+//     때만 55° 짜리 가상 화각으로 방향을 만든다 — 스케치업 평행투영도 지평선을 그린다.
+//  배경 그림 자리도 함께 뒀다(setSkyImage — 가로 2:1 파노라마 한 장).
+const SKY_PRESET={
+  day:{ up:0x4E79A8, hz:0xC5D9EC, gd:0xA2937B, dn:0x5C5346, fog:0xC5D9EC },
+  night:{ up:0x080D1A, hz:0x1E2B45, gd:0x151A24, dn:0x090B11, fog:0x1E2B45 },
+};
+let skyScene=null, skyCam=null, skyUni=null, skyTex=null, skyBlank=null;
+// 배경 판은 셰이더가 색을 그대로 화면에 쓴다 — three 의 색공간 변환 조각이 붙지 않으므로
+// THREE.Color 로 만들면 선형값이 되어 새까맣게 나온다. 여기서는 sRGB 바이트 그대로 쓴다.
+function _c(hex){ return new THREE.Vector3(((hex>>16)&255)/255,((hex>>8)&255)/255,(hex&255)/255); }
+function buildSky(){
+  if(skyScene) return skyScene;
+  const P=SKY_PRESET.day;
+  skyBlank=new THREE.DataTexture(new Uint8Array([0,0,0,255]),1,1);
+  skyBlank.needsUpdate=true;
+  skyUni={
+    uUp:{value:_c(P.up)}, uHz:{value:_c(P.hz)}, uGd:{value:_c(P.gd)}, uDn:{value:_c(P.dn)},
+    uLine:{value:0.55},                                   // 지평선 선 진하기
+    uRight:{value:new THREE.Vector3(1,0,0)},
+    uUpV:{value:new THREE.Vector3(0,1,0)},
+    uFwd:{value:new THREE.Vector3(0,0,-1)},
+    uScale:{value:new THREE.Vector2(1,1)},                // 화면 반각(tan)
+    uTex:{value:skyBlank}, uHasTex:{value:0},
+  };
+  const mat=new THREE.ShaderMaterial({
+    uniforms:skyUni, depthTest:false, depthWrite:false, fog:false,
+    vertexShader:`
+      varying vec2 vUv;
+      void main(){ vUv=uv*2.0-1.0; gl_Position=vec4(position.xy,0.0,1.0); }`,
+    fragmentShader:`
+      varying vec2 vUv;
+      uniform vec3 uUp,uHz,uGd,uDn,uRight,uUpV,uFwd;
+      uniform vec2 uScale;
+      uniform float uLine,uHasTex;
+      uniform sampler2D uTex;
+      void main(){
+        vec3 d=normalize(uFwd + uRight*(vUv.x*uScale.x) + uUpV*(vUv.y*uScale.y));
+        vec3 col;
+        if(uHasTex>0.5){
+          float u=atan(d.z,-d.x)/6.2831853+0.5;           // 파노라마를 방향으로 찍어 본다
+          float v=asin(clamp(d.y,-1.0,1.0))/3.1415927+0.5;
+          col=texture2D(uTex,vec2(u,v)).rgb;
+        }else{
+          float t=d.y;                                    // 0 인 곳이 참 지평선
+          if(t>=0.0) col=mix(uHz,uUp,pow(clamp(t,0.0,1.0),0.55));
+          else       col=mix(uGd,uDn,pow(clamp(-t,0.0,1.0),0.65));
+          float g=1.0-smoothstep(0.0,0.004,abs(t));       // 땅끝에 가는 선 한 줄
+          col=mix(col,col*0.72,g*uLine);
+        }
+        gl_FragColor=vec4(col,1.0);
+      }`,
+  });
+  skyScene=new THREE.Scene();
+  const q=new THREE.Mesh(new THREE.PlaneGeometry(2,2),mat);
+  q.frustumCulled=false;
+  skyScene.add(q);
+  skyCam=new THREE.Camera();
+  return skyScene;
+}
+// 그릴 때마다 카메라 자세를 하늘에 일러 준다
+const _skR=new THREE.Vector3(),_skU=new THREE.Vector3(),_skF=new THREE.Vector3();
+function syncSky(){
+  if(!skyUni) return;
+  camera.updateMatrixWorld();   // 그리기 전이라 아직 갱신 전이다 — 한 프레임 늦으면 지평선이 어긋난다
+  const m=camera.matrixWorld.elements;
+  _skR.set(m[0],m[1],m[2]).normalize();
+  _skU.set(m[4],m[5],m[6]).normalize();
+  _skF.set(-m[8],-m[9],-m[10]).normalize();
+  skyUni.uRight.value.copy(_skR); skyUni.uUpV.value.copy(_skU); skyUni.uFwd.value.copy(_skF);
+  const fov=camera.isPerspectiveCamera?camera.fov:55;     // 평행투영은 가상 화각
+  const asp=camera.isPerspectiveCamera?camera.aspect:(view.clientWidth/Math.max(1,view.clientHeight));
+  const ty=Math.tan(fov*Math.PI/360);
+  skyUni.uScale.value.set(ty*asp,ty);
+}
+// 한 프레임 — 배경을 먼저 깔고 그 위에 장면을 얹는다
+function drawFrame(){
+  if(ST.sky!=='plain'&&skyScene){
+    syncSky();
+    renderer.autoClear=false;
+    try{
+      renderer.clear();
+      renderer.render(skyScene,skyCam);
+      renderer.render(scene,camera);
+    }finally{ renderer.autoClear=true; }   // 중간에 터져도 다음 프레임이 안 깨지게
+  }else{
+    renderer.render(scene,camera);
+  }
+}
+// 배경 그림 고르기 — 파노라마 한 장을 둘러 준다
+function pickSkyImage(){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=()=>setSkyImage(String(fr.result));
+    fr.readAsDataURL(f);
+  };
+  inp.click();
+}
+// 지금 무드(주/야)에 맞춰 하늘 색을 맞춘다
+function applySkyColors(){
+  const P=ST.night?SKY_PRESET.night:SKY_PRESET.day;
+  buildSky();
+  if(skyUni){
+    skyUni.uUp.value.copy(_c(P.up)); skyUni.uHz.value.copy(_c(P.hz));
+    skyUni.uGd.value.copy(_c(P.gd)); skyUni.uDn.value.copy(_c(P.dn));
+    skyUni.uTex.value=skyTex||skyBlank;
+    skyUni.uHasTex.value=(ST.sky==='image'&&skyTex)?1:0;
+  }
+  if(ST.sky==='plain'){
+    const flat=ST.night?0x07070F:0x0E0F1A;       // 종전 단색
+    scene.background=new THREE.Color(flat);
+    scene.fog.color.set(flat);
+  }else{
+    scene.background=null;                       // 배경 패스가 맡는다
+    scene.fog.color.set(P.fog);                  // 먼 것이 지평선 색으로 스민다
+  }
+}
+// 배경 종류 — 'sky'(하늘·바닥) / 'plain'(단색) / 'image'(파노라마 그림)
+function setSky(mode){
+  if(mode!=='sky'&&mode!=='plain'&&mode!=='image') mode='sky';
+  if(mode==='image'&&!skyTex) mode='sky';        // 그림이 없으면 하늘로
+  ST.sky=mode;
+  applySkyColors();
+  refreshStylePanel();
+  setStatus(statusLive,'배경: '+(mode==='sky'?'하늘·바닥 (지평선에서 갈라 칠함)':mode==='image'?'그림':'단색'));
+  invalidate(true);
+}
+// 나중에 배경 그림을 입히는 자리 — 파노라마(가로 2:1) 한 장을 두른다
+function setSkyImage(url){
+  if(!url){ skyTex=null; if(ST.sky==='image') setSky('sky'); return; }
+  new THREE.TextureLoader().load(url,tex=>{
+    tex.colorSpace=THREE.SRGBColorSpace;
+    tex.wrapS=THREE.RepeatWrapping;
+    skyTex=tex; ST.sky='image'; applySkyColors(); refreshStylePanel(); invalidate(true);
+    setStatus(statusLive,'배경 그림 적용 — 다시 하늘·바닥으로 돌리려면 배경 버튼');
+  },undefined,()=>setStatus(statusLive,'배경 그림을 읽지 못했습니다'));
+}
 function setNight(on){
   ST.night=on;
   $('b-night').classList.toggle('on',on);
@@ -557,8 +707,9 @@ function setNight(on){
   applyMood();
 }
 function applyMood(){
-  if(ST.night){ hemi.intensity=0.32; sun.intensity=0.22; scene.background.set(0x07070F); scene.fog.color.set(0x07070F); }
-  else{ hemi.intensity=ST.lightsOn?1.25:1.6; sun.intensity=ST.lightsOn?2.0:2.6; scene.background.set(0x0E0F1A); scene.fog.color.set(0x0E0F1A); }
+  if(ST.night){ hemi.intensity=0.32; sun.intensity=0.22; }
+  else{ hemi.intensity=ST.lightsOn?1.25:1.6; sun.intensity=ST.lightsOn?2.0:2.6; }
+  applySkyColors();   // 2026-09-07: 배경(하늘·바닥)도 무드를 따라간다
   invalidate(true);
 }
 function setShadows(on,auto){
@@ -2424,7 +2575,7 @@ function exportJSON(){
   download(fileStem()+'_3d.json',new Blob([JSON.stringify({schema:'ECOREAN.MiniCAD3D.v1',unit:'mm',axes:'x right, y down(plan), z up',...full},null,1)],{type:'application/json'}));
 }
 function screenshot(){
-  renderer.render(scene,camera);
+  drawFrame();
   download(fileStem()+'_3d.png',renderer.domElement.toDataURL('image/png'));
 }
 function saveFeedback(){ // Ctrl+S = 평면(미니캐드) 저장 — 3D 는 평면의 뷰이므로 저장은 평면이 한다
@@ -2515,7 +2666,7 @@ function scenesSave(arr){ try{ localStorage.setItem('minicad.3d.scenes',JSON.str
 function sceneAdd(name){
   const arr=scenesLoad();
   name=name||window.prompt('장면 이름','장면 '+(arr.length+1)); if(!name) return;
-  arr.push({name,p:camera.position.toArray(),t:orbit.target.toArray(),mode:ST.mode,ortho:ST.ortho,night:ST.night,ceil:ST.ceil[ST.mode],xray:ST.xray,sunT:ST.sunT,floorSel:ST.floorSel,walk:ST.mode==='walk'?{yaw:ST.walk.yaw,pitch:ST.walk.pitch}:null});
+  arr.push({name,p:camera.position.toArray(),t:orbit.target.toArray(),mode:ST.mode,ortho:ST.ortho,night:ST.night,sky:ST.sky,ceil:ST.ceil[ST.mode],xray:ST.xray,sunT:ST.sunT,floorSel:ST.floorSel,walk:ST.mode==='walk'?{yaw:ST.walk.yaw,pitch:ST.walk.pitch}:null});
   scenesSave(arr); renderScenes(); setStatus(statusLive,'장면 저장: '+name);
 }
 function sceneGo(i){
@@ -2525,6 +2676,7 @@ function sceneGo(i){
   if(ST.mode==='orbit'){ if(!!sc.ortho!==ST.ortho) setOrtho(!!sc.ortho); camera.position.fromArray(sc.p); orbit.target.fromArray(sc.t); if(ST.ortho) _orthoFit(); orbit.update(); camPush(); }
   else { camera.position.fromArray(sc.p); if(sc.walk){ ST.walk.yaw=sc.walk.yaw; ST.walk.pitch=sc.walk.pitch; } applyWalkCamera(); }
   if(!!sc.night!==ST.night) setNight(!!sc.night);
+  if(sc.sky&&sc.sky!==ST.sky) setSky(sc.sky);
   if(sc.ceil!=null&&sc.ceil!==ST.ceil[ST.mode]) toggleCeil();
   if(!!sc.xray!==ST.xray) setXray(!!sc.xray,true);
   if(typeof sc.sunT==='number') setSunT(sc.sunT);
@@ -2555,6 +2707,7 @@ const _vr=$('v-right'); if(_vr) _vr.onclick=()=>setView('right');
 const _vp=$('v-prev'); if(_vp) _vp.onclick=camPrev;
 const _vn=$('v-next'); if(_vn) _vn.onclick=camNext;
 $('b-light').onclick=()=>setLights(!ST.lightsOn);
+buildSky(); applySkyColors();   // 2026-09-07: 하늘·바닥 배경 (스케치업식)
 $('b-night').onclick=()=>setNight(!ST.night);
 $('b-ceil').onclick=()=>{ ST.ceil[ST.mode]=!ST.ceil[ST.mode]; refreshVisibility(); $('b-ceil').classList.toggle('on',ST.ceil[ST.mode]); };
 $('b-label').onclick=()=>{ ST.labels=!ST.labels; refreshVisibility(); $('b-label').classList.toggle('on',ST.labels); };
@@ -2579,10 +2732,13 @@ function setTray(on){ document.body.classList.toggle('tray-off',!on); refreshSty
 function refreshStylePanel(){
   const set=(id,on)=>{ const el=$(id); if(el) el.classList.toggle('on',!!on); };
   set('st-light',ST.lightsOn); set('st-night',ST.night); set('st-ceil',ST.ceil[ST.mode]);
+  set('st-sky',ST.sky!=='plain');
+  const sb=$('st-sky'); if(sb) sb.textContent=(ST.sky==='image'?'🖼 배경 그림':ST.sky==='sky'?'🌄 하늘·바닥':'🌑 단색');
   set('st-label',ST.labels); set('st-shadow',ST.shadows); set('st-axes',ST.axes);
   set('st-xray',ST.xray); set('st-ortho',ST.ortho);
   const mi=(id,on)=>{ const el=$(id); if(el){ el.classList.toggle('chk',!!on); el.classList.toggle('unchk',!on); } };
   mi('mi-light',ST.lightsOn); mi('mi-night',ST.night); mi('mi-ceil',ST.ceil[ST.mode]);
+  mi('mi-sky',ST.sky!=='plain');
   mi('mi-label',ST.labels); mi('mi-shadow',ST.shadows); mi('mi-axes',ST.axes);
   mi('mi-xray',ST.xray); mi('mi-ortho',ST.ortho);
   mi('mi-tray',!document.body.classList.contains('tray-off'));
@@ -2625,6 +2781,8 @@ function menuCmd(cmd){
     case 'save': saveFeedback(); break;
     case 'light': setLights(!ST.lightsOn); break;
     case 'night': setNight(!ST.night); break;
+    case 'sky': setSky(ST.sky==='plain'?'sky':'plain'); break;                 // 2026-09-07
+    case 'skyimg': pickSkyImage(); break;
     case 'ceil': toggleCeil(); break;
     case 'label': toggleLabels(); break;
     case 'shadow': setShadows(!ST.shadows); break;
@@ -2661,6 +2819,7 @@ document.querySelectorAll('.tsec .th').forEach(th=>{
   th.addEventListener('click',()=>{ const sec=th.parentElement; sec.classList.toggle('open'); if(sec.dataset.sec==='outline'&&sec.classList.contains('open')&&ST._olDirty!==false) renderOutliner(); });
 });
 const _stWire={'st-light':()=>setLights(!ST.lightsOn),'st-night':()=>setNight(!ST.night),'st-ceil':toggleCeil,
+  'st-sky':()=>setSky(ST.sky==='plain'?'sky':'plain'),
   'st-label':toggleLabels,'st-shadow':()=>setShadows(!ST.shadows),'st-axes':()=>setAxes(!ST.axes),
   'st-xray':()=>setXray(!ST.xray),'st-ortho':()=>setOrtho(!ST.ortho)};
 const _sun=$('st-sun'); if(_sun) _sun.addEventListener('input',()=>setSunT(_sun.value/100));
@@ -2687,7 +2846,7 @@ function loop(now){
   if(ST.mode==='orbit'){ if(orbit.enabled&&orbit.update()) needRender=true; }
   else { if(stepWalk(dt)) needRender=true; }
   if(ST.op) needRender=true;
-  if(needRender){ renderer.render(scene,camera); needRender=false; }
+  if(needRender){ drawFrame(); needRender=false; }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -2696,6 +2855,7 @@ connect();
 if(!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
 // 테스트·디버그 훅
 window.MC3DVIEW={ST,scene,get camera(){return camera;},renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
+  setSky,setSkyImage,buildSky,drawFrame,
   sendEdit,sendBatch,rotateSelected,deleteSelected3D,setTool,commitActive,cancelOp,menuCmd,openTraySec,setAxes,snap3,segHitsSpace,
   select,selectGroups,selectAll,boxSelect,selectSpaceGroup,selectWallNeighbors,findGroup,
   setOrtho,setXray,setSunT,setTag,camPrev,camNext,camPush,copySel,cutSel,pasteClip,lockSelected,hideSelected,unhideAll,

@@ -408,5 +408,26 @@ ck(/vcbShow\(\(copy\?'복사':'이동'\)[^;]*↑=높이\(Z\)/.test(v3Src),
   'Z 이동: 끌기를 시작하는 자리(VCB)에도 ↑ 안내');
 ck(/MOVABLE=new Set\([^)]*'mass'/.test(v3Src), 'Z 이동: 매스가 이동 대상');
 
+// ---- 2026-09-07 하늘·바닥 배경 (대표 지시 "스케치업처럼 배경을 바닥과 하늘로 나누고 나중에 배경을 입힐 수 있게") ----
+//  처음엔 반지름 900 짜리 공을 둘렀다 — 카메라 far 가 400 이라 통째로 잘려
+//  배경이 그대로 새까맣게 남았다. 그래서 화면을 덮는 판 한 장을 먼저 그리는
+//  방식으로 바꿨다. 이 세 가지가 다시 깨지면 배경이 검거나 까맣게 나온다.
+ck(!/SphereGeometry\(SKY_R/.test(v3Src), '하늘: far 밖으로 잘리는 큰 공 방식이 아니다');
+ck(/depthTest:false[\s\S]{0,200}gl_Position=vec4\(position\.xy,0\.0,1\.0\)/.test(v3Src)
+   || /gl_Position=vec4\(position\.xy,0\.0,1\.0\)/.test(v3Src), '하늘: 화면을 통째로 덮는 배경 판');
+ck(/function _c\(hex\)\{ return new THREE\.Vector3\(\(\(hex>>16\)/.test(v3Src),
+  '하늘: 색은 sRGB 바이트 그대로 — THREE.Color 로 바꾸면 선형값이 되어 새까마진다');
+ck(/function syncSky\(\)\{[\s\S]{0,120}camera\.updateMatrixWorld\(\)/.test(v3Src),
+  '하늘: 그리기 전에 카메라 행렬을 갱신한다 — 안 하면 지평선이 한 프레임 늦는다');
+ck(/camera\.isPerspectiveCamera\?camera\.fov:55/.test(v3Src),
+  '하늘: 평행투영은 가상 화각 — 안 그러면 화면이 한 색으로 뭉개진다');
+ck(/function drawFrame\(\)/.test(v3Src) && !/if\(needRender\)\{ renderer\.render\(scene,camera\); /.test(v3Src),
+  '하늘: 렌더 루프가 drawFrame 을 거친다');
+ck(/function screenshot\(\)\{\s*drawFrame\(\);/.test(v3Src), '하늘: PNG 저장에도 배경이 따라붙는다');
+ck(/function setSkyImage\(url\)/.test(v3Src) && /uHasTex/.test(v3Src),
+  '하늘: 나중에 배경 그림을 입힐 자리가 있다 (파노라마 한 장)');
+ck(/setNight\(on\)[\s\S]{0,400}applySkyColors\(\)/.test(v3Src) || /applyMood[\s\S]{0,600}applySkyColors\(\)/.test(v3Src),
+  '하늘: 주·야 전환을 배경도 따른다');
+
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');
