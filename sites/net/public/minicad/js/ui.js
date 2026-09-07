@@ -641,6 +641,17 @@ function refreshDetail(){
       Object.entries(SPACE_TYPES).map(([k,td])=>'<option value="'+k+'"'+(k===s.type?' selected':'')+'>'+td.name+'</option>').join('')+'</select></div>'+
       '<div class="field"><label class="field-label">개별 천장고 (mm)</label>'+
       '<input type="text" inputmode="decimal" id="d-ch" value="'+(s.ceilingHeight_mm||'')+'" placeholder="'+STATE.ceilingHeight+'"></div>'+
+      // 2026-09-07 Z축 4층: 빗천장이면 천장 물량이 경사 실면적으로 잡힌다
+      (function(){
+        const q=(typeof spCeilQty==='function')?spCeilQty(s):null;
+        if(!q) return '';
+        const cm=spCeilMass(s);
+        return '<div style="margin:2px 0 8px;padding:7px 9px;background:rgba(47,97,147,0.10);'+
+          'border:1px solid rgba(47,97,147,0.38);border-radius:4px;font-size:11px;color:#5D8BB8">'+
+          '▣ <b>빗천장</b> — '+escapeHtml((cm&&cm.name)||'매스')+' · 천장 <b>'+q.ceilAll.toFixed(2)+'㎡</b>'+
+          ' (평면 '+spArea(s).toFixed(2)+'㎡ · 물매 '+pitchOf(q.maxTilt)+'/10 ∠'+Math.round(q.maxTilt)+'°)'+
+          '<button class="btn sm" id="sp-ceilmass" style="width:100%;margin-top:5px">평천장으로 되돌리기</button></div>';
+      })()+
       // v5.8: 바닥재 / 벽자재 드롭다운
       '<div class="field-row"><div class="field"><label class="field-label">바닥재</label>'+
       '<select id="d-floor">'+
@@ -714,6 +725,13 @@ function refreshDetail(){
       s.floorMaterial=dm.floor;
       STATE.walls.filter(w=>w.spaceId===s.id&&!w.isLine).forEach(w=>w.finishMaterial=dm.wall);
       renderAll();refreshUI();
+    });
+    const _spcm=document.getElementById('sp-ceilmass');
+    if(_spcm) _spcm.addEventListener('click',()=>{
+      delete s.ceilMassId;
+      saveHistory();renderAll();refreshUI();
+      showStatus('평천장으로 — 천장 물량은 다시 평면 면적('+spArea(s).toFixed(2)+'㎡)');
+      if(typeof push3D==='function') push3D(true);
     });
     document.getElementById('d-ch').addEventListener('change',e=>{s.ceilingHeight_mm=e.target.value?parseInt(e.target.value):null;refreshUI();});
     document.getElementById('d-floor').addEventListener('change',e=>{s.floorMaterial=e.target.value;saveHistory();refreshUI();showStatus('바닥재: '+FLOOR_MATERIALS[e.target.value].name);});
@@ -1564,7 +1582,9 @@ function computeQty(catKey,c){
   }else if(c.applies==='ceiling'){
     STATE.spaces.forEach(s=>{
       if(c.spaces&&!c.spaces.includes(s.type)) return;
-      qty+=spArea(s);
+      // 2026-09-07 Z축: 빗천장이면 눕힌 넓이가 아니라 비탈을 따라간 실면적.
+      //  평면 면적으로 잡으면 도배·천장재가 물매만큼 모자란다.
+      qty+=spCeilArea(s);
     });
   }else if(c.applies==='perimeter'){
     STATE.spaces.forEach(s=>{
@@ -2469,7 +2489,22 @@ function _msZTable(m){
     (flat?'<div class="hint" style="margin-top:6px">한 칸만 다르게 넣으면 빗천장이 됩니다.</div>'
         :'<div class="hint" style="margin-top:6px">경사 천장 '+(q?q.ceilAll:0)+'㎡'+pitch+' · 부피 '+
           ((typeof massVolume==='function')?massVolume(m,ctx):0)+'㎥</div>')+
+    _msCeilRow(m,flat)+
     '</div>';
+}
+// 이 매스를 어느 방의 천장으로 삼을 것인가 (2026-09-07 Z축 4층 · 설계서 B)
+//  자동으로 붙이지 않는다 — 천장 면적이 곧 도배·도장 금액이라, 사람이 정해야 한다.
+function _msCeilRow(m,flat){
+  if(flat) return '';
+  const own=(STATE.spaces||[]).find(sp=>sp.ceilMassId===m.id);
+  if(own) return '<div style="margin-top:6px;font-size:11px;color:#C9A961">▣ <b>'+
+    escapeHtml(own.name||'방')+'</b> 의 천장 — 천장 물량이 경사 실면적으로 잡힙니다'+
+    '<button class="btn sm" id="ms-ceil-off" style="margin-top:4px;width:100%">천장 지정 해제</button></div>';
+  const over=(typeof massOverSpace==='function')?massOverSpace(m):null;
+  if(!over) return '<div class="hint" style="margin-top:6px">방 위에 올려놓고 [천장으로 지정] 하면 그 방의 천장 물량이 됩니다.</div>';
+  return '<div style="margin-top:6px"><button class="btn sm" id="ms-ceil" style="width:100%">▣ 「'+
+    escapeHtml(over.name||'방')+'」 의 천장으로 지정</button>'+
+    '<div class="hint" style="margin-top:4px">지정하면 그 방의 천장 ㎡ 가 경사 실면적으로 바뀝니다 (견적 반영).</div></div>';
 }
 function _msZWire(m){
   if(typeof massVertZ!=='function') return;
@@ -2490,6 +2525,18 @@ function _msZWire(m){
     const hi=Math.max(...top.map(p=>p.z));
     massSetTop(m,hi,ctx);
     done('윗면을 '+hi+'mm 로 평평하게');
+  });
+  const on=document.getElementById('ms-ceil');
+  if(on) on.addEventListener('click',()=>{
+    const sp=massOverSpace(m); if(!sp){showStatus('매스 아래에 방이 없습니다');return;}
+    (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===m.id) delete x.ceilMassId; });
+    sp.ceilMassId=m.id;
+    done('▣ 「'+(sp.name||'방')+'」 천장 = 이 매스 — 천장 '+spCeilArea(sp).toFixed(2)+'㎡ (경사 실면적)');
+  });
+  const off=document.getElementById('ms-ceil-off');
+  if(off) off.addEventListener('click',()=>{
+    (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===m.id) delete x.ceilMassId; });
+    done('천장 지정 해제 — 천장 물량은 다시 평면 면적으로');
   });
   const cb=document.getElementById('ms-zch');
   if(cb) cb.addEventListener('click',()=>{
@@ -4225,14 +4272,22 @@ function printP2Capacity(L){
           colW:Math.floor(((availW-(cols-1)*P2_GAP_MM)/cols)*10)/10};
 }
 function _p2RowMm(b,cap){
-  const w=(cap&&cap.colW)||P2_COL_MM;
+  let w=(cap&&cap.colW)||P2_COL_MM;
+  if(!isFinite(w)||w<=0) w=P2_COL_MM;
   const base=4.9+((b&&b.cols===5)?200:170)/Math.max(30,w);
-  return Math.round(base*1.12*100)/100;   // 12% 여유 — 어긋나도 잘리지 않고 장이 늘 뿐이다
+  const rh=Math.round(base*1.12*100)/100;   // 12% 여유 — 어긋나도 잘리지 않고 장이 늘 뿐이다
+  return (isFinite(rh)&&rh>0)?rh:P2_ROW_MM; // 2026-09-07: 절대 0·NaN 을 내보내지 않는다 (아래 조판이 멈춘다)
 }
 // 표를 칸에 차례로 채운다 — 칸이 차면 옆 칸으로, 칸이 다 차면 다음 장으로.
 //  표가 끝났다고 칸을 새로 열지 않는다 (작은 표들이 한 칸에 모이도록).
 //  남은 줄은 '(계속)' 제목을 달고 이어 붙인다.
 function _p2Pack(blocks,cap){
+  // 2026-09-07: 종이 크기가 하나라도 이상하면 rh 가 NaN 이 되고, room 이 NaN 이면
+  //  take 가 빈 배열이라 i 가 안 늘어 **인쇄를 누른 순간 앱이 통째로 멈춘다**.
+  //  실제로 걸렸다. 조판은 어떤 입력에도 반드시 끝나야 한다.
+  const H=(cap&&isFinite(cap.h)&&cap.h>0)?cap.h:200;
+  const COLS=(cap&&isFinite(cap.cols)&&cap.cols>=1)?cap.cols:1;
+  cap=Object.assign({},cap,{h:H,cols:COLS});
   const pages=[];
   let page=[],col=[],used=0;
   const newCol=()=>{
@@ -4245,12 +4300,13 @@ function _p2Pack(blocks,cap){
     let i=0, first=true;
     do{
       if(cap.h-used-P2_HEAD_MM<rh*2) newCol();
-      const room=Math.max(1,Math.floor((cap.h-used-P2_HEAD_MM)/rh));
+      let room=Math.floor((cap.h-used-P2_HEAD_MM)/rh);
+      if(!isFinite(room)||room<1) room=1;      // 한 줄은 반드시 담는다 — 안 그러면 영영 안 끝난다
       const take=b.rows.slice(i,i+room);
       const done=(i+take.length>=b.rows.length);
       col.push({title:b.title+(first?'':' (계속)'),head:b.head,rows:take,foot:done?b.foot:'',cols:b.cols||4});
       used+=P2_HEAD_MM+(take.length+((done&&b.foot)?1:0))*rh+3;   // 표 사이 간격 3mm
-      i+=take.length;
+      i+=Math.max(1,take.length);              // 최후의 안전핀: 무슨 일이 있어도 앞으로 간다
       first=false;
     }while(i<b.rows.length);
   });
@@ -4313,12 +4369,26 @@ function buildPrintPage2(L,info){
       '<td class="r">'+p.toFixed(2)+'</td></tr>';
   });
   // 걸레받이·천장 몰딩
+  let TC=0;
   const finRows=sps.map(sp=>{
     const b=spBaseboard(sp), m=spMolding(sp);
-    TB+=b;TM+=m;
+    const ca=spCeilArea(sp), tl=spCeilTilt(sp);   // 2026-09-07 Z축: 빗천장은 실면적
+    TB+=b;TM+=m;TC+=ca;
     return '<tr><td>'+escapeHtml(sp.name||((SPACE_TYPES[sp.type]&&SPACE_TYPES[sp.type].name)||sp.type))+'</td>'+
       '<td class="r">'+b.toFixed(2)+'</td><td class="r">'+m.toFixed(2)+'</td>'+
-      '<td class="r">'+spArea(sp).toFixed(2)+'</td></tr>';
+      '<td class="r">'+ca.toFixed(2)+(tl?(' <b>∠'+Math.round(tl)+'°</b>'):'')+'</td></tr>';
+  });
+  // 경사 천장·매스 물량 — 도배·도장·천장재가 물매만큼 더 든다
+  const slopeMasses=(STATE.masses||[]).filter(m=>typeof massIsPrism==='function'&&!massIsPrism(m));
+  let TS=0,TV=0;
+  const slopeRows=slopeMasses.map(m=>{
+    const q=massQuantities(m,massCtx()), v=massVolume(m,massCtx());
+    const own=(STATE.spaces||[]).find(sp=>sp.ceilMassId===m.id);
+    TS+=q.slope;TV+=v;
+    return '<tr><td>'+escapeHtml(m.name||'매스')+(own?(' <b>('+escapeHtml(own.name||'방')+' 천장)</b>'):'')+'</td>'+
+      '<td class="r">'+q.slope.toFixed(2)+'</td><td class="r">'+q.ceilAll.toFixed(2)+'</td>'+
+      '<td class="r">'+pitchOf(q.maxTilt)+'/10 (∠'+Math.round(q.maxTilt)+'°)</td>'+
+      '<td class="r">'+v.toFixed(2)+'</td></tr>';
   });
   // 창호 물량 — 面적(㎡)·才
   let TA=0,TJ=0;
@@ -4339,7 +4409,12 @@ function buildPrintPage2(L,info){
        '<th class="r">'+TWP.toFixed(2)+'</th><th class="r">'+TP.toFixed(2)+'</th></tr>'},
     {title:'걸레받이·몰딩',head:'<tr><th>실명</th><th>걸레받이m</th><th>천장몰딩m</th><th>천장㎡</th></tr>',
      rows:finRows,foot:'<tr><th>합계</th><th class="r">'+TB.toFixed(2)+'</th>'+
-       '<th class="r">'+TM.toFixed(2)+'</th><th class="r">'+info.area+'</th></tr>'},
+       '<th class="r">'+TM.toFixed(2)+'</th><th class="r">'+TC.toFixed(2)+'</th></tr>'},
+    // 2026-09-07 Z축 4층: 빗천장이 물량으로 — 경사는 실면적, 부피는 단열·철거용
+    {title:'경사 천장·매스 (실면적)',cols:5,
+     head:'<tr><th>이름</th><th>경사㎡</th><th>천장계㎡</th><th>물매</th><th>부피㎥</th></tr>',
+     rows:slopeRows,foot:'<tr><th>합계</th><th class="r">'+TS.toFixed(2)+'</th>'+
+       '<th class="r">-</th><th class="r">-</th><th class="r">'+TV.toFixed(2)+'</th></tr>'},
     {title:'창호 물량 (1才 = 303×303)',cols:5,
      head:'<tr><th>NO</th><th>종별·형식</th><th>W×H</th><th>㎡</th><th>才</th></tr>',
      rows:winRows,foot:'<tr><th colspan="3">합계 ('+(TA/3.3058).toFixed(1)+'평)</th>'+
@@ -5444,7 +5519,7 @@ document.getElementById('btn-circuits').addEventListener('click',toggleCircuits)
 //  [🧊 3D]/`3d` → 3d/index.html 을 새 탭으로. 문서는 localStorage 로 처음 넘기고,
 //  이후에는 BroadcastChannel('minicad-3d') 로 saveHistory 때마다(300ms 묶음) 흘려보내 평면 수정이 바로 입체에 반영된다.
 //  3D 탭이 먼저 열려 있으면 'hello' 를 보내오므로 그때부터 전송을 켠다. 페이로드는 buildAutosavePayload(경량).
-const MC_PROTO=7; // 2026-09-07 Z축 — 꼭짓점 높이(setz·settop·zref). 6 = 점·선·면(스케치 op·extrude·매스) // 미니캐드↔미니폼 메시지 프로토콜 버전 — op 추가/변경 시 양쪽(view3d.js MF_PROTO) 같이 올릴 것
+const MC_PROTO=8; // 2026-09-07 Z축 4층 — 매스를 방의 천장으로(ceilmass). 7 = 꼭짓점 높이(setz·settop·zref). 6 = 점·선·면(스케치 op·extrude·매스) // 미니캐드↔미니폼 메시지 프로토콜 버전 — op 추가/변경 시 양쪽(view3d.js MF_PROTO) 같이 올릴 것
 let _view3dChan=null,_view3dTimer=null,_view3dLive=false;
 function _view3dPayload(){
   // getter(polygon·x1..y2)를 값으로 굳힌다 — structured clone 은 접근자를 못 옮길 수 있다
@@ -5777,7 +5852,7 @@ function apply3DEdit(m){
   // 버전 어긋남 자가 진단 — 옛 창이 모르는 명령을 조용히 삼키지 않는다 (2026-09-04: "면이 생성 안 됨" 원인)
   if(!['undo','redo','add','addwall','addrect','addspace','splitspace','addcircle','move','rotate','delete','set','clone','lock','batch',
        'sketchline','sketchrect','sketchcircle','sketchpoly','extrude','sketchdel','sketchclear','massconvert',
-       'setz','settop','zref'].includes(m.op)){ // 6=점·선·면 · 7=꼭짓점 높이(2026-09-07 Z축)
+       'setz','settop','zref','ceilmass'].includes(m.op)){ // 6=점·선·면 · 7=꼭짓점 높이 · 8=천장 지정
     showStatus('⚠ 알 수 없는 3D 명령('+m.op+') — 미니캐드 창을 새로고침(F5) 하세요');
     return false;
   }
@@ -5790,6 +5865,7 @@ function apply3DEdit(m){
   if(m.op==='addspace'||m.op==='splitspace'||m.op==='addcircle') return _apply3DFace(m); // 점·선·면 구조: 면 생성 / 면 위 선 = 분할 / 원(C)
   if(m.op.startsWith('sketch')||m.op==='extrude'||m.op==='massconvert') return _apply3DSketch(m); // 2026-09-04 프로토콜 6: 스케치(점·선·면) + 면→객체
   if(m.op==='setz'||m.op==='settop'||m.op==='zref') return _apply3DZ(m);   // 2026-09-07 프로토콜 7: 꼭짓점 높이
+  if(m.op==='ceilmass') return _apply3DCeilMass(m);                        // 프로토콜 8: 매스를 방의 천장으로
   if(!m.kind||!m.id) return false;
   const arrName=_CLIP_KIND2ARR[m.kind];
   if(!arrName) return false;
@@ -5922,6 +5998,32 @@ function _apply3DWall(m){
 //   settop {id, z}                  윗면 통째 (각기둥이면 각기둥인 채로)
 //   zref   {id, verts:[i], r, o}    그 꼭짓점을 천장고·층높이에 매단다
 // ---------------------------------------------------------------------------
+// 프로토콜 8 — 매스를 아래 방의 천장으로 (2026-09-07 Z축 4층)
+//  어느 방인지는 평면이 판단한다(massOverSpace). 3D 는 '이 매스' 만 가리킨다.
+function _apply3DCeilMass(m){
+  const p=m.patch||{};
+  if(!p.id) return false;
+  if(m.floorId&&m.floorId!==STATE.activeFloorId){showStatus('잠든 층의 천장 지정은 그 층으로 전환 후');return false;}
+  const mass=(STATE.masses||[]).find(x=>x&&x.id===p.id);
+  if(!mass){showStatus('천장 지정: 매스를 찾지 못했습니다');return false;}
+  if(p.off){
+    let n=0;
+    (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===p.id){delete x.ceilMassId;n++;} });
+    if(!n) return false;
+    saveHistory();renderAll();refreshUI();
+    if(!_3dBatch){showStatus('평천장으로 되돌림');if(typeof push3D==='function')push3D(true);}
+    return true;
+  }
+  if(massIsPrism(mass)){showStatus('평평한 매스는 천장으로 삼을 이유가 없습니다 — 먼저 꼭짓점을 기울이세요');return false;}
+  const sp=massOverSpace(mass);
+  if(!sp){showStatus('매스 아래에 방이 없습니다 — 방 위로 옮긴 뒤 다시');return false;}
+  (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===p.id) delete x.ceilMassId; });
+  sp.ceilMassId=p.id;
+  saveHistory();renderAll();refreshUI();
+  if(!_3dBatch){showStatus('▣ 「'+(sp.name||'방')+'」 천장 = '+(mass.name||'매스')+' — 천장 '+spCeilArea(sp).toFixed(2)+'㎡ (경사 실면적)');
+    if(typeof push3D==='function')push3D(true);}
+  return true;
+}
 function _apply3DZ(m){
   const p=m.patch||{};
   const active=!m.floorId||m.floorId===STATE.activeFloorId;

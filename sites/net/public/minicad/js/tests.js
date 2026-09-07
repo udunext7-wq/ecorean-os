@@ -5348,8 +5348,59 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       &&JSON.stringify(_msZParse('FH',_zctx))==='{"r":"fh","o":0}');
     assert('Z22: 숫자는 숫자로',_msZParse('2700',_zctx)===2700);
     assert('Z23: 헛소리는 null',_msZParse('가나다',_zctx)===null);
+    // 14) Z축 4층 — 빗천장이 돈이 된다 (경사 실면적 → 견적)
+    //  손계산: 4×3m 방, 한 변만 1200 올린 빗천장.
+    //  경사면 실면적 = 4000 × √(3000²+1200²)/1e6 = 4 × 3.23110... = 12.9244㎡
+    STATE.masses=[]; STATE.spaces=[];
+    addSpace([{x:0,y:0},{x:4000,y:0},{x:4000,y:3000},{x:0,y:3000}]);
+    const _zsp=STATE.spaces[STATE.spaces.length-1];
+    _zsp.name='다락';
+    const _zcm=massFromPoly([{x:0,y:0},{x:4000,y:0},{x:4000,y:3000},{x:0,y:3000}],2400);
+    assert('Z25: 지정 전에는 평면 면적 그대로',Math.abs(spCeilArea(_zsp)-12)<0.001,spCeilArea(_zsp)+'㎡');
+    massVertZ(_zcm,6,3600,massCtx()); massVertZ(_zcm,7,3600,massCtx());   // 한 변만 1200 올림
+    assert('Z26: 평평한 매스는 천장으로 못 삼는다(3D)',
+      apply3DEdit({type:'edit',op:'ceilmass',floorId:_skAct,patch:{id:massFromPoly([{x:20000,y:20000},{x:21000,y:20000},{x:21000,y:21000},{x:20000,y:21000}],500).id}})===false);
+    assert('Z27: ceilmass(3D) 로 아래 방의 천장이 된다',
+      apply3DEdit({type:'edit',op:'ceilmass',floorId:_skAct,patch:{id:_zcm.id}})===true&&_zsp.ceilMassId===_zcm.id);
+    const _zca=spCeilArea(_zsp);
+    assert('Z28: 천장이 경사 실면적 12.9244㎡ (평면 12㎡ 가 아니다)',Math.abs(_zca-12.9244)<0.002,_zca+'㎡');
+    assert('Z29: 물매·기울기도 나온다',spCeilTilt(_zsp)>0&&pitchOf(spCeilTilt(_zsp))===4,
+      '∠'+spCeilTilt(_zsp)+'° · '+pitchOf(spCeilTilt(_zsp))+'/10');
+    // 견적 물량이 실제로 커진다
+    const _zqty=computeQty('x',{applies:'ceiling'});
+    assert('Z30: 견적 천장 물량이 경사 실면적으로',Math.abs(_zqty-12.9244)<0.002,_zqty);
+    // 천장고를 고쳐도 매달리지 않은 숫자 높이는 그대로 (참조가 아니므로)
+    // 부속표 — 표가 서고, 종이 크기가 이상해도 조판이 반드시 끝난다
+    //  (L 을 빈 객체로 주면 rh 가 NaN 이 되어 인쇄를 누른 순간 앱이 멈췄다. 실제로 걸렸다.)
+    const _zp2=buildPrintPage2({},{area:'12.00',py:'3.6'})||'';
+    assert('Z31: 부속표에 경사 천장 표가 선다',/경사 천장·매스/.test(_zp2),_zp2.length+'자');
+    assert('Z31b: 종이 값이 망가져도 조판이 끝난다 (무한루프 방어)',_zp2.length>200);
+    // 걸레받이·몰딩 표의 '천장㎡' 열도 경사 실면적이어야 한다 — 그 표 안만 들여다본다
+    //  (경사 천장 표에는 어차피 12.92 가 있으므로, 문서 전체를 뒤지면 시험이 무뎌진다)
+    const _mi=_zp2.indexOf('천장몰딩m'), _si=_zp2.indexOf('경사 천장·매스');
+    const _mseg=(_mi>=0)?_zp2.slice(_mi,(_si>_mi)?_si:undefined):'';
+    assert('Z31c: 걸레받이·몰딩 표의 천장㎡ 가 경사 실면적',/12\.92/.test(_mseg)&&!/>12\.00</.test(_mseg),
+      _mseg.slice(0,160));
+    // 해제
+    assert('Z32: ceilmass off 로 평천장 복귀',
+      apply3DEdit({type:'edit',op:'ceilmass',floorId:_skAct,patch:{id:_zcm.id,off:true}})===true&&!_zsp.ceilMassId);
+    assert('Z33: 되돌리면 천장도 평면 면적으로',Math.abs(spCeilArea(_zsp)-12)<0.001,spCeilArea(_zsp)+'㎡');
+    // 매스가 지워져도 안전해야 한다 (죽은 참조)
+    _zsp.ceilMassId='없는매스';
+    assert('Z34: 죽은 참조는 평면 면적으로 떨어진다',Math.abs(spCeilArea(_zsp)-12)<0.001);
+    delete _zsp.ceilMassId;
+    // 패널
+    selectObj('masses',_zcm.id); refreshUI();
+    assert('Z35: 매스 패널에 [천장으로 지정]',!!document.getElementById('ms-ceil'));
+    document.getElementById('ms-ceil').click();
+    assert('Z36: 눌러서 지정된다',_zsp.ceilMassId===_zcm.id);
+    selectObj('space',_zsp.id); refreshUI();
+    assert('Z37: 공간 패널에 빗천장 표시',!!document.getElementById('sp-ceilmass'));
+    document.getElementById('sp-ceilmass').click();
+    assert('Z38: 공간 패널에서 되돌릴 수 있다',!_zsp.ceilMassId);
+    STATE.masses=[];
     // 프로토콜 번호 — 두 창이 짝이어야 한다
-    assert('Z24: 프로토콜 7',MC_PROTO===7);
+    assert('Z24: 프로토콜 8',MC_PROTO===8);
     STATE.masses=[];
     applyLoadedData(_skBak);
     assert('SK39: 원상복구',STATE.activeFloorId===_skAct&&(STATE.masses||[]).length===_skBak.masses.length);

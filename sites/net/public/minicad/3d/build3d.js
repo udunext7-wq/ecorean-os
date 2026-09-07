@@ -659,6 +659,9 @@ function buildFloorScene(D,libs){
   (D.sketchPts||[]).forEach(p=>objects.push(buildSketchPt(p)));
   (D.masses||[]).forEach(m=>{
     const o=buildMass(m); objects.push(o);
+    // 2026-09-07 Z축 4층: 어느 방의 천장으로 지정됐는지 (3D 패널이 보여 준다)
+    const _own=(D.spaces||[]).find(sp=>sp&&sp.ceilMassId===m.id);
+    if(_own) o.meta.ceilOf=_own.name||'방';
     const c=polyCentroid(massAbsPoly(m));
     const tilt=(o.meta&&o.meta.maxTilt)?(' ∠'+o.meta.maxTilt+'°'):'';
     labels.push({id:m.id,x:c.x,y:c.y,z:num(m.elev_mm,0)+o.meta.h_mm+80,

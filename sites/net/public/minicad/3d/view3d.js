@@ -2521,6 +2521,13 @@ function rotateSelected(deg){
   const ops=gs.map(g=>{ const o=g.userData.obj; o.rot=(((o.rot||0)+deg)%360+360)%360; g.rotation.y=-o.rot*Math.PI/180; return {op:'rotate',kind:KINDMAP[o.kind],id:o.id,floorId:o.floorId,patch:{angle:o.rot}}; });
   sendBatch(ops,'회전'); invalidate(true);
 }
+// 매스를 아래 방의 천장으로 (혹은 해제) — 어느 방인지는 평면이 판단한다(massOverSpace)
+function ceilMass3D(o,off){
+  if(!chan||!o||o.kind!=='mass') return;
+  if(!_floorAwake(o.floorId)){ _sleepNote('천장 지정은 할 수 없습니다'); return; }
+  chan.postMessage({type:'edit',op:'ceilmass',floorId:o.floorId,patch:{id:o.id,off:!!off}});
+  setStatus(statusLive,off?'평천장으로 되돌림 (평면 반영)':'▣ 아래 방의 천장으로 — 천장 물량이 경사 실면적으로 (평면 반영)');
+}
 function massConvert3D(o,as){ if(!chan||!o||o.kind!=='mass') return; if(!_floorAwake(o.floorId)){ _sleepNote('매스는 바꿀 수 없습니다'); return; } chan.postMessage({type:'edit',op:'massconvert',floorId:o.floorId,patch:{id:o.id,as}}); setStatus(statusLive,'매스 → '+(as==='wall'?'벽':'공간')+' 전환 (평면 반영)'); }
 function deleteGroups(gs){
   const ok=gs.filter(g=>{ const o=g.userData.obj; return o&&(MOVABLE.has(o.kind)||o.kind==='door'||o.kind==='window'||SKETCH_KINDS.has(o.kind))&&!o.locked; });
@@ -2604,6 +2611,13 @@ function renderProps(obj,opts){
     html+=`<div class="p-row"><label>면적</label><span style="font-size:12px">${((m.area||0)/1e6).toFixed(2)} ㎡ · 부피 ${((m.area||0)*(m.h_mm||0)/1e9).toFixed(2)} ㎥</span></div>`;
     html+=`<div class="p-row"><label>색</label><input type="color" data-f="color" value="${m.color||'#B9C6D2'}"></div>`;
     html+=`<div class="p-btns"><button class="btn" data-a="rotl" title="반시계 15° (Shift+R)">↺ 15°</button><button class="btn" data-a="rotr" title="시계 15° (R)">↻ 15°</button><button class="btn" data-a="lock">🔒 잠금</button></div>`;
+    // 2026-09-07 Z축 4층: 기울어진 매스는 방의 천장으로 삼을 수 있다 (천장 물량이 경사 실면적으로)
+    if(m.solid){
+      html+=m.ceilOf
+        ? `<div class="p-row"><label>천장</label><span style="font-size:12px;color:#C9A961">▣ <b>${m.ceilOf}</b> 의 천장</span></div>
+           <div class="p-btns"><button class="btn" data-a="ceiloff">평천장으로 되돌리기</button></div>`
+        : `<div class="p-btns"><button class="btn" data-a="ceilon" title="이 매스 아래 방의 천장으로 삼습니다 — 천장 ㎡ 가 경사 실면적이 되어 견적에 반영됩니다">▣ 아래 방의 천장으로</button></div>`;
+    }
     html+=`<div class="p-btns"><button class="btn" data-a="tosp">▣ 공간으로</button><button class="btn" data-a="towl">▬ 벽으로</button><button class="btn danger" data-a="del">🗑 삭제</button></div>`;
     html+=`<div class="p-note"><b style="color:#7FA8D4">파란 점(꼭짓점)을 끌면 그 점만 위아래로</b> — Shift=모서리 두 점 · Ctrl=천장고에 매달기(CH-300) · 숫자=정확한 높이 · 더블클릭=직전 높이 반복.<br>끌기=이동 · ↑=띄우기 · Q 회전 · P 윗면=높이 · Ctrl+끌기=복제 — 필요할 때 공간(바닥·천장·벽)이나 벽으로 바꿉니다.</div>`;
   }else if(obj.kind==='sketchFace'){
@@ -2669,6 +2683,8 @@ function renderProps(obj,opts){
       else if(a==='del') deleteSelected3D();
       else if(a==='lock') lockSelected(true);
       else if(a==='copy') copySel();
+      else if(a==='ceilon') ceilMass3D(obj,false);        // 2026-09-07 Z축 4층
+      else if(a==='ceiloff') ceilMass3D(obj,true);
       else if(a==='tosp') massConvert3D(obj,'space');
       else if(a==='towl') massConvert3D(obj,'wall');
       else if(a==='ext'){ const zi=props.querySelector('[data-f="_z"]'), ai=props.querySelector('[data-f="_as"]'); const z=Math.round(Number(zi&&zi.value)); // 2026-09-04 면 → 객체
@@ -2854,9 +2870,10 @@ function loadStored(){
   }catch(e){ console.warn('[3D] 저장본 읽기 실패',e); }
   return false;
 }
-const MF_PROTO=7; // 미니캐드(ui.js MC_PROTO)와 짝 — 어긋나면 새로고침 안내
+const MF_PROTO=8; // 미니캐드(ui.js MC_PROTO)와 짝 — 어긋나면 새로고침 안내
                   //  6 = 점·선·면 스케치 + 매스 (2026-09-04)
                   //  7 = 꼭짓점 높이 setz·settop·zref (2026-09-07 Z축)
+                  //  8 = 매스를 방의 천장으로 ceilmass (2026-09-07 Z축 4층)
 function connect(){
   if(typeof BroadcastChannel==='undefined') return;
   chan=new BroadcastChannel('minicad-3d');

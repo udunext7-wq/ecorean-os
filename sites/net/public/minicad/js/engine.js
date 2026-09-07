@@ -755,6 +755,35 @@ function spArea(s){
   return Math.max(0,a)/1e6;
 }
 function spPeri(s){return polyPeri(s.polygon)/1000;}
+// ---------------------------------------------------------------------------
+// 빗천장 — 공간이 제 천장을 안다 (2026-09-07 Z축 4층 · 설계서 B)
+//  공간을 자유 다면체로 바꾸면 바닥재·천장고·둘레를 아는 성질이 사라진다. 대신
+//  공간이 '천장 매스' 하나를 가리키게 한다. 공간은 여전히 공간이고 천장만 기운다.
+//  천장 면적은 눕힌 넓이가 아니라 비탈을 따라간 실면적 — 도배·도장이 그만큼 더 든다.
+// ---------------------------------------------------------------------------
+function spCeilMass(s){
+  if(!s||!s.ceilMassId||typeof massIsPrism!=='function') return null;
+  const m=(STATE.masses||[]).find(x=>x&&x.id===s.ceilMassId);
+  if(!m||massIsPrism(m)) return null;   // 각기둥이면 평천장과 다를 게 없다
+  return m;
+}
+function spCeilQty(s){
+  const m=spCeilMass(s);
+  if(!m) return null;
+  const q=massQuantities(m,massCtx());
+  return (q&&q.ceilAll>0)?q:null;
+}
+function spCeilArea(s){
+  const q=spCeilQty(s);
+  return q?q.ceilAll:spArea(s);
+}
+function spCeilTilt(s){ const q=spCeilQty(s); return q?(q.maxTilt||0):0; }
+// 이 매스를 천장으로 삼을 만한 공간 — 매스 무게중심이 들어앉은 방
+function massOverSpace(m){
+  if(!m||typeof massAbsPoly!=='function') return null;
+  const c=skPolyCentroid(massAbsPoly(m));
+  return (STATE.spaces||[]).find(s=>s.polygon&&s.polygon.length>=3&&skPtInPoly(c,s.polygon))||null;
+}
 function spCH(s){return s.ceilingHeight_mm||STATE.ceilingHeight;}
 function spWall(s){
   // v5.9: 내력벽은 KPI/적산에서 제외 (보여주기 전용)
