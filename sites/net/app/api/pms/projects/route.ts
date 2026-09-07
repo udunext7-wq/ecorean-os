@@ -14,9 +14,16 @@ type SaveResult = { status: string; updated_at: string; server_data: unknown };
 
 /** DB 함수가 올린 예외를 화면이 알아들을 수 있는 응답으로 바꾼다 */
 function rpcFail(message: string) {
-  if (message.includes('EDIT_LOCKED')) {
+  // 남이 만든 공정표를 바꾸려 한 경우 — 작성자를 함께 알려준다
+  const owner = /LOCKED_OWNER:([^\s"]+)/.exec(message)?.[1];
+  if (owner || message.includes('EDIT_LOCKED')) {
+    const who = owner ? owner.split('@')[0] : '다른 직원';
     return NextResponse.json(
-      { error: 'EDIT_LOCKED', message: '공정표가 편집 잠금 상태입니다. 편집 암호를 입력해 잠금을 풀어 주세요.' },
+      {
+        error: 'EDIT_LOCKED',
+        owner: owner ?? null,
+        message: `${who} 님이 작성한 공정표입니다. 변경하려면 잠금 암호가 필요합니다.`,
+      },
       { status: 423 },
     );
   }
@@ -43,7 +50,7 @@ export async function GET(request: NextRequest) {
   const serverTime = new Date().toISOString();
   let q = supabase
     .from('pms_projects')
-    .select('id,data,deleted_at,updated_at,updated_email')
+    .select('id,data,deleted_at,updated_at,updated_email,created_email')
     .order('updated_at', { ascending: true });
   // since 가 있으면 변경분만 (삭제 묘비도 함께 내려 다른 PC 에서 지워지도록)
   if (since) q = q.gt('updated_at', since);

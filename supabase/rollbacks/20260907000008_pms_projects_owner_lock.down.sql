@@ -1,0 +1,5 @@
+-- 되돌리기: 작성자 잠금 해제 (누구나 남의 공정표를 바꿀 수 있게 된다)
+-- 20260907000007 의 pms_project_save(기존 행 변경 시 공용 암호만 확인) 정의로 되돌린 뒤,
+-- 필요하면 아래 컬럼을 제거한다.
+-- alter table public.pms_projects drop column if exists created_by;
+-- alter table public.pms_projects drop column if exists created_email;

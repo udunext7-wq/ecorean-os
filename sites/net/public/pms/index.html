@@ -171,6 +171,7 @@ table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-i
 .proj-bar{height:5px;border-radius:3px;background:#f0ede6;margin-top:9px;overflow:hidden}
 .proj-bar i{display:block;height:100%;border-radius:3px}
 .proj-when{font-size:10.5px;color:#8b8271;margin-top:7px}
+.proj-own{font-size:10px;color:#a49a86;margin-top:4px}
 
 @media (max-width:900px){
   .dash{grid-template-columns:1fr;gap:14px}
@@ -395,8 +396,8 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
     <div>
       <h2 style="font-size:18px">프로젝트 목록</h2>
-      <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. <b style="color:#185fa5">작성은 누구나 자유롭게 할 수 있습니다.</b>
-        <span style="color:#b8860b">자동 저장되지 않습니다 — 다 고친 뒤 <b>☁ 서버 저장</b>을 누르세요. 이미 저장된 공정표를 바꿔 저장할 때만 작성자 암호를 묻습니다.</span></p>
+      <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. <b style="color:#185fa5">공정표는 만든 사람이 주인입니다.</b>
+        <span style="color:#b8860b">내가 만든 것은 자유롭게 고치고 <b>☁ 서버 저장</b>(자동 저장 없음). 남이 만든 공정표를 바꾸려면 잠금 암호가 필요합니다.</span></p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
       <button class="btn" id="srvSaveBtn2" onclick="projSaveNow()" style="font-size:11px;padding:6px 14px;font-weight:700"
@@ -1359,6 +1360,8 @@ function renderProjects(){
     h+='<div class="proj-when">'+p.startDate+' → '+calKey(e)+' · '+r.td+'일';
     h+=' · 진행 '+pct+'%</div>';
     h+='<div class="proj-bar"><i style="width:'+Math.max(pct,2)+'%;background:'+PROJ_COLORS[i%PROJ_COLORS.length]+'"></i></div>';
+    var own=projOwner(p.id);
+    if(own)h+='<div class="proj-own">'+(own===myEmail()?'내가 작성':'🔒 '+esc(shortName(own))+' 작성 — 변경하려면 암호')+'</div>';
     h+='<span class="del-x" onclick="event.stopPropagation();deleteProject('+i+')">✕</span>';
     h+='</div>';
   });
@@ -3034,7 +3037,7 @@ function cloudInit(){
 //   ① 서버가 정본, localStorage 는 캐시  ② 바뀐 프로젝트만 저장  ③ 저장 시 기준 시각을 보내 충돌 감지
 //   ④ 15초 폴링으로 남의 수정 자동 반영  ⑤ 서버 연결이 끊기면 읽기 전용(따로 쌓이지 않게)
 // ================================================================
-var PROJ={api:"/api/pms/projects",ready:false,offline:false,synced:{},timers:{},retry:{},lastSync:null,
+var PROJ={api:"/api/pms/projects",ready:false,offline:false,synced:{},timers:{},retry:{},lastSync:null,owner:{},
           pollMs:15000,           // 실시간이 끊겼을 때만 도는 예비 주기
           saveMs:120,             // 저장은 사실상 즉시 (연속 드래그·타이핑만 묶는다)
           sbUrl:"https://gdcfqbdgubgpzusbtftf.supabase.co",
@@ -3062,11 +3065,11 @@ function projSaveNow(){
   if(PROJ.offline){toast("서버에 연결되어 있지 않습니다 — '다시 연결'을 먼저 눌러 주세요");return}
   if(!PROJ.ready){toast("서버 자료를 아직 불러오는 중입니다");return}
   var ids=projDirtyIds();
-  // 새로 만든 공정표는 누구나 저장 / 이미 저장된 것을 바꿔 저장할 때만 작성자 암호를 묻는다
-  var changing=ids.filter(function(id){return !!PROJ.synced[id]});
-  if(changing.length&&!EDIT.unlocked){
+  // 내가 만든 것·새로 만든 것은 그냥 저장 / '남이 만든 공정표'를 바꿀 때만 잠금 암호를 묻는다
+  var others=ids.filter(function(id){return PROJ.synced[id]&&!isMine(id)});
+  if(others.length&&!EDIT.unlocked){
     PROJ.pendingSave=true;
-    askUnlock("이미 저장된 공정표를 바꾸려면 작성자 암호가 필요합니다.");
+    askUnlock(shortName(projOwner(others[0]))+" 님이 작성한 공정표입니다. 변경하려면 잠금 암호가 필요합니다.");
     return;
   }
   if(!ids.length){
@@ -3103,6 +3106,11 @@ function updateSaveUi(snap){
   });
 }
 function projMark(p,ts){PROJ.synced[p.id]={json:JSON.stringify(p),updatedAt:ts}}
+/* 지금 로그인한 사람 / 이 공정표의 작성자 */
+function myEmail(){var s=window.ECOREAN_AUTH&&ECOREAN_AUTH.session;return(s&&s.user&&s.user.email)||""}
+function projOwner(id){return PROJ.owner[id]||""}
+function isMine(id){var o=projOwner(id);return !o||o===myEmail()}
+function shortName(mail){return String(mail||"").split("@")[0]||"다른 직원"}
 function projCache(){try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){}}
 
 /* 서버 목록 전체를 받아 정본으로 삼는다 (부팅·재연결) */
@@ -3116,7 +3124,10 @@ function projFetchAll(){
       var rows=j.projects||[];
       projects=rows.map(function(row){return row.data});
       PROJ.synced={};
-      rows.forEach(function(row){PROJ.synced[row.id]={json:JSON.stringify(row.data),updatedAt:row.updated_at}});
+      rows.forEach(function(row){
+        PROJ.synced[row.id]={json:JSON.stringify(row.data),updatedAt:row.updated_at};
+        if(row.created_email)PROJ.owner[row.id]=row.created_email;
+      });
       PROJ.lastSync=j.serverTime;PROJ.ready=true;PROJ.failed=false;
       projCache();projOnline();updateSaveUi();
       if(repairLegacyMeta())saveStore(); // 구버전 보정은 편집 권한이 있을 때만
@@ -3166,7 +3177,7 @@ function projPush(id,keepalive){
       PROJ.saving--;
       if(e&&e.code===423){ // 서버가 '작성자 확인'을 요구
         EDIT.unlocked=false;editPaint();PROJ.pendingSave=true;
-        askUnlock("이미 저장된 공정표를 바꾸려면 작성자 암호가 필요합니다.");
+        askUnlock(e.msg||"작성자가 잠근 공정표입니다. 변경하려면 잠금 암호가 필요합니다.");
         updateSaveUi();return;
       }
       if(e&&(e.code===401||e.code===403)){projOffline(e.msg||"저장 권한이 없습니다");return}
@@ -3276,6 +3287,7 @@ function projPoll(){
       PROJ.lastSync=j.serverTime;
       (j.projects||[]).forEach(function(row){
         var s=PROJ.synced[row.id];
+        if(row.created_email)PROJ.owner[row.id]=row.created_email;
         if(s&&s.updatedAt===row.updated_at)return;           // 내가 올린 것
         if(row.deleted_at){projApplyRemote(row.id,null,row.updated_at,false);return}
         // 내가 저장 안 한 변경이 있거나 지금 보고 있는 공정표면 덮지 않고 알려만 준다

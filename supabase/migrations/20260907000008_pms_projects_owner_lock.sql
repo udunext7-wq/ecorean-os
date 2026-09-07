@@ -1,0 +1,7 @@
+-- 공정표 작성자 잠금 (2026-09-07 대표 지시) — 적용 완료 기록본
+-- "내가 만든 공정표를 남이 건드려 중구난방이 되는 것을 막는다."
+--  · pms_projects.created_by/created_email = 작성자(주인). 기존 6건은 실측 확인 결과 모두 대표 작성.
+--  · pms_project_save/delete: 작성자 본인은 자유, 남이 바꾸거나 지우려면 잠금 암호(pms_edit_allowed) 필요.
+--    예외로 새 공정표 작성은 누구나 자유(작성자로 본인이 기록됨).
+--  · 차단 시 예외 메시지에 작성자를 실어 보낸다: LOCKED_OWNER:<email> → API 가 423 + owner 로 변환.
+-- 전체 정의는 pms_project_save / pms_project_delete 함수 정의 참조.
