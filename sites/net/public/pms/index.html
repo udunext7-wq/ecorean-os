@@ -66,11 +66,16 @@ table.gantt thead tr:nth-child(1) th{top:0}
 table.gantt thead tr:nth-child(2) th{top:22px}
 table.gantt thead tr:nth-child(3) th{top:44px}
 table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-index:20}
+/* 헤더 좌측 3칸은 3행으로 나뉘어 있지만 한 덩어리처럼 보이게 (2026-09-07 스크롤 흔들림 수정) */
+table.gantt thead th.lh{border-bottom:0}
+table.gantt thead th.lh.lh-c,table.gantt thead th.lh.lh-b{padding:0 6px !important;text-align:center}
+table.gantt thead th.lh.lh-b{border-bottom:2px solid #444}
+.lh .lh-s{font-size:9px;color:#bbb;font-weight:500;line-height:1.2}
 /* 일수·기간 컬럼 접기 → 공정명만 노출 */
 #ganttWrap.cols-collapsed table.gantt th.fix2,#ganttWrap.cols-collapsed table.gantt td.fix2,
 #ganttWrap.cols-collapsed table.gantt th.fix3,#ganttWrap.cols-collapsed table.gantt td.fix3{display:none}
 /* 공정명 헤더 모서리 토글 버튼 (좌:레이어패널 / 우:일수·기간) */
-.hdr-tg{position:absolute;top:4px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.1);color:#fff;border-radius:6px;cursor:pointer;font-size:11px;line-height:1;padding:0;z-index:2;transition:background .15s,border-color .15s,transform .1s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.hdr-tg{position:absolute;top:1px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.1);color:#fff;border-radius:6px;cursor:pointer;font-size:11px;line-height:1;padding:0;z-index:2;transition:background .15s,border-color .15s,transform .1s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
 .hdr-tg:hover{background:rgba(255,255,255,.32);border-color:rgba(255,255,255,.75)}
 .hdr-tg:active{transform:scale(.88)}
 .hdr-tg.left{left:4px}
@@ -254,7 +259,7 @@ tr.prow.row-sel td.today-col{background:linear-gradient(rgba(139,92,246,.16),rgb
 .dur-edit{width:34px;text-align:center;border:1px solid #ddd;border-radius:2px;font-size:11px;padding:1px;background:none}
 .mh{background:#1a1a2e;color:#fff;font-size:10px;text-align:center;height:22px;line-height:1.25;padding:2px 4px}
 .lh{background:#000 !important;color:#fff !important;padding:4px 6px !important}
-.lh .lh-t{font-weight:800;font-size:14px;color:#fff;letter-spacing:-0.3px}
+.lh .lh-t{font-weight:800;font-size:12.5px;color:#fff;letter-spacing:-0.3px;line-height:18px}
 .lh .lh-s{font-size:9px;font-weight:400;color:#bbb;margin-top:1px}
 .wkh{background:#e0ddd5;color:#666;font-size:9px;text-align:center;height:22px}
 .dayh{position:relative;font-size:9px;text-align:center;height:30px;line-height:1.1;background:#f5f3ee;color:#555}
@@ -2137,17 +2142,26 @@ function renderGantt(td,sd){
   var DATA=currentProj.phases;
   var tw=new Date();tw.setHours(0,0,0,0);
   var ds=[];for(var i=0;i<td;i++)ds.push(new Date(sd.getTime()+i*864e5));
+  // 2026-09-07: rowspan 을 쓰지 않고 헤더 3행에 각각 고정 셀을 둔다.
+  //   rowspan + position:sticky 조합은 가로·세로 스크롤 중 셀이 흔들리고 밀려나므로,
+  //   행마다 제 자리(top)에 붙는 셀을 따로 그려 본문 컬럼과 똑같이 고정시킨다.
   var h='<table class="gantt"><thead><tr>'+
-    '<th class="fix mh lh" rowspan=3 style="position:relative;text-align:center">'+
+    '<th class="fix mh lh" style="position:relative;text-align:center">'+
       '<button class="hdr-tg left" id="panelTgBtn" onclick="toggleLayerPanel()" title="'+(layerPanelCollapsed?"레이어 패널 펼치기":"레이어 패널 접기")+'">'+(layerPanelCollapsed?"▶":"◀")+'</button>'+
-      '<div class="lh-t">공정명</div><div class="lh-s">상태칩·명칭(클릭=편집)</div>'+
+      '<div class="lh-t">공정명</div>'+
       '<button class="hdr-tg right" id="colsTgBtn" onclick="toggleCols()" title="'+(colsCollapsed?"일수·기간 펼치기":"일수·기간 접기 (공정명만 보기)")+'">'+(colsCollapsed?"▶":"◀")+'</button>'+
     '</th>'+
-    '<th class="fix2 mh lh" rowspan=3><div class="lh-t">일수</div><div class="lh-s">−/+ 조정</div></th>'+
-    '<th class="fix3 mh lh" rowspan=3><div class="lh-t">기간</div><div class="lh-s">시작~종료</div></th>';
+    '<th class="fix2 mh lh"><div class="lh-t">일수</div></th>'+
+    '<th class="fix3 mh lh"><div class="lh-t">기간</div></th>';
   var mi=0;while(mi<ds.length){var cm=ds[mi].getMonth(),cy=ds[mi].getFullYear(),cn=0,j=mi;while(j<ds.length&&ds[j].getMonth()===cm){cn++;j++}h+='<th class="mh" colspan='+cn+' style="min-width:'+cn*DPX+'px">'+cy+'.'+String(cm+1).padStart(2,"0")+'</th>';mi=j}
-  h+='</tr><tr>';mi=0;var wn=1;while(mi<ds.length){var cn=0,j=mi;do{cn++;j++}while(j<ds.length&&ds[j].getDay()!==1);h+='<th class="wkh" colspan='+cn+' style="min-width:'+cn*DPX+'px">'+wn+'주</th>';mi=j;wn++}
-  h+='</tr><tr>';for(var i=0;i<ds.length;i++){var d=ds[i],dw=d.getDay(),sat=dw===6,sun=dw===0,we=sat||sun,f=d.getDate()===1,mo=dw===1;var bs='';if(f)bs='border-left:2px solid #aaa;';else if(mo)bs='border-left:1px solid #ccc;';var dcol=sun?'color:#e24b4a;font-weight:700;':(sat?'color:#2563eb;font-weight:700;':'');var tdy=d.getTime()===tw.getTime();h+='<th class="dayh'+(we?' we':'')+(tdy?' today':'')+'" style="min-width:'+DPX+'px;max-width:'+DPX+'px;'+bs+dcol+'">'+d.getDate()+'<div class="dwl">'+WD[dw]+'</div>'+(tdy?'<div class="today-flag">오늘('+WD[dw]+')</div>':'')+'</th>'}
+  h+='</tr><tr>'+
+      '<th class="fix wkh lh lh-c"><div class="lh-s">상태칩·명칭(클릭=편집)</div></th>'+
+      '<th class="fix2 wkh lh lh-c"><div class="lh-s">−/+ 조정</div></th>'+
+      '<th class="fix3 wkh lh lh-c"><div class="lh-s">시작~종료</div></th>';mi=0;var wn=1;while(mi<ds.length){var cn=0,j=mi;do{cn++;j++}while(j<ds.length&&ds[j].getDay()!==1);h+='<th class="wkh" colspan='+cn+' style="min-width:'+cn*DPX+'px">'+wn+'주</th>';mi=j;wn++}
+  h+='</tr><tr>'+
+      '<th class="fix dayh lh lh-b"><div class="lh-s">⠿ 끌어 순서 이동</div></th>'+
+      '<th class="fix2 dayh lh lh-b"></th>'+
+      '<th class="fix3 dayh lh lh-b"></th>';for(var i=0;i<ds.length;i++){var d=ds[i],dw=d.getDay(),sat=dw===6,sun=dw===0,we=sat||sun,f=d.getDate()===1,mo=dw===1;var bs='';if(f)bs='border-left:2px solid #aaa;';else if(mo)bs='border-left:1px solid #ccc;';var dcol=sun?'color:#e24b4a;font-weight:700;':(sat?'color:#2563eb;font-weight:700;':'');var tdy=d.getTime()===tw.getTime();h+='<th class="dayh'+(we?' we':'')+(tdy?' today':'')+'" style="min-width:'+DPX+'px;max-width:'+DPX+'px;'+bs+dcol+'">'+d.getDate()+'<div class="dwl">'+WD[dw]+'</div>'+(tdy?'<div class="today-flag">오늘('+WD[dw]+')</div>':'')+'</th>'}
   h+='</tr></thead><tbody>';
   DATA.forEach(function(p,idx){
   var catBg=CI[p.cat]?CI[p.cat].b:'#f9f9f9';
@@ -3523,12 +3537,10 @@ document.addEventListener("pointerdown",function(e){
   if(e.target.closest&&(e.target.closest(".gbar")||e.target.closest("#tip")))return;
   hideTip();
 });
-/* 모바일 기본값 (2026-09-07) — 좁은 화면에서는 '공정명 + 간트'만 남겨 간트가 실제로 보이게 한다.
-   사용자가 공정명 헤더의 ◀/▶ 버튼으로 언제든 되돌릴 수 있다. */
-if(window.innerWidth<=700){
-  if(!colsCollapsed)toggleCols();
-  if(!layerPanelCollapsed)toggleLayerPanel();
-}
+/* 기본값 (2026-09-07 대표 지시) — 공정표를 열면 '공정명 + 간트'만 보이게 시작한다.
+   레이어 패널과 일수·기간 컬럼은 접힌 채로 두고, 필요하면 공정명 헤더의 ◀/▶ 로 펼친다. */
+if(!colsCollapsed)toggleCols();
+if(!layerPanelCollapsed)toggleLayerPanel();
 applyZoom(false);  // 화면 크기에 맞는 하루 폭을 먼저 정한 뒤 그린다
 
 CAL.sel=calKey(new Date());   // 대시보드는 오늘을 선택한 상태로 시작
