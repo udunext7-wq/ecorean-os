@@ -150,6 +150,19 @@ function normalizeDoc(doc){
     openings:d.openings||[], furniture:d.furniture||[], fixtures:d.fixtures||[],
     lights:d.lights||[], electric:d.electric||[], hvac:d.hvac||[], pillars:d.pillars||[],
     sketchPts, sketchEdges, sketchFaces, masses,
+    // 2026-09-07 프리폼 ②: 스케치 평면 — 평면마다 자기 점·선·면 (uv 좌표)
+    planes:(d.planes||[]).map(pl=>{
+      if(!pl||!pl.origin||!pl.ex||!pl.ey) return null;
+      const pm={}; const pts=(pl.sketchPts||[]).filter(p=>p&&isFinite(p.x)&&isFinite(p.y))
+        .map(p=>{const o={id:p.id,x:num(p.x,0),y:num(p.y,0)};pm[p.id]=o;return o;});
+      return {id:pl.id,origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n,
+        sketchPts:pts,
+        sketchEdges:(pl.sketchEdges||[]).map(e=>{const a=pm[e.a],b=pm[e.b];
+          return (a&&b)?{id:e.id,x1:a.x,y1:a.y,x2:b.x,y2:b.y}:null;}).filter(Boolean),
+        sketchFaces:(pl.sketchFaces||[]).map(f=>{
+          const poly=(f.pts||[]).map(id=>pm[id]).filter(Boolean).map(p=>({x:p.x,y:p.y}));
+          return poly.length>=3?{id:f.id,polygon:poly}:null;}).filter(Boolean)};
+    }).filter(Boolean),
     ceilH:num(meta.ceilingHeight_mm,2400),
   };
 }
@@ -175,6 +188,34 @@ function buildSketchEdge(e){
 function buildSketchPt(p){
   return {id:p.id,kind:'sketchPt',name:'점',x:p.x,y:p.y,rot:0,flip:false,
     prims:[{t:'cyl',x:0,y:0,z:0,r:32,h:22,color:SK.pt}],meta:{}};
+}
+// 스케치 평면 하나의 점·선·면 → 3D 객체 (2026-09-07 프리폼 ②)
+//  uv 를 평면 틀로 풀어 절대 3D 좌표의 prim(face3/edge3/pt3)으로 내보낸다.
+function buildPlaneSketch(pl,objects){
+  const P3=(u,v)=>({x:pl.origin.x+pl.ex.x*u+pl.ey.x*v,
+                    y:pl.origin.y+pl.ex.y*u+pl.ey.y*v,
+                    z:pl.origin.z+pl.ex.z*u+pl.ey.z*v});
+  pl.sketchFaces.forEach(f=>{
+    const verts=f.polygon.map(p=>P3(p.x,p.y));
+    const c2=f.polygon.reduce((a,p)=>({x:a.x+p.x/f.polygon.length,y:a.y+p.y/f.polygon.length}),{x:0,y:0});
+    const c3=P3(c2.x,c2.y);
+    objects.push({id:f.id,kind:'sketchFace',name:'면(벽)',x:0,y:0,rot:0,flip:false,
+      prims:[{t:'face3',plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n},uv:f.polygon,verts,
+        color:SK.face,opacity:0.30}],
+      meta:{area:polyAreaAbs(f.polygon),cx:c3.x,cy:c3.y,poly:f.polygon,
+        plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n}}});
+  });
+  pl.sketchEdges.forEach(e=>{
+    const a=P3(e.x1,e.y1),b=P3(e.x2,e.y2);
+    objects.push({id:e.id,kind:'sketchEdge',name:'선(벽)',x:0,y:0,rot:0,flip:false,
+      prims:[{t:'edge3',a,b,r:16,color:SK.edge}],
+      meta:{L:Math.hypot(e.x2-e.x1,e.y2-e.y1),plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n}}});
+  });
+  pl.sketchPts.forEach(p=>{
+    const q=P3(p.x,p.y);
+    objects.push({id:p.id,kind:'sketchPt',name:'점(벽)',x:0,y:0,rot:0,flip:false,
+      prims:[{t:'pt3',p:q,r:34,color:SK.pt}],meta:{plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n}}});
+  });
 }
 function buildMass(m){
   const ctx=m._ctx||{};
@@ -705,6 +746,7 @@ function buildFloorScene(D,libs){
   (D.sketchFaces||[]).forEach(f=>objects.push(buildSketchFace(f)));
   (D.sketchEdges||[]).forEach(e=>objects.push(buildSketchEdge(e)));
   (D.sketchPts||[]).forEach(p=>objects.push(buildSketchPt(p)));
+  (D.planes||[]).forEach(pl=>buildPlaneSketch(pl,objects));            // 2026-09-07 프리폼 ②
   (D.masses||[]).forEach(m=>{
     const o=buildMass(m); objects.push(o);
     // 2026-09-07 Z축 4층: 어느 방의 천장으로 지정됐는지 (3D 패널이 보여 준다)
@@ -718,7 +760,9 @@ function buildFloorScene(D,libs){
   return {bounds,ceilH:D.ceilH,project:D.meta.project||'',objects,labels,
     counts:{spaces:D.spaces.length,walls:D.walls.filter(w=>!w.isLine).length,openings:D.openings.length,
       furniture:D.furniture.length+D.fixtures.length,lights:D.lights.length,
-      sketch:(D.sketchPts||[]).length+(D.sketchEdges||[]).length+(D.sketchFaces||[]).length,masses:(D.masses||[]).length}};
+      sketch:(D.sketchPts||[]).length+(D.sketchEdges||[]).length+(D.sketchFaces||[]).length
+        +(D.planes||[]).reduce((n,pl)=>n+pl.sketchPts.length+pl.sketchEdges.length+pl.sketchFaces.length,0),
+      masses:(D.masses||[]).length}};
 }
 
 // ---------------------------------------------------------------------------

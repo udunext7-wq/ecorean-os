@@ -860,6 +860,10 @@ function massCtx(){
 function massTopPts(m,ctx){
   const N=(m&&m.pts||[]).length; if(!N) return [];
   const solid=!massIsPrism(m);
+  // 평면에서 뽑은 자유 다면체는 '밑면 i ↔ 윗면 N+i' 짝이 없다 — 그립을 잘못 세우면
+  //  엉뚱한 꼭짓점이 끌리므로 아예 안 준다 (면 밀기끌기는 프리폼 ③에서)
+  if(solid&&(m.solidVerts.length!==N*2||
+     m.solidVerts.slice(0,N).some((v,i)=>Math.abs(v.x-m.pts[i].x)>1||Math.abs(v.y-m.pts[i].y)>1))) return [];
   const out=[];
   for(let i=0;i<N;i++){
     const v=solid?m.solidVerts[N+i]:null;
@@ -1011,9 +1015,110 @@ function massLean(m){
   return o;
 }
 
+// ---------------------------------------------------------------------------
+// 스케치 평면 (2026-09-07 프리폼 ② — "아무 데나 그리면 면이 된다")
+//  스케치업의 자유는 3D 어디에나 선을 긋는 데서 나온다. 그런데 우리의 면 검출
+//  (교차 분할·최소 고리)은 2D 평면 그래프다 — 그걸 버리지 않는다.
+//  **평면마다 2D 그래프 하나**: 벽면에 그리면 그 벽면이 자기 점·선·면 bag 을 갖고,
+//  같은 skAddEdge/skAddRect/skDetectFaces 가 (u,v) 좌표로 그 안에서 돈다.
+//  10년 검증이 필요한 새 기하 대신, 이미 검증된 엔진의 좌표계만 바꿔 끼우는 것.
+//
+//  좌표 규약: 평면 = {origin:{x,y,z}, ex, ey} (정규직교). 3D = origin + ex·u + ey·v.
+//  벽면이면 ex 는 수평(벽을 따라), ey 는 위(+z) — 그려 놓고 보면 도면처럼 읽힌다.
+// ---------------------------------------------------------------------------
+function _v3(x,y,z){return {x,y,z};}
+function _vAdd(a,b){return _v3(a.x+b.x,a.y+b.y,a.z+b.z);}
+function _vSub(a,b){return _v3(a.x-b.x,a.y-b.y,a.z-b.z);}
+function _vScale(a,k){return _v3(a.x*k,a.y*k,a.z*k);}
+function _vDot(a,b){return a.x*b.x+a.y*b.y+a.z*b.z;}
+function _vCross(a,b){return _v3(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x);}
+function _vLen(a){return Math.hypot(a.x,a.y,a.z);}
+function _vNorm(a){const L=_vLen(a)||1;return _v3(a.x/L,a.y/L,a.z/L);}
+// 법선에서 평면 틀을 — 늘 같은 규칙으로 (두 번 만들어도 같은 u,v 가 나와야 한다)
+function planeFrom(origin,normal){
+  const n=_vNorm(normal);
+  let ex;
+  if(Math.abs(n.z)<0.95){
+    ex=_vNorm(_vCross(_v3(0,0,1),n));      // 수평 — 벽을 따라간다
+  }else{
+    ex=_v3(1,0,0);                          // 바닥·천장 평면 — 도면 x 그대로
+  }
+  let ey=_vNorm(_vCross(n,ex));
+  if(Math.abs(n.z)<0.95&&ey.z<0){ ey=_vScale(ey,-1); ex=_vScale(ex,-1); } // v 는 위로
+  return {origin:_v3(origin.x,origin.y,origin.z),ex,ey,n};
+}
+function planeUV(pl,p){
+  const d=_vSub(p,pl.origin);
+  return {u:_vDot(d,pl.ex),v:_vDot(d,pl.ey)};
+}
+function planePt(pl,u,v){
+  return _vAdd(pl.origin,_vAdd(_vScale(pl.ex,u),_vScale(pl.ey,v)));
+}
+// 같은 기하 평면인가 — 법선이 나란하고(±) 원점 간 거리의 법선 성분이 1mm 안
+function planeSame(pl,origin,normal){
+  const n=_vNorm(normal);
+  if(Math.abs(_vDot(pl.n,n))<0.999) return false;
+  return Math.abs(_vDot(_vSub(origin,pl.origin),pl.n))<1.0;
+}
+// 자유 층에서 이 평면의 bag 을 찾거나 만든다 — 같은 벽면에 두 번 그리면 한 그래프
+function ffPlaneBag(free,origin,normal){
+  if(!Array.isArray(free.planes)) free.planes=[];
+  let pl=free.planes.find(p=>planeSame(p,origin,normal));
+  if(!pl){
+    pl=planeFrom(origin,normal);
+    pl.id=_skId('pl');
+    pl.sketchPts=[];pl.sketchEdges=[];pl.sketchFaces=[];
+    free.planes.push(pl);
+  }
+  return pl;
+}
+// 평면 면의 3D 꼭짓점들
+function planeFaceVerts(pl,f){
+  return skFacePoly(f,pl).map(p=>planePt(pl,p.x,p.y));
+}
+// 평면 면 → 법선 방향으로 d 만큼 뽑아 자유 다면체 매스로 (스케치업 밀기끌기의 3D 판)
+//  d>0 = 법선 쪽. 안팎은 _solidFlipIfInsideOut 이 부피 부호로 바로잡는다.
+function planeExtrude(pl,f,d,free){
+  d=Math.round(Number(d));
+  if(!isFinite(d)||Math.abs(d)<10) return null;
+  const uv=skFacePoly(f,pl);
+  if(uv.length<3) return null;
+  const near=uv.map(p=>planePt(pl,p.x,p.y));
+  const off=_vScale(pl.n,d);
+  const far=near.map(p=>_vAdd(p,off));
+  const all=near.concat(far);
+  // 바닥(z<0) 밑으로는 내려가지 않는다 — 땅속 매스는 뜻이 없다
+  const zmin=Math.min(...all.map(p=>p.z));
+  const lift=zmin<0?-zmin:0;
+  const verts3=all.map(p=>_v3(p.x,p.y,p.z+lift));
+  const N=uv.length;
+  const cx=verts3.reduce((a,p)=>a+p.x,0)/verts3.length;
+  const cy=verts3.reduce((a,p)=>a+p.y,0)/verts3.length;
+  // 발자국 — 라벨·스냅용 (xy 로 눕힌 그림자 상자)
+  const xs=verts3.map(p=>p.x),ys=verts3.map(p=>p.y);
+  const x0=Math.min(...xs)-cx,x1=Math.max(...xs)-cx,y0=Math.min(...ys)-cy,y1=Math.max(...ys)-cy;
+  const m={id:_skId('ms'),name:'자유 매스'+(((free.masses||[]).length)+1),
+    // 모체와 같은 색이면 벽에서 자란 게 안 보인다 — 살짝 따뜻한 모래색으로 가른다
+    x:Math.round(cx),y:Math.round(cy),angle:0,elev_mm:0,color:'#C9B98E',locked:false,
+    pts:[{x:Math.round(x0),y:Math.round(y0)},{x:Math.round(x1),y:Math.round(y0)},
+         {x:Math.round(x1),y:Math.round(y1)},{x:Math.round(x0),y:Math.round(y1)}],
+    h_mm:Math.round(Math.max(...verts3.map(p=>p.z))),
+    solidVerts:verts3.map(p=>({x:Math.round(p.x-cx),y:Math.round(p.y-cy),z:Math.round(p.z)})),
+    solidFaces:(()=>{
+      const F=[{vs:[...Array(N).keys()].reverse()},{vs:[...Array(N).keys()].map(i=>N+i)}];
+      for(let i=0;i<N;i++){const j=(i+1)%N;F.push({vs:[i,j,N+j,N+i]});}
+      return F;
+    })()};
+  if(!Array.isArray(free.masses)) free.masses=[];
+  free.masses.push(m);
+  _skConsumeFace(f,pl);
+  return m;
+}
+
 if(typeof module!=='undefined'&&module.exports){
   module.exports={zIsRef,zNum,zSet,zLabel,facePlanarDev,massHeal,splitFoldedRing,faceNormal,faceRole,faceFacing,faceTiltDeg,faceArea3,faceCentroid3,
     zEdit,massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
     massTopPts,massSlopes,massRidges,massCtx,massLean,massZAt,massTopProfile,profileAvg,pitchOf,pitchStr,
+    planeFrom,planeUV,planePt,planeSame,ffPlaneBag,planeFaceVerts,planeExtrude,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

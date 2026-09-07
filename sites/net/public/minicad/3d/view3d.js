@@ -231,6 +231,33 @@ function primMesh(p,obj){
     mesh=new THREE.Mesh(g,matFor(p));
     mesh.rotation.x=-Math.PI/2;                              // 로컬 +z(깊이) → 세계 +y(위)
     mesh.position.y=(p.z||0)*MM;
+  }else if(p.t==='face3'){
+    // 스케치 평면 위의 면 (2026-09-07 프리폼 2단계) - uv 로 삼각화(오목 지원)하고 평면 틀로 세운다
+    if(!p.uv||p.uv.length<3||!p.plane) return null;
+    const shape=new THREE.Shape(p.uv.map(q=>new THREE.Vector2(q.x,q.y)));
+    const g=new THREE.ShapeGeometry(shape);
+    const O=p.plane.origin,EX=p.plane.ex,EY=p.plane.ey;
+    const pos=g.attributes.position;
+    for(let i=0;i<pos.count;i++){
+      const u=pos.getX(i),v=pos.getY(i);
+      pos.setXYZ(i,(O.x+EX.x*u+EY.x*v)*MM,(O.z+EX.z*u+EY.z*v)*MM,(O.y+EX.y*u+EY.y*v)*MM);
+    }
+    g.computeVertexNormals(); g.computeBoundingSphere();
+    const fm=matFor(p).clone(); fm.side=THREE.DoubleSide; fm.depthWrite=false;
+    mesh=new THREE.Mesh(g,fm);
+    mesh.renderOrder=6;
+  }else if(p.t==='edge3'){
+    const a=new THREE.Vector3(p.a.x*MM,p.a.z*MM,p.a.y*MM);
+    const b=new THREE.Vector3(p.b.x*MM,p.b.z*MM,p.b.y*MM);
+    const L=a.distanceTo(b); if(L<1e-6) return null;
+    mesh=new THREE.Mesh(geoCyl,matFor(p));
+    mesh.scale.set(Math.max(p.r||16,1)*MM,L,Math.max(p.r||16,1)*MM);
+    mesh.position.copy(a.clone().add(b).multiplyScalar(0.5));
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),b.clone().sub(a).normalize());
+  }else if(p.t==='pt3'){
+    mesh=new THREE.Mesh(geoSph,matFor(p));
+    mesh.scale.setScalar(Math.max(p.r||30,1)*MM);
+    mesh.position.set(p.p.x*MM,p.p.z*MM,p.p.y*MM);
   }else if(p.t==='mesh'){
     // 2026-09-07 대표 지시 "나는 z 값을 원한다" — 꼭짓점마다 높이가 다른 자유 다면체.
     //  빗천장·박공처럼 각기둥으로 안 되는 것이 여기로 온다. 좌표는 평면과 같은 mm
@@ -973,6 +1000,139 @@ function boxSelect(x0,y0,x1,y1,e){
   setStatus(statusLive,'선택 '+ST.selSet.size+'개'+(crossing?' (걸치기)':''));
 }
 // ---------------------------------------------------------------------------
+// 프리폼 ② — 면 위에 그리기 (2026-09-07)
+//  스케치업의 자유가 실제로 사는 곳: 벽면·지붕면을 클릭하면 그 면이 종이가 되고,
+//  거기 그린 사각형·선이 닫히면 면이 된다. 면 검출은 새로 안 만들었다 —
+//  평면마다 sketch.js 그래프 하나(ffPlaneBag)를 두고 같은 엔진을 (u,v)로 돌린다.
+//  첫 클릭이 평면을 정하고(스케치업 추론과 같은 손맛), 그 뒤 점은 레이∩평면.
+// ---------------------------------------------------------------------------
+// 클릭한 자리가 '세울 만한 면'인가 — 평면 원점·법선(도면 좌표계: x우 y아래 z위)
+function _ffFacePick(e){
+  if(!ST.ffOn) return null;
+  const hit=hitAt(e.clientX,e.clientY);
+  if(!hit||!hit.face) return null;
+  const nW=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+  const n={x:nW.x,y:nW.z,z:nW.y};
+  const p={x:hit.point.x/MM,y:hit.point.z/MM,z:hit.point.y/MM};
+  if(Math.abs(n.z)>0.95&&p.z<50) return null;      // 땅바닥 = 종전 그대로 (기본 평면)
+  return {o:p,n};
+}
+// 그 평면의 틀 — 이미 그래프가 있으면 그 틀 (u,v 가 이어져야 스냅이 맞는다)
+function _ffFrameFor(o,n){
+  const ex=FF&&Array.isArray(FF.free.planes)&&FF.free.planes.find(q=>planeSame(q,o,n));
+  return ex||planeFrom(o,n);
+}
+// patch.plane 이 실릴 때 그 평면의 bag — 없으면 보낸 틀 그대로 만든다
+function _ffBagFor(plane){
+  if(!plane) return FF.free;
+  if(!Array.isArray(FF.free.planes)) FF.free.planes=[];
+  let pl=FF.free.planes.find(p=>planeSame(p,plane.origin,plane.n));
+  if(!pl){
+    pl=Object.assign({},plane);
+    pl.id='pl_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
+    pl.sketchPts=[];pl.sketchEdges=[];pl.sketchFaces=[];
+    FF.free.planes.push(pl);
+  }
+  return pl;
+}
+function _ffAllBags(){
+  const out=[FF.free];
+  (FF.free.planes||[]).forEach(pl=>out.push(pl));
+  return out;
+}
+function _ffFindFace(id){
+  for(const b of _ffAllBags()){
+    const f=skFaceById(id,b);
+    if(f) return {bag:b,face:f,plane:b===FF.free?null:b};
+  }
+  return null;
+}
+// 레이 ∩ 평면 → (u,v). 같은 평면의 점에 스냅(150mm), 아니면 10mm 격자
+function _ff3UV(e,fr){
+  rayFromEvent(e);                                       // ray 를 이 커서 방향으로
+  const nW=new THREE.Vector3(fr.n.x,fr.n.z,fr.n.y);
+  const pW=new THREE.Vector3(fr.origin.x*MM,fr.origin.z*MM,fr.origin.y*MM);
+  const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(nW,pW);
+  const pt=new THREE.Vector3();
+  if(!ray.ray.intersectPlane(plane,pt)) return null;
+  const uv=planeUV(fr,{x:pt.x/MM,y:pt.z/MM,z:pt.y/MM});
+  const bag=FF&&Array.isArray(FF.free.planes)&&FF.free.planes.find(q=>planeSame(q,fr.origin,fr.n));
+  if(bag){
+    let bd=Infinity,bp=null;
+    bag.sketchPts.forEach(q=>{const d=Math.hypot(q.x-uv.u,q.y-uv.v);if(d<bd){bd=d;bp=q;}});
+    if(bp&&bd<=150) return {u:bp.x,v:bp.y,snap:'pt'};
+  }
+  return {u:Math.round(uv.u/10)*10,v:Math.round(uv.v/10)*10};
+}
+function _ff3Ghost(op){
+  const fr=op.fr;
+  const pts=[];
+  if(op.type==='line3') pts.push(op.a,op.cur||op.a);
+  else{
+    const a=op.a,c=op.cur||op.a;
+    pts.push(a,{u:c.u,v:a.v},c,{u:a.u,v:c.v},a);
+  }
+  const arr=new Float32Array(pts.length*3);
+  pts.forEach((q,i)=>{
+    const w=planePt(fr,q.u,q.v);
+    arr[i*3]=w.x*MM;arr[i*3+1]=w.z*MM;arr[i*3+2]=w.y*MM;
+  });
+  if(!op.line){
+    op.line=new THREE.Line(new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({color:0xD4FF3D,depthTest:false,transparent:true,opacity:0.95}));
+    op.line.renderOrder=950; op.line.frustumCulled=false;
+    scene.add(op.line);
+  }
+  op.line.geometry.dispose();
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(arr,3));
+  op.line.geometry=g;
+  invalidate();
+}
+function ff3Click(e,fp,tool){
+  if(!ST.op){
+    const fr=_ffFrameFor(fp.o,fp.n);
+    const uv=_ff3UV(e,fr);
+    if(!uv) return;
+    ST.op={type:tool==='rect'?'rect3':'line3',fr,a:uv,cur:uv,line:null};
+    opOrbit(true);
+    _ff3Ghost(ST.op);
+    const wallLike=Math.abs(fr.n.z)<0.95;
+    setStatus(statusLive,'🧊 '+(wallLike?'벽면':'윗면')+' 위에 그리는 중 — 닫히면 면이 되고, P 로 뽑으면 입체가 됩니다 (Esc=취소)');
+    vcbShow(tool==='rect'?'면 위 사각형':'면 위 선',0,'mm');
+    return;
+  }
+  const op=ST.op;
+  const uv=_ff3UV(e,op.fr);
+  if(!uv) return;
+  op.cur=uv;
+  const plane={origin:op.fr.origin,ex:op.fr.ex,ey:op.fr.ey,n:op.fr.n};
+  if(op.type==='rect3'){
+    if(Math.abs(uv.u-op.a.u)<10||Math.abs(uv.v-op.a.v)<10) return;
+    emitEdit({type:'edit',op:'sketchrect',floorId:'freeform',
+      patch:{x1:op.a.u,y1:op.a.v,x2:uv.u,y2:uv.v,plane}});
+    cancelOp();
+    return;
+  }
+  if(Math.hypot(uv.u-op.a.u,uv.v-op.a.v)<10) return;
+  emitEdit({type:'edit',op:'sketchline',floorId:'freeform',
+    patch:{x1:op.a.u,y1:op.a.v,x2:uv.u,y2:uv.v,plane}});
+  op.a=uv;                                   // 선은 사슬로 잇는다 (더블클릭=끝)
+  _ff3Ghost(op);
+}
+function ff3Move(e){
+  const op=ST.op;
+  if(!op||(op.type!=='line3'&&op.type!=='rect3')) return;
+  const uv=_ff3UV(e,op.fr);
+  if(!uv) return;
+  op.cur=uv;
+  _ff3Ghost(op);
+  vcbShow(op.type==='rect3'?'면 위 사각형':'면 위 선',
+    op.type==='rect3'
+      ?Math.round(Math.abs(uv.u-op.a.u))+'×'+Math.round(Math.abs(uv.v-op.a.v))
+      :Math.round(Math.hypot(uv.u-op.a.u,uv.v-op.a.v)),'mm');
+}
+// ---------------------------------------------------------------------------
 // 프리폼 (2026-09-07 대표 결정)
 //  "견적은 어디까지나 미니캐드에서 결정. 미니폼은 미니캐드 정보를 근거로 스케치업처럼
 //   자유롭게 렌더링을 잡기 위한 것. 보낸 자료는 처음 밑그림으로만 남고 독립적으로
@@ -1030,7 +1190,8 @@ function ffRender(){
   ST.pendingG.forEach(disposeGhost); ST.pendingG=[];
   const freeDoc={meta:{project:'프리폼',ceilingHeight_mm:ffCtx().ch},
     vertices:[],spaces:[],walls:[],openings:[],furniture:[],fixtures:[],lights:[],electric:[],hvac:[],pillars:[],
-    sketchPts:FF.free.sketchPts,sketchEdges:FF.free.sketchEdges,sketchFaces:FF.free.sketchFaces,masses:FF.free.masses};
+    sketchPts:FF.free.sketchPts,sketchEdges:FF.free.sketchEdges,sketchFaces:FF.free.sketchFaces,masses:FF.free.masses,
+    planes:FF.free.planes||[]};
   const D=MC3D.normalizeDoc(JSON.parse(JSON.stringify(freeDoc)));
   const one=MC3D.buildFloorScene(D,LIBS);
   if(FF.group) disposeGroup(FF.group);
@@ -1095,13 +1256,15 @@ function ffApply(m){
     case 'sketchline': {
       const x1=N(p.x1),y1=N(p.y1),x2=N(p.x2),y2=N(p.y2);
       if(!fin(x1,y1,x2,y2)||Math.hypot(x2-x1,y2-y1)<10) return false;
-      ok=skAddEdge(x1,y1,x2,y2,bag).length>0; label='선'; break;
+      const B=_ffBagFor(p.plane);                       // 프리폼 2단계: 평면이 실렸으면 그 평면의 그래프
+      ok=skAddEdge(x1,y1,x2,y2,B).length>0; label=p.plane?'면 위 선':'선'; break;
     }
     case 'sketchrect': {
       const x1=N(p.x1),y1=N(p.y1),x2=N(p.x2),y2=N(p.y2);
       if(!fin(x1,y1,x2,y2)||Math.abs(x2-x1)<10||Math.abs(y2-y1)<10) return false;
-      ok=!!skAddRect(Math.min(x1,x2),Math.min(y1,y2),Math.max(x1,x2),Math.max(y1,y2),bag);
-      label='사각형 → 면'; break;
+      const B=_ffBagFor(p.plane);
+      ok=!!skAddRect(Math.min(x1,x2),Math.min(y1,y2),Math.max(x1,x2),Math.max(y1,y2),B);
+      label=p.plane?'면 위 사각형 → 면':'사각형 → 면'; break;
     }
     case 'sketchcircle': {
       const cx=N(p.cx),cy=N(p.cy),r=N(p.r);
@@ -1117,15 +1280,28 @@ function ffApply(m){
       if(pts.length<3) return false;
       ok=!!skAddPoly(pts,bag); label='다각형 → 면'; break;
     }
-    case 'sketchdel': ok=skRemove(m.kind,m.id,bag); label='스케치 삭제'; break;
-    case 'sketchclear': ok=skClear(bag)>0; label='스케치 비움'; break;
+    case 'sketchdel': {                                 // 모든 그래프(바닥+평면들)에서 찾는다
+      ok=_ffAllBags().some(B=>skRemove(m.kind,m.id,B));
+      label='스케치 삭제'; break;
+    }
+    case 'sketchclear': {
+      let nn=0; _ffAllBags().forEach(B=>{nn+=skClear(B);});
+      FF.free.planes=[];
+      ok=nn>0; label='스케치 비움'; break;
+    }
     case 'extrude': {
-      const f=skFaceById(p.id,bag);
-      if(!f) return no('그 면은 밑그림입니다 — 프리폼 면만 올릴 수 있습니다');
+      const hit=_ffFindFace(p.id);
+      if(!hit) return no('그 면은 밑그림입니다 — 프리폼 면만 올릴 수 있습니다');
       const z=N(p.z); if(!isFinite(z)||z<10) return false;
-      const poly=skFacePoly(f,bag); if(poly.length<3) return false;
-      _skConsumeFace(f,bag);
-      const mm=massFromPoly(poly,z,bag);
+      if(hit.plane){                                     // 프리폼 2단계: 평면 면 → 법선으로 뽑아 자유 다면체
+        const mm=planeExtrude(hit.plane,hit.face,z,FF.free);
+        if(!mm) return false;
+        madeId=mm.id; ok=true; label='면 → 입체 '+z+'mm (법선)';
+        break;
+      }
+      const poly=skFacePoly(hit.face,hit.bag); if(poly.length<3) return false;
+      _skConsumeFace(hit.face,hit.bag);
+      const mm=massFromPoly(poly,z,hit.bag);
       madeId=mm.id; ok=true; label='면 → 매스 Z='+z;
       break;
     }
@@ -1237,7 +1413,7 @@ function ffEnter(opts){
   if(!ST.doc){ setStatus(false,'평면 문서가 아직 없습니다 — 미니캐드에서 먼저 열어주세요'); return; }
   const saved=(!opts||!opts.fresh)?ffLoadLocal():null;
   FF={base:JSON.parse(JSON.stringify(ST.doc)),
-      free:(saved&&saved.free)||{sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[]},
+      free:(saved&&saved.free)||{sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[]},
       hist:[],histPos:-1,group:null,planLatest:null,planDirty:false,mute:false};
   if(saved&&saved.base) FF.base=saved.base;   // 저장본이 있으면 그때 굳힌 밑그림 그대로
   ST.ffOn=true;
@@ -1278,7 +1454,7 @@ function ffRebase(){
 }
 function ffNew(){
   if(!ST.ffOn||!FF) return;
-  FF.free={sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[]};
+  FF.free={sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[]};
   ffCommit('새로 시작 (자유 층 비움)');
 }
 let chan=null;
@@ -2427,6 +2603,13 @@ function beginPP(hit){
     else t={obj,g,mode:'wall',base:obj.meta.H};
   }
   else if(obj.kind==='ceiling') t={obj,g,mode:'ceil',base:Math.round((obj.prims&&obj.prims[0]&&obj.prims[0].z)||2400)};
+  else if(obj.kind==='sketchFace'&&obj.meta&&obj.meta.plane){ // 2026-09-07 프리폼 2단계: 평면 면 = 법선 방향으로 뽑는다
+    const pm=obj.meta.plane;
+    const gh=g.children[0]?g.children[0].clone():null;         // 면을 복제해 법선 쪽으로 밀며 보여 준다
+    if(gh){ gh.material=gh.material.clone(); gh.material.opacity=0.55; gh.renderOrder=7; scene.add(gh); }
+    t={obj,g,mode:'extrude3',base:0,ghost:gh,n:pm.n,
+       nW:new THREE.Vector3(pm.n.x,pm.n.z,pm.n.y)};
+  }
   else if(obj.kind==='sketchFace'&&obj.meta&&obj.meta.poly&&obj.meta.poly.length>=3){ // 2026-09-04 면 + Z = 매스 (스케치업 Push/Pull)
     if(!_floorAwake(obj.floorId)){ _sleepNote('면은 올릴 수 없습니다'); return; }
     const f=ST.floors.find(x=>x.id===obj.floorId), z0=f?f.z0*MM:0;
@@ -2453,6 +2636,18 @@ function applyPP(clientY,clientX){
     op.delta=d; op.g.scale.z=op.baseSZ*(op.base+d)/op.base;
     vcbShow('벽 두께',op.base+d,'mm'); invalidate(true); return;
   }
+  if(op.mode==='extrude3'){                             // 프리폼 2단계: 화면 이동을 면 법선에 투영
+    const r=renderer.domElement.getBoundingClientRect();
+    const c0=op.g.children[0].getWorldPosition(new THREE.Vector3());
+    const s0=c0.clone().project(camera), s1=c0.clone().add(op.nW).project(camera);
+    const sx=(s1.x-s0.x)*r.width/2, sy=-(s1.y-s0.y)*r.height/2, L=Math.hypot(sx,sy)||1;
+    const px=(clientX!=null?clientX:op.startX)-op.startX, py=clientY-op.startY;
+    let d3=Math.round(((px*sx+py*sy)/L)*3/10)*10;       // 3mm/px · 10mm 스냅
+    if(d3<0){ d3=0; vcbShow('면 뽑기 - 파내기(벽감)는 다음 단계',0,'mm'); }
+    op.delta=d3;
+    if(op.ghost) op.ghost.position.copy(op.nW.clone().multiplyScalar(d3*MM));
+    vcbShow('면 뽑기 (법선 방향)',d3,'mm'); invalidate(true); return;
+  }
   let d=Math.round((op.startY-clientY)*5/25)*25;      // 5mm/px · 25mm 스냅
   if(op.mode==='extrude'){                              // 2026-09-04 면 → 매스: 위로 끈 만큼이 Z
     d=Math.max(0,d); op.delta=d;
@@ -2475,6 +2670,17 @@ function commitPP(exact){
     sendEdit('set',obj,{thickness:nv});
     setLast('벽 두께','mm',raw=>{ const v=parseLen(raw); if(v==null||v<30||v>600) return false; sendEdit('set',obj,{thickness:Math.round(v)}); return true; });
     setStatus(statusLive,'⇔ 벽 두께 '+nv+'mm → 평면 반영'); return;
+  }
+  if(mode==='extrude3'){                                // 프리폼 2단계: 평면 면 → 법선으로 뽑아 자유 다면체
+    const d3=(exact!==null&&exact!==undefined)?Math.round(exact):op.delta;
+    if(op.ghost){ disposeGhost(op.ghost); op.ghost=null; }
+    if(!(d3>=10)){ cancelOp(); setStatus(statusLive,'10mm 이상 당겨주세요 (숫자 입력 가능) - 파내기는 다음 단계'); return; }
+    if(op.g) op.g.visible=false;
+    _opDone();
+    ST.lastPP=d3;
+    emitEdit({type:'edit',op:'extrude',floorId:'freeform',patch:{id:obj.id,z:d3,as:'solid'}});
+    setStatus(statusLive,'🧊 면 → 입체 '+d3+'mm (법선 방향) - 벽에서 자란 첫 덩어리입니다');
+    return;
   }
   if(mode==='extrude'){                                 // 2026-09-04 면 + Z → 매스 (평면 skExtrude · Ctrl+Z 한 번)
     const z=(exact!==null&&exact!==undefined)?Math.round(exact):op.delta;
@@ -2617,7 +2823,7 @@ function tapeMove(e){
 }
 // --- 포인터 흐름 (스케치업: 좌=도구 · 가운데 끌기=궤도(Shift=이동) · 우클릭=상황 메뉴/동작 취소 · 선택 도구 빈 곳 끌기=선택 상자) ---
 renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
-const CLICK_TOOLS=new Set(['tape','line','circle','arc','offset','dim']);
+const CLICK_TOOLS=new Set(['tape','line','circle','arc','offset','dim','line3','rect3']); // line3/rect3 = 프리폼 면 위 그리기
 renderer.domElement.addEventListener('pointerdown',e=>{
   hideCtx();
   drag={x:e.clientX,y:e.clientY,moved:false,id:e.pointerId,button:e.button,touch:e.pointerType==='touch'};
@@ -2666,7 +2872,10 @@ renderer.domElement.addEventListener('pointerdown',e=>{
       break;
     case 'orbit': case 'pan': case 'zoom': break; // 카메라 도구 — OrbitControls 가 처리
     case 'add': placeGhost(); break;
-    case 'line': case 'rect': lineClick(e); break;
+    case 'line': case 'rect':
+      if(ST.ffOn&&ST.op&&(ST.op.type==='line3'||ST.op.type==='rect3')){ ff3Click(e,null,ST.tool); break; }
+      if(ST.ffOn&&!ST.op){ const fp=_ffFacePick(e); if(fp){ ff3Click(e,fp,ST.tool); break; } }
+      lineClick(e); break;
     case 'circle': circleClick(e); break;
     case 'arc': arcClick(e); break;
     case 'offset': offsetClick(e); break;
@@ -2697,6 +2906,7 @@ renderer.domElement.addEventListener('pointermove',e=>{
     else if(t==='pp') applyPP(e.clientY,e.clientX);
     else if(t==='vz') applyVertZ(e.clientY);
     else if(t==='tape') tapeMove(e);
+    else if(t==='line3'||t==='rect3') ff3Move(e);
     else if(t==='line') lineMove(e);
     else if(t==='circle') circleMove(e);
     else if(t==='arc') arcMove(e);
@@ -3454,7 +3664,7 @@ requestAnimationFrame(loop);
 connect();
 if(!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
 // 테스트·디버그 훅
-window.MC3DVIEW={ST,scene,get camera(){return camera;},renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
+window.MC3DVIEW={ST,scene,THREE,get camera(){return camera;},renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
   setSky,setSkyImage,buildSky,drawFrame,
   ffEnter,ffExit,ffApply,ffRebase,ffNew,ffExportFile,emitEdit,get FF(){return FF;},
   buildGrips,beginVertZ,applyVertZ,commitVertZ,_gripAt,_massWorld,get grips(){return gripsGrp;},

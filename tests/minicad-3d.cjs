@@ -505,6 +505,45 @@ ck(/function setSkyImage\(url\)/.test(v3Src) && /uHasTex/.test(v3Src),
 ck(/setNight\(on\)[\s\S]{0,400}applySkyColors\(\)/.test(v3Src) || /applyMood[\s\S]{0,600}applySkyColors\(\)/.test(v3Src),
   '하늘: 주·야 전환을 배경도 따른다');
 
+// ---- 2026-09-07 프리폼 ② — 스케치 평면 (아무 데나 그리면 면이 된다) --------------
+//  평면마다 2D 그래프 하나 — 검증된 면 검출 엔진의 좌표계만 바꿔 끼운다.
+//  손계산 기준: 남벽(법선 -y) 위 1600×1000 면을 300 뽑으면 부피 0.48㎥.
+{
+  const ctx = { ch: 2400, fh: 2800, fl: 0 };
+  // [P1] 평면 틀 — 정규직교·결정적 (같은 입력 = 같은 틀)
+  const pl = SK.planeFrom({ x: 2000, y: 4000, z: 0 }, { x: 0, y: -1, z: 0 });
+  ck(Math.abs(pl.ex.x - 1) < 1e-9 && Math.abs(pl.ey.z - 1) < 1e-9,
+    'P 벽 평면: u 는 수평, v 는 위 (도면처럼 읽힌다)');
+  const pl2 = SK.planeFrom({ x: 2000, y: 4000, z: 0 }, { x: 0, y: -1, z: 0 });
+  ck(JSON.stringify(pl.ex) === JSON.stringify(pl2.ex) && JSON.stringify(pl.ey) === JSON.stringify(pl2.ey),
+    'P 두 번 만들어도 같은 틀');
+  // [P2] uv 왕복
+  const q = SK.planePt(pl, 1000, 800);
+  const uv = SK.planeUV(pl, q);
+  ck(Math.abs(uv.u - 1000) < 1e-6 && Math.abs(uv.v - 800) < 1e-6, 'P uv 왕복이 자리를 지킨다');
+  // [P3] 같은 벽이면 같은 그래프 — 다른 벽이면 다른 그래프
+  const free = {};
+  const b1 = SK.ffPlaneBag(free, { x: 2000, y: 4000, z: 0 }, { x: 0, y: -1, z: 0 });
+  const b2 = SK.ffPlaneBag(free, { x: 5000, y: 4000, z: 1200 }, { x: 0, y: -1, z: 0 });
+  const b3 = SK.ffPlaneBag(free, { x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 });
+  ck(b1 === b2 && b1 !== b3 && free.planes.length === 2, 'P 평면 그래프 재사용·분리');
+  // [P4] 벽면 위 사각형 — 같은 엔진이 면을 검출
+  const f = SK.skAddRect(500, 300, 2100, 1300, b1);
+  ck(!!f && Math.abs(SK.skFaceArea(f, b1) / 1e6 - 1.6) < 1e-9, 'P 벽면 위 면 1.6㎡');
+  // [P5] 법선으로 뽑기 — 부피·물량 손계산
+  const m = SK.planeExtrude(b1, f, 300, free);
+  ck(!!m && Math.abs(SK.massVolume(m, ctx) - 0.48) < 1e-6, 'P 뽑은 부피 0.48㎥: ' + SK.massVolume(m, ctx));
+  ck(Math.abs(SK.massQuantities(m, ctx).total - (2 * 1.6 + 5.2 * 0.3)) < 1e-6,
+    'P 겉넓이 4.76㎡ (두 뚜껑 3.2 + 옆 1.56)');
+  ck(b1.sketchFaces.length === 0, 'P 뽑힌 면은 소비된다');
+  // [P6] 자유 다면체에는 꼭짓점 그립 목록이 없다 (밑면↔윗면 짝이 없어 오작동한다)
+  ck(SK.massTopPts(m, ctx).length === 0, 'P 자유 다면체에 그립 목록 없음');
+  // [P7] 땅 밑으로 뽑으면 들어 올린다 — v -200..300 면
+  const f2 = SK.skAddRect(3000, -200, 3600, 300, b1);
+  const m2 = SK.planeExtrude(b1, f2, 200, free);
+  ck(Math.min(...m2.solidVerts.map(v => v.z)) === 0, 'P 땅 밑 매스는 바닥으로 들어 올린다');
+}
+
 // ---- 2026-09-07 프리폼 (대표 결정 "미니폼은 자유 렌더링 — 밑그림으로 굳히고 독립") ----
 //  핵심 계약: 편집이 나가는 길은 emitEdit 하나. 프리폼이 켜지면 채널 대신 ffApply 가
 //  자유 층에 그 자리에서 적용한다. 직접 postMessage 가 하나라도 남으면 그 op 은
@@ -521,6 +560,16 @@ ck(/&&ffEditable\(obj\)/.test(v3Src),'프리폼: 밑그림은 이동 못 잡는�
 ck(/FF_SCHEMA='ECOREAN\.FreeForm\.v1'/.test(v3Src),'프리폼: 자기 문서 스키마');
 ck(/massconvert': return no\(/.test(v3Src)&&/ceilmass': return no\(/.test(v3Src),
   '프리폼: 공간·벽 전환과 천장 지정은 평면(견적)의 일로 거부');
+// 프리폼 ② — 면 위 그리기의 계약
+ck(/function _ffFacePick/.test(v3Src)&&/function ff3Click/.test(v3Src),'프리폼②: 면 위 그리기 진입로가 있다');
+ck(/'line3','rect3'/.test(v3Src),'프리폼②: 면 위 도구가 클릭 도구로 등록돼 있다');
+ck(/t==='face3'/.test(v3Src)&&/t==='edge3'/.test(v3Src)&&/t==='pt3'/.test(v3Src),'프리폼②: 평면 스케치 prim 3종');
+ck(/mode:'extrude3'/.test(v3Src),'프리폼②: 평면 면은 법선 방향 밀기끌기');
+ck(/_ffBagFor\(p\.plane\)/.test(v3Src),'프리폼②: 평면이 실린 op 은 그 평면의 그래프로');
+ck(/planeExtrude\(hit\.plane,hit\.face/.test(v3Src),'프리폼②: 평면 면 extrude 는 planeExtrude 로');
+const b3Src = fs.readFileSync(path.join(__dirname, '..', 'sites/net/public/minicad/3d/build3d.js'), 'utf8');
+ck(/function buildPlaneSketch/.test(b3Src)&&/planes:\(d\.planes\|\|\[\]\)/.test(b3Src),
+  '프리폼②: 조립이 스케치 평면을 안다');
 
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');
