@@ -5284,6 +5284,73 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       !!document.querySelector('[data-tool="mass"]'),'매스 도구 버튼 없음');
     assert('SK38c: 사각공간 도구가 그대로 있다',
       !!document.querySelector('[data-tool="rect"]'));
+    // 13) Z축 3층 — 꼭짓점 높이 (2026-09-07 "진행해줘")
+    //  프로토콜 7 을 받아 실제로 매스가 기울어지는지, 그리고 평면 표기·패널이
+    //  같은 답을 보는지. 여기까지 돌아야 빗천장을 손으로 만들 수 있다.
+    skClear();STATE.masses=[];
+    const _zm=massFromPoly([{x:0,y:0},{x:4000,y:0},{x:4000,y:3000},{x:0,y:3000}],2400);
+    const _zid=_zm.id, _zctx=massCtx();
+    assert('Z01: 새 매스는 각기둥 (옛 형식 그대로 저장)',massIsPrism(_zm)===true&&!_zm.solidVerts);
+    assert('Z02: 윗면 꼭짓점 4개 · 전부 2400',massTopPts(_zm,_zctx).map(p=>p.z).join()==='2400,2400,2400,2400');
+    // setz — 한 점만 올리면 각기둥이 다면체로 승격된다
+    assert('Z03: setz(3D) 한 점 3600',apply3DEdit({type:'edit',op:'setz',floorId:_skAct,patch:{id:_zid,verts:[{i:4,z:3600}]}})===true);
+    const _zm2=STATE.masses.find(x=>x.id===_zid);
+    assert('Z04: 다면체로 승격 · 그 점만 3600',massIsPrism(_zm2)===false&&massTopPts(_zm2,_zctx).map(p=>p.z).join()==='3600,2400,2400,2400');
+    assert('Z05: 경사면이 생기고 물매가 잡힌다',massSlopes(_zm2,_zctx).length>0&&massSlopes(_zm2,_zctx)[0].pitch>0,
+      JSON.stringify(massSlopes(_zm2,_zctx).map(f=>f.pitch)));
+    const _zq=massQuantities(_zm2,_zctx);
+    assert('Z06: 경사 실면적이 눕힌 넓이(12㎡)보다 크다',_zq.ceilAll>12&&_zq.ceilAll<13.5,_zq.ceilAll+'㎡');
+    // settop — 윗면 통째 → 다시 각기둥으로 (파일이 가벼워진다)
+    assert('Z07: settop(3D) 평평하게',apply3DEdit({type:'edit',op:'settop',floorId:_skAct,patch:{id:_zid,z:2700}})===true
+      &&massIsPrism(STATE.masses.find(x=>x.id===_zid))===true);
+    assert('Z08: 되돌아간 매스에 새 필드가 안 남는다',!STATE.masses.find(x=>x.id===_zid).solidVerts);
+    // zref — 천장고에 매달기. 천장고를 고치면 따라 움직여야 한다
+    assert('Z09: zref(3D) CH-300',apply3DEdit({type:'edit',op:'zref',floorId:_skAct,patch:{id:_zid,verts:[5],r:'ch',o:-300}})===true);
+    const _zm3=STATE.masses.find(x=>x.id===_zid);
+    const _ch0=STATE.ceilingHeight;
+    assert('Z10: 매달린 점이 CH-300 = '+(_ch0-300),massTopPts(_zm3,massCtx())[1].z===_ch0-300);
+    STATE.ceilingHeight=_ch0+600;
+    assert('Z11: 천장고를 올리면 매달린 점이 따라 오른다',massTopPts(_zm3,massCtx())[1].z===_ch0+300);
+    STATE.ceilingHeight=_ch0;
+    assert('Z12: 칸 표기는 CH-300 (되받아 읽힌다)',massTopPts(_zm3,massCtx())[1].label==='CH-300',massTopPts(_zm3,massCtx())[1].label);
+    assert('Z12b: 그 표기를 그대로 다시 읽으면 같은 뜻',
+      JSON.stringify(_msZParse(massTopPts(_zm3,massCtx())[1].label,massCtx()))==='{"r":"ch","o":-300}');
+    assert('Z12c: 상태줄용 긴 말은 따로',/천장고/.test(massTopPts(_zm3,massCtx())[1].labelLong));
+    // 잘못된 값·잠금은 거부
+    assert('Z13: 빈 verts 거부',apply3DEdit({type:'edit',op:'setz',floorId:_skAct,patch:{id:_zid,verts:[]}})===false);
+    assert('Z14: 없는 매스 거부',apply3DEdit({type:'edit',op:'setz',floorId:_skAct,patch:{id:'nope',verts:[{i:4,z:1000}]}})===false);
+    _zm3.locked=true;
+    assert('Z15: 잠금된 매스 거부',apply3DEdit({type:'edit',op:'setz',floorId:_skAct,patch:{id:_zid,verts:[{i:4,z:1000}]}})===false);
+    _zm3.locked=false;
+    // 되돌리기 — 평면 히스토리와 한 줄기
+    const _zBefore=JSON.stringify(STATE.masses.find(x=>x.id===_zid));
+    apply3DEdit({type:'edit',op:'setz',floorId:_skAct,patch:{id:_zid,verts:[{i:6,z:5000}]}});
+    assert('Z16: setz 뒤 undo 로 되돌아온다',(undo(),JSON.stringify(STATE.masses.find(x=>x.id===_zid))===_zBefore));
+    // 평면 표기 — 마루·물매·꼭짓점 라벨이 실제로 그려지는가
+    const _zgb=massFromPoly([{x:0,y:0},{x:3000,y:0},{x:6000,y:0},{x:6000,y:4000},{x:3000,y:4000},{x:0,y:4000}],1800);
+    // 가운데 두 점만 올리면 박공 — 마루 하나 · 경사면 둘
+    apply3DEdit({type:'edit',op:'setz',floorId:_skAct,patch:{id:_zgb.id,verts:[{i:7,z:3000},{i:10,z:3000}]}});
+    const _zgm=STATE.masses.find(x=>x.id===_zgb.id);
+    assert('Z17: 박공 — 경사면 2 · 마루 1',
+      massSlopes(_zgm,massCtx()).length===2&&massRidges(_zgm,massCtx()).filter(e=>e.kind==='ridge').length===1,
+      JSON.stringify(massRidges(_zgm,massCtx()).map(e=>e.kind)));
+    renderAll();
+    const _zg=groups.masses;
+    assert('Z18: 평면에 높이 숫자·물매 화살표·마루선이 그려진다',
+      _zg.find('Text').length>=6&&_zg.find('Arrow').length>=2&&_zg.find('Line').length>=2,
+      '텍스트 '+_zg.find('Text').length+' · 화살표 '+_zg.find('Arrow').length+' · 선 '+_zg.find('Line').length);
+    STATE.masses=STATE.masses.filter(x=>x.id!==_zgb.id);
+    // 속성 패널 — 꼭짓점 칸이 서고 CH 입력을 알아듣는다
+    renderAll(); selectObj('masses',_zid); refreshUI();
+    assert('Z19: 속성 패널에 꼭짓점 높이 칸',!!document.getElementById('ms-vz-0')&&!!document.getElementById('ms-zch'));
+    assert('Z20: CH-300 을 알아듣는다',JSON.stringify(_msZParse('CH-300',_zctx))==='{"r":"ch","o":-300}');
+    assert('Z21: 천장고/층높이 한글도',JSON.stringify(_msZParse('천장고+600',_zctx))==='{"r":"ch","o":600}'
+      &&JSON.stringify(_msZParse('FH',_zctx))==='{"r":"fh","o":0}');
+    assert('Z22: 숫자는 숫자로',_msZParse('2700',_zctx)===2700);
+    assert('Z23: 헛소리는 null',_msZParse('가나다',_zctx)===null);
+    // 프로토콜 번호 — 두 창이 짝이어야 한다
+    assert('Z24: 프로토콜 7',MC_PROTO===7);
+    STATE.masses=[];
     applyLoadedData(_skBak);
     assert('SK39: 원상복구',STATE.activeFloorId===_skAct&&(STATE.masses||[]).length===_skBak.masses.length);
   }catch(e){

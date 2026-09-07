@@ -182,10 +182,16 @@ function buildMass(m){
   const base={id:m.id,kind:'mass',name:m.name||'매스',x:m.x,y:m.y,rot:m.angle,flip:false,
     locked:!!m.locked,elev:Math.round(num(m.elev_mm,0))};
   const H=Math.round(massTopZOf(m,ctx));
+  // 2026-09-07 Z축 3층: 미니폼이 꼭짓점 그립을 세우고 끌기 미리보기를 만들려면
+  //  ① 윗면 꼭짓점 목록 ② 그 자리에서 다시 계산할 최소 사본 ③ 기준 높이 가 필요하다.
+  //  형상을 3D 쪽에서 새로 짜지 않고 sketch.js 를 그대로 부르기 위한 짐이다.
+  const topPts=(_sk('massTopPts')||(()=>[]))(m,ctx);
+  const lean=(_sk('massLean')||(()=>null))(m);
+  const zgrip={top:topPts,lean,ctx,pts:m.pts};
   if(massIsPrismOf(m)){
     // 수직 각기둥 — 종전 그대로 (가볍고 빠르다)
     return Object.assign(base,{prims:[{t:'prism',pts:m.pts,z:0,h:H,color:col}],
-      meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false}});
+      meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false,z:zgrip}});
   }
   // 자유 다면체 — 꼭짓점마다 높이가 다르다 (빗천장·박공·꺾인 천장)
   const S=massSolidOf(m,ctx);
@@ -197,7 +203,8 @@ function buildMass(m){
   return Object.assign(base,{
     prims:[{t:'mesh',verts:S.verts,tris,faces:S.faces.map(f=>({role:f.role,tilt:f.tilt})),z:0,color:col}],
     meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:true,
-      qty:q,faces:S.faces.length,maxTilt:q.maxTilt||0}});
+      qty:q,faces:S.faces.length,maxTilt:q.maxTilt||0,z:zgrip,
+      slopes:(_sk('massSlopes')||(()=>[]))(m,ctx)}});
 }
 function massAbsPoly(m){
   const r=m.angle*Math.PI/180, c=Math.cos(r), s=Math.sin(r);

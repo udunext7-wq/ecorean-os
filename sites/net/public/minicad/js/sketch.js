@@ -390,8 +390,58 @@ function renderMasses(){
     });
     g.add(shape);
     const c=P(skPolyCentroid(poly));
-    const t=new Konva.Text({x:c.x,y:c.y,text:(m.name||'매스')+'\nH '+(m.h_mm||0)+(m.elev_mm?' ↑'+m.elev_mm:''),fontSize:11,fill:sel?SK_COL.sel:'#3E4750',align:'center',listening:false});
+    const ctx=massCtx();
+    const flat=massIsPrism(m);
+    const top=massTopPts(m,ctx);
+    let head=(m.name||'매스');
+    if(flat) head+='\nH '+(m.h_mm||0)+(m.elev_mm?' ↑'+m.elev_mm:'');
+    else{
+      const zs=top.map(p=>p.z), lo=Math.min(...zs), hi=Math.max(...zs);
+      const mt=Math.max(0,...massSlopes(m,ctx).map(f=>f.tilt));
+      head+='\nH '+lo+'~'+hi+(mt?(' ∠'+Math.round(mt*10)/10+'°'):'')+(m.elev_mm?' ↑'+m.elev_mm:'');
+    }
+    const t=new Konva.Text({x:c.x,y:c.y,text:head,fontSize:11,fill:sel?SK_COL.sel:'#3E4750',align:'center',listening:false});
     t.offsetX(t.width()/2);t.offsetY(t.height()/2);g.add(t);
+    if(!flat) renderMassZ(g,m,ctx,top,P,sel);   // 2026-09-07 Z축: 평면도의 높이 표기
+  });
+}
+
+// 평면도의 높이 표기 (2026-09-07 Z축 3층) — 지붕 평면도가 백 년째 쓰는 관례 그대로.
+//  ① 꼭짓점마다 높이 숫자 (천장고에 매달린 값은 CH-300 처럼 · 금색)
+//  ② 경사면 가운데에 '내림 방향' 화살표 + 물매 4/10
+//  ③ 마루는 굵은 실선 · 골(밸리)은 파선
+//  각기둥에는 아무것도 그리지 않는다 — 높이가 하나뿐이라 표기가 잡음이 된다.
+function renderMassZ(g,m,ctx,top,P,sel){
+  const Z_COL='#2F6193', Z_REF='#8A6B33';
+  // 화면에서 너무 작으면 숫자·화살표는 접는다 — 줌아웃하면 글자만 뭉쳐 도면을 덮는다.
+  //  마루·골선은 형상이라 크기와 무관하게 늘 그린다.
+  const sp=top.map(p=>P({x:p.ax,y:p.ay}));
+  const w=Math.max(...sp.map(q=>q.x))-Math.min(...sp.map(q=>q.x));
+  const h=Math.max(...sp.map(q=>q.y))-Math.min(...sp.map(q=>q.y));
+  const roomy=Math.min(w,h)>=52;
+  massRidges(m,ctx).forEach(e=>{
+    if(e.kind==='fold') return;                       // 접힘일 뿐인 모서리는 도면을 어지럽힌다
+    const a=P({x:e.ax,y:e.ay}), b=P({x:e.bx,y:e.by});
+    g.add(new Konva.Line({points:[a.x,a.y,b.x,b.y],listening:false,
+      stroke:e.kind==='ridge'?'#3E4750':Z_COL,strokeWidth:e.kind==='ridge'?2.2:1.4,
+      dash:e.kind==='valley'?[7,4]:undefined}));
+  });
+  if(!roomy) return;
+  massSlopes(m,ctx).forEach(f=>{
+    const o=P({x:f.ax,y:f.ay});
+    const L=26, hx=f.dx*L, hy=f.dy*L;                 // 화면 길이로 그린다 (줌과 무관하게 읽히도록)
+    g.add(new Konva.Arrow({points:[o.x-hx,o.y-hy,o.x+hx,o.y+hy],listening:false,
+      stroke:Z_COL,fill:Z_COL,strokeWidth:1.4,pointerLength:7,pointerWidth:6,opacity:0.85}));
+    const lb=new Konva.Text({x:o.x+hx,y:o.y+hy,text:f.pitch+'/10',fontSize:10,fill:Z_COL,listening:false});
+    lb.offsetX(lb.width()/2); lb.offsetY(-4); g.add(lb);
+  });
+  const cq=P(skPolyCentroid(massAbsPoly(m)));
+  top.forEach(p=>{
+    const q=P({x:p.ax,y:p.ay});
+    const dx=q.x-cq.x, dy=q.y-cq.y, L=Math.hypot(dx,dy)||1;   // 바깥으로 조금 밀어 도형과 겹치지 않게
+    const lb=new Konva.Text({x:q.x+dx/L*12,y:q.y+dy/L*12,text:p.label,fontSize:10,
+      fill:p.ref?Z_REF:(sel?SK_COL.sel:Z_COL),fontStyle:p.ref?'bold':'normal',listening:false});
+    lb.offsetX(lb.width()/2); lb.offsetY(lb.height()/2); g.add(lb);
   });
 }
 
@@ -458,6 +508,15 @@ function zLabel(z,ctx){
 }
 
 // ---------- 면의 법선·역할·실면적 (3D) ----------
+// 칸에 넣고 그대로 되돌려 읽을 수 있는 짧은 표기 (CH-300 · 2400).
+//  zLabel 은 '천장고 -300 = 2100' 처럼 사람에게 읽히는 말이라 상태줄용이고,
+//  입력 칸에 그 말을 넣으면 엔터를 치는 순간 못 알아듣는다 — 실제로 그랬다.
+const Z_REF_SHORT={ch:'CH',fh:'FH',fl:'FL'};
+function zEdit(z,ctx){
+  if(!zIsRef(z)) return String(zNum(z,ctx));
+  const o=z.o||0;
+  return (Z_REF_SHORT[z.r]||String(z.r).toUpperCase())+(o?((o>0?'+':'')+o):'');
+}
 function faceNormal(verts,vs){
   // 뉴엘 방법 — 볼록하지 않은 면에서도 옳은 법선이 나온다
   let nx=0,ny=0,nz=0;
@@ -752,8 +811,104 @@ function massTopZ(m,ctx){
   return z;
 }
 
+// ---------------------------------------------------------------------------
+// Z축 3층(조작) — 두 창이 함께 쓰는 읽기용 헬퍼 (2026-09-07)
+//  미니폼의 꼭짓점 그립과 평면도의 높이 표기가 같은 답을 보려면 계산이 한 곳에
+//  있어야 한다. 두 벌로 베끼면 3D 에서 올린 지붕과 평면에 적힌 숫자가 조용히
+//  어긋난다 — 이 파일을 2D·3D 가 함께 읽는 이유다.
+// ---------------------------------------------------------------------------
+function _mrot(m,x,y){                 // 매스 로컬 → 평면 절대 좌표
+  const r=(m.angle||0)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+  return {x:m.x+x*c-y*s, y:m.y+x*s+y*c};
+}
+function _mdir(m,x,y){                 // 방향만 (평행이동 없이)
+  const r=(m.angle||0)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+  return {x:x*c-y*s, y:x*s+y*c};
+}
+// 평면(2D)에서 쓰는 기준 높이 — 참조 높이가 매달릴 곳
+function massCtx(){
+  const S=(typeof STATE!=='undefined')?STATE:null;
+  return {ch:(S&&S.ceilingHeight)||2400, fh:(S&&S.floorHeight)||2800, fl:0};
+}
+// 윗면 꼭짓점 목록 — 각기둥이든 다면체든 같은 모양으로 돌려준다.
+//  vi = solidVerts 안의 자리. 프로토콜 setz 가 이 번호를 싣는다.
+//  밑면 i ↔ 윗면 N+i 라는 짝은 massToSolid 가 세운 규약이고, massTryPrism 이
+//  되돌릴 때도 그 짝을 확인한다 — 여기서도 같은 규약을 쓴다.
+function massTopPts(m,ctx){
+  const N=(m&&m.pts||[]).length; if(!N) return [];
+  const solid=!massIsPrism(m);
+  const out=[];
+  for(let i=0;i<N;i++){
+    const v=solid?m.solidVerts[N+i]:null;
+    const zr=solid?(v?v.z:0):m.h_mm;
+    const x=(solid&&v)?v.x:m.pts[i].x, y=(solid&&v)?v.y:m.pts[i].y;
+    const a=_mrot(m,x,y);
+    out.push({i,vi:N+i,x,y,ax:a.x,ay:a.y,z:zNum(zr,ctx),zr,ref:zIsRef(zr),
+      label:zEdit(zr,ctx),        // 칸·평면 표기 (되받아 읽힌다)
+      labelLong:zLabel(zr,ctx)}); // 상태줄용 (사람 말)
+  }
+  return out;
+}
+// 물매 — 지붕은 각도보다 물매(x/10)로 말하는 일이 많다. 둘 다 적는다.
+function pitchOf(tilt){ return Math.round(Math.tan((tilt||0)*Math.PI/180)*10); }
+function pitchStr(tilt){ return pitchOf(tilt)+'/10'; }
+// 경사면 — 평면도에 '내림 방향' 화살표를 그리기 위한 것 (지붕 평면도 관례)
+//  법선이 (nx,ny,nz), nz>0 일 때 (nx,ny) 쪽으로 가면 z 가 줄어든다 = 내리막.
+function massSlopes(m,ctx){
+  if(!m||massIsPrism(m)) return [];
+  const S=massSolid(m,ctx);
+  const out=[];
+  S.faces.forEach(f=>{
+    if(f.role!=='slope'||f.facing!=='up') return;
+    const c=faceCentroid3(S.verts,f.vs), n=f.n||faceNormal(S.verts,f.vs);
+    const L=Math.hypot(n.x,n.y)||1;
+    const d=_mdir(m,n.x/L,n.y/L);
+    const a=_mrot(m,c.x,c.y);
+    out.push({ax:a.x,ay:a.y,z:c.z,dx:d.x,dy:d.y,tilt:f.tilt,pitch:pitchOf(f.tilt),
+      area:Math.round(faceArea3(S.verts,f.vs)/1e3)/1e3});
+  });
+  return out;
+}
+// 마루·골 — 위를 보는 면 둘이 만나는 모서리. 양쪽이 다 내려가면 마루(용마루),
+//  양쪽이 다 올라가면 골(밸리). 지붕 평면도가 굵은 실선/파선으로 나누는 그것.
+function massRidges(m,ctx){
+  if(!m||massIsPrism(m)) return [];
+  const S=massSolid(m,ctx);
+  const seen=new Map();
+  S.faces.forEach(f=>{
+    if(f.facing!=='up'||(f.role!=='slope'&&f.role!=='ceil')) return;
+    for(let k=0;k<f.vs.length;k++){
+      const a=f.vs[k],b=f.vs[(k+1)%f.vs.length];
+      const key=Math.min(a,b)+'_'+Math.max(a,b);
+      if(!seen.has(key)) seen.set(key,{a:Math.min(a,b),b:Math.max(a,b),fs:[]});
+      seen.get(key).fs.push(f);
+    }
+  });
+  const out=[];
+  seen.forEach(e=>{
+    if(e.fs.length!==2) return;
+    const va=S.verts[e.a],vb=S.verts[e.b];
+    if(!va||!vb) return;
+    const mz=(va.z+vb.z)/2;
+    let lo=0,hi=0;
+    e.fs.forEach(f=>{ const c=faceCentroid3(S.verts,f.vs); if(c.z<mz-1) lo++; else if(c.z>mz+1) hi++; });
+    const kind=(lo===2)?'ridge':(hi===2)?'valley':'fold';
+    const pa=_mrot(m,va.x,va.y), pb=_mrot(m,vb.x,vb.y);
+    out.push({kind,ax:pa.x,ay:pa.y,bx:pb.x,by:pb.y,z:mz});
+  });
+  return out;
+}
+// 미니폼이 꼭짓점을 끌 때 미리보기를 만들 최소 사본 — 형상 필드만 (가볍게)
+function massLean(m){
+  const o={pts:(m.pts||[]).map(p=>({x:p.x,y:p.y})),h_mm:m.h_mm,angle:0,x:0,y:0};
+  if(Array.isArray(m.solidVerts)) o.solidVerts=m.solidVerts.map(v=>({x:v.x,y:v.y,z:(v.z&&typeof v.z==='object')?{r:v.z.r,o:v.z.o}:v.z}));
+  if(Array.isArray(m.solidFaces)) o.solidFaces=m.solidFaces.map(f=>({vs:f.vs.slice(),mat:f.mat||null,roleFix:f.roleFix||null}));
+  return o;
+}
+
 if(typeof module!=='undefined'&&module.exports){
   module.exports={zIsRef,zNum,zSet,zLabel,facePlanarDev,massHeal,splitFoldedRing,faceNormal,faceRole,faceFacing,faceTiltDeg,faceArea3,faceCentroid3,
-    massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
+    zEdit,massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
+    massTopPts,massSlopes,massRidges,massCtx,massLean,pitchOf,pitchStr,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

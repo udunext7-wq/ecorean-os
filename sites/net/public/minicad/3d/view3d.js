@@ -890,9 +890,10 @@ function _syncSel(){
   ST.selected=arr.length?arr[arr.length-1]:null;
   ST.selKeys=arr.map(keyOf);
   ST.selKey=ST.selected?{floorId:ST.selected.userData.obj.floorId,id:ST.selected.userData.obj.id}:null;
-  if(!ST.selected){ hideTip(); renderProps(null); renderOutliner(); invalidate(); return; }
+  if(!ST.selected){ hideTip(); renderProps(null); renderOutliner(); buildGrips(); invalidate(); return; }
   renderProps(ST.selected.userData.obj,arr.length>1?{multi:arr.map(x=>x.userData.obj)}:null);
   renderOutliner();
+  buildGrips();   // 2026-09-07 Z: 매스 하나면 윗면 꼭짓점 그립
   invalidate();
 }
 function reselect(){
@@ -900,7 +901,7 @@ function reselect(){
   const gs=[];
   ST.selKeys.forEach(k=>{ const i=k.indexOf('|'); const g=findGroup(k.slice(0,i),k.slice(i+1)); if(g) gs.push(g); });
   ST.selSet.clear();              // 옛 그룹은 재조립으로 폐기됨 — 새 그룹에 하이라이트 재적용
-  selectGroups(gs);
+  selectGroups(gs);                // selectGroups → _syncSel → buildGrips (그립도 새 좌표로)
 }
 function visibleGroups(fid){
   const out=[];
@@ -1087,6 +1088,7 @@ function rayFromEvent(e){
   ray.setFromCamera(nd,camera);
 }
 function setTool(t){
+  if(typeof buildGrips==='function') setTimeout(buildGrips,0);   // 2026-09-07 Z: 도구에 따라 그립 유무가 다르다
   cancelOp();
   clearGhost();
   hideSnap();
@@ -1648,6 +1650,7 @@ function cancelOp(){
     }
     if(op.type==='scale'&&op.g){ op.g.scale.x=op.baseSX; op.g.scale.z=op.baseSZ; }
     if(op.type==='pp'&&op.g){ op.g.scale.y=1; op.g.position.y=op.origY; if(op.baseSZ!=null) op.g.scale.z=op.baseSZ; }
+    if(op.type==='vz'){ if(op.g) op.g.visible=true; if(op.ghost) disposeGhost(op.ghost); buildGrips(); }   // 2026-09-07 Z
     ['line','ghost','startMk','infLine','protractor','guideLine'].forEach(k=>{ if(op[k]){ disposeGhost(op[k]); } });
     hideSnap();
     invalidate(true);
@@ -1663,10 +1666,225 @@ function commitActive(exact){
   else if(op.type==='rotate') commitRotate(exact);
   else if(op.type==='scale') commitScale(exact);
   else if(op.type==='pp') commitPP(exact);
+  else if(op.type==='vz') commitVertZ(exact);
   else if(op.type==='line') commitLine(exact);
   else if(op.type==='circle') commitCircle(exact);
   else if(op.type==='arc') commitArc(exact);
   else if(op.type==='offset') commitOffset(exact);
+}
+// ---------------------------------------------------------------------------
+// 꼭짓점 그립 — Z축 3층(조작) · 2026-09-07
+//  엔진(sketch.js)은 이미 점마다 z 를 안다. 그런데 그것을 만질 손잡이가 없어서,
+//  빗천장을 만드는 유일한 방법이 JSON 을 손으로 쓰는 것이었다. 여기가 그 손잡이다.
+//   · 매스 하나를 고르면 윗면 꼭짓점마다 파란 그립이 뜬다
+//   · 그립을 끌면 그 점만 위아래로 — 축 고정이 필요 없다 (꼭짓점은 Z 로만 간다)
+//   · Shift = 화면에서 가까운 이웃까지 두 점 (지붕 한쪽 면이 통째로 기운다)
+//   · Ctrl = 천장고에 매달기 — 숫자가 아니라 CH-300 이 되어 천장고를 따라 움직인다
+//   · 숫자 입력(VCB) = 정확한 높이 · 그립 더블클릭 = 직전 높이 반복
+//  미리보기는 sketch.js 를 그대로 불러 만든다. 3D 쪽에서 형상을 새로 짜면
+//  평면과 답이 갈라진다 — 접힘 정리·갈래 판정이 두 벌이 되기 때문.
+// ---------------------------------------------------------------------------
+const GRIP_R=70;                       // 그립 기준 반지름 (mm) — 손으로 집을 만한 크기
+let gripsGrp=null, gripGeo=null, gripMat=null, gripMatRef=null;
+// 매스가 크면 그립도 커야 보인다 (작은 붙박이도 큰 지붕도 같은 손맛으로)
+function _gripSize(o){
+  const pts=(o.meta&&o.meta.z&&o.meta.z.pts)||[];
+  if(pts.length<2) return GRIP_R;
+  let w=0,h=0;
+  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+  w=Math.max(...xs)-Math.min(...xs); h=Math.max(...ys)-Math.min(...ys);
+  return Math.max(45,Math.min(260,Math.max(w,h)*0.018));
+}
+function _gripInit(){
+  if(gripsGrp) return;
+  gripsGrp=new THREE.Group(); gripsGrp.name='zgrips'; scene.add(gripsGrp);
+  gripGeo=new THREE.SphereGeometry(GRIP_R*MM,12,10);
+  // 늘 보이게 — 기하에 묻히면 집을 수가 없다 (스케치업의 끝점 표시와 같은 취급)
+  gripMat=new THREE.MeshBasicMaterial({color:0x2F6193,depthTest:false,transparent:true,opacity:0.95});
+  gripMatRef=new THREE.MeshBasicMaterial({color:0xC9A961,depthTest:false,transparent:true,opacity:0.95}); // 매달린 점은 금색
+}
+function clearGrips(){
+  if(!gripsGrp) return;
+  while(gripsGrp.children.length) gripsGrp.remove(gripsGrp.children[gripsGrp.children.length-1]);
+}
+// 매스 로컬 (x,y,z) → 세계 좌표. 그룹이 하는 일(층 z0 · 띄움 · 회전)을 손으로 한 번 더 한다.
+//  그립을 그룹 안에 넣지 않는 이유: 그룹이 잠깐 축척되거나 숨겨져도 그립은 남아야 한다.
+function _massWorld(o,x,y,z,z0){
+  const r=-(o.rot||0)*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
+  const wx=o.x*MM+(x*MM)*c+(y*MM)*s;
+  const wz=o.y*MM-(x*MM)*s+(y*MM)*c;
+  return new THREE.Vector3(wx,(z0+(o.elev||0)+z)*MM,wz);
+}
+function _massZ0(o){ const f=ST.floors.find(x=>x.id===o.floorId); return f?f.z0:0; }
+// 매스 하나만 골랐을 때만 — 여럿이면 어느 점인지 알 수 없어 오히려 방해가 된다
+function buildGrips(){
+  _gripInit(); clearGrips();
+  const arr=[...ST.selSet];
+  if(arr.length!==1){ invalidate(); return; }
+  const g=arr[0], o=g.userData.obj;
+  if(!o||o.kind!=='mass'||o.locked||!o.meta||!o.meta.z||!o.meta.z.top){ invalidate(); return; }
+  if(!(ST.tool==='select'||ST.tool==='move'||ST.tool==='pushpull')){ invalidate(); return; }
+  const z0=_massZ0(o);
+  const gs=_gripSize(o)/GRIP_R;
+  o.meta.z.top.forEach(p=>{
+    const mk=new THREE.Mesh(gripGeo,p.ref?gripMatRef:gripMat);
+    mk.scale.setScalar(gs);
+    mk.position.copy(_massWorld(o,p.x,p.y,p.z,z0));
+    mk.renderOrder=900;
+    mk.userData.grip={obj:o,g,i:p.i,vi:p.vi,x:p.x,y:p.y,z:p.z,zr:p.zr,ref:p.ref,label:p.label};
+    gripsGrp.add(mk);
+  });
+  invalidate();
+}
+function _gripAt(cx,cy){
+  if(!gripsGrp||!gripsGrp.children.length) return null;
+  // 그립을 막 세운 프레임에서도 집혀야 한다. buildGrips 는 invalidate 만 하므로
+  //  다음 rAF 전에 눌리면 matrixWorld 가 옛것이라 레이가 빗나간다 — 실제로 빗나갔다.
+  gripsGrp.updateMatrixWorld(true); camera.updateMatrixWorld();
+  const r=renderer.domElement.getBoundingClientRect();
+  const nd=new THREE.Vector2(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1);
+  ray.setFromCamera(nd,camera);
+  const hits=ray.intersectObjects(gripsGrp.children,false);
+  return hits.length?hits[0].object:null;
+}
+// 화면에서 가장 가까운 이웃 꼭짓점 — Shift 로 모서리를 함께 잡을 때
+function _gripNeighbor(o,i,cx,cy){
+  const top=o.meta.z.top, N=top.length;
+  if(N<3) return null;
+  camera.updateMatrixWorld();
+  const z0=_massZ0(o), r=renderer.domElement.getBoundingClientRect();
+  let best=null,bd=Infinity;
+  [(i+1)%N,(i-1+N)%N].forEach(j=>{
+    const p=top[j], v=_massWorld(o,p.x,p.y,p.z,z0).project(camera);
+    const sx=r.left+(v.x+1)/2*r.width, sy=r.top+(1-v.y)/2*r.height;
+    const d=Math.hypot(sx-cx,sy-cy);
+    if(d<bd){ bd=d; best=j; }
+  });
+  return best;
+}
+// 지금 끄는 중인 모양 — 형상 계산은 sketch.js 를 그대로 부른다
+function _vzPreview(op,z){
+  if(typeof massVertZ!=='function'||typeof massSolid!=='function') return null;
+  op.idxs.forEach(vi=>massVertZ(op.lean,vi,z,op.ctx));
+  const S=massSolid(op.lean,op.ctx);
+  const pos=[];
+  S.faces.forEach(f=>{
+    for(let i=1;i<f.vs.length-1;i++){
+      [f.vs[0],f.vs[i],f.vs[i+1]].forEach(k=>{ const v=S.verts[k]; pos.push(v.x*MM,v.z*MM,v.y*MM); });
+    }
+  });
+  return {pos:new Float32Array(pos),solid:S};
+}
+// 지금 미리보기의 가장 가파른 경사 — 끄는 동안 각도와 물매를 함께 보여 준다
+function _vzTilt(op){
+  if(!op.solid||typeof pitchOf!=='function') return null;
+  let t=0;
+  op.solid.faces.forEach(f=>{ if(f.role!=='wall'&&f.tilt>t) t=f.tilt; });
+  return {tilt:Math.round(t*10)/10,pitch:pitchOf(t)};
+}
+function beginVertZ(mk,e){
+  const gi=mk.userData.grip, o=gi.obj;
+  if(!_floorAwake(o.floorId)){ _sleepNote('꼭짓점 높이는 바꿀 수 없습니다'); return; }
+  if(!o.meta.z.lean||typeof massVertZ!=='function'){ setStatus(statusLive,'기하 파일(sketch.js)이 없어 꼭짓점을 만질 수 없습니다'); return; }
+  const N=o.meta.z.top.length;
+  const idxs=[gi.vi];
+  let label='꼭짓점 Z';
+  if(e&&e.shiftKey){
+    const j=_gripNeighbor(o,gi.i,e.clientX,e.clientY);
+    if(j!=null){ idxs.push(N+j); label='모서리 Z (두 점)'; }
+  }
+  const lean=JSON.parse(JSON.stringify(o.meta.z.lean));   // 사본만 고친다 — 원본은 확정할 때 op 로
+  const ctx=o.meta.z.ctx||{ch:2400,fh:2800,fl:0};
+  const z0=_massZ0(o);
+  const gcol=new THREE.Color((o.meta&&o.meta.color)||'#B9C6D2');
+  const ghost=new THREE.Mesh(new THREE.BufferGeometry(),
+    new THREE.MeshLambertMaterial({color:gcol,transparent:true,opacity:0.92,side:THREE.DoubleSide,
+      emissive:new THREE.Color(0x2F6193),emissiveIntensity:0.22}));
+  const gwire=new THREE.LineSegments(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x2F6193,transparent:true,opacity:0.9,depthTest:false}));
+  gwire.renderOrder=850;
+  ghost.add(gwire);
+  ghost.position.set(o.x*MM,(z0+(o.elev||0))*MM,o.y*MM);
+  ghost.rotation.y=-(o.rot||0)*Math.PI/180;
+  ghost.renderOrder=800;
+  scene.add(ghost);
+  // 기준점은 '누른 자리'다. 첫 pointermove 를 기준으로 잡으면 그 한 걸음만큼
+  //  덜 올라간다 — 왕복 시험에서 800 을 끌었는데 600 이 들어왔다.
+  ST.op={type:'vz',obj:o,g:gi.g,mk,idxs,i:gi.i,base:gi.z,z:gi.z,lean,ctx,ghost,gwire,z0,
+    startY:(e&&typeof e.clientY==='number')?e.clientY:null,
+    moved:false,ref:!!(e&&(e.ctrlKey||e.metaKey))||!!gi.ref,label};
+  opOrbit(true);
+  if(gi.g) gi.g.visible=false;                            // 실물은 잠시 감추고 미리보기를 본다
+  _vzApply(gi.z);
+  vcbShow(label+(ST.op.ref?' · CH 에 매달림':''),Math.round(gi.z),'mm');
+  setStatus(statusLive,'⇕ '+label+' — 위아래로 끌기 · 숫자=정확한 높이 · Shift=모서리 · Ctrl=천장고에 매달기 · Esc=취소');
+}
+function _vzApply(z){
+  const op=ST.op; if(!op||op.type!=='vz') return;
+  op.z=z;
+  const pv=_vzPreview(op,z);
+  if(pv){
+    const g2=new THREE.BufferGeometry();
+    g2.setAttribute('position',new THREE.BufferAttribute(pv.pos,3));
+    g2.computeVertexNormals(); g2.computeBoundingSphere();
+    if(op.ghost.geometry) op.ghost.geometry.dispose();
+    op.ghost.geometry=g2;
+    op.solid=pv.solid;
+    if(op.gwire){                                  // 모서리를 덧그려 지금 모양이 또렷하게
+      const seg=[];
+      pv.solid.faces.forEach(f=>{
+        for(let k=0;k<f.vs.length;k++){
+          const a=pv.solid.verts[f.vs[k]], b=pv.solid.verts[f.vs[(k+1)%f.vs.length]];
+          seg.push(a.x*MM,a.z*MM,a.y*MM,b.x*MM,b.z*MM,b.y*MM);
+        }
+      });
+      const gw=new THREE.BufferGeometry();
+      gw.setAttribute('position',new THREE.BufferAttribute(new Float32Array(seg),3));
+      if(op.gwire.geometry) op.gwire.geometry.dispose();
+      op.gwire.geometry=gw;
+    }
+  }
+  if(op.mk){
+    const p=op.obj.meta.z.top[op.i];
+    op.mk.position.copy(_massWorld(op.obj,p.x,p.y,z,op.z0));
+  }
+  invalidate(true);
+}
+function applyVertZ(clientY){
+  const op=ST.op; if(!op||op.type!=='vz') return;
+  if(op.startY===null){ op.startY=clientY; return; }
+  const d=Math.round((op.startY-clientY)*5/25)*25;        // 5mm/px · 25mm 스냅 (밀기끌기와 같은 손맛)
+  const z=Math.max(0,op.base+d);
+  if(z!==op.z){ op.moved=true; _vzApply(z); }
+  vcbShow(op.label+(op.ref?' · CH':''),z,'mm');
+  const t=_vzTilt(op);
+  if(t) setStatus(statusLive,'⇕ z '+z+'mm · ∠'+t.tilt+'° · 물매 '+t.pitch+'/10');
+}
+function _vzSend(obj,idxs,z){
+  chan&&chan.postMessage({type:'edit',op:'setz',floorId:obj.floorId,
+    patch:{id:obj.id,verts:idxs.map(vi=>({i:vi,z}))}});
+}
+function commitVertZ(exact){
+  const op=ST.op; if(!op||op.type!=='vz') return;
+  const typed=(exact!==null&&exact!==undefined);
+  const z=Math.max(0,typed?Math.round(exact):op.z);
+  if(op.ghost) disposeGhost(op.ghost);
+  if(op.g) op.g.visible=true;
+  const obj=op.obj, idxs=op.idxs.slice(), ref=op.ref, ctx=op.ctx, moved=op.moved;
+  _opDone();
+  if(!moved&&!typed){ buildGrips(); setStatus(statusLive,'꼭짓점 그대로'); return; }
+  ST.lastZ=z;
+  if(ref){
+    // 숫자가 아니라 '천장고에서 얼마' 로 적어 둔다 — 천장고가 바뀌면 따라 움직인다
+    const off=Math.round(z-(ctx.ch||2400));
+    chan&&chan.postMessage({type:'edit',op:'zref',floorId:obj.floorId,
+      patch:{id:obj.id,verts:idxs,r:'ch',o:off}});
+    setStatus(statusLive,'⇕ 꼭짓점 = CH'+(off>=0?'+':'')+off+' ('+z+'mm) — 천장고를 고치면 따라 움직입니다');
+  }else{
+    _vzSend(obj,idxs,z);
+    setStatus(statusLive,'⇕ 꼭짓점 z '+z+'mm → 평면 반영 (그립 더블클릭 = 반복)');
+  }
+  setLast('꼭짓점 Z','mm',raw=>{ const v=parseLen(raw); if(v==null) return false; _vzSend(obj,idxs,Math.max(0,Math.round(v))); return true; });
 }
 // --- 이동 (Ctrl = 복사, 스케치업과 동일) — 다중 선택이면 함께 (batch = Ctrl+Z 한 번) ---
 function _selOthers(g){ // 잡은 것 외의 선택된 이동 가능 객체들
@@ -2093,6 +2311,13 @@ renderer.domElement.addEventListener('pointerdown',e=>{
     else if(t==='rotate'){ rotateClick(e); drag=null; return; }
     else { commitActive(vcbTyped()); drag=null; return; }
   }
+  // 2026-09-07 Z: 꼭짓점 그립이 먼저다. 몸통보다 앞에 집어야 지붕을 기울일 수 있다.
+  if(ST.tool==='select'||ST.tool==='move'||ST.tool==='pushpull'){
+    const mk=_gripAt(e.clientX,e.clientY);
+    // 잡았다는 표시를 먼저 — 포인터 캡처는 합성 이벤트에서 던질 수 있고,
+    //  거기서 멈추면 뗄 때 확정이 안 된다.
+    if(mk){ drag.grip=true; beginVertZ(mk,e); try{renderer.domElement.setPointerCapture(e.pointerId);}catch(_){} return; }
+  }
   const hit=hitAt(e.clientX,e.clientY);
   const obj=hit&&hit.object.userData.obj;
   const g=hit&&hit.object.parent;
@@ -2151,6 +2376,7 @@ renderer.domElement.addEventListener('pointermove',e=>{
     else if(t==='rotate') applyRotate(e,e.shiftKey);
     else if(t==='scale') applyScale(e.clientY,e.shiftKey,e.clientX);
     else if(t==='pp') applyPP(e.clientY,e.clientX);
+    else if(t==='vz') applyVertZ(e.clientY);
     else if(t==='tape') tapeMove(e);
     else if(t==='line') lineMove(e);
     else if(t==='circle') circleMove(e);
@@ -2164,6 +2390,7 @@ renderer.domElement.addEventListener('pointermove',e=>{
   if(Math.hypot(dx,dy)>5) drag.moved=true;
   if(ST.op&&ST.op.type==='move'&&!ST.op.sticky){ applyMoveFromEvent(e); return; }
   if(ST.op&&ST.op.type==='slide'&&!ST.op.sticky){ applySlideFromEvent(e); return; }
+  if(ST.op&&ST.op.type==='vz'){ applyVertZ(e.clientY); return; }   // 2026-09-07 Z
   if(ST.op&&ST.op.type==='tape'){ tapeMove(e); return; }
   if(drag.box&&drag.moved){ showSelBox(drag.x,drag.y,e.clientX,e.clientY); return; }
   if(drag.erase&&drag.moved){ const hit=hitAt(e.clientX,e.clientY); if(hit) eraseCollect(hit.object.parent); return; }
@@ -2189,6 +2416,10 @@ renderer.domElement.addEventListener('pointerup',e=>{
     if(ST.tool==='move'){ op.sticky=true; return; }   // 이동 도구: 클릭=집기 → 스티키
     cancelOp();                                        // 선택 도구: 클릭이면 그냥 선택
   }
+  if(d.grip&&ST.op&&ST.op.type==='vz'){
+    if(ST.op.moved){ commitVertZ(vcbTyped()); return; }
+    ST.op.sticky=true; return;                       // 클릭만 했으면 스티키 — 다음 클릭이 확정
+  }
   if(d.box){ hideSelBox(); if(d.moved){ boxSelect(d.x,d.y,e.clientX,e.clientY,e); return; } }
   if(d.erase){ eraseFinish(e.shiftKey); return; }
   if(wasClick&&!ST.op) pick(e.clientX,e.clientY,e);
@@ -2199,6 +2430,15 @@ renderer.domElement.addEventListener('click',e=>{ // 세 번 클릭 = 그 층의
 });
 renderer.domElement.addEventListener('dblclick',e=>{
   if(ST.op&&CLICK_TOOLS.has(ST.op.type)){ cancelOp(); setStatus(statusLive,'╱ 그리기 끝'); return; } // 스케치업: 더블클릭=사슬 끝
+  // 2026-09-07 Z: 그립 더블클릭 = 직전에 준 높이 그대로 (스케치업 밀기끌기 반복과 같은 손버릇)
+  const gmk=_gripAt(e.clientX,e.clientY);
+  if(gmk&&typeof ST.lastZ==='number'){
+    const gi=gmk.userData.grip;
+    if(_floorAwake(gi.obj.floorId)){
+      _vzSend(gi.obj,[gi.vi],ST.lastZ);
+      setStatus(statusLive,'⇕ 꼭짓점 z '+ST.lastZ+'mm (반복)'); return;
+    }
+  }
   const hit=hitAt(e.clientX,e.clientY);
   if(!hit) return;
   const obj=hit.object.userData.obj, g=hit.object.parent;
@@ -2356,11 +2596,16 @@ function renderProps(obj,opts){
     html+=`<div class="p-row"><label>위치</label><span style="font-size:12px">${Math.round(obj.x)}, ${Math.round(obj.y)} mm · ${Math.round(obj.rot||0)}°</span></div>`;
     html+=`<div class="p-row"><label>높이(Z)</label><input type="number" step="50" min="10" data-f="h_mm" value="${Math.round(m.h_mm||0)}"> <span style="font-size:11px">mm</span></div>`;
     html+=`<div class="p-row"><label>띄움</label><input type="number" step="10" min="0" data-f="elev_mm" value="${obj.elev||0}"> <span style="font-size:11px">mm</span></div>`;
+    // 2026-09-07 Z축: 기울어진 매스는 밑넓이×높이가 아니라 진짜 물량을 보여 준다
+    if(m.solid&&m.qty){
+      html+=`<div class="p-row"><label>면적</label><span style="font-size:12px">바닥 ${m.qty.floor} ㎡ · 천장 ${m.qty.ceilAll} ㎡ <b style="color:#7FA8D4">(경사 ${m.qty.slope} ㎡)</b></span></div>`;
+      html+=`<div class="p-row"><label>기울기</label><span style="font-size:12px">∠${m.maxTilt}° · 물매 ${Math.round(Math.tan((m.maxTilt||0)*Math.PI/180)*10)}/10</span></div>`;
+    }else
     html+=`<div class="p-row"><label>면적</label><span style="font-size:12px">${((m.area||0)/1e6).toFixed(2)} ㎡ · 부피 ${((m.area||0)*(m.h_mm||0)/1e9).toFixed(2)} ㎥</span></div>`;
     html+=`<div class="p-row"><label>색</label><input type="color" data-f="color" value="${m.color||'#B9C6D2'}"></div>`;
     html+=`<div class="p-btns"><button class="btn" data-a="rotl" title="반시계 15° (Shift+R)">↺ 15°</button><button class="btn" data-a="rotr" title="시계 15° (R)">↻ 15°</button><button class="btn" data-a="lock">🔒 잠금</button></div>`;
     html+=`<div class="p-btns"><button class="btn" data-a="tosp">▣ 공간으로</button><button class="btn" data-a="towl">▬ 벽으로</button><button class="btn danger" data-a="del">🗑 삭제</button></div>`;
-    html+=`<div class="p-note">끌기=이동 · ↑=띄우기 · Q 회전 · P 윗면=높이 · Ctrl+끌기=복제 — 필요할 때 공간(바닥·천장·벽)이나 벽으로 바꿉니다.</div>`;
+    html+=`<div class="p-note"><b style="color:#7FA8D4">파란 점(꼭짓점)을 끌면 그 점만 위아래로</b> — Shift=모서리 두 점 · Ctrl=천장고에 매달기(CH-300) · 숫자=정확한 높이 · 더블클릭=직전 높이 반복.<br>끌기=이동 · ↑=띄우기 · Q 회전 · P 윗면=높이 · Ctrl+끌기=복제 — 필요할 때 공간(바닥·천장·벽)이나 벽으로 바꿉니다.</div>`;
   }else if(obj.kind==='sketchFace'){
     html+=`<div class="p-row"><label>면적</label><span style="font-size:12px">${((m.area||0)/1e6).toFixed(2)} ㎡ · 꼭짓점 ${(m.poly||[]).length}</span></div>`;
     html+=`<div class="p-row"><label>Z 높이</label><input type="number" step="50" min="10" data-f="_z" value="${ST.lastPP>=10?ST.lastPP:2400}"> <span style="font-size:11px">mm</span></div>`;
@@ -2609,7 +2854,9 @@ function loadStored(){
   }catch(e){ console.warn('[3D] 저장본 읽기 실패',e); }
   return false;
 }
-const MF_PROTO=6; // 미니캐드(ui.js MC_PROTO)와 짝 — 어긋나면 새로고침 안내 (6 = 점·선·면 스케치 + 매스, 2026-09-04)
+const MF_PROTO=7; // 미니캐드(ui.js MC_PROTO)와 짝 — 어긋나면 새로고침 안내
+                  //  6 = 점·선·면 스케치 + 매스 (2026-09-04)
+                  //  7 = 꼭짓점 높이 setz·settop·zref (2026-09-07 Z축)
 function connect(){
   if(typeof BroadcastChannel==='undefined') return;
   chan=new BroadcastChannel('minicad-3d');
@@ -2856,6 +3103,7 @@ if(!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연
 // 테스트·디버그 훅
 window.MC3DVIEW={ST,scene,get camera(){return camera;},renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
   setSky,setSkyImage,buildSky,drawFrame,
+  buildGrips,beginVertZ,applyVertZ,commitVertZ,_gripAt,_massWorld,get grips(){return gripsGrp;},
   sendEdit,sendBatch,rotateSelected,deleteSelected3D,setTool,commitActive,cancelOp,menuCmd,openTraySec,setAxes,snap3,segHitsSpace,
   select,selectGroups,selectAll,boxSelect,selectSpaceGroup,selectWallNeighbors,findGroup,
   setOrtho,setXray,setSunT,setTag,camPrev,camNext,camPush,copySel,cutSel,pasteClip,lockSelected,hideSelected,unhideAll,

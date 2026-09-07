@@ -971,6 +971,7 @@ function refreshDetail(){
       '<div class="field" style="flex:1"><label class="field-label">바닥에서 띄움 (mm)</label><input type="text" inputmode="decimal" id="ms-el" value="'+(m.elev_mm||0)+'"></div></div>'+
       '<div style="display:flex;gap:6px"><div class="field" style="flex:1"><label class="field-label">각도</label><input type="text" inputmode="decimal" id="ms-ang" value="'+(m.angle||0)+'"></div>'+
       '<div class="field" style="flex:1"><label class="field-label">색</label><input type="color" id="ms-col" value="'+(m.color||'#B9C6D2')+'" style="width:100%;height:28px"></div></div>'+
+      _msZTable(m)+
       '<div style="display:flex;gap:4px;margin-top:6px"><button class="btn sm" id="ms-sp" style="flex:1">공간으로</button><button class="btn sm" id="ms-wl" style="flex:1">벽으로</button></div>'+
       '<button class="btn danger sm" id="ms-del" style="width:100%;margin-top:5px">삭제 (Del)</button>'+
       '<div class="hint" style="margin-top:8px">매스 = 면에 Z 를 준 자유 덩어리. 3D 에서 이동·회전·밀기끌기 가능. 필요하면 공간·벽으로 바꿉니다.</div>';
@@ -983,6 +984,7 @@ function refreshDetail(){
     document.getElementById('ms-sp').addEventListener('click',()=>{const r=massConvert(m.id,'space');showStatus(r?'매스 → 공간 (천장고 '+m.h_mm+')':'변환 실패 (면적 0.09㎡ 미만)');});
     document.getElementById('ms-wl').addEventListener('click',()=>{const r=massConvert(m.id,'wall');showStatus(r?'매스 → 벽 (높이 '+m.h_mm+')':'변환 실패');});
     document.getElementById('ms-del').addEventListener('click',deleteSelected);
+    _msZWire(m);
   }
   else{
     const kn={wall:'벽',furniture:'가구',fixtures:'위생/주방',lights:'조명',electric:'전기',texts:'텍스트',measures:'치수',xlines:'안내선 (무한)',leaders:'지시선',circles:'원',arcs:'아크',curves:'곡선',hvac:'공조/소방',pillars:'기둥',sections:'절단선'};
@@ -2423,6 +2425,79 @@ function refreshVideoSeqUI(){
 }
 
 // ===== 회전·복제·삭제 =====
+// ---------------------------------------------------------------------------
+// 매스 꼭짓점 높이표 (2026-09-07 Z축 3층 — 평면에서 보고 고치기)
+//  각 칸에 숫자를 넣어도 되고 CH-300 처럼 '천장고에서 얼마' 로 매달아도 된다.
+//  매단 값은 천장고를 고치는 순간 함께 움직인다 — 커튼박스·우물천장 턱이 그렇게 잡힌다.
+//  계산은 sketch.js(massVertZ·massSetTop) 한 곳. 여기서는 읽고 부르기만 한다.
+// ---------------------------------------------------------------------------
+function _msZParse(str,ctx){
+  const t=String(str||'').trim();
+  const mm=t.match(/^(ch|fh|fl|천장고|층높이|층바닥)\s*([+-]\s*[\d.]+)?$/i);
+  if(mm){
+    const r={ch:'ch',fh:'fh',fl:'fl','천장고':'ch','층높이':'fh','층바닥':'fl'}[mm[1].toLowerCase()]||'ch';
+    const o=mm[2]?Math.round(Number(String(mm[2]).replace(/\s+/g,''))):0;
+    return {r,o};
+  }
+  const v=evalDim(t);
+  // evalDim 은 못 읽으면 null 을 준다. isFinite(null) 은 true 라서 그대로 두면
+  //  '가나다' 가 0 이 되어 꼭짓점이 바닥에 처박힌다 — 실제로 그랬다.
+  return (typeof v==='number'&&isFinite(v))?Math.max(0,Math.round(v)):null;
+}
+function _msZTable(m){
+  if(typeof massTopPts!=='function') return '';
+  const ctx=massCtx();
+  const top=massTopPts(m,ctx);
+  if(!top.length||top.length>16) return '';
+  const flat=massIsPrism(m);
+  const q=(typeof massQuantities==='function')?massQuantities(m,ctx):null;
+  const rows=top.map(p=>
+    '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'+
+    '<span style="width:22px;font-size:10px;color:var(--text-secondary);text-align:right">'+(p.i+1)+'</span>'+
+    '<input type="text" id="ms-vz-'+p.i+'" data-vi="'+p.vi+'" value="'+escapeHtml(p.label)+'" '+
+    'style="flex:1;font-size:11px'+(p.ref?';color:#C9A961;font-weight:600':'')+'">'+
+    '</div>').join('');
+  const slopes=(typeof massSlopes==='function')?massSlopes(m,ctx):[];
+  const pitch=slopes.length?(' · 물매 '+[...new Set(slopes.map(f=>f.pitch))].join('·')+'/10'):'';
+  return '<div style="margin-top:8px;padding:8px;background:rgba(47,97,147,0.08);border:1px solid rgba(47,97,147,0.35);border-radius:4px">'+
+    '<div class="field-label" style="margin-bottom:6px;color:#5D8BB8">꼭짓점 높이 (Z) — 숫자 또는 CH-300</div>'+
+    rows+
+    '<div style="display:flex;gap:4px;margin-top:6px">'+
+      '<button class="btn sm" id="ms-zflat" style="flex:1" title="윗면을 가장 높은 값으로 맞춰 평평하게 (각기둥으로 되돌아갑니다)">평평하게</button>'+
+      '<button class="btn sm" id="ms-zch" style="flex:1" title="지금 높이를 지키면서 천장고에 매답니다 — 천장고를 고치면 따라 움직입니다">CH 에 매달기</button>'+
+    '</div>'+
+    (flat?'<div class="hint" style="margin-top:6px">한 칸만 다르게 넣으면 빗천장이 됩니다.</div>'
+        :'<div class="hint" style="margin-top:6px">경사 천장 '+(q?q.ceilAll:0)+'㎡'+pitch+' · 부피 '+
+          ((typeof massVolume==='function')?massVolume(m,ctx):0)+'㎥</div>')+
+    '</div>';
+}
+function _msZWire(m){
+  if(typeof massVertZ!=='function') return;
+  const ctx=massCtx();
+  const top=massTopPts(m,ctx);
+  const done=(msg)=>{saveHistory();renderAll();refreshUI();showStatus(msg);if(typeof push3D==='function')push3D(true);};
+  top.forEach(p=>{
+    const el=document.getElementById('ms-vz-'+p.i); if(!el) return;
+    el.addEventListener('change',()=>{
+      const z=_msZParse(el.value,ctx);
+      if(z===null){showStatus('높이를 알아듣지 못했습니다 — 숫자 또는 CH-300');refreshUI();return;}
+      massVertZ(m,Number(el.dataset.vi),z,ctx);
+      done('⇕ 꼭짓점 '+(p.i+1)+' → '+(typeof z==='object'?zLabel(z,ctx):z+'mm'));
+    });
+  });
+  const fb=document.getElementById('ms-zflat');
+  if(fb) fb.addEventListener('click',()=>{
+    const hi=Math.max(...top.map(p=>p.z));
+    massSetTop(m,hi,ctx);
+    done('윗면을 '+hi+'mm 로 평평하게');
+  });
+  const cb=document.getElementById('ms-zch');
+  if(cb) cb.addEventListener('click',()=>{
+    // 지금 높이를 지키면서 매단다 — 각 점의 오프셋이 제각각이어도 상대 형상은 그대로
+    top.forEach(p=>massVertZ(m,p.vi,{r:'ch',o:Math.round(p.z-(ctx.ch||2400))},ctx));
+    done('꼭짓점 '+top.length+'개를 천장고(CH '+(ctx.ch||2400)+')에 매달았습니다 — 천장고를 고치면 따라 움직입니다');
+  });
+}
 function getArr(kind){return{space:STATE.spaces,wall:STATE.walls,opening:STATE.openings,furniture:STATE.furniture,fixtures:STATE.fixtures,lights:STATE.lights,electric:STATE.electric,texts:STATE.texts,measures:STATE.measures,circles:STATE.circles,arcs:STATE.arcs,curves:STATE.curves,hvac:STATE.hvac,leaders:STATE.leaders,xlines:STATE.xlines,pillars:STATE.pillars,sections:STATE.sections,sketchPts:STATE.sketchPts,sketchEdges:STATE.sketchEdges,sketchFaces:STATE.sketchFaces,masses:STATE.masses}[kind];}
 
 // v5.7: 다중 선택 헬퍼 — boxSelection 우선, 비어있으면 단일 selected
@@ -5369,7 +5444,7 @@ document.getElementById('btn-circuits').addEventListener('click',toggleCircuits)
 //  [🧊 3D]/`3d` → 3d/index.html 을 새 탭으로. 문서는 localStorage 로 처음 넘기고,
 //  이후에는 BroadcastChannel('minicad-3d') 로 saveHistory 때마다(300ms 묶음) 흘려보내 평면 수정이 바로 입체에 반영된다.
 //  3D 탭이 먼저 열려 있으면 'hello' 를 보내오므로 그때부터 전송을 켠다. 페이로드는 buildAutosavePayload(경량).
-const MC_PROTO=6; // 2026-09-04 점·선·면(스케치 op·extrude·매스) // 미니캐드↔미니폼 메시지 프로토콜 버전 — op 추가/변경 시 양쪽(view3d.js MF_PROTO) 같이 올릴 것
+const MC_PROTO=7; // 2026-09-07 Z축 — 꼭짓점 높이(setz·settop·zref). 6 = 점·선·면(스케치 op·extrude·매스) // 미니캐드↔미니폼 메시지 프로토콜 버전 — op 추가/변경 시 양쪽(view3d.js MF_PROTO) 같이 올릴 것
 let _view3dChan=null,_view3dTimer=null,_view3dLive=false;
 function _view3dPayload(){
   // getter(polygon·x1..y2)를 값으로 굳힌다 — structured clone 은 접근자를 못 옮길 수 있다
@@ -5701,7 +5776,8 @@ function apply3DEdit(m){
   if(!m||!m.op) return false;
   // 버전 어긋남 자가 진단 — 옛 창이 모르는 명령을 조용히 삼키지 않는다 (2026-09-04: "면이 생성 안 됨" 원인)
   if(!['undo','redo','add','addwall','addrect','addspace','splitspace','addcircle','move','rotate','delete','set','clone','lock','batch',
-       'sketchline','sketchrect','sketchcircle','sketchpoly','extrude','sketchdel','sketchclear','massconvert'].includes(m.op)){ // 프로토콜 6: 점·선·면
+       'sketchline','sketchrect','sketchcircle','sketchpoly','extrude','sketchdel','sketchclear','massconvert',
+       'setz','settop','zref'].includes(m.op)){ // 6=점·선·면 · 7=꼭짓점 높이(2026-09-07 Z축)
     showStatus('⚠ 알 수 없는 3D 명령('+m.op+') — 미니캐드 창을 새로고침(F5) 하세요');
     return false;
   }
@@ -5713,6 +5789,7 @@ function apply3DEdit(m){
   if(m.op==='addwall'||m.op==='addrect') return _apply3DWall(m); // 3D 선(L)/사각형(R) 도구 → 벽
   if(m.op==='addspace'||m.op==='splitspace'||m.op==='addcircle') return _apply3DFace(m); // 점·선·면 구조: 면 생성 / 면 위 선 = 분할 / 원(C)
   if(m.op.startsWith('sketch')||m.op==='extrude'||m.op==='massconvert') return _apply3DSketch(m); // 2026-09-04 프로토콜 6: 스케치(점·선·면) + 면→객체
+  if(m.op==='setz'||m.op==='settop'||m.op==='zref') return _apply3DZ(m);   // 2026-09-07 프로토콜 7: 꼭짓점 높이
   if(!m.kind||!m.id) return false;
   const arrName=_CLIP_KIND2ARR[m.kind];
   if(!arrName) return false;
@@ -5836,6 +5913,56 @@ function _apply3DWall(m){
 //  2D 엔진 그대로 사용: addSpace(면+점+선 일괄 생성·그룹), addLine(가로지르면 분할·아니면 참조선).
 // 2026-09-04 프로토콜 6 — 미니폼 선(L)/사각형(R)/원(C)/호(A)/옵셋(F) 은 객체가 아니라 스케치(점·선)가 되고,
 //  닫힌 고리 = 면(자동), 면에 밀기끌기(P) = extrude → 매스(기본)/공간/벽. 잠든 층에도 스케치는 그린다(extrude 만 활성 층).
+// ---------------------------------------------------------------------------
+// 프로토콜 7 — 꼭짓점 높이 (2026-09-07 Z축)
+//  미니폼이 그립을 끌어 확정하면 여기로 온다. solidVerts 배열을 통째로 주고받지
+//  않는 이유: 두 창이 동시에 고칠 때 서로를 덮어쓴다. 꼭짓점 번호만 잘게 보낸다.
+//  계산은 sketch.js(massVertZ·massSetTop) 한 곳 — 여기서는 부르기만 한다.
+//   setz   {id, verts:[{i,z}]}      꼭짓점 몇 개의 높이
+//   settop {id, z}                  윗면 통째 (각기둥이면 각기둥인 채로)
+//   zref   {id, verts:[i], r, o}    그 꼭짓점을 천장고·층높이에 매단다
+// ---------------------------------------------------------------------------
+function _apply3DZ(m){
+  const p=m.patch||{};
+  const active=!m.floorId||m.floorId===STATE.activeFloorId;
+  const fl=active?null:(STATE.floors||[]).find(x=>x.id===m.floorId);
+  const bag=active?STATE:(fl&&fl.data);
+  if(!bag||!p.id) return false;
+  const mass=(bag.masses||[]).find(x=>x&&x.id===p.id);
+  if(!mass){showStatus('꼭짓점 높이: 매스를 찾지 못했습니다');return false;}
+  if(mass.locked){showStatus('잠금된 매스 — 꼭짓점 높이 변경 불가');return false;}
+  if(typeof massVertZ!=='function'){showStatus('⚠ 기하 파일(sketch.js) 이 없습니다 — 새로고침(F5)');return false;}
+  const ctx=(typeof massCtx==='function')?massCtx():{ch:STATE.ceilingHeight||2400,fh:2800,fl:0};
+  let label='';
+  if(m.op==='settop'){
+    const z=Math.round(Number(p.z));
+    if(!isFinite(z)) return false;
+    massSetTop(mass,z,ctx); label='윗면 Z '+z+'mm';
+  }else if(m.op==='zref'){
+    const r=String(p.r||'ch');
+    if(!['ch','fh','fl'].includes(r)) return false;
+    const off=Math.round(Number(p.o)||0);
+    const vs=Array.isArray(p.verts)?p.verts:[];
+    if(!vs.length) return false;
+    vs.forEach(i=>massVertZ(mass,Math.round(i),{r,o:off},ctx));
+    label='꼭짓점 '+vs.length+'개 = '+({ch:'CH',fh:'FH',fl:'FL'}[r])+(off>=0?'+':'')+off;
+  }else{
+    const vs=Array.isArray(p.verts)?p.verts:[];
+    if(!vs.length) return false;
+    let n=0;
+    vs.forEach(v=>{
+      const i=Math.round(Number(v&&v.i)), z=Math.round(Number(v&&v.z));
+      if(!isFinite(i)||!isFinite(z)||z<0) return;
+      massVertZ(mass,i,z,ctx); n++;
+    });
+    if(!n) return false;
+    label='꼭짓점 '+n+'개 z '+Math.round(Number(vs[0].z))+'mm';
+  }
+  if(active){saveHistory();renderAll();refreshUI();}
+  else{scheduleAutosave();}
+  if(!_3dBatch){showStatus('⇕ '+label+(active?'':' (잠든 층)'));if(typeof push3D==='function')push3D(true);}
+  return true;
+}
 function _apply3DSketch(m){
   const p=m.patch||{};
   const active=!m.floorId||m.floorId===STATE.activeFloorId;

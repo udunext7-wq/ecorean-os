@@ -408,6 +408,82 @@ ck(/vcbShow\(\(copy\?'복사':'이동'\)[^;]*↑=높이\(Z\)/.test(v3Src),
   'Z 이동: 끌기를 시작하는 자리(VCB)에도 ↑ 안내');
 ck(/MOVABLE=new Set\([^)]*'mass'/.test(v3Src), 'Z 이동: 매스가 이동 대상');
 
+// ---- 2026-09-07 Z축 3층(조작) — 두 창이 함께 읽는 헬퍼 -----------------------
+//  미니폼 그립과 평면 표기가 같은 답을 봐야 하므로 계산은 sketch.js 한 곳.
+//  손으로 셀 수 있는 모양(6×4m 박공, 처마 1800 · 마루 3000)으로 소수점까지 맞춘다.
+{
+  const ctx = { ch: 2400, fh: 2800, fl: 0 };
+  const gable = () => ({
+    id: 'g', name: '박공', x: 0, y: 0, angle: 0, elev_mm: 0, h_mm: 1800,
+    pts: [{ x: -3000, y: -2000 }, { x: 0, y: -2000 }, { x: 3000, y: -2000 },
+          { x: 3000, y: 2000 }, { x: 0, y: 2000 }, { x: -3000, y: 2000 }],
+    solidVerts: [
+      { x: -3000, y: -2000, z: 0 }, { x: 0, y: -2000, z: 0 }, { x: 3000, y: -2000, z: 0 },
+      { x: 3000, y: 2000, z: 0 }, { x: 0, y: 2000, z: 0 }, { x: -3000, y: 2000, z: 0 },
+      { x: -3000, y: -2000, z: 1800 }, { x: 0, y: -2000, z: 3000 }, { x: 3000, y: -2000, z: 1800 },
+      { x: 3000, y: 2000, z: 1800 }, { x: 0, y: 2000, z: 3000 }, { x: -3000, y: 2000, z: 1800 }],
+    solidFaces: [{ vs: [5, 4, 3, 2, 1, 0] }, { vs: [6, 7, 8, 9, 10, 11] },
+      { vs: [0, 1, 7, 6] }, { vs: [1, 2, 8, 7] }, { vs: [2, 3, 9, 8] },
+      { vs: [3, 4, 10, 9] }, { vs: [4, 5, 11, 10] }, { vs: [5, 0, 6, 11] }],
+  });
+
+  // [T1] 윗면 꼭짓점 — 각기둥도 다면체도 같은 모양으로
+  const box = { id: 'b', x: 0, y: 0, angle: 0, h_mm: 900,
+    pts: [{ x: 0, y: 0 }, { x: 1000, y: 0 }, { x: 1000, y: 800 }, { x: 0, y: 800 }] };
+  const tb = SK.massTopPts(box, ctx);
+  ck(tb.length === 4 && tb.every(p => p.z === 900), 'T 각기둥 윗면 4점 · 전부 900');
+  ck(tb[2].vi === 6, 'T 밑면 i ↔ 윗면 N+i 규약 (i=2 → vi=6)');
+  const tg = SK.massTopPts(gable(), ctx);
+  ck(tg.length === 6 && tg[1].z === 3000 && tg[0].z === 1800, 'T 박공 마루 3000 · 처마 1800');
+
+  // [T2] 참조 높이는 라벨로도 보인다
+  const gr = gable(); gr.solidVerts[7].z = { r: 'ch', o: 600 };
+  const t2 = SK.massTopPts(gr, ctx);
+  ck(t2[1].z === 3000 && t2[1].ref === true, 'T 참조 높이 CH+600 = 3000');
+  ck(/CH/i.test(t2[1].label) || /천장고/.test(t2[1].label), 'T 참조는 라벨에 드러난다: ' + t2[1].label);
+  const t3 = SK.massTopPts(gr, { ch: 3000, fh: 2800, fl: 0 });
+  ck(t3[1].z === 3600, 'T 천장고를 3000 으로 올리면 마루도 3600 으로 따라 오른다');
+
+  // [T3] 물매 — 처마 1800 → 마루 3000, 수평 3000 : 수직 1200 = 4/10
+  const sl = SK.massSlopes(gable(), ctx);
+  ck(sl.length === 2, 'T 박공 경사면 2장: ' + sl.length);
+  ck(sl.every(f => f.pitch === 4), 'T 물매 4/10 (1200/3000): ' + sl.map(f => f.pitch).join(','));
+  ck(Math.abs(sl[0].tilt - 21.8) < 0.3, 'T 기울기 21.8°: ' + sl[0].tilt);
+  // 두 면의 내리막은 서로 반대 (+x 와 −x)
+  ck(Math.abs(sl[0].dx + sl[1].dx) < 1e-6 && Math.abs(sl[0].dx) > 0.99,
+    'T 양쪽 지붕이 서로 반대로 흘러내린다: ' + sl[0].dx.toFixed(2) + ' / ' + sl[1].dx.toFixed(2));
+
+  // [T4] 마루 — 두 경사면이 만나는 모서리 하나
+  const rg = SK.massRidges(gable(), ctx).filter(e => e.kind === 'ridge');
+  ck(rg.length === 1, 'T 마루선 하나: ' + JSON.stringify(SK.massRidges(gable(), ctx).map(e => e.kind)));
+  ck(rg[0] && Math.abs(rg[0].ax) < 1e-6 && Math.abs(rg[0].bx) < 1e-6, 'T 마루는 x=0 위에 선다');
+  ck(rg[0] && rg[0].z === 3000, 'T 마루 높이 3000');
+
+  // [T5] 골(밸리) — 마루를 뒤집으면 골이 된다
+  const vy = gable();
+  vy.solidVerts[7].z = 600; vy.solidVerts[10].z = 600;
+  const vk = SK.massRidges(vy, ctx).map(e => e.kind);
+  ck(vk.includes('valley'), 'T 가운데를 내리면 골(valley) 로 잡힌다: ' + vk.join(','));
+
+  // [T6] 회전한 매스 — 평면 절대 좌표와 방향이 함께 돈다
+  const rot = gable(); rot.angle = 90; rot.x = 10000; rot.y = 5000;
+  const tr = SK.massTopPts(rot, ctx);
+  ck(Math.abs(tr[0].ax - (10000 + 2000)) < 1e-6 && Math.abs(tr[0].ay - (5000 - 3000)) < 1e-6,
+    'T 90° 돌린 매스의 첫 점: (12000,2000) 예상 → (' + tr[0].ax + ',' + tr[0].ay + ')');
+  const sr = SK.massSlopes(rot, ctx);
+  ck(Math.abs(sr[0].dy) > 0.99 && Math.abs(sr[0].dx) < 1e-6, 'T 돌리면 내리막 방향도 함께 돈다');
+
+  // [T7] 각기둥은 경사도 마루도 없다 (헛일 안 한다)
+  ck(SK.massSlopes(box, ctx).length === 0 && SK.massRidges(box, ctx).length === 0,
+    'T 각기둥은 경사·마루 계산을 건너뛴다');
+
+  // [T8] 미리보기용 사본 — 원본을 건드리지 않는다
+  const src = gable(), lean = SK.massLean(src);
+  SK.massVertZ(lean, 7, 5000, ctx);
+  ck(src.solidVerts[7].z === 3000 && lean.solidVerts[7].z === 5000, 'T 사본을 고쳐도 원본은 그대로');
+  ck(SK.massTopPts(lean, ctx)[1].z === 5000, 'T 사본에서 마루를 5000 으로 올릴 수 있다');
+}
+
 // ---- 2026-09-07 하늘·바닥 배경 (대표 지시 "스케치업처럼 배경을 바닥과 하늘로 나누고 나중에 배경을 입힐 수 있게") ----
 //  처음엔 반지름 900 짜리 공을 둘렀다 — 카메라 far 가 400 이라 통째로 잘려
 //  배경이 그대로 새까맣게 남았다. 그래서 화면을 덮는 판 한 장을 먼저 그리는

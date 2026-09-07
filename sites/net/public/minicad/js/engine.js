@@ -3771,7 +3771,9 @@ function renderAll(){
   _rif('xlines',  sig('xlines', J?J(STATE.xlines||[]):''),  ()=>renderXlines());
   // 2026-09-04 점·선·면 스케치 + 자유 매스 — 세 종류 선택 상태를 모두 서명에 포함
   _rif('sketch',  sig('sketchFaces',(J?J([STATE.sketchPts||[],STATE.sketchEdges||[],STATE.sketchFaces||[]]):'')+selK('sketchEdges')+selK('sketchPts')), ()=>renderSketch());
-  _rif('masses',  sig('masses', J?J(STATE.masses||[]):''),  ()=>renderMasses());
+  // 2026-09-07 Z축: 매달린 높이(CH-300)는 천장고를 따라 움직인다 — 천장고가 서명에 없으면
+  //  천장고를 고쳐도 평면의 숫자가 옛 값 그대로 굳는다. 층높이도 같은 이유로 넣는다.
+  _rif('masses',  sig('masses', (J?J(STATE.masses||[]):'')+'|'+(STATE.ceilingHeight||0)+'|'+(STATE.floorHeight||0)),  ()=>renderMasses());
   _rif('sections',sig('sections',J?J(STATE.sections||[]):''),()=>renderSections());
   _rif('pillars', sig('pillars',J?J(STATE.pillars||[]):''), ()=>renderPillars());
   // v5.9: 자동 면적 라벨 비활성화 — 공간 공유 변 사이 부분영역마다 라벨이 생겨 도면이 어지러움
