@@ -113,13 +113,29 @@ table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-i
 .cal-legend i.hol{background:#e05a55}.cal-legend i.mem{background:#c0b7a4}
 .cal-legend i.today{background:#fff;border:2px solid #c9a84c;border-radius:999px}
 
-/* 달력 격자 — 행 높이를 내용에 맞춰 늘려 어떤 칸도 잘리지 않게 한다 */
-.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));
-  grid-auto-rows:minmax(104px,auto);border:1px solid #edeae1;border-radius:12px;overflow:hidden;background:#edeae1;gap:1px}
+/* 달력 격자 — 주(週)마다 칸 위에 '가로로 이어지는' 막대를 띄운다 (2026-09-07 대표 지시)
+   막대는 칸 사이 틈 위를 지나가므로 여러 날에 걸친 공정이 끊기지 않고 한 줄로 보인다. */
+.cal-grid{border:1px solid #edeae1;border-radius:12px;overflow:hidden;background:#edeae1;
+  display:flex;flex-direction:column;gap:1px}
+.cal-dows{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:#edeae1}
+.cal-week{position:relative;background:#edeae1}
+.cal-cells{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px}
+.cal-bars{position:absolute;left:0;right:0;top:28px;bottom:5px}
+/* 투톤 막대 — 위 3할 프로젝트색 / 아래 7할 공정색 */
+.cal-bar{position:absolute;height:17px;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:0 1px 2px rgba(30,25,15,.12);cursor:pointer}
+.cal-bar .pc{height:30%;flex:0 0 30%}
+.cal-bar .cc{height:70%;flex:1 1 70%;display:flex;align-items:center;padding:0 5px;
+  font-size:9.5px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-bar.cont-l{border-top-left-radius:0;border-bottom-left-radius:0}
+.cal-bar.cont-r{border-top-right-radius:0;border-bottom-right-radius:0}
+.cal-bar.done{opacity:.5}
+.cal-bar:hover{box-shadow:0 2px 8px rgba(30,25,15,.22);z-index:3}
+.cal-overflow{position:absolute;right:6px;bottom:-1px;font-size:9px;color:#a49a86}
 .cal-dow{background:#fbfaf7;text-align:center;font-size:11px;font-weight:600;padding:9px 0;color:#8b8271;letter-spacing:.5px}
 .cal-dow.sun{color:#d4534e}.cal-dow.sat{color:#3f72c9}
-.cal-cell{background:#fff;padding:7px 8px 8px;font-size:11px;cursor:pointer;display:flex;flex-direction:column;gap:3px;
-  transition:background .12s,box-shadow .12s;min-width:0}
+.cal-cell{background:#fff;padding:6px 7px 6px;font-size:11px;cursor:pointer;display:flex;flex-direction:column;gap:3px;
+  transition:background .12s,box-shadow .12s;min-width:0;min-height:var(--rowH,104px)}
 .cal-cell:hover{background:#fdfbf6}
 .cal-cell.we{background:#fcfbf9}
 .cal-cell.out{background:#faf9f7}
@@ -133,13 +149,6 @@ table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-i
 .cal-hol{font-size:10px;line-height:1.35;color:#d4534e;font-weight:600;word-break:keep-all;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;text-align:right}
 .cal-hol.mem{color:#a89e8a;font-weight:500}
-.cal-ev{display:flex;flex-direction:column;gap:2px;min-width:0}
-/* 공정 칩 — 색은 왼쪽 막대로만 쓰고 글자는 진하게 (읽기 쉬움 우선) */
-.cal-ev span{display:block;font-size:10px;line-height:1.5;padding:1px 5px 1px 7px;border-radius:4px;
-  background:#f6f4ef;color:#4a4437;border-left:3px solid #c9a84c;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cal-ev span.done{opacity:.55;text-decoration:line-through}
-.cal-more{font-size:9.5px;color:#a49a86;padding-left:2px}
 
 /* 선택한 날 상세 */
 .day-panel{margin-top:14px;border-top:1px solid #f0ede6;padding-top:12px;font-size:12px}
@@ -167,14 +176,16 @@ table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-i
   .dash{grid-template-columns:1fr;gap:14px}
   .dash-side{position:static}
   .dash-card{padding:14px}
-  .cal-grid{grid-auto-rows:minmax(88px,auto)}
+    .cal-bar{height:15px}
+  .cal-bar .cc{font-size:9px}
 }
 @media (max-width:520px){
-  .cal-grid{grid-auto-rows:minmax(66px,auto)}
-  .cal-cell{padding:5px 4px}
+  .cal-cell{padding:4px 3px}
+  .cal-bar{height:12px;border-radius:3px}
+  .cal-bar .cc{font-size:0;padding:0}
+  .cal-bars{top:24px}
   .cal-d{font-size:12px;line-height:18px;min-width:18px}
   .cal-hol{font-size:9px}
-  .cal-ev span{font-size:9px;padding:1px 3px 1px 5px;border-left-width:2px}
   .cal-title{font-size:17px;min-width:100px}
 }
 /* 편집 잠김 상태 — 편집 도구를 흐리게 하고 드래그를 막는다 (열람·확대·인쇄는 그대로) */
@@ -1170,25 +1181,57 @@ function calLoadHolidays(){
     .catch(function(){CAL.failed=true;renderCal()})
     .then(function(){CAL.loading=false});
 }
-/* 그 달에 걸치는 모든 프로젝트의 공정 → 날짜별 목록 (남의 프로젝트는 건드리지 않는다) */
-function calEvents(y,m){
-  var map={};
+/* 공정 색 — 간트와 같은 규칙 (공정 지정색 > 프로젝트 분류색 > 기본 분류색) */
+function phaseColor(proj,ph){
+  if(ph.color)return ph.color;
+  var ov=proj&&proj.catColors&&proj.catColors[ph.cat];
+  if(ov)return ov;
+  if(typeof CI_DEFAULT!=="undefined"&&CI_DEFAULT[ph.cat])return CI_DEFAULT[ph.cat].c;
+  return (CI[ph.cat]&&CI[ph.cat].c)||"#8b8271";
+}
+/* 색이 밝으면 글자를 어둡게 (막대 안 공정명이 항상 읽히도록) */
+function readableOn(hex){
+  var c=String(hex||"").replace("#","");
+  if(c.length===3)c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+  var r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  if(isNaN(r))return "#fff";
+  return (0.299*r+0.587*g+0.114*b)>168 ? "#3a342b" : "#fff";
+}
+/* 모든 프로젝트의 공정을 '시작~종료 구간'으로 (남의 프로젝트는 건드리지 않는다) */
+function calRuns(){
+  var runs=[];
   projects.forEach(function(p,pi){
     if(!p||!p.phases||!p.phases.length)return;
     var r=computeSchedule(p,null,false);
-    var color=PROJ_COLORS[pi%PROJ_COLORS.length];
+    var pc=PROJ_COLORS[pi%PROJ_COLORS.length];
     p.phases.forEach(function(ph){
       var s0=r.es[ph.id],e0=r.ef[ph.id];
       if(s0==null||e0==null)return;
-      for(var k=s0;k<Math.max(e0,s0+1);k++){
-        var d=new Date(r.sd.getTime()+k*864e5);
-        if(d.getFullYear()!==y||d.getMonth()!==m)continue;
-        var key=calKey(d);
-        (map[key]||(map[key]=[])).push({pi:pi,pj:p.name,n:ph.nm||ph.name||"공정",c:ph.color||color,st:ph.status});
-      }
+      var days=Math.max(1,(e0-s0));
+      runs.push({pi:pi,pj:p.name,n:ph.nm||ph.name||"공정",pc:pc,cc:phaseColor(p,ph),st:ph.status,
+                 s:new Date(r.sd.getTime()+s0*864e5),
+                 e:new Date(r.sd.getTime()+(s0+days-1)*864e5)});   // 종료일 포함
     });
   });
-  return map;
+  return runs;
+}
+/* 한 주에 걸리는 구간만 잘라 겹치지 않게 층(lane)을 배정한다 */
+function calWeekLayout(weekStart,runs,maxLanes){
+  var wEnd=new Date(weekStart.getTime()+6*864e5),segs=[];
+  runs.forEach(function(r){
+    if(r.e<weekStart||r.s>wEnd)return;
+    var s=r.s<weekStart?weekStart:r.s,e=r.e>wEnd?wEnd:r.e;
+    segs.push({r:r,c0:Math.round((s-weekStart)/864e5),c1:Math.round((e-weekStart)/864e5),
+               contL:r.s<weekStart,contR:r.e>wEnd});
+  });
+  segs.sort(function(a,b){return a.c0-b.c0||(b.c1-b.c0)-(a.c1-a.c0)||a.r.pi-b.r.pi});
+  var lanes=[],over=0,out=[];
+  segs.forEach(function(g){
+    var l=0;while(lanes[l]!=null&&lanes[l]>=g.c0)l++;
+    if(l>=maxLanes){over++;return}
+    lanes[l]=g.c1;g.lane=l;out.push(g);
+  });
+  return {segs:out,lanes:lanes.length,over:over};
 }
 function renderCal(){
   var grid=document.getElementById("calGrid");if(!grid)return;
@@ -1196,44 +1239,57 @@ function renderCal(){
   if(title)title.innerHTML=CAL.y+"년 "+(CAL.m+1)+"월";
   var first=new Date(CAL.y,CAL.m,1),start=new Date(first.getTime()-first.getDay()*864e5);
   var dim=new Date(CAL.y,CAL.m+1,0).getDate();
-  var weeks=Math.ceil((first.getDay()+dim)/7);           // 그 달에 실제로 필요한 주 수 (4~6) — 빈 줄 없이 꽉 채운다
-  var todayK=calKey(new Date()),ev=calEvents(CAL.y,CAL.m);
-  var h="",offDays=0,evCount=0;
+  var weeks=Math.ceil((first.getDay()+dim)/7);       // 그 달에 필요한 주 수 (4~6) — 빈 줄 없이
+  var todayK=calKey(new Date()),runs=calRuns(),narrow=window.innerWidth<=520;
+  var MAXL=narrow?4:6,BARH=narrow?12:17,GAP=3,HEADH=narrow?24:28;
+  var h='<div class="cal-dows">';
   ["일","월","화","수","목","금","토"].forEach(function(w,i){
     h+='<div class="cal-dow'+(i===0?" sun":(i===6?" sat":""))+'">'+w+'</div>';
   });
-  for(var i=0;i<weeks*7;i++){
-    var d=new Date(start.getTime()+i*864e5),key=calKey(d),out=d.getMonth()!==CAL.m;
-    var hol=CAL.hol[key],dw=d.getDay(),list=ev[key]||[],we=(dw===0||dw===6);
-    if(!out){ if(hol&&hol.off)offDays++; evCount+=list.length; }
-    var cls="cal-cell"+(out?" out":"")+(we?" we":"")+(dw===0?" sun":(dw===6?" sat":""))+
-            (hol&&hol.off?" hol":"")+(key===todayK?" today":"")+(key===CAL.sel?" sel":"");
-    h+='<div class="'+cls+'" onclick="calPick(&quot;'+key+'&quot;)">';
-    h+='<div class="cal-top"><span class="cal-d">'+d.getDate()+'</span>';
-    if(hol)h+='<span class="cal-hol'+(hol.off?"":" mem")+'" title="'+esc(hol.n)+'">'+esc(hol.n)+'</span>';
-    h+='</div>';
-    if(list.length){
-      h+='<div class="cal-ev">';
-      list.slice(0,3).forEach(function(e){
-        h+='<span class="'+(e.st==="done"?"done":"")+'" style="border-left-color:'+e.c+'" title="'+esc(e.pj+" · "+e.n)+'">'+esc(e.n)+'</span>';
-      });
-      if(list.length>3)h+='<div class="cal-more">외 '+(list.length-3)+'건</div>';
-      h+='</div>';
+  h+='</div>';
+  var offDays=0,evCount=0;
+  for(var wk=0;wk<weeks;wk++){
+    var wStart=new Date(start.getTime()+wk*7*864e5);
+    var lay=calWeekLayout(wStart,runs,MAXL);
+    var rowH=Math.max(narrow?58:92,HEADH+lay.lanes*(BARH+GAP)+8);
+    h+='<div class="cal-week" style="--rowH:'+rowH+'px"><div class="cal-cells">';
+    for(var i=0;i<7;i++){
+      var d=new Date(wStart.getTime()+i*864e5),key=calKey(d),out=d.getMonth()!==CAL.m;
+      var hol=CAL.hol[key],dw=d.getDay();
+      if(!out&&hol&&hol.off)offDays++;
+      var cls="cal-cell"+(out?" out":"")+((dw===0||dw===6)?" we":"")+(dw===0?" sun":(dw===6?" sat":""))+
+              (hol&&hol.off?" hol":"")+(key===todayK?" today":"")+(key===CAL.sel?" sel":"");
+      h+='<div class="'+cls+'" onclick="calPick(&quot;'+key+'&quot;)">';
+      h+='<div class="cal-top"><span class="cal-d">'+d.getDate()+'</span>';
+      if(hol)h+='<span class="cal-hol'+(hol.off?"":" mem")+'" title="'+esc(hol.n)+'">'+esc(hol.n)+'</span>';
+      h+='</div></div>';
     }
-    h+='</div>';
+    h+='</div><div class="cal-bars">';
+    lay.segs.forEach(function(g){
+      var span=g.c1-g.c0+1,left=(g.c0/7*100),width=(span/7*100),inMonth=false;
+      for(var j=g.c0;j<=g.c1;j++){if(new Date(wStart.getTime()+j*864e5).getMonth()===CAL.m)inMonth=true}
+      if(inMonth&&!g.contL)evCount++;
+      h+='<div class="cal-bar'+(g.contL?" cont-l":"")+(g.contR?" cont-r":"")+(g.r.st==="done"?" done":"")+'"'+
+         ' style="left:calc('+left.toFixed(3)+'% + 3px);width:calc('+width.toFixed(3)+'% - 6px);top:'+(g.lane*(BARH+GAP))+'px;height:'+BARH+'px"'+
+         ' title="'+esc(g.r.pj+" · "+g.r.n)+'" onclick="event.stopPropagation();openProject('+g.r.pi+')">'+
+         '<div class="pc" style="background:'+g.r.pc+'"></div>'+
+         '<div class="cc" style="background:'+g.r.cc+';color:'+readableOn(g.r.cc)+'">'+(g.contL?"":esc(g.r.n))+'</div>'+
+         '</div>';
+    });
+    if(lay.over)h+='<div class="cal-overflow">외 '+lay.over+'건</div>';
+    h+='</div></div>';
   }
   grid.innerHTML=h;
-
   var sum=document.getElementById("calSum");
   if(sum)sum.textContent="이번 달 공정 "+evCount+"건 · 휴무 "+offDays+"일"+
     (CAL.loaded?" · 한국 공휴일·기념일 "+(CAL.count||0)+"일 반영":(CAL.failed?" · 공휴일을 불러오지 못했습니다":" · 공휴일 불러오는 중…"));
   renderCalLegend();
-  renderCalDay(ev);
+  renderCalDay(runs);
 }
-/* 범례 — 어느 색이 어느 현장인지 바로 알 수 있게 (분간이 가장 중요) */
+/* 범례 — 위 3할은 현장색, 아래 7할은 공정색이라는 것을 그대로 보여준다 */
 function renderCalLegend(){
   var el=document.getElementById("calLegend");if(!el)return;
-  var h="";
+  var h='<span class="lg" style="color:#6b6355"><b style="font-weight:700">막대 읽는 법</b> — 위 얇은 띠 = 현장, 아래 넓은 띠 = 공정</span>';
   projects.forEach(function(p,i){
     h+='<span class="lg"><i style="background:'+PROJ_COLORS[i%PROJ_COLORS.length]+'"></i>'+esc(p.name)+'</span>';
   });
@@ -1242,16 +1298,18 @@ function renderCalLegend(){
   el.innerHTML=h;
 }
 function calPick(key){CAL.sel=key;renderCal()}
-function renderCalDay(ev){
+function renderCalDay(runs){
   var box=document.getElementById("calDay");if(!box)return;
   if(!CAL.sel){box.innerHTML='<div style="color:#999;font-size:11.5px">날짜를 누르면 그날 진행되는 공정을 봅니다.</div>';return}
-  var d=new Date(CAL.sel+"T00:00:00"),hol=CAL.hol[CAL.sel],list=(ev||calEvents(d.getFullYear(),d.getMonth()))[CAL.sel]||[];
+  var d=new Date(CAL.sel+"T00:00:00"),hol=CAL.hol[CAL.sel];
+  var list=(runs||calRuns()).filter(function(r){return r.s<=d&&d<=r.e})
+             .map(function(r){return {pi:r.pi,pj:r.pj,n:r.n,c:r.cc,pc:r.pc,st:r.st}});
   var h='<h4>'+d.getFullYear()+"."+(d.getMonth()+1)+"."+d.getDate()+" ("+WD[d.getDay()]+")";
   if(hol)h+=' <span style="color:'+(hol.off?"#e24b4a":"#9a8f7a")+';font-size:12px">· '+esc(hol.n)+(hol.off?" (휴무)":"")+'</span>';
   h+='</h4>';
   if(!list.length)h+='<div style="color:#999;font-size:11.5px">진행 중인 공정이 없습니다.</div>';
   list.forEach(function(e){
-    h+='<div class="day-row"><i style="background:'+e.c+'"></i>'+
+    h+='<div class="day-row"><i style="background:linear-gradient(180deg,'+e.pc+' 0 30%,'+e.c+' 30% 100%)"></i>'+
        '<div style="min-width:0"><div class="nm">'+esc(e.n)+(e.st==="done"?' <span style="color:#2fa87a;font-size:10px">완료</span>':'')+'</div>'+
        '<div class="pj">'+esc(e.pj)+'</div></div>'+
        '<button class="btn" style="margin-left:auto;font-size:10px;padding:4px 10px;border-radius:999px" onclick="openProject('+e.pi+')">열기</button></div>';
