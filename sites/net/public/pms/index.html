@@ -301,8 +301,6 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
       <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. <b style="color:#185fa5">공정표는 서버에 저장되어 모든 직원이 같은 내용을 봅니다.</b></p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-      <button class="btn" id="editLockBtn2" onclick="editLockClick()" style="font-size:11px;padding:6px 14px;font-weight:700"
-              title="편집하려면 암호로 잠금을 풀어야 합니다">🔒 편집 잠김</button>
       <button class="btn" id="srvSaveBtn2" onclick="projSaveNow()" style="font-size:11px;padding:6px 14px;font-weight:700"
               title="지금 서버에 저장합니다. 저장하면 다른 직원이 같은 내용을 봅니다">☁ 서버 저장</button>
       <span id="srvSaveInfo2" style="font-size:11px;color:#666"></span>
@@ -342,7 +340,6 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
       <button class="btn" onclick="zoomIn()" title="간트 확대 (하루 폭 늘리기)">🔍+</button>
       <button class="btn" onclick="zoomFit()" title="공사 전체 기간을 화면 폭에 맞춥니다">↔ 화면맞춤</button>
     </span>
-    <button class="btn" id="editLockBtn" onclick="editLockClick()" title="편집하려면 암호로 잠금을 풀어야 합니다" style="font-weight:700">🔒 편집 잠김</button>
     <button class="btn tools-toggle" onclick="toggleTools()" id="toolsTgBtn" title="나머지 도구 펼치기/접기">⋯ 도구</button>
     <span class="tools-more" id="toolsMore">
       <button class="btn" onclick="resetAllStatus()">진행상태 초기화</button>
@@ -794,7 +791,7 @@ function zoomFit(){
 /* ── 편집 잠금 (2026-09-07 대표 지시: "누구나 수정하면 공정이 꼬인다") ──────────
    열람은 직원 누구나, 편집은 암호로 잠금을 푼 사람만 8시간.
    판정은 서버(pms_edit_* 함수)가 하고 화면은 그 결과를 따른다 — 화면만 우회해도 저장이 거부된다. */
-var EDIT={unlocked:false,until:null,canManage:false,checked:false};
+var EDIT={unlocked:true,until:null,canManage:false,checked:false}; /* 2026-09-07 잠금 비활성화 */
 
 function editRefresh(){
   return fetch("/api/pms/edit",{credentials:"same-origin"})
@@ -892,11 +889,7 @@ function doChangePw(np){
     .catch(function(){if(msg)msg.textContent="연결에 실패했습니다"});
 }
 /* 편집 시도 지점에서 부르는 관문 — 잠겨 있으면 암호창을 띄우고 false */
-function requireEdit(){
-  if(EDIT.unlocked)return true;
-  askUnlock("이 작업은 편집입니다. 암호를 입력하면 8시간 동안 편집할 수 있습니다.");
-  return false;
-}
+function requireEdit(){ return true; }   /* 2026-09-07 잠금 비활성화 (대표 지시) */
 /* 잠금 상태에서 이미 바뀐 화면을 서버 내용으로 되돌린다 */
 function projRevertToServer(){
   var out=[];
@@ -926,16 +919,16 @@ function loadStore(){
   if(!Array.isArray(projects))projects=[];
 }
 function saveStore(){
-  // 편집 잠금 — 잠긴 상태에서는 화면 변경도 되돌린다 (서버가 어차피 거부하므로 어긋나면 안 된다)
-  if(PROJ.ready&&EDIT.checked&&!EDIT.unlocked){
-    projRevertToServer();
-    askUnlock("이 작업은 편집입니다. 암호를 입력하면 8시간 동안 편집할 수 있습니다.");
-    return;
+  // 2026-09-07 속도: 캐시 저장·변경 감지·버튼 표시가 각각 전체를 직렬화하던 것을 한 번으로 합쳤다.
+  var snap={},arr=[];
+  for(var i=0;i<projects.length;i++){
+    var p=projects[i];if(!p||!p.id)continue;
+    var j=JSON.stringify(p);snap[p.id]=j;arr.push(j);
   }
   // localStorage 는 '화면을 빨리 그리기 위한 캐시'일 뿐이다. 정본은 서버(pms_projects).
-  try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){console.warn("캐시 저장 실패",e)}
-  projSyncDirty(); // 바뀐 프로젝트만 서버에 저장 (충돌 감지 포함)
-  updateSaveUi();  // 저장 버튼이 지금 상태를 항상 말해주도록
+  try{localStorage.setItem(STORE_KEY,"["+arr.join(",")+"]")}catch(e){console.warn("캐시 저장 실패",e)}
+  projSyncDirty(snap); // 바뀐 프로젝트만 서버에 저장 (충돌 감지 포함)
+  updateSaveUi(snap);  // 저장 버튼이 지금 상태를 항상 말해주도록
   if(!_histLock)histPush();
 }
 
@@ -1106,7 +1099,6 @@ function openNewProj(){
 function closeNewProj(){document.getElementById("newProjModal").classList.remove("open")}
 
 function createProject(){
-  if(!requireEdit())return;
 
   var name=document.getElementById("np_name").value.trim();
   var start=document.getElementById("np_start").value;
@@ -1152,7 +1144,6 @@ function createProject(){
 }
 
 function deleteProject(i){
-  if(!requireEdit())return;
 
   if(!confirm('"'+projects[i].name+'" 프로젝트를 삭제하시겠습니까?\n복구할 수 없습니다.'))return;
   projects.splice(i,1);
@@ -1217,7 +1208,6 @@ function exportAll(){
   a.click();
 }
 function importAll(ev){
-  if(!requireEdit())return;
 
   var f=ev.target.files[0];if(!f)return;
   var r=new FileReader();
@@ -1395,7 +1385,6 @@ function bumpDur(i,delta){
 }
 // 공정 잠금/해제 — 잠그면 현재 시작일을 절대날짜로 고정(의존성 변동에도 안 움직임)
 function toggleLock(i){
-  if(!requireEdit())return;
 
   var p=currentProj.phases[i];
   freezeAll();                      // 다른 공정들 현재 위치 고정 → 튕김 방지
@@ -1406,7 +1395,6 @@ function toggleLock(i){
 }
 // 전체 일괄: 모두 미착수로 리셋
 function resetAllStatus(){
-  if(!requireEdit())return;
 
   if(!confirm("모든 공정 진행상태를 미착수로 초기화할까요?"))return;
   currentProj.phases.forEach(function(p){p.status="todo"});
@@ -2255,11 +2243,10 @@ function syncDep(selfIdx){
   document.getElementById("f_dep").value=ids.join(",");
 }
 function openEdit(i){editIdx=i;var p=currentProj.phases[i];renderCatOptions();document.getElementById("mTitle").textContent="편집: "+p.nm;document.getElementById("f_id").value=p.id;document.getElementById("f_nm").value=p.nm;document.getElementById("f_sub").value=p.sub;document.getElementById("f_cat").value=p.cat;document.getElementById("f_color").value=p.color||(CI[p.cat]?CI[p.cat].c:"#888888");document.getElementById("f_dur").value=p.dur;document.getElementById("f_dep").value=p.dep.join(",");document.getElementById("f_offset").value=p.offset||"";document.getElementById("f_lock").value=p.lock||"";document.getElementById("f_cp").value=p.cp?"1":"0";document.getElementById("f_status").value=p.status||"todo";document.getElementById("f_tasks").value=p.tasks.join("\n");document.getElementById("f_crew").value=p.crew||"";document.getElementById("f_mat").value=p.mat||"";document.getElementById("delBtn").style.display="inline-block";renderDepList(i);document.getElementById("modalBg").classList.add("open")}
-function openAdd(){if(!requireEdit())return;editIdx=-1;renderCatOptions();document.getElementById("mTitle").textContent="공정 추가";document.getElementById("f_id").value="";document.getElementById("f_nm").value="";document.getElementById("f_sub").value="";document.getElementById("f_cat").value="fin";document.getElementById("f_color").value=(CI["fin"]?CI["fin"].c:"#888888");document.getElementById("f_dur").value="5";document.getElementById("f_dep").value="";document.getElementById("f_offset").value="";document.getElementById("f_lock").value="";document.getElementById("f_cp").value="0";document.getElementById("f_status").value="todo";document.getElementById("f_tasks").value="";document.getElementById("f_crew").value="";document.getElementById("f_mat").value="";document.getElementById("delBtn").style.display="none";renderDepList(-1);document.getElementById("modalBg").classList.add("open")}
+function openAdd(){editIdx=-1;renderCatOptions();document.getElementById("mTitle").textContent="공정 추가";document.getElementById("f_id").value="";document.getElementById("f_nm").value="";document.getElementById("f_sub").value="";document.getElementById("f_cat").value="fin";document.getElementById("f_color").value=(CI["fin"]?CI["fin"].c:"#888888");document.getElementById("f_dur").value="5";document.getElementById("f_dep").value="";document.getElementById("f_offset").value="";document.getElementById("f_lock").value="";document.getElementById("f_cp").value="0";document.getElementById("f_status").value="todo";document.getElementById("f_tasks").value="";document.getElementById("f_crew").value="";document.getElementById("f_mat").value="";document.getElementById("delBtn").style.display="none";renderDepList(-1);document.getElementById("modalBg").classList.add("open")}
 function closeModal(){document.getElementById("modalBg").classList.remove("open")}
 function syncCatColor(){var c=document.getElementById("f_cat").value;document.getElementById("f_color").value=(CI[c]&&CI[c].c)||"#888888"}
 function saveModal(){
-  if(!requireEdit())return;
 
   var o={id:document.getElementById("f_id").value.trim()||("N"+Date.now()),nm:document.getElementById("f_nm").value,sub:document.getElementById("f_sub").value,dur:parseInt(document.getElementById("f_dur").value)||5,dep:document.getElementById("f_dep").value.split(",").map(function(s){return s.trim()}).filter(Boolean),cat:document.getElementById("f_cat").value,cp:document.getElementById("f_cp").value==="1"?1:0,offset:document.getElementById("f_offset").value?parseInt(document.getElementById("f_offset").value):0,lock:document.getElementById("f_lock").value||"",status:document.getElementById("f_status").value,tasks:document.getElementById("f_tasks").value.split("\n").filter(Boolean),crew:document.getElementById("f_crew").value,mat:document.getElementById("f_mat").value};
   var pc=document.getElementById("f_color").value,catC=((CI[o.cat]&&CI[o.cat].c)||"").toLowerCase();
@@ -2288,7 +2275,6 @@ function deletePhase(){
 // 공정 삭제 (인덱스 기반, 키보드/모달 공용). confirmFirst=확인창 여부
 var selectedRow=-1;
 function deletePhaseByIdx(idx,confirmFirst){
-  if(!requireEdit())return;
 
   if(idx<0||idx>=currentProj.phases.length)return false;
   var p=currentProj.phases[idx];
@@ -2370,7 +2356,6 @@ function dismissWpBanner(){
 
 // ── 수신함 ──
 function openWpInbox(){
-  if(!requireEdit())return;
 
   if(!WPE()){alert("연계 엔진(boc-wp.js)을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.");return}
   document.getElementById("wpInbox").classList.add("open");
@@ -2735,12 +2720,13 @@ function hhmmss(d){return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).
 
 /* ── 서버 저장 버튼 (2026-09-07 대표 지시: "언제 저장되는지 눈에 보여야 한다") ──
    자동 저장은 안전망으로 계속 돌지만, 지금 상태가 저장됨인지 아닌지는 버튼이 항상 말해준다. */
-function projDirtyIds(){
+function projDirtyIds(snap){
   var out=[];
   projects.forEach(function(p){
     if(!p||!p.id)return;
     var s=PROJ.synced[p.id];
-    if(!s||s.json!==JSON.stringify(p))out.push(p.id);
+    var j=(snap&&snap[p.id])||JSON.stringify(p);
+    if(!s||s.json!==j)out.push(p.id);
   });
   Object.keys(PROJ.synced).forEach(function(id){if(projIndexById(id)<0)out.push(id)}); // 삭제 대기
   return out;
@@ -2766,10 +2752,9 @@ var SAVE_TONE={
   busy:{onDark:"#9fc7ff",onLight:"#185fa5",bg:"#dbeafe"},
   idle:{onDark:"#cfd6dd",onLight:"#666666",bg:"#eeeeee"}
 };
-function updateSaveUi(){
-  var dirty=(PROJ.ready&&!PROJ.offline)?projDirtyIds().length:0,label,txt,tone;
+function updateSaveUi(snap){
+  var dirty=(PROJ.ready&&!PROJ.offline)?projDirtyIds(snap).length:0,label,txt,tone;
   if(PROJ.offline){label="☁ 서버 저장";txt="오프라인 — 읽기 전용";tone="warn"}
-  else if(EDIT.checked&&!EDIT.unlocked){label="☁ 저장 (잠김)";txt="편집 잠김 — 암호를 풀어야 저장됩니다";tone="idle"}
   else if(!PROJ.ready){label="☁ 서버 저장";txt="불러오는 중…";tone="idle"}
   else if(PROJ.saving>0){label="저장 중…";txt="서버로 보내는 중";tone="busy"}
   else if(PROJ.failed){label="☁ 다시 저장";txt="저장 실패 — 버튼을 눌러 주세요";tone="err"}
@@ -2800,7 +2785,7 @@ function projFetchAll(){
       rows.forEach(function(row){PROJ.synced[row.id]={json:JSON.stringify(row.data),updatedAt:row.updated_at}});
       PROJ.lastSync=j.serverTime;PROJ.ready=true;PROJ.failed=false;
       projCache();projOnline();updateSaveUi();
-      if(EDIT.unlocked&&repairLegacyMeta())saveStore(); // 구버전 보정은 편집 권한이 있을 때만
+      if(repairLegacyMeta())saveStore(); // 구버전 보정은 편집 권한이 있을 때만
       if(currentProj){var k=projIndexById(currentProj.id);if(k>=0)openProject(k);else if(typeof backToList==="function")backToList()}
       renderProjects();
       return true;
@@ -2809,14 +2794,15 @@ function projFetchAll(){
 }
 
 /* 바뀐 프로젝트만 서버로 (없어진 프로젝트는 삭제) */
-function projSyncDirty(){
+function projSyncDirty(snap){
   if(!PROJ.ready||PROJ.offline)return;
   var seen={};
   projects.forEach(function(p){
     if(!p||!p.id)return;
     seen[p.id]=1;
     var s=PROJ.synced[p.id];
-    if(s&&s.json===JSON.stringify(p))return;
+    var j=(snap&&snap[p.id])||JSON.stringify(p);
+    if(s&&s.json===j)return;
     clearTimeout(PROJ.timers[p.id]);
     PROJ.timers[p.id]=setTimeout(function(){projPush(p.id)},PROJ.saveMs);
   });
@@ -2844,11 +2830,7 @@ function projPush(id,keepalive){
     })
     .catch(function(e){
       PROJ.saving--;
-      if(e&&e.code===423){ // 서버가 편집 잠금으로 거부 — 화면을 서버 내용으로 되돌리고 암호를 받는다
-        EDIT.unlocked=false;editPaint();projRevertToServer();
-        askUnlock("편집 잠금이 풀려 있지 않거나 시간이 만료되었습니다.");
-        updateSaveUi();return;
-      }
+      if(e&&e.code===423){cloudDot(false,"편집이 잠겨 저장되지 않았습니다");updateSaveUi();return}
       if(e&&(e.code===401||e.code===403)){projOffline(e.msg||"저장 권한이 없습니다");return}
       PROJ.retry[id]=(PROJ.retry[id]||0)+1;PROJ.failed=true;
       cloudDot(false,PROJ.retry[id]<=3?"저장 실패 — 재시도 중":"저장 실패");
@@ -3079,8 +3061,6 @@ updateTodayBadge();setInterval(updateTodayBadge,60000);
 cloudInit();       // 레이어·내 템플릿 (프로젝트 본문은 아래 projFetchAll 담당)
 
 /* 서버 정본을 받은 뒤에 견적OS 브리지를 확인한다 (먼저 하면 새로 만든 프로젝트가 교체되며 사라진다) */
-editRefresh();                                   // 편집 잠금 상태 먼저 확인
-setInterval(editRefresh,300000);                 // 5분마다 재확인 (8시간 만료 반영)
 projFetchAll().then(function(ok){ if(ok){ wpBridgeCheck(); projRealtime() } });  // 읽기 전용(오프라인)일 때는 새 공정표를 만들지 않는다
 window.addEventListener("focus",function(){ if(!PROJ.offline)wpBridgeCheck(); projPoll() });
 window.addEventListener("storage",function(e){if(e.key==="ecorean_wp_bridge_v1"&&!PROJ.offline)wpBridgeCheck()});
