@@ -198,8 +198,8 @@ table.gantt thead th.lh.lh-b{border-bottom:2px solid #444}
 .cal-bar{position:absolute;height:17px;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;
   box-shadow:0 0 0 1px rgba(30,25,15,.08),0 1px 2px rgba(30,25,15,.08);cursor:pointer}
 .cal-bar .pc{height:20%;flex:0 0 20%}
-.cal-bar .cc{height:80%;flex:1 1 80%;display:flex;align-items:center;padding:0 5px;
-  font-size:9.5px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-bar .cc{height:80%;flex:1 1 80%;display:flex;align-items:center;padding:0 5px;min-width:0;
+  font-size:9.5px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:clip}
 .cal-bar.cont-l{border-top-left-radius:0;border-bottom-left-radius:0}
 .cal-bar.cont-r{border-top-right-radius:0;border-bottom-right-radius:0}
 .cal-bar.done{opacity:.6;filter:grayscale(.35)}
@@ -257,9 +257,9 @@ table.gantt thead th.lh.lh-b{border-bottom:2px solid #444}
   /* 폰에서도 '무슨 날, 무슨 공정'이 읽혀야 한다 — 색만 남기지 않는다 (2026-09-08) */
   .dash-card{padding:14px 12px}
   .cal-cell{padding:5px 4px}
-  .cal-bar{height:15px;border-radius:3px}
-  .cal-bar .cc{font-size:9px;padding:0 3px;font-weight:700}
-  .cal-bar .pc{min-height:3px}
+  .cal-bar{height:19px;border-radius:4px}
+  .cal-bar .cc{font-size:10px;padding:0 4px;font-weight:700;letter-spacing:-.4px}
+  .cal-bar .pc{min-height:4px}
   .cal-bars{top:27px;bottom:4px}
   .cal-d{font-size:12.5px;line-height:19px;min-width:19px}
   .cal-hol{display:block;font-size:8.5px;line-height:1.2;max-width:52%}
@@ -1349,7 +1349,7 @@ function renderCal(){
   var dim=new Date(CAL.y,CAL.m+1,0).getDate();
   var weeks=Math.ceil((first.getDay()+dim)/7);       // 그 달에 필요한 주 수 (4~6) — 빈 줄 없이
   var todayK=calKey(new Date()),runs=calRuns(),narrow=window.innerWidth<=520;
-  var MAXL=narrow?3:6,BARH=narrow?15:17,GAP=3,HEADH=narrow?27:28;
+  var MAXL=narrow?3:6,BARH=narrow?19:17,GAP=3,HEADH=narrow?26:28;
   var h='<div class="cal-dows">';
   ["일","월","화","수","목","금","토"].forEach(function(w,i){
     h+='<div class="cal-dow'+(i===0?" sun":(i===6?" sat":""))+'">'+w+'</div>';
@@ -1359,7 +1359,7 @@ function renderCal(){
   for(var wk=0;wk<weeks;wk++){
     var wStart=new Date(start.getTime()+wk*7*864e5);
     var lay=calWeekLayout(wStart,runs,MAXL);
-    var rowH=Math.max(narrow?72:92,HEADH+lay.lanes*(BARH+GAP)+8);
+    var rowH=Math.max(narrow?76:92,HEADH+lay.lanes*(BARH+GAP)+8);
     h+='<div class="cal-week" style="--rowH:'+rowH+'px"><div class="cal-cells">';
     for(var i=0;i<7;i++){
       var d=new Date(wStart.getTime()+i*864e5),key=calKey(d),out=d.getMonth()!==CAL.m;
@@ -1382,7 +1382,7 @@ function renderCal(){
          ' title="'+esc(g.r.pj+" · "+g.r.n)+'" onclick="event.stopPropagation();openProject('+g.r.pi+')">'+
          '<div class="pc" style="background:'+hexA(g.r.pc,.5)+'"></div>'+
          '<div class="cc" style="background:'+hexA(g.r.cc,.5)+';color:'+readableOn(g.r.cc,.5)+'">'+
-         ((g.contL||(narrow&&span<2))?"":esc(g.r.n))+'</div>'+
+         (g.contL?"↳ "+esc(g.r.n):esc(g.r.n))+'</div>'+
          '</div>';
     });
     if(lay.over)h+='<div class="cal-overflow">외 '+lay.over+'건</div>';
