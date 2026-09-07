@@ -3903,6 +3903,71 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
   }catch(e){
     assert('조명분류: 테스트 예외 없음',false,e.message);
   }
+  // === 2026-09-07 대표 지적: R 은 공간, 매스는 따로 ===
+  try{
+    const _bakRM={spaces:STATE.spaces.slice(),vertices:STATE.vertices.slice(),walls:STATE.walls.slice(),
+      faces:(STATE.sketchFaces||[]).slice(),pts:(STATE.sketchPts||[]).slice(),
+      edges:(STATE.sketchEdges||[]).slice(),masses:(STATE.masses||[]).slice(),
+      tool:STATE.selectedTool,sk:STATE.sketchMode,cmd:STATE.cmdMode,
+      selK:STATE.selectedKind,selI:STATE.selectedId};
+    const RX=1500000;
+    // [R1] R = 사각공간 — 그리면 공간이 생긴다 (프로토콜 6 이 이걸 깨 놓았었다)
+    STATE.selectedTool='rect';
+    const sp0=STATE.spaces.length, fc0=(STATE.sketchFaces||[]).length;
+    drawState={type:'rect',start:{x:RX,y:RX},current:{x:RX+3000,y:RX+2000}};
+    endRect();
+    assert('R: 사각공간이 공간을 만든다',STATE.spaces.length===sp0+1,
+      sp0+'→'+STATE.spaces.length);
+    assert('R: 스케치 면을 만들지 않는다',(STATE.sketchFaces||[]).length===fc0,
+      fc0+'→'+(STATE.sketchFaces||[]).length);
+    assert('R: 만든 것이 공간이다',!!STATE.spaces[STATE.spaces.length-1].polygon);
+
+    // [R2] N = 매스 — 같은 그리기인데 면이 되고 Z 를 묻는다
+    STATE.selectedTool='mass';
+    const sp1=STATE.spaces.length, fc1=(STATE.sketchFaces||[]).length;
+    drawState={type:'rect',start:{x:RX+6000,y:RX},current:{x:RX+9000,y:RX+2000}};
+    endRect();
+    assert('N: 매스는 공간을 만들지 않는다',STATE.spaces.length===sp1,
+      sp1+'→'+STATE.spaces.length);
+    assert('N: 매스는 면을 만든다',(STATE.sketchFaces||[]).length===fc1+1,
+      fc1+'→'+(STATE.sketchFaces||[]).length);
+    assert('N: Z 높이를 묻는다',STATE.cmdMode==='sk-z',String(STATE.cmdMode));
+    if(STATE.cmdMode) exitCmdMode();
+
+    // [R3] 면에 Z 를 주면 매스가 된다 — 여기서 비로소 입체
+    const f=(STATE.sketchFaces||[])[(STATE.sketchFaces||[]).length-1];
+    const ms0=(STATE.masses||[]).length;
+    const made=skExtrude(f.id,2400,'solid');
+    assert('N: Z 를 주면 매스',!!made&&made.kind==='masses'&&(STATE.masses||[]).length===ms0+1);
+    const m=(STATE.masses||[])[(STATE.masses||[]).length-1];
+    assert('N: 각기둥으로 시작',massIsPrism(m)&&massTopZ(m,{})===2400,String(massTopZ(m,{})));
+    // 꼭짓점 하나를 올리면 자유 입체로 — 공간으로는 못 하는 일
+    massVertZ(m,4,3600,{});
+    assert('N: 꼭짓점 높이를 달리 줄 수 있다',!massIsPrism(m));
+    assert('N: 경사면이 잡힌다',massSolid(m,{}).faces.some(x=>x.role==='slope'));
+
+    // [R4] 필요하면 공간으로 넘길 수 있다 (견적으로 들어가는 다리)
+    const sp2=STATE.spaces.length;
+    const conv=massConvert(m.id,'space');
+    assert('N: 매스를 공간으로 전환',!!conv&&STATE.spaces.length===sp2+1,
+      sp2+'→'+STATE.spaces.length);
+
+    // [R5] 옛 방식을 원하면 스위치가 남아 있다
+    STATE.sketchMode=true;STATE.selectedTool='rect';
+    const fc2=(STATE.sketchFaces||[]).length;
+    drawState={type:'rect',start:{x:RX,y:RX+6000},current:{x:RX+2000,y:RX+8000}};
+    endRect();
+    assert('R5: sk on 이면 옛 프로토콜 6 방식',(STATE.sketchFaces||[]).length===fc2+1);
+    if(STATE.cmdMode) exitCmdMode();
+
+    STATE.spaces=_bakRM.spaces;STATE.vertices=_bakRM.vertices;STATE.walls=_bakRM.walls;
+    STATE.sketchFaces=_bakRM.faces;STATE.sketchPts=_bakRM.pts;STATE.sketchEdges=_bakRM.edges;
+    STATE.masses=_bakRM.masses;STATE.selectedTool=_bakRM.tool;STATE.sketchMode=_bakRM.sk;
+    STATE.selectedKind=_bakRM.selK;STATE.selectedId=_bakRM.selI;
+    drawState=null;invalidateRenderCache();renderAll();refreshUI();
+  }catch(e){
+    assert('R/매스: 테스트 예외 없음',false,e.message);
+  }
   // === 2026-09-01 대표 보고: JSON 탭을 누르면 컴퓨터가 느리다 ===
   //  전체를 화면에 밀어 넣던 것과, 고칠 때마다 다시 만들던 것 두 가지가 겹쳐 있었다.
   try{
@@ -5211,7 +5276,14 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
       assert('SK37: 매스 = prism 높이 1500 · 중심 (6000,500)',_pm.prims[0].t==='prism'&&_pm.prims[0].h===1500&&_pm.x===6000&&_pm.y===500);
     }else assert('SK36: 3D 조립 (2D 페이지엔 MC3D 미적재 — node tests/minicad-3d.cjs 가 검증)',true);
     // 12) 레거시(sketchMode=false) 스위치가 남아 있다
-    assert('SK38: sketchMode 기본 켜짐',STATE.sketchMode!==false);
+    // 2026-09-07 대표 지적: R(사각공간)·C(원형공간)·L(선) 은 미니캐드 고유 도구다.
+    //  프로토콜 6 이 이 키들의 뜻을 조용히 바꿔 놓았던 것을 되돌리고,
+    //  z 값을 가진 자유 입체는 '매스'(N) 라는 별도 도구로 뗐다.
+    assert('SK38: 공간 도구는 원래대로 (스케치 모드 기본 꺼짐)',STATE.sketchMode===false);
+    assert('SK38b: 매스는 별도 도구',
+      !!document.querySelector('[data-tool="mass"]'),'매스 도구 버튼 없음');
+    assert('SK38c: 사각공간 도구가 그대로 있다',
+      !!document.querySelector('[data-tool="rect"]'));
     applyLoadedData(_skBak);
     assert('SK39: 원상복구',STATE.activeFloorId===_skAct&&(STATE.masses||[]).length===_skBak.masses.length);
   }catch(e){

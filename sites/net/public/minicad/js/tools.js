@@ -769,11 +769,13 @@ function endRect(){
   const minX=Math.min(start.x,current.x),maxX=Math.max(start.x,current.x);
   const minY=Math.min(start.y,current.y),maxY=Math.max(start.y,current.y);
   if(maxX-minX>=100&&maxY-minY>=100){
-    if(STATE.sketchMode!==false){ // 2026-09-04 점·선·면: 사각형은 먼저 면 — Z 입력 시 객체
+    // 2026-09-07: '매스' 도구(N)로 그렸으면 면 → Z 입력 → 자유 입체.
+    //  '사각공간' 도구(R)는 종전대로 곧바로 공간을 만든다 — 뜻이 다른 두 가지다.
+    if(STATE.selectedTool==='mass'||STATE.sketchMode===true){
       const f=skAddRect(minX,minY,maxX,maxY);
       drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
       saveHistory();renderAll();refreshUI();
-      skAfterFace(f,'사각형 '+(maxX-minX)+'×'+(maxY-minY)+'mm');
+      skAfterFace(f,'매스 바닥 '+(maxX-minX)+'×'+(maxY-minY)+'mm');
       return;
     }
     addSpace([{x:minX,y:minY},{x:maxX,y:minY},{x:maxX,y:maxY},{x:minX,y:maxY}]);
@@ -2426,7 +2428,7 @@ stage.on('mousedown touchstart',e=>{
   if(_printRectActive){_printRectP1={x:pos.x,y:pos.y};if(e.evt&&e.evt.preventDefault)e.evt.preventDefault();return;}
   const isMiddleClick=e.evt&&e.evt.button===1; // v5.5: 휠클릭 패닝
   if(isMiddleClick||STATE.selectedTool==='pan'){isPanning=true;panStart={x:pos.x,y:pos.y};if(e.evt) e.evt.preventDefault();return;}
-  if(STATE.selectedTool==='rect') startRect(pos);
+  if(STATE.selectedTool==='rect'||STATE.selectedTool==='mass') startRect(pos);
   else if(STATE.selectedTool==='circlespace') startCircleSpace(pos);
   // v5.5: wall은 mousedown으로 시작 안 함 (클릭+클릭 모드만)
   else if(STATE.selectedTool==='circle') startCircle(pos);
@@ -3176,7 +3178,7 @@ stage.on('mousemove touchmove',e=>{
     STATE.rotateState.lastAngle=curAngle;
     return;
   }
-  if(STATE.selectedTool==='rect'&&isMouseDown) updateRect(pos);
+  if((STATE.selectedTool==='rect'||STATE.selectedTool==='mass')&&isMouseDown) updateRect(pos);
   // v5.5: wall은 mousemove 미리보기를 cmdMode wall-len에서 처리
   else if(STATE.selectedTool==='circlespace'&&isMouseDown) updateCircleSpace(pos);
   else if(STATE.selectedTool==='circle'&&isMouseDown) updateCircle(pos);
@@ -3465,7 +3467,7 @@ stage.on('mouseup touchend',e=>{
     STATE.dragSnapGuides=null;drawSnapMarker(); // 2026-08-19: 정렬 가이드 제거
     return;
   }
-  if(STATE.selectedTool==='rect'){
+  if(STATE.selectedTool==='rect'||STATE.selectedTool==='mass'){
     if(isClick&&drawState&&drawState.type==='rect'){
       // 클릭만 = 단계별 프롬프트 모드
       drawState.current=drawState.start;
@@ -4172,6 +4174,7 @@ document.addEventListener('keydown',e=>{
   switch(e.key.toLowerCase()){
     case 'v':setTool('select');break;
     case 'r':if(STATE.selectedKind&&STATE.selectedId) rotateSelected();else setTool('rect');break;
+    case 'n':setTool('mass');cmdToast('매스 — 바닥을 끌어 그리고 Z 높이를 넣으면 입체가 됩니다 (공간과 다른 자유 형상)');break; // 2026-09-07
     case 'g':setTool('circle');break;
     case 'p':setTool('polygon');break;
     case 'a':setTool('arc');break;  // v5.6: A = arc (단독)

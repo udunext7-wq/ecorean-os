@@ -70,6 +70,40 @@ UI 표기·대화 모두 "미니폼". 코드 식별자(3d/ 경로·MC3D·명령 
 - 2026-09-04 원점 기준점: 2D drawGrid 에 X빨강/Y초록 축선+파란 원점 링(#axis-*, 그리드 off 유지·인쇄 제외) + **양쪽 원점(0,0) 스냅** — 2D snapToEndpoint 에 원점 후보(끝점과 동급), 미니폼 snap3 kind 'origin'(파랑 마커 '원점(0,0)'). 테스트 [AX] 6건·스모크 snapOrg.
 - 2026-09-04 사각형 UX(대표 피드백): 호버 스냅 마커(클릭 전), 첫 점 고정 구슬(startMk), 크기=반투명 면 고스트, **치수 입력 `가로,세로`**(vcbPair, 끌던 방향 부호), **생성 딜레이 제거** — 3D 발 편집은 `push3D(true)` 즉시 회신 + 낙관적 고스트(pendingG, 다음 build 때 실물 교체). E2E cdp-face 가 msPlan(평면 반영)/msRound(실물 교체) 실측.
 
+### 2026-09-07 대표 지적 — R 은 공간 그대로, 매스는 별도 도구(N)
+- 프로토콜 6 이 `STATE.sketchMode=true` 로 **R(사각공간)·C(원형공간)·L(선) 의 뜻을 조용히 바꿔** 놓았다.
+  도구 이름은 '사각공간' 인데 공간이 안 만들어졌다. 대표 지적: "기존 공간과 다른 개념으로
+  단축키를 따로 두고 새로 만드는 방식으로 가야 한다."
+- **되돌림**: `sketchMode` 기본값 `false`. R/C/L 은 종전대로 곧바로 공간·선을 만든다.
+- **새 도구 `mass`(단축키 N, 명령 `ms`/`매스`)**: 바닥을 끌어 그리면 면 → `sk-z` 로 Z 를 묻고
+  → 매스. 도구가 'mass' 이면 `sketchMode` 와 무관하게 언제나 이 길로 간다(`endRect`).
+- 옛 프로토콜 6 방식이 필요하면 `sk on` 으로 되살린다(스위치는 남겨 뒀다).
+- 미니폼(3D)의 R 은 스케치업 규약대로 **사각형(스케치 면)** 그대로 — 두 창의 도구 체계가 다르다.
+- 테스트: `?test=1` [R1~R5] 5건(R=공간·N=면+Z·Z→매스·꼭짓점 높이·공간 전환·sk on 복원),
+  SK38 은 '기본 꺼짐' 으로 뜻이 바뀜.
+
+### 매스에 z 값 — 꼭짓점마다 높이 (2026-09-07 대표 지시 "나는 z 값을 원한다")
+- **살아 있는 높이**: `h_mm`·꼭짓점 z 가 숫자 또는 참조 `{r:'ch'|'fh'|'fl', o:offset}`.
+  천장고를 고치면 매달린 매스가 따라 움직인다. 사람이 숫자를 넣어도 참조는 지키고 오프셋만 고침(`zSet`).
+- **자유 다면체**: `mass.solidVerts[{x,y,z}]` + `solidFaces[{vs,mat,roleFix}]`.
+  **각기둥인 동안에는 옛 형식(`pts`+`h_mm`) 그대로 저장**하고, 꼭짓점 높이가 달라지는 순간
+  `massToSolid` 로 승격, 다시 평평해지면 `massTryPrism` 이 되돌리며 새 필드를 지운다(호환).
+  `massSolid(m,ctx)` 는 어느 쪽이든 완전한 다면체를 돌려준다.
+- **면이 갈래를 안다**: 법선 → `floor|ceil|wall|slope` + `facing`·`tilt(°)`.
+  **갈래는 저장하지 않고 늘 지금 형상에서 다시 잰다** — 저장했더니 면을 기울여도 '천장' 인 채로 굳었다.
+- **접힘 정리(스케치업 Autofold)**: `splitFoldedRing` 이 이웃한 세 점의 평면마다 고리에서
+  잇달린 조각을 찾아 **실제 접힌 선을 따라** 나눈다(부채꼴로 자르면 지붕 한가운데에 없는 세로
+  삼각형이 생긴다 — 박공에서 실제로 겪음). **나눈 결과는 저장하지 않고 `massSolid` 가 읽을 때마다
+  다시 나눈다** — 저장했더니 다음 편집이 잘못 잘린 조각 위에서 돌아 지붕이 엉켰다.
+- **물량**: `massQuantities` → `{floor,ceil,wall,slope,ceilAll,maxTilt}`, `massVolume`(㎥).
+  경사면은 눕힌 넓이가 아니라 **비탈을 따라간 실면적** — 4×3 방을 한쪽만 1200 올리면 천장 12→12.528㎡.
+- **파이프라인**: `js/sketch.js`(계산 한 곳) → `build3d` 가 `t:'mesh'{verts,tris,faces}` → `view3d` 가
+  BufferGeometry. **3d/index.html 이 sketch.js 를 함께 읽는다** — 두 벌로 베끼면 평면과 3D 가 조용히 어긋난다.
+- 검증: `tests/minicad-3d.cjs` [Z1~Z8](손계산과 소수점 일치 — 빗천장 12.528㎡·박공 16.144㎡·부피 39.6㎥),
+  헤드리스로 박공 지붕이 실제로 서는 것까지 확인. 캐시 `tablet106`/`3d19`.
+- **아직 안 된 것**: 미니폼에서 마우스로 꼭짓점·모서리를 끌어 올리기, 2D 속성 패널의 꼭짓점 높이 입력,
+  경사 면적의 견적 반영.
+
 ### 점·선·면 → 매스 (2026-09-04 대표 지시 — "선·사각형·원이 바로 객체가 되면 안 된다", 프로토콜 6)
 - **원칙(스케치업 동일)**: 선·사각형·원·호·다각형 도구는 **객체를 만들지 않는다**. ① 점(x,y)+선 → ② 선 고리가 닫히면 **면**(자동 검출) → ③ 면에 **Z** 를 주면 객체. 2D·미니폼 어느 쪽에서 그려도 같은 규칙(왕복 동기화).
 - **엔진 `js/sketch.js`**(state.js 뒤·engine.js 앞 로드): `STATE.sketchPts[{id,x,y}]`·`sketchEdges[{id,a,b}]`(평면 그래프 — 교차·접합 자동 분할)·`sketchFaces[{id,pts}]`(`skDetectFaces` 최소 고리). API `skAddEdge/skAddRect/skAddCircle/skAddPoly/skRemove(kind,id)/skRemoveEdge/skRemoveFace/skClear/skFaceArea/skFacePoly/skEdgePts/skObb/skGuessKind`(폭≤450·길이/폭≥2.5 = 벽) / `skExtrude(faceId,z,as)` / `massFromPoly` / `massConvert(id,as)` / `massAbsPoly`. 스냅샷·자동저장·JSON·층 시트 모두 네 배열을 포함(옛 문서는 빈 배열로 보정).

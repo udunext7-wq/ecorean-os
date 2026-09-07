@@ -6770,6 +6770,7 @@ function processCommand(rawCmd){
    }}
   if(/^(el|elev|입면|입면도)$/i.test(c)){openElevationDialog();return;} // 2026-08-30
   if(/^(sc|section|절단|절단선)$/i.test(c)){setTool('section');return;} // 2026-08-30
+  if(/^(ms|mass|매스)$/i.test(c)){setTool('mass');return;} // 2026-09-07 자유 입체
   // 2026-08-29: 고른 조명들을 한 번에 — link=스위치에, chain=서로 점핑
   if(/^(link|연결)$/i.test(c)){startCircuitAttach();return;}
   if(/^(chain|점핑)$/i.test(c)){chainSelectedLights();return;}
