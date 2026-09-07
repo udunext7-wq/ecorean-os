@@ -91,6 +91,12 @@ table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-i
   table.gantt th.fix3,table.gantt td.fix3{left:186px}
   table.gantt td{height:26px}
 }
+/* 편집 잠김 상태 — 편집 도구를 흐리게 하고 드래그를 막는다 (열람·확대·인쇄는 그대로) */
+body.view-only .gbar{cursor:default}
+body.view-only .drag-h,body.view-only .gbar::after{opacity:.45}
+body.view-only #ganttWrap table.gantt td.fix .pn{cursor:default}
+body.view-only .bar-top .btn:not(#editLockBtn):not(#toolsTgBtn):not(.zoom-grp .btn){opacity:.6}
+body.view-only .zoom-grp .btn,body.view-only #editLockBtn{opacity:1}
 /* 툴바 — 모바일에서는 자주 쓰는 것만 남기고 나머지는 '⋯ 도구'로 접는다 */
 .tools-toggle{display:none}
 @media (max-width:700px){
@@ -295,6 +301,8 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
       <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. <b style="color:#185fa5">공정표는 서버에 저장되어 모든 직원이 같은 내용을 봅니다.</b></p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button class="btn" id="editLockBtn2" onclick="editLockClick()" style="font-size:11px;padding:6px 14px;font-weight:700"
+              title="편집하려면 암호로 잠금을 풀어야 합니다">🔒 편집 잠김</button>
       <button class="btn" id="srvSaveBtn2" onclick="projSaveNow()" style="font-size:11px;padding:6px 14px;font-weight:700"
               title="지금 서버에 저장합니다. 저장하면 다른 직원이 같은 내용을 봅니다">☁ 서버 저장</button>
       <span id="srvSaveInfo2" style="font-size:11px;color:#666"></span>
@@ -334,6 +342,7 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
       <button class="btn" onclick="zoomIn()" title="간트 확대 (하루 폭 늘리기)">🔍+</button>
       <button class="btn" onclick="zoomFit()" title="공사 전체 기간을 화면 폭에 맞춥니다">↔ 화면맞춤</button>
     </span>
+    <button class="btn" id="editLockBtn" onclick="editLockClick()" title="편집하려면 암호로 잠금을 풀어야 합니다" style="font-weight:700">🔒 편집 잠김</button>
     <button class="btn tools-toggle" onclick="toggleTools()" id="toolsTgBtn" title="나머지 도구 펼치기/접기">⋯ 도구</button>
     <span class="tools-more" id="toolsMore">
       <button class="btn" onclick="resetAllStatus()">진행상태 초기화</button>
@@ -782,6 +791,121 @@ function zoomFit(){
   if(typeof recalc==="function")recalc();
   toast("전체 "+days+"일을 화면 폭에 맞췄습니다 ("+DPX+"px/일)");
 }
+/* ── 편집 잠금 (2026-09-07 대표 지시: "누구나 수정하면 공정이 꼬인다") ──────────
+   열람은 직원 누구나, 편집은 암호로 잠금을 푼 사람만 8시간.
+   판정은 서버(pms_edit_* 함수)가 하고 화면은 그 결과를 따른다 — 화면만 우회해도 저장이 거부된다. */
+var EDIT={unlocked:false,until:null,canManage:false,checked:false};
+
+function editRefresh(){
+  return fetch("/api/pms/edit",{credentials:"same-origin"})
+    .then(function(r){return r.ok?r.json():Promise.reject(r.status)})
+    .then(function(j){
+      EDIT.unlocked=!!j.unlocked;EDIT.until=j.until||null;EDIT.canManage=!!j.canManage;EDIT.checked=true;
+      editPaint();return EDIT;
+    })
+    .catch(function(){EDIT.unlocked=false;EDIT.checked=true;editPaint();return EDIT});
+}
+function editPaint(){
+  var until=EDIT.until?new Date(EDIT.until):null;
+  var label=EDIT.unlocked?("🔓 편집 가능"+(until?" ("+("0"+until.getHours()).slice(-2)+":"+("0"+until.getMinutes()).slice(-2)+"까지)":"")):"🔒 편집 잠김";
+  ["editLockBtn","editLockBtn2"].forEach(function(id){
+    var b=document.getElementById(id);if(!b)return;
+    b.textContent=label;
+    b.style.background=EDIT.unlocked?"#e6f6ec":"#fdecea";
+    b.style.color=EDIT.unlocked?"#1e7a4b":"#c0392b";
+    b.style.borderColor=EDIT.unlocked?"#1e7a4b":"#c0392b";
+    b.title=EDIT.unlocked?"편집 중입니다. 누르면 지금 바로 잠급니다":"편집하려면 암호로 잠금을 풀어야 합니다";
+  });
+  document.body.classList.toggle("view-only",!EDIT.unlocked);
+}
+function editLockClick(){
+  if(EDIT.unlocked){
+    if(!confirm("지금 편집을 잠글까요?\n(다시 편집하려면 암호를 다시 입력해야 합니다)"))return;
+    fetch("/api/pms/edit",{method:"DELETE",credentials:"same-origin"})
+      .then(function(){EDIT.unlocked=false;EDIT.until=null;editPaint();toast("🔒 편집을 잠갔습니다")});
+    return;
+  }
+  askUnlock();
+}
+/* 암호 입력창 */
+function askUnlock(reason){
+  var m=document.getElementById("editMask");
+  if(!m){
+    m=document.createElement("div");m.id="editMask";
+    m.style.cssText="position:fixed;inset:0;z-index:10000;background:rgba(8,12,18,.5);display:flex;align-items:center;justify-content:center";
+    var box=document.createElement("div");
+    box.style.cssText="background:#fff;border-radius:12px;padding:22px 24px;width:320px;max-width:92vw;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:13px";
+    box.innerHTML='<div style="font-size:15px;font-weight:700;margin-bottom:6px">🔒 공정표 편집 암호</div>'+
+      '<div id="editWhy" style="color:#777;font-size:11.5px;line-height:1.6;margin-bottom:12px">공정이 꼬이지 않도록, 편집은 암호를 아는 사람만 할 수 있습니다.</div>';
+    var inp=document.createElement("input");inp.type="password";inp.id="editPw";inp.inputMode="numeric";
+    inp.placeholder="편집 암호";inp.style.cssText="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:15px;letter-spacing:2px";
+    var msg=document.createElement("div");msg.id="editMsg";msg.style.cssText="color:#c0392b;font-size:11.5px;min-height:16px;margin-top:6px";
+    var row=document.createElement("div");row.style.cssText="display:flex;gap:6px;margin-top:12px";
+    var ok=document.createElement("button");ok.className="btn btn-b";ok.textContent="잠금 해제";ok.style.cssText="flex:1;font-weight:700";
+    ok.onclick=function(){doUnlock(inp.value)};
+    var no=document.createElement("button");no.className="btn";no.textContent="열람만";no.style.cssText="flex:0 0 auto";
+    no.onclick=function(){m.style.display="none"};
+    row.appendChild(ok);row.appendChild(no);
+    var mng=document.createElement("div");mng.id="editManage";mng.style.cssText="margin-top:12px;border-top:1px solid #eee;padding-top:10px;display:none";
+    mng.innerHTML='<div style="font-size:11px;color:#888;margin-bottom:6px">관리자 — 편집 암호 변경</div>';
+    var np=document.createElement("input");np.type="password";np.id="editNewPw";np.placeholder="새 암호 (4자 이상)";
+    np.style.cssText="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px";
+    var ch=document.createElement("button");ch.className="btn";ch.textContent="암호 변경";ch.style.cssText="margin-top:6px;width:100%";
+    ch.onclick=function(){doChangePw(np.value)};
+    mng.appendChild(np);mng.appendChild(ch);
+    box.appendChild(inp);box.appendChild(msg);box.appendChild(row);box.appendChild(mng);m.appendChild(box);document.body.appendChild(m);
+    inp.addEventListener("keydown",function(e){if(e.key==="Enter")doUnlock(inp.value)});
+  }
+  var why=document.getElementById("editWhy");
+  if(why&&reason)why.textContent=reason;
+  var mng2=document.getElementById("editManage");if(mng2)mng2.style.display=EDIT.canManage?"block":"none";
+  var msg2=document.getElementById("editMsg");if(msg2)msg2.textContent="";
+  m.style.display="flex";
+  var pw=document.getElementById("editPw");if(pw){pw.value="";setTimeout(function(){pw.focus()},50)}
+}
+function doUnlock(pw){
+  var msg=document.getElementById("editMsg");
+  if(!pw){if(msg)msg.textContent="암호를 입력해 주세요";return}
+  if(msg)msg.textContent="확인 중…";
+  fetch("/api/pms/edit",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw})})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+    .then(function(res){
+      if(!res.ok||!res.j.ok){if(msg)msg.textContent=res.j.message||"암호가 맞지 않습니다";return}
+      EDIT.unlocked=true;EDIT.until=res.j.until||null;editPaint();
+      var m=document.getElementById("editMask");if(m)m.style.display="none";
+      toast("🔓 편집 잠금을 풀었습니다 — 8시간 동안 편집할 수 있습니다");
+    })
+    .catch(function(){if(msg)msg.textContent="연결에 실패했습니다"});
+}
+function doChangePw(np){
+  var msg=document.getElementById("editMsg");
+  if(!np||np.trim().length<4){if(msg)msg.textContent="새 암호는 4자 이상이어야 합니다";return}
+  if(!confirm("편집 암호를 바꾸면 지금 편집 중인 사람 전원이 다시 입력해야 합니다. 진행할까요?"))return;
+  fetch("/api/pms/edit",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:np.trim()})})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+    .then(function(res){
+      if(!res.ok){if(msg)msg.textContent=res.j.message||"변경 실패";return}
+      EDIT.unlocked=false;EDIT.until=null;editPaint();
+      if(msg){msg.style.color="#1e7a4b";msg.textContent="암호를 바꿨습니다. 새 암호로 다시 잠금을 풀어 주세요"}
+      var n=document.getElementById("editNewPw");if(n)n.value="";
+    })
+    .catch(function(){if(msg)msg.textContent="연결에 실패했습니다"});
+}
+/* 편집 시도 지점에서 부르는 관문 — 잠겨 있으면 암호창을 띄우고 false */
+function requireEdit(){
+  if(EDIT.unlocked)return true;
+  askUnlock("이 작업은 편집입니다. 암호를 입력하면 8시간 동안 편집할 수 있습니다.");
+  return false;
+}
+/* 잠금 상태에서 이미 바뀐 화면을 서버 내용으로 되돌린다 */
+function projRevertToServer(){
+  var out=[];
+  Object.keys(PROJ.synced).forEach(function(id){try{out.push(JSON.parse(PROJ.synced[id].json))}catch(e){}});
+  projects=out;projCache();
+  var openId=currentProj&&currentProj.id;
+  renderProjects();
+  if(openId){var k=projIndexById(openId);if(k>=0)openProject(k);else if(typeof backToList==="function")backToList()}
+}
 function toggleTools(){
   var m=document.getElementById("toolsMore");if(!m)return;
   m.classList.toggle("open");
@@ -802,6 +926,12 @@ function loadStore(){
   if(!Array.isArray(projects))projects=[];
 }
 function saveStore(){
+  // 편집 잠금 — 잠긴 상태에서는 화면 변경도 되돌린다 (서버가 어차피 거부하므로 어긋나면 안 된다)
+  if(PROJ.ready&&EDIT.checked&&!EDIT.unlocked){
+    projRevertToServer();
+    askUnlock("이 작업은 편집입니다. 암호를 입력하면 8시간 동안 편집할 수 있습니다.");
+    return;
+  }
   // localStorage 는 '화면을 빨리 그리기 위한 캐시'일 뿐이다. 정본은 서버(pms_projects).
   try{localStorage.setItem(STORE_KEY,JSON.stringify(projects))}catch(e){console.warn("캐시 저장 실패",e)}
   projSyncDirty(); // 바뀐 프로젝트만 서버에 저장 (충돌 감지 포함)
@@ -976,6 +1106,8 @@ function openNewProj(){
 function closeNewProj(){document.getElementById("newProjModal").classList.remove("open")}
 
 function createProject(){
+  if(!requireEdit())return;
+
   var name=document.getElementById("np_name").value.trim();
   var start=document.getElementById("np_start").value;
   if(!name){alert("현장명을 입력하세요");return}
@@ -1020,6 +1152,8 @@ function createProject(){
 }
 
 function deleteProject(i){
+  if(!requireEdit())return;
+
   if(!confirm('"'+projects[i].name+'" 프로젝트를 삭제하시겠습니까?\n복구할 수 없습니다.'))return;
   projects.splice(i,1);
   saveStore();
@@ -1083,6 +1217,8 @@ function exportAll(){
   a.click();
 }
 function importAll(ev){
+  if(!requireEdit())return;
+
   var f=ev.target.files[0];if(!f)return;
   var r=new FileReader();
   r.onload=function(e){
@@ -1259,6 +1395,8 @@ function bumpDur(i,delta){
 }
 // 공정 잠금/해제 — 잠그면 현재 시작일을 절대날짜로 고정(의존성 변동에도 안 움직임)
 function toggleLock(i){
+  if(!requireEdit())return;
+
   var p=currentProj.phases[i];
   freezeAll();                      // 다른 공정들 현재 위치 고정 → 튕김 방지
   p.locked=!p.locked;
@@ -1268,6 +1406,8 @@ function toggleLock(i){
 }
 // 전체 일괄: 모두 미착수로 리셋
 function resetAllStatus(){
+  if(!requireEdit())return;
+
   if(!confirm("모든 공정 진행상태를 미착수로 초기화할까요?"))return;
   currentProj.phases.forEach(function(p){p.status="todo"});
   recalc();
@@ -2115,10 +2255,12 @@ function syncDep(selfIdx){
   document.getElementById("f_dep").value=ids.join(",");
 }
 function openEdit(i){editIdx=i;var p=currentProj.phases[i];renderCatOptions();document.getElementById("mTitle").textContent="편집: "+p.nm;document.getElementById("f_id").value=p.id;document.getElementById("f_nm").value=p.nm;document.getElementById("f_sub").value=p.sub;document.getElementById("f_cat").value=p.cat;document.getElementById("f_color").value=p.color||(CI[p.cat]?CI[p.cat].c:"#888888");document.getElementById("f_dur").value=p.dur;document.getElementById("f_dep").value=p.dep.join(",");document.getElementById("f_offset").value=p.offset||"";document.getElementById("f_lock").value=p.lock||"";document.getElementById("f_cp").value=p.cp?"1":"0";document.getElementById("f_status").value=p.status||"todo";document.getElementById("f_tasks").value=p.tasks.join("\n");document.getElementById("f_crew").value=p.crew||"";document.getElementById("f_mat").value=p.mat||"";document.getElementById("delBtn").style.display="inline-block";renderDepList(i);document.getElementById("modalBg").classList.add("open")}
-function openAdd(){editIdx=-1;renderCatOptions();document.getElementById("mTitle").textContent="공정 추가";document.getElementById("f_id").value="";document.getElementById("f_nm").value="";document.getElementById("f_sub").value="";document.getElementById("f_cat").value="fin";document.getElementById("f_color").value=(CI["fin"]?CI["fin"].c:"#888888");document.getElementById("f_dur").value="5";document.getElementById("f_dep").value="";document.getElementById("f_offset").value="";document.getElementById("f_lock").value="";document.getElementById("f_cp").value="0";document.getElementById("f_status").value="todo";document.getElementById("f_tasks").value="";document.getElementById("f_crew").value="";document.getElementById("f_mat").value="";document.getElementById("delBtn").style.display="none";renderDepList(-1);document.getElementById("modalBg").classList.add("open")}
+function openAdd(){if(!requireEdit())return;editIdx=-1;renderCatOptions();document.getElementById("mTitle").textContent="공정 추가";document.getElementById("f_id").value="";document.getElementById("f_nm").value="";document.getElementById("f_sub").value="";document.getElementById("f_cat").value="fin";document.getElementById("f_color").value=(CI["fin"]?CI["fin"].c:"#888888");document.getElementById("f_dur").value="5";document.getElementById("f_dep").value="";document.getElementById("f_offset").value="";document.getElementById("f_lock").value="";document.getElementById("f_cp").value="0";document.getElementById("f_status").value="todo";document.getElementById("f_tasks").value="";document.getElementById("f_crew").value="";document.getElementById("f_mat").value="";document.getElementById("delBtn").style.display="none";renderDepList(-1);document.getElementById("modalBg").classList.add("open")}
 function closeModal(){document.getElementById("modalBg").classList.remove("open")}
 function syncCatColor(){var c=document.getElementById("f_cat").value;document.getElementById("f_color").value=(CI[c]&&CI[c].c)||"#888888"}
 function saveModal(){
+  if(!requireEdit())return;
+
   var o={id:document.getElementById("f_id").value.trim()||("N"+Date.now()),nm:document.getElementById("f_nm").value,sub:document.getElementById("f_sub").value,dur:parseInt(document.getElementById("f_dur").value)||5,dep:document.getElementById("f_dep").value.split(",").map(function(s){return s.trim()}).filter(Boolean),cat:document.getElementById("f_cat").value,cp:document.getElementById("f_cp").value==="1"?1:0,offset:document.getElementById("f_offset").value?parseInt(document.getElementById("f_offset").value):0,lock:document.getElementById("f_lock").value||"",status:document.getElementById("f_status").value,tasks:document.getElementById("f_tasks").value.split("\n").filter(Boolean),crew:document.getElementById("f_crew").value,mat:document.getElementById("f_mat").value};
   var pc=document.getElementById("f_color").value,catC=((CI[o.cat]&&CI[o.cat].c)||"").toLowerCase();
   if(pc&&pc.toLowerCase()!==catC)o.color=pc;
@@ -2146,6 +2288,8 @@ function deletePhase(){
 // 공정 삭제 (인덱스 기반, 키보드/모달 공용). confirmFirst=확인창 여부
 var selectedRow=-1;
 function deletePhaseByIdx(idx,confirmFirst){
+  if(!requireEdit())return;
+
   if(idx<0||idx>=currentProj.phases.length)return false;
   var p=currentProj.phases[idx];
   if(confirmFirst&&!confirm('"'+p.nm+'" 공정을 삭제하시겠습니까?'))return false;
@@ -2226,6 +2370,8 @@ function dismissWpBanner(){
 
 // ── 수신함 ──
 function openWpInbox(){
+  if(!requireEdit())return;
+
   if(!WPE()){alert("연계 엔진(boc-wp.js)을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.");return}
   document.getElementById("wpInbox").classList.add("open");
   renderWpInbox();
@@ -2623,6 +2769,7 @@ var SAVE_TONE={
 function updateSaveUi(){
   var dirty=(PROJ.ready&&!PROJ.offline)?projDirtyIds().length:0,label,txt,tone;
   if(PROJ.offline){label="☁ 서버 저장";txt="오프라인 — 읽기 전용";tone="warn"}
+  else if(EDIT.checked&&!EDIT.unlocked){label="☁ 저장 (잠김)";txt="편집 잠김 — 암호를 풀어야 저장됩니다";tone="idle"}
   else if(!PROJ.ready){label="☁ 서버 저장";txt="불러오는 중…";tone="idle"}
   else if(PROJ.saving>0){label="저장 중…";txt="서버로 보내는 중";tone="busy"}
   else if(PROJ.failed){label="☁ 다시 저장";txt="저장 실패 — 버튼을 눌러 주세요";tone="err"}
@@ -2653,7 +2800,7 @@ function projFetchAll(){
       rows.forEach(function(row){PROJ.synced[row.id]={json:JSON.stringify(row.data),updatedAt:row.updated_at}});
       PROJ.lastSync=j.serverTime;PROJ.ready=true;PROJ.failed=false;
       projCache();projOnline();updateSaveUi();
-      if(repairLegacyMeta())saveStore(); // 구버전 저장본 보정분은 곧바로 서버에도 반영
+      if(EDIT.unlocked&&repairLegacyMeta())saveStore(); // 구버전 보정은 편집 권한이 있을 때만
       if(currentProj){var k=projIndexById(currentProj.id);if(k>=0)openProject(k);else if(typeof backToList==="function")backToList()}
       renderProjects();
       return true;
@@ -2697,6 +2844,11 @@ function projPush(id,keepalive){
     })
     .catch(function(e){
       PROJ.saving--;
+      if(e&&e.code===423){ // 서버가 편집 잠금으로 거부 — 화면을 서버 내용으로 되돌리고 암호를 받는다
+        EDIT.unlocked=false;editPaint();projRevertToServer();
+        askUnlock("편집 잠금이 풀려 있지 않거나 시간이 만료되었습니다.");
+        updateSaveUi();return;
+      }
       if(e&&(e.code===401||e.code===403)){projOffline(e.msg||"저장 권한이 없습니다");return}
       PROJ.retry[id]=(PROJ.retry[id]||0)+1;PROJ.failed=true;
       cloudDot(false,PROJ.retry[id]<=3?"저장 실패 — 재시도 중":"저장 실패");
@@ -2927,6 +3079,8 @@ updateTodayBadge();setInterval(updateTodayBadge,60000);
 cloudInit();       // 레이어·내 템플릿 (프로젝트 본문은 아래 projFetchAll 담당)
 
 /* 서버 정본을 받은 뒤에 견적OS 브리지를 확인한다 (먼저 하면 새로 만든 프로젝트가 교체되며 사라진다) */
+editRefresh();                                   // 편집 잠금 상태 먼저 확인
+setInterval(editRefresh,300000);                 // 5분마다 재확인 (8시간 만료 반영)
 projFetchAll().then(function(ok){ if(ok){ wpBridgeCheck(); projRealtime() } });  // 읽기 전용(오프라인)일 때는 새 공정표를 만들지 않는다
 window.addEventListener("focus",function(){ if(!PROJ.offline)wpBridgeCheck(); projPoll() });
 window.addEventListener("storage",function(e){if(e.key==="ecorean_wp_bridge_v1"&&!PROJ.offline)wpBridgeCheck()});

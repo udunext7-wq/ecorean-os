@@ -12,6 +12,20 @@ export const dynamic = 'force-dynamic';
 
 type SaveResult = { status: string; updated_at: string; server_data: unknown };
 
+/** DB 함수가 올린 예외를 화면이 알아들을 수 있는 응답으로 바꾼다 */
+function rpcFail(message: string) {
+  if (message.includes('EDIT_LOCKED')) {
+    return NextResponse.json(
+      { error: 'EDIT_LOCKED', message: '공정표가 편집 잠금 상태입니다. 편집 암호를 입력해 잠금을 풀어 주세요.' },
+      { status: 423 },
+    );
+  }
+  if (message.includes('NOT_AUTHORIZED')) {
+    return NextResponse.json({ error: 'NOT_AUTHORIZED', message: '권한이 없습니다.' }, { status: 403 });
+  }
+  return NextResponse.json({ error: 'FAILED', message }, { status: 400 });
+}
+
 async function requireUser() {
   const supabase = createServerSupabase();
   const {
@@ -57,10 +71,7 @@ export async function POST(request: NextRequest) {
     p_data: project,
     p_base: body?.base ?? null, // null 이면 강제 덮어쓰기 (사용자가 '내 것으로 덮어쓰기' 선택)
   });
-  if (error) {
-    const status = error.message.includes('NOT_AUTHORIZED') ? 403 : 400;
-    return NextResponse.json({ error: error.message }, { status });
-  }
+  if (error) return rpcFail(error.message);
   const row = (Array.isArray(data) ? data[0] : data) as SaveResult | undefined;
   return NextResponse.json({
     ok: true,
@@ -84,10 +95,7 @@ export async function DELETE(request: NextRequest) {
     p_id: id,
     p_base: sp.get('base') ?? null,
   });
-  if (error) {
-    const status = error.message.includes('NOT_AUTHORIZED') ? 403 : 400;
-    return NextResponse.json({ error: error.message }, { status });
-  }
+  if (error) return rpcFail(error.message);
   const row = (Array.isArray(data) ? data[0] : data) as SaveResult | undefined;
   return NextResponse.json({
     ok: true,
