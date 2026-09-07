@@ -217,6 +217,87 @@ function buildPlaneSketch(pl,objects){
       prims:[{t:'pt3',p:q,r:34,color:SK.pt}],meta:{plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n}}});
   });
 }
+// 파냄(cuts[]) → 그릴 것 (2026-09-07 프리폼 ③). CSG 없이:
+//  · 파냄이 앉은 호스트 면 → 구멍 뚫린 면(face3h — uv 바깥 고리 + 구멍 고리들)
+//  · 파냄마다 주머니: 옆벽 4장(mesh) + 바닥(face3h, 관통이면 없음)
+//  · 관통이면 반대쪽 면도 뚫는다 (나란한 면일 때)
+//  전부 매스 로컬 좌표 — 그룹 회전·이동·띄움이 그대로 얹힌다.
+function _dim(hex,k){
+  const c=parseInt(String(hex).replace('#',''),16);
+  const f=v=>Math.max(0,Math.min(255,Math.round(v*k)));
+  return '#'+[f((c>>16)&255),f((c>>8)&255),f(c&255)].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+function massCutPrims(m,S,ctx,col){
+  const FR=_sk('planeFrom'),UV=_sk('planeUV'),PT=_sk('planePt');
+  const DOT=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z;
+  const SUB=(a,b)=>({x:a.x-b.x,y:a.y-b.y,z:a.z-b.z});
+  const holed=new Set(), prims=[], holesByFace=new Map();
+  const faceN=fi=>S.faces[fi].n;
+  const coplanar=(fi,pl,flip)=>{
+    const n=faceN(fi), want=flip?-1:1;
+    if(DOT(n,pl.n)*want<0.999) return false;
+    return Math.abs(DOT(SUB(S.verts[S.faces[fi].vs[0]],pl.origin),pl.n)-(flip?-pl._off:0))<1.5;
+  };
+  (m.cuts||[]).forEach(c=>{
+    // 호스트 면 찾기 (파냄 평면과 같은 판, 같은 방향)
+    let hostI=-1;
+    S.faces.forEach((f,fi)=>{
+      if(hostI>=0) return;
+      if(DOT(f.n,c.plane.n)<0.999) return;
+      if(Math.abs(DOT(SUB(S.verts[f.vs[0]],c.plane.origin),c.plane.n))>=1.5) return;
+      hostI=fi;
+    });
+    if(hostI<0) return;                                  // 형상이 바뀌어 면이 사라졌으면 조용히 건너뛴다
+    holed.add(hostI);
+    if(!holesByFace.has(hostI)) holesByFace.set(hostI,[]);
+    holesByFace.get(hostI).push(c);
+    // 주머니 옆벽 — uv 모서리마다 사각 한 장
+    const N=c.uv.length, verts=[], tris=[];
+    for(let i=0;i<N;i++){
+      const a=c.uv[i], b=c.uv[(i+1)%N];
+      const A0=PT(c.plane,a.x,a.y), B0=PT(c.plane,b.x,b.y);
+      const off={x:-c.plane.n.x*c.d,y:-c.plane.n.y*c.d,z:-c.plane.n.z*c.d};
+      const A1={x:A0.x+off.x,y:A0.y+off.y,z:A0.z+off.z};
+      const B1={x:B0.x+off.x,y:B0.y+off.y,z:B0.z+off.z};
+      const k=verts.length;
+      verts.push(A0,B0,B1,A1);
+      tris.push([k,k+1,k+2],[k,k+2,k+3]);
+    }
+    prims.push({t:'mesh',verts,tris,z:0,color:_dim(col,0.78),cut:true});   // 주머니 옆벽은 어둡게 — 파임이 읽힌다
+    if(!c.through){
+      // 주머니 바닥 — 파냄 평면을 d 만큼 안으로 민 판
+      const bo={x:c.plane.origin.x-c.plane.n.x*c.d,y:c.plane.origin.y-c.plane.n.y*c.d,z:c.plane.origin.z-c.plane.n.z*c.d};
+      prims.push({t:'face3h',plane:{origin:bo,ex:c.plane.ex,ey:c.plane.ey},outer:c.uv,holes:[],color:_dim(col,0.86),cut:true});
+    }else{
+      // 관통 — 반대쪽(나란한) 면에도 구멍
+      S.faces.forEach((f,fi)=>{
+        if(DOT(f.n,c.plane.n)>-0.999) return;
+        const c0=S.verts[f.vs[0]];
+        const off=Math.abs(DOT(SUB(c0,c.plane.origin),c.plane.n));
+        if(Math.abs(off-c.d)>=1.5) return;
+        holed.add(fi);
+        if(!holesByFace.has(fi)) holesByFace.set(fi,[]);
+        holesByFace.get(fi).push(c);
+      });
+    }
+  });
+  // 구멍 난 면들 — 바깥 고리 + 그 면에 앉은 파냄 고리들 (그 면의 자기 틀 uv 로)
+  holesByFace.forEach((cuts,fi)=>{
+    const f=S.faces[fi];
+    const fr=FR(S.verts[f.vs[0]],f.n);
+    const outer=f.vs.map(i=>{const q=UV(fr,S.verts[i]);return {x:q.u,y:q.v};});
+    const holes=cuts.map(c=>{
+      const depth=(DOT(f.n,c.plane.n)>0)?0:c.d;          // 반대쪽 면이면 d 만큼 들어간 자리
+      return c.uv.map(p=>{
+        const w=PT(c.plane,p.x,p.y);
+        const q=UV(fr,{x:w.x-c.plane.n.x*depth,y:w.y-c.plane.n.y*depth,z:w.z-c.plane.n.z*depth});
+        return {x:q.u,y:q.v};
+      });
+    });
+    prims.push({t:'face3h',plane:{origin:fr.origin,ex:fr.ex,ey:fr.ey},outer,holes,color:col});
+  });
+  return {holed,prims};
+}
 function buildMass(m){
   const ctx=m._ctx||{};
   const col=m.color||SK.mass;
@@ -229,20 +310,24 @@ function buildMass(m){
   const topPts=(_sk('massTopPts')||(()=>[]))(m,ctx);
   const lean=(_sk('massLean')||(()=>null))(m);
   const zgrip={top:topPts,lean,ctx,pts:m.pts};
-  if(massIsPrismOf(m)){
+  const hasCuts=Array.isArray(m.cuts)&&m.cuts.length>0;
+  if(massIsPrismOf(m)&&!hasCuts){
     // 수직 각기둥 — 종전 그대로 (가볍고 빠르다)
     return Object.assign(base,{prims:[{t:'prism',pts:m.pts,z:0,h:H,color:col}],
       meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false,z:zgrip}});
   }
   // 자유 다면체 — 꼭짓점마다 높이가 다르다 (빗천장·박공·꺾인 천장)
   const S=massSolidOf(m,ctx);
+  const cutFx=hasCuts?massCutPrims(m,S,ctx,col):null;    // 프리폼 ③: 파냄 (구멍 면 + 주머니)
   const tris=[];
   S.faces.forEach((f,fi)=>{
+    if(cutFx&&cutFx.holed.has(fi)) return;               // 구멍 난 면은 face3h 가 맡는다
     for(let i=1;i<f.vs.length-1;i++) tris.push([f.vs[0],f.vs[i],f.vs[i+1],fi]);
   });
   const q=(_sk('massQuantities')||(()=>({})))(m,ctx);
   return Object.assign(base,{
-    prims:[{t:'mesh',verts:S.verts,tris,faces:S.faces.map(f=>({role:f.role,tilt:f.tilt})),z:0,color:col}],
+    prims:[{t:'mesh',verts:S.verts,tris,faces:S.faces.map(f=>({role:f.role,tilt:f.tilt})),z:0,color:col}]
+      .concat(cutFx?cutFx.prims:[]),
     meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:true,
       qty:q,faces:S.faces.length,maxTilt:q.maxTilt||0,z:zgrip,
       slopes:(_sk('massSlopes')||(()=>[]))(m,ctx)}});

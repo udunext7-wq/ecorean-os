@@ -544,6 +544,59 @@ ck(/setNight\(on\)[\s\S]{0,400}applySkyColors\(\)/.test(v3Src) || /applyMood[\s\
   ck(Math.min(...m2.solidVerts.map(v => v.z)) === 0, 'P 땅 밑 매스는 바닥으로 들어 올린다');
 }
 
+// ---- 2026-09-07 프리폼 ③ — 파내기 (벽감·관통, CSG 없이 cuts[] 기록) -----------------
+//  손계산 기준: 4×3m·h2.4 몸통(28.8㎥), 남벽에 1600×1000 벽감 250 → 28.4㎥,
+//  600×600 을 5000 밀면 벽 두께 3000 에서 관통 → 추가로 -1.08㎥.
+{
+  const ctx = { ch: 2400, fh: 2800, fl: 0 };
+  const mk = () => {
+    const free = { masses: [] };
+    return { free, body: SK.massFromPoly([{x:0,y:0},{x:4000,y:0},{x:4000,y:3000},{x:0,y:3000}], 2400, free) };
+  };
+  const wall = SK.planeFrom({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
+  // [C1] 벽감 — 기록·부피
+  const t1 = mk();
+  const r1 = SK.massAddCut(t1.body, wall, [{x:1000,y:800},{x:2600,y:800},{x:2600,y:1800},{x:1000,y:1800}], 250, ctx);
+  ck(!!r1.cut && r1.cut.d === 250 && r1.through === false, 'C 벽감 250 기록');
+  ck(Math.abs(SK.massVolume(t1.body, ctx) - 28.4) < 1e-6, 'C 부피 28.8-0.4=28.4: ' + SK.massVolume(t1.body, ctx));
+  // [C2] 관통 — 깊이는 벽 두께로 잘린다
+  const r2 = SK.massAddCut(t1.body, wall, [{x:2900,y:400},{x:3500,y:400},{x:3500,y:1000},{x:2900,y:1000}], 5000, ctx);
+  ck(r2.through === true && r2.cut.d === 3000 && r2.exit === 3000, 'C 관통 — d 는 두께 3000: ' + JSON.stringify({d:r2.cut.d,exit:r2.exit}));
+  ck(Math.abs(SK.massVolume(t1.body, ctx) - 27.32) < 1e-6, 'C 부피 27.32');
+  // [C3] 면 밖으로 걸치면 거부
+  const r3 = SK.massAddCut(t1.body, wall, [{x:3500,y:2000},{x:4500,y:2000},{x:4500,y:2300},{x:3500,y:2300}], 200, ctx);
+  ck(r3 && r3.err === 'inside' && t1.body.cuts.length === 2, 'C 걸친 면은 거부');
+  // [C4] 이 매스의 면이 아니면 face 오류 (멀리 떨어진 평면)
+  const far = SK.planeFrom({ x: 0, y: -5000, z: 0 }, { x: 0, y: -1, z: 0 });
+  ck(SK.massAddCut(t1.body, far, [{x:0,y:0},{x:100,y:0},{x:100,y:100},{x:0,y:100}], 100, ctx).err === 'face',
+    'C 남의 평면은 face 오류');
+  // [C5] cut 은 로컬 저장 — 옮기고 돌려도 부피 유지
+  const v0 = SK.massVolume(t1.body, ctx);
+  t1.body.x += 7000; t1.body.angle = 90;
+  ck(Math.abs(SK.massVolume(t1.body, ctx) - v0) < 1e-6, 'C 옮기고 돌려도 벽감이 따라간다');
+  // [C6] 렌더 — 호스트 면은 fan 에서 빠지고 face3h(구멍)·주머니가 선다
+  const doc = { schema:'x', meta:{ceilingHeight_mm:2400}, vertices:[],spaces:[],walls:[],openings:[],
+    furniture:[],fixtures:[],lights:[],electric:[],hvac:[],pillars:[],sketchPts:[],sketchEdges:[],sketchFaces:[],
+    masses: mk2cuts() };
+  function mk2cuts(){ const t=mk();
+    SK.massAddCut(t.body, wall, [{x:1000,y:800},{x:2600,y:800},{x:2600,y:1800},{x:1000,y:1800}], 250, ctx);
+    SK.massAddCut(t.body, wall, [{x:2900,y:400},{x:3500,y:400},{x:3500,y:1000},{x:2900,y:1000}], 5000, ctx);
+    return t.free.masses; }
+  const sc = MC3D.buildScene(doc, {});
+  const mo = sc.objects.find(o => o.kind === 'mass');
+  const kinds = {}; mo.prims.forEach(p => kinds[p.t] = (kinds[p.t] || 0) + 1);
+  ck(kinds.face3h === 3 && kinds.mesh === 3, 'C 렌더: 구멍 면 3(호스트+관통 뒷면+바닥) · mesh 3(본체+주머니 2): ' + JSON.stringify(kinds));
+  const host = mo.prims.filter(p => p.t === 'face3h' && p.holes.length);
+  ck(host.some(p => p.holes.length === 2) && host.some(p => p.holes.length === 1),
+    'C 렌더: 호스트에 구멍 2 · 관통 뒷면에 구멍 1');
+  // [C7] 형상이 바뀌어 호스트 면이 사라지면 조용히 건너뛴다 (렌더가 안 터진다)
+  const t3 = mk();
+  SK.massAddCut(t3.body, wall, [{x:1000,y:800},{x:2600,y:800},{x:2600,y:1800},{x:1000,y:1800}], 250, ctx);
+  SK.massVertZ(t3.body, 5, 4000, ctx);   // 벽 위 꼭짓점을 끌어 호스트 면이 기운다
+  const sc3 = MC3D.buildScene(Object.assign({}, doc, { masses: t3.free.masses }), {});
+  ck(!!sc3.objects.find(o => o.kind === 'mass'), 'C 호스트가 기울어도 렌더는 산다');
+}
+
 // ---- 2026-09-07 프리폼 (대표 결정 "미니폼은 자유 렌더링 — 밑그림으로 굳히고 독립") ----
 //  핵심 계약: 편집이 나가는 길은 emitEdit 하나. 프리폼이 켜지면 채널 대신 ffApply 가
 //  자유 층에 그 자리에서 적용한다. 직접 postMessage 가 하나라도 남으면 그 op 은
@@ -570,6 +623,12 @@ ck(/planeExtrude\(hit\.plane,hit\.face/.test(v3Src),'프리폼②: 평면 면 ex
 const b3Src = fs.readFileSync(path.join(__dirname, '..', 'sites/net/public/minicad/3d/build3d.js'), 'utf8');
 ck(/function buildPlaneSketch/.test(b3Src)&&/planes:\(d\.planes\|\|\[\]\)/.test(b3Src),
   '프리폼②: 조립이 스케치 평면을 안다');
+// 프리폼 ③ — 파내기의 계약
+ck(/case 'cut':/.test(v3Src)&&/massAddCut\(host/.test(v3Src),'프리폼③: cut op 이 로컬로 적용된다');
+ck(/t==='face3h'/.test(v3Src),'프리폼③: 구멍 면 prim 이 그려진다');
+ck(/function massCutPrims/.test(b3Src)&&/holed\.has\(fi\)/.test(b3Src),
+  '프리폼③: 구멍 난 면은 fan 에서 빠진다');
+ck(/파내기 — 벽감/.test(v3Src),'프리폼③: P 음수 끌기가 파내기다');
 
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

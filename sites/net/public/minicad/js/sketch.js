@@ -825,7 +825,7 @@ function massVolume(m,ctx){
     const n=faceNormal(S.verts,f.vs);
     v+=(c.x*n.x+c.y*n.y+c.z*n.z)*faceArea3(S.verts,f.vs);
   });
-  return Math.round(Math.abs(v)/3/1e9*1000)/1000;
+  return Math.round((Math.abs(v)/3/1e9-massCutsVolume(m))*1000)/1000;   // 파낸 만큼 뺀다 (프리폼 ③)
 }
 // 매스의 가장 높은 곳 (층 높이 계산·적층에 쓴다)
 function massTopZ(m,ctx){
@@ -1115,10 +1115,93 @@ function planeExtrude(pl,f,d,free){
   return m;
 }
 
+// ---------------------------------------------------------------------------
+// 파내기 (2026-09-07 프리폼 ③ — 벽감·아치·관통)
+//  스케치업의 '안으로 밀기'. CSG 는 안 쓴다 — 파냄을 cuts[] 로 **기록만** 하고,
+//  그릴 때마다 호스트 면에 구멍을 뚫고 주머니(옆벽·바닥)를 다시 만든다.
+//  갈래·접힘을 저장하지 않는 것과 같은 원칙: 파생물은 늘 지금 형상에서 다시 계산.
+//  cut 은 **매스 로컬 좌표**로 저장한다 — 매스를 옮기고 돌리면 벽감도 따라간다.
+//  cut = {id, plane:{origin,ex,ey,n}(로컬), uv:[{x,y}], d, through}
+// ---------------------------------------------------------------------------
+// 절대 평면 틀 → 매스 로컬 틀 (역회전·역이동, z 는 elev 만큼 내림)
+function massLocalFrame(m,pl){
+  const th=-(m.angle||0)*Math.PI/180, c=Math.cos(th), sn=Math.sin(th);
+  const el=Number(m.elev_mm)||0;
+  const pt=p=>{const dx=p.x-m.x,dy=p.y-m.y;return _v3(dx*c-dy*sn,dx*sn+dy*c,p.z-el);};
+  const dir=v=>_v3(v.x*c-v.y*sn,v.x*sn+v.y*c,v.z);
+  return {origin:pt(pl.origin),ex:dir(pl.ex),ey:dir(pl.ey),n:dir(pl.n)};
+}
+// 이 로컬 평면과 같은 판에 있는 솔리드 면 — 벽감이 앉을 호스트
+function massFaceAt(m,lf,ctx){
+  const S=massSolid(m,ctx);
+  for(const f of S.faces){
+    const n=f.n||faceNormal(S.verts,f.vs);
+    if(Math.abs(_vDot(n,lf.n))<0.999) continue;
+    const c0=S.verts[f.vs[0]];
+    if(Math.abs(_vDot(_vSub(c0,lf.origin),lf.n))>=1.5) continue;
+    return {solid:S,face:f,ring:f.vs.map(i=>S.verts[i])};
+  }
+  return null;
+}
+// 로컬 점에서 -n 방향으로 솔리드를 뚫고 나가는 거리 (벽 두께) — 관통 판정에 쓴다
+function massRayExit(m,pt,dir,ctx){
+  const S=massSolid(m,ctx);
+  let best=null;
+  S.faces.forEach(f=>{
+    const n=f.n||faceNormal(S.verts,f.vs);
+    const dn=_vDot(n,dir);
+    if(Math.abs(dn)<1e-6) return;
+    const c0=faceCentroid3(S.verts,f.vs);
+    const t=_vDot(_vSub(c0,pt),n)/dn;
+    if(t<1) return;                                   // 뒤나 제자리
+    const hit=_vAdd(pt,_vScale(dir,t));
+    const fr=planeFrom(c0,n);
+    const poly=f.vs.map(i=>{const q=planeUV(fr,S.verts[i]);return {x:q.u,y:q.v};});
+    const q=planeUV(fr,hit);
+    if(!skPtInPoly({x:q.u,y:q.v},poly)) return;
+    if(best===null||t<best) best=t;
+  });
+  return best;                                        // null = 못 나감 (열린 형상)
+}
+// 파낸다 — 평면(절대)과 그 위 uv 다각형을, 깊이 d 만큼. 관통이면 through 표시.
+function massAddCut(m,planeAbs,uv,d,ctx){
+  d=Math.round(Number(d));
+  if(!m||!isFinite(d)||d<10||!Array.isArray(uv)||uv.length<3) return null;
+  const lf=massLocalFrame(m,planeAbs);
+  const host=massFaceAt(m,lf,ctx);
+  if(!host) return {err:'face'};                      // 이 매스의 면이 아니다
+  // 다각형이 호스트 면 안에 온전히 들어앉는가 — 걸치면 구멍 삼각화가 찢어진다
+  const hostFr=planeFrom(host.ring[0],lf.n);
+  const hostPoly=host.ring.map(p=>{const q=planeUV(hostFr,p);return {x:q.u,y:q.v};});
+  const inHost=uv.every(p=>{
+    const w=planePt(lf,p.x,p.y);
+    const q=planeUV(hostFr,w);
+    return skPtInPoly({x:q.u,y:q.v},hostPoly);
+  });
+  if(!inHost) return {err:'inside'};                  // 면 밖으로 걸쳤다
+  // 두께 — 다각형 무게중심에서 -n 으로 나가는 거리
+  const c2=skPolyCentroid(uv);
+  const c3=planePt(lf,c2.x,c2.y);
+  const exit=massRayExit(m,c3,_vScale(lf.n,-1),ctx);
+  let through=false, dd=d;
+  if(exit!=null&&d>=exit-1){ through=true; dd=Math.round(exit); }
+  const cut={id:_skId('ct'),plane:{origin:lf.origin,ex:lf.ex,ey:lf.ey,n:lf.n},
+    uv:uv.map(p=>({x:Math.round(p.x),y:Math.round(p.y)})),d:dd,through};
+  if(!Array.isArray(m.cuts)) m.cuts=[];
+  m.cuts.push(cut);
+  return {cut,through,exit};
+}
+// 파낸 부피 — 표시·부피 계산에서 뺀다
+function massCutsVolume(m){
+  if(!m||!Array.isArray(m.cuts)) return 0;
+  return m.cuts.reduce((a,c)=>a+Math.abs(skPolyArea(c.uv))*c.d,0)/1e9;
+}
+
 if(typeof module!=='undefined'&&module.exports){
   module.exports={zIsRef,zNum,zSet,zLabel,facePlanarDev,massHeal,splitFoldedRing,faceNormal,faceRole,faceFacing,faceTiltDeg,faceArea3,faceCentroid3,
     zEdit,massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
     massTopPts,massSlopes,massRidges,massCtx,massLean,massZAt,massTopProfile,profileAvg,pitchOf,pitchStr,
     planeFrom,planeUV,planePt,planeSame,ffPlaneBag,planeFaceVerts,planeExtrude,
+    massLocalFrame,massFaceAt,massRayExit,massAddCut,massCutsVolume,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

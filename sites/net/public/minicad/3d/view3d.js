@@ -246,6 +246,21 @@ function primMesh(p,obj){
     const fm=matFor(p).clone(); fm.side=THREE.DoubleSide; fm.depthWrite=false;
     mesh=new THREE.Mesh(g,fm);
     mesh.renderOrder=6;
+  }else if(p.t==='face3h'){
+    // 구멍 뚫린 면 (2026-09-07 프리폼 ③ 파내기) — 바깥 고리 + 구멍 고리들을 평면 틀로 세운다
+    if(!p.outer||p.outer.length<3||!p.plane) return null;
+    const sh=new THREE.Shape(p.outer.map(q=>new THREE.Vector2(q.x,q.y)));
+    (p.holes||[]).forEach(h=>{ if(h&&h.length>=3) sh.holes.push(new THREE.Path(h.map(q=>new THREE.Vector2(q.x,q.y)))); });
+    const g=new THREE.ShapeGeometry(sh);
+    const O=p.plane.origin,EX=p.plane.ex,EY=p.plane.ey;
+    const pos=g.attributes.position;
+    for(let i=0;i<pos.count;i++){
+      const u=pos.getX(i),v=pos.getY(i);
+      pos.setXYZ(i,(O.x+EX.x*u+EY.x*v)*MM,(O.z+EX.z*u+EY.z*v)*MM,(O.y+EX.y*u+EY.y*v)*MM);
+    }
+    g.computeVertexNormals(); g.computeBoundingSphere();
+    const hm=matFor(p).clone(); hm.side=THREE.DoubleSide;
+    mesh=new THREE.Mesh(g,hm);
   }else if(p.t==='edge3'){
     const a=new THREE.Vector3(p.a.x*MM,p.a.z*MM,p.a.y*MM);
     const b=new THREE.Vector3(p.b.x*MM,p.b.z*MM,p.b.y*MM);
@@ -1352,6 +1367,26 @@ function ffApply(m){
       const i=(bag.masses||[]).findIndex(x=>x&&x.id===m.id);
       if(i<0) return no('밑그림 매스는 평면에서 지웁니다');
       bag.masses.splice(i,1); ok=true; label='삭제'; break;
+    }
+    case 'cut': {                                       // 프리폼 ③: 매스 속으로 파낸다 (벽감·관통)
+      const hitF=_ffFindFace(p.id);
+      if(!hitF||!hitF.plane) return no('벽감은 매스 면 위에 그린 면에서만 팝니다');
+      const d=N(p.d); if(!isFinite(d)||d<10) return false;
+      const uvp=skFacePoly(hitF.face,hitF.bag);
+      if(uvp.length<3) return false;
+      const abs={origin:hitF.plane.origin,ex:hitF.plane.ex,ey:hitF.plane.ey,n:hitF.plane.n};
+      let res=null,leaked=false;
+      for(const host of (bag.masses||[])){
+        const r=massAddCut(host,abs,uvp,d,ctx);
+        if(r&&r.cut){ res=r; break; }
+        if(r&&r.err==='inside'){ leaked=true; break; }
+      }
+      if(leaked) return no('면이 벽 밖으로 걸쳤습니다 — 벽면 안에 온전히 그려주세요');
+      if(!res) return no('파낼 몸통이 없습니다 — 프리폼 매스의 면에 그린 것만 (밑그림은 평면에서)');
+      _skConsumeFace(hitF.face,hitF.bag);
+      ok=true;
+      label=res.through?('관통 — 벽을 뚫었습니다 ('+res.cut.d+'mm)'):('벽감 '+d+'mm');
+      break;
     }
     case 'massconvert': return no('프리폼에서는 매스 그대로 씁니다 — 공간·벽 전환은 연동 뷰(평면)의 일');
     case 'ceilmass': return no('천장 지정은 평면(견적)의 일 — 연동 뷰에서');
@@ -2643,10 +2678,13 @@ function applyPP(clientY,clientX){
     const sx=(s1.x-s0.x)*r.width/2, sy=-(s1.y-s0.y)*r.height/2, L=Math.hypot(sx,sy)||1;
     const px=(clientX!=null?clientX:op.startX)-op.startX, py=clientY-op.startY;
     let d3=Math.round(((px*sx+py*sy)/L)*3/10)*10;       // 3mm/px · 10mm 스냅
-    if(d3<0){ d3=0; vcbShow('면 뽑기 - 파내기(벽감)는 다음 단계',0,'mm'); }
-    op.delta=d3;
-    if(op.ghost) op.ghost.position.copy(op.nW.clone().multiplyScalar(d3*MM));
-    vcbShow('면 뽑기 (법선 방향)',d3,'mm'); invalidate(true); return;
+    op.delta=d3;                                         // 프리폼 ③: 음수 = 안으로 파낸다
+    if(op.ghost){
+      op.ghost.position.copy(op.nW.clone().multiplyScalar(d3*MM));
+      op.ghost.material.color.set(d3<0?0x8A5A3C:0xD4FF3D);   // 파낼 땐 흙색으로
+    }
+    vcbShow(d3<0?'파내기 — 벽감 (끝까지 밀면 관통)':'면 뽑기 (법선 방향)',Math.abs(d3),'mm');
+    invalidate(true); return;
   }
   let d=Math.round((op.startY-clientY)*5/25)*25;      // 5mm/px · 25mm 스냅
   if(op.mode==='extrude'){                              // 2026-09-04 면 → 매스: 위로 끈 만큼이 Z
@@ -2671,15 +2709,23 @@ function commitPP(exact){
     setLast('벽 두께','mm',raw=>{ const v=parseLen(raw); if(v==null||v<30||v>600) return false; sendEdit('set',obj,{thickness:Math.round(v)}); return true; });
     setStatus(statusLive,'⇔ 벽 두께 '+nv+'mm → 평면 반영'); return;
   }
-  if(mode==='extrude3'){                                // 프리폼 2단계: 평면 면 → 법선으로 뽑아 자유 다면체
-    const d3=(exact!==null&&exact!==undefined)?Math.round(exact):op.delta;
+  if(mode==='extrude3'){                                // 프리폼 ②③: 뽑으면 입체, 밀면 벽감
+    let d3=(exact!==null&&exact!==undefined)
+      ?Math.round(exact)*((op.delta<0)?-1:1)             // 숫자는 크기 — 방향은 끌던 쪽
+      :op.delta;
     if(op.ghost){ disposeGhost(op.ghost); op.ghost=null; }
-    if(!(d3>=10)){ cancelOp(); setStatus(statusLive,'10mm 이상 당겨주세요 (숫자 입력 가능) - 파내기는 다음 단계'); return; }
-    if(op.g) op.g.visible=false;
+    const fg=op.g;
+    if(Math.abs(d3)<10){ cancelOp(); setStatus(statusLive,'10mm 이상 끌어주세요 — 밖=뽑기 · 안=벽감 (숫자 입력 가능)'); return; }
+    if(fg) fg.visible=false;
     _opDone();
     ST.lastPP=d3;
-    emitEdit({type:'edit',op:'extrude',floorId:'freeform',patch:{id:obj.id,z:d3,as:'solid'}});
-    setStatus(statusLive,'🧊 면 → 입체 '+d3+'mm (법선 방향) - 벽에서 자란 첫 덩어리입니다');
+    if(d3>0){
+      emitEdit({type:'edit',op:'extrude',floorId:'freeform',patch:{id:obj.id,z:d3,as:'solid'}});
+      setStatus(statusLive,'🧊 면 → 입체 '+d3+'mm (법선 방향)');
+    }else{
+      const okc=emitEdit({type:'edit',op:'cut',floorId:'freeform',patch:{id:obj.id,d:-d3}});
+      if(!okc&&fg) fg.visible=true;                      // 못 팠으면 면을 되살린다
+    }
     return;
   }
   if(mode==='extrude'){                                 // 2026-09-04 면 + Z → 매스 (평면 skExtrude · Ctrl+Z 한 번)
