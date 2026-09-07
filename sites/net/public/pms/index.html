@@ -221,6 +221,11 @@ table.gantt thead th.lh.lh-b{border-bottom:2px solid #444}
 .cal-cell.today .cal-d{background:#c9a84c;color:#fff;border-radius:999px;box-shadow:0 1px 4px rgba(201,168,76,.5)}
 .cal-hol{font-size:10px;line-height:1.35;color:#d4534e;font-weight:600;word-break:keep-all;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;text-align:right}
+/* 그날 공정 건수 — 이름이 잘려도 '얼마나 있는지'는 보이게 */
+.cal-cnt{flex:0 0 auto;min-width:16px;height:16px;padding:0 4px;border-radius:var(--r-pill);
+  background:var(--ground);border:1px solid var(--line);color:var(--ink-2);
+  font-size:9.5px;font-weight:700;line-height:15px;text-align:center}
+.cal-cell.today .cal-cnt{background:var(--gold-bg);border-color:var(--gold-2);color:#8a6d1f}
 .cal-hol.mem{color:#a89e8a;font-weight:500}
 
 /* 선택한 날 상세 */
@@ -254,8 +259,18 @@ table.gantt thead th.lh.lh-b{border-bottom:2px solid #444}
   .cal-bar .cc{font-size:9px}
 }
 @media (max-width:520px){
-  /* 폰에서도 '무슨 날, 무슨 공정'이 읽혀야 한다 — 색만 남기지 않는다 (2026-09-08) */
-  .dash-card{padding:14px 12px}
+  /* 폰: 칸 폭이 52px 뿐이라 이름을 욱여넣으면 잘린다.
+     → 달력은 색·길이·건수로 흐름을 보고, 이름은 바로 위 '선택한 날' 목록에서 읽는다. (2026-09-08) */
+  .dash-card{padding:14px 12px;display:flex;flex-direction:column}
+  .cal-head{order:1}.cal-sum{order:2}.day-panel{order:3}.cal-legend{order:4}.cal-grid{order:5}
+  .day-panel{margin:10px 0 12px;padding:12px;border-top:0;border:1px solid var(--line);
+    border-radius:var(--r-md);background:#fbf9f5}
+  .day-panel h4{font-size:15px;margin-bottom:8px}
+  .day-row{padding:8px 0}
+  .day-row i{height:32px;width:5px}
+  .cal-top{flex-wrap:wrap;gap:3px}
+  .cal-hol{flex:1 1 100%;text-align:left;font-size:9px;order:3;white-space:normal;max-width:none;line-height:1.15}
+  .cal-cnt{margin-left:auto}
   .cal-cell{padding:5px 4px}
   .cal-bar{height:15px;border-radius:3px}
   .cal-bar .cc{font-size:9px;padding:0 3px;font-weight:700}
@@ -1349,6 +1364,14 @@ function renderCal(){
   var dim=new Date(CAL.y,CAL.m+1,0).getDate();
   var weeks=Math.ceil((first.getDay()+dim)/7);       // 그 달에 필요한 주 수 (4~6) — 빈 줄 없이
   var todayK=calKey(new Date()),runs=calRuns(),narrow=window.innerWidth<=520;
+  // 칸마다 '그날 진행되는 공정 건수' — 좁은 화면에서 막대 이름이 잘려도 양은 알 수 있게
+  var dayCount={};
+  runs.forEach(function(r){
+    for(var d=new Date(r.s.getTime());d<=r.e;d=new Date(d.getTime()+864e5)){
+      if(d.getFullYear()!==CAL.y||d.getMonth()!==CAL.m)continue;
+      var k=calKey(d);dayCount[k]=(dayCount[k]||0)+1;
+    }
+  });
   var MAXL=narrow?3:6,BARH=narrow?15:17,GAP=3,HEADH=narrow?27:28;
   var h='<div class="cal-dows">';
   ["일","월","화","수","목","금","토"].forEach(function(w,i){
@@ -1367,9 +1390,11 @@ function renderCal(){
       if(!out&&hol&&hol.off)offDays++;
       var cls="cal-cell"+(out?" out":"")+((dw===0||dw===6)?" we":"")+(dw===0?" sun":(dw===6?" sat":""))+
               (hol&&hol.off?" hol":"")+(key===todayK?" today":"")+(key===CAL.sel?" sel":"");
+      var cnt=dayCount[key]||0;
       h+='<div class="'+cls+'" onclick="calPick(&quot;'+key+'&quot;)">';
       h+='<div class="cal-top"><span class="cal-d">'+d.getDate()+'</span>';
       if(hol)h+='<span class="cal-hol'+(hol.off?"":" mem")+'" title="'+esc(hol.n)+'">'+esc(hol.n)+'</span>';
+      if(cnt)h+='<span class="cal-cnt" title="이 날 진행되는 공정 '+cnt+'건">'+cnt+'</span>';
       h+='</div></div>';
     }
     h+='</div><div class="cal-bars">';
@@ -1412,7 +1437,8 @@ function renderCalDay(runs){
   if(!CAL.sel){box.innerHTML='<div style="color:#999;font-size:11.5px">날짜를 누르면 그날 진행되는 공정을 봅니다.</div>';return}
   var d=new Date(CAL.sel+"T00:00:00"),hol=CAL.hol[CAL.sel];
   var list=(runs||calRuns()).filter(function(r){return r.s<=d&&d<=r.e})
-             .map(function(r){return {pi:r.pi,pj:r.pj,n:r.n,c:r.cc,pc:r.pc,st:r.st}});
+             .map(function(r){return {pi:r.pi,pj:r.pj,n:r.n,c:r.cc,pc:r.pc,st:r.st,
+                                      period:(r.s.getMonth()+1)+"."+r.s.getDate()+"~"+(r.e.getMonth()+1)+"."+r.e.getDate()}});
   var h='<h4>'+d.getFullYear()+"."+(d.getMonth()+1)+"."+d.getDate()+" ("+WD[d.getDay()]+")";
   if(hol)h+=' <span style="color:'+(hol.off?"#e24b4a":"#9a8f7a")+';font-size:12px">· '+esc(hol.n)+(hol.off?" (휴무)":"")+'</span>';
   h+='</h4>';
@@ -1420,7 +1446,7 @@ function renderCalDay(runs){
   list.forEach(function(e){
     h+='<div class="day-row"><i style="background:linear-gradient(180deg,'+hexA(e.pc,.5)+' 0 20%,'+hexA(e.c,.5)+' 20% 100%)"></i>'+
        '<div style="min-width:0"><div class="nm">'+esc(e.n)+(e.st==="done"?' <span style="color:#2fa87a;font-size:10px">완료</span>':'')+'</div>'+
-       '<div class="pj">'+esc(e.pj)+'</div></div>'+
+       '<div class="pj">'+esc(e.pj)+' · '+e.period+'</div></div>'+
        '<button class="btn" style="margin-left:auto;font-size:10px;padding:4px 10px;border-radius:999px" onclick="openProject('+e.pi+')">열기</button></div>';
   });
   box.innerHTML=h;
