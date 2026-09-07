@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
   const serverTime = new Date().toISOString();
   let q = supabase
     .from('pms_projects')
-    .select('id,data,deleted_at,updated_at,updated_email,created_email')
+    .select('id,data,deleted_at,updated_at,updated_email,created_email,is_locked')
     .order('updated_at', { ascending: true });
   // since 가 있으면 변경분만 (삭제 묘비도 함께 내려 다른 PC 에서 지워지도록)
   if (since) q = q.gt('updated_at', since);

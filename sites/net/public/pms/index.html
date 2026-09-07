@@ -396,8 +396,8 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
     <div>
       <h2 style="font-size:18px">프로젝트 목록</h2>
-      <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. <b style="color:#185fa5">공정표는 만든 사람이 주인입니다.</b>
-        <span style="color:#b8860b">내가 만든 것은 자유롭게 고치고 <b>☁ 서버 저장</b>(자동 저장 없음). 남이 만든 공정표를 바꾸려면 잠금 암호가 필요합니다.</span></p>
+      <p style="font-size:11px;color:#888;margin-top:4px">프로젝트를 선택하면 공정표가 열립니다. <b style="color:#185fa5">내가 만든 공정표는 🔒 잠금을 걸어 남이 못 바꾸게 할 수 있습니다.</b>
+        <span style="color:#b8860b">자동 저장 없음 — 다 고친 뒤 <b>☁ 서버 저장</b>. 잠긴 공정표는 암호를 넣어야 바꿀 수 있습니다.</span></p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
       <button class="btn" id="srvSaveBtn2" onclick="projSaveNow()" style="font-size:11px;padding:6px 14px;font-weight:700"
@@ -459,6 +459,7 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
       <button class="btn" onclick="zoomIn()" title="간트 확대 (하루 폭 늘리기)">🔍+</button>
       <button class="btn" onclick="zoomFit()" title="공사 전체 기간을 화면 폭에 맞춥니다">↔ 화면맞춤</button>
     </span>
+    <button class="btn" id="projLockBtn" onclick="projLockClick()" style="font-weight:700">🔓 잠금 없음</button>
     <button class="btn tools-toggle" onclick="toggleTools()" id="toolsTgBtn" title="나머지 도구 펼치기/접기">⋯ 도구</button>
     <span class="tools-more" id="toolsMore">
       <button class="btn" onclick="resetAllStatus()">진행상태 초기화</button>
@@ -1336,6 +1337,114 @@ function renderCalDay(runs){
   box.innerHTML=h;
 }
 
+/* ── 공정표별 잠금 (2026-09-07 대표 지시) ─────────────────────────────
+   작성자가 자기 공정표에 암호를 건다. 잠그지 않은 것은 종전처럼 누구나 수정 가능.
+   잠근 것은 작성자 본인은 그냥 통과, 남은 그 공정표의 암호를 넣어야 저장·삭제할 수 있다. */
+function askPassword(o){
+  var m=document.getElementById("pwMask");
+  if(!m){
+    m=document.createElement("div");m.id="pwMask";
+    m.style.cssText="position:fixed;inset:0;z-index:10000;background:rgba(8,12,18,.5);display:flex;align-items:center;justify-content:center";
+    var box=document.createElement("div");
+    box.style.cssText="background:#fff;border-radius:12px;padding:22px 24px;width:330px;max-width:92vw;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:13px";
+    box.innerHTML='<div id="pwTitle" style="font-size:15px;font-weight:700;margin-bottom:6px"></div>'+
+                  '<div id="pwDesc" style="color:#777;font-size:11.5px;line-height:1.6;margin-bottom:12px"></div>';
+    var inp=document.createElement("input");inp.type="password";inp.id="pwInput";inp.inputMode="numeric";
+    inp.style.cssText="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:15px;letter-spacing:2px";
+    var msg=document.createElement("div");msg.id="pwMsg";msg.style.cssText="color:#c0392b;font-size:11.5px;min-height:16px;margin-top:6px";
+    var row=document.createElement("div");row.style.cssText="display:flex;gap:6px;margin-top:12px";
+    var ok=document.createElement("button");ok.className="btn btn-b";ok.id="pwOk";ok.style.cssText="flex:1;font-weight:700";
+    var no=document.createElement("button");no.className="btn";no.textContent="취소";
+    no.onclick=function(){m.style.display="none"};
+    row.appendChild(ok);row.appendChild(no);
+    box.appendChild(inp);box.appendChild(msg);box.appendChild(row);m.appendChild(box);document.body.appendChild(m);
+    inp.addEventListener("keydown",function(e){if(e.key==="Enter")document.getElementById("pwOk").click()});
+  }
+  document.getElementById("pwTitle").textContent=o.title||"암호 입력";
+  document.getElementById("pwDesc").textContent=o.desc||"";
+  var msgEl=document.getElementById("pwMsg");msgEl.style.color="#c0392b";msgEl.textContent="";
+  var inpEl=document.getElementById("pwInput");inpEl.value="";
+  var okEl=document.getElementById("pwOk");okEl.textContent=o.submitText||"확인";
+  okEl.onclick=function(){
+    var v=inpEl.value;
+    if(!v){msgEl.textContent="암호를 입력해 주세요";return}
+    msgEl.style.color="#777";msgEl.textContent="확인 중…";
+    o.onSubmit(v,function(err){
+      if(err){msgEl.style.color="#c0392b";msgEl.textContent=err;return}
+      m.style.display="none";
+    });
+  };
+  m.style.display="flex";
+  setTimeout(function(){inpEl.focus()},50);
+}
+/* 남이 잠긴 공정표를 열 때 */
+function askProjectUnlock(id,thenSave){
+  var i=projIndexById(id),nm=(i>=0?projects[i].name:id);
+  askPassword({
+    title:"🔒 잠긴 공정표",
+    desc:shortName(projOwner(id))+" 님이 '"+nm+"' 에 잠금을 걸었습니다. 변경하려면 잠금 암호를 입력하세요.",
+    submitText:"잠금 풀기",
+    onSubmit:function(pw,done){
+      fetch("/api/pms/lock",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({id:id,password:pw})})
+        .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+        .then(function(res){
+          if(!res.ok||!res.j.ok){done((res.j&&res.j.message)||"암호가 맞지 않습니다");return}
+          PROJ.unlocked[id]=true;      // 이 공정표는 이제 내가 열었다 (8시간)
+          done();toast("🔓 8시간 동안 이 공정표를 수정할 수 있습니다");
+          if(thenSave)projSaveNow();
+        })
+        .catch(function(){done("연결에 실패했습니다")});
+    }
+  });
+}
+/* 작성자가 자기 공정표에 잠금을 걸거나 푼다 */
+function projLockClick(){
+  if(!currentProj)return;
+  var id=currentProj.id;
+  if(!PROJ.synced[id]){toast("먼저 ☁ 서버 저장을 한 뒤 잠글 수 있습니다");return}
+  if(!isMine(id)){
+    if(PROJ.locked[id])askProjectUnlock(id,false);
+    else toast("이 공정표는 잠겨 있지 않습니다");
+    return;
+  }
+  if(PROJ.locked[id]){
+    if(!confirm("이 공정표의 잠금을 풀까요?\n(누구나 수정할 수 있게 됩니다)"))return;
+    fetch("/api/pms/lock?id="+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin"})
+      .then(function(r){return r.json()})
+      .then(function(j){
+        if(j&&j.ok){PROJ.locked[id]=false;paintLockBtn();renderProjects();toast("🔓 잠금을 풀었습니다")}
+        else alert((j&&j.message)||"잠금 해제 실패");
+      })
+      .catch(function(){alert("연결에 실패했습니다")});
+    return;
+  }
+  askPassword({
+    title:"🔒 이 공정표 잠그기",
+    desc:"암호를 정하면 나 말고는 이 공정표를 바꿀 수 없습니다. (암호를 아는 사람은 8시간 동안 수정 가능)",
+    submitText:"잠금 걸기",
+    onSubmit:function(pw,done){
+      fetch("/api/pms/lock",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({id:id,password:pw})})
+        .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+        .then(function(res){
+          if(!res.ok){done((res.j&&res.j.message)||"잠금 실패");return}
+          PROJ.locked[id]=true;PROJ.unlocked[id]=true;done();paintLockBtn();renderProjects();
+          toast("🔒 잠갔습니다 — 이제 남은 암호를 알아야 바꿀 수 있습니다");
+        })
+        .catch(function(){done("연결에 실패했습니다")});
+    }
+  });
+}
+function paintLockBtn(){
+  var b=document.getElementById("projLockBtn");if(!b||!currentProj)return;
+  var id=currentProj.id,lk=PROJ.locked[id],mine=isMine(id);
+  b.textContent=lk?"🔒 잠김":"🔓 잠금 없음";
+  b.title=mine?(lk?"내가 건 잠금 — 누르면 풉니다":"이 공정표에 잠금 암호를 겁니다")
+              :(lk?shortName(projOwner(id))+" 님이 잠근 공정표 — 누르면 암호를 입력합니다":"잠겨 있지 않습니다");
+  b.style.background=lk?"#fdecea":"";b.style.color=lk?"#c0392b":"";b.style.borderColor=lk?"#c0392b":"";
+}
+
 function renderProjects(){
   var grid=document.getElementById("projGrid");
   var h='';
@@ -1361,7 +1470,9 @@ function renderProjects(){
     h+=' · 진행 '+pct+'%</div>';
     h+='<div class="proj-bar"><i style="width:'+Math.max(pct,2)+'%;background:'+PROJ_COLORS[i%PROJ_COLORS.length]+'"></i></div>';
     var own=projOwner(p.id);
-    if(own)h+='<div class="proj-own">'+(own===myEmail()?'내가 작성':'🔒 '+esc(shortName(own))+' 작성 — 변경하려면 암호')+'</div>';
+    var lk=PROJ.locked[p.id];
+    if(own)h+='<div class="proj-own">'+(own===myEmail()?'내가 작성':esc(shortName(own))+' 작성')+
+             (lk?' · <b style="color:#c0392b">🔒 잠김</b>':'')+'</div>';
     h+='<span class="del-x" onclick="event.stopPropagation();deleteProject('+i+')">✕</span>';
     h+='</div>';
   });
@@ -1468,6 +1579,7 @@ function deleteProject(i){
 
 function openProject(i){
   currentProj=projects[i];
+  setTimeout(paintLockBtn,0);
   ensureBaseline();
   histInit();
   selectedRow=-1;
@@ -3037,7 +3149,7 @@ function cloudInit(){
 //   ① 서버가 정본, localStorage 는 캐시  ② 바뀐 프로젝트만 저장  ③ 저장 시 기준 시각을 보내 충돌 감지
 //   ④ 15초 폴링으로 남의 수정 자동 반영  ⑤ 서버 연결이 끊기면 읽기 전용(따로 쌓이지 않게)
 // ================================================================
-var PROJ={api:"/api/pms/projects",ready:false,offline:false,synced:{},timers:{},retry:{},lastSync:null,owner:{},
+var PROJ={api:"/api/pms/projects",ready:false,offline:false,synced:{},timers:{},retry:{},lastSync:null,owner:{},locked:{},unlocked:{},
           pollMs:15000,           // 실시간이 끊겼을 때만 도는 예비 주기
           saveMs:120,             // 저장은 사실상 즉시 (연속 드래그·타이핑만 묶는다)
           sbUrl:"https://gdcfqbdgubgpzusbtftf.supabase.co",
@@ -3065,21 +3177,27 @@ function projSaveNow(){
   if(PROJ.offline){toast("서버에 연결되어 있지 않습니다 — '다시 연결'을 먼저 눌러 주세요");return}
   if(!PROJ.ready){toast("서버 자료를 아직 불러오는 중입니다");return}
   var ids=projDirtyIds();
-  // 내가 만든 것·새로 만든 것은 그냥 저장 / '남이 만든 공정표'를 바꿀 때만 잠금 암호를 묻는다
-  var others=ids.filter(function(id){return PROJ.synced[id]&&!isMine(id)});
-  if(others.length&&!EDIT.unlocked){
-    PROJ.pendingSave=true;
-    askUnlock(shortName(projOwner(others[0]))+" 님이 작성한 공정표입니다. 변경하려면 잠금 암호가 필요합니다.");
-    return;
-  }
+  // 잠금이 걸린 '남의 공정표'만 암호를 묻는다 (내 것·잠금 없는 것은 그냥 저장)
+  var need=ids.filter(function(id){return PROJ.synced[id]&&PROJ.locked[id]&&!isMine(id)&&!PROJ.unlocked[id]});
+  if(need.length){ askProjectUnlock(need[0],true); return; }
   if(!ids.length){
     toast("이미 서버에 저장되어 있습니다"+(PROJ.lastSavedAt?" (마지막 저장 "+hhmmss(PROJ.lastSavedAt)+")":"")+" — 다른 직원도 지금 열면 이 내용을 봅니다");
     updateSaveUi();return;
   }
-  projSyncDirty();  // 변경분 예약 (삭제는 즉시 실행)
-  projFlush();      // 예약된 저장을 기다리지 않고 바로 전송
-  updateSaveUi();
-  toast("서버에 저장하는 중… ("+ids.length+"건)");
+  // 삭제분 먼저, 그다음 변경분을 즉시 전송하고 '끝까지' 결과를 확인한다
+  var seen={};projects.forEach(function(p){if(p&&p.id)seen[p.id]=1});
+  Object.keys(PROJ.synced).forEach(function(id){if(!seen[id])projRemove(id)});
+  var jobs=ids.filter(function(id){return projIndexById(id)>=0}).map(function(id){
+    clearTimeout(PROJ.timers[id]);PROJ.timers[id]=null;return projPush(id);
+  });
+  cloudDot(null,"저장 중…");
+  Promise.all(jobs).then(function(){
+    updateSaveUi();
+    var left=projDirtyIds().length;
+    if(left===0)toast("✅ 서버 저장 완료 — "+hhmmss(new Date())+" · 다른 직원도 이 내용을 봅니다");
+    else if(!PROJ.pendingSave&&document.getElementById("editMask")&&document.getElementById("editMask").style.display!=="flex")
+      alert("저장하지 못한 공정표가 "+left+"건 있습니다. 연결 상태를 확인한 뒤 ☁ 서버 저장을 다시 눌러 주세요.");
+  });
 }
 // 상태별 색 — 공정표 툴바는 어두운 배경(#333), 목록 화면은 밝은 배경이라 글자색을 나눠 쓴다
 var SAVE_TONE={
@@ -3127,6 +3245,8 @@ function projFetchAll(){
       rows.forEach(function(row){
         PROJ.synced[row.id]={json:JSON.stringify(row.data),updatedAt:row.updated_at};
         if(row.created_email)PROJ.owner[row.id]=row.created_email;
+        PROJ.locked[row.id]=!!row.is_locked;
+        PROJ.locked[row.id]=!!row.is_locked;
       });
       PROJ.lastSync=j.serverTime;PROJ.ready=true;PROJ.failed=false;
       projCache();projOnline();updateSaveUi();
@@ -3160,9 +3280,9 @@ function projPush(id,keepalive){
   PROJ.timers[id]=null;
   PROJ.saving++;updateSaveUi();
   cloudDot(null,"저장 중…");
+  // 주의: keepalive 는 본문 64KB 제한이 있어 공정표(18~52KB)가 조용히 버려졌다 → 쓰지 않는다
   var opt={method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
            body:JSON.stringify({project:p,base:s?s.updatedAt:null})};
-  if(keepalive)opt.keepalive=true;
   return fetch(PROJ.api,opt)
     .then(function(r){return r.json().then(function(j){if(!r.ok)throw{code:r.status,msg:j.message||j.error||("HTTP "+r.status)};return j})})
     .then(function(j){
@@ -3175,10 +3295,8 @@ function projPush(id,keepalive){
     })
     .catch(function(e){
       PROJ.saving--;
-      if(e&&e.code===423){ // 서버가 '작성자 확인'을 요구
-        EDIT.unlocked=false;editPaint();PROJ.pendingSave=true;
-        askUnlock(e.msg||"작성자가 잠근 공정표입니다. 변경하려면 잠금 암호가 필요합니다.");
-        updateSaveUi();return;
+      if(e&&e.code===423){ // 서버가 막았다 — 그 공정표의 잠금 암호를 받는다
+        PROJ.locked[id]=true;PROJ.unlocked[id]=false;updateSaveUi();askProjectUnlock(id,true);return;
       }
       if(e&&(e.code===401||e.code===403)){projOffline(e.msg||"저장 권한이 없습니다");return}
       PROJ.retry[id]=(PROJ.retry[id]||0)+1;PROJ.failed=true;
@@ -3348,7 +3466,7 @@ function projOnline(){
 function projFlush(){
   Object.keys(PROJ.timers).forEach(function(id){
     if(!PROJ.timers[id])return;
-    clearTimeout(PROJ.timers[id]);PROJ.timers[id]=null;projPush(id,true);
+    clearTimeout(PROJ.timers[id]);PROJ.timers[id]=null;projPush(id);
   });
 }
 

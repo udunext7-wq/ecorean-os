@@ -1,0 +1,9 @@
+-- 공정표별 잠금 (2026-09-07 대표 지시) — 적용 완료 기록본
+-- "내가 만들었다면 내 것에 내가 임의로 비밀번호를 기입해서 락을 걸 수 있게."
+--  · pms_projects.lock_hash(bcrypt)/lock_set_at/is_locked(생성열)
+--  · pms_project_unlocks(user_id, project_id, until) — 암호를 맞힌 사람의 8시간 수정권
+--  · pms_project_set_lock(id, pw)   작성자(또는 admin)만, 빈 값이면 잠금 해제
+--  · pms_project_unlock(id, pw)     남이 암호로 여는 것
+--  · pms_project_can_edit(id)       새 것/내 것/잠금 없음 = true, 잠긴 남의 것 = 해제 필요
+--  · pms_project_save/delete 가 위 판정을 사용, 차단 시 LOCKED_OWNER:<email>
+-- 전체 정의는 함수 정의 참조.
