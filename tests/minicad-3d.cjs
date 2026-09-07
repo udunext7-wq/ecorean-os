@@ -676,6 +676,17 @@ ck(/FF\._gidMap/.test(v3Src),'프리폼⑤: 그룹 복사는 새 그룹으로 (�
 ck(/gid:m\.gid\|\|null/.test(b3Src),'프리폼⑤: 조립이 gid 를 실어 준다');
 ck(/_ffCompsPal/.test(v3Src)&&/data-comp/.test(v3Src),'프리폼⑤: 구성요소 칸에 내 컴포넌트·스탬프');
 ck(/ST\.stampComp/.test(v3Src),'프리폼⑤: 클릭 스탬프 모드 (Esc=끝)');
+// 파랑 축 · 면 스냅 계약 (2026-09-08 대표 지적 "파랑축으로는 작동이 안 된다")
+ck(/파랑 축 — 위로 그립니다/.test(v3Src),'파랑 축: 땅 선에서 ↑ = 세로 종이로 올라탄다');
+ck(/function _ff3Lock/.test(v3Src)&&/op\.axis==='u'\?/.test(v3Src),'파랑 축: 면 위 선에 u/v 축 고정');
+ck(/function ff3Commit/.test(v3Src)&&/op\.type==='line3'\|\|op\.type==='rect3'\) ff3Commit/.test(v3Src),
+  '파랑 축: 숫자 입력이 잠긴 축으로 정확한 길이');
+ck(/function _ff3SnapList/.test(v3Src)&&/밑그림 매스 모서리에도/.test(v3Src),
+  '면 스냅: 매스 모서리(자유+밑그림)·선이 스냅 후보');
+ck(/snap:'endpoint'/.test(v3Src)&&/snap:'midpoint'/.test(v3Src)&&/snap:'edge'/.test(v3Src),
+  '면 스냅: 끝점 > 중간점 > 선 위');
+ck(/function _ff3Mark/.test(v3Src)&&/mmPerPx\(pt\)\*14/.test(v3Src),
+  '면 스냅: 화면 14px 반경 + 3D 마커');
 // 프리폼 스테이징 (배치물) 계약
 ck(/const FF_PLACE=\['furniture','fixtures','lights','electric','hvac'\]/.test(v3Src),
   '프리폼 스테이징: 배치물 5종이 자유 층에 산다');

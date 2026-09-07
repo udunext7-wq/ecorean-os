@@ -1078,7 +1078,58 @@ function _ffFindFace(id){
   }
   return null;
 }
-// 레이 ∩ 평면 → (u,v). 같은 평면의 점에 스냅(150mm), 아니면 10mm 격자
+// 이 평면에서 스냅이 걸릴 것들 — 평면 스케치 + 매스 모서리(자유 층·밑그림 둘 다).
+//  히스토리 위치+평면으로 캐시 — 마우스 움직임마다 solid 를 다시 세우면 무겁다.
+function _ff3SnapList(fr){
+  const key=(FF?FF.histPos:-1)+'|'+[fr.origin.x,fr.origin.y,fr.origin.z,fr.n.x,fr.n.y,fr.n.z].map(v=>Math.round(v*1e4)).join(',');
+  if(FF&&FF._ps&&FF._ps.key===key) return FF._ps;
+  const pts=[],edges=[];
+  const ctx=ffCtx();
+  const inPl=w=>Math.abs((w.x-fr.origin.x)*fr.n.x+(w.y-fr.origin.y)*fr.n.y+(w.z-fr.origin.z)*fr.n.z)<1.5;
+  const scan=m=>{
+    if(!m||!Array.isArray(m.pts)||m.pts.length<3) return;
+    try{
+      const S=massSolid(m,ctx);
+      const th=(m.angle||0)*Math.PI/180,c=Math.cos(th),sn=Math.sin(th),el=Number(m.elev_mm)||0;
+      const A=S.verts.map(v=>({x:m.x+v.x*c-v.y*sn,y:m.y+v.x*sn+v.y*c,z:v.z+el}));
+      const seen=new Set();
+      S.faces.forEach(f=>{ for(let i=0;i<f.vs.length;i++){
+        const a=f.vs[i],b=f.vs[(i+1)%f.vs.length];
+        const k2=Math.min(a,b)+'_'+Math.max(a,b);
+        if(seen.has(k2)) continue; seen.add(k2);
+        const ia=inPl(A[a]),ib=inPl(A[b]);
+        if(ia){ const q=planeUV(fr,A[a]); pts.push({u:q.u,v:q.v}); }
+        if(ib){ const q=planeUV(fr,A[b]); pts.push({u:q.u,v:q.v}); }
+        if(ia&&ib){ const qa=planeUV(fr,A[a]),qb=planeUV(fr,A[b]); edges.push({u1:qa.u,v1:qa.v,u2:qb.u,v2:qb.v}); }
+      }});
+    }catch(_){ }
+  };
+  (FF&&FF.free.masses||[]).forEach(scan);
+  ((ST.doc&&ST.doc.masses)||[]).forEach(scan);           // 밑그림 매스 모서리에도 붙는다
+  const bag=FF&&Array.isArray(FF.free.planes)&&FF.free.planes.find(q=>planeSame(q,fr.origin,fr.n));
+  if(bag){
+    bag.sketchPts.forEach(p=>pts.push({u:p.x,v:p.y}));
+    bag.sketchEdges.forEach(e2=>{
+      const a=skPtById(e2.a,bag),b=skPtById(e2.b,bag);
+      if(a&&b) edges.push({u1:a.x,v1:a.y,u2:b.x,v2:b.y});
+    });
+  }
+  const out={key,pts,edges};
+  if(FF) FF._ps=out;
+  return out;
+}
+// 평면 스냅 마커 — 3D 자리에 직접 (땅 그리기의 showSnap 과 같은 색 규약)
+function _ff3Mark(kind,w){
+  if(!kind||kind==='grid'){ hideSnap(); return; }
+  if(!snapMk){
+    snapMk=new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false}));
+    snapMk.scale.setScalar(0.045); snapMk.renderOrder=1000; scene.add(snapMk);
+  }
+  snapMk.material.color.setHex(SNAP_COL[kind]||0xffffff);
+  snapMk.position.set(w.x*MM,w.z*MM,w.y*MM);
+  snapMk.visible=true; invalidate();
+}
+// 레이 ∩ 평면 → (u,v). 끝점 > 중간점 > 선 위 > 10mm 격자 — 반경은 화면 14px (줌 무관)
 function _ff3UV(e,fr){
   rayFromEvent(e);                                       // ray 를 이 커서 방향으로
   const nW=new THREE.Vector3(fr.n.x,fr.n.z,fr.n.y);
@@ -1087,13 +1138,35 @@ function _ff3UV(e,fr){
   const pt=new THREE.Vector3();
   if(!ray.ray.intersectPlane(plane,pt)) return null;
   const uv=planeUV(fr,{x:pt.x/MM,y:pt.z/MM,z:pt.y/MM});
-  const bag=FF&&Array.isArray(FF.free.planes)&&FF.free.planes.find(q=>planeSame(q,fr.origin,fr.n));
-  if(bag){
-    let bd=Infinity,bp=null;
-    bag.sketchPts.forEach(q=>{const d=Math.hypot(q.x-uv.u,q.y-uv.v);if(d<bd){bd=d;bp=q;}});
-    if(bp&&bd<=150) return {u:bp.x,v:bp.y,snap:'pt'};
+  const R=Math.max(40,mmPerPx(pt)*14);                   // 14px — 땅 그리기와 같은 손맛
+  const L=_ff3SnapList(fr);
+  let best=null,bd=R;
+  L.pts.forEach(q=>{ const d=Math.hypot(q.u-uv.u,q.v-uv.v); if(d<bd){ bd=d; best={u:q.u,v:q.v,snap:'endpoint'}; } });
+  if(!best){
+    bd=R;
+    L.edges.forEach(ed=>{
+      const mu=(ed.u1+ed.u2)/2,mv=(ed.v1+ed.v2)/2;
+      const dm=Math.hypot(mu-uv.u,mv-uv.v);
+      if(dm<bd){ bd=dm; best={u:mu,v:mv,snap:'midpoint'}; }
+    });
   }
+  if(!best){
+    bd=R;
+    L.edges.forEach(ed=>{
+      const dx=ed.u2-ed.u1,dy=ed.v2-ed.v1,L2=dx*dx+dy*dy||1;
+      let t=((uv.u-ed.u1)*dx+(uv.v-ed.v1)*dy)/L2; t=Math.max(0,Math.min(1,t));
+      const fu=ed.u1+dx*t,fv=ed.v1+dy*t;
+      const d=Math.hypot(fu-uv.u,fv-uv.v);
+      if(d<bd){ bd=d; best={u:Math.round(fu),v:Math.round(fv),snap:'edge'}; }
+    });
+  }
+  if(best) return best;
   return {u:Math.round(uv.u/10)*10,v:Math.round(uv.v/10)*10};
+}
+// 잠긴 축이 있으면 그 축으로만 (u=평면의 가로 · v=평면의 세로/파랑)
+function _ff3Lock(op,uv){
+  if(!op||!op.axis||!uv) return uv;
+  return op.axis==='u'?{u:uv.u,v:op.a.v}:{u:op.a.u,v:uv.v,snap:uv.snap};
 }
 function _ff3Ghost(op){
   const fr=op.fr;
@@ -1114,6 +1187,8 @@ function _ff3Ghost(op){
     op.line.renderOrder=950; op.line.frustumCulled=false;
     scene.add(op.line);
   }
+  const vBlue=Math.abs(op.fr.n.z)<0.95;                  // 벽 평면이면 v=위(파랑)
+  op.line.material.color.setHex(op.axis==='v'?(vBlue?0x4C7DE2:0x2FA84F):op.axis==='u'?0xE24C4C:0xD4FF3D);
   op.line.geometry.dispose();
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(arr,3));
@@ -1134,8 +1209,9 @@ function ff3Click(e,fp,tool){
     return;
   }
   const op=ST.op;
-  const uv=_ff3UV(e,op.fr);
+  let uv=_ff3UV(e,op.fr);
   if(!uv) return;
+  uv=_ff3Lock(op,uv);
   op.cur=uv;
   const plane={origin:op.fr.origin,ex:op.fr.ex,ey:op.fr.ey,n:op.fr.n};
   if(op.type==='rect3'){
@@ -1154,14 +1230,37 @@ function ff3Click(e,fp,tool){
 function ff3Move(e){
   const op=ST.op;
   if(!op||(op.type!=='line3'&&op.type!=='rect3')) return;
-  const uv=_ff3UV(e,op.fr);
+  let uv=_ff3UV(e,op.fr);
   if(!uv) return;
+  uv=_ff3Lock(op,uv);
   op.cur=uv;
   _ff3Ghost(op);
-  vcbShow(op.type==='rect3'?'면 위 사각형':'면 위 선',
+  _ff3Mark(uv.snap,planePt(op.fr,uv.u,uv.v));            // 면 위에서도 스냅 마커
+  const vBlue=Math.abs(op.fr.n.z)<0.95;
+  const axName=op.axis==='v'?(vBlue?'파랑(위) 고정 · ':'세로 고정 · '):op.axis==='u'?'빨강(가로) 고정 · ':'';
+  const snName=uv.snap?SNAP_NAME[uv.snap]+' · ':'';
+  vcbShow(axName+snName+(op.type==='rect3'?'면 위 사각형':'면 위 선'),
     op.type==='rect3'
       ?Math.round(Math.abs(uv.u-op.a.u))+'×'+Math.round(Math.abs(uv.v-op.a.v))
       :Math.round(Math.hypot(uv.u-op.a.u,uv.v-op.a.v)),'mm');
+}
+// 숫자 입력 = 지금 방향(또는 잠긴 축)으로 정확한 길이 (스케치업 VCB)
+function ff3Commit(exact){
+  const op=ST.op;
+  if(!op||op.type!=='line3'){ cancelOp(); return; }
+  if(exact===null||exact===undefined||!(exact>0)){ cancelOp(); return; }
+  const a=op.a;
+  let du=(op.cur?op.cur.u:a.u)-a.u, dv=(op.cur?op.cur.v:a.v)-a.v;
+  if(op.axis==='u'){ dv=0; if(!du) du=1; }
+  if(op.axis==='v'){ du=0; if(!dv) dv=1; }
+  const L=Math.hypot(du,dv);
+  if(L<1e-6){ setStatus(statusLive,'방향을 먼저 — 커서를 움직이거나 축을 고정하세요'); return; }
+  const uv={u:Math.round(a.u+du/L*exact),v:Math.round(a.v+dv/L*exact)};
+  emitEdit({type:'edit',op:'sketchline',floorId:'freeform',
+    patch:{x1:a.u,y1:a.v,x2:uv.u,y2:uv.v,
+      plane:{origin:op.fr.origin,ex:op.fr.ex,ey:op.fr.ey,n:op.fr.n}}});
+  op.a=uv; op.cur=uv;
+  _ff3Ghost(op);
 }
 // ---------------------------------------------------------------------------
 // 프리폼 (2026-09-07 대표 결정)
@@ -2369,6 +2468,7 @@ function commitActive(exact){
   else if(op.type==='scale') commitScale(exact);
   else if(op.type==='pp') commitPP(exact);
   else if(op.type==='vz') commitVertZ(exact);
+  else if(op.type==='line3'||op.type==='rect3') ff3Commit(exact);
   else if(op.type==='line') commitLine(exact);
   else if(op.type==='circle') commitCircle(exact);
   else if(op.type==='arc') commitArc(exact);
@@ -2652,7 +2752,7 @@ function commitMove(exact){
     const g=op.g; _opDone();
     sendBatch(ops,'높이');
     select(g,{silent:true});
-    setStatus(statusLive,'⬆ 높이 '+op.elev+'mm (바닥에서) → 평면 데이터 반영');
+    setStatus(statusLive,'⬆ 높이 '+op.elev+'mm (바닥에서)'+(ST.ffOn?' (프리폼 — 평면 무관)':' → 평면 데이터 반영'));
     return;
   }
   if(exact!==null&&exact!==undefined){          // 입력 거리 — 지금 끌던 방향으로 정확히
@@ -2672,7 +2772,7 @@ function commitMove(exact){
   ST.lastMove={copy,dx:dxm,dy:dym,items:recs.map(r=>({obj:r.obj,ox:r.ox,oy:r.oy}))};
   const L=Math.hypot(dxm,dym)||1, ux=dxm/L, uy=dym/L;
   setLast(copy?'복사':'이동','mm',raw=>{ const v=parseLen(raw); if(v==null) return false; sendBatch(mkOps(ux*v,uy*v),copy?'복사':'이동'); return true; });
-  setStatus(statusLive,(copy?'복사':'이동')+(recs.length>1?' '+recs.length+'개':'')+' → 평면 반영 ('+dxm+', '+dym+')'+(copy?' · 숫자 x3 = 배열 복사':''));
+  setStatus(statusLive,(copy?'복사':'이동')+(recs.length>1?' '+recs.length+'개':'')+(ST.ffOn?' (프리폼)':' → 평면 반영')+' ('+dxm+', '+dym+')'+(copy?' · 숫자 x3 = 배열 복사':''));
 }
 // --- 문·창 슬라이드 — 벽을 따라 이동 (스케치업: 구성요소가 붙은 면 위에서만 이동) ---
 function beginSlide(g,obj){
@@ -3590,6 +3690,33 @@ window.addEventListener('keydown',e=>{
       if(k==='x'){ setXray(!ST.xray); return; }
     }
     const op=ST.op, lockable=op&&(op.type==='move'||op.type==='line'||op.type==='rect');
+    // 프리폼: 면 위 선(line3)의 축 고정 — →=가로(u·빨강) · ↑=세로(v·파랑) · ←/↓=해제
+    if(ST.ffOn&&op&&op.type==='line3'){
+      if(k==='arrowup'){ op.axis=op.axis==='v'?null:'v'; _ff3Ghost(op);
+        setStatus(statusLive,op.axis?'축 고정: '+(Math.abs(op.fr.n.z)<0.95?'파랑(위)':'세로')+' — 숫자=정확한 길이':'축 고정 해제');
+        e.preventDefault(); return; }
+      if(k==='arrowright'){ op.axis=op.axis==='u'?null:'u'; _ff3Ghost(op);
+        setStatus(statusLive,op.axis?'축 고정: 가로(빨강) — 숫자=정확한 길이':'축 고정 해제');
+        e.preventDefault(); return; }
+      if(k==='arrowleft'||k==='arrowdown'){ op.axis=null; _ff3Ghost(op);
+        setStatus(statusLive,'축 고정 해제'); e.preventDefault(); return; }
+    }
+    // 프리폼: 땅에서 선을 긋다 ↑ = 파랑 축 — 그 점을 지나는, 카메라를 바라보는 세로 종이로 올라탄다.
+    //  세로 선 하나만으로는 평면이 정해지지 않아서, 스케치업이 그러듯 보는 방향이 종이를 정한다.
+    if(k==='arrowup'&&ST.ffOn&&op&&op.type==='line'&&!op.rect){
+      const A={x:op.a.x,y:op.a.y,z:Math.round((op.z0||0)/MM)};
+      const cd=new THREE.Vector3(); camera.getWorldDirection(cd);
+      let nx=-cd.x,ny=-cd.z; const nl=Math.hypot(nx,ny)||1;
+      const fr=_ffFrameFor(A,{x:nx/nl,y:ny/nl,z:0});
+      cancelOp();
+      const a0=planeUV(fr,A);
+      ST.op={type:'line3',fr,a:{u:Math.round(a0.u),v:Math.round(a0.v)},cur:{u:Math.round(a0.u),v:Math.round(a0.v)},line:null,axis:'v'};
+      opOrbit(true);
+      _ff3Ghost(ST.op);
+      setStatus(statusLive,'🧊 파랑 축 — 위로 그립니다 (숫자=길이 · ↑=해제 · 이어 그리면 이 종이 위 · 닫히면 면 → P 로 입체)');
+      vcbShow('파랑(위) · 면 위 선',0,'mm');
+      e.preventDefault(); return;
+    }
     if(k==='arrowright'&&lockable){ ST.axisLock=(ST.axisLock==='x')?null:'x'; setStatus(statusLive,'축 고정: '+(ST.axisLock==='x'?'가로(X·빨강)':'해제')); e.preventDefault(); return; }
     if(k==='arrowleft'&&lockable){ ST.axisLock=(ST.axisLock==='y')?null:'y'; setStatus(statusLive,'축 고정: '+(ST.axisLock==='y'?'세로(Y·초록)':'해제')); e.preventDefault(); return; }
     if(k==='arrowup'&&op&&op.type==='move'){ ST.axisLock=(ST.axisLock==='z')?null:'z'; if(ST.axisLock==='z')ST.op.zRefY=null; setStatus(statusLive,'축 고정: '+(ST.axisLock==='z'?'높이(Z·파랑) — 위아래로 끌어 띄우기, 숫자=정확 높이':'해제')); e.preventDefault(); return; }
