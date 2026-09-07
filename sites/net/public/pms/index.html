@@ -92,56 +92,90 @@ table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-i
   table.gantt td{height:26px}
 }
 
-/* ── 대시보드 (2026-09-07 대표 지시: 캘린더 + 우측 세로 프로젝트) ── */
-.dash{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;margin-top:16px;align-items:start}
-.dash-card{background:#fff;border:1px solid #e3e0d8;border-radius:12px;padding:14px 16px}
-.cal-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.cal-title{font-size:17px;font-weight:700;min-width:118px}
-.cal-nav{border:1px solid #ddd;background:#fff;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:13px}
-.cal-nav:hover{background:#f5f3ee}
-.cal-legend{display:flex;gap:10px;font-size:10px;color:#888;margin-left:auto;flex-wrap:wrap}
-.cal-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px;vertical-align:-1px}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#e8e5dd;border:1px solid #e8e5dd;border-radius:8px;overflow:hidden}
-.cal-dow{background:#faf9f6;text-align:center;font-size:11px;font-weight:700;padding:6px 0;color:#666}
-.cal-dow.sun{color:#e24b4a}.cal-dow.sat{color:#2563eb}
-.cal-cell{background:#fff;min-height:96px;padding:5px 6px;font-size:11px;cursor:pointer;position:relative;transition:.12s}
-.cal-cell:hover{background:#fcfbf7}
-.cal-cell.out{background:#faf9f7;color:#bbb}
-.cal-cell.today{box-shadow:inset 0 0 0 2px #c9a84c}
-.cal-cell.sel{background:#fdf8ec}
-.cal-d{font-weight:700;font-size:12px}
-.cal-cell.sun .cal-d,.cal-cell.hol .cal-d{color:#e24b4a}
-.cal-cell.sat .cal-d{color:#2563eb}
-.cal-hol{font-size:9.5px;color:#e24b4a;margin-top:1px;line-height:1.25;word-break:keep-all}
-.cal-hol.mem{color:#9a8f7a}
-.cal-ev{margin-top:3px;display:flex;flex-direction:column;gap:2px}
-.cal-ev span{display:block;font-size:9.5px;line-height:1.35;padding:1px 4px;border-radius:3px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cal-more{font-size:9px;color:#999}
-.dash-side{position:sticky;top:10px}
-.side-head{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
-.side-head h3{font-size:14px}
-.side-head small{color:#999;font-size:11px}
+/* ── 대시보드 (2026-09-07 대표 지시: 캘린더 + 우측 세로 프로젝트) ──
+   2026-09-07 2차: 달력이 잘리지 않도록 행을 내용에 맞춰 늘리고(고정 높이 제거),
+   마지막 주를 통째로 그린다. 색은 절제하고 대비를 키워 한눈에 분간되게 한다. */
+.dash{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;margin-top:16px;align-items:start}
+.dash-card{background:#fff;border:1px solid #ece8de;border-radius:14px;padding:18px 20px;
+  box-shadow:0 1px 2px rgba(30,25,15,.03),0 10px 28px rgba(30,25,15,.05)}
+
+/* 달력 머리 */
+.cal-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.cal-title{font-size:20px;font-weight:700;letter-spacing:-.3px;min-width:132px;color:#2b2620}
+.cal-title small{font-size:12px;font-weight:500;color:#a49a86;margin-left:6px}
+.cal-nav{border:1px solid #e6e1d6;background:#fff;border-radius:999px;width:30px;height:30px;cursor:pointer;
+  font-size:12px;color:#6b6355;line-height:1;transition:.15s}
+.cal-nav:hover{background:#faf7ef;border-color:#d8cfb8;color:#2b2620}
+.cal-sum{font-size:11.5px;color:#8b8271;margin:2px 0 12px}
+.cal-legend{display:flex;gap:12px;font-size:11px;color:#7a7263;flex-wrap:wrap;margin:0 0 12px}
+.cal-legend .lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.cal-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;flex:0 0 auto}
+.cal-legend i.hol{background:#e05a55}.cal-legend i.mem{background:#c0b7a4}
+.cal-legend i.today{background:#fff;border:2px solid #c9a84c;border-radius:999px}
+
+/* 달력 격자 — 행 높이를 내용에 맞춰 늘려 어떤 칸도 잘리지 않게 한다 */
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));
+  grid-auto-rows:minmax(104px,auto);border:1px solid #edeae1;border-radius:12px;overflow:hidden;background:#edeae1;gap:1px}
+.cal-dow{background:#fbfaf7;text-align:center;font-size:11px;font-weight:600;padding:9px 0;color:#8b8271;letter-spacing:.5px}
+.cal-dow.sun{color:#d4534e}.cal-dow.sat{color:#3f72c9}
+.cal-cell{background:#fff;padding:7px 8px 8px;font-size:11px;cursor:pointer;display:flex;flex-direction:column;gap:3px;
+  transition:background .12s,box-shadow .12s;min-width:0}
+.cal-cell:hover{background:#fdfbf6}
+.cal-cell.we{background:#fcfbf9}
+.cal-cell.out{background:#faf9f7}
+.cal-cell.out .cal-d{color:#c9c3b6}
+.cal-cell.sel{background:#fdf7e9;box-shadow:inset 0 0 0 2px #c9a84c}
+.cal-top{display:flex;align-items:flex-start;gap:5px;min-width:0}
+.cal-d{font-weight:700;font-size:13px;color:#3a342b;line-height:20px;min-width:20px;text-align:center;flex:0 0 auto}
+.cal-cell.sun .cal-d,.cal-cell.hol .cal-d{color:#d4534e}
+.cal-cell.sat .cal-d{color:#3f72c9}
+.cal-cell.today .cal-d{background:#c9a84c;color:#fff;border-radius:999px;box-shadow:0 1px 4px rgba(201,168,76,.5)}
+.cal-hol{font-size:10px;line-height:1.35;color:#d4534e;font-weight:600;word-break:keep-all;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;text-align:right}
+.cal-hol.mem{color:#a89e8a;font-weight:500}
+.cal-ev{display:flex;flex-direction:column;gap:2px;min-width:0}
+/* 공정 칩 — 색은 왼쪽 막대로만 쓰고 글자는 진하게 (읽기 쉬움 우선) */
+.cal-ev span{display:block;font-size:10px;line-height:1.5;padding:1px 5px 1px 7px;border-radius:4px;
+  background:#f6f4ef;color:#4a4437;border-left:3px solid #c9a84c;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-ev span.done{opacity:.55;text-decoration:line-through}
+.cal-more{font-size:9.5px;color:#a49a86;padding-left:2px}
+
+/* 선택한 날 상세 */
+.day-panel{margin-top:14px;border-top:1px solid #f0ede6;padding-top:12px;font-size:12px}
+.day-panel h4{font-size:14px;margin-bottom:8px;color:#2b2620}
+.day-row{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid #f5f2ec}
+.day-row:last-child{border-bottom:0}
+.day-row i{width:4px;height:26px;border-radius:2px;flex:0 0 auto}
+.day-row .nm{font-weight:600;color:#3a342b}
+.day-row .pj{color:#9a917f;font-size:10.5px}
+
+/* 우측 현장 목록 */
+.dash-side{position:sticky;top:12px}
+.side-head{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.side-head h3{font-size:15px;color:#2b2620}
+.side-head small{color:#a49a86;font-size:11.5px}
 .proj-list{display:flex;flex-direction:column;gap:10px}
-.proj-list .proj-card{padding:12px 14px}
-.proj-list .proj-card h3{font-size:13px}
-.proj-bar{height:5px;border-radius:3px;background:#eee;margin-top:8px;overflow:hidden}
-.proj-bar i{display:block;height:100%;background:linear-gradient(90deg,#c9a84c,#e0c477)}
-.proj-when{font-size:10px;color:#888;margin-top:5px}
-.day-panel{margin-top:12px;border-top:1px solid #eee;padding-top:10px;font-size:12px}
-.day-panel h4{font-size:13px;margin-bottom:6px}
-.day-row{display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px dashed #eee}
-.day-row i{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
-.day-row .pj{color:#999;font-size:10.5px}
+.proj-list .proj-card{padding:13px 15px;border-radius:12px;border-color:#ece8de}
+.proj-list .proj-card h3{font-size:13.5px}
+.proj-list .proj-card::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--pc,#c9a84c)}
+.proj-bar{height:5px;border-radius:3px;background:#f0ede6;margin-top:9px;overflow:hidden}
+.proj-bar i{display:block;height:100%;border-radius:3px}
+.proj-when{font-size:10.5px;color:#8b8271;margin-top:7px}
+
 @media (max-width:900px){
-  .dash{grid-template-columns:1fr}
+  .dash{grid-template-columns:1fr;gap:14px}
   .dash-side{position:static}
-  .cal-cell{min-height:74px}
-  .cal-ev span{font-size:9px}
+  .dash-card{padding:14px}
+  .cal-grid{grid-auto-rows:minmax(88px,auto)}
 }
 @media (max-width:520px){
-  .cal-cell{min-height:58px;padding:3px}
-  .cal-hol{display:none}
-  .cal-ev span{font-size:0;padding:0;height:4px;border-radius:2px}
+  .cal-grid{grid-auto-rows:minmax(66px,auto)}
+  .cal-cell{padding:5px 4px}
+  .cal-d{font-size:12px;line-height:18px;min-width:18px}
+  .cal-hol{font-size:9px}
+  .cal-ev span{font-size:9px;padding:1px 3px 1px 5px;border-left-width:2px}
+  .cal-title{font-size:17px;min-width:100px}
 }
 /* 편집 잠김 상태 — 편집 도구를 흐리게 하고 드래그를 막는다 (열람·확대·인쇄는 그대로) */
 body.view-only .gbar{cursor:default}
@@ -373,14 +407,10 @@ table.mod tr.cat-r td{background:#333;color:#fff;font-weight:700;font-size:11px;
         <button class="cal-nav" onclick="calMove(-1)" title="이전 달">◀</button>
         <div class="cal-title" id="calTitle">—</div>
         <button class="cal-nav" onclick="calMove(1)" title="다음 달">▶</button>
-        <button class="btn" style="font-size:11px;padding:4px 10px" onclick="calToday()">오늘</button>
-        <div class="cal-legend">
-          <span><i style="background:#e24b4a"></i>공휴일</span>
-          <span><i style="background:#9a8f7a"></i>기념일</span>
-          <span><i style="background:#c9a84c"></i>오늘</span>
-          <span id="calSrc"></span>
-        </div>
+        <button class="btn" style="font-size:11px;padding:5px 12px;border-radius:999px" onclick="calToday()">오늘</button>
       </div>
+      <div class="cal-sum" id="calSum"></div>
+      <div class="cal-legend" id="calLegend"></div>
       <div class="cal-grid" id="calGrid"></div>
       <div class="day-panel" id="calDay"></div>
     </section>
@@ -1115,7 +1145,7 @@ function refreshTmplDropdown(){
 /* ── 대시보드 캘린더 (2026-09-07 대표 지시) ─────────────────────────────
    좌측: 실제 달력 — 한국 공휴일·기념일 + 그날 진행 중인 공정을 함께 표시
    공휴일 원천: /api/calendar/holidays (구글 공개 한국 공휴일 ICS 를 서버가 받아 캐시) */
-var CAL={y:new Date().getFullYear(),m:new Date().getMonth(),sel:null,hol:{},loaded:false,loading:false};
+var CAL={y:new Date().getFullYear(),m:new Date().getMonth(),sel:null,hol:{},loaded:false,loading:false,count:0,failed:false};
 var PROJ_COLORS=["#c9a84c","#5b8def","#2fa87a","#e2734b","#8b6ad6","#d95f8a","#3aa3b8","#7a8b3a"];
 function calKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function calToday(){var t=new Date();CAL.y=t.getFullYear();CAL.m=t.getMonth();CAL.sel=calKey(t);renderCal()}
@@ -1134,11 +1164,10 @@ function calLoadHolidays(){
       (j.holidays||[]).forEach(function(h){CAL.hol[h.day]={n:h.name,k:h.kind,off:h.is_off}});
       [CAL.y-1,CAL.y,CAL.y+1].forEach(function(y){CAL.hol["_y"+y]=1});
       CAL.loaded=true;
-      var el=document.getElementById("calSrc");
-      if(el)el.textContent="한국 공휴일·기념일 "+(j.count||0)+"일 반영";
+      CAL.count=j.count||0;
       renderCal();
     })
-    .catch(function(){var el=document.getElementById("calSrc");if(el)el.textContent="공휴일을 불러오지 못했습니다"})
+    .catch(function(){CAL.failed=true;renderCal()})
     .then(function(){CAL.loading=false});
 }
 /* 그 달에 걸치는 모든 프로젝트의 공정 → 날짜별 목록 (남의 프로젝트는 건드리지 않는다) */
@@ -1164,32 +1193,53 @@ function calEvents(y,m){
 function renderCal(){
   var grid=document.getElementById("calGrid");if(!grid)return;
   var title=document.getElementById("calTitle");
-  if(title)title.textContent=CAL.y+"년 "+(CAL.m+1)+"월";
+  if(title)title.innerHTML=CAL.y+"년 "+(CAL.m+1)+"월";
   var first=new Date(CAL.y,CAL.m,1),start=new Date(first.getTime()-first.getDay()*864e5);
+  var dim=new Date(CAL.y,CAL.m+1,0).getDate();
+  var weeks=Math.ceil((first.getDay()+dim)/7);           // 그 달에 실제로 필요한 주 수 (4~6) — 빈 줄 없이 꽉 채운다
   var todayK=calKey(new Date()),ev=calEvents(CAL.y,CAL.m);
-  var h="";
+  var h="",offDays=0,evCount=0;
   ["일","월","화","수","목","금","토"].forEach(function(w,i){
     h+='<div class="cal-dow'+(i===0?" sun":(i===6?" sat":""))+'">'+w+'</div>';
   });
-  for(var i=0;i<42;i++){
+  for(var i=0;i<weeks*7;i++){
     var d=new Date(start.getTime()+i*864e5),key=calKey(d),out=d.getMonth()!==CAL.m;
-    var hol=CAL.hol[key],dw=d.getDay(),list=ev[key]||[];
-    if(i>=35&&out)continue;                       // 마지막 줄이 통째로 다음 달이면 생략
-    var cls="cal-cell"+(out?" out":"")+(dw===0?" sun":(dw===6?" sat":""))+
+    var hol=CAL.hol[key],dw=d.getDay(),list=ev[key]||[],we=(dw===0||dw===6);
+    if(!out){ if(hol&&hol.off)offDays++; evCount+=list.length; }
+    var cls="cal-cell"+(out?" out":"")+(we?" we":"")+(dw===0?" sun":(dw===6?" sat":""))+
             (hol&&hol.off?" hol":"")+(key===todayK?" today":"")+(key===CAL.sel?" sel":"");
     h+='<div class="'+cls+'" onclick="calPick(&quot;'+key+'&quot;)">';
-    h+='<div class="cal-d">'+d.getDate()+'</div>';
-    if(hol)h+='<div class="cal-hol'+(hol.off?"":" mem")+'">'+esc(hol.n)+'</div>';
+    h+='<div class="cal-top"><span class="cal-d">'+d.getDate()+'</span>';
+    if(hol)h+='<span class="cal-hol'+(hol.off?"":" mem")+'" title="'+esc(hol.n)+'">'+esc(hol.n)+'</span>';
+    h+='</div>';
     if(list.length){
       h+='<div class="cal-ev">';
-      list.slice(0,3).forEach(function(e){h+='<span style="background:'+e.c+'" title="'+esc(e.pj+" · "+e.n)+'">'+esc(e.n)+'</span>'});
-      if(list.length>3)h+='<div class="cal-more">+'+(list.length-3)+'</div>';
+      list.slice(0,3).forEach(function(e){
+        h+='<span class="'+(e.st==="done"?"done":"")+'" style="border-left-color:'+e.c+'" title="'+esc(e.pj+" · "+e.n)+'">'+esc(e.n)+'</span>';
+      });
+      if(list.length>3)h+='<div class="cal-more">외 '+(list.length-3)+'건</div>';
       h+='</div>';
     }
     h+='</div>';
   }
   grid.innerHTML=h;
+
+  var sum=document.getElementById("calSum");
+  if(sum)sum.textContent="이번 달 공정 "+evCount+"건 · 휴무 "+offDays+"일"+
+    (CAL.loaded?" · 한국 공휴일·기념일 "+(CAL.count||0)+"일 반영":(CAL.failed?" · 공휴일을 불러오지 못했습니다":" · 공휴일 불러오는 중…"));
+  renderCalLegend();
   renderCalDay(ev);
+}
+/* 범례 — 어느 색이 어느 현장인지 바로 알 수 있게 (분간이 가장 중요) */
+function renderCalLegend(){
+  var el=document.getElementById("calLegend");if(!el)return;
+  var h="";
+  projects.forEach(function(p,i){
+    h+='<span class="lg"><i style="background:'+PROJ_COLORS[i%PROJ_COLORS.length]+'"></i>'+esc(p.name)+'</span>';
+  });
+  h+='<span class="lg"><i class="hol"></i>공휴일·휴무</span><span class="lg"><i class="mem"></i>기념일</span>'+
+     '<span class="lg"><i class="today"></i>오늘</span>';
+  el.innerHTML=h;
 }
 function calPick(key){CAL.sel=key;renderCal()}
 function renderCalDay(ev){
@@ -1201,9 +1251,10 @@ function renderCalDay(ev){
   h+='</h4>';
   if(!list.length)h+='<div style="color:#999;font-size:11.5px">진행 중인 공정이 없습니다.</div>';
   list.forEach(function(e){
-    h+='<div class="day-row"><i style="background:'+e.c+'"></i><div><div>'+esc(e.n)+'</div>'+
+    h+='<div class="day-row"><i style="background:'+e.c+'"></i>'+
+       '<div style="min-width:0"><div class="nm">'+esc(e.n)+(e.st==="done"?' <span style="color:#2fa87a;font-size:10px">완료</span>':'')+'</div>'+
        '<div class="pj">'+esc(e.pj)+'</div></div>'+
-       '<button class="btn" style="margin-left:auto;font-size:10px;padding:3px 8px" onclick="openProject('+e.pi+')">열기</button></div>';
+       '<button class="btn" style="margin-left:auto;font-size:10px;padding:4px 10px;border-radius:999px" onclick="openProject('+e.pi+')">열기</button></div>';
   });
   box.innerHTML=h;
 }
@@ -1214,7 +1265,7 @@ function renderProjects(){
   projects.forEach(function(p,i){
     var ti=TMPL_INFO[p.tmpl]||TMPL_INFO.blank;
     var phaseCount=p.phases?p.phases.length:0;
-    h+='<div class="proj-card" onclick="openProject('+i+')">';
+    h+='<div class="proj-card" style="--pc:'+PROJ_COLORS[i%PROJ_COLORS.length]+'" onclick="openProject('+i+')">';
     h+='<span class="tmpl-tag" style="background:'+ti.b+';color:'+ti.c+'">'+ti.n+'</span>';
     h+='<h3>'+esc(p.name)+'</h3>';
     h+='<div class="addr">'+esc(p.addr||'')+'</div>';
@@ -1231,7 +1282,7 @@ function renderProjects(){
     var e=new Date(r.sd.getTime()+r.td*864e5);
     h+='<div class="proj-when">'+p.startDate+' → '+calKey(e)+' · '+r.td+'일';
     h+=' · 진행 '+pct+'%</div>';
-    h+='<div class="proj-bar"><i style="width:'+pct+'%;background:'+PROJ_COLORS[i%PROJ_COLORS.length]+'"></i></div>';
+    h+='<div class="proj-bar"><i style="width:'+Math.max(pct,2)+'%;background:'+PROJ_COLORS[i%PROJ_COLORS.length]+'"></i></div>';
     h+='<span class="del-x" onclick="event.stopPropagation();deleteProject('+i+')">✕</span>';
     h+='</div>';
   });
