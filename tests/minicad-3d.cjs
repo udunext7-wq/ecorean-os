@@ -544,6 +544,40 @@ ck(/setNight\(on\)[\s\S]{0,400}applySkyColors\(\)/.test(v3Src) || /applyMood[\s\
   ck(Math.min(...m2.solidVerts.map(v => v.z)) === 0, 'P 땅 밑 매스는 바닥으로 들어 올린다');
 }
 
+// ---- 2026-09-07 프리폼 ④ — Follow Me (몰딩·걸레받이: 단면을 둘레 따라, 마이터) ------
+//  손계산: 4×3m 둘레(14m)에 10×80 사각 단면, 직각 마이터 → 바깥 띠
+//  4020×3020-4000×3000 = 0.1404㎡ × 0.08m = 0.011232㎥.
+{
+  const ctx = { ch: 2400, fh: 2800, fl: 0 };
+  const rect4 = [{x:0,y:0},{x:4000,y:0},{x:4000,y:3000},{x:0,y:3000}];
+  // [F1] 닫힌 둘레 — 부피·높이 손계산
+  const free = { masses: [] };
+  const sw = SK.sweepProfile(rect4, true, 0, SK.moldingProfile('rect', 10, 80));
+  const m = SK.massFromSweep('걸레받이', sw, free);
+  ck(m.solidVerts.length === 16 && m.solidFaces.length === 16, 'F 닫힌 둘레: 꼭짓점 16 · 면 16');
+  ck(Math.abs(SK.massVolume(m, ctx) - 0.011) < 0.0015, 'F 부피 0.011㎥ (마이터 손계산): ' + SK.massVolume(m, ctx));
+  ck(Math.min(...m.solidVerts.map(v => v.z)) === 0 && Math.max(...m.solidVerts.map(v => v.z)) === 80,
+    'F 바닥에서 80mm');
+  // [F2] 열린 직선 — 정확히 단면×길이
+  const sw2 = SK.sweepProfile([{x:0,y:0},{x:2000,y:0}], false, 900, SK.moldingProfile('rect', 10, 80));
+  const m2 = SK.massFromSweep('띠', sw2, free);
+  ck(Math.abs(SK.massVolume(m2, ctx) - 0.002) < 0.0006, 'F 열린 2m: 0.0016㎥');
+  ck(Math.min(...m2.solidVerts.map(v => v.z)) === 900, 'F 경로 높이 900 을 지킨다');
+  // [F3] 크라운 — 위 둘레에서 아래로 매달린다
+  const sw3 = SK.sweepProfile(rect4, true, 2400, SK.moldingProfile('crown', 60, 60));
+  const m3 = SK.massFromSweep('크라운', sw3, free);
+  ck(Math.max(...m3.solidVerts.map(v => v.z)) === 2400 && Math.min(...m3.solidVerts.map(v => v.z)) === 2340,
+    'F 크라운 2340~2400');
+  // [F4] 오목 모서리(ㄱ자) 둘레도 산다 — 마이터가 안으로 꺾인다
+  const L = [{x:0,y:0},{x:3000,y:0},{x:3000,y:1500},{x:1500,y:1500},{x:1500,y:3000},{x:0,y:3000}];
+  const m4 = SK.massFromSweep('ㄱ', SK.sweepProfile(L, true, 0, SK.moldingProfile('rect', 10, 80)), free);
+  ck(SK.massVolume(m4, ctx) > 0.005 && SK.massVolume(m4, ctx) < 0.02, 'F ㄱ자 둘레 생존: ' + SK.massVolume(m4, ctx));
+  // [F5] 바깥쪽 판정은 감김에 기대지 않는다 — 반대 감김도 같은 답
+  const rev = rect4.slice().reverse();
+  const m5 = SK.massFromSweep('rev', SK.sweepProfile(rev, true, 0, SK.moldingProfile('rect', 10, 80)), free);
+  ck(Math.abs(SK.massVolume(m5, ctx) - SK.massVolume(m, ctx)) < 1e-9, 'F 감김을 뒤집어도 같은 몰딩');
+}
+
 // ---- 2026-09-07 프리폼 ③ — 파내기 (벽감·관통, CSG 없이 cuts[] 기록) -----------------
 //  손계산 기준: 4×3m·h2.4 몸통(28.8㎥), 남벽에 1600×1000 벽감 250 → 28.4㎥,
 //  600×600 을 5000 밀면 벽 두께 3000 에서 관통 → 추가로 -1.08㎥.
@@ -629,6 +663,11 @@ ck(/t==='face3h'/.test(v3Src),'프리폼③: 구멍 면 prim 이 그려진다');
 ck(/function massCutPrims/.test(b3Src)&&/holed\.has\(fi\)/.test(b3Src),
   '프리폼③: 구멍 난 면은 fan 에서 빠진다');
 ck(/파내기 — 벽감/.test(v3Src),'프리폼③: P 음수 끌기가 파내기다');
+// 프리폼 ④ — Follow Me 계약
+ck(/case 'followme':/.test(v3Src)&&/sweepProfile\(path,closed,base,prof\)/.test(v3Src),
+  '프리폼④: followme op 이 로컬 sweep 을 부른다');
+ck(/data-a="fmb"/.test(v3Src)&&/data-a="fmt"/.test(v3Src),'프리폼④: 패널에 걸레받이·천장 몰딩 버튼');
+ck(/massIsPrism\(host\)/.test(v3Src),'프리폼④: 빗천장 위 둘레는 거부한다');
 
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

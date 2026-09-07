@@ -1388,6 +1388,31 @@ function ffApply(m){
       label=res.through?('관통 — 벽을 뚫었습니다 ('+res.cut.d+'mm)'):('벽감 '+d+'mm');
       break;
     }
+    case 'followme': {                                  // 프리폼 ④: 단면을 둘레 따라 (몰딩·걸레받이)
+      const prof=moldingProfile(p.profile&&p.profile.kind,p.profile&&p.profile.w,p.profile&&p.profile.h);
+      let path=null,closed=true,base=0,nm='몰딩';
+      if(p.massId){
+        const host=(bag.masses||[]).find(x=>x&&x.id===p.massId);
+        if(!host) return no('밑그림 매스에는 몰딩을 못 두릅니다 — 프리폼 매스만');
+        path=massAbsPoly(host);
+        const el=Math.round(Number(host.elev_mm)||0);
+        if(p.at==='top'){
+          if(!massIsPrism(host)) return no('위 둘레 몰딩은 윗면이 평평한 매스만 (빗천장은 아직)');
+          base=el+Math.round(zNum(host.h_mm,ctx)); nm='천장몰딩';
+        }else{ base=el; nm='걸레받이'; }
+      }else if(Array.isArray(p.pts)&&p.pts.length>=2){
+        path=p.pts.map(q=>({x:N(q.x),y:N(q.y)}));
+        closed=!!p.closed; base=N(p.z)||0; nm='몰딩';
+      }else return false;
+      const sw=sweepProfile(path,closed,base,prof);
+      if(!sw) return no('경로가 너무 짧습니다');
+      const mm=massFromSweep(nm+((bag.masses||[]).length+1),sw,bag);
+      if(!mm) return false;
+      madeId=mm.id; ok=true;
+      label=nm+' — 둘레 '+Math.round(path.reduce((a,q,i)=>{const b=path[(i+1)%path.length];
+        return a+((closed||i<path.length-1)?Math.hypot(b.x-q.x,b.y-q.y):0);},0))/1000*1000/1000+'m';
+      break;
+    }
     case 'massconvert': return no('프리폼에서는 매스 그대로 씁니다 — 공간·벽 전환은 연동 뷰(평면)의 일');
     case 'ceilmass': return no('천장 지정은 평면(견적)의 일 — 연동 뷰에서');
     case 'add': return no('프리폼 1단계는 스케치·매스입니다 — 배치물은 다음 단계');
@@ -3195,6 +3220,13 @@ function renderProps(obj,opts){
            <div class="p-btns"><button class="btn" data-a="ceiloff">평천장으로 되돌리기</button></div>`
         : `<div class="p-btns"><button class="btn" data-a="ceilon" title="이 매스 아래 방의 천장으로 삼습니다 — 천장 ㎡ 가 경사 실면적이 되어 견적에 반영됩니다">▣ 아래 방의 천장으로</button></div>`;
     }
+    if(ST.ffOn){                                        // 프리폼 ④: Follow Me — 몰딩·걸레받이
+      html+=`<div class="p-row" style="border-top:1px solid rgba(255,255,255,0.08);margin-top:6px;padding-top:8px"><label>몰딩</label>
+        <span style="font-size:11px">단면 <input type="number" data-f="_fmw" value="${ST.fmW||10}" min="3" step="1" style="width:44px"> ×
+        <input type="number" data-f="_fmh" value="${ST.fmH||80}" min="3" step="5" style="width:48px"> mm</span></div>`;
+      html+=`<div class="p-btns"><button class="btn" data-a="fmb" title="바닥 둘레를 따라 걸레받이를 두릅니다 (모서리는 마이터)">⌐ 걸레받이 (바닥 둘레)</button>
+        <button class="btn" data-a="fmt" title="위 둘레를 따라 천장 몰딩(크라운 단면)을 두릅니다">⌐ 천장 몰딩 (위 둘레)</button></div>`;
+    }
     html+=ST.ffOn
       ?`<div class="p-btns"><button class="btn danger" data-a="del">🗑 삭제</button></div>`
       :`<div class="p-btns"><button class="btn" data-a="tosp">▣ 공간으로</button><button class="btn" data-a="towl">▬ 벽으로</button><button class="btn danger" data-a="del">🗑 삭제</button></div>`;
@@ -3262,6 +3294,14 @@ function renderProps(obj,opts){
       else if(a==='del') deleteSelected3D();
       else if(a==='lock') lockSelected(true);
       else if(a==='copy') copySel();
+      else if(a==='fmb'||a==='fmt'){                      // 프리폼 ④: Follow Me
+        const wI=props.querySelector('[data-f="_fmw"]'),hI=props.querySelector('[data-f="_fmh"]');
+        const w=wI?parseInt(wI.value)||10:10, h=hI?parseInt(hI.value)||80:80;
+        ST.fmW=w; ST.fmH=h;                               // 다음에도 같은 단면으로
+        emitEdit({type:'edit',op:'followme',floorId:'freeform',
+          patch:{massId:obj.id,at:a==='fmt'?'top':'bottom',
+            profile:{kind:a==='fmt'?'crown':'rect',w,h}}});
+      }
       else if(a==='ceilon') ceilMass3D(obj,false);        // 2026-09-07 Z축 4층
       else if(a==='ceiloff') ceilMass3D(obj,true);
       else if(a==='tosp') massConvert3D(obj,'space');

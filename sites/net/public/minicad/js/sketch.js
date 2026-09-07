@@ -1197,11 +1197,101 @@ function massCutsVolume(m){
   return m.cuts.reduce((a,c)=>a+Math.abs(skPolyArea(c.uv))*c.d,0)/1e9;
 }
 
+// ---------------------------------------------------------------------------
+// Follow Me (2026-09-07 프리폼 ④ — 몰딩·걸레받이)
+//  단면(u=바깥, v=위) 을 경로를 따라 훑는다. 모서리는 마이터(각의 이등분선에
+//  단면을 세우고 1/cos(θ/2) 만큼 늘린다) — 목공이 몰딩을 45°로 켜서 잇는 그 방식.
+//  결과는 자유 다면체 매스: 이동·삭제·undo 가 다른 매스와 똑같이 돈다.
+//  훑은 사각들이 마이터 때문에 살짝 뒤틀려도 괜찮다 — massSolid 의 접힘 정리가
+//  읽을 때 평평한 조각으로 나눈다 (그 함정을 이미 박공에서 겪고 만들어 둔 것).
+// ---------------------------------------------------------------------------
+// 경로의 '바깥쪽' — 감김에 기대지 않고 실제로 점을 넣어 본다 (감김 버그를 이미 겪었다)
+function _pathOutSign(path,closed){
+  if(!closed||path.length<3) return 1;
+  const a=path[0],b=path[1];
+  const dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy)||1;
+  const mx=(a.x+b.x)/2+(dy/L)*10, my=(a.y+b.y)/2-(dx/L)*10;   // 후보 법선 (dy,-dx) 쪽으로 조금
+  return skPtInPoly({x:mx,y:my},path)?-1:1;                    // 안이면 반대가 바깥
+}
+// path [{x,y}](절대 평면), closed, base(경로선의 z), profile [{u,v}] → {verts,faces}(절대)
+function sweepProfile(path,closed,base,profile){
+  if(!Array.isArray(path)||path.length<2||!Array.isArray(profile)||profile.length<3) return null;
+  const N=path.length,K=profile.length;
+  const sign=_pathOutSign(path,closed);
+  const dir=i=>{const a=path[i],b=path[(i+1)%N];const L=Math.hypot(b.x-a.x,b.y-a.y)||1;
+    return {x:(b.x-a.x)/L,y:(b.y-a.y)/L};};
+  const out=d=>({x:d.y*sign,y:-d.x*sign});                     // 진행방향의 바깥 법선
+  const verts=[],rings=[];
+  for(let i=0;i<N;i++){
+    let m,scale;
+    if(!closed&&i===0){ const n0=out(dir(0)); m=n0; scale=1; }
+    else if(!closed&&i===N-1){ const n0=out(dir(N-2)); m=n0; scale=1; }
+    else{
+      const n0=out(dir((i-1+N)%N)), n1=out(dir(i));
+      let mx=n0.x+n1.x,my=n0.y+n1.y;
+      const L=Math.hypot(mx,my);
+      if(L<1e-6){ m=out(dir(i)); scale=1; }                    // 되꺾임(180°) — 마이터 불능
+      else{
+        m={x:mx/L,y:my/L};
+        scale=Math.min(4,1/Math.max(0.25,m.x*n0.x+m.y*n0.y)); // 예각 스파이크는 4배에서 자른다
+      }
+    }
+    const ring=[];
+    for(let k=0;k<K;k++){
+      const p=profile[k];
+      ring.push(verts.length);
+      verts.push({x:path[i].x+m.x*p.u*scale,y:path[i].y+m.y*p.u*scale,z:base+p.v});
+    }
+    rings.push(ring);
+  }
+  const faces=[];
+  const segs=closed?N:N-1;
+  for(let i=0;i<segs;i++){
+    const A=rings[i],B=rings[(i+1)%N];
+    for(let k=0;k<K;k++){
+      const k2=(k+1)%K;
+      faces.push({vs:[A[k],A[k2],B[k2],B[k]]});
+    }
+  }
+  if(!closed){
+    faces.push({vs:rings[0].slice().reverse()});
+    faces.push({vs:rings[N-1].slice()});
+  }
+  return {verts,faces};
+}
+// 훑은 것을 자유 매스로 — 안팎은 massSolid 의 부피 부호 교정이 맡는다
+function massFromSweep(name,sw,free,color){
+  if(!sw||!sw.verts.length) return null;
+  const cx=sw.verts.reduce((a,p)=>a+p.x,0)/sw.verts.length;
+  const cy=sw.verts.reduce((a,p)=>a+p.y,0)/sw.verts.length;
+  const xs=sw.verts.map(p=>p.x-cx),ys=sw.verts.map(p=>p.y-cy);
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  const zt=Math.max(...sw.verts.map(p=>p.z));
+  const m={id:_skId('ms'),name:name||('몰딩'+(((free.masses||[]).length)+1)),
+    x:Math.round(cx),y:Math.round(cy),angle:0,elev_mm:0,color:color||'#8B6F47',locked:false,
+    pts:[{x:Math.round(x0),y:Math.round(y0)},{x:Math.round(x1),y:Math.round(y0)},
+         {x:Math.round(x1),y:Math.round(y1)},{x:Math.round(x0),y:Math.round(y1)}],
+    h_mm:Math.round(Math.max(10,zt)),
+    solidVerts:sw.verts.map(p=>({x:Math.round(p.x-cx),y:Math.round(p.y-cy),z:Math.round(p.z)})),
+    solidFaces:sw.faces.map(f=>({vs:f.vs.slice()}))};
+  if(!Array.isArray(free.masses)) free.masses=[];
+  free.masses.push(m);
+  return m;
+}
+// 단면 프리셋 — 인테리어에서 실제로 켜는 것들 (u=벽에서 바깥, v=경로선에서 위)
+function moldingProfile(kind,w,h){
+  w=Math.max(3,Math.round(Number(w)||10)); h=Math.max(3,Math.round(Number(h)||80));
+  if(kind==='crown')  return [{u:0,v:0},{u:w,v:0},{u:0,v:-h}];              // 천장 몰딩 — 위 둘레에서 아래로
+  if(kind==='cove')   return [{u:0,v:0},{u:w,v:0},{u:Math.round(w*0.55),v:-Math.round(h*0.55)},{u:0,v:-h}]; // 코브 근사
+  return [{u:0,v:0},{u:w,v:0},{u:w,v:h},{u:0,v:h}];                          // 걸레받이·평몰딩 (사각)
+}
+
 if(typeof module!=='undefined'&&module.exports){
   module.exports={zIsRef,zNum,zSet,zLabel,facePlanarDev,massHeal,splitFoldedRing,faceNormal,faceRole,faceFacing,faceTiltDeg,faceArea3,faceCentroid3,
     zEdit,massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
     massTopPts,massSlopes,massRidges,massCtx,massLean,massZAt,massTopProfile,profileAvg,pitchOf,pitchStr,
     planeFrom,planeUV,planePt,planeSame,ffPlaneBag,planeFaceVerts,planeExtrude,
     massLocalFrame,massFaceAt,massRayExit,massAddCut,massCutsVolume,
+    sweepProfile,massFromSweep,moldingProfile,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }
