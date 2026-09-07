@@ -729,8 +729,9 @@ function refreshDetail(){
     const _spcm=document.getElementById('sp-ceilmass');
     if(_spcm) _spcm.addEventListener('click',()=>{
       delete s.ceilMassId;
+      spWallsFollowCeil(s,false);
       saveHistory();renderAll();refreshUI();
-      showStatus('평천장으로 — 천장 물량은 다시 평면 면적('+spArea(s).toFixed(2)+'㎡)');
+      showStatus('평천장으로 — 천장 물량은 다시 평면 면적('+spArea(s).toFixed(2)+'㎡), 벽도 평평하게');
       if(typeof push3D==='function') push3D(true);
     });
     document.getElementById('d-ch').addEventListener('change',e=>{s.ceilingHeight_mm=e.target.value?parseInt(e.target.value):null;refreshUI();});
@@ -872,6 +873,7 @@ function refreshDetail(){
       '<input type="text" inputmode="decimal" id="d-wh" value="'+(w.height_mm||'')+'" placeholder="공간 천장고 따름" step="50"></div>'+
       '<div class="field"><label class="field-label">두께 (mm)</label>'+
       '<input type="text" inputmode="decimal" id="d-wthick" value="'+(w.thickness||100)+'" step="10"></div>'+
+      _wTopRow(w)+
       '<button class="btn sm" id="d-dup" style="width:100%;margin-top:6px">복제</button>'+
       '<button class="btn danger sm" id="d-del" style="width:100%;margin-top:5px">삭제 (Del)</button>';
     // 2026-08-22: 전체 벽 일괄 적용 (대표 지시 10번)
@@ -887,6 +889,7 @@ function refreshDetail(){
     document.getElementById('d-wmat').addEventListener('change',e=>{w.finishMaterial=e.target.value||null;saveHistory();refreshUI();showStatus('벽 마감재: '+(WALL_MATERIALS[e.target.value]?.name||'미정'));});
     document.getElementById('d-wh').addEventListener('change',e=>{w.height_mm=e.target.value?parseInt(e.target.value):null;saveHistory();refreshUI();});
     document.getElementById('d-wthick').addEventListener('change',e=>{w.thickness=parseInt(e.target.value)||100;saveHistory();renderAll();refreshUI();});
+    _wTopWire(w);
     document.getElementById('d-dup').addEventListener('click',duplicateSelected);
     document.getElementById('d-del').addEventListener('click',deleteSelected);
   }
@@ -2492,6 +2495,45 @@ function _msZTable(m){
     _msCeilRow(m,flat)+
     '</div>';
 }
+// 벽 상단 — 경사 천장을 따라가는가 (2026-09-07 Z축 · 박공 벽)
+//  숫자로 굳혀 두지 않는다. '따라간다'고만 적어 두면 지붕을 다시 기울일 때
+//  벽이 저절로 다시 잘린다 — 스케치업이라면 손으로 다시 잘라야 하는 자리.
+function _wTopRow(w){
+  if(typeof wallTops!=='function') return '';
+  const sp=(STATE.spaces||[]).find(x=>x.id===w.spaceId);
+  const t=wallTops(w,sp);
+  const hasCeil=!!(sp&&typeof spCeilMass==='function'&&spCeilMass(sp));
+  const box=(inner)=>'<div style="margin-top:8px;padding:8px;background:rgba(47,97,147,0.08);'+
+    'border:1px solid rgba(47,97,147,0.35);border-radius:4px">'+
+    '<div class="field-label" style="margin-bottom:6px;color:#5D8BB8">벽 상단 (Z)</div>'+inner+'</div>';
+  if(t.from==='ceil') return box(
+    '<div style="font-size:11px;color:#C9A961">▲ 천장을 따라감 — <b>'+t.h1+' ~ '+t.h2+'mm</b>'+
+    (Math.abs(t.h1-t.h2)>=5?(' (물매 '+pitchOf(Math.atan2(Math.abs(t.h1-t.h2),Math.hypot(w.x2-w.x1,w.y2-w.y1))*180/Math.PI)+'/10)'):' · 이 벽은 평평한 자리')+'</div>'+
+    '<button class="btn sm" id="d-wtop-off" style="width:100%;margin-top:5px">평평하게 (따라가기 해제)</button>'+
+    '<div class="hint" style="margin-top:4px">지붕을 다시 기울이면 이 벽도 함께 다시 잘립니다.</div>');
+  if(hasCeil) return box(
+    '<button class="btn sm" id="d-wtop-on" style="width:100%">▲ 천장에 맞추기</button>'+
+    '<div class="hint" style="margin-top:4px">이 방의 경사 천장에 맞춰 벽 위를 자릅니다.</div>');
+  return '';
+}
+function _wTopWire(w){
+  const sp=(STATE.spaces||[]).find(x=>x.id===w.spaceId);
+  const on=document.getElementById('d-wtop-on');
+  if(on) on.addEventListener('click',()=>{
+    w.topFollowCeil=true;
+    const t=wallTops(w,sp);
+    saveHistory();renderAll();refreshUI();
+    showStatus('▲ 벽 상단 '+t.h1+'~'+t.h2+'mm — 천장을 따라 잘립니다');
+    if(typeof push3D==='function') push3D(true);
+  });
+  const off=document.getElementById('d-wtop-off');
+  if(off) off.addEventListener('click',()=>{
+    delete w.topFollowCeil;
+    saveHistory();renderAll();refreshUI();
+    showStatus('벽 상단 평평하게 ('+wallFlatH(w,sp)+'mm)');
+    if(typeof push3D==='function') push3D(true);
+  });
+}
 // 이 매스를 어느 방의 천장으로 삼을 것인가 (2026-09-07 Z축 4층 · 설계서 B)
 //  자동으로 붙이지 않는다 — 천장 면적이 곧 도배·도장 금액이라, 사람이 정해야 한다.
 function _msCeilRow(m,flat){
@@ -2531,12 +2573,13 @@ function _msZWire(m){
     const sp=massOverSpace(m); if(!sp){showStatus('매스 아래에 방이 없습니다');return;}
     (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===m.id) delete x.ceilMassId; });
     sp.ceilMassId=m.id;
-    done('▣ 「'+(sp.name||'방')+'」 천장 = 이 매스 — 천장 '+spCeilArea(sp).toFixed(2)+'㎡ (경사 실면적)');
+    const nw=spWallsFollowCeil(sp,true);
+    done('▣ 「'+(sp.name||'방')+'」 천장 = 이 매스 — 천장 '+spCeilArea(sp).toFixed(2)+'㎡ · 벽 '+nw+'개가 천장을 따라 잘립니다');
   });
   const off=document.getElementById('ms-ceil-off');
   if(off) off.addEventListener('click',()=>{
-    (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===m.id) delete x.ceilMassId; });
-    done('천장 지정 해제 — 천장 물량은 다시 평면 면적으로');
+    (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===m.id){delete x.ceilMassId;spWallsFollowCeil(x,false);} });
+    done('천장 지정 해제 — 천장 물량은 다시 평면 면적으로, 벽도 평평하게');
   });
   const cb=document.getElementById('ms-zch');
   if(cb) cb.addEventListener('click',()=>{
@@ -6008,7 +6051,7 @@ function _apply3DCeilMass(m){
   if(!mass){showStatus('천장 지정: 매스를 찾지 못했습니다');return false;}
   if(p.off){
     let n=0;
-    (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===p.id){delete x.ceilMassId;n++;} });
+    (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===p.id){delete x.ceilMassId;spWallsFollowCeil(x,false);n++;} });
     if(!n) return false;
     saveHistory();renderAll();refreshUI();
     if(!_3dBatch){showStatus('평천장으로 되돌림');if(typeof push3D==='function')push3D(true);}
@@ -6019,8 +6062,9 @@ function _apply3DCeilMass(m){
   if(!sp){showStatus('매스 아래에 방이 없습니다 — 방 위로 옮긴 뒤 다시');return false;}
   (STATE.spaces||[]).forEach(x=>{ if(x.ceilMassId===p.id) delete x.ceilMassId; });
   sp.ceilMassId=p.id;
+  const nw=spWallsFollowCeil(sp,true);   // 2026-09-07: 벽 상단도 그 천장을 따라간다 (박공 벽)
   saveHistory();renderAll();refreshUI();
-  if(!_3dBatch){showStatus('▣ 「'+(sp.name||'방')+'」 천장 = '+(mass.name||'매스')+' — 천장 '+spCeilArea(sp).toFixed(2)+'㎡ (경사 실면적)');
+  if(!_3dBatch){showStatus('▣ 「'+(sp.name||'방')+'」 천장 = '+(mass.name||'매스')+' — 천장 '+spCeilArea(sp).toFixed(2)+'㎡ (경사 실면적) · 벽 '+nw+'개가 천장을 따라 잘립니다');
     if(typeof push3D==='function')push3D(true);}
   return true;
 }
@@ -8032,11 +8076,26 @@ function elevationSVG(e,opt){
       });
     });
   }else{
+    // 2026-09-07 Z축: 위가 기운 벽(박공 벽)은 사각형이 아니라 사다리꼴로 그린다
+    const _tp=(Array.isArray(e.top)&&e.top.length>=2)?e.top
+      :[{x:0,z:isFinite(e.H1)?e.H1:e.H},{x:e.L,z:isFinite(e.H2)?e.H2:e.H}];
+    const _slp=(Math.max(..._tp.map(p=>p.z))-Math.min(..._tp.map(p=>p.z)))>=5;
+    // 박공 벽은 사다리꼴이 아니라 마루에서 꺾인 오각형이다 — 옆모습 그대로 그린다
+    const _poly=()=>[[X(0),Y(0)]].concat(_tp.map(p=>[X(p.x),Y(p.z)]),[[X(e.L),Y(0)]])
+      .map(p=>Math.round(p[0])+','+Math.round(p[1])).join(' ');
+    if(_slp){
+      g+='<polygon points="'+_poly()+'" fill="'+wallFill+'" stroke="#111" stroke-width="10"/>';
+    }else
     g+='<rect x="'+X(0)+'" y="'+Y(e.H)+'" width="'+e.L+'" height="'+e.H+'" fill="'+wallFill+
        '" stroke="#111" stroke-width="10"/>';
     const hk=_H.id[elevHatchKey(e.finishCode)];
-    if(hk) g+='<rect x="'+X(0)+'" y="'+Y(e.H)+'" width="'+e.L+'" height="'+e.H+
+    if(hk){
+      if(_slp){                                  // 무늬도 그 안에만 (밖으로 새면 천장 위가 칠해진다)
+        g+='<polygon points="'+_poly()+'" fill="url(#'+hk+')" stroke="none"/>';
+      }else
+      g+='<rect x="'+X(0)+'" y="'+Y(e.H)+'" width="'+e.L+'" height="'+e.H+
        '" fill="url(#'+hk+')" stroke="none"/>';
+    }
   }
   // 바닥선 — 제일 굵게
   g+='<line x1="'+(X(0)-70)+'" y1="'+Y(0)+'" x2="'+(X(e.L)+70)+'" y2="'+Y(0)+

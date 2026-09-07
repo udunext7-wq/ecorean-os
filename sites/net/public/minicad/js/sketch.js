@@ -331,6 +331,8 @@ function massAbsPoly(m){
 function massArea(m){return Math.abs(skPolyArea(massAbsPoly(m)));}
 function massFromPoly(poly,z,bag){
   const b=skBag(bag);if(!Array.isArray(b.masses)) b.masses=[];
+  // 2026-09-07: 감김을 여기서 한 번 바로잡아 둔다 (아래로 갈수록 고치기 어렵다)
+  if(skPolyArea(poly)<0) poly=poly.slice().reverse();
   const c=skPolyCentroid(poly);
   const m={id:_skId('ms'),name:'매스'+(b.masses.length+1),x:Math.round(c.x),y:Math.round(c.y),angle:0,
     pts:poly.map(p=>({x:Math.round(p.x-c.x),y:Math.round(p.y-c.y)})),h_mm:Math.round(z),elev_mm:0,color:MASS_COLOR,locked:false};
@@ -589,7 +591,7 @@ function massSolid(m,ctx){
       return {vs:f.vs.slice(),role,roleFix:f.roleFix||null,mat:f.mat||null,n,
         facing:faceFacing(n),tilt:faceTiltDeg(n)};
     });
-    return {verts,faces};
+    return _solidFlipIfInsideOut({verts,faces});
   }
   // 옛 형식 — 각기둥을 그 자리에서 만든다 (파일은 건드리지 않는다)
   const poly=(m.pts||[]);
@@ -606,9 +608,30 @@ function massSolid(m,ctx){
     const j=(i+1)%N;
     faces.push({vs:[i,j,N+j,N+i]});
   }
+  // 2026-09-07: 폴리곤을 반대로 감으면 법선이 통째로 뒤집혀 **바닥이 천장이 된다**.
+  //  실제로 그랬다 — 매스 도구(skAddRect)가 만드는 감김이 음수라, 도구로 그린 매스는
+  //  전부 안팎이 뒤집힌 채였다. 꼭짓점 순서는 그대로 두고 면의 감김만 돌린다
+  //  (순서를 건드리면 밑면 i ↔ 윗면 N+i 규약이 깨져 massTryPrism 이 못 되돌린다).
+  if(skPolyArea(poly)<0) faces.forEach(f=>f.vs.reverse());
   faces.forEach(f=>{const n=faceNormal(verts,f.vs);f.n=n;f.role=faceRole(n);f.mat=null;
     f.facing=faceFacing(n);f.tilt=faceTiltDeg(n);});
   return {verts,faces};
+}
+// 안팎이 뒤집힌 다면체 바로잡기 — 부피가 음수면 모든 면의 감김을 돌린다.
+//  옛 파일(감김이 반대인 채 저장된 매스)도 열면 제대로 서게 하기 위한 것.
+function _solidFlipIfInsideOut(S){
+  let v=0;
+  S.faces.forEach(f=>{
+    const c=faceCentroid3(S.verts,f.vs), n=f.n||faceNormal(S.verts,f.vs);
+    v+=(c.x*n.x+c.y*n.y+c.z*n.z)*faceArea3(S.verts,f.vs);
+  });
+  if(v>=0) return S;
+  S.faces.forEach(f=>{
+    f.vs.reverse();
+    const n=faceNormal(S.verts,f.vs);
+    f.n=n; f.role=f.roleFix||faceRole(n); f.facing=faceFacing(n); f.tilt=faceTiltDeg(n);
+  });
+  return S;
 }
 // 각기둥을 다면체로 승격 — 꼭짓점 높이를 따로 만지는 순간 한 번만 일어난다
 function massToSolid(m,ctx){
@@ -898,6 +921,88 @@ function massRidges(m,ctx){
   });
   return out;
 }
+// 이 매스의 '윗면'이 평면 어느 점에서 얼마나 높은가 (2026-09-07 Z축 · 박공 벽)
+//  경사 천장에 닿는 벽의 상단을 여기서 읽는다. 벽 끝점이 방 경계선 위에 딱 걸리는 일이
+//  잦아, 어느 면에도 안 들어가면 가장 가까운 면의 평면을 연장해 읽는다.
+function massZAt(m,ax,ay,ctx){
+  if(!m) return null;
+  const th=(m.angle||0)*Math.PI/180, c=Math.cos(th), sn=Math.sin(th);
+  const dx=ax-m.x, dy=ay-m.y;
+  const x=dx*c+dy*sn, y=-dx*sn+dy*c;          // 평면 절대 → 매스 로컬 (회전 역변환)
+  const S=massSolid(m,ctx);
+  const base=Number(m.elev_mm)||0;
+  let hit=null, near=null, nd=Infinity;
+  S.faces.forEach(f=>{
+    if(f.facing!=='up') return;
+    const n=f.n||faceNormal(S.verts,f.vs);
+    if(Math.abs(n.z)<1e-6) return;
+    const c0=faceCentroid3(S.verts,f.vs);
+    const z=c0.z-((x-c0.x)*n.x+(y-c0.y)*n.y)/n.z;
+    const poly=f.vs.map(i=>({x:S.verts[i].x,y:S.verts[i].y}));
+    if(skPtInPoly({x,y},poly)){ if(hit===null||z>hit) hit=z; return; }
+    let d=Infinity;
+    for(let k=0;k<poly.length;k++){
+      const a=poly[k],b=poly[(k+1)%poly.length];
+      const vx=b.x-a.x, vy=b.y-a.y, L2=vx*vx+vy*vy||1;
+      let t=((x-a.x)*vx+(y-a.y)*vy)/L2; t=Math.max(0,Math.min(1,t));
+      d=Math.min(d,Math.hypot(x-(a.x+vx*t),y-(a.y+vy*t)));
+    }
+    if(d<nd){ nd=d; near=z; }
+  });
+  if(hit!==null) return base+hit;
+  return (near!==null&&nd<=600)?base+near:null;   // 600mm 밖이면 이 매스 아래가 아니다
+}
+// 선분 a→b 가 선분 p→q 를 지나는 자리 (a→b 의 매개변수 t). 안 만나면 null
+function _segT(a,b,p,q){
+  const rx=b.x-a.x, ry=b.y-a.y, sx=q.x-p.x, sy=q.y-p.y;
+  const d=rx*sy-ry*sx;
+  if(Math.abs(d)<1e-9) return null;
+  const t=((p.x-a.x)*sy-(p.y-a.y)*sx)/d;
+  const u=((p.x-a.x)*ry-(p.y-a.y)*rx)/d;
+  return (t>=-1e-9&&t<=1+1e-9&&u>=-1e-9&&u<=1+1e-9)?t:null;
+}
+// 벽 한 장의 상단 옆모습 — 천장을 따라 어떻게 꺾이는가 (2026-09-07 Z축 · 박공 벽)
+//  두 끝만 읽으면 마루 밑을 지나는 벽이 곧게 잘려 지붕과 사이가 벌어진다.
+//  박공 벽은 가운데가 솟는다 — 윗면 조각들의 경계를 지나는 자리를 모두 찾아 꺾는다.
+//  돌려주는 것: [{t:0..1, z}]
+function massTopProfile(m,x1,y1,x2,y2,ctx){
+  if(!m) return null;
+  const L=Math.hypot(x2-x1,y2-y1);
+  if(!(L>1)) return null;
+  const th=(m.angle||0)*Math.PI/180, c=Math.cos(th), sn=Math.sin(th);
+  const toLocal=(ax,ay)=>{const dx=ax-m.x,dy=ay-m.y;return {x:dx*c+dy*sn,y:-dx*sn+dy*c};};
+  const a=toLocal(x1,y1), b=toLocal(x2,y2);
+  const S=massSolid(m,ctx);
+  const ts=new Set([0,1]);
+  S.faces.forEach(f=>{
+    if(f.facing!=='up') return;
+    for(let k=0;k<f.vs.length;k++){
+      const p=S.verts[f.vs[k]], q=S.verts[f.vs[(k+1)%f.vs.length]];
+      const t=_segT(a,b,{x:p.x,y:p.y},{x:q.x,y:q.y});
+      if(t!=null&&t>1e-4&&t<1-1e-4) ts.add(Math.round(t*1e6)/1e6);
+    }
+  });
+  let pts=[...ts].sort((p,q)=>p-q)
+    .map(t=>({t,z:massZAt(m,x1+(x2-x1)*t,y1+(y2-y1)*t,ctx)}))
+    .filter(p=>p.z!=null);
+  if(pts.length<2) return null;
+  // 곧게 이어지는 자리는 접는다 — 꺾이지 않는 점은 무겁기만 하다
+  const out=[pts[0]];
+  for(let i=1;i<pts.length-1;i++){
+    const A=out[out.length-1], B=pts[i], C=pts[i+1];
+    const lin=A.z+(C.z-A.z)*((B.t-A.t)/((C.t-A.t)||1));
+    if(Math.abs(lin-B.z)>1) out.push(B);
+  }
+  out.push(pts[pts.length-1]);
+  return out;
+}
+// 옆모습의 평균 높이 — 사다리꼴 넓이 ÷ 길이. 벽면적이 여기서 나온다
+function profileAvg(pf){
+  if(!pf||pf.length<2) return null;
+  let a=0;
+  for(let i=0;i<pf.length-1;i++) a+=(pf[i].z+pf[i+1].z)/2*(pf[i+1].t-pf[i].t);
+  return a;
+}
 // 미니폼이 꼭짓점을 끌 때 미리보기를 만들 최소 사본 — 형상 필드만 (가볍게)
 function massLean(m){
   const o={pts:(m.pts||[]).map(p=>({x:p.x,y:p.y})),h_mm:m.h_mm,angle:0,x:0,y:0};
@@ -909,6 +1014,6 @@ function massLean(m){
 if(typeof module!=='undefined'&&module.exports){
   module.exports={zIsRef,zNum,zSet,zLabel,facePlanarDev,massHeal,splitFoldedRing,faceNormal,faceRole,faceFacing,faceTiltDeg,faceArea3,faceCentroid3,
     zEdit,massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
-    massTopPts,massSlopes,massRidges,massCtx,massLean,pitchOf,pitchStr,
+    massTopPts,massSlopes,massRidges,massCtx,massLean,massZAt,massTopProfile,profileAvg,pitchOf,pitchStr,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

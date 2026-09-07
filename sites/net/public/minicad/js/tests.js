@@ -5398,6 +5398,95 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('Z37: 공간 패널에 빗천장 표시',!!document.getElementById('sp-ceilmass'));
     document.getElementById('sp-ceilmass').click();
     assert('Z38: 공간 패널에서 되돌릴 수 있다',!_zsp.ceilMassId);
+    // 15) Z축 · 박공 벽 — 경사 천장에 닿는 벽은 위가 기운다 (설계서 7번)
+    //  손계산: 6×4m 방, y=+2000 쪽(=벽 w3) 천장을 2400→3600.
+    //  · 낮은 쪽 벽(y=0)은 2400 평평 · 높은 쪽 벽은 3600 평평
+    //  · x 방향 두 벽은 2400 → 3600 으로 기운다 (물매 3/10: 1200/4000)
+    STATE.masses=[];STATE.spaces=[];STATE.walls=[];STATE.vertices=[];
+    addSpace([{x:0,y:0},{x:6000,y:0},{x:6000,y:4000},{x:0,y:4000}]);
+    const _wsp=STATE.spaces[STATE.spaces.length-1]; _wsp.name='다락';
+    const _wcm=massFromPoly([{x:0,y:0},{x:6000,y:0},{x:6000,y:4000},{x:0,y:4000}],2400);
+    massVertZ(_wcm,6,3600,massCtx()); massVertZ(_wcm,7,3600,massCtx());   // y=+4000 쪽 두 점
+    const _wA=(STATE.walls||[]).filter(w=>w.spaceId===_wsp.id&&!w.isLine);
+    assert('Z39: 벽 4장',_wA.length===4,_wA.length+'장');
+    assert('Z40: 지정 전에는 전부 평평',_wA.every(w=>wallTops(w).from==='flat'&&!wallIsSloped(w)));
+    // 천장 지정 → 벽이 함께 따라간다
+    apply3DEdit({type:'edit',op:'ceilmass',floorId:_skAct,patch:{id:_wcm.id}});
+    assert('Z41: 천장 지정이 벽까지 따라붙는다',_wA.every(w=>w.topFollowCeil===true));
+    const _top=w=>{const t=wallTops(w);return t.h1+'~'+t.h2;};
+    const _tops=_wA.map(_top).sort();
+    assert('Z42: 낮은 벽 2400 · 높은 벽 3600 · 옆 벽은 기운다',
+      _tops.join(' | ')==='2400~2400 | 2400~3600 | 3600~2400 | 3600~3600',_tops.join(' | '));
+    const _slw=_wA.filter(w=>wallIsSloped(w));
+    assert('Z43: 기운 벽은 둘',_slw.length===2,_slw.length);
+    // 벽면적 = 사다리꼴 = 평균 높이 × 길이.
+    //  6×2.4 + 6×3.6 + 4×3.0 + 4×3.0 = 14.4+21.6+12+12 = 60㎡
+    assert('Z44: 벽면적이 사다리꼴로 잡힌다 (60㎡)',Math.abs(spWall(_wsp)-60)<0.01,spWall(_wsp)+'㎡');
+    // 지붕을 더 올리면 벽이 저절로 다시 잘린다 (숫자를 굳혀 두지 않았으므로)
+    massVertZ(_wcm,6,4800,massCtx()); massVertZ(_wcm,7,4800,massCtx());
+    assert('Z45: 지붕을 올리면 벽이 저절로 다시 잘린다',
+      _wA.map(_top).sort().join(' | ')==='2400~2400 | 2400~4800 | 4800~2400 | 4800~4800',
+      _wA.map(_top).sort().join(' | '));
+    massVertZ(_wcm,6,3600,massCtx()); massVertZ(_wcm,7,3600,massCtx());
+    // 입면도 — 기운 벽은 사다리꼴로 그려진다
+    const _ew=_slw[0], _ev=buildElevation(_ew,_wsp.id);
+    assert('Z46: 입면 자료에 두 끝 높이',isFinite(_ev.H1)&&isFinite(_ev.H2)&&Math.abs(_ev.H1-_ev.H2)>1000,
+      _ev.H1+'~'+_ev.H2);
+    assert('Z47: 입면 틀은 높은 쪽에 맞춘다',_ev.H===Math.max(_ev.H1,_ev.H2));
+    const _esvg=elevationSVG(_ev,{});
+    assert('Z48: 기운 벽은 사각형이 아니라 사다리꼴(polygon)',/<polygon/.test(_esvg),_esvg.slice(0,120));
+    const _flatEv=buildElevation(_wA.find(w=>!wallIsSloped(w)),_wsp.id);
+    assert('Z49: 평평한 벽은 종전대로 사각형',!/<polygon/.test(elevationSVG(_flatEv,{})));
+    // 벽 패널
+    selectObj('wall',_ew.id); refreshUI();
+    assert('Z50: 벽 패널에 [평평하게] (따라가는 중)',!!document.getElementById('d-wtop-off'));
+    document.getElementById('d-wtop-off').click();
+    assert('Z51: 눌러서 평평해진다',!_ew.topFollowCeil&&!wallIsSloped(_ew));
+    selectObj('wall',_ew.id); refreshUI();
+    assert('Z52: 이제 [천장에 맞추기] 가 뜬다',!!document.getElementById('d-wtop-on'));
+    document.getElementById('d-wtop-on').click();
+    assert('Z53: 다시 천장을 따라간다',_ew.topFollowCeil===true&&wallIsSloped(_ew));
+    // 천장 해제하면 벽도 평평하게
+    apply3DEdit({type:'edit',op:'ceilmass',floorId:_skAct,patch:{id:_wcm.id,off:true}});
+    assert('Z54: 천장 해제 → 벽도 평평하게',_wA.every(w=>!w.topFollowCeil&&!wallIsSloped(w)));
+    assert('Z55: 벽면적도 되돌아온다 (2.4 × 둘레 20m = 48㎡)',Math.abs(spWall(_wsp)-48)<0.01,spWall(_wsp)+'㎡');
+    // 16) 박공 벽 — 마루 밑을 지나는 벽은 가운데가 솟는다 (두 끝만 읽으면 잘린다)
+    //  6×4m 방에 마루를 y=2000 에 두면, x=0·x=6000 벽은 2400 → 3900 → 2400 오각형.
+    STATE.masses=[];STATE.spaces=[];STATE.walls=[];STATE.vertices=[];
+    // 방은 사각형(벽 4장) · 지붕만 6점 — 그래야 벽 하나가 마루를 가로지른다
+    addSpace([{x:0,y:0},{x:6000,y:0},{x:6000,y:4000},{x:0,y:4000}]);
+    const _gsp=STATE.spaces[STATE.spaces.length-1]; _gsp.name='박공방';
+    const _gcm=massFromPoly([{x:0,y:0},{x:0,y:2000},{x:0,y:4000},{x:6000,y:4000},{x:6000,y:2000},{x:6000,y:0}],2400);
+    // 도구가 만드는 감김이든 반대든 같은 답이 나와야 한다 (감김 뒤집힘 버그 방어)
+    assert('Z56: 매스 도구의 감김에서도 바닥이 바닥이다',
+      massSolid(_gcm,massCtx()).faces[0].role==='floor',
+      massSolid(_gcm,massCtx()).faces.map(f=>f.role).join(' '));
+    massTopPts(_gcm,massCtx()).filter(p=>Math.abs(p.ay-2000)<1).forEach(p=>massVertZ(_gcm,p.vi,3900,massCtx()));
+    assert('Z57: 마루 3900 · 처마 2400',
+      massTopPts(_gcm,massCtx()).map(p=>p.z).join()==='2400,3900,2400,2400,3900,2400',
+      massTopPts(_gcm,massCtx()).map(p=>p.z).join());
+    // 경사 실면적 = 6000 × 2500 × 2 = 30㎡ (2500 = √(2000²+1500²))
+    assert('Z58: 경사 실면적 30㎡ (눕히면 24㎡)',Math.abs(massQuantities(_gcm,massCtx()).ceilAll-30)<0.001,
+      massQuantities(_gcm,massCtx()).ceilAll+'㎡');
+    assert('Z59: 부피 75.6㎥ (상자 57.6 + 삼각기둥 18)',Math.abs(massVolume(_gcm,massCtx())-75.6)<0.001,
+      massVolume(_gcm,massCtx())+'㎥');
+    apply3DEdit({type:'edit',op:'ceilmass',floorId:_skAct,patch:{id:_gcm.id}});
+    const _gw=(STATE.walls||[]).filter(w=>w.spaceId===_gsp.id&&!w.isLine);
+    const _gable=_gw.filter(w=>Math.abs(w.x1-w.x2)<1);        // x 가 같은 벽 = 박공 벽
+    assert('Z60: 박공 벽 옆모습이 마루에서 꺾인다 (2400→3900→2400)',
+      _gable.length>0&&_gable.every(w=>{const p=wallTops(w).profile;
+        return p.length===3&&p[0].z===2400&&p[1].z===3900&&p[2].z===2400;}),
+      JSON.stringify(_gable.map(w=>wallTops(w).profile.map(p=>p.z))));
+    assert('Z61: 박공 벽 평균 높이 3150 (두 끝만 읽으면 2400 이 된다)',
+      _gable.every(w=>Math.abs(wallAvgH(w)-3150)<1),_gable.map(w=>wallAvgH(w)).join());
+    // 벽면적: 박공 벽 4m×3.15 ×2 = 25.2 · 처마 벽 6m×2.4 ×2 = 28.8 → 54㎡
+    assert('Z62: 벽면적 54㎡',Math.abs(spWall(_gsp)-54)<0.02,spWall(_gsp)+'㎡');
+    const _gev=buildElevation(_gable[0],_gsp.id);
+    assert('Z63: 입면 옆모습에 마디 3개',Array.isArray(_gev.top)&&_gev.top.length===3,JSON.stringify(_gev.top));
+    assert('Z64: 입면이 오각형으로 그려진다 (점 5개)',
+      (elevationSVG(_gev,{}).match(/<polygon points="([^"]+)"/)||[])[1]?.split(' ').length===5,
+      (elevationSVG(_gev,{}).match(/<polygon points="([^"]+)"/)||[])[1]);
+
     STATE.masses=[];
     // 프로토콜 번호 — 두 창이 짝이어야 한다
     assert('Z24: 프로토콜 8',MC_PROTO===8);

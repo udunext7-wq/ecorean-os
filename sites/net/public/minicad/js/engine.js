@@ -785,13 +785,61 @@ function massOverSpace(m){
   return (STATE.spaces||[]).find(s=>s.polygon&&s.polygon.length>=3&&skPtInPoly(c,s.polygon))||null;
 }
 function spCH(s){return s.ceilingHeight_mm||STATE.ceilingHeight;}
+// ---------------------------------------------------------------------------
+// 벽 상단 — 경사 천장에 닿는 벽은 위가 기운다 (2026-09-07 Z축 · 박공 벽)
+//  높이를 숫자로 굳혀 두지 않는다. w.topFollowCeil 이면 '이 방의 천장 매스를
+//  따라간다'는 뜻이고, 지붕을 다시 기울이면 벽이 저절로 다시 잘린다.
+//  살아 있는 높이(CH-300)와 같은 사고 — 스케치업이라면 손으로 다시 잘라야 한다.
+// ---------------------------------------------------------------------------
+function wallFlatH(w,s){
+  s=s||(STATE.spaces||[]).find(x=>x.id===w.spaceId);
+  return Math.round(Number(w.height_mm)||(s&&s.ceilingHeight_mm)||STATE.ceilingHeight||2400);
+}
+// 벽 상단의 옆모습 [{t:0..1,z}] — 박공 벽은 가운데가 솟으므로 두 끝만으로는 모자란다
+function wallTopProfile(w,s){
+  if(!w||!w.topFollowCeil||typeof massTopProfile!=='function') return null;
+  const sp=s||(STATE.spaces||[]).find(x=>x.id===w.spaceId);
+  const m=sp?spCeilMass(sp):null;
+  if(!m) return null;
+  const pf=massTopProfile(m,w.x1,w.y1,w.x2,w.y2,massCtx());
+  return (pf&&pf.length>=2)?pf.map(p=>({t:p.t,z:Math.round(p.z)})):null;
+}
+function wallTops(w,s){
+  const flat=wallFlatH(w,s);
+  const pf=wallTopProfile(w,s);
+  if(pf) return {h1:pf[0].z,h2:pf[pf.length-1].z,peak:Math.max(...pf.map(p=>p.z)),
+                 low:Math.min(...pf.map(p=>p.z)),profile:pf,from:'ceil'};
+  const a=Number(w&&w.h1_mm), b=Number(w&&w.h2_mm);
+  if(isFinite(a)&&isFinite(b)&&a>0&&b>0)
+    return {h1:Math.round(a),h2:Math.round(b),peak:Math.max(a,b),low:Math.min(a,b),
+            profile:[{t:0,z:Math.round(a)},{t:1,z:Math.round(b)}],from:'fixed'};
+  return {h1:flat,h2:flat,peak:flat,low:flat,profile:[{t:0,z:flat},{t:1,z:flat}],from:'flat'};
+}
+// 평균 높이 = 사다리꼴(들) 넓이 ÷ 길이 — 벽면적이 정확히 이것이다
+function wallAvgH(w,s){
+  const t=wallTops(w,s);
+  const a=(typeof profileAvg==='function')?profileAvg(t.profile):null;
+  return (a!=null&&isFinite(a))?a:(t.h1+t.h2)/2;
+}
+function wallIsSloped(w,s){ const t=wallTops(w,s); return (t.peak-t.low)>=5; }
+// 이 방의 벽들을 천장에 붙이거나(on) 떼거나(off) — 천장 지정과 함께 움직인다
+function spWallsFollowCeil(sp,on){
+  let n=0;
+  (STATE.walls||[]).forEach(w=>{
+    if(w.spaceId!==sp.id||w.isLine) return;
+    if(on) w.topFollowCeil=true; else delete w.topFollowCeil;
+    n++;
+  });
+  return n;
+}
 function spWall(s){
   // v5.9: 내력벽은 KPI/적산에서 제외 (보여주기 전용)
   const spaceWalls=STATE.walls.filter(w=>w.spaceId===s.id&&!w.isLine&&w.wallType!=='bearing');
   let wallArea=0;
   spaceWalls.forEach(w=>{
     const len=Math.hypot(w.x2-w.x1,w.y2-w.y1)/1000;
-    wallArea+=len*(w.height_mm||spCH(s))/1000;
+    // 2026-09-07: 위가 기운 벽은 평균 높이 — 사다리꼴 넓이가 정확히 그것이다
+    wallArea+=len*wallAvgH(w,s)/1000;
   });
   let oa=0;
   // v5.9: subtractMode (single=단면 ×1, double=양면 ×2) — 도어 종류 또는 사용자 설정에 따름
@@ -4784,7 +4832,11 @@ function buildElevation(wall,spaceId){
   const sp=(STATE.spaces||[]).find(x=>x.id===(spaceId||wall.spaceId))||null;
   const L=Math.round(Math.hypot(wall.x2-wall.x1,wall.y2-wall.y1));
   if(!(L>0)) return null;
-  const H=Math.round(wall.height_mm||(sp&&sp.ceilingHeight_mm)||STATE.ceilingHeight||2400);
+  // 2026-09-07 Z축: 경사 천장에 닿는 벽은 위가 기운다. 틀은 높은 쪽에 맞춘다.
+  const _tops=(typeof wallTops==='function')?wallTops(wall,sp)
+    :{h1:Math.round(wall.height_mm||(sp&&sp.ceilingHeight_mm)||STATE.ceilingHeight||2400),h2:0,from:'flat'};
+  if(!_tops.h2) _tops.h2=_tops.h1;
+  const H=Math.max(_tops.h1,_tops.h2);
   const ux=(wall.x2-wall.x1)/L, uy=(wall.y2-wall.y1)/L;
   const mx=(wall.x1+wall.x2)/2, my=(wall.y1+wall.y2)/2;
   let flip=false, dirx=uy, diry=-ux;              // 중심을 모르면 법선을 방위로
@@ -4839,6 +4891,11 @@ function buildElevation(wall,spaceId){
     finishCode:wall.finishMaterial||null, floorCode:(sp&&sp.floorMaterial)||null,
     spaceName:(sp&&(sp.name||((SPACE_TYPES[sp.type]||{}).name)))||'',
     L,H,ops,devs,flip,material:mat,
+    // 그림 왼쪽 끝(x=0)·오른쪽 끝(x=L)의 상단 높이. 뒤집어 보면 좌우가 바뀐다.
+    H1:flip?_tops.h2:_tops.h1, H2:flip?_tops.h1:_tops.h2, topFrom:_tops.from,
+    // 상단 옆모습 — 그림 좌표(0..L)로. 뒤집어 보면 좌우가 바뀐다.
+    top:(_tops.profile||[]).map(p=>({x:Math.round((flip?(1-p.t):p.t)*L),z:p.z}))
+        .sort((a,b)=>a.x-b.x),
     thickness:Math.round(wall.thickness||0),
     bearing:wall.wallType==='bearing',
     dir:elevCompass(dirx,diry)};

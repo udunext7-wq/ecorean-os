@@ -271,12 +271,36 @@ function cornerExtension(w,end,D,offs){
   });
   return ext>1?ext-1:0;
 }
+// 벽 상단 — 경사 천장을 따라가면 두 끝의 높이가 다르다 (2026-09-07 Z축 · 박공 벽)
+//  계산은 평면(engine.js wallTops)과 같은 규칙. 여기서도 sketch.js 를 그대로 부른다.
+function _wallTopsOf(w,D,sp,flat){
+  if(w&&w.topFollowCeil&&sp&&sp.ceilMassId){
+    const m=(D.masses||[]).find(x=>x&&x.id===sp.ceilMassId);
+    const f=_sk('massTopProfile');
+    if(m&&f){
+      const ctx=m._ctx||{ch:D.ceilH,fh:2800,fl:0};
+      const pf=f(m,w.x1,w.y1,w.x2,w.y2,ctx);
+      if(pf&&pf.length>=2){
+        const P=pf.map(p=>({t:p.t,z:Math.round(p.z)}));
+        return {h1:P[0].z,h2:P[P.length-1].z,profile:P};
+      }
+    }
+  }
+  const a=num(w&&w.h1_mm,NaN), b=num(w&&w.h2_mm,NaN);
+  if(isFinite(a)&&isFinite(b)&&a>0&&b>0)
+    return {h1:Math.round(a),h2:Math.round(b),profile:[{t:0,z:Math.round(a)},{t:1,z:Math.round(b)}]};
+  return {h1:flat,h2:flat,profile:[{t:0,z:flat},{t:1,z:flat}]};
+}
 function buildWall(w,D,spaceById,offs){
   const L=Math.hypot(w.x2-w.x1,w.y2-w.y1);
   if(!(L>1)) return null;
   const t=wallThk(w);
   const sp=w.spaceId?spaceById[w.spaceId]:null;
-  const H=Math.round(num(w.height_mm,0)||num(sp&&sp.ceilingHeight_mm,0)||D.ceilH);
+  const flatH=Math.round(num(w.height_mm,0)||num(sp&&sp.ceilingHeight_mm,0)||D.ceilH);
+  const tops=_wallTopsOf(w,D,sp,flatH);
+  // 몸통은 낮은 쪽까지 상자로 (개구부 처리는 종전 그대로), 그 위 삼각 쐐기만 따로 얹는다
+  const PF=tops.profile||[{t:0,z:tops.h1},{t:1,z:tops.h2}];
+  const H=Math.min(...PF.map(p=>p.z));
   const rot=Math.atan2(w.y2-w.y1,w.x2-w.x1)*180/Math.PI;
   const ux=(w.x2-w.x1)/L, uy=(w.y2-w.y1)/L;
   const bearing=w.wallType==='bearing';
@@ -308,11 +332,35 @@ function buildWall(w,D,spaceById,offs){
     cursor=Math.max(cursor,c.right);
   });
   seg(cursor,L+ext2,0,H);
+  // 경사 상단 쐐기 — 낮은 쪽 높이에서 기운 윗선까지. mesh 프림(자유 다면체와 같은 길)
+  const Hhi=Math.max(...PF.map(p=>p.z));
+  if(Hhi-H>1){
+    const y0=off-t/2, y1=off+t/2;
+    // 옆모습의 마디마다 사다리꼴 쐐기를 하나씩 — 박공 벽은 마루에서 꺾인다.
+    //  모서리 연장부(-ext1 / L+ext2)까지 양 끝 기울기를 그대로 이어 간다.
+    const segs=[];
+    for(let i=0;i<PF.length-1;i++){
+      let xa=PF[i].t*L, xb=PF[i+1].t*L, za=PF[i].z, zb=PF[i+1].z;
+      const k=(xb-xa>1e-6)?((zb-za)/(xb-xa)):0;
+      if(i===0){ za+=k*(-ext1-xa); xa=-ext1; }
+      if(i===PF.length-2){ zb+=k*((L+ext2)-xb); xb=L+ext2; }
+      segs.push([xa,za,xb,zb]);
+    }
+    segs.forEach(([xa,za,xb,zb])=>{
+      if(xb-xa<1||(Math.max(za,zb)-H)<1) return;
+      const V=[{x:xa,y:y0,z:H},{x:xb,y:y0,z:H},{x:xb,y:y1,z:H},{x:xa,y:y1,z:H},
+               {x:xa,y:y0,z:Math.max(H,za)},{x:xb,y:y0,z:Math.max(H,zb)},
+               {x:xb,y:y1,z:Math.max(H,zb)},{x:xa,y:y1,z:Math.max(H,za)}];
+      const T=[[0,1,2],[0,2,3],[4,6,5],[4,7,6],[0,4,5],[0,5,1],[1,5,6],[1,6,2],[2,6,7],[2,7,3],[3,7,4],[3,4,0]];
+      prims.push({t:'mesh',verts:V,tris:T,z:0,color});
+    });
+  }
   // 개구부 객체(문짝·창틀·유리)는 별도 obj 로 — 클릭하면 이름이 보이도록
   const openingObjs=cuts.map(c=>buildOpening(c,w,t,rot,off));
   return {
     wall:{id:w.id,kind:'wall',name:bearing?'내력벽':(w.wallType==='partition'?'가벽':'벽'),x:w.x1,y:w.y1,rot,flip:false,prims,locked:!!w.locked,
-      meta:{L:Math.round(L),t,H,material:w.finishMaterial||null,wallType:w.wallType||'standard',alignment:w.alignment||'center',offset:off,ext:[ext1,ext2],
+      meta:{L:Math.round(L),t,H:Hhi,H1:tops.h1,H2:tops.h2,top:PF,sloped:(Hhi-H)>=5,
+        material:w.finishMaterial||null,wallType:w.wallType||'standard',alignment:w.alignment||'center',offset:off,ext:[ext1,ext2],
         spaceId:w.spaceId||null,x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2}}, // 2026-09-04 계층 선택(방 더블클릭)·벽 이웃 선택용
     openings:openingObjs,
   };
