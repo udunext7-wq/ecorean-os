@@ -668,6 +668,14 @@ ck(/case 'followme':/.test(v3Src)&&/sweepProfile\(path,closed,base,prof\)/.test(
   '프리폼④: followme op 이 로컬 sweep 을 부른다');
 ck(/data-a="fmb"/.test(v3Src)&&/data-a="fmt"/.test(v3Src),'프리폼④: 패널에 걸레받이·천장 몰딩 버튼');
 ck(/massIsPrism\(host\)/.test(v3Src),'프리폼④: 빗천장 위 둘레는 거부한다');
+// 프리폼 ⑤ — 그룹·컴포넌트 계약
+['group','ungroup','compsave','stamp'].forEach(op=>
+  ck(new RegExp("case '"+op+"':").test(v3Src),'프리폼⑤: '+op+' op'));
+ck(/function _ffGroupOf/.test(v3Src)&&/meta\.gid/.test(v3Src),'프리폼⑤: 클릭=그룹 전체 선택');
+ck(/FF\._gidMap/.test(v3Src),'프리폼⑤: 그룹 복사는 새 그룹으로 (원본에 안 끼어든다)');
+ck(/gid:m\.gid\|\|null/.test(b3Src),'프리폼⑤: 조립이 gid 를 실어 준다');
+ck(/_ffCompsPal/.test(v3Src)&&/data-comp/.test(v3Src),'프리폼⑤: 구성요소 칸에 내 컴포넌트·스탬프');
+ck(/ST\.stampComp/.test(v3Src),'프리폼⑤: 클릭 스탬프 모드 (Esc=끝)');
 
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

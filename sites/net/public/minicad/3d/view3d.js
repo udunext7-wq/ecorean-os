@@ -1233,6 +1233,7 @@ function ffRender(){
   refreshVisibility();
   reselect();
   renderOutliner();
+  renderAddPal();                               // 프리폼 ⑤: 내 컴포넌트 목록도 갱신
   ffAutosave();
   invalidate(true);
 }
@@ -1261,7 +1262,7 @@ function ffApply(m){
     case 'undo': return ffUndo();
     case 'redo': return ffRedo();
     case 'batch': {
-      let n=0; FF.mute=true;
+      let n=0; FF.mute=true; FF._gidMap={};             // 복사된 그룹이 한 몸이 되도록
       (m.ops||[]).forEach(o=>{ if(ffApply(Object.assign({type:'edit'},o))) n++; });
       FF.mute=false;
       if(n){ ffCommit((m.label||'묶음')+' '+n+'건'); return true; }
@@ -1360,6 +1361,11 @@ function ffApply(m){
       cp.id='ms_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
       cp.x=isFinite(Number(p.x))?N(p.x):src.x+300;
       cp.y=isFinite(Number(p.y))?N(p.y):src.y+300;
+      if(src.gid){                                      // 프리폼 ⑤: 사본이 원본 그룹에 끼어들면 안 된다
+        const map=FF.mute?(FF._gidMap||(FF._gidMap={})):null;
+        cp.gid=map?(map[src.gid]||(map[src.gid]='g_'+Date.now()+'_'+Math.floor(Math.random()*1e4)))
+                  :('g_'+Date.now()+'_'+Math.floor(Math.random()*1e4));
+      }
       bag.masses.push(cp); madeId=cp.id; ok=true; label='복제'; break;
     }
     case 'delete': {
@@ -1413,6 +1419,46 @@ function ffApply(m){
         return a+((closed||i<path.length-1)?Math.hypot(b.x-q.x,b.y-q.y):0);},0))/1000*1000/1000+'m';
       break;
     }
+    case 'group': {                                     // 프리폼 ⑤: 여럿을 하나로 (스케치업 그룹)
+      const ms=(Array.isArray(p.ids)?p.ids:[]).map(i=>massOf(i)).filter(Boolean);
+      if(ms.length<2) return no('둘 이상의 프리폼 매스를 골라야 묶습니다');
+      const gid='g_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
+      ms.forEach(x=>{x.gid=gid;});
+      ok=true; label='그룹 묶기 — '+ms.length+'개 (클릭=그룹 전체 · 더블클릭=하나만)'; break;
+    }
+    case 'ungroup': {
+      const ms=(bag.masses||[]).filter(x=>x&&x.gid===p.gid);
+      if(!ms.length) return false;
+      ms.forEach(x=>{delete x.gid;});
+      ok=true; label='그룹 풀기 — '+ms.length+'개'; break;
+    }
+    case 'compsave': {                                  // 그룹 → 이름 붙은 컴포넌트 (문서에 저장)
+      const ms=(bag.masses||[]).filter(x=>x&&x.gid===p.gid);
+      if(!ms.length) return no('그룹을 먼저 묶어주세요 (여럿 선택 → 그룹 묶기)');
+      const ax=Math.round(ms.reduce((a,x)=>a+x.x,0)/ms.length);
+      const ay=Math.round(ms.reduce((a,x)=>a+x.y,0)/ms.length);
+      if(!Array.isArray(bag.comps)) bag.comps=[];
+      bag.comps.push({id:'cp_'+Date.now()+'_'+Math.floor(Math.random()*1e4),
+        name:String(p.name||'컴포넌트').slice(0,40),
+        masses:ms.map(x=>{const c=JSON.parse(JSON.stringify(x));
+          c.x=Math.round(c.x-ax); c.y=Math.round(c.y-ay); delete c.gid; delete c.id; return c;})});
+      ok=true; label='컴포넌트 저장: '+String(p.name||'컴포넌트')+' — 구성요소 칸에서 스탬프'; break;
+    }
+    case 'stamp': {                                     // 컴포넌트를 클릭한 자리에 찍는다 (독립 사본)
+      const cp=(bag.comps||[]).find(c=>c&&c.id===p.compId);
+      if(!cp) return false;
+      const X=N(p.x),Y=N(p.y);
+      if(!fin(X,Y)) return false;
+      const gid='g_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
+      let seq=0;
+      cp.masses.forEach(src=>{
+        const c=JSON.parse(JSON.stringify(src));
+        c.id='ms_'+Date.now()+'_'+(++seq)+'_'+Math.floor(Math.random()*1e4);
+        c.gid=gid; c.x=X+c.x; c.y=Y+c.y;
+        bag.masses.push(c); madeId=c.id;
+      });
+      ok=true; label='스탬프: '+cp.name+' ('+cp.masses.length+'개) — 계속 찍으려면 다시 클릭 · Esc=끝'; break;
+    }
     case 'massconvert': return no('프리폼에서는 매스 그대로 씁니다 — 공간·벽 전환은 연동 뷰(평면)의 일');
     case 'ceilmass': return no('천장 지정은 평면(견적)의 일 — 연동 뷰에서');
     case 'add': return no('프리폼 1단계는 스케치·매스입니다 — 배치물은 다음 단계');
@@ -1423,7 +1469,11 @@ function ffApply(m){
     ffCommit(label);
     if(madeId){                              // 새로 만든 것을 바로 잡아 준다 (스케치업 손버릇)
       const g=FF.group&&FF.group.children.find(x=>x.userData.obj&&String(x.userData.obj.id)===String(madeId));
-      if(g) select(g,{silent:true});
+      if(g){
+        const o=g.userData.obj;
+        const gs=(o&&o.meta&&o.meta.gid)?_ffGroupOf(o.meta.gid):[];
+        if(gs.length>1) selectGroups(gs); else select(g,{silent:true});
+      }
     }
   }
   return true;
@@ -1473,7 +1523,7 @@ function ffEnter(opts){
   if(!ST.doc){ setStatus(false,'평면 문서가 아직 없습니다 — 미니캐드에서 먼저 열어주세요'); return; }
   const saved=(!opts||!opts.fresh)?ffLoadLocal():null;
   FF={base:JSON.parse(JSON.stringify(ST.doc)),
-      free:(saved&&saved.free)||{sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[]},
+      free:(saved&&saved.free)||{sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[],comps:[]},
       hist:[],histPos:-1,group:null,planLatest:null,planDirty:false,mute:false};
   if(saved&&saved.base) FF.base=saved.base;   // 저장본이 있으면 그때 굳힌 밑그림 그대로
   ST.ffOn=true;
@@ -1514,7 +1564,7 @@ function ffRebase(){
 }
 function ffNew(){
   if(!ST.ffOn||!FF) return;
-  FF.free={sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[]};
+  FF.free={sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[],comps:[]};
   ffCommit('새로 시작 (자유 층 비움)');
 }
 let chan=null;
@@ -1532,12 +1582,30 @@ function hitAt(cx,cy){
   });
   return hits.length?hits[0]:null;
 }
+// 프리폼 그룹의 형제들 — 같은 gid 를 가진 화면 그룹들
+function _ffGroupOf(gid){
+  const out=[];
+  FF&&FF.group&&FF.group.children.forEach(x=>{
+    const o=x.userData.obj;
+    if(o&&o.kind==='mass'&&o.meta&&o.meta.gid===gid) out.push(x);
+  });
+  return out;
+}
 function pick(cx,cy,e){
   const hit=hitAt(cx,cy);
   const mod=!!(e&&(e.ctrlKey||e.metaKey||e.shiftKey));
   if(!hit){ if(!mod) select(null); return; }
   const g=hit.object.parent;
   if(mod){ select(g,(e.shiftKey&&(e.ctrlKey||e.metaKey))?{remove:true}:{toggle:true}); return; }
+  const o0=g.userData.obj;
+  if(ST.ffOn&&o0&&o0.kind==='mass'&&o0.meta&&o0.meta.gid){   // 프리폼 ⑤: 그룹은 한 몸으로 잡힌다
+    const gs=_ffGroupOf(o0.meta.gid);
+    if(gs.length>1){
+      selectGroups(gs);
+      setStatus(statusLive,'⛓ 그룹 '+gs.length+'개 — 더블클릭=하나만 · 끌면 함께 이동 (Ctrl=통째 복사)');
+      return;
+    }
+  }
   select(g);                                   // 스케치업: 같은 것을 다시 클릭해도 선택 유지
   const o=g.userData.obj;
   tip.innerHTML=(o.floorName&&ST.floorSel==='all'?o.floorName+' · ':'')+describe(o);
@@ -1722,6 +1790,23 @@ function placeGhost(){
   emitEdit({type:'edit',op:'add',kind:a.kind,floorId:a.fid,patch:{type:a.type,x,y,angle:a.rot||0}});
   setStatus(statusLive,'➕ 배치 ('+x+', '+y+') — 계속 클릭해 더 놓기, Esc=끝');
 }
+// 프리폼 ⑤: 저장한 컴포넌트 목록 — 구성요소 칸 맨 위 (가구 라이브러리와 한 자리)
+function _ffCompsPal(el){
+  if(!ST.ffOn||!FF||!Array.isArray(FF.free.comps)||!FF.free.comps.length) return;
+  const html='<div class="pp-cat">🧊 내 컴포넌트 (프리폼)</div><div class="pp-grid">'+
+    FF.free.comps.map(c=>'<button class="pp-it'+(ST.stampComp===c.id?' on':'')+'" data-comp="'+c.id+'">'+
+      '<span class="pp-chip" style="background:#8B6F47"></span>'+c.name+' ('+c.masses.length+')</button>').join('')+'</div>';
+  el.insertAdjacentHTML('afterbegin',html);
+  el.querySelectorAll('[data-comp]').forEach(b=>{
+    b.onclick=()=>{
+      const id=b.dataset.comp;
+      if(ST.stampComp===id){ ST.stampComp=null; renderAddPal(); setStatus(statusLive,'스탬프 끝'); return; }
+      ST.stampComp=id; setTool('select'); renderAddPal();
+      const cp=FF.free.comps.find(x=>x.id===id);
+      setStatus(statusLive,'🧊 스탬프: '+(cp?cp.name:'')+' — 바닥을 클릭한 자리마다 찍힙니다 · Esc=끝');
+    };
+  });
+}
 function renderAddPal(){
   const el=$('addpal'); if(!el) return;
   const CATS=[['furniture','가구',LIBS.FURNITURE_LIB],['fixtures','주방·위생·가전',LIBS.FIXTURE_LIB],['lights','조명',LIBS.LIGHT_LIB],['electric','전기',LIBS.ELECTRIC_LIB],['hvac','공조·소방',LIBS.HVAC_FIRE_LIB]];
@@ -1737,6 +1822,7 @@ function renderAddPal(){
       setStatus(statusLive,'➕ '+((TBL[t]&&TBL[t].name)||t)+' — 바닥에 클릭해 배치');
     };
   });
+  _ffCompsPal(el);                              // 프리폼 ⑤
 }
 // --- 선(L)·사각형(R) — 스케치업 Line/Rectangle: 3D 에서 벽을 그린다 ---
 function _hoverFloorId(e){
@@ -2900,6 +2986,12 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   drag={x:e.clientX,y:e.clientY,moved:false,id:e.pointerId,button:e.button,touch:e.pointerType==='touch'};
   if(ST.mode==='walk'){ renderer.domElement.setPointerCapture(e.pointerId); return; }
   if(e.button!==0) return;                                   // 우클릭·가운데는 pointerup / OrbitControls
+  if(ST.ffOn&&ST.stampComp&&!ST.op){                         // 프리폼 ⑤: 클릭한 자리에 컴포넌트를 찍는다
+    const raw=_planePt(e,0);
+    if(raw) emitEdit({type:'edit',op:'stamp',floorId:'freeform',
+      patch:{compId:ST.stampComp,x:Math.round(raw.x),y:Math.round(raw.y)}});
+    drag=null; return;
+  }
   if(ST.op){                                                 // 스티키 동작은 다음 클릭 = 확정 (스케치업식)
     const t=ST.op.type;
     if(CLICK_TOOLS.has(t)){}                                  // 클릭 도구는 아래 switch 에서 다음 점
@@ -2920,7 +3012,14 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   const movable=obj&&MOVABLE.has(obj.kind)&&!obj.locked&&ffEditable(obj);   // 프리폼: 밑그림은 못 잡는다
   const opening=obj&&(obj.kind==='door'||obj.kind==='window')&&!obj.locked&&obj.meta&&obj.meta.wall&&ffEditable(obj);
   const mod=e.ctrlKey||e.metaKey||e.shiftKey;
-  const grab=()=>{ if(!ST.selSet.has(g)) select(g,{silent:true}); };
+  const grab=()=>{
+    if(ST.selSet.has(g)) return;
+    if(ST.ffOn&&obj&&obj.kind==='mass'&&obj.meta&&obj.meta.gid){ // 그룹 멤버를 잡으면 그룹째 든다
+      const gs=_ffGroupOf(obj.meta.gid);
+      if(gs.length>1){ selectGroups(gs); return; }
+    }
+    select(g,{silent:true});
+  };
   switch(ST.tool){
     case 'select':
       if(movable&&!mod){ grab(); beginMove(g,obj,false); renderer.domElement.setPointerCapture(e.pointerId); }
@@ -3048,6 +3147,11 @@ renderer.domElement.addEventListener('dblclick',e=>{
     if(obj&&obj.kind==='ceiling'){ const base=Math.round((obj.prims&&obj.prims[0]&&obj.prims[0].z)||2400); sendEdit('set',{kind:'floor',id:String(obj.id).replace(/_ceil$/,''),floorId:obj.floorId},{ceilingHeight_mm:Math.max(300,base+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; }
     if(obj&&obj.kind==='mass'&&!obj.locked){ sendEdit('set',obj,{h_mm:Math.max(10,Math.round((obj.meta&&obj.meta.h_mm)||0)+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; } // 2026-09-04
     if(obj&&obj.kind==='sketchFace'&&ST.lastPP>=10&&chan){ emitEdit({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z:ST.lastPP,as:'solid'}}); setStatus(statusLive,'⬆ 면 → 매스 Z='+ST.lastPP+' (반복)'); return; }
+  }
+  if(ST.ffOn&&obj&&obj.kind==='mass'&&obj.meta&&obj.meta.gid&&ST.tool==='select'){
+    select(g);                                                  // 프리폼 ⑤: 더블클릭 = 그룹 안으로 (이 하나만)
+    setStatus(statusLive,'그룹 안 — 이 하나만 잡았습니다 (빈 곳 클릭 후 다시 클릭=그룹 전체)');
+    return;
   }
   if(ST.tool==='select'&&obj){                                // 스케치업: 더블클릭 = 그룹 안으로 (방 전체 / 연결된 벽)
     if(obj.kind==='floor'){ selectSpaceGroup(obj.floorId,obj.id); return; }
@@ -3189,10 +3293,16 @@ function renderProps(obj,opts){
       html+=`<div class="p-btns"><button class="btn" data-a="copy">📋 복사 (Ctrl+C)</button><button class="btn danger" data-a="del">🗑 삭제 (Del)</button></div>`;
     }
     html+=`<div class="p-btns"><button class="btn" data-a="hide">숨기기</button><button class="btn" data-a="zoom">선택 확대</button></div>`;
+    if(ST.ffOn){
+      const fms=multi.filter(o=>o.kind==='mass'&&o.floorId==='freeform');
+      if(fms.length>=2) html+=`<div class="p-btns"><button class="btn" data-a="grp" title="여럿을 한 몸으로 — 클릭·이동·복사·삭제가 통째로 (스케치업 그룹)">⛓ 그룹 묶기 (${fms.length})</button></div>`;
+    }
     html+=`<div class="p-note">끌면 함께 이동(Ctrl=복사) · Q 회전은 대표 중심으로 공전 · B 재질은 한 번에</div>`;
     props.innerHTML=html; props.style.display='block';
     props.querySelectorAll('[data-a]').forEach(el=>{ el.addEventListener('click',()=>{ const a=el.dataset.a;
       if(a==='rotl') rotateSelected(-15); else if(a==='rotr') rotateSelected(15); else if(a==='del') deleteSelected3D();
+      else if(a==='grp'){ const ids=_selObjs(o=>o.kind==='mass'&&o.floorId==='freeform').map(o=>o.id);
+        emitEdit({type:'edit',op:'group',floorId:'freeform',patch:{ids}}); }
       else if(a==='lock') lockSelected(true); else if(a==='unlock') lockSelected(false); else if(a==='copy') copySel();
       else if(a==='hide') hideSelected(); else if(a==='zoom'&&ST.selected) zoomTo(ST.selected); }); });
     return;
@@ -3219,6 +3329,11 @@ function renderProps(obj,opts){
         ? `<div class="p-row"><label>천장</label><span style="font-size:12px;color:#C9A961">▣ <b>${m.ceilOf}</b> 의 천장</span></div>
            <div class="p-btns"><button class="btn" data-a="ceiloff">평천장으로 되돌리기</button></div>`
         : `<div class="p-btns"><button class="btn" data-a="ceilon" title="이 매스 아래 방의 천장으로 삼습니다 — 천장 ㎡ 가 경사 실면적이 되어 견적에 반영됩니다">▣ 아래 방의 천장으로</button></div>`;
+    }
+    if(ST.ffOn&&m.gid){                                 // 프리폼 ⑤: 그룹·컴포넌트
+      html+=`<div class="p-row"><label>그룹</label><span style="font-size:11px;color:#C9A961">⛓ ${_ffGroupOf(m.gid).length}개가 한 몸</span></div>`;
+      html+=`<div class="p-btns"><button class="btn" data-a="ungrp">그룹 풀기</button>
+        <button class="btn" data-a="csave" title="이 그룹을 이름 붙여 문서에 저장 — 구성요소 칸에서 어디든 다시 찍습니다">💾 컴포넌트로 저장…</button></div>`;
     }
     if(ST.ffOn){                                        // 프리폼 ④: Follow Me — 몰딩·걸레받이
       html+=`<div class="p-row" style="border-top:1px solid rgba(255,255,255,0.08);margin-top:6px;padding-top:8px"><label>몰딩</label>
@@ -3294,6 +3409,11 @@ function renderProps(obj,opts){
       else if(a==='del') deleteSelected3D();
       else if(a==='lock') lockSelected(true);
       else if(a==='copy') copySel();
+      else if(a==='ungrp'){ emitEdit({type:'edit',op:'ungroup',floorId:'freeform',patch:{gid:obj.meta.gid}}); }
+      else if(a==='csave'){
+        const nm=window.prompt('컴포넌트 이름','수납장');
+        if(nm) emitEdit({type:'edit',op:'compsave',floorId:'freeform',patch:{gid:obj.meta.gid,name:nm}});
+      }
       else if(a==='fmb'||a==='fmt'){                      // 프리폼 ④: Follow Me
         const wI=props.querySelector('[data-f="_fmw"]'),hI=props.querySelector('[data-f="_fmh"]');
         const w=wI?parseInt(wI.value)||10:10, h=hI?parseInt(hI.value)||80:80;
@@ -3353,6 +3473,7 @@ window.addEventListener('keydown',e=>{
     if(km&&km.style.display==='flex'){ showKeys(false); return; }
     if(document.querySelector('.menu.open')){ closeMenus(); return; }
     if(ST.lastCommit){ vcbPostOff(); }
+    if(ST.stampComp){ ST.stampComp=null; renderAddPal(); setStatus(statusLive,'스탬프 끝'); return; }   // 프리폼 ⑤
     if(ST.op) cancelOp(); else if(ST.tool==='add') setTool('select'); else select(null); return;
   }
   ST.walk.keys[k]=true;
