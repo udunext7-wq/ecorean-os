@@ -123,13 +123,13 @@ table.gantt thead th.fix,table.gantt thead th.fix2,table.gantt thead th.fix3{z-i
 .cal-bars{position:absolute;left:0;right:0;top:28px;bottom:5px}
 /* 투톤 막대 — 위 3할 프로젝트색 / 아래 7할 공정색 */
 .cal-bar{position:absolute;height:17px;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;
-  box-shadow:0 1px 2px rgba(30,25,15,.12);cursor:pointer}
-.cal-bar .pc{height:30%;flex:0 0 30%}
-.cal-bar .cc{height:70%;flex:1 1 70%;display:flex;align-items:center;padding:0 5px;
+  box-shadow:0 0 0 1px rgba(30,25,15,.08),0 1px 2px rgba(30,25,15,.08);cursor:pointer}
+.cal-bar .pc{height:20%;flex:0 0 20%}
+.cal-bar .cc{height:80%;flex:1 1 80%;display:flex;align-items:center;padding:0 5px;
   font-size:9.5px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cal-bar.cont-l{border-top-left-radius:0;border-bottom-left-radius:0}
 .cal-bar.cont-r{border-top-right-radius:0;border-bottom-right-radius:0}
-.cal-bar.done{opacity:.5}
+.cal-bar.done{opacity:.6;filter:grayscale(.35)}
 .cal-bar:hover{box-shadow:0 2px 8px rgba(30,25,15,.22);z-index:3}
 .cal-overflow{position:absolute;right:6px;bottom:-1px;font-size:9px;color:#a49a86}
 .cal-dow{background:#fbfaf7;text-align:center;font-size:11px;font-weight:600;padding:9px 0;color:#8b8271;letter-spacing:.5px}
@@ -1189,12 +1189,22 @@ function phaseColor(proj,ph){
   if(typeof CI_DEFAULT!=="undefined"&&CI_DEFAULT[ph.cat])return CI_DEFAULT[ph.cat].c;
   return (CI[ph.cat]&&CI[ph.cat].c)||"#8b8271";
 }
-/* 색이 밝으면 글자를 어둡게 (막대 안 공정명이 항상 읽히도록) */
-function readableOn(hex){
+/* 색 → 50% 투명 (컬러바만 흐리게, 글자는 또렷하게) */
+function hexA(hex,a){
   var c=String(hex||"").replace("#","");
   if(c.length===3)c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
   var r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
-  if(isNaN(r))return "#fff";
+  if(isNaN(r))return hex;
+  return "rgba("+r+","+g+","+b+","+a+")";
+}
+/* 흰 바탕에 50% 로 얹혔을 때의 실제 밝기로 글자색을 정한다 */
+function readableOn(hex,alpha){
+  var c=String(hex||"").replace("#","");
+  if(c.length===3)c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+  var r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  if(isNaN(r))return "#3a342b";
+  var a=(alpha==null?1:alpha);
+  r=r*a+255*(1-a);g=g*a+255*(1-a);b=b*a+255*(1-a);
   return (0.299*r+0.587*g+0.114*b)>168 ? "#3a342b" : "#fff";
 }
 /* 모든 프로젝트의 공정을 '시작~종료 구간'으로 (남의 프로젝트는 건드리지 않는다) */
@@ -1272,8 +1282,8 @@ function renderCal(){
       h+='<div class="cal-bar'+(g.contL?" cont-l":"")+(g.contR?" cont-r":"")+(g.r.st==="done"?" done":"")+'"'+
          ' style="left:calc('+left.toFixed(3)+'% + 3px);width:calc('+width.toFixed(3)+'% - 6px);top:'+(g.lane*(BARH+GAP))+'px;height:'+BARH+'px"'+
          ' title="'+esc(g.r.pj+" · "+g.r.n)+'" onclick="event.stopPropagation();openProject('+g.r.pi+')">'+
-         '<div class="pc" style="background:'+g.r.pc+'"></div>'+
-         '<div class="cc" style="background:'+g.r.cc+';color:'+readableOn(g.r.cc)+'">'+(g.contL?"":esc(g.r.n))+'</div>'+
+         '<div class="pc" style="background:'+hexA(g.r.pc,.5)+'"></div>'+
+         '<div class="cc" style="background:'+hexA(g.r.cc,.5)+';color:'+readableOn(g.r.cc,.5)+'">'+(g.contL?"":esc(g.r.n))+'</div>'+
          '</div>';
     });
     if(lay.over)h+='<div class="cal-overflow">외 '+lay.over+'건</div>';
@@ -1309,7 +1319,7 @@ function renderCalDay(runs){
   h+='</h4>';
   if(!list.length)h+='<div style="color:#999;font-size:11.5px">진행 중인 공정이 없습니다.</div>';
   list.forEach(function(e){
-    h+='<div class="day-row"><i style="background:linear-gradient(180deg,'+e.pc+' 0 30%,'+e.c+' 30% 100%)"></i>'+
+    h+='<div class="day-row"><i style="background:linear-gradient(180deg,'+hexA(e.pc,.5)+' 0 20%,'+hexA(e.c,.5)+' 20% 100%)"></i>'+
        '<div style="min-width:0"><div class="nm">'+esc(e.n)+(e.st==="done"?' <span style="color:#2fa87a;font-size:10px">완료</span>':'')+'</div>'+
        '<div class="pj">'+esc(e.pj)+'</div></div>'+
        '<button class="btn" style="margin-left:auto;font-size:10px;padding:4px 10px;border-radius:999px" onclick="openProject('+e.pi+')">열기</button></div>';
