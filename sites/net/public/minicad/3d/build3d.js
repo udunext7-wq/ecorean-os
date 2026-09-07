@@ -80,6 +80,32 @@ function segDist(p,a,b){
 }
 
 // 문서의 벽/공간 좌표 정규화 — VEF(vertex id) 문서와 flat(x1..y2) 문서 모두 받는다
+// 2026-09-07 대표 지시 "나는 z 값을 원한다" — 매스가 수직 각기둥을 넘어 자유 다면체가 된다.
+//  계산은 js/sketch.js 한 곳에만 둔다. 브라우저에서는 전역, 노드에서는 require.
+//  (두 벌로 베껴 두면 평면도와 3D 가 조용히 어긋난다 — 이 파일에서 이미 겪은 함정)
+let _SKM=null;
+try{ if(typeof require!=='undefined') _SKM=require('../js/sketch.js'); }catch(_){}
+function _sk(name){
+  if(_SKM&&_SKM[name]) return _SKM[name];
+  if(typeof root!=='undefined'&&root&&typeof root[name]==='function') return root[name];
+  return null;
+}
+function massSolidOf(m,ctx){
+  const f=_sk('massSolid');
+  if(f) return f(m,ctx);
+  // 기하 파일이 없으면 각기둥으로만 (옛 동작)
+  const h=Math.max(1,num(m.h_mm,2400)), poly=m.pts||[];
+  const verts=poly.map(p=>({x:p.x,y:p.y,z:0})).concat(poly.map(p=>({x:p.x,y:p.y,z:h})));
+  return {verts,faces:[]};
+}
+function massIsPrismOf(m){ const f=_sk('massIsPrism'); return f?f(m):true; }
+function massTopZOf(m,ctx){
+  const f=_sk('massTopZ');
+  if(f) return f(m,ctx);
+  return Math.max(1,num(m.h_mm,2400));
+}
+function zNumOf(z,ctx){ const f=_sk('zNum'); return f?f(z,ctx):num(z,0); }
+
 function normalizeDoc(doc){
   const d=doc&&doc.data&&!doc.walls?doc.data:doc||{};
   const vmap={};
@@ -103,7 +129,22 @@ function normalizeDoc(doc){
   const spt={}; const sketchPts=(d.sketchPts||[]).filter(p=>p&&isFinite(p.x)&&isFinite(p.y)).map(p=>{const o={id:p.id,x:num(p.x,0),y:num(p.y,0)};spt[p.id]=o;return o;});
   const sketchEdges=(d.sketchEdges||[]).map(e=>{const a=spt[e.a],b=spt[e.b];return (a&&b)?{id:e.id,a:e.a,b:e.b,x1:a.x,y1:a.y,x2:b.x,y2:b.y}:null;}).filter(Boolean);
   const sketchFaces=(d.sketchFaces||[]).map(f=>{const poly=(f.pts||[]).map(id=>spt[id]).filter(Boolean).map(p=>({x:p.x,y:p.y}));return poly.length>=3?{id:f.id,polygon:poly}:null;}).filter(Boolean);
-  const masses=(d.masses||[]).filter(m=>m&&Array.isArray(m.pts)&&m.pts.length>=3).map(m=>Object.assign({},m,{x:num(m.x,0),y:num(m.y,0),angle:num(m.angle,0),h_mm:Math.max(1,num(m.h_mm,2400)),elev_mm:num(m.elev_mm,0),pts:m.pts.map(p=>({x:num(p.x,0),y:num(p.y,0)}))}));
+  // 2026-09-07: h_mm 은 숫자일 수도, 살아 있는 참조({r:'ch'})일 수도 있다 — 그대로 통과시킨다.
+  //  solidVerts/solidFaces 가 있으면 자유 다면체. 없으면 옛 각기둥 그대로.
+  const _mctx={ch:num(meta.ceilingHeight_mm,2400),fh:num(meta.floorHeight_mm,2800),fl:0};
+  const masses=(d.masses||[]).filter(m=>m&&Array.isArray(m.pts)&&m.pts.length>=3).map(m=>{
+    const o=Object.assign({},m,{x:num(m.x,0),y:num(m.y,0),angle:num(m.angle,0),
+      elev_mm:num(m.elev_mm,0),pts:m.pts.map(p=>({x:num(p.x,0),y:num(p.y,0)}))});
+    if(m.h_mm&&typeof m.h_mm==='object') o.h_mm=m.h_mm;            // 살아 있는 높이
+    else o.h_mm=Math.max(1,num(m.h_mm,2400));
+    if(Array.isArray(m.solidVerts)&&Array.isArray(m.solidFaces)){
+      o.solidVerts=m.solidVerts.map(v=>({x:num(v.x,0),y:num(v.y,0),
+        z:(v.z&&typeof v.z==='object')?v.z:num(v.z,0)}));
+      o.solidFaces=m.solidFaces.map(f=>({vs:(f.vs||[]).slice(),mat:f.mat||null,roleFix:f.roleFix||null}));
+    }
+    o._ctx=_mctx;
+    return o;
+  });
   return {
     meta, spaces, walls,
     openings:d.openings||[], furniture:d.furniture||[], fixtures:d.fixtures||[],
@@ -136,9 +177,27 @@ function buildSketchPt(p){
     prims:[{t:'cyl',x:0,y:0,z:0,r:32,h:22,color:SK.pt}],meta:{}};
 }
 function buildMass(m){
-  return {id:m.id,kind:'mass',name:m.name||'매스',x:m.x,y:m.y,rot:m.angle,flip:false,locked:!!m.locked,elev:Math.round(m.elev_mm),
-    prims:[{t:'prism',pts:m.pts,z:0,h:m.h_mm,color:m.color||SK.mass}],
-    meta:{h_mm:m.h_mm,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:m.color||SK.mass}};
+  const ctx=m._ctx||{};
+  const col=m.color||SK.mass;
+  const base={id:m.id,kind:'mass',name:m.name||'매스',x:m.x,y:m.y,rot:m.angle,flip:false,
+    locked:!!m.locked,elev:Math.round(num(m.elev_mm,0))};
+  const H=Math.round(massTopZOf(m,ctx));
+  if(massIsPrismOf(m)){
+    // 수직 각기둥 — 종전 그대로 (가볍고 빠르다)
+    return Object.assign(base,{prims:[{t:'prism',pts:m.pts,z:0,h:H,color:col}],
+      meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false}});
+  }
+  // 자유 다면체 — 꼭짓점마다 높이가 다르다 (빗천장·박공·꺾인 천장)
+  const S=massSolidOf(m,ctx);
+  const tris=[];
+  S.faces.forEach((f,fi)=>{
+    for(let i=1;i<f.vs.length-1;i++) tris.push([f.vs[0],f.vs[i],f.vs[i+1],fi]);
+  });
+  const q=(_sk('massQuantities')||(()=>({})))(m,ctx);
+  return Object.assign(base,{
+    prims:[{t:'mesh',verts:S.verts,tris,faces:S.faces.map(f=>({role:f.role,tilt:f.tilt})),z:0,color:col}],
+    meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:true,
+      qty:q,faces:S.faces.length,maxTilt:q.maxTilt||0}});
 }
 function massAbsPoly(m){
   const r=m.angle*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
@@ -591,7 +650,13 @@ function buildFloorScene(D,libs){
   (D.sketchFaces||[]).forEach(f=>objects.push(buildSketchFace(f)));
   (D.sketchEdges||[]).forEach(e=>objects.push(buildSketchEdge(e)));
   (D.sketchPts||[]).forEach(p=>objects.push(buildSketchPt(p)));
-  (D.masses||[]).forEach(m=>{ objects.push(buildMass(m)); const c=polyCentroid(massAbsPoly(m)); labels.push({id:m.id,x:c.x,y:c.y,z:m.elev_mm+m.h_mm+80,text:(m.name||'매스')+' H'+Math.round(m.h_mm)}); });
+  (D.masses||[]).forEach(m=>{
+    const o=buildMass(m); objects.push(o);
+    const c=polyCentroid(massAbsPoly(m));
+    const tilt=(o.meta&&o.meta.maxTilt)?(' ∠'+o.meta.maxTilt+'°'):'';
+    labels.push({id:m.id,x:c.x,y:c.y,z:num(m.elev_mm,0)+o.meta.h_mm+80,
+      text:(m.name||'매스')+' H'+o.meta.h_mm+tilt});
+  });
   return {bounds,ceilH:D.ceilH,project:D.meta.project||'',objects,labels,
     counts:{spaces:D.spaces.length,walls:D.walls.filter(w=>!w.isLine).length,openings:D.openings.length,
       furniture:D.furniture.length+D.fixtures.length,lights:D.lights.length,
@@ -617,7 +682,7 @@ function floorHeightOf(D){
   let h=D.ceilH||2400;
   D.spaces.forEach(s=>{h=Math.max(h,num(s.ceilingHeight_mm,0));});
   D.walls.forEach(w=>{if(!w.isLine)h=Math.max(h,num(w.height_mm,0));});
-  (D.masses||[]).forEach(m=>{h=Math.max(h,num(m.elev_mm,0)+num(m.h_mm,0));}); // 2026-09-04 매스
+  (D.masses||[]).forEach(m=>{h=Math.max(h,num(m.elev_mm,0)+massTopZOf(m,m._ctx||{}));}); // 2026-09-04 매스 / 2026-09-07 다면체
   return h;
 }
 function buildScene(doc,libs){
@@ -651,7 +716,7 @@ function buildScene(doc,libs){
 }
 
 const MC3D={buildScene,normalizeDoc,splitFloors,floorHeightOf,buildFloorScene,SLAB_T,FLOOR_COLORS,WALL_COLORS,COLORS:C,
-  _internal:{buildWall,buildFurniture,buildLight,polyCentroid,polyBBox,pointInPoly,wallAlignOffset,cornerExtension,bearingInteriorSign,buildSketchFace,buildSketchEdge,buildSketchPt,buildMass,massAbsPoly}};
+  _internal:{buildWall,buildFurniture,buildLight,polyCentroid,polyBBox,pointInPoly,wallAlignOffset,cornerExtension,bearingInteriorSign,buildSketchFace,buildSketchEdge,buildSketchPt,buildMass,massAbsPoly,massSolidOf,massTopZOf}};
 if(typeof module!=='undefined'&&module.exports) module.exports=MC3D;
 root.MC3D=MC3D;
 })(typeof window!=='undefined'?window:globalThis);

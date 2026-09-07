@@ -394,6 +394,366 @@ function renderMasses(){
     t.offsetX(t.width()/2);t.offsetY(t.height()/2);g.add(t);
   });
 }
+
+// ============================================================================
+// 2026-09-07 대표 지시: "나는 z 값을 원한다. 높이를 주고 그 값들이 자유롭게
+//   변경될 수 있도록, 호환이 되도록."
+//
+//  ── 무엇을 만드는가 ────────────────────────────────────────────────────────
+//  스케치업은 자유롭지만 뜻이 없다 — 상자는 그냥 상자라 도배 ㎡ 가 안 나온다.
+//  BIM 은 뜻이 있지만 자유롭지 않다 — 정해진 부재만 조립한다.
+//  여기서는 둘 다 한다: 꼭짓점마다 높이를 자유롭게 주되, 그 높이가
+//  ① 언제든 다시 바꿀 수 있는 살아 있는 값이고
+//  ② 면이 스스로 무엇인지(바닥·천장·벽·경사) 알아 물량으로 바로 이어진다.
+//
+//  ── 살아 있는 높이 (zval) ──────────────────────────────────────────────────
+//   2400              그냥 숫자
+//   {r:'ch'}          이 층 천장고를 따라간다  — 천장고를 고치면 같이 움직인다
+//   {r:'ch',o:-300}   천장고에서 300 내려온 자리 (우물천장 턱)
+//   {r:'fh',o:0}      층 높이
+//  스케치업은 밀고 나면 숫자가 사라진다. 여기서는 남아서 계속 편집된다.
+//
+//  ── 호환 (핵심) ───────────────────────────────────────────────────────────
+//  매스는 수직 각기둥인 동안에는 옛 형식({pts,h_mm}) 그대로 저장한다.
+//  꼭짓점 높이가 서로 달라지는 순간에만 다면체({solidVerts,solidFaces})로 승격한다.
+//  · 옛 도면 → 그대로 열린다 (승격은 읽을 때 메모리에서만)
+//  · 각기둥만 쓰는 새 도면 → 저장 바이트가 종전과 같다
+//  · 진짜 3D 를 쓴 매스만 새 필드를 지닌다
+//  massSolid() 는 어느 쪽이든 언제나 완전한 다면체를 돌려준다.
+// ============================================================================
+// 6° 안이면 평평한 것으로, 6° 안으로 서 있으면 벽으로 본다. 그 사이가 경사.
+//  (빗천장은 보통 10~30°, 박공은 30~45° — 전부 'slope' 로 잡혀야 도면에서 구분된다)
+const Z_UP_COS=0.9945;   // cos 6°
+const Z_FLAT_COS=0.1045; // cos 84°
+const Z_REF_NAMES={ch:'천장고',fh:'층 높이',fl:'층 바닥'};
+
+function zIsRef(z){ return !!z&&typeof z==='object'&&typeof z.r==='string'; }
+// 살아 있는 높이를 실제 숫자로. ctx = {ch,fh,fl} (없으면 안전한 기본값)
+function zNum(z,ctx){
+  if(zIsRef(z)){
+    const c=ctx||{};
+    const base=(z.r==='ch')?(c.ch!=null?c.ch:2400)
+              :(z.r==='fh')?(c.fh!=null?c.fh:2800)
+              :(z.r==='fl')?(c.fl!=null?c.fl:0):0;
+    return Math.round(base+(z.o||0));
+  }
+  const n=Math.round(Number(z));
+  return isFinite(n)?n:0;
+}
+// 사람이 새 숫자를 넣었을 때 — 참조였으면 참조를 지키고 오프셋만 고친다
+function zSet(cur,val,ctx){
+  const v=Math.round(Number(val));
+  if(!isFinite(v)) return cur;
+  if(zIsRef(cur)){
+    const base=zNum({r:cur.r,o:0},ctx);
+    return {r:cur.r,o:v-base};
+  }
+  return v;
+}
+function zLabel(z,ctx){
+  if(!zIsRef(z)) return String(zNum(z,ctx));
+  const nm=Z_REF_NAMES[z.r]||z.r;
+  const o=z.o||0;
+  return nm+(o?(o>0?(' +'+o):(' '+o)):'')+' = '+zNum(z,ctx);
+}
+
+// ---------- 면의 법선·역할·실면적 (3D) ----------
+function faceNormal(verts,vs){
+  // 뉴엘 방법 — 볼록하지 않은 면에서도 옳은 법선이 나온다
+  let nx=0,ny=0,nz=0;
+  for(let i=0;i<vs.length;i++){
+    const a=verts[vs[i]],b=verts[vs[(i+1)%vs.length]];
+    if(!a||!b) return {x:0,y:0,z:1};
+    nx+=(a.y-b.y)*(a.z+b.z);
+    ny+=(a.z-b.z)*(a.x+b.x);
+    nz+=(a.x-b.x)*(a.y+b.y);
+  }
+  const L=Math.hypot(nx,ny,nz)||1;
+  return {x:nx/L,y:ny/L,z:nz/L};
+}
+// 면이 스스로 무엇인지 안다 — 이 한 줄이 자유 형상을 물량으로 잇는다
+function faceRole(n){
+  if(n.z>=Z_UP_COS) return 'ceil';      // 위를 본다 = 천장(또는 지붕)
+  if(n.z<=-Z_UP_COS) return 'floor';    // 아래를 본다 = 바닥
+  if(Math.abs(n.z)<=Z_FLAT_COS) return 'wall';
+  return 'slope';                        // 빗천장·박공
+}
+// 경사면이 위를 보는가 아래를 보는가 — 위면 천장 마감, 아래면 처마 밑
+function faceFacing(n){ return n.z>0?'up':'down'; }
+// 수평에서 몇 도 기울었나 (도면 표기·물매 계산)
+function faceTiltDeg(n){
+  const d=Math.acos(Math.min(1,Math.abs(n.z)))*180/Math.PI;
+  return Math.round(d*10)/10;
+}
+// 실면적 (경사면은 눕힌 면적이 아니라 비탈을 따라간 진짜 면적)
+function faceArea3(verts,vs){
+  let ax=0,ay=0,az=0;
+  for(let i=0;i<vs.length;i++){
+    const a=verts[vs[i]],b=verts[vs[(i+1)%vs.length]];
+    if(!a||!b) return 0;
+    ax+=a.y*b.z-a.z*b.y; ay+=a.z*b.x-a.x*b.z; az+=a.x*b.y-a.y*b.x;
+  }
+  return Math.hypot(ax,ay,az)/2;
+}
+function faceCentroid3(verts,vs){
+  let x=0,y=0,z=0,n=0;
+  vs.forEach(i=>{const v=verts[i];if(v){x+=v.x;y+=v.y;z+=v.z;n++;}});
+  return n?{x:x/n,y:y/n,z:z/n}:{x:0,y:0,z:0};
+}
+
+// ---------- 매스 = 자유 다면체 ----------
+// 아직 수직 각기둥인가 — 그렇다면 저장은 옛 형식 그대로
+function massIsPrism(m){
+  return !!m&&!Array.isArray(m.solidVerts);
+}
+// 어느 형식이든 완전한 다면체로 펼친다. {verts:[{x,y,z}], faces:[{vs,role,mat}]}
+//  verts 는 매스 로컬 좌표(x,y 는 중심 기준·z 는 바닥에서), elev_mm 은 놓이는 높이로 따로 둔다
+function massSolid(m,ctx){
+  if(!m) return {verts:[],faces:[]};
+  if(Array.isArray(m.solidVerts)&&Array.isArray(m.solidFaces)){
+    const verts=m.solidVerts.map(v=>({x:v.x,y:v.y,z:zNum(v.z,ctx)}));
+    // 2026-09-07: 접힘은 '지금 높이' 로 그때그때 나눈다. 나눈 결과를 저장하면
+    //  다음 편집이 잘못 잘린 조각 위에서 돌아 지붕이 엉킨다(박공에서 실제로 그랬다).
+    //  사람이 만든 면(6각 윗면)은 그대로 두고, 보여 줄 때만 평평한 조각으로 편다.
+    const flat=[];
+    m.solidFaces.forEach(f=>{
+      splitFoldedRing(verts,f.vs,0).forEach(r=>{
+        if(r&&r.length>=3) flat.push({vs:r,mat:f.mat||null,roleFix:f.roleFix||null,src:f});
+      });
+    });
+    const faces=flat.map(f=>{
+      const n=faceNormal(verts,f.vs);
+      // 갈래는 늘 지금 형상에서 다시 잰다. 저장된 값을 믿으면 면을 기울여도
+      //  '천장' 인 채로 굳는다 (실제로 그렇게 굳었다). 사람이 일부러 못 박은
+      //  경우(roleFix)만 그 값을 지킨다.
+      const role=f.roleFix||faceRole(n);
+      return {vs:f.vs.slice(),role,roleFix:f.roleFix||null,mat:f.mat||null,n,
+        facing:faceFacing(n),tilt:faceTiltDeg(n)};
+    });
+    return {verts,faces};
+  }
+  // 옛 형식 — 각기둥을 그 자리에서 만든다 (파일은 건드리지 않는다)
+  const poly=(m.pts||[]);
+  const h=zNum(m.h_mm,ctx);
+  const N=poly.length;
+  if(N<3) return {verts:[],faces:[]};
+  const verts=[];
+  poly.forEach(p=>verts.push({x:p.x,y:p.y,z:0}));
+  poly.forEach(p=>verts.push({x:p.x,y:p.y,z:h}));
+  const bot=[],top=[];
+  for(let i=0;i<N;i++){bot.push(N-1-i);top.push(N+i);}   // 밑면은 뒤집어 아래를 보게
+  const faces=[{vs:bot},{vs:top}];
+  for(let i=0;i<N;i++){
+    const j=(i+1)%N;
+    faces.push({vs:[i,j,N+j,N+i]});
+  }
+  faces.forEach(f=>{const n=faceNormal(verts,f.vs);f.n=n;f.role=faceRole(n);f.mat=null;
+    f.facing=faceFacing(n);f.tilt=faceTiltDeg(n);});
+  return {verts,faces};
+}
+// 각기둥을 다면체로 승격 — 꼭짓점 높이를 따로 만지는 순간 한 번만 일어난다
+function massToSolid(m,ctx){
+  if(!m||!massIsPrism(m)) return m;
+  const S=massSolid(m,ctx);
+  const h=m.h_mm;   // 살아 있는 값이면 그대로 물려준다
+  const N=(m.pts||[]).length;
+  m.solidVerts=S.verts.map((v,i)=>({x:v.x,y:v.y,z:(i>=N)?h:0}));
+  // 갈래는 저장하지 않는다 — 형상이 바뀌면 저절로 다시 잡혀야 하므로
+  m.solidFaces=S.faces.map(f=>({vs:f.vs.slice(),mat:f.mat||null}));
+  return m;
+}
+// 각기둥으로 되돌릴 수 있으면 되돌린다 (윗면 높이가 다시 다 같아졌을 때)
+function massTryPrism(m,ctx){
+  if(!m||massIsPrism(m)) return m;
+  const N=(m.pts||[]).length;
+  if(!N||m.solidVerts.length!==N*2) return m;
+  for(let i=0;i<N;i++){
+    const b=m.solidVerts[i],t=m.solidVerts[N+i];
+    if(zNum(b.z,ctx)!==0) return m;
+    if(b.x!==m.pts[i].x||b.y!==m.pts[i].y) return m;
+    if(t.x!==m.pts[i].x||t.y!==m.pts[i].y) return m;
+  }
+  const z0=m.solidVerts[N].z;
+  for(let i=1;i<N;i++){
+    const z=m.solidVerts[N+i].z;
+    if(zIsRef(z0)||zIsRef(z)){ if(JSON.stringify(z)!==JSON.stringify(z0)) return m; }
+    else if(zNum(z,ctx)!==zNum(z0,ctx)) return m;
+  }
+  m.h_mm=z0;
+  delete m.solidVerts;delete m.solidFaces;
+  return m;
+}
+// ---------- 접힘 정리 (스케치업 Autofold 와 같은 일) ----------
+//  꼭짓점 하나를 올리면 그 면이 더 이상 평평하지 않게 된다. 평평하지 않은 면은
+//  법선이 뭉개져 갈래(천장/경사)도 면적도 거짓이 된다 — 박공을 세워 보고 실제로 그랬다.
+//  그래서 접힌 면을 평평한 조각으로 나눈다. 나눈 뒤 같은 평면끼리는 다시 하나로 합쳐
+//  삼각형 부스러기가 남지 않게 한다 (박공 지붕 = 사각 두 장).
+const SK_PLANAR_TOL=1.5;   // 이보다 어긋나면 접힌 것으로 본다 (mm)
+
+// 면이 평평한가 — 무게중심을 지나는 최적 평면에서 가장 멀리 벗어난 거리
+function facePlanarDev(verts,vs){
+  if(vs.length<4) return 0;
+  const n=faceNormal(verts,vs), c=faceCentroid3(verts,vs);
+  let d=0;
+  vs.forEach(i=>{
+    const v=verts[i]; if(!v) return;
+    d=Math.max(d,Math.abs((v.x-c.x)*n.x+(v.y-c.y)*n.y+(v.z-c.z)*n.z));
+  });
+  return d;
+}
+function _nKey(n){
+  const r=v=>Math.round(v*1000)/1000;
+  return r(n.x)+','+r(n.y)+','+r(n.z);
+}
+// 삼각형 부채꼴 — 삼각형은 언제나 평평하다
+function _fanTris(vs){
+  const out=[];
+  for(let i=1;i<vs.length-1;i++) out.push([vs[0],vs[i],vs[i+1]]);
+  return out;
+}
+// 같은 평면 위 조각들의 바깥 테두리를 한 고리로 — 속에서 맞닿은 변은 사라진다
+function _mergeCoplanar(tris){
+  const cnt=new Map(), dir=new Map();
+  tris.forEach(t=>{
+    for(let i=0;i<3;i++){
+      const a=t[i],b=t[(i+1)%3];
+      const k=a<b?(a+'_'+b):(b+'_'+a);
+      cnt.set(k,(cnt.get(k)||0)+1);
+      if(!dir.has(k)) dir.set(k,[a,b]);
+    }
+  });
+  const next=new Map();
+  cnt.forEach((c,k)=>{ if(c===1){const [a,b]=dir.get(k); next.set(a,b);} });
+  if(!next.size) return null;
+  const start=next.keys().next().value;
+  const ring=[start];
+  let cur=next.get(start), guard=0;
+  while(cur!==undefined&&cur!==start&&guard++<512){ ring.push(cur); cur=next.get(cur); }
+  if(cur!==start||ring.length<3||ring.length!==next.size) return null;  // 구멍이 있거나 끊겼다
+  return ring;
+}
+// 접힌 면을 '실제 접힌 선' 을 따라 나눈다.
+//  부채꼴로 자르면 지붕 한가운데에 있지도 않은 세로 삼각형이 생긴다(박공에서 실제로 그랬다).
+//  대신 이렇게 한다 — 이웃한 세 점이 만드는 평면마다, 그 평면에 놓인 꼭짓점이
+//  고리에서 몇 개나 잇달아 있는지 세어, 가장 길게 잇달린 조각을 떼어 낸다.
+//  박공이면 왼쪽 지붕(4점)이 통째로 떨어지고 남은 것이 오른쪽 지붕이 된다.
+function _onPlane(v,P){ return Math.abs((v.x-P.c.x)*P.n.x+(v.y-P.c.y)*P.n.y+(v.z-P.c.z)*P.n.z)<=SK_PLANAR_TOL; }
+function _planeOf(verts,a,b,c){
+  const A=verts[a],B=verts[b],C=verts[c];
+  if(!A||!B||!C) return null;
+  const ux=B.x-A.x,uy=B.y-A.y,uz=B.z-A.z, wx=C.x-A.x,wy=C.y-A.y,wz=C.z-A.z;
+  const nx=uy*wz-uz*wy, ny=uz*wx-ux*wz, nz=ux*wy-uy*wx;
+  const L=Math.hypot(nx,ny,nz);
+  if(L<1e-6) return null;                 // 세 점이 한 줄 위 — 평면이 안 나온다
+  return {n:{x:nx/L,y:ny/L,z:nz/L},c:B};
+}
+// 고리에서 P 위에 잇달아 놓인 가장 긴 조각 (고리를 넘어가며 센다) — [시작index, 길이]
+function _runOnPlane(verts,ring,P){
+  const n=ring.length, on=ring.map(i=>_onPlane(verts[i],P));
+  if(on.every(Boolean)) return [0,n];
+  let bs=-1,bl=0;
+  for(let s=0;s<n;s++){
+    if(!on[s]||(on[(s-1+n)%n])) continue;  // 조각의 첫 칸에서만 센다
+    let L=0; while(L<n&&on[(s+L)%n]) L++;
+    if(L>bl){bl=L;bs=s;}
+  }
+  return bl>=3?[bs,bl]:null;
+}
+function _rotate(ring,s){ return ring.slice(s).concat(ring.slice(0,s)); }
+// 고리 하나를 평평한 조각들로
+function splitFoldedRing(verts,ring,depth){
+  depth=depth||0;
+  if(ring.length<3) return [];
+  if(depth>16||facePlanarDev(verts,ring)<=SK_PLANAR_TOL) return [ring];
+  let best=null;
+  for(let i=0;i<ring.length;i++){
+    const P=_planeOf(verts,ring[(i-1+ring.length)%ring.length],ring[i],ring[(i+1)%ring.length]);
+    if(!P) continue;
+    const r=_runOnPlane(verts,ring,P);
+    if(!r) continue;
+    const [s,L]=r;
+    if(L>=ring.length) continue;           // 통째로면 이미 평평하다
+    if(!best||L>best[1]) best=[s,L];
+  }
+  if(!best) return _fanTris(ring);         // 못 나누겠으면 삼각형으로 (넓이는 맞다)
+  const [s,L]=best;
+  const rot=_rotate(ring,s);
+  const piece=rot.slice(0,L);              // 떼어 낸 평평한 조각
+  const rest=rot.slice(L-1).concat([rot[0]]); // 남은 고리 — 자른 자리 두 점을 공유한다
+  return [piece].concat(splitFoldedRing(verts,rest,depth+1));
+}
+// 접힌 면을 아예 갈라 굳힌다 — 갈라진 면마다 다른 마감을 주고 싶을 때만 쓴다.
+//  평소에는 massSolid 가 읽을 때마다 나누므로 이걸 부를 필요가 없다.
+function massHeal(m,ctx){
+  if(!m||massIsPrism(m)) return 0;
+  const verts=m.solidVerts.map(v=>({x:v.x,y:v.y,z:zNum(v.z,ctx)}));
+  const out=[];let folded=0;
+  m.solidFaces.forEach(f=>{
+    if(facePlanarDev(verts,f.vs)<=SK_PLANAR_TOL){ out.push(f); return; }
+    folded++;
+    splitFoldedRing(verts,f.vs,0).forEach(r=>{
+      if(r&&r.length>=3) out.push({vs:r,mat:f.mat||null});
+    });
+  });
+  m.solidFaces=out;
+  return folded;
+}
+// 꼭짓점 하나의 높이를 바꾼다 — 여기가 "자유롭게 변경" 이 일어나는 자리
+function massVertZ(m,i,z,ctx){
+  if(!m) return null;
+  massToSolid(m,ctx);
+  const v=m.solidVerts[i];
+  if(!v) return null;
+  v.z=(z&&typeof z==='object')?z:Math.round(Number(z));
+  massTryPrism(m,ctx);   // 다시 평평해졌으면 각기둥으로 되돌린다 (파일이 가벼워진다)
+  return m;
+}
+// 윗면 전체를 한 값으로 (밀기끌기) — 각기둥이면 각기둥인 채로 h_mm 만 고친다
+function massSetTop(m,z,ctx){
+  if(!m) return null;
+  if(massIsPrism(m)){ m.h_mm=(z&&typeof z==='object')?z:Math.round(Number(z)); return m; }
+  const N=(m.pts||[]).length;
+  for(let i=N;i<m.solidVerts.length;i++) m.solidVerts[i].z=(z&&typeof z==='object')?z:Math.round(Number(z));
+  massTryPrism(m,ctx);
+  return m;
+}
+// 이 매스가 안고 있는 물량 — 면이 스스로 무엇인지 알기에 나온다
+//  경사 천장은 눕힌 면적이 아니라 비탈을 따라간 실면적으로 잡힌다 (도배가 그만큼 든다)
+function massQuantities(m,ctx){
+  const S=massSolid(m,ctx);
+  const q={floor:0,ceil:0,wall:0,slope:0,total:0,ceilAll:0,maxTilt:0};
+  S.faces.forEach(f=>{
+    const a=faceArea3(S.verts,f.vs)/1e6;   // mm² → ㎡
+    q[f.role]=(q[f.role]||0)+a;
+    q.total+=a;
+    // 천장 마감(도배·페인트) 물량 — 평천장과 빗천장을 함께 센다.
+    //  경사면은 눕힌 넓이가 아니라 비탈을 따라간 실면적이라 자재가 더 든다
+    if(f.role==='ceil'||(f.role==='slope'&&f.facing==='up')) q.ceilAll+=a;
+    if(f.tilt>q.maxTilt&&f.role!=='wall') q.maxTilt=f.tilt;
+  });
+  Object.keys(q).forEach(k=>{q[k]=Math.round(q[k]*1000)/1000;});
+  return q;
+}
+// 부피 (㎥) — 발산정리. 되메움·단열 물량에 쓴다
+function massVolume(m,ctx){
+  const S=massSolid(m,ctx);
+  let v=0;
+  S.faces.forEach(f=>{
+    const c=faceCentroid3(S.verts,f.vs);
+    const n=faceNormal(S.verts,f.vs);
+    v+=(c.x*n.x+c.y*n.y+c.z*n.z)*faceArea3(S.verts,f.vs);
+  });
+  return Math.round(Math.abs(v)/3/1e9*1000)/1000;
+}
+// 매스의 가장 높은 곳 (층 높이 계산·적층에 쓴다)
+function massTopZ(m,ctx){
+  const S=massSolid(m,ctx);
+  let z=0;S.verts.forEach(v=>{if(v.z>z)z=v.z;});
+  return z;
+}
+
 if(typeof module!=='undefined'&&module.exports){
-  module.exports={massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
+  module.exports={zIsRef,zNum,zSet,zLabel,facePlanarDev,massHeal,splitFoldedRing,faceNormal,faceRole,faceFacing,faceTiltDeg,faceArea3,faceCentroid3,
+    massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
+    massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

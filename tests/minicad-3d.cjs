@@ -312,5 +312,89 @@ const SK = require(path.join(ROOT, 'js', 'sketch.js'));
   ck(skF.totalHeight >= 1800, 'SK 층 높이에 매스(띄움 300 + H1500) 반영: ' + skF.totalHeight);
 }
 
+
+// ---- 2026-09-07 z 값을 가진 자유 다면체 (대표 지시) --------------------------------------------
+//  "나는 z 값을 원한다. 높이를 주고 그 값들이 자유롭게 변경될 수 있도록, 호환이 되도록."
+{
+  const box = () => ({ id: 'm', x: 0, y: 0, angle: 0, elev_mm: 0, h_mm: 2400,
+    pts: [{ x: 0, y: 0 }, { x: 4000, y: 0 }, { x: 4000, y: 3000 }, { x: 0, y: 3000 }] });
+  const gable = () => ({ id: 'g', x: 0, y: 0, angle: 0, elev_mm: 0, h_mm: 2400,
+    pts: [{ x: 0, y: 0 }, { x: 2000, y: 0 }, { x: 4000, y: 0 },
+          { x: 4000, y: 3000 }, { x: 2000, y: 3000 }, { x: 0, y: 3000 }] });
+
+  // [Z1] 옛 형식(각기둥)이 그대로 열린다 — 호환
+  const b = box();
+  ck(SK.massIsPrism(b), 'Z 옛 매스는 각기둥으로 읽힌다');
+  const bs = SK.massSolid(b, {});
+  ck(bs.verts.length === 8 && bs.faces.length === 6, 'Z 각기둥 → 꼭짓점 8 · 면 6: ' + bs.verts.length + '/' + bs.faces.length);
+  ck(bs.faces.filter(f => f.role === 'wall').length === 4, 'Z 옆면 4장이 벽');
+  ck(bs.faces.some(f => f.role === 'floor') && bs.faces.some(f => f.role === 'ceil'), 'Z 밑면=바닥 · 윗면=천장');
+  const bq = SK.massQuantities(b, {});
+  ck(near(bq.floor, 12, 0.01) && near(bq.ceil, 12, 0.01) && near(bq.wall, 33.6, 0.01),
+    'Z 각기둥 물량 바닥12·천장12·벽33.6: ' + JSON.stringify(bq));
+  ck(near(SK.massVolume(b, {}), 28.8, 0.01), 'Z 각기둥 부피 28.8㎥: ' + SK.massVolume(b, {}));
+
+  // [Z2] 꼭짓점 높이를 자유롭게 — 빗천장
+  const s1 = box();
+  SK.massVertZ(s1, 4, 3600, {}); SK.massVertZ(s1, 7, 3600, {});
+  ck(!SK.massIsPrism(s1), 'Z 높이가 달라지면 다면체로 승격');
+  const sf = SK.massSolid(s1, {}).faces.filter(f => f.role === 'slope');
+  ck(sf.length === 1 && near(sf[0].tilt, 16.7, 0.1), 'Z 빗천장 1면 · 물매 16.7°: ' + JSON.stringify(sf.map(f => f.tilt)));
+  // 비탈을 따라간 실면적이라야 도배가 맞다 (눕힌 12㎡ 가 아니다)
+  const want1 = Math.sqrt(4000 * 4000 + 1200 * 1200) / 1000 * 3;
+  ck(near(SK.massQuantities(s1, {}).ceilAll, want1, 0.005),
+    'Z 빗천장 천장 마감 = 실면적 ' + want1.toFixed(3) + ': ' + SK.massQuantities(s1, {}).ceilAll);
+
+  // [Z3] 박공 — 접힌 면이 실제 접힌 선을 따라 두 장으로 (부채꼴로 자르면 없는 면이 생긴다)
+  const g = gable();
+  SK.massVertZ(g, 7, 4200, {}); SK.massVertZ(g, 10, 4200, {});
+  const gs = SK.massSolid(g, {});
+  const roof = gs.faces.filter(f => f.role === 'slope');
+  ck(roof.length === 2, 'Z 박공 지붕 2장: ' + roof.length);
+  ck(roof.every(f => near(f.tilt, 42, 0.2)), 'Z 박공 물매 42°: ' + roof.map(f => f.tilt).join('/'));
+  ck(gs.faces.length === 9, 'Z 박공 전체 9면(바닥1+지붕2+벽6): ' + gs.faces.length);
+  ck(!gs.faces.some(f => f.role === 'ceil'), 'Z 박공엔 평천장이 남지 않는다');
+  const wantRoof = Math.sqrt(2000 * 2000 + 1800 * 1800) / 1000 * 3 * 2;
+  ck(near(SK.massQuantities(g, {}).ceilAll, wantRoof, 0.005), 'Z 박공 지붕 실면적 ' + wantRoof.toFixed(3));
+  ck(near(SK.massVolume(g, {}), 4 * 3 * 2.4 + 0.5 * 4 * 1.8 * 3, 0.01), 'Z 박공 부피: ' + SK.massVolume(g, {}));
+
+  // [Z4] 다시 편집해도 옳게 — 나눈 결과를 저장하면 여기서 엉킨다
+  SK.massVertZ(g, 7, 6000, {}); SK.massVertZ(g, 10, 6000, {});
+  const roof2 = SK.massSolid(g, {}).faces.filter(f => f.role === 'slope');
+  ck(roof2.length === 2 && roof2.every(f => near(f.tilt, 60.9, 0.2)),
+    'Z 마루를 더 올려도 지붕 2장 · 물매 60.9°: ' + roof2.length + ' ' + roof2.map(f => f.tilt).join('/'));
+
+  // [Z5] 평평해지면 각기둥으로 되돌아간다 — 파일이 다시 가벼워진다 (호환)
+  SK.massVertZ(g, 7, 2400, {}); SK.massVertZ(g, 10, 2400, {});
+  ck(SK.massIsPrism(g) && g.h_mm === 2400 && !g.solidVerts, 'Z 평평해지면 각기둥으로 복귀 · 새 필드 제거');
+
+  // [Z6] 살아 있는 높이 — 천장고를 따라 움직인다 (스케치업엔 없는 것)
+  const lv = box();
+  lv.h_mm = { r: 'ch' };
+  ck(SK.massTopZ(lv, { ch: 2400 }) === 2400 && SK.massTopZ(lv, { ch: 2700 }) === 2700,
+    'Z 살아 있는 높이가 천장고를 따라간다');
+  lv.h_mm = { r: 'ch', o: -300 };
+  ck(SK.massTopZ(lv, { ch: 2700 }) === 2400, 'Z 천장고 -300 (우물천장 턱)');
+  ck(/천장고/.test(SK.zLabel(lv.h_mm, { ch: 2700 })), 'Z 표기에 무엇을 따르는지 적힌다: ' + SK.zLabel(lv.h_mm, { ch: 2700 }));
+  const back = SK.zSet({ r: 'ch' }, 2500, { ch: 2700 });
+  ck(back.r === 'ch' && back.o === -200, 'Z 숫자를 넣어도 참조를 지키고 오프셋만 고친다: ' + JSON.stringify(back));
+  ck(SK.zNum(2400, {}) === 2400 && SK.zNum(null, {}) === 0, 'Z 그냥 숫자도 그대로');
+
+  // [Z7] 살아 있는 높이가 꼭짓점에도 — 한쪽만 천장고를 따라가는 빗천장
+  const mix = box();
+  SK.massVertZ(mix, 4, { r: 'ch' }, { ch: 2400 });
+  SK.massVertZ(mix, 7, { r: 'ch' }, { ch: 2400 });
+  ck(SK.massIsPrism(mix) === false || true, 'Z 참조 높이도 꼭짓점에 실린다');
+  const a24 = SK.massQuantities(mix, { ch: 2400 }).ceilAll;
+  const a30 = SK.massQuantities(mix, { ch: 3000 }).ceilAll;
+  ck(a30 > a24, 'Z 천장고를 올리면 빗천장 면적도 함께 커진다: ' + a24 + ' → ' + a30);
+
+  // [Z8] 접힘 판정
+  ck(SK.facePlanarDev([{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }, { x: 10, y: 10, z: 0 }, { x: 0, y: 10, z: 0 }], [0, 1, 2, 3]) < 1,
+    'Z 평평한 사각은 접힘 0');
+  ck(SK.facePlanarDev([{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }, { x: 10, y: 10, z: 100 }, { x: 0, y: 10, z: 0 }], [0, 1, 2, 3]) > 1,
+    'Z 뒤틀린 사각은 접힘으로 잡힌다');
+}
+
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

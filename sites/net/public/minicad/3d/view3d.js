@@ -231,6 +231,26 @@ function primMesh(p,obj){
     mesh=new THREE.Mesh(g,matFor(p));
     mesh.rotation.x=-Math.PI/2;                              // 로컬 +z(깊이) → 세계 +y(위)
     mesh.position.y=(p.z||0)*MM;
+  }else if(p.t==='mesh'){
+    // 2026-09-07 대표 지시 "나는 z 값을 원한다" — 꼭짓점마다 높이가 다른 자유 다면체.
+    //  빗천장·박공처럼 각기둥으로 안 되는 것이 여기로 온다. 좌표는 평면과 같은 mm
+    //  (x 오른쪽 · y 아래 · z 위) 이고, 세계 좌표로 (x, z, y) 에 놓는다 — 각기둥과 같은 규약.
+    if(!p.verts||!p.tris||!p.tris.length) return null;
+    const pos=new Float32Array(p.tris.length*9);
+    let k=0;
+    for(const t of p.tris){
+      for(let j=0;j<3;j++){
+        const v=p.verts[t[j]];
+        if(!v) return null;
+        pos[k++]=v.x*MM; pos[k++]=v.z*MM; pos[k++]=v.y*MM;
+      }
+    }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    g.computeVertexNormals();                                // 면마다 법선 — 지붕 물매가 음영으로 보인다
+    g.computeBoundingSphere();
+    const mm=matFor(p).clone(); mm.side=THREE.DoubleSide;    // 안쪽에서 봐도 보이게 (걷기 모드)
+    mesh=new THREE.Mesh(g,mm);
   }
   if(!mesh) return null;
   const structural=obj.kind==='wall'||obj.kind==='pillar'||obj.kind==='stair'||obj.kind==='mass';
