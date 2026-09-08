@@ -64,9 +64,9 @@ const kinds = k => S.objects.filter(o => o.kind === k);
 
 // 범위·개수
 ck(S.bounds.minX === 0 && S.bounds.maxX === 9000 && S.bounds.maxY === 6000, '범위: ' + JSON.stringify(S.bounds));
-ck(S.counts.spaces === 3 && S.counts.walls === 4, '공간 3·벽 4(안내선 제외): ' + JSON.stringify(S.counts));
+ck(S.counts.spaces === 3 && S.counts.walls === 3, '공간 3·벽 3(안내선·내력벽 제외): ' + JSON.stringify(S.counts));
 ck(kinds('floor').length === 3 && kinds('ceiling').length === 3, '바닥·천장 각 3');
-ck(kinds('wall').length === 4, '벽 객체 4: ' + kinds('wall').length);
+ck(kinds('wall').length === 3, '벽 객체 3 (내력벽은 해칭 전용 — 2026-09-08): ' + kinds('wall').length);
 
 // 남쪽 벽: 문 + 창 → 몸체 3토막 + 문 인방 + 창턱 = 5 상자 (창 900+1500=2400 이라 인방 없음)
 const ws = byId('w_s');
@@ -86,7 +86,7 @@ ck(ws.prims.every(p => p.color === MC3D.WALL_COLORS.UNDECIDED), '마감 미정 �
 
 // 내력벽: 회색, 높이 2400(공간 없음 → 전역)
 const wb = byId('w_b');
-ck(wb && wb.prims.length === 1 && wb.prims[0].color === MC3D.COLORS.bearing && wb.prims[0].h === 2400 && wb.prims[0].d === 200, '내력벽 1상자 회색 h2400 t200');
+ck(wb === undefined, '내력벽: 벽체 없음 (해칭 전용 — 2026-09-08 대표 지시)');
 // 침실 벽: 공간 천장 2300
 ck(byId('w_hi').prims[0].h === 2300, '침실 벽은 공간 천장 2300: ' + byId('w_hi').prims[0].h);
 // 안내선은 없다
@@ -183,19 +183,18 @@ ck(near(aw('n').meta.ext[1], 99), '위 벽 v2 연장 = 이웃(exterior) 바깥 �
 ck(aw('n').meta.ext[0] === 0, '위 벽 v1 연장 0 (이웃 몸체가 방 안쪽에만 있음): ' + JSON.stringify(aw('n').meta.ext));
 //  오른쪽 벽(e) v1=b 에서 만나는 위 벽(n): n 로컬 +y=(0,1), off=+50 → 몸체 y∈[0,100]; e 의 바깥 방향 d=−u=(0,−1) → 투영 최댓값 0 → 연장 0
 ck(aw('e').meta.ext[0] === 0, '오른쪽 벽 v1 연장 0: ' + JSON.stringify(aw('e').meta.ext));
-//  내력벽 무게중심 규칙: 내력벽 2장이 마주보면 각각 '안쪽'이 서로를 향한다
+// 2026-09-08 대표 지시: 내력벽 = 평면 해칭 전용 — 미니폼에 벽체를 만들지 않는다.
+//  (종전의 '내력벽 무게중심 정렬' 3D 시험은 이 규칙으로 폐기 — 정렬 코드는 남아 있으나 도달 불가)
 const B = { meta: {}, walls: [
-  { id: 'b1', x1: 0, y1: 0, x2: 4000, y2: 0, thickness: 200, wallType: 'bearing', alignment: 'interior' },      // n=(0,1) → 무게중심(2000,2000) 쪽 → sign +1 → off +100
-  { id: 'b2', x1: 0, y1: 4000, x2: 4000, y2: 4000, thickness: 200, wallType: 'bearing', alignment: 'interior' }, // n=(0,1) → 무게중심은 −n 쪽 → sign −1 → off −100
+  { id: 'b1', x1: 0, y1: 0, x2: 4000, y2: 0, thickness: 200, wallType: 'bearing', alignment: 'interior' },
+  { id: 'b2', x1: 0, y1: 4000, x2: 4000, y2: 4000, thickness: 200, wallType: 'bearing', alignment: 'interior' },
+  { id: 'n1', x1: 0, y1: 0, x2: 0, y2: 4000, thickness: 100 },
 ] };
 const SB = MC3D.buildScene(B, LIBS);
-const bw = id => SB.objects.find(o => o.id === id);
-ck(bw('b1').meta.offset === 100 && bw('b2').meta.offset === -100, '내력벽 interior: 무게중심 쪽으로 t/2 (+100 / −100): ' + bw('b1').meta.offset + '/' + bw('b2').meta.offset);
-B.walls.forEach(w => { w.alignment = 'exterior'; });
-const SB2 = MC3D.buildScene(B, LIBS);
-ck(SB2.objects.find(o => o.id === 'b1').meta.offset === -100 && SB2.objects.find(o => o.id === 'b2').meta.offset === 100, '내력벽 exterior: 무게중심 반대');
-const one = MC3D.buildScene({ meta: {}, walls: [B.walls[1]] }, LIBS).objects.find(o => o.id === 'b2');
-ck(one.meta.offset === -100, '내력벽 1장뿐이면 기본 규약(sign=+1) → exterior −100: ' + one.meta.offset);
+ck(!SB.objects.some(o => o.kind === 'wall' && (o.id === 'b1' || o.id === 'b2')),
+  '내력벽: 미니폼에 벽체가 안 만들어진다 (해칭 전용)');
+ck(SB.objects.some(o => o.kind === 'wall' && o.id === 'n1') && SB.counts.walls === 1,
+  '내력벽: 일반벽만 서고 벽 수도 1: ' + SB.counts.walls);
 
 // ---- 층 시트(다층 적층) 2026-09-03 — floors[] 가 있으면 z0 로 쌓는다 ----
 //  1층 = 최상위 배열(active), 2층 = floors[].data. 1층 천장 2400 + 슬래브 300 → 2층 z0 = 2700

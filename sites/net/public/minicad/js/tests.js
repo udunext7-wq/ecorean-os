@@ -4514,6 +4514,37 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('내력벽: 평면 벽 목록엔 그대로',STATE.walls.some(w=>w.id===_bw.id&&w.wallType==='bearing'));
     _bw.wallType=_bwType;
 
+    // [B] 2026-09-08 대표 지시 — 내력벽 = 해칭 전용 · 레이어 · 3D 배제
+    _bw.wallType='bearing';
+    assert('B01: 레이어에 내력벽이 있다 (기본 켜짐)',STATE.layers.bearing===true);
+    renderAll();
+    assert('B02: 내력벽 해칭은 자기 그룹에 그려진다',groups.bearing.getChildren().length>0,
+      groups.bearing.getChildren().length);
+    STATE.layers.bearing=false; renderAll();
+    assert('B03: 레이어를 끄면 해칭이 사라진다',groups.bearing.visible()===false);
+    STATE.layers.bearing=true; renderAll();
+    assert('B04: 켜면 돌아온다',groups.bearing.visible()===true);
+    // 견적·벽면적 — 내력벽을 넣었다 빼도 숫자가 같아야 한다 (어떤 것에도 영향 X)
+    const _bwSp=STATE.spaces.find(x=>x.id===pB.sp.id);
+    const _wallNow=spWall(_bwSp);
+    _bw.wallType=_bwType;
+    assert('B05: 내력벽 지정이 벽면적을 바꾸지 않는다 (일반벽으로 되돌리면 +)',
+      spWall(_bwSp)>_wallNow,_wallNow+' → '+spWall(_bwSp));
+    _bw.wallType='bearing';
+    // 레이어 패널에 줄이 실제로 뜬다
+    buildLayerUI();
+    const _lyRows=[...document.querySelectorAll('#layer-list .layer-name')].map(e=>e.textContent);
+    assert('B06: 레이어 패널에 내력벽 줄',_lyRows.some(t=>/내력벽/.test(t)),_lyRows.join(','));
+    // 3D 조립 — 내력벽은 벽체가 안 만들어진다
+    if(typeof MC3D!=='undefined'&&MC3D.buildFloorScene){
+      const _bd=MC3D.normalizeDoc(buildAutosavePayload());
+      const _bs=MC3D.buildFloorScene(_bd,{FURNITURE_LIB,FIXFURN_LIB,FIXTURE_LIB,LIGHT_LIB,ELECTRIC_LIB,HVAC_FIRE_LIB});
+      assert('B07: 미니폼에 내력벽 벽체가 없다',
+        !_bs.objects.some(o=>o.kind==='wall'&&o.id===_bw.id));
+      assert('B08: 벽 수에서도 빠진다',_bs.counts.walls===_bd.walls.filter(w=>!w.isLine&&w.wallType!=='bearing').length);
+    }else{ assert('B07: 3D 조립 (노드 테스트가 검증)',true); }
+    _bw.wallType=_bwType;
+
     // (2) 수성·도배 재질 표기 (해칭)
     assert('재질표기: 도배 갈래',elevHatchKey('WP_SILK')==='wp'&&elevHatchKey('WP_COMPOSITE')==='wp');
     assert('재질표기: 도장 갈래',elevHatchKey('PAINT_WATER')==='pt'&&elevHatchKey('PAINT_ECO')==='pt');

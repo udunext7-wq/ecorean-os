@@ -819,6 +819,7 @@ function buildFloorScene(D,libs){
   const offs={}; D.walls.forEach(w=>{ if(!w.isLine) offs[w.id]=wallAlignOffset(w,D); });
   D.walls.forEach(w=>{
     if(w.isLine) return;
+    if(w.wallType==='bearing') return;   // 2026-09-08 대표 지시: 내력벽은 평면 해칭 전용 — 미니폼에 벽체를 만들지 않는다 (그 위 문·창도 도면 표기일 뿐)
     const r=buildWall(w,D,spaceById,offs);
     if(!r) return;
     objects.push(r.wall); r.openings.forEach(o=>objects.push(o));
@@ -848,7 +849,7 @@ function buildFloorScene(D,libs){
       text:(m.name||'매스')+' H'+o.meta.h_mm+tilt});
   });
   return {bounds,ceilH:D.ceilH,project:D.meta.project||'',objects,labels,
-    counts:{spaces:D.spaces.length,walls:D.walls.filter(w=>!w.isLine).length,openings:D.openings.length,
+    counts:{spaces:D.spaces.length,walls:D.walls.filter(w=>!w.isLine&&w.wallType!=='bearing').length,openings:D.openings.length,
       furniture:D.furniture.length+D.fixtures.length,lights:D.lights.length,
       sketch:(D.sketchPts||[]).length+(D.sketchEdges||[]).length+(D.sketchFaces||[]).length
         +(D.planes||[]).reduce((n,pl)=>n+pl.sketchPts.length+pl.sketchEdges.length+pl.sketchFaces.length,0),

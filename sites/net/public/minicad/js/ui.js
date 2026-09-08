@@ -309,7 +309,7 @@ function buildSpaceTypeUI(){
 }
 function buildLayerUI(){
   const list=document.getElementById('layer-list');list.innerHTML='';
-  const labels={walls:['벽','#3E3E3E'],spaces:['공간','#C9A961'],openings:['문/창','#D4A05B'],
+  const labels={walls:['벽','#3E3E3E'],bearing:['내력벽 (해칭 전용)','#8899AA'],spaces:['공간','#C9A961'],openings:['문/창','#D4A05B'],
     furniture:['가구','#8B7239'],fixtures:['위생/주방','#5BA0D4'],lights:['조명','#D4B872'],
     electric:['전기','#7BA05B'],hvac:['공조/소방','#9B7AC9'],circles:['원/타원','#C9A961'],arcs:['아크','#D4B872'],curves:['자유곡선','#7BA05B'],
     pillars:['기둥 (RC)','#D4D4D4'],
@@ -882,7 +882,7 @@ function refreshDetail(){
       if(!v){cmdToast('먼저 이 벽의 마감재를 선택하세요');return;}
       const total=STATE.walls.filter(x=>!x.isLine).length;
       if(!confirm('도면의 모든 벽 '+total+'개에 "'+(WALL_MATERIALS[v]?.name||v)+'" 적용?'))return;
-      let n=0;STATE.walls.forEach(x=>{if(!x.isLine){x.finishMaterial=v;n++;}});
+      let n=0;STATE.walls.forEach(x=>{if(!x.isLine&&x.wallType!=='bearing'){x.finishMaterial=v;n++;}}); // 내력벽은 해칭 전용 — 마감 없음
       saveHistory();renderAll();refreshUI();
       showStatus('전체 벽 마감재: '+(WALL_MATERIALS[v]?.name||v)+' — '+n+'개');
     });

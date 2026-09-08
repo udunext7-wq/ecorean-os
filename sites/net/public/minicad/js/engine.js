@@ -24,6 +24,7 @@ groups={
   leaders:new Konva.Group(), // v5.9
   xlines:new Konva.Group(), // v5.9: 무한 안내선 (XLINE)
   masses:new Konva.Group(), // 2026-09-04: 자유 매스 (면+Z 결과) — 공간 위·벽 아래
+  bearing:new Konva.Group(), // 2026-09-08: 내력벽 — 평면 해칭 전용, 레이어로 끄고 켠다 (대표 지시)
   sketch:new Konva.Group(), // 2026-09-04: 점·선·면 스케치 — 벽 위 (클릭 선택)
   sections:new Konva.Group(), // 2026-08-30: 절단선 (입면 방향선)
   pillars:new Konva.Group(), // v5.9: 기둥 (RC) — 내력벽과 함께 최상단
@@ -31,7 +32,9 @@ groups={
   printFrame:new Konva.Group(), // 2026-08-28: 화면에서 잡는 인쇄 영역 틀 (최상단, 인쇄엔 미포함)
 };
 // v5.9: 공간(fill 배경) → 벽(상단) 순서 — 벽이 위에 그려져 클릭 가능, 공간 fill에 가려지지 않음
-mainLayer.add(groups.spaces);mainLayer.add(groups.masses);mainLayer.add(groups.walls);mainLayer.add(groups.openings);
+mainLayer.add(groups.spaces);mainLayer.add(groups.masses);mainLayer.add(groups.walls);
+mainLayer.add(groups.bearing);   // 내력벽 해칭은 일반벽 위에 (종전 moveToTop 규약 그대로)
+mainLayer.add(groups.openings);
 mainLayer.add(groups.fixtures);mainLayer.add(groups.furniture);mainLayer.add(groups.electric);
 mainLayer.add(groups.lights);mainLayer.add(groups.dimensions);mainLayer.add(groups.text);
 mainLayer.add(groups.circles);mainLayer.add(groups.arcs); // v5.3
@@ -1599,6 +1602,7 @@ function _computeBearingCorners(w){
 }
 function renderWalls(){
   groups.walls.destroyChildren();
+  groups.bearing.destroyChildren();   // 내력벽은 자기 레이어 그룹에 다시 그린다
   // v5.4+v5.5: 중첩 감지 — 벽↔벽(주황) 와 벽↔공간변(파랑) 분리
   const overlapsWall=detectOverlappingWalls();
   const overlapsSpace=detectWallSpaceOverlap();
@@ -1701,7 +1705,7 @@ function renderWalls(){
         ctx.drawImage(off, 0, 0);
       },
     });
-    groups.walls.add(merged);
+    groups.bearing.add(merged);
     _mergedBearingRef=merged;
   }
   // v5.9: 자유벽(공간 vertex 미공유) 중 다른 자유벽과 vertex 공유하는 것을 미리 식별 → 파란색 표시
@@ -1786,7 +1790,7 @@ function renderWalls(){
         shadowOpacity:sel?0.5:(overlapColor?0.7:0),
       });
       shape.on('click tap',e=>{if(e.evt&&e.evt.button!==undefined&&e.evt.button!==0)return;e.cancelBubble=true;if(STATE.selectedTool==='select') selectObj('wall',w.id);});
-      groups.walls.add(shape);
+      groups.bearing.add(shape);
       _bearingPerWallRefs.push(shape);
     }else{
       // 기존 표준벽/선 렌더링
@@ -1835,7 +1839,7 @@ function renderWalls(){
         dash:[10,3,2,3], // CENTER linetype: 장점-짧점-장점
         opacity:0.85,listening:false,
       });
-      groups.walls.add(cl);
+      groups.bearing.add(cl);
       _bearingCenterlineRefs.push(cl);
     }else{
       _clSegs.push(x1c,y1c,x2c,y2c);

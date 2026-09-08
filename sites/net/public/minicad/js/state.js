@@ -52,7 +52,7 @@ const STATE={
   shiftPressed:false,
   ctrlPressed:false, // v5.9: Ctrl 누르면 자석 스냅 일시 OFF
   history:[],historyIdx:-1,measureFirst:null,
-  layers:{walls:true,spaces:true,openings:true,furniture:true,fixtures:true,lights:true,electric:true,dimensions:true,text:true,circles:true,arcs:true,curves:true,hvac:true,leaders:true,xlines:true,pillars:true,sections:true,sketch:true,masses:true},
+  layers:{walls:true,bearing:true,spaces:true,openings:true,furniture:true,fixtures:true,lights:true,electric:true,dimensions:true,text:true,circles:true,arcs:true,curves:true,hvac:true,leaders:true,xlines:true,pillars:true,sections:true,sketch:true,masses:true},
   estimateConfig:{},
   cmdHistory:[],cmdHistoryIdx:-1,
   cmdMode:null,cmdData:{}, // v5.1: 단계별 프롬프트 모드
