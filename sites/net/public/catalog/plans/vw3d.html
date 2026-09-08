@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>브이월드 실사 3D</title>
+<!-- domain 은 반드시 https:// 를 붙인다 — 로더가 'https:' 포함 여부로 프로토콜을 정해서,
+     없으면 http:// 엔진을 document.write 해 https 페이지에서 혼합콘텐츠로 전부 차단된다 (2026-09-08 실측) -->
+<script type="text/javascript" src="https://map.vworld.kr/js/webglMapInit.js.do?version=3.0&apiKey=D5489AC1-5C65-413B-9EC8-5A6A340E6184&domain=https://ecorean.net"></script>
+<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b1020}#map{width:100%;height:100%}</style>
+</head>
+<body>
+<div id="map"></div>
+<script type="text/javascript">
+// 브이월드 WebGL v3.0 공식 초기화 (V-world_API_sample [WebGL3] 예제 방식):
+//   new vw.Map() → setOption(options) → setMapId(컨테이너) → start()
+var q=new URLSearchParams(location.search);
+var LNG=parseFloat(q.get('lng'))||126.978, LAT=parseFloat(q.get('lat'))||37.5665;
+var map3d=null;
+function fail(msg){try{parent.postMessage({vw3d:'fail',msg:String(msg||'')},'*');}catch(e){}}
+window.onerror=function(m){fail(m);};
+function camAt(lng,lat){
+  // 남쪽에서 -55° 로 내려다봐 건물 입면이 보이게
+  return new vw.CameraPosition(new vw.CoordZ(lng,lat-0.004,700),new vw.Direction(0,-55,0));
+}
+function boot(){
+  try{
+    map3d=new vw.Map();
+    map3d.setOption({mapId:'vmap',initPosition:camAt(LNG,LAT),logo:true,navigation:true});
+    map3d.setMapId('map');
+    map3d.start();
+    try{parent.postMessage({vw3d:'ready'},'*');}catch(e){}
+  }catch(e){fail(e&&e.message||e);}
+}
+if(window.vw&&vw.Map)boot();
+else{
+  var n=0,t=setInterval(function(){
+    if(window.vw&&vw.Map){clearInterval(t);boot();}
+    else if(++n>130){clearInterval(t);fail('엔진 로드 시간 초과 — 네트워크·키 도메인 등록을 확인하세요');}
+  },150);
+}
+window.addEventListener('message',function(ev){
+  var d=ev.data||{};
+  if(d.vw3d==='fly'&&map3d){
+    try{map3d.moveTo(camAt(+d.lng,+d.lat));}
+    catch(e){fail('카메라 이동 실패: '+(e&&e.message||e));}
+  }
+});
+</script>
+</body>
+</html>

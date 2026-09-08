@@ -748,24 +748,10 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     return {type:'Feature',properties:{vid:vbldSeq++,h_m:floors*3.1,fl:floors},
       geometry:{type:'Polygon',coordinates:[[[lng-dLng,lat-dLat],[lng+dLng,lat-dLat],[lng+dLng,lat+dLat],[lng-dLng,lat+dLat],[lng-dLng,lat-dLat]]]}};
   }
-  // ④ 브이월드 WebGL 3D 실사 (iframe)
+  // ④ 브이월드 WebGL 3D 실사 — 실페이지 vw3d.html 을 iframe 으로 연다.
+  //    srcdoc 은 실패했다: about:srcdoc 에 domain 미프로토콜이 겹쳐 http 엔진이 혼합콘텐츠로 차단됐고,
+  //    v3.0 초기화도 new vw.Map()→setOption→setMapId→start() 방식이라 별도 페이지가 맞다 (2026-09-08).
   var vw3dOn=false, vw3dFrame=null, vw3dLast=null;
-  function vw3dSrcdoc(lng,lat){
-    return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body,#vmap{margin:0;width:100%;height:100%;overflow:hidden}</style>'
-      +'<scr'+'ipt src="https://map.vworld.kr/js/webglMapInit.js.do?version=3.0&apiKey='+VW_KEY+'&domain=ecorean.net"></scr'+'ipt>'
-      +'</head><body><div id="vmap"></div><scr'+'ipt>'
-      +'var m3;function boot(){try{'
-      +'var o=new vw.MapOptions(vw.BasemapType.GRAPHIC,"",vw.DensityType.FULL,vw.DensityType.BASIC,false,'
-      +'new vw.CameraPosition(new vw.CoordZ('+lng+','+(lat-0.004)+',700),new vw.Direction(0,-55,0)),'
-      +'new vw.CameraPosition(new vw.CoordZ('+lng+','+(lat-0.004)+',700),new vw.Direction(0,-55,0)));'
-      +'m3=new vw.Map("vmap",o);'
-      +'}catch(e){parent.postMessage({vw3d:"fail",msg:String(e&&e.message||e)},"*");}}'
-      +'if(window.vw&&vw.Map)boot();else{var n=0,t=setInterval(function(){if(window.vw&&vw.Map){clearInterval(t);boot();}else if(++n>100){clearInterval(t);parent.postMessage({vw3d:"fail",msg:"엔진 로드 시간 초과"},"*");}},150);}'
-      +'window.addEventListener("message",function(ev){var d=ev.data||{};if(d.vw3d==="fly"&&m3){try{'
-      +'m3.moveTo(new vw.CameraPosition(new vw.CoordZ(d.lng,d.lat-0.004,700),new vw.Direction(0,-55,0)));'
-      +'}catch(e){}}});'
-      +'</scr'+'ipt></body></html>';
-  }
   function vw3dFlyTo(lng,lat){
     vw3dLast=[lng,lat];
     if(vw3dOn&&vw3dFrame&&vw3dFrame.contentWindow)vw3dFrame.contentWindow.postMessage({vw3d:'fly',lng:lng,lat:lat},'*');
@@ -779,7 +765,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       if(!vw3dFrame){
         vw3dFrame=document.createElement('iframe');
         vw3dFrame.style.cssText='width:100%;height:100%;border:0;border-radius:12px;background:#0b1020';
-        vw3dFrame.srcdoc=vw3dSrcdoc(c[0],c[1]);
+        vw3dFrame.src='/catalog/plans/vw3d.html?lng='+c[0]+'&lat='+c[1];
         host.appendChild(vw3dFrame);
         window.addEventListener('message',function(ev){
           var d=ev.data||{};
