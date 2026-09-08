@@ -314,7 +314,7 @@ function buildMass(m){
   if(massIsPrismOf(m)&&!hasCuts){
     // 수직 각기둥 — 종전 그대로 (가볍고 빠르다)
     return Object.assign(base,{prims:[{t:'prism',pts:m.pts,z:0,h:H,color:col,mcode:m.mat||null}],
-      meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false,z:zgrip,gid:m.gid||null,cid:m.cid||null,tag:m.tag||null,mat:m.mat||null}});
+      meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false,z:zgrip,gid:m.gid||null,cid:m.cid||null,tag:m.tag||null,shadow:m.shadow||null,mat:m.mat||null}});
   }
   // 자유 다면체 — 꼭짓점마다 높이가 다르다 (빗천장·박공·꺾인 천장)
   const S=massSolidOf(m,ctx);
@@ -333,7 +333,7 @@ function buildMass(m){
   return Object.assign(base,{
     prims:[...byMat].map(([key,tris])=>({t:'mesh',verts:S.verts,tris,faces:S.faces.map(f=>({role:f.role,tilt:f.tilt})),z:0,color:col,mcode:key||m.mat||null}))
       .concat(cutFx?cutFx.prims:[]),
-    meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:true,gid:m.gid||null,cid:m.cid||null,tag:m.tag||null,mat:m.mat||null,
+    meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:true,gid:m.gid||null,cid:m.cid||null,tag:m.tag||null,shadow:m.shadow||null,mat:m.mat||null,
       qty:q,faces:S.faces.length,maxTilt:q.maxTilt||0,z:zgrip,
       slopes:(_sk('massSlopes')||(()=>[]))(m,ctx)}});
 }

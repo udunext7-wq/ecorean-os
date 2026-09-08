@@ -1477,6 +1477,153 @@ function massCSG(kind,A,B,ctx){
   return out.filter(r=>r&&Math.abs(massVolume(r,ctx))>1e-6);
 }
 
+// ---------------------------------------------------------------------------
+// 스케치업 100% 2차 (2026-09-08) — 매스의 면·꼭짓점을 직접 만지는 기하
+//  밀기끌기 = 면을 법선으로 옮긴다(매스가 바뀐다) · 꼭짓점 xy 이동 · 임의 축 회전 ·
+//  뒤집기 · 기준점 배율 · 면 정보. 전부 로컬 좌표(매스 중심 기준·z 는 바닥에서).
+// ---------------------------------------------------------------------------
+function _massNumVerts(m,ctx){ return m.solidVerts.map(v=>({x:v.x,y:v.y,z:zNum(v.z,ctx)})); }
+// 로컬 점·법선으로 다면체의 원본 면(solidFaces 항목)을 찾는다
+function massFindFace(m,lp,ln,ctx,tol){
+  massToSolid(m,ctx);
+  const verts=_massNumVerts(m,ctx);
+  let best=null,bd=(tol||25);
+  m.solidFaces.forEach((f,fi)=>{
+    if(f.vs.length<3) return;
+    const n=faceNormal(verts,f.vs);
+    if(_vDot(n,ln)<0.8) return;
+    const v0=verts[f.vs[0]];
+    const d=Math.abs(_vDot(_vSub(lp,v0),n));
+    if(d<bd){ bd=d; best={fi,face:f,n,verts}; }
+  });
+  return best;
+}
+// 바닥을 0 으로 · 각기둥 짝이 살아 있으면 pts 를 밑면에 맞춘다 · 다시 각기둥이면 되돌린다
+function _massNormalize(m,ctx){
+  if(!Array.isArray(m.solidVerts)) return m;
+  const zs=m.solidVerts.map(v=>zNum(v.z,ctx));
+  const zmin=Math.min(...zs);
+  if(Math.abs(zmin)>0.01){
+    m.solidVerts.forEach(v=>{ v.z=Math.round((zNum(v.z,ctx)-zmin)*10)/10; });
+    m.elev_mm=Math.round((Number(m.elev_mm)||0)+zmin);
+  }
+  const N=(m.pts||[]).length;
+  let prismLike=false;
+  if(N&&m.solidVerts.length===N*2){
+    prismLike=true;
+    for(let i=0;i<N;i++){ const b=m.solidVerts[i],t=m.solidVerts[N+i];
+      if(Math.abs(zNum(b.z,ctx))>0.01||Math.abs(b.x-t.x)>0.01||Math.abs(b.y-t.y)>0.01){ prismLike=false; break; } }
+  }
+  if(prismLike){
+    m.solidVerts.forEach(v=>{ v.x=Math.round(v.x); v.y=Math.round(v.y); if(!zIsRef(v.z)) v.z=Math.round(zNum(v.z,ctx)); });
+    m.pts=m.solidVerts.slice(0,N).map(v=>({x:v.x,y:v.y}));
+  }else{
+    const xs=m.solidVerts.map(v=>v.x),ys=m.solidVerts.map(v=>v.y);
+    m.pts=[{x:Math.round(Math.min(...xs)),y:Math.round(Math.min(...ys))},{x:Math.round(Math.max(...xs)),y:Math.round(Math.min(...ys))},
+           {x:Math.round(Math.max(...xs)),y:Math.round(Math.max(...ys))},{x:Math.round(Math.min(...xs)),y:Math.round(Math.max(...ys))}];
+  }
+  m.h_mm=Math.round(Math.max(10,Math.max(...m.solidVerts.map(v=>zNum(v.z,ctx)))));
+  massTryPrism(m,ctx);
+  return m;
+}
+// 밀기끌기 — 면의 꼭짓점을 법선으로 d 만큼 (스케치업 Push/Pull 의 본뜻: 매스 자체가 늘고 준다)
+function massPushFace(m,lp,ln,d,ctx){
+  d=Math.round(Number(d)); if(!isFinite(d)||d===0) return null;
+  const f=massFindFace(m,lp,ln,ctx); if(!f) return null;
+  if(d<0){                                              // 안으로 밀 때 반대 면을 넘지 않는다
+    const c=faceCentroid3(f.verts,f.face.vs);
+    const exit=massRayExit(m,c,_vScale(f.n,-1),ctx);
+    if(exit!=null) d=Math.max(d,-Math.max(0,Math.round(exit)-10));
+    if(d===0) return null;
+  }
+  const set=new Set(f.face.vs);
+  m.solidVerts.forEach((v,i)=>{ if(set.has(i)){ v.x=Math.round((v.x+f.n.x*d)*10)/10; v.y=Math.round((v.y+f.n.y*d)*10)/10; v.z=Math.round((zNum(v.z,ctx)+f.n.z*d)*10)/10; } });
+  _massNormalize(m,ctx);
+  return {d,n:f.n};
+}
+// Ctrl+밀기끌기 — 원래 면은 두고 새 매스를 뽑는다
+function massExtrudeFaceNew(m,lp,ln,d,ctx,free){
+  d=Math.round(Number(d)); if(!isFinite(d)||Math.abs(d)<10) return null;
+  const f=massFindFace(m,lp,ln,ctx); if(!f) return null;
+  const th=(m.angle||0)*Math.PI/180,c=Math.cos(th),s=Math.sin(th),el=Number(m.elev_mm)||0;
+  const abs=v=>_v3(m.x+v.x*c-v.y*s,m.y+v.x*s+v.y*c,v.z+el);
+  const nA=_v3(f.n.x*c-f.n.y*s,f.n.x*s+f.n.y*c,f.n.z);
+  const near=f.face.vs.map(i=>abs(f.verts[i]));
+  const far=near.map(p=>_vAdd(p,_vScale(nA,d)));
+  const faces=[near.slice().reverse(),far.slice()];
+  for(let i=0;i<near.length;i++){ const j=(i+1)%near.length; faces.push([near[i],near[j],far[j],far[i]]); }
+  const mm=massFromCsgFaces((m.name||'매스')+' 뽑기',faces,m.color,free);
+  return mm;
+}
+// 꼭짓점 xy 이동 (스케치업 Move on vertex/edge) — 각기둥이면 밑·윗면 짝을 함께
+function massVertXY(m,idxs,dx,dy,ctx){
+  dx=Math.round(Number(dx)||0); dy=Math.round(Number(dy)||0);
+  if(!dx&&!dy) return null;
+  const N=(m.pts||[]).length;
+  if(massIsPrism(m)){
+    idxs.forEach(i=>{ const k=((i%N)+N)%N; const p=m.pts[k]; if(p){ p.x+=dx; p.y+=dy; } });
+    return m;
+  }
+  const pair=m.solidVerts.length===N*2&&m.solidVerts.slice(0,N).every((v,i)=>Math.abs(v.x-m.pts[i].x)<=1&&Math.abs(v.y-m.pts[i].y)<=1);
+  const set=new Set();
+  idxs.forEach(i=>{ set.add(i); if(pair){ set.add(i<N?i+N:i-N); } });
+  set.forEach(i=>{ const v=m.solidVerts[i]; if(v){ v.x+=dx; v.y+=dy; } });
+  _massNormalize(m,ctx);
+  return m;
+}
+// 임의 축 회전 (로컬 축·로컬 기준점·도) — 로드리게스
+function massRotate3(m,axis,about,deg,ctx){
+  const a=_vNorm(axis); const th=deg*Math.PI/180, c=Math.cos(th), s=Math.sin(th);
+  massToSolid(m,ctx);
+  m.solidVerts.forEach(v=>{
+    const p=_vSub(_v3(v.x,v.y,zNum(v.z,ctx)),about);
+    const r=_vAdd(_vAdd(_vScale(p,c),_vScale(_vCross(a,p),s)),_vScale(a,_vDot(a,p)*(1-c)));
+    const q=_vAdd(r,about);
+    v.x=Math.round(q.x*10)/10; v.y=Math.round(q.y*10)/10; v.z=Math.round(q.z*10)/10;
+  });
+  _massNormalize(m,ctx);
+  return m;
+}
+// 뒤집기 (Flip Along) — 로컬 x·y·z
+function massFlip(m,axis,ctx){
+  if(axis==='z'){ massToSolid(m,ctx); const h=Math.max(...m.solidVerts.map(v=>zNum(v.z,ctx))); m.solidVerts.forEach(v=>{ v.z=Math.round((h-zNum(v.z,ctx))*10)/10; }); _massNormalize(m,ctx); return m; }
+  const k=axis==='x'?'x':'y';
+  if(massIsPrism(m)){ m.pts.forEach(p=>{ p[k]=-p[k]; }); return m; }
+  m.solidVerts.forEach(v=>{ v[k]=-v[k]; });
+  _massNormalize(m,ctx);
+  return m;
+}
+// 기준점 배율 — v' = a + (v−a)·s
+function massScaleAbout(m,s,a,ctx){
+  const sx=Number(s.x)||1, sy=Number(s.y)||1, sz=Number(s.z)||1;
+  a=a||_v3(0,0,0);
+  massToSolid(m,ctx);
+  m.solidVerts.forEach(v=>{ const z=zNum(v.z,ctx); v.x=Math.round((a.x+(v.x-a.x)*sx)*10)/10; v.y=Math.round((a.y+(v.y-a.y)*sy)*10)/10; v.z=Math.round((a.z+(z-a.z)*sz)*10)/10; });
+  if(Array.isArray(m.cuts)&&m.cuts.length&&!(sx===sy&&sy===sz)) m.cuts=[];
+  else if(Array.isArray(m.cuts)) m.cuts.forEach(cc=>{ if(cc.plane&&cc.plane.origin){ cc.plane.origin.x=a.x+(cc.plane.origin.x-a.x)*sx; cc.plane.origin.y=a.y+(cc.plane.origin.y-a.y)*sy; cc.plane.origin.z=a.z+(cc.plane.origin.z-a.z)*sz; } if(Array.isArray(cc.uv)) cc.uv=cc.uv.map(q=>({x:q.x*sx,y:q.y*sx})); cc.d=Math.round((cc.d||0)*sx); });
+  _massNormalize(m,ctx);
+  return m;
+}
+// 로컬 바운딩 박스 (배율 그립용)
+function massLocalBox(m,ctx){
+  const S=massSolid(m,ctx);
+  const xs=S.verts.map(v=>v.x),ys=S.verts.map(v=>v.y),zs=S.verts.map(v=>v.z);
+  return {x0:Math.min(...xs),x1:Math.max(...xs),y0:Math.min(...ys),y1:Math.max(...ys),z0:Math.min(...zs),z1:Math.max(...zs)};
+}
+// 클릭한 면의 정보 (개체 정보용) — 원본을 건드리지 않는다
+function massFaceInfo(m,lp,ln,ctx){
+  const S=massSolid(m,ctx);
+  let best=null,bd=25;
+  S.faces.forEach(f=>{
+    const n=f.n||faceNormal(S.verts,f.vs);
+    if(_vDot(n,ln)<0.8) return;
+    const v0=S.verts[f.vs[0]];
+    const d=Math.abs(_vDot(_vSub(lp,v0),n));
+    if(d<bd){ bd=d; best={role:f.role,tilt:f.tilt,area:faceArea3(S.verts,f.vs)/1e6,n,mat:f.mat||null,nv:f.vs.length}; }
+  });
+  return best;
+}
+
 if(typeof module!=='undefined'&&module.exports){
   module.exports={zIsRef,zNum,zSet,zLabel,facePlanarDev,massHeal,splitFoldedRing,faceNormal,faceRole,faceFacing,faceTiltDeg,faceArea3,faceCentroid3,
     zEdit,massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
@@ -1485,5 +1632,6 @@ if(typeof module!=='undefined'&&module.exports){
     massLocalFrame,massFaceAt,massRayExit,massAddCut,massCutsVolume,
     sweepProfile,massFromSweep,moldingProfile,
     massCSG,earTriangles,csgMergeFaces,massToCsgPolys,massFromCsgFaces,csgUnion,csgSubtract,csgIntersect,
+    massFindFace,massPushFace,massExtrudeFaceNew,massVertXY,massRotate3,massFlip,massScaleAbout,massLocalBox,massFaceInfo,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

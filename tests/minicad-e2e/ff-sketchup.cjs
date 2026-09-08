@@ -27,7 +27,7 @@ var ck=(c,m)=>{ n++; if(!c) fails.push(m); console.log((c?'  ✅ ':'  ❌ ')+m);
     ck(shell.tools.length>=30&&shell.tools[0]==='select'&&shell.tools[1]==='mkcomp'&&shell.tools.includes('followme')&&shell.tools.includes('section')&&shell.tools.includes('text3d'),'큰 도구 세트 스케치업 순서 ('+shell.tools.length+'개)');
     ck(shell.keysH3.includes('프리폼'),'단축키표 = 프리폼');
     ck(shell.hasSave&&!shell.hasReload,'미니캐드 메뉴 없음 · 파일 저장 있음');
-    ck(shell.solid===5,'솔리드 도구 메뉴 5개');
+    ck(shell.solid===6,'솔리드 도구 메뉴 6개');
     // ---- 위에서 보기 · 사각형 → 밀기끌기 → 매스 ----
     await J(`MC3DVIEW.setView('top');MC3DVIEW.drawFrame();'ok'`); await sleep(150);
     await J(`MC3DVIEW.setTool('rect');__cl(0,0);__mv(3000,2000);__cl(3000,2000);'ok'`); await sleep(200);

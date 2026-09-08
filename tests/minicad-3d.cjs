@@ -694,7 +694,10 @@ ck(/const canEdit=\(\)=>!!chan\|\|ST\.ffOn;/.test(v3Src)&&!/if\(!chan\)\{ setSta
 ['ff-menus','ff-tools','ff-keys'].forEach(id=>ck(idx3d.includes('<template id="'+id+'">'),'스케치업 셸 템플릿 '+id));
 ['tool-followme','tool-polygon','tool-rotrect','tool-freehand','tool-arc3','tool-pie','tool-protractor','tool-axes','tool-text3d','tool-section','tool-zoomwin','tool-poscam','solid-union','solid-split','fs-wire','fs-mono','hiddengeom','fog','edges','mkgroup','mkcomp','explode','compupdate','obj','stl','modelinfo'].forEach(c=>ck(idx3d.includes('data-cmd="'+c+'"'),'스케치업 메뉴 '+c));
 ck(/function ffStandaloneShell/.test(v3Src)&&/ffStandaloneShell\(\);/.test(v3Src),'단독 부팅이 셸을 갈아 끼운다');
-['scale','scaleall','sweep','massfrompoly','mkcomp','compupdate','facemat','solid'].forEach(op=>ck(new RegExp("case '"+op+"': \{").test(v3Src),'ffApply op '+op));
+['scale','scaleall','sweep','massfrompoly','mkcomp','compupdate','facemat','solid','pushface','setxy','rotate3','flip','massfromfaces'].forEach(op=>ck(new RegExp("case '"+op+"': \{").test(v3Src),'ffApply op '+op));
+['massPushFace','massVertXY','massRotate3','massFlip','massScaleAbout','massFaceInfo'].forEach(f=>ck(new RegExp('^function '+f+'\\(','m').test(fs.readFileSync(path.join(ROOT,'js','sketch.js'),'utf8')),'sketch.js 2차 기하 '+f));
+ck(/p\.verts\[t\[j===1\?2:j===2\?1:0\]\]/.test(v3Src),'mesh prim 감김 뒤집기 (법선 바깥)');
+ck(idx3d.includes('data-sec="sections"')&&idx3d.includes('id="st-date"')&&idx3d.includes('data-cmd="import-obj"')&&idx3d.includes('data-cmd="isolate"'),'3차 셸: 단면 트레이·그림자 날짜·OBJ 가져오기·선택만 보기');
 {
   const SK=require(path.join(ROOT,'js','sketch.js'));
   ck(typeof SK.massCSG==='function'&&typeof SK.earTriangles==='function','sketch.js: massCSG·earTriangles 내보냄');
