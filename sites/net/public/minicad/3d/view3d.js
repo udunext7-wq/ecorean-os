@@ -116,6 +116,532 @@ const ST={
   annots:[],                                 // 치수·문자 주석 (3D 표시용)
 };
 
+// ===========================================================================
+// 단독 프리폼 = 스케치업 100% (2026-09-08 대표 지시 "여기는 100% 스케치업과 동일하게 만들어라")
+//  · 셸: 메뉴(파일·편집·보기·카메라·그리기·도구·창·도움말)·큰 도구 세트·단축키표를 스케치업 그대로
+//  · 도구: 다각형·회전 사각형·프리핸드·3점 호·파이·팔로우 미·각도기·축·3D 문자·단면·줌 창·
+//          카메라 위치·둘러보기·걷기 + 매스 배율·그룹/컴포넌트(G)·분해·정의 갱신·솔리드 도구
+//  · 표시: 면 스타일 5종·모서리·안개·숨은 형상·안내선·단면 자르기 · 단위 · OBJ/STL 내보내기
+//  모든 편집은 종전 그대로 emitEdit → ffApply(로컬) 한 길로만 간다.
+// ===========================================================================
+Object.assign(ST,{units:'mm',polySides:6,circleSides:24,defZ:2400,gridMM:10,
+  faceStyle:'textured',edges:false,fogOn:false,hiddenGeom:false,guidesOn:true,
+  sections:[],sectionsOn:true,sectionCut:true,axesO:{x:0,y:0,ang:0},userTags:[]});
+renderer.localClippingEnabled=true;
+const FF_OPS=new Set(['rotrect','freehand','arc3','pie','protractor','axesop','poscam','followme','scale3']);
+const FF_CURSOR={polygon:'crosshair',rotrect:'crosshair',freehand:'crosshair',arc3:'crosshair',pie:'crosshair',followme:'copy',protractor:'crosshair',axes:'crosshair',text3d:'text',section:'crosshair',zoomwin:'zoom-in',poscam:'crosshair',lookaround:'grab',walk:'grab',mkcomp:'default',fit:'default',prevview:'default'};
+const FF_STATUS={polygon:'⬡ 다각형',rotrect:'▱ 회전 사각형',freehand:'〰 프리핸드',arc3:'◠ 3점 호',pie:'◔ 파이',followme:'⌐ 팔로우 미',protractor:'∠ 각도기',axes:'⊹ 축',text3d:'𝟯 3D 문자',section:'▥ 단면',zoomwin:'⛶ 줌 창',poscam:'📍 카메라 위치',lookaround:'👁 둘러보기',walk:'🚶 걷기'};
+// 강사 — 단독 프리폼 문구 (벽·평면·견적 이야기가 없다)
+const FF_HINT={
+  select:'<b>선택</b> — 클릭 · <b>Shift/Ctrl+클릭=추가/제거</b> · 끌기=선택 상자(←=걸치기) · 더블클릭=그룹 안 하나 · 트리플=전체 · 끌기=이동 · Ctrl+끌기=복사 · Del · 우클릭=메뉴',
+  move:'<b>이동</b> — 클릭-이동-클릭 · <b>Ctrl=복사</b>(뒤에 x3 · /3 = 배열) · ←→=빨강/초록 축 · <b>↑=파랑(높이)</b> · Shift=방향 고정 · <b>숫자=거리</b> · Esc 취소',
+  rotate:'<b>회전</b> — 객체 클릭 → 각도기: 기준 방향 클릭 → 각도 · 15° 스냅(Shift=자유) · <b>숫자=각도</b> · Esc 취소',
+  scale:'<b>배율</b> — 객체 클릭 후 위아래로 끌기 · <b>Shift=높이만</b> · 클릭=확정 · <b>숫자=배율</b>(1.5 · 가로,세로,높이)',
+  pushpull:'<b>밀기끌기</b> — 면을 법선 방향으로 · <b>바닥 면=위로(매스)</b> · 벽면 위의 면=뽑기/안으로 밀면 <b>파내기</b> · 매스 윗면=높이 · <b>숫자=mm</b> · 더블클릭=직전 값',
+  line:'<b>선</b> — 클릭-클릭 사슬 · <b>고리가 닫히면 면</b> · 벽면을 클릭하면 그 면이 종이 · Shift=방향 고정 · ←→↑=축 고정 · 숫자=길이 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · Esc/더블클릭=끝',
+  rect:'<b>사각형</b> — 두 모서리 클릭=면 · 벽면 위도 됨 · <b>가로,세로</b> 입력 · P 로 밀면 입체',
+  rotrect:'<b>회전 사각형</b> — 첫 변 두 점 클릭 → 폭 클릭 · 숫자=길이·폭',
+  circle:'<b>원</b> — 중심 클릭 → 반지름 · <b>숫자=반지름</b> · <b>24s=변 수</b>',
+  polygon:'<b>다각형</b> — 중심 클릭 → 반지름 · <b>6s=변 수</b>(기본 6) · 숫자=반지름',
+  arc:'<b>2점 호</b> — 시작 · 끝 · 불룩한 정도 · 숫자=불룩',
+  arc3:'<b>3점 호</b> — 시작 · 호 위의 점 · 끝',
+  pie:'<b>파이</b> — 중심 · 시작(반지름) · 끝(각도) = 부채꼴 면 · 숫자=각도',
+  freehand:'<b>프리핸드</b> — 누른 채 끌어서 그리기 · 시작점으로 돌아오면 면',
+  offset:'<b>오프셋</b> — 면 클릭 후 안/밖 · <b>숫자=거리</b>',
+  followme:'<b>팔로우 미</b> — ① 단면(벽면 위에 그린 면) 클릭 → ② 경로가 될 매스 클릭 (윗면=위 둘레 · 옆면=바닥 둘레). 몰딩·난간·프레임',
+  paint:'<b>페인트</b> — 트레이 재질 고르고 클릭=매스 전체 · <b>Ctrl+클릭=그 면만</b> · Alt+클릭=재질 추출',
+  erase:'<b>지우개</b> — 클릭/끌기=삭제 · Shift+클릭=숨기기',
+  tape:'<b>줄자</b> — 두 점=거리 · <b>선에서 시작=안내선</b>(숫자=간격) · Shift=두 점 안내선 · 재고 나서 <b>숫자 입력=모델 전체 크기 조정</b>',
+  protractor:'<b>각도기</b> — 중심 · 기준 방향 · 각도 = 각도 안내선 · 숫자=각도',
+  axes:'<b>축</b> — 원점 클릭 → X(빨강) 방향 클릭 · 절대좌표 [x,y]·원점 스냅이 새 축 기준',
+  dim:'<b>치수</b> — 두 점 클릭',
+  text:'<b>문자</b> — 클릭한 곳에 메모',
+  text3d:'<b>3D 문자</b> — 놓을 자리 클릭 → 글자·높이·두께 입력 → 입체 글자(그룹)',
+  section:'<b>단면</b> — 면 클릭=그 면에 단면 · <b>숫자=안쪽으로 밀기</b> · 보기▸단면/단면 자르기 · 편집▸단면 모두 삭제',
+  orbit:'<b>궤도</b> — 끌어서 회전 · Shift=팬 (휠 버튼 드래그와 같음)',
+  pan:'<b>팬</b> — 끌어서 화면 이동',
+  zoom:'<b>줌</b> — 위아래로 끌기 · 휠 · Shift+Z=전체',
+  zoomwin:'<b>줌 창</b> — 끌어서 상자 = 그 영역을 화면 가득',
+  poscam:'<b>카메라 위치</b> — 바닥 클릭=그 자리 눈높이(1.6m) · 끌면 보는 방향 → 둘러보기',
+  lookaround:'<b>둘러보기</b> — 제자리에서 끌어 고개 돌리기 · 1=조감 복귀',
+  walk:'<b>걷기</b> — W A S D · Q/E 위아래 · Shift=빨리 · 끌기=고개 돌리기 · 1=조감',
+  add:'<b>구성요소 배치</b> — 골라서 바닥 클릭 · R=회전 · Esc=끝',
+};
+function fmtLen(mm){ const u=ST.units; if(u==='cm') return (mm/10).toFixed(1)+' cm'; if(u==='m') return (mm/1000).toFixed(3)+' m'; if(u==='in') return (mm/25.4).toFixed(2)+' in'; return Math.round(mm)+' mm'; }
+// 새 축(원점·방향) 기준 절대좌표 → 세계 평면 좌표
+function axAbs(x,y){ const a=ST.axesO, r=a.ang*Math.PI/180, c=Math.cos(r), s=Math.sin(r); return {x:Math.round(a.x+x*c-y*s),y:Math.round(a.y+x*s+y*c)}; }
+function _ffLine(n,color){ const geo=new THREE.BufferGeometry().setFromPoints(new Array(n).fill(0).map(()=>new THREE.Vector3())); const ln=new THREE.Line(geo,new THREE.LineBasicMaterial({color:color||0xD4FF3D,depthTest:false})); ln.renderOrder=999; scene.add(ln); return ln; }
+function _ffMark(p,z0){ const m=new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xD4FF3D,depthTest:false})); m.scale.setScalar(0.055); m.renderOrder=1000; m.position.set(p.x*MM,(z0||0)+0.03,p.y*MM); scene.add(m); return m; }
+function _ffSetLine(ln,pts,z0){ const pos=ln.geometry.attributes.position; const n=pos.count; for(let i=0;i<n;i++){ const p=pts[Math.min(i,pts.length-1)]; pos.setXYZ(i,p.x*MM,(z0||0)+0.02,p.y*MM); } pos.needsUpdate=true; }
+function _ffStart(e){ const fid=_hoverFloorId(e); const raw=_planePt(e,0); if(!raw) return null; const p=snap3(fid,raw,0); showSnap(p,0); return {fid,p}; }
+function _ffSnapAt(e,fid,extra){ const raw=_planePt(e,0); if(!raw) return null; const s=snap3(fid,raw,0,extra); showSnap(s,0); return s; }
+function _rdp(pts,tol){ if(pts.length<3) return pts.slice(); let dm=0,idx=0; const a=pts[0],b=pts[pts.length-1]; const L=Math.hypot(b.x-a.x,b.y-a.y)||1e-9;
+  for(let i=1;i<pts.length-1;i++){ const p=pts[i]; const d=Math.abs((b.x-a.x)*(a.y-p.y)-(a.x-p.x)*(b.y-a.y))/L; if(d>dm){dm=d;idx=i;} }
+  if(dm>tol){ const l=_rdp(pts.slice(0,idx+1),tol), r=_rdp(pts.slice(idx),tol); return l.slice(0,-1).concat(r); } return [a,b]; }
+// 닫힌 고리 단순화 — 시작점에서 가장 먼 점으로 두 토막 내어 각각 RDP (시작=끝인 고리를 그대로 넣으면 선 하나로 뭉개진다)
+function _rdpRing(ring,tol){ if(ring.length<4) return ring.slice(); const a=ring[0]; let k=1,dm=-1; for(let i=1;i<ring.length;i++){ const d=Math.hypot(ring[i].x-a.x,ring[i].y-a.y); if(d>dm){dm=d;k=i;} }
+  const l=_rdp(ring.slice(0,k+1),tol), r=_rdp(ring.slice(k).concat([a]),tol); return l.slice(0,-1).concat(r.slice(0,-1)); }
+// --- 회전 사각형 (Rotated Rectangle) — 첫 변 두 점 → 폭 ---
+function rotrectClick(e){
+  const op=ST.op;
+  if(op&&op.type==='rotrect'){
+    if(op.stage===1){ const ex=vcbTyped(); if(ex&&op.dir){ op.cur={x:Math.round(op.a.x+op.dir.x*ex),y:Math.round(op.a.y+op.dir.y*ex)}; } if(Math.hypot(op.cur.x-op.a.x,op.cur.y-op.a.y)<100){ setStatus(statusLive,'첫 변이 너무 짧습니다 (100mm+)'); return; } op.b=op.cur; op.stage=2; vcbShow('폭','','mm'); return; }
+    commitRotrect(vcbTyped()); return;
+  }
+  const s=_ffStart(e); if(!s) return;
+  ST.op={type:'rotrect',fid:s.fid,a:s.p,b:null,cur:s.p,w:0,dir:null,stage:1,line:_ffLine(5),startMk:_ffMark(s.p,0)};
+  opOrbit(true); vcbShow('길이 (첫 변)','','mm'); invalidate();
+}
+function rotrectMove(e){
+  const op=ST.op; const sp=_ffSnapAt(e,op.fid,[op.a]); if(!sp) return;
+  if(op.stage===1){ op.cur=sp; const L=Math.hypot(sp.x-op.a.x,sp.y-op.a.y); if(L>1) op.dir={x:(sp.x-op.a.x)/L,y:(sp.y-op.a.y)/L}; _ffSetLine(op.line,[op.a,sp],0); vcbShow('길이',Math.round(L),'mm'); }
+  else{ const a=op.a,b=op.b,L=Math.hypot(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/L,ny=(b.x-a.x)/L; op.w=Math.round(((sp.x-b.x)*nx+(sp.y-b.y)*ny)/10)*10; const poly=_rotrectPoly(op); _ffSetLine(op.line,poly.concat([poly[0]]),0); vcbShow('폭',Math.abs(op.w),'mm'); }
+  invalidate();
+}
+function _rotrectPoly(op,w){ const a=op.a,b=op.b,L=Math.hypot(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/L,ny=(b.x-a.x)/L; const W=w!=null?w:op.w; return [a,b,{x:Math.round(b.x+nx*W),y:Math.round(b.y+ny*W)},{x:Math.round(a.x+nx*W),y:Math.round(a.y+ny*W)}]; }
+function commitRotrect(exact){
+  const op=ST.op; if(!op||op.type!=='rotrect'||op.stage<2) return;
+  let w=(exact!=null&&exact!==0)?Math.round(exact)*(op.w<0?-1:1):op.w;
+  if(Math.abs(w)<100){ setStatus(statusLive,'폭 100mm+ (숫자 입력 가능)'); return; }
+  const poly=_rotrectPoly(op,w), fid=op.fid;
+  spawnPendingFace(poly,0); cancelOp();
+  emitEdit({type:'edit',op:'sketchpoly',floorId:fid,patch:{pts:poly}});
+  setStatus(statusLive,'▱ 회전 사각형 → 면 — P 로 밀면 입체');
+}
+// --- 프리핸드 (Freehand) — 누른 채 끌기 ---
+function freehandDown(e){ const s=_ffStart(e); if(!s) return; ST.op={type:'freehand',fid:s.fid,pts:[s.p],line:_ffLine(2)}; opOrbit(true); vcbShow('프리핸드 — 끌어서 그리기','',''); }
+function freehandMove(e){
+  const op=ST.op; if(!op||op.type!=='freehand') return;
+  const raw=_planePt(e,0); if(!raw) return;
+  const last=op.pts[op.pts.length-1]; if(Math.hypot(raw.x-last.x,raw.y-last.y)<20) return;
+  op.pts.push({x:Math.round(raw.x),y:Math.round(raw.y)});
+  op.line.geometry.dispose(); op.line.geometry=new THREE.BufferGeometry().setFromPoints(op.pts.map(p=>new THREE.Vector3(p.x*MM,0.02,p.y*MM)));
+  invalidate();
+}
+function freehandEnd(){
+  const op=ST.op; if(!op||op.type!=='freehand') return;
+  const fid=op.fid; const raw=op.pts.slice();
+  cancelOp();
+  if(raw.length<2){ setStatus(statusLive,'프리핸드: 너무 짧습니다'); return; }
+  const f=raw[0],l=raw[raw.length-1];
+  const closed=raw.length>=4&&Math.hypot(f.x-l.x,f.y-l.y)<=150;
+  let pts;
+  if(closed){ const ring=(Math.hypot(f.x-l.x,f.y-l.y)<=30)?raw.slice(0,-1):raw; pts=_rdpRing(ring,25);
+    if(pts.length>=3){ spawnPendingFace(pts,0); emitEdit({type:'edit',op:'sketchpoly',floorId:fid,patch:{pts}}); setStatus(statusLive,'〰 프리핸드 → 면 ('+pts.length+'점)'); return; } }
+  pts=_rdp(raw,25);
+  const ops=[]; for(let i=0;i<pts.length-1;i++){ const a=pts[i],b=pts[i+1]; if(Math.hypot(b.x-a.x,b.y-a.y)<10) continue; ops.push({op:'sketchline',floorId:fid,patch:{x1:a.x,y1:a.y,x2:b.x,y2:b.y}}); }
+  if(sendBatch(ops,'프리핸드')) setStatus(statusLive,'〰 프리핸드 → 선 '+ops.length+'조각 (Ctrl+Z 한 번)');
+}
+// --- 3점 호 (3 Point Arc) ---
+function _circle3(a,p,b){ const ax=a.x,ay=a.y,bx=p.x,by=p.y,cx=b.x,cy=b.y; const d=2*(ax*(by-cy)+bx*(cy-ay)+cx*(ay-by)); if(Math.abs(d)<1e-6) return null;
+  const ux=((ax*ax+ay*ay)*(by-cy)+(bx*bx+by*by)*(cy-ay)+(cx*cx+cy*cy)*(ay-by))/d, uy=((ax*ax+ay*ay)*(cx-bx)+(bx*bx+by*by)*(ax-cx)+(cx*cx+cy*cy)*(bx-ax))/d; return {cx:ux,cy:uy,r:Math.hypot(ax-ux,ay-uy)}; }
+function _arcThrough(a,p,b,n){ const c=_circle3(a,p,b); if(!c) return [a,b];
+  const A=Math.atan2(a.y-c.cy,a.x-c.cx),P=Math.atan2(p.y-c.cy,p.x-c.cx),B=Math.atan2(b.y-c.cy,b.x-c.cx);
+  const norm=x=>{ while(x<0) x+=2*Math.PI; return x; };
+  let dB=norm(B-A), dP=norm(P-A); if(dP>dB){ dB=dB-2*Math.PI; }           // p 가 그 사이에 오도록 방향 결정
+  const out=[]; for(let i=0;i<=n;i++){ const t=A+dB*i/n; out.push({x:Math.round(c.cx+c.r*Math.cos(t)),y:Math.round(c.cy+c.r*Math.sin(t))}); } return out; }
+function arc3Click(e){
+  const op=ST.op;
+  if(op&&op.type==='arc3'){ if(op.stage===1){ op.p=op.cur; op.stage=2; vcbShow('끝점','',''); return; } commitArc3(); return; }
+  const s=_ffStart(e); if(!s) return;
+  ST.op={type:'arc3',fid:s.fid,a:s.p,p:null,cur:s.p,stage:1,line:_ffLine(33),startMk:_ffMark(s.p,0)};
+  opOrbit(true); vcbShow('호 위의 점','',''); invalidate();
+}
+function arc3Move(e){ const op=ST.op; const sp=_ffSnapAt(e,op.fid,[op.a]); if(!sp) return; op.cur=sp;
+  if(op.stage===1) _ffSetLine(op.line,[op.a,sp],0); else _ffSetLine(op.line,_arcThrough(op.a,op.p,sp,32),0); invalidate(); }
+function commitArc3(){
+  const op=ST.op; if(!op||op.type!=='arc3'||op.stage<2) return;
+  const pts=_arcThrough(op.a,op.p,op.cur,ST.circleSides||24), fid=op.fid;
+  if(pts.length<3){ setStatus(statusLive,'세 점이 한 줄 위에 있습니다'); return; }
+  cancelOp(); _arcLines(pts,fid,'3점 호');
+}
+function _arcLines(pts,fid,label,extra){
+  const ops=[]; for(let i=0;i<pts.length-1;i++){ const p=pts[i],q=pts[i+1]; if(Math.hypot(q.x-p.x,q.y-p.y)<10) continue; ops.push({op:'sketchline',floorId:fid,patch:{x1:p.x,y1:p.y,x2:q.x,y2:q.y}}); spawnPendingSketchLine(p,q,0); }
+  (extra||[]).forEach(o=>ops.push(o));
+  if(sendBatch(ops,label)) setStatus(statusLive,'◠ '+label+' → 선 '+ops.length+'조각 (고리가 닫히면 면 · Ctrl+Z 한 번)');
+}
+// --- 파이 (Pie) — 중심 · 시작 · 끝 = 부채꼴 면 ---
+function pieClick(e){
+  const op=ST.op;
+  if(op&&op.type==='pie'){
+    if(op.stage===1){ const ex=vcbTyped(); if(ex&&ex>0&&op.dir) op.cur={x:Math.round(op.c.x+op.dir.x*ex),y:Math.round(op.c.y+op.dir.y*ex)}; if(Math.hypot(op.cur.x-op.c.x,op.cur.y-op.c.y)<100){ setStatus(statusLive,'반지름 100mm+'); return; } op.a=op.cur; op.r=Math.hypot(op.a.x-op.c.x,op.a.y-op.c.y); op.a0=Math.atan2(op.a.y-op.c.y,op.a.x-op.c.x); op.sweep=0; op.prev=op.a0; op.stage=2; vcbShow('각도','','°'); return; }
+    commitPie(vcbTyped()); return;
+  }
+  const s=_ffStart(e); if(!s) return;
+  ST.op={type:'pie',fid:s.fid,c:s.p,a:null,cur:s.p,r:0,sweep:0,stage:1,line:_ffLine(40),startMk:_ffMark(s.p,0)};
+  opOrbit(true); vcbShow('반지름','','mm'); invalidate();
+}
+function _piePts(op,sweepDeg){ const n=Math.max(4,Math.round(Math.abs(sweepDeg)/360*(ST.circleSides||24))); const out=[]; for(let i=0;i<=n;i++){ const t=op.a0+sweepDeg*Math.PI/180*i/n; out.push({x:Math.round(op.c.x+op.r*Math.cos(t)),y:Math.round(op.c.y+op.r*Math.sin(t))}); } return out; }
+function pieMove(e){
+  const op=ST.op; const sp=_ffSnapAt(e,op.fid,[op.c]); if(!sp) return; op.cur=sp;
+  if(op.stage===1){ const L=Math.hypot(sp.x-op.c.x,sp.y-op.c.y); if(L>1) op.dir={x:(sp.x-op.c.x)/L,y:(sp.y-op.c.y)/L}; _ffSetLine(op.line,[op.c,sp],0); vcbShow('반지름',Math.round(L),'mm'); }
+  else{ const ang=Math.atan2(sp.y-op.c.y,sp.x-op.c.x); let d=ang-op.prev; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI; op.sweep+=d*180/Math.PI; op.prev=ang; op.sweep=Math.max(-359,Math.min(359,op.sweep));
+    const sw=Math.round(op.sweep/5)*5||5; const pts=_piePts(op,sw); _ffSetLine(op.line,[op.c].concat(pts,[op.c]),0); vcbShow('각도',Math.round(sw),'°'); }
+  invalidate();
+}
+function commitPie(exact){
+  const op=ST.op; if(!op||op.type!=='pie'||op.stage<2) return;
+  let sw=(exact!=null&&exact!==0)?exact:Math.round(op.sweep/5)*5;
+  if(Math.abs(sw)<5){ setStatus(statusLive,'각도 5°+ (숫자 입력 가능)'); return; }
+  const pts=_piePts(op,sw), fid=op.fid, c=op.c, b=pts[pts.length-1], a=pts[0];
+  cancelOp();
+  _arcLines(pts,fid,'파이',[{op:'sketchline',floorId:fid,patch:{x1:c.x,y1:c.y,x2:a.x,y2:a.y}},{op:'sketchline',floorId:fid,patch:{x1:b.x,y1:b.y,x2:c.x,y2:c.y}}]);
+}
+// --- 각도기 (Protractor) — 중심 · 기준 · 각도 = 각도 안내선 ---
+function protractorClick(e){
+  const op=ST.op;
+  if(op&&op.type==='protractor'){
+    if(op.stage===1){ op.ref=Math.atan2(op.cur.y-op.c.y,op.cur.x-op.c.x); op.stage=2; vcbShow('각도','','°'); return; }
+    commitProtractor(vcbTyped()); return;
+  }
+  const s=_ffStart(e); if(!s) return;
+  const pro=_protractor(s.p.x*MM,s.p.y*MM,0.03); scene.add(pro);
+  ST.op={type:'protractor',fid:s.fid,c:s.p,cur:s.p,ref:null,ang:0,stage:1,line:_ffLine(2,0xE24CE2),protractor:pro,startMk:_ffMark(s.p,0)};
+  opOrbit(true); vcbShow('기준 방향 클릭','',''); invalidate();
+}
+function protractorMove(e){ const op=ST.op; const sp=_ffSnapAt(e,op.fid,[op.c]); if(!sp) return; op.cur=sp;
+  if(op.stage===1){ _ffSetLine(op.line,[op.c,sp],0); }
+  else{ const a=Math.atan2(sp.y-op.c.y,sp.x-op.c.x); let d=(a-op.ref)*180/Math.PI; d=((d+180)%360+360)%360-180; if(!e.shiftKey) d=Math.round(d/15)*15; op.ang=d; const t=op.ref+d*Math.PI/180; _ffSetLine(op.line,[op.c,{x:op.c.x+Math.cos(t)*3000,y:op.c.y+Math.sin(t)*3000}],0); vcbShow('각도',Math.round(d),'°'); }
+  invalidate(); }
+function commitProtractor(exact){
+  const op=ST.op; if(!op||op.type!=='protractor'||op.stage<2) return;
+  const d=(exact!=null)?exact:op.ang; const t=op.ref+d*Math.PI/180; const c=op.c, fid=op.fid;
+  cancelOp();
+  addGuide(fid,c,{x:c.x+Math.cos(t)*1000,y:c.y+Math.sin(t)*1000},0);
+  setStatus(statusLive,'∠ 각도 안내선 '+Math.round(d)+'° (편집▸안내선 모두 삭제)');
+}
+// --- 축 (Axes) — 원점 · X 방향 ---
+function axesClick(e){
+  const op=ST.op;
+  if(op&&op.type==='axesop'){ const a=Math.atan2(op.cur.y-op.c.y,op.cur.x-op.c.x)*180/Math.PI; setAxesOrigin(op.c.x,op.c.y,Math.round(a)); cancelOp(); return; }
+  const s=_ffStart(e); if(!s) return;
+  ST.op={type:'axesop',fid:s.fid,c:s.p,cur:s.p,line:_ffLine(2,0xE24C4C),startMk:_ffMark(s.p,0)};
+  opOrbit(true); vcbShow('X(빨강) 방향 클릭','',''); invalidate();
+}
+function axesMove(e){ const op=ST.op; const sp=_ffSnapAt(e,op.fid,[op.c]); if(!sp) return; op.cur=sp; _ffSetLine(op.line,[op.c,sp],0); invalidate(); }
+function setAxesOrigin(x,y,ang){ ST.axesO={x:Math.round(x),y:Math.round(y),ang:ang||0}; buildAxes(); invalidate(); setStatus(statusLive,'⊹ 축 원점 ('+ST.axesO.x+', '+ST.axesO.y+') · X 방향 '+ST.axesO.ang+'° — 우클릭 빈 곳▸축 초기화'); }
+// --- 줌 창 (Zoom Window) ---
+function zoomWindow(x0,y0,x1,y1){
+  const r=renderer.domElement.getBoundingClientRect();
+  const fx=Math.abs(x1-x0)/r.width, fy=Math.abs(y1-y0)/r.height, f=Math.max(0.02,Math.max(fx,fy));
+  const cx=(x0+x1)/2, cy=(y0+y1)/2;
+  const hit=hitAt(cx,cy); let T;
+  if(hit) T=hit.point.clone(); else { const p=_planePt({clientX:cx,clientY:cy},0); if(!p) return; T=new THREE.Vector3(p.x*MM,0,p.y*MM); }
+  camPush();
+  const dir=camera.position.clone().sub(orbit.target).normalize();
+  const d=camera.position.distanceTo(orbit.target)*f;
+  orbit.target.copy(T); camera.position.copy(T).addScaledVector(dir,Math.max(0.3,d));
+  if(ST.ortho){ orthoCam.zoom=orthoCam.zoom/f; orthoCam.updateProjectionMatrix(); }
+  orbit.update(); invalidate(); camPush();
+}
+// --- 카메라 위치 (Position Camera) · 둘러보기 · 걷기 ---
+function poscamDown(e){ const raw=_planePt(e,0); if(!raw) return; ST.op={type:'poscam',a:{x:Math.round(raw.x),y:Math.round(raw.y)},cur:null,line:_ffLine(2,0x7FA8D4),startMk:_ffMark(raw,0)}; opOrbit(true); vcbShow('보는 방향으로 끌기 (눈높이)',ST.walk.eye*1000,'mm'); }
+function poscamMove(e){ const op=ST.op; const raw=_planePt(e,0); if(!raw) return; op.cur={x:raw.x,y:raw.y}; _ffSetLine(op.line,[op.a,op.cur],0); invalidate(); }
+function poscamEnd(){
+  const op=ST.op; if(!op||op.type!=='poscam') return;
+  const a=op.a, cur=op.cur; const ex=vcbTyped(); if(ex&&ex>200) ST.walk.eye=ex/1000;
+  cancelOp();
+  setMode('walk');
+  camera.position.set(a.x*MM,ST.walk.eye,a.y*MM);
+  if(cur&&Math.hypot(cur.x-a.x,cur.y-a.y)>100){ ST.walk.yaw=Math.atan2(-(cur.x-a.x),-(cur.y-a.y)); ST.walk.pitch=0; }
+  applyWalkCamera();
+  setTool('lookaround');
+  setStatus(statusLive,'📍 카메라 위치 ('+a.x+', '+a.y+') 눈높이 '+Math.round(ST.walk.eye*1000)+'mm — 끌어서 둘러보기 · 1=조감');
+}
+// --- 단면 (Section Plane) — 면 클릭 = 그 면에 단면 · 숫자 = 안쪽으로 밀기 ---
+function sectionClick(hit){
+  if(!hit||!hit.face){ setStatus(statusLive,'단면: 면을 클릭하세요 (바닥·벽·매스 어느 면이든)'); return; }
+  const n=hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize();
+  const p=hit.point.clone();
+  const id='sec_'+Date.now();
+  const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(n.clone().negate(),p);
+  const b=ST.built?ST.built.bounds:{minX:-5000,maxX:5000,minY:-5000,maxY:5000};
+  const S=Math.max(b.maxX-b.minX,b.maxY-b.minY,4000)*MM*1.2+1;
+  const q=new THREE.Mesh(new THREE.PlaneGeometry(S,S),new THREE.MeshBasicMaterial({color:0xE2725B,transparent:true,opacity:0.10,side:THREE.DoubleSide,depthWrite:false}));
+  q.position.copy(p); q.lookAt(p.clone().add(n)); q.renderOrder=996; q.name='section';
+  const edge=new THREE.LineSegments(new THREE.EdgesGeometry(q.geometry),new THREE.LineBasicMaterial({color:0xE2725B,depthTest:false})); q.add(edge);
+  scene.add(q);
+  const sec={id,p,n,plane,mesh:q,off:0};
+  ST.sections.push(sec); ST.sectionsOn=true; ST.sectionCut=true; applySections(); refreshStylePanel();
+  setLast('단면 밀기','mm',raw=>{ const v=parseLen(raw); if(v==null) return false; sectionOffset(sec,v); return true; },{noUndo:true});
+  setStatus(statusLive,'▥ 단면 — 숫자 입력=안쪽으로 밀기(mm) · 보기▸단면 자르기 · 편집▸단면 모두 삭제');
+}
+function sectionOffset(sec,v){ sec.off=v; const pp=sec.p.clone().addScaledVector(sec.n,-v*MM); sec.plane.setFromNormalAndCoplanarPoint(sec.n.clone().negate(),pp); sec.mesh.position.copy(pp); applySections(); setStatus(statusLive,'▥ 단면 밀기 '+Math.round(v)+'mm'); }
+function applySections(){
+  const planes=(ST.sectionCut&&ST.sections.length)?ST.sections.map(s=>s.plane):[];
+  const seen=new Set();
+  ST.root&&ST.root.traverse(o=>{ if(!o.isMesh||!o.material) return; const m=o.material; if(seen.has(m)) return; seen.add(m); m.clippingPlanes=planes.length?planes:null; m.clipShadows=planes.length>0; m.needsUpdate=true; });
+  ST.sections.forEach(s=>{ s.mesh.visible=ST.sectionsOn; });
+  invalidate(true);
+}
+function clearSections(){ ST.sections.forEach(s=>{ scene.remove(s.mesh); }); ST.sections=[]; applySections(); setStatus(statusLive,'단면 모두 삭제'); }
+// --- 팔로우 미 (Follow Me) — 단면(수직 면 위의 면) → 경로(매스 둘레) ---
+function followClick(hit){
+  const obj=hit&&hit.object.userData.obj;
+  if(!ST.op||ST.op.type!=='followme'){
+    if(!obj||obj.kind!=='sketchFace'||!obj.meta||!obj.meta.plane||!ffEditable(obj)){ setStatus(statusLive,'⌐ 팔로우 미: ① 먼저 단면이 될 면(벽면 위에 그린 면)을 클릭'); return; }
+    const g=hit.object.parent; _hl(g,true);
+    ST.op={type:'followme',prof:obj,g,stage:1}; opOrbit(true); vcbShow('② 경로: 매스 클릭 (윗면=위 둘레 · 옆면=바닥 둘레)','','');
+    setStatus(statusLive,'⌐ 단면 잡음 — 이제 경로가 될 매스를 클릭 (윗면 클릭=위 둘레 · 옆면=바닥 둘레)'); return;
+  }
+  const op=ST.op;
+  if(!obj||obj.kind!=='mass'||!ffEditable(obj)){ setStatus(statusLive,'⌐ 경로는 프리폼 매스 (Esc=취소)'); return; }
+  const m=FF.free.masses.find(x=>x.id===obj.id); if(!m){ setStatus(statusLive,'매스를 찾지 못했습니다'); return; }
+  const nW=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+  const top=nW.y>0.7;
+  const el=Math.round(Number(m.elev_mm)||0);
+  const ctx=ffCtx();
+  if(top&&!massIsPrism(m)){ setStatus(statusLive,'위 둘레는 윗면이 평평한 매스만 — 옆면을 클릭하면 바닥 둘레'); return; }
+  const base=top?el+Math.round(zNum(m.h_mm,ctx)):el;
+  const path=massAbsPoly(m);
+  const pl=op.prof.meta.plane, uv=op.prof.meta.poly;
+  // 단면 평면과 수직인 경로 변 중 가장 가까운 것 = 기준 변
+  const nxy={x:pl.n.x,y:pl.n.y}; const nl=Math.hypot(nxy.x,nxy.y);
+  if(nl<0.5){ setStatus(statusLive,'단면은 세워진 면(벽면 위)이어야 합니다'); return; }
+  nxy.x/=nl; nxy.y/=nl;
+  const c2=uv.reduce((a,p)=>({x:a.x+p.x/uv.length,y:a.y+p.y/uv.length}),{x:0,y:0});
+  const pc=planePt(pl,c2.x,c2.y);
+  let best=null;
+  const N=path.length;
+  for(let i=0;i<N;i++){ const a=path[i],b=path[(i+1)%N]; const L=Math.hypot(b.x-a.x,b.y-a.y)||1; const d={x:(b.x-a.x)/L,y:(b.y-a.y)/L};
+    if(Math.abs(d.x*nxy.x+d.y*nxy.y)<0.7) continue;
+    const q=closestOnSeg({x:pc.x,y:pc.y},{x1:a.x,y1:a.y,x2:b.x,y2:b.y}); const dd=Math.hypot(q.x-pc.x,q.y-pc.y);
+    if(!best||dd<best.dd) best={i,a,b,d,dd}; }
+  if(!best){ setStatus(statusLive,'단면 면이 경로 변과 수직이 아닙니다 — 벽의 끝면(짧은 면)에 단면을 그리세요'); return; }
+  const sign=_pathOutSign(path,true); const out={x:best.d.y*sign,y:-best.d.x*sign};
+  const prof=uv.map(p=>{ const P=planePt(pl,p.x,p.y); const t=(P.x-best.a.x)*best.d.x+(P.y-best.a.y)*best.d.y; const Q={x:best.a.x+best.d.x*t,y:best.a.y+best.d.y*t};
+    return {u:Math.round((P.x-Q.x)*out.x+(P.y-Q.y)*out.y),v:Math.round(P.z-base)}; });
+  const g=op.g; _hl(g,false); cancelOp();
+  emitEdit({type:'edit',op:'sweep',floorId:'freeform',patch:{pts:path,closed:true,z:base,profile:prof,faceId:op.prof.id,name:'팔로우미',color:m.color}});
+}
+// --- 3D 문자 (3D Text) — 글자를 래스터 → 윤곽 → 열쇠구멍 다각형 → 매스(그룹) ---
+function text3dClick(e){
+  const raw=_planePt(e,0); if(!raw) return;
+  const txt=window.prompt('3D 문자 — 내용','ECOREAN'); if(!txt) return;
+  const spec=window.prompt('높이, 두께 (mm)',(ST.t3H||300)+', '+(ST.t3D||50)); if(spec==null) return;
+  const mm=spec.match(/(\d+)\D+(\d+)/); const H=mm?+mm[1]:(ST.t3H||300), D=mm?+mm[2]:(ST.t3D||50);
+  ST.t3H=H; ST.t3D=D;
+  const polys=text3dPolys(txt,H);
+  if(!polys.length){ setStatus(statusLive,'글자 윤곽을 못 만들었습니다'); return; }
+  const gid='g_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
+  const ops=polys.map((poly,i)=>({op:'massfrompoly',floorId:'freeform',patch:{pts:poly.map(p=>({x:Math.round(raw.x+p.x),y:Math.round(raw.y+p.y)})),z:D,name:'3D문자 '+txt.slice(0,12)+(polys.length>1?' #'+(i+1):''),gid,color:'#E8E4DA'}}));
+  if(sendBatch(ops,'3D 문자')) setStatus(statusLive,'𝟯 3D 문자 "'+txt+'" — 높이 '+H+' · 두께 '+D+' ('+polys.length+'조각, 한 그룹)');
+}
+function text3dPolys(text,H){
+  const px=96; const cv=document.createElement('canvas'); const cx=cv.getContext('2d');
+  cx.font='bold '+px+'px "Noto Sans KR","Inter",sans-serif';
+  const w=Math.ceil(cx.measureText(text).width)+16, h=Math.ceil(px*1.5)+8;
+  cv.width=w; cv.height=h; cx.font='bold '+px+'px "Noto Sans KR","Inter",sans-serif'; cx.fillStyle='#fff'; cx.textBaseline='alphabetic'; cx.fillText(text,8,px*1.15);
+  const d=cx.getImageData(0,0,w,h).data;
+  const F=(x,y)=>(x>=0&&y>=0&&x<w&&y<h)&&d[(y*w+x)*4+3]>110;
+  // 경계 변 — 채워진 픽셀의 채워지지 않은 이웃 쪽 변, 채워진 쪽이 왼쪽에 오게 방향 잡기
+  const key=(x,y)=>x+','+y; const nxt=new Map();
+  const add=(x1,y1,x2,y2)=>{ const k=key(x1,y1); if(!nxt.has(k)) nxt.set(k,[]); nxt.get(k).push([x2,y2]); };
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){ if(!F(x,y)) continue;
+    if(!F(x,y-1)) add(x,y,x+1,y);           // 위 변 → 오른쪽으로
+    if(!F(x+1,y)) add(x+1,y,x+1,y+1);       // 오른 변 → 아래로
+    if(!F(x,y+1)) add(x+1,y+1,x,y+1);       // 아래 변 → 왼쪽으로
+    if(!F(x-1,y)) add(x,y+1,x,y);           // 왼 변 → 위로
+  }
+  const loops=[];
+  const used=new Set();
+  for(const [k0,arr] of nxt){ for(let s=0;s<arr.length;s++){ const ek=k0+'>'+arr[s].join(','); if(used.has(ek)) continue;
+    const loop=[]; let cur=k0.split(',').map(Number), to=arr[s]; used.add(ek); loop.push({x:cur[0],y:cur[1]});
+    let guard=0;
+    while(guard++<200000){ cur=to; const c=nxt.get(key(cur[0],cur[1])); if(!c) break; let pick=null; for(const t of c){ const kk=key(cur[0],cur[1])+'>'+t.join(','); if(!used.has(kk)){ pick=t; used.add(kk); break; } } loop.push({x:cur[0],y:cur[1]}); if(!pick) break; to=pick; if(key(to[0],to[1])===k0) break; }
+    if(loop.length>=4) loops.push(loop); } }
+  const s=H/px;
+  const simp=loops.map(l=>_rdpRing(l,0.8)).filter(l=>l.length>=3).map(l=>l.map(p=>({x:p.x*s,y:(p.y-px*1.15)*s})));
+  const area=poly=>{ let a=0; for(let i=0;i<poly.length;i++){ const p=poly[i],q=poly[(i+1)%poly.length]; a+=p.x*q.y-q.x*p.y; } return a/2; };
+  const inside=(pt,poly)=>{ let c=false; for(let i=0,j=poly.length-1;i<poly.length;j=i++){ const a=poly[i],b=poly[j]; if(((a.y>pt.y)!==(b.y>pt.y))&&(pt.x<(b.x-a.x)*(pt.y-a.y)/(b.y-a.y)+a.x)) c=!c; } return c; };
+  const info=simp.map((poly,i)=>{ const par=[]; simp.forEach((o,j)=>{ if(i!==j&&Math.abs(area(o))>Math.abs(area(poly))&&inside(poly[0],o)) par.push(j); }); return {poly,depth:par.length,parent:par.length?par.reduce((a,b)=>Math.abs(area(simp[a]))<Math.abs(area(simp[b]))?a:b):-1}; });
+  const outs=[];
+  info.forEach((it,i)=>{ if(it.depth%2===0){ let poly=it.poly.slice(); if(area(poly)<0) poly.reverse(); outs.push({i,poly,holes:[]}); } });
+  info.forEach((it,i)=>{ if(it.depth%2===1){ const o=outs.find(x=>x.i===it.parent); if(o){ let hp=it.poly.slice(); if(area(hp)>0) hp.reverse(); o.holes.push(hp); } } });
+  return outs.map(o=>_keyhole(o.poly,o.holes)).filter(p=>p.length>=3&&Math.abs(area(p))>H*H*0.002);
+}
+function _keyhole(outer,holes){
+  let poly=outer.slice();
+  for(const hraw of holes){
+    let bi=0,bj=0,bd=Infinity;
+    for(let i=0;i<poly.length;i++) for(let j=0;j<hraw.length;j++){ const d=Math.hypot(poly[i].x-hraw[j].x,poly[i].y-hraw[j].y); if(d<bd){ bd=d; bi=i; bj=j; } }
+    const h=hraw.slice(bj).concat(hraw.slice(0,bj));
+    const P=poly[bi], Q=h[0]; const L=Math.hypot(Q.x-P.x,Q.y-P.y)||1, nx=-(Q.y-P.y)/L*0.6, ny=(Q.x-P.x)/L*0.6;
+    poly=poly.slice(0,bi+1).concat(h,[{x:Q.x+nx,y:Q.y+ny}],[{x:P.x+nx,y:P.y+ny}],poly.slice(bi+1));
+  }
+  return poly;
+}
+// --- 표시: 면 스타일 · 모서리 · 안개 · 숨은 형상 · 안내선 ---
+const _fsMats={wire:null,hidden:null,mono:null};
+function _fsMat(kind){
+  if(_fsMats[kind]) return _fsMats[kind];
+  if(kind==='wire') _fsMats.wire=new THREE.MeshBasicMaterial({color:0xF5F1EB,wireframe:true});
+  else if(kind==='hidden') _fsMats.hidden=new THREE.MeshBasicMaterial({color:0xF5F1EB,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
+  else if(kind==='mono') _fsMats.mono=new THREE.MeshStandardMaterial({color:0xC9CFD6,roughness:0.9,metalness:0,side:THREE.DoubleSide});
+  else if(kind==='ghost') _fsMats.ghost=new THREE.MeshBasicMaterial({color:0x9A9AFF,wireframe:true,transparent:true,opacity:0.35,depthTest:false});
+  return _fsMats[kind];
+}
+function setFaceStyle(st){ ST.faceStyle=st; applyFaceStyle(); refreshStylePanel(); setStatus(statusLive,'면 스타일: '+({wire:'와이어프레임',hidden:'히든 라인',shaded:'셰이딩',textured:'텍스처 셰이딩',mono:'단색'})[st]); }
+function setEdges(on){ ST.edges=!!on; applyFaceStyle(); refreshStylePanel(); }
+function setFog(on){ ST.fogOn=!!on; const b=ST.built?ST.built.bounds:null; const span=b?Math.max(b.maxX-b.minX,b.maxY-b.minY,4000)*MM:10; if(scene.fog){ scene.fog.near=ST.fogOn?span*0.6:60; scene.fog.far=ST.fogOn?span*2.4:160; } refreshStylePanel(); invalidate(); }
+function setHiddenGeom(on){ ST.hiddenGeom=!!on; refreshVisibility(); applyFaceStyle(); rebuildPickables(); refreshStylePanel(); }
+function setGuidesOn(on){ ST.guidesOn=!!on; ST.guides.forEach(g=>{ if(g.line) g.line.visible=ST.guidesOn; }); refreshStylePanel(); invalidate(); }
+function applyFaceStyle(){
+  if(!ST.root) return;
+  const st=ST.faceStyle, edges=ST.edges||st==='hidden';
+  ST.root.traverse(o=>{
+    if(!o.isMesh) return;
+    const obj=o.userData.obj; if(!obj) return;
+    const g=o.parent; const hidKey=obj.floorId+'|'+obj.id;
+    const ghost=ST.hiddenGeom&&ST.hidden.has(hidKey);
+    if(!o.userData._fs0) o.userData._fs0=o.material;
+    const orig=o.userData._fs0;
+    if(o.userData._mat&&o.userData._mat!==orig){ /* 선택 하이라이트 사본은 그대로 */ }
+    let want=orig;
+    if(ghost) want=_fsMat('ghost');
+    else if(st==='wire') want=_fsMat('wire');
+    else if(st==='hidden') want=_fsMat('hidden');
+    else if(st==='mono') want=(orig.transparent&&orig.opacity<0.9)?orig:_fsMat('mono');
+    else if(st==='shaded'&&orig.map){ if(!orig.userData._noTex){ const c=orig.clone(); c.map=null; c.needsUpdate=true; orig.userData._noTex=c; } want=orig.userData._noTex; }
+    if(o.userData._mat){ o.userData._mat=want; if(want===orig){ /* 선택 중이면 하이라이트 유지 */ } else o.material=want; }
+    else o.material=want;
+    // 모서리
+    let eg=o.children.find(c=>c.name==='__edges');
+    if(edges&&!ghost){ if(!eg){ eg=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,25),new THREE.LineBasicMaterial({color:0x0E0F1A})); eg.name='__edges'; eg.raycast=()=>{}; o.add(eg); } eg.visible=true; }
+    else if(eg) eg.visible=false;
+  });
+  invalidate(true);
+}
+// --- 매스 배율 (Scale — 매스) ---
+function beginScaleMass(g,obj,cy,cx){
+  if(!ffEditable(obj)||obj.locked){ setStatus(statusLive,obj.locked?'잠금된 매스':'🧊 밑그림은 못 늘립니다'); return; }
+  ST.op={type:'scale',mass:true,g,obj,startY:cy,startX:cx,factor:1,fx:1,fz:1,fy:1,baseSX:g.scale.x,baseSZ:g.scale.z,baseSY:g.scale.y};
+  opOrbit(true); vcbShow('배율 (Shift=높이만 · 가로,세로,높이)','1.00','×');
+}
+function applyScaleMass(cy,shift){
+  const op=ST.op; let f=1+(op.startY-cy)*0.005; f=Math.max(0.05,Math.min(20,Math.round(f*20)/20));
+  if(shift){ op.fx=1; op.fz=1; op.fy=f; op.factor=null; } else { op.fx=op.fz=op.fy=f; op.factor=f; }
+  op.g.scale.set(op.baseSX*op.fx,op.baseSY*op.fy,op.baseSZ*op.fz);
+  vcbShow('배율'+(shift?' (높이)':''),f.toFixed(2),'×'); invalidate(true);
+}
+function commitScaleMass(exact){
+  const op=ST.op; let fx=op.fx,fy=op.fz,fz=op.fy;
+  const raw=vcbRaw(); const m3=raw.match(/^([\d.]+)\s*[,x*]\s*([\d.]+)\s*[,x*]\s*([\d.]+)$/), m2=raw.match(/^([\d.]+)\s*[,x*]\s*([\d.]+)$/);
+  if(m3){ fx=+m3[1]; fy=+m3[2]; fz=+m3[3]; } else if(m2){ fx=+m2[1]; fy=+m2[2]; } else if(exact!=null&&exact>0){ if(op.factor===null){ fz=exact; } else { fx=fy=fz=exact; } }
+  op.g.scale.set(op.baseSX,op.baseSY,op.baseSZ);
+  const obj=op.obj; _opDone();
+  if(!(fx>0&&fy>0&&fz>0)){ setStatus(statusLive,'배율은 0 보다 커야 합니다'); return; }
+  emitEdit({type:'edit',op:'scale',kind:'masses',id:obj.id,floorId:'freeform',patch:{sx:fx,sy:fy,sz:fz}});
+  setLast('배율','×',r=>{ const v=parseFloat(r); if(!(v>0)) return false; emitEdit({type:'edit',op:'scale',kind:'masses',id:obj.id,floorId:'freeform',patch:{sx:v,sy:v,sz:v}}); return true; });
+  setStatus(statusLive,'⤢ 배율 ×'+fx.toFixed(2)+(fx!==fy||fy!==fz?'·'+fy.toFixed(2)+'·'+fz.toFixed(2):''));
+}
+// --- 그룹 · 컴포넌트 (G · Shift+G) · 분해 · 정의 갱신 ---
+function ffSelMassIds(){ return _selObjs(o=>o.kind==='mass'&&o.floorId==='freeform'&&!o.locked).map(o=>o.id); }
+function ffMakeGroup(){ const ids=ffSelMassIds(); if(!ids.length){ setStatus(statusLive,'그룹으로 묶을 매스를 먼저 선택하세요'); return; } emitEdit({type:'edit',op:'group',floorId:'freeform',patch:{ids}}); }
+function ffMakeComp(){ const ids=ffSelMassIds(); if(!ids.length){ setStatus(statusLive,'컴포넌트로 만들 매스를 먼저 선택하세요'); return; } const nm=window.prompt('컴포넌트 이름','컴포넌트'+(((FF&&FF.free.comps)||[]).length+1)); if(!nm) return; emitEdit({type:'edit',op:'mkcomp',floorId:'freeform',patch:{ids,name:nm}}); }
+function ffExplode(){ const o=ST.selected&&ST.selected.userData.obj; const gid=o&&o.meta&&o.meta.gid; if(!gid){ setStatus(statusLive,'분해할 그룹을 선택하세요'); return; } emitEdit({type:'edit',op:'ungroup',floorId:'freeform',patch:{gid}}); }
+function ffCompUpdate(){ const o=ST.selected&&ST.selected.userData.obj; const gid=o&&o.meta&&o.meta.gid; if(!gid){ setStatus(statusLive,'컴포넌트 인스턴스(그룹)를 선택하세요'); return; } emitEdit({type:'edit',op:'compupdate',floorId:'freeform',patch:{gid}}); }
+// --- 줄자로 모델 전체 크기 조정 (Tape → Resize model) ---
+function ffTapeResize(d){
+  setLast('줄자 → 모델 크기 조정','mm',raw=>{ const v=parseLen(raw); if(!(v>0)||!(d>0)) return false;
+    if(!window.confirm('모델 전체를 '+Math.round(d)+' → '+Math.round(v)+' mm 비율('+(v/d).toFixed(3)+')로 조정할까요?')) return true;
+    emitEdit({type:'edit',op:'scaleall',floorId:'freeform',patch:{k:v/d}}); return true; },{noUndo:true});
+}
+// --- 단위 · 모델 정보 ---
+function showModelInfo(on){ const m=$('modelinfo'); if(!m) return; m.style.display=on?'flex':'none'; if(on){ $('mi-units').value=ST.units; $('mi-defz').value=ST.defZ; $('mi-grid').value=String(ST.gridMM); $('mi-sides').value=ST.circleSides; } }
+// --- OBJ · STL 내보내기 ---
+function _exportTris(){
+  const out=[]; const v=new THREE.Vector3();
+  ST.root&&ST.root.traverse(o=>{ if(!o.isMesh||!o.visible||!o.userData.obj||o.name==='__edges') return; let p=o; while(p){ if(p.visible===false) return; p=p.parent; }
+    const g=o.geometry; const pos=g.attributes.position; if(!pos) return; const idx=g.index; o.updateWorldMatrix(true,false);
+    const tri=[]; const n=idx?idx.count:pos.count;
+    for(let i=0;i<n;i++){ const k=idx?idx.getX(i):i; v.fromBufferAttribute(pos,k).applyMatrix4(o.matrixWorld); tri.push([v.x/MM,v.z/MM,v.y/MM]); if(tri.length===3){ out.push({name:(o.userData.obj.name||o.userData.obj.kind),t:tri.slice()}); tri.length=0; } } });
+  return out;
+}
+function exportOBJ(){
+  const tris=_exportTris(); if(!tris.length){ setStatus(statusLive,'내보낼 것이 없습니다'); return; }
+  let s='# ECOREAN 프리폼 OBJ (mm, x right / y plan-down / z up)\n'; let vi=1; let cur=null;
+  tris.forEach(tr=>{ if(tr.name!==cur){ cur=tr.name; s+='g '+cur.replace(/\s+/g,'_')+'\n'; } tr.t.forEach(p=>{ s+='v '+p[0].toFixed(1)+' '+p[2].toFixed(1)+' '+(-p[1]).toFixed(1)+'\n'; }); s+='f '+vi+' '+(vi+1)+' '+(vi+2)+'\n'; vi+=3; });
+  download(fileStem()+'.obj',new Blob([s],{type:'text/plain'})); setStatus(statusLive,'OBJ 저장 ('+tris.length+' 삼각형)');
+}
+function exportSTL(){
+  const tris=_exportTris(); if(!tris.length){ setStatus(statusLive,'내보낼 것이 없습니다'); return; }
+  const buf=new ArrayBuffer(84+tris.length*50); const dv=new DataView(buf); dv.setUint32(80,tris.length,true); let o=84;
+  tris.forEach(tr=>{ const [a,b,c]=tr.t; const ux=b[0]-a[0],uy=b[2]-a[2],uz=-(b[1]-a[1]), vx=c[0]-a[0],vy=c[2]-a[2],vz=-(c[1]-a[1]); const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx; const L=Math.hypot(nx,ny,nz)||1;
+    dv.setFloat32(o,nx/L,true);dv.setFloat32(o+4,ny/L,true);dv.setFloat32(o+8,nz/L,true); o+=12;
+    [a,b,c].forEach(p=>{ dv.setFloat32(o,p[0],true);dv.setFloat32(o+4,p[2],true);dv.setFloat32(o+8,-p[1],true); o+=12; }); dv.setUint16(o,0,true); o+=2; });
+  download(fileStem()+'.stl',new Blob([buf],{type:'model/stl'})); setStatus(statusLive,'STL 저장 ('+tris.length+' 삼각형)');
+}
+// --- 단독 셸 부팅: 메뉴·툴바·단축키표 교체 + 바인딩 ---
+function bindMenus(){
+  document.querySelectorAll('#menubar .menu>button').forEach(btn=>{
+    btn.onclick=e=>{ e.stopPropagation(); const m=btn.parentElement, was=m.classList.contains('open'); closeMenus(); if(!was) m.classList.add('open'); };
+    btn.onmouseenter=()=>{ if(document.querySelector('.menu.open')){ closeMenus(); btn.parentElement.classList.add('open'); } };
+  });
+  document.querySelectorAll('#menubar .mi').forEach(mi=>{ mi.onclick=e=>{ e.stopPropagation(); closeMenus(); menuCmd(mi.dataset.cmd); }; });
+}
+function bindTools(){ document.querySelectorAll('#tools .btn').forEach(b=>{ b.onclick=()=>{ const t=b.dataset.t; if(t==='mkcomp'){ ffMakeGroup(); return; } if(t==='fit'){ fitView(true); return; } if(t==='prevview'){ camPrev(); return; } setTool(t); }; }); }
+function ffStandaloneShell(){
+  const mb=$('menubar'), tm=$('ff-menus'); if(mb&&tm){ mb.innerHTML=''; mb.appendChild(tm.content.cloneNode(true)); bindMenus(); }
+  const tl=$('tools'), tt=$('ff-tools'); if(tl&&tt){ tl.innerHTML=''; tl.appendChild(tt.content.cloneNode(true)); bindTools(); }
+  const km=document.querySelector('#keysmodal .kbox'), tk=$('ff-keys'); if(km&&tk){ km.innerHTML=''; km.appendChild(tk.content.cloneNode(true)); const kc=$('keys-close'); if(kc) kc.onclick=()=>showKeys(false); }
+  ['#b-ceil','#b-label','#b-ff','#b-reload','#b-json'].forEach(sel=>{ const el=document.querySelector(sel); if(el) el.style.display='none'; });
+  const mc=$('mi-close'); if(mc) mc.onclick=()=>showModelInfo(false);
+  const mu=$('mi-units'); if(mu) mu.onchange=()=>{ ST.units=mu.value; setStatus(statusLive,'단위: '+ST.units); };
+  const mz=$('mi-defz'); if(mz) mz.onchange=()=>{ ST.defZ=Math.max(10,parseInt(mz.value)||2400); };
+  const mg=$('mi-grid'); if(mg) mg.onchange=()=>{ ST.gridMM=parseInt(mg.value)||10; };
+  const ms=$('mi-sides'); if(ms) ms.onchange=()=>{ ST.circleSides=Math.max(6,Math.min(96,parseInt(ms.value)||24)); };
+  const hint=$('hint'); if(hint) hint.innerHTML='<b>스케치업식:</b> Space 선택 · L 선 · R 사각형 · C 원 · A 호 · F 오프셋 · M 이동 · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · G 그룹 · O 궤도 · H 팬 · Z 줌 | 숫자=정확값 · Esc 취소 · ?=단축키표';
+  renderTags();
+}
+// 단독 프리폼의 우클릭 메뉴 (스케치업 컨텍스트 메뉴)
+function ffCtxItems(e,sel,n){
+  const items=[];
+  if(sel){
+    items.push(['info','개체 정보',()=>openTraySec('info')]);
+    items.push(['-']);
+    if(sel.kind==='mass'||SKETCH_KINDS.has(sel.kind)||FF_PLACE.includes(KINDMAP[sel.kind])) items.push(['del','지우기'+(n>1?' ('+n+'개)':'')+'\tDel',deleteSelected3D]);
+    if(sel.kind==='sketchFace') items.push(['ext','밀기끌기 (Z 입력)…',()=>{ const z=window.prompt('밀기 높이(mm)',String(ST.lastPP>=10?ST.lastPP:ST.defZ)); const v=parseLen(z); if(v>=10) emitEdit({type:'edit',op:'extrude',floorId:'freeform',patch:{id:sel.id,z:Math.round(v),as:'solid'}}); }]);
+    items.push(['hide','숨기기\tShift+H',hideSelected]);
+    if(MOVABLE.has(sel.kind)) items.push(['lock',sel.locked?'잠금 해제':'잠금',()=>lockSelected(!sel.locked)]);
+    if(sel.kind==='mass'){
+      items.push(['-']);
+      items.push(['grp','그룹 만들기\tG',ffMakeGroup]);
+      items.push(['cmp','컴포넌트 만들기…\tShift+G',ffMakeComp]);
+      if(sel.meta&&sel.meta.gid){ items.push(['exp','분해',ffExplode]); if(sel.meta.cid) items.push(['cup','컴포넌트 정의 갱신',ffCompUpdate]); }
+      if(sel.meta&&sel.meta.mat) items.push(['mclr','재질 지우기',()=>emitEdit({type:'edit',op:'set',kind:'masses',id:sel.id,floorId:'freeform',patch:{mat:null}})]);
+      items.push(['-']);
+      items.push(['fmb','걸레받이 (바닥 둘레)',()=>emitEdit({type:'edit',op:'followme',floorId:'freeform',patch:{massId:sel.id,at:'bottom',profile:{kind:'rect',w:ST.fmW||10,h:ST.fmH||80}}})]);
+      items.push(['fmt','천장 몰딩 (위 둘레)',()=>emitEdit({type:'edit',op:'followme',floorId:'freeform',patch:{massId:sel.id,at:'top',profile:{kind:'crown',w:ST.fmW||10,h:ST.fmH||80}}})]);
+      items.push(['-']);
+      items.push(['rotl','↺ 15°\tShift+R',()=>rotateSelected(-15)]); items.push(['rotr','↻ 15°\tR',()=>rotateSelected(15)]); items.push(['flip','180° 돌리기',()=>rotateSelected(180)]);
+    }
+    items.push(['-']);
+    if(MOVABLE.has(sel.kind)){ items.push(['copy','복사\tCtrl+C',copySel]); items.push(['cut','잘라내기\tCtrl+X',cutSel]); }
+    if(ST.clip) items.push(['paste','붙여넣기\tCtrl+V',()=>pasteClip(e)]);
+    items.push(['zoom','선택 확대',()=>zoomTo(ST.selected)]);
+  }else{
+    if(ST.clip) items.push(['paste','붙여넣기\tCtrl+V',()=>pasteClip(e)]);
+    items.push(['all','모두 선택\tCtrl+A',selectAll]);
+    if(ST.hidden.size) items.push(['unhide','숨긴 것 모두 보기 ('+ST.hidden.size+')',unhideAll]);
+    if(ST.guides.length) items.push(['guides','안내선 모두 삭제',clearGuides]);
+    if(ST.sections.length) items.push(['secs','단면 모두 삭제',clearSections]);
+    if(ST.axesO.x||ST.axesO.y||ST.axesO.ang) items.push(['axr','축 초기화',()=>setAxesOrigin(0,0,0)]);
+    items.push(['-']);
+    items.push(['fit','전체 보기\tShift+Z',()=>fitView(true)]);
+    items.push(['iso','기본 시점',()=>setView('iso')]);
+    items.push(['prev','이전 시점',camPrev]);
+  }
+  return items;
+}
+// --- 솔리드 도구 (Solid Tools) — 선택 순서: 먼저 고른 것이 기준(A), 두 번째가 도구(B) ---
+function ffSolid(kind){
+  const ids=_selObjs(o=>o.kind==='mass'&&o.floorId==='freeform'&&!o.locked).map(o=>o.id);
+  if(ids.length!==2){ setStatus(statusLive,'솔리드 도구: 프리폼 매스 둘을 고르세요 (Shift+클릭) — 먼저 고른 것이 기준'); return; }
+  const ord=ST.selKeys.map(k=>k.split('|')[1]).filter(id=>ids.includes(id));
+  emitEdit({type:'edit',op:'solid',floorId:'freeform',patch:{kind,ids:ord.length===2?ord:ids}});
+}
+
 // ---------------------------------------------------------------------------
 // 재질 (전역 캐시 — 층 증분 재조립에서도 유지)
 // ---------------------------------------------------------------------------
@@ -495,13 +1021,15 @@ function buildAxes(){
   mk(new THREE.Vector3(-S,y,0),new THREE.Vector3(S,y,0),0xE24C4C);   // X 빨강
   mk(new THREE.Vector3(0,y,-S),new THREE.Vector3(0,y,S),0x4CAF50);   // 평면 Y 초록
   mk(new THREE.Vector3(0,0,0),new THREE.Vector3(0,S*0.6,0),0x4C7DE2);// 높이 파랑
+  const ao=ST.axesO||{x:0,y:0,ang:0}; axesGrp.position.set(ao.x*MM,0,ao.y*MM); axesGrp.rotation.y=-ao.ang*Math.PI/180;
   axesGrp.visible=ST.axes;
   scene.add(axesGrp);
 }
 function setAxes(on){ ST.axes=on; if(axesGrp) axesGrp.visible=on; refreshStylePanel(); invalidate(); }
 function rebuildPickables(){
   ST.pickables=[];
-  ST.root&&ST.root.traverse(o=>{ if(o.isMesh&&o.userData.obj&&o.userData.obj.kind!=='slab') ST.pickables.push(o); });
+  ST.root&&ST.root.traverse(o=>{ if(o.isMesh&&o.userData.obj&&o.userData.obj.kind!=='slab'&&!(ST.hiddenGeom&&ST.hidden.has(o.userData.obj.floorId+'|'+o.userData.obj.id))) ST.pickables.push(o); });
+  if(FF_STANDALONE){ applyFaceStyle(); applySections(); }
 }
 function retunePointLights(){
   ST.pointLights.forEach(pl=>{ if(pl.parent) pl.parent.remove(pl); });
@@ -544,19 +1072,22 @@ function refreshVisibility(){
       let vis=true;
       if(o.kind==='ceiling') vis=ST.ceil[ST.mode];
       const tg=TAG_OF(o); if(tg&&ST.tags[tg]===false) vis=false;   // 태그(레이어) 끔
-      if(ST.hidden.has(o.floorId+'|'+o.id)) vis=false;               // 숨기기(H)
+      if(ST.hidden.has(o.floorId+'|'+o.id)) vis=!!ST.hiddenGeom;      // 숨기기(H) — 숨은 형상 보기면 유령으로
       g.visible=vis;
     });
   });
   invalidate(true);
 }
 const TAG_NAMES=['벽','바닥','천장','문','창','가구','기구','조명','전기','설비','기둥','스케치','매스'];
-const TAG_OF=o=>({wall:'벽',floor:'바닥',ceiling:'천장',door:'문',window:'창',furniture:'가구',fixture:'기구',light:'조명',electric:'전기',hvac:'설비',pillar:'기둥',sketchFace:'스케치',sketchEdge:'스케치',sketchPt:'스케치',mass:'매스'})[o.kind]||null;
+const TAG_OF=o=>(o.meta&&o.meta.tag)||({wall:'벽',floor:'바닥',ceiling:'천장',door:'문',window:'창',furniture:'가구',fixture:'기구',light:'조명',electric:'전기',hvac:'설비',pillar:'기둥',sketchFace:'스케치',sketchEdge:'스케치',sketchPt:'스케치',mass:'매스'})[o.kind]||null;
+function ffTagNames(){ return TAG_NAMES.concat((FF&&Array.isArray(FF.free.tags))?FF.free.tags.filter(t=>!TAG_NAMES.includes(t)):[]); }
 function setTag(name,on){ ST.tags[name]=!!on; refreshVisibility(); renderTags(); }
 function renderTags(){
   const el=$('tags'); if(!el) return;
-  el.innerHTML=TAG_NAMES.map(n=>'<label class="tag"><input type="checkbox" data-tag="'+n+'"'+(ST.tags[n]===false?'':' checked')+'> '+n+'</label>').join('');
+  el.innerHTML=ffTagNames().map(n=>'<label class="tag"><input type="checkbox" data-tag="'+n+'"'+(ST.tags[n]===false?'':' checked')+'> '+n+'</label>').join('')
+    +(FF_STANDALONE?'<button class="btn sm" id="tag-add" style="grid-column:1/3;margin-top:4px">＋ 태그 추가</button>':'');
   el.querySelectorAll('input[data-tag]').forEach(i=>{ i.onchange=()=>setTag(i.dataset.tag,i.checked); });
+  const ta=el.querySelector('#tag-add'); if(ta) ta.onclick=()=>{ const nm=window.prompt('새 태그 이름',''); if(!nm||!FF) return; if(!Array.isArray(FF.free.tags)) FF.free.tags=[]; if(!FF.free.tags.includes(nm)) FF.free.tags.push(nm); ffAutosave(); renderTags(); setStatus(statusLive,'태그 추가: '+nm+' — 개체 정보에서 매스에 붙입니다'); };
 }
 function renderFloorButtons(){
   const el=$('floors'); if(!el) return;
@@ -829,6 +1360,7 @@ function setView(name){
   else if(name==='back') camera.position.set(cx,midY+span*0.12,cz-hd-span*1.05);
   else if(name==='side'||name==='right') camera.position.set(cx+hw+span*1.05,midY+span*0.12,cz);
   else if(name==='left') camera.position.set(cx-hw-span*1.05,midY+span*0.12,cz);
+  else if(name==='bottom') camera.position.set(cx+0.01,-(span*1.5),cz+0.01);
   else camera.position.set(cx+span*0.35,span*0.95+2,cz+span*0.85); // iso
   if(ST.ortho) _orthoFit();
   orbit.update(); invalidate(); camPush();
@@ -1479,7 +2011,7 @@ function ffApply(m){
       if(m.kind!=='masses') return no('밑그림은 평면(미니캐드)에서 고칩니다');
       const mass=massOf(m.id); if(!mass) return no('밑그림 매스는 평면에서');
       if(m.op==='lock'){ mass.locked=!!p.locked; ok=true; label=p.locked?'잠금':'잠금 해제'; break; }
-      const ALLOW=['h_mm','elev_mm','name','color','x','y','angle'];
+      const ALLOW=['h_mm','elev_mm','name','color','x','y','angle','tag'];
       let n=0;
       if(p.mat!==undefined){                            // 프리폼 재질 — 렌더 전용, 견적 무관
         if(p.mat===null) delete mass.mat;
@@ -1487,7 +2019,8 @@ function ffApply(m){
         n++;
       }
       ALLOW.forEach(k=>{ if(p[k]!==undefined){
-        mass[k]=(k==='name'||k==='color')?p[k]:N(p[k]);
+        mass[k]=(k==='name'||k==='color'||k==='tag')?p[k]:N(p[k]);
+        if(k==='tag'&&!mass[k]) delete mass[k];
         if(k==='h_mm') mass[k]=Math.max(10,mass[k]);
         n++; } });
       ok=n>0; label=m.op==='move'?'이동':'수정'; break;
@@ -1573,7 +2106,7 @@ function ffApply(m){
     }
     case 'group': {                                     // 프리폼 ⑤: 여럿을 하나로 (스케치업 그룹)
       const ms=(Array.isArray(p.ids)?p.ids:[]).map(i=>massOf(i)).filter(Boolean);
-      if(ms.length<2) return no('둘 이상의 프리폼 매스를 골라야 묶습니다');
+      if(ms.length<1) return no('프리폼 매스를 골라야 묶습니다');
       const gid='g_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
       ms.forEach(x=>{x.gid=gid;});
       ok=true; label='그룹 묶기 — '+ms.length+'개 (클릭=그룹 전체 · 더블클릭=하나만)'; break;
@@ -1590,7 +2123,8 @@ function ffApply(m){
       const ax=Math.round(ms.reduce((a,x)=>a+x.x,0)/ms.length);
       const ay=Math.round(ms.reduce((a,x)=>a+x.y,0)/ms.length);
       if(!Array.isArray(bag.comps)) bag.comps=[];
-      bag.comps.push({id:'cp_'+Date.now()+'_'+Math.floor(Math.random()*1e4),
+      const cidS='cp_'+Date.now()+'_'+Math.floor(Math.random()*1e4); ms.forEach(x=>{x.cid=cidS;});
+      bag.comps.push({id:cidS,
         name:String(p.name||'컴포넌트').slice(0,40),
         masses:ms.map(x=>{const c=JSON.parse(JSON.stringify(x));
           c.x=Math.round(c.x-ax); c.y=Math.round(c.y-ay); delete c.gid; delete c.id; return c;})});
@@ -1606,7 +2140,7 @@ function ffApply(m){
       cp.masses.forEach(src=>{
         const c=JSON.parse(JSON.stringify(src));
         c.id='ms_'+Date.now()+'_'+(++seq)+'_'+Math.floor(Math.random()*1e4);
-        c.gid=gid; c.x=X+c.x; c.y=Y+c.y;
+        c.gid=gid; c.cid=cp.id; c.x=X+c.x; c.y=Y+c.y;
         bag.masses.push(c); madeId=c.id;
       });
       ok=true; label='스탬프: '+cp.name+' ('+cp.masses.length+'개) — 계속 찍으려면 다시 클릭 · Esc=끝'; break;
@@ -1627,6 +2161,107 @@ function ffApply(m){
       bag[m.kind].push(o);
       madeId=o.id; ok=true; label='배치: '+(def.name||p.type)+' (스테이징 — 견적 무관)';
       break;
+    }
+    // ===== 2026-09-08 스케치업 100% — 새 op =====
+    case 'scale': {                                     // 매스 배율 (스케치업 Scale) — 원점(매스 중심) 기준
+      if(m.kind!=='masses') return no('배율은 프리폼 매스만');
+      const mass=massOf(m.id); if(!mass) return no('밑그림 매스는 평면에서');
+      const sx=Number(p.sx)||1, sy=Number(p.sy)||sx, sz=Number(p.sz)||sx;
+      if(!(sx>0&&sy>0&&sz>0)||[sx,sy,sz].some(v=>v<0.01||v>100)) return false;
+      mass.pts=mass.pts.map(q=>({x:Math.round(q.x*sx),y:Math.round(q.y*sy)}));
+      if(Array.isArray(mass.solidVerts)){
+        mass.solidVerts=mass.solidVerts.map(v=>({x:Math.round(v.x*sx),y:Math.round(v.y*sy),z:Math.round(zNum(v.z,ctx)*sz)}));
+        mass.h_mm=Math.round(Math.max(10,Math.max(...mass.solidVerts.map(v=>v.z))));
+      }else mass.h_mm=Math.max(10,Math.round(zNum(mass.h_mm,ctx)*sz));
+      if(Array.isArray(mass.cuts)&&mass.cuts.length&&(sx!==sy||sy!==sz)) { mass.cuts=[]; }   // 비균등이면 파냄은 못 따라간다
+      else if(Array.isArray(mass.cuts)) mass.cuts.forEach(c=>{ if(c.plane&&c.plane.origin){ c.plane.origin.x*=sx; c.plane.origin.y*=sy; c.plane.origin.z*=sz; } if(Array.isArray(c.uv)) c.uv=c.uv.map(q=>({x:q.x*sx,y:q.y*sx})); c.d=Math.round((c.d||0)*sx); });
+      ok=true; label='배율 ×'+sx.toFixed(2)+(sx!==sy||sy!==sz?'·'+sy.toFixed(2)+'·'+sz.toFixed(2):''); break;
+    }
+    case 'scaleall': {                                  // 줄자 → 모델 전체 크기 조정 (원점 기준)
+      const k=Number(p.k); if(!(k>0.001&&k<1000)) return false;
+      const S=v=>Math.round(v*k);
+      _ffAllBags().forEach(B=>{ (B.sketchPts||[]).forEach(q=>{ q.x=S(q.x); q.y=S(q.y); }); });
+      (bag.planes||[]).forEach(pl=>{ if(pl.origin){ pl.origin.x*=k; pl.origin.y*=k; pl.origin.z*=k; } });
+      (bag.masses||[]).forEach(ms=>{ ms.x=S(ms.x); ms.y=S(ms.y); ms.elev_mm=S(ms.elev_mm||0); ms.pts=ms.pts.map(q=>({x:S(q.x),y:S(q.y)}));
+        if(Array.isArray(ms.solidVerts)){ ms.solidVerts=ms.solidVerts.map(v=>({x:S(v.x),y:S(v.y),z:S(zNum(v.z,ctx))})); ms.h_mm=Math.max(10,Math.max(...ms.solidVerts.map(v=>v.z))); }
+        else ms.h_mm=Math.max(10,S(zNum(ms.h_mm,ctx)));
+        if(Array.isArray(ms.cuts)) ms.cuts.forEach(c=>{ if(c.plane&&c.plane.origin){ c.plane.origin.x*=k; c.plane.origin.y*=k; c.plane.origin.z*=k; } if(Array.isArray(c.uv)) c.uv=c.uv.map(q=>({x:q.x*k,y:q.y*k})); c.d=S(c.d||0); }); });
+      FF_PLACE.forEach(kk=>(bag[kk]||[]).forEach(o=>{ o.x=S(o.x); o.y=S(o.y); if(o.elev_mm) o.elev_mm=S(o.elev_mm); }));
+      ok=true; label='모델 전체 크기 ×'+k.toFixed(3); break;
+    }
+    case 'sweep': {                                     // 팔로우 미 (일반 단면) — 단면 [{u,v}] 을 경로 따라
+      const prof=(Array.isArray(p.profile)?p.profile:[]).map(q=>({u:N(q.u),v:N(q.v)}));
+      const path=(Array.isArray(p.pts)?p.pts:[]).map(q=>({x:N(q.x),y:N(q.y)}));
+      if(prof.length<3||path.length<2) return false;
+      const sw=sweepProfile(path,!!p.closed,N(p.z)||0,prof);
+      if(!sw) return no('경로가 너무 짧습니다');
+      const mm=massFromSweep(String(p.name||'팔로우미'),sw,bag,p.color||'#8B6F47');
+      if(!mm) return false;
+      if(p.faceId){ const hf=_ffFindFace(p.faceId); if(hf) _skConsumeFace(hf.face,hf.bag); }   // 스케치업: 단면은 소비된다
+      madeId=mm.id; ok=true; label='팔로우 미 ('+prof.length+'점 단면 · 경로 '+path.length+'변)'; break;
+    }
+    case 'massfrompoly': {                              // 다각형 → 매스 곧장 (3D 문자 등 — 스케치 그래프를 거치지 않는다)
+      const pts=(Array.isArray(p.pts)?p.pts:[]).map(q=>({x:N(q.x),y:N(q.y)}));
+      if(pts.length<3||!pts.every(q=>fin(q.x,q.y))) return false;
+      const z=N(p.z); if(!(z>=1)) return false;
+      const mm=massFromPoly(pts,z,bag); if(!mm) return false;
+      if(p.name) mm.name=String(p.name).slice(0,40);
+      if(p.gid) mm.gid=String(p.gid);
+      if(p.color) mm.color=String(p.color);
+      madeId=mm.id; ok=true; label=(p.name||'매스')+' 생성'; break;
+    }
+    case 'mkcomp': {                                    // 컴포넌트 만들기 (Shift+G) — 그룹 + 정의 저장 + 인스턴스 표시
+      const ms=(Array.isArray(p.ids)?p.ids:[]).map(i=>massOf(i)).filter(Boolean);
+      if(!ms.length) return no('컴포넌트로 만들 프리폼 매스가 없습니다');
+      const gid='g_'+Date.now()+'_'+Math.floor(Math.random()*1e4), cid='cp_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
+      const ax=Math.round(ms.reduce((a,x)=>a+x.x,0)/ms.length), ay=Math.round(ms.reduce((a,x)=>a+x.y,0)/ms.length);
+      ms.forEach(x=>{ x.gid=gid; x.cid=cid; });
+      if(!Array.isArray(bag.comps)) bag.comps=[];
+      bag.comps.push({id:cid,name:String(p.name||'컴포넌트').slice(0,40),
+        masses:ms.map(x=>{ const c=JSON.parse(JSON.stringify(x)); c.x=Math.round(c.x-ax); c.y=Math.round(c.y-ay); delete c.gid; delete c.id; delete c.cid; return c; })});
+      ok=true; label='컴포넌트 "'+String(p.name||'컴포넌트')+'" — 구성요소 칸에서 스탬프 · 편집▸정의 갱신'; break;
+    }
+    case 'compupdate': {                                // 이 인스턴스로 정의 갱신 → 다른 인스턴스 전부 따라온다 (스케치업 컴포넌트 라이브 링크)
+      const ms=(bag.masses||[]).filter(x=>x&&x.gid===p.gid);
+      if(!ms.length) return no('그룹을 찾지 못했습니다');
+      const cid=ms[0].cid; const cp=(bag.comps||[]).find(c=>c&&c.id===cid);
+      if(!cid||!cp) return no('컴포넌트 인스턴스가 아닙니다 — 먼저 컴포넌트로 만드세요 (Shift+G)');
+      const ax=Math.round(ms.reduce((a,x)=>a+x.x,0)/ms.length), ay=Math.round(ms.reduce((a,x)=>a+x.y,0)/ms.length);
+      cp.masses=ms.map(x=>{ const c=JSON.parse(JSON.stringify(x)); c.x=Math.round(c.x-ax); c.y=Math.round(c.y-ay); delete c.gid; delete c.id; delete c.cid; return c; });
+      const others={};
+      (bag.masses||[]).forEach(x=>{ if(x&&x.cid===cid&&x.gid!==p.gid){ (others[x.gid]=others[x.gid]||[]).push(x); } });
+      let nInst=0, seq=0;
+      Object.entries(others).forEach(([g2,arr])=>{
+        const bx=Math.round(arr.reduce((a,x)=>a+x.x,0)/arr.length), by=Math.round(arr.reduce((a,x)=>a+x.y,0)/arr.length);
+        bag.masses=bag.masses.filter(x=>!(x&&x.gid===g2));
+        cp.masses.forEach(src=>{ const c=JSON.parse(JSON.stringify(src)); c.id='ms_'+Date.now()+'_'+(++seq)+'_'+Math.floor(Math.random()*1e4); c.gid=g2; c.cid=cid; c.x=bx+c.x; c.y=by+c.y; bag.masses.push(c); });
+        nInst++;
+      });
+      ok=true; label='컴포넌트 "'+cp.name+'" 정의 갱신 — 다른 인스턴스 '+nInst+'개 따라옴'; break;
+    }
+    case 'facemat': {                                   // 면 하나에 재질 (Ctrl+페인트) — 각기둥이면 다면체로 승격
+      if(m.kind!=='masses') return false;
+      const mass=massOf(m.id); if(!mass) return no('밑그림 매스는 평면에서');
+      massToSolid(mass,ctx);
+      const P=p.p||{}, Nn=p.n||{};
+      const verts=mass.solidVerts.map(v=>({x:v.x,y:v.y,z:zNum(v.z,ctx)}));
+      let hitF=null,bd=Infinity;
+      mass.solidFaces.forEach(f=>{ const fn=faceNormal(verts,f.vs); const dot=fn.x*Nn.x+fn.y*Nn.y+fn.z*Nn.z; if(dot<0.8) return;
+        const v0=verts[f.vs[0]]; const d=Math.abs((P.x-v0.x)*fn.x+(P.y-v0.y)*fn.y+(P.z-v0.z)*fn.z); if(d<bd){ bd=d; hitF=f; } });
+      if(!hitF||bd>25) return no('클릭한 면을 찾지 못했습니다');
+      if(p.mat===null) delete hitF.mat; else hitF.mat=String(p.mat).slice(0,40);
+      ok=true; label='면 재질 '+(p.mat||'지움'); break;
+    }
+    case 'solid': {                                     // 솔리드 도구 — 결합·빼기·교차·다듬기·분할 (BSP CSG, sketch.js)
+      const ids=Array.isArray(p.ids)?p.ids:[]; const A=massOf(ids[0]), Bm=massOf(ids[1]);
+      if(!A||!Bm) return no('솔리드 도구: 프리폼 매스 둘을 고르세요 (먼저 고른 것이 기준)');
+      if(typeof massCSG!=='function') return no('솔리드 엔진이 없습니다');
+      const r=massCSG(p.kind,A,Bm,ctx);
+      if(!r||!r.length) return no('결과가 비었습니다 (겹치지 않거나 너무 얇습니다)');
+      const keepA=(p.kind==='trim');                    // 다듬기: 자르는 쪽(첫째)은 남는다 (스케치업 Trim)
+      bag.masses=bag.masses.filter(x=>(keepA||x!==A)&&x!==Bm);
+      r.forEach(mm=>{ bag.masses.push(mm); madeId=mm.id; });
+      ok=true; label='솔리드 '+({union:'결합',subtract:'빼기',intersect:'교차',trim:'다듬기',split:'분할'})[p.kind]+' → '+r.length+'개'; break;
     }
     default: return no('프리폼이 모르는 명령: '+m.op);
   }
@@ -1742,6 +2377,8 @@ function ffNew(){
   ffCommit('새로 시작 (자유 층 비움)');
 }
 let chan=null;
+// 편집이 가능한가 — 연동(채널) 또는 프리폼(로컬 적용). 단독 프리폼은 채널이 없어도 모든 편집이 된다 (2026-09-08)
+const canEdit=()=>!!chan||ST.ffOn;
 function sendEdit(op,obj,patch){
   if(!chan&&!ST.ffOn){ setStatus(false,'MiniCAD 창이 없어 반영 못함'); return false; }
   emitEdit({type:'edit',op,kind:KINDMAP[obj.kind],id:obj.id,floorId:obj.floorId,patch:patch||{}});
@@ -1840,14 +2477,14 @@ function vcbSides(){ // 원 도구: "6s" = 다각형 변 수
 }
 // --- 여러 편집을 한 메시지로 (미니캐드 batch → Ctrl+Z 한 단계) ---
 function sendBatch(ops,label){
-  if(!chan){ setStatus(false,'MiniCAD 창이 없어 반영 못함'); return false; }
+  if(!canEdit()){ setStatus(false,'MiniCAD 창이 없어 반영 못함'); return false; }
   if(!ops.length) return false;
   if(ops.length===1){ const o=ops[0]; emitEdit({type:'edit',op:o.op,kind:o.kind,id:o.id,floorId:o.floorId,patch:o.patch||{}}); return true; }
   emitEdit({type:'edit',op:'batch',label:label||'',ops});
   return true;
 }
 // --- 확정 뒤 재입력 (스케치업: 동작 확정 직후 숫자를 치면 되돌려 그 값으로 다시) · Ctrl+복사 뒤 xN · /N = 배열 복사 ---
-function setLast(label,unit,apply){ ST.lastCommit={label,unit,apply,seq:0}; }
+function setLast(label,unit,apply,opts){ ST.lastCommit={label,unit,apply,seq:0,noUndo:!!(opts&&opts.noUndo)}; }
 function vcbPostOn(ch){
   const lc=ST.lastCommit; if(!lc||!vcb) return false;
   vcbShow(lc.label+' (재입력)',ch,lc.unit);
@@ -1861,9 +2498,9 @@ function vcbPostEnter(){
   if(!lc||!raw){ vcbHide(); return; }
   const a1=raw.match(/^([x*\/])\s*(\d+)$/i), a2=raw.match(/^(\d+)\s*([x*\/])$/i);
   if(a1||a2){ const n=parseInt(a1?a1[2]:a2[1],10), div=(a1?a1[1]:a2[2])==='/'; arrayCopy(n,div); vcbHide(); return; }
-  if(chan) emitEdit({type:'edit',op:'undo'});      // 방금 확정한 것을 물리고
+  if(canEdit()&&!lc.noUndo) emitEdit({type:'edit',op:'undo'});      // 방금 확정한 것을 물리고
   const ok=lc.apply(raw); lc.seq++;                        // 새 값으로 다시 (실패하면 되돌린 것을 복구)
-  if(ok===false){ if(chan) emitEdit({type:'edit',op:'redo'}); setStatus(statusLive,'재입력 값을 이해 못했습니다: '+raw); }
+  if(ok===false){ if(canEdit()&&!lc.noUndo) emitEdit({type:'edit',op:'redo'}); setStatus(statusLive,'재입력 값을 이해 못했습니다: '+raw); }
   vcbHide();
 }
 function arrayCopy(n,div){
@@ -1886,17 +2523,21 @@ function setTool(t){
   hideSnap();
   vcbPostOff();
   ST.tool=t;
+  if(FF_STANDALONE){                            // 걷기·둘러보기 도구 = 걷기 모드, 그 외 도구 = 조감 복귀
+    if(t==='walk'||t==='lookaround'){ if(ST.mode!=='walk') setMode('walk'); }
+    else if(ST.mode==='walk'&&t!=='poscam') setMode('orbit');
+  }
   document.querySelectorAll('#tools .btn').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   if(t==='paint') openTraySec('mat');    // 트레이(우측)의 재질 패널 열기 — 스케치업 Default Tray
   if(t==='add') openTraySec('comp');
   if(t==='add'&&ST.add&&ST.add.type) makeGhost();
   // 스케치업식 마우스: 좌클릭은 도구 몫 · 궤도(O)/팬(H)/줌(Z) 도구에서만 좌클릭 드래그가 카메라
   orbit.mouseButtons.LEFT=(t==='orbit')?THREE.MOUSE.ROTATE:(t==='pan')?THREE.MOUSE.PAN:(t==='zoom')?THREE.MOUSE.DOLLY:null;
-  renderer.domElement.style.cursor={select:'default',move:'move',rotate:'grab',scale:'nwse-resize',line:'crosshair',rect:'crosshair',circle:'crosshair',arc:'crosshair',offset:'crosshair',pushpull:'ns-resize',paint:'copy',erase:'not-allowed',tape:'crosshair',dim:'crosshair',text:'text',orbit:'all-scroll',pan:'grab',zoom:'zoom-in',add:'copy'}[t]||'default';
-  setStatus(statusLive,{select:'➤ 선택',move:'✥ 이동',rotate:'↻ 회전',scale:'⤢ 배율',line:'╱ 선(점·선)',rect:'▭ 사각형(면)',circle:'○ 원(면)',arc:'◜ 호(선)',offset:'⧉ 오프셋',pushpull:'⇕ 밀기끌기',paint:'🪣 페인트',erase:'🧽 지우개',tape:'📏 줄자',dim:'↔ 치수',text:'A 문자',orbit:'🔄 궤도',pan:'🖐 팬',zoom:'🔍 줌',add:'➕ 배치'}[t]||'');
+  renderer.domElement.style.cursor={select:'default',move:'move',rotate:'grab',scale:'nwse-resize',line:'crosshair',rect:'crosshair',circle:'crosshair',arc:'crosshair',offset:'crosshair',pushpull:'ns-resize',paint:'copy',erase:'not-allowed',tape:'crosshair',dim:'crosshair',text:'text',orbit:'all-scroll',pan:'grab',zoom:'zoom-in',add:'copy'}[t]||FF_CURSOR[t]||'default';
+  setStatus(statusLive,{select:'➤ 선택',move:'✥ 이동',rotate:'↻ 회전',scale:'⤢ 배율',line:'╱ 선(점·선)',rect:'▭ 사각형(면)',circle:'○ 원(면)',arc:'◜ 호(선)',offset:'⧉ 오프셋',pushpull:'⇕ 밀기끌기',paint:'🪣 페인트',erase:'🧽 지우개',tape:'📏 줄자',dim:'↔ 치수',text:'A 문자',orbit:'🔄 궤도',pan:'🖐 팬',zoom:'🔍 줌',add:'➕ 배치'}[t]||FF_STATUS[t]||'');
   // 하단 상태바 = 스케치업식 도구 안내 (수정자 포함)
   const hint=$('hint');
-  if(hint) hint.innerHTML={
+  if(hint) hint.innerHTML=(FF_STANDALONE&&FF_HINT[t])||{
     select:'<b>선택</b> — 클릭=선택 · <b>Shift/Ctrl+클릭=추가</b> · 끌기=선택 상자(←방향은 걸치기) · 더블클릭=방/연결벽 · 트리플=전체 · 배치물 끌기=이동 · Ctrl+끌기=복사 · Del · 우클릭=메뉴',
     move:'<b>이동</b> — 클릭-이동-클릭 · <b style="color:#7FA8D4">↑=높이(Z) 위아래로 띄우기</b> · ←→=X/Y 고정 · <b>Ctrl=복사</b>(뒤에 x3 · /3 = 배열) · <b>숫자=정확한 값</b>(2.5m·250cm) · 문·창은 벽 위로 · Esc 취소',
     rotate:'<b>회전</b> — 객체 클릭 → 기준점 클릭 → 각도 (각도기) · 15° 스냅(Shift=자유각) · <b>숫자=각도</b> · Esc 취소',
@@ -1916,7 +2557,7 @@ function setTool(t){
     pan:'<b>팬</b> — 끌어서 화면 이동 (우클릭·Shift+휠버튼 드래그와 같음)',
     zoom:'<b>줌</b> — 위아래로 끌어 확대/축소 (휠과 같음) · Shift+Z=전체',
     add:'<b>배치</b> — 오른쪽 구성요소에서 골라 바닥 클릭 · R=회전 · 계속 배치 · Esc=끝 (평면·견적 반영)',
-  }[t]||'';
+  }[t]||FF_HINT[t]||'';
   const ins=$('instructor'); if(ins&&hint) ins.innerHTML=hint.innerHTML; // 강사 패널(스케치업 Instructor)
 }
 // --- 배치 (➕) — 3D 에서 라이브러리 객체를 새로 놓는다 ---
@@ -1960,7 +2601,7 @@ function ghostFollow(e){
 function placeGhost(){
   const a=ST.add; if(!a||!a.ghost||!a.ghost.visible) return;
   const x=Math.round(a.ghost.position.x/MM), y=Math.round(a.ghost.position.z/MM);
-  if(!chan){ setStatus(false,'MiniCAD 창이 없어 배치 못함'); return; }
+  if(!canEdit()){ setStatus(false,'MiniCAD 창이 없어 배치 못함'); return; }
   emitEdit({type:'edit',op:'add',kind:a.kind,floorId:a.fid,patch:{type:a.type,x,y,angle:a.rot||0}});
   setStatus(statusLive,'➕ 배치 ('+x+', '+y+') — 계속 클릭해 더 놓기, Esc=끝');
 }
@@ -2033,7 +2674,7 @@ function snap3(fid,p,z0m,extra){
   let best=null;
   const pt=(v,kind)=>{ const d=Math.hypot(v.x-p.x,v.y-p.y); if(d<=T_END&&(!best||d<best.d)) best={x:v.x,y:v.y,d,kind}; };
   // 원점(0,0) 기준점 스냅 — 끝점과 같은 우선순위
-  pt({x:0,y:0},'origin');
+  pt({x:(ST.axesO?ST.axesO.x:0),y:(ST.axesO?ST.axesO.y:0)},'origin');
   sd.verts.forEach(v=>pt(v,'endpoint'));
   if(extra) extra.forEach(v=>pt(v,'endpoint'));                 // 그리는 중인 사슬의 점들 (폐합용)
   if(sd.xpts) sd.xpts.forEach(v=>pt(v,'intersection'));          // 안내선 교차점 (스케치업 Intersection)
@@ -2224,14 +2865,14 @@ function commitLine(exact){
   let a=op.a,cur=op.cur;
   if(!op.rect){
     const co=vcbCoord();                                     // [x,y] 절대 · <dx,dy> 상대
-    if(co&&co.x!=null&&co.y!=null) cur=co.abs?{x:Math.round(co.x),y:Math.round(co.y)}:{x:Math.round(a.x+co.x),y:Math.round(a.y+co.y)};
+    if(co&&co.x!=null&&co.y!=null) cur=co.abs?axAbs(co.x,co.y):{x:Math.round(a.x+co.x),y:Math.round(a.y+co.y)};
     else if(exact!==null&&exact!==undefined&&exact!==0){    // 길이 (음수 = 반대 방향)
       const dx=cur.x-a.x,dy=cur.y-a.y,l=Math.hypot(dx,dy);
       const u=l>1?{x:dx/l,y:dy/l}:op.dir;
       if(u) cur={x:Math.round(a.x+u.x*exact),y:Math.round(a.y+u.y*exact)};
     }
   }
-  if(!chan){ setStatus(false,'MiniCAD 창이 없어 벽을 못 만듭니다'); return; }
+  if(!canEdit()){ setStatus(false,'MiniCAD 창이 없어 벽을 못 만듭니다'); return; }
   if(op.rect){
     const pr=vcbPair(); // 치수 입력 "3000,2000" → 첫 점에서 정확한 크기 (끌던 방향 부호)
     if(pr&&pr.w>0&&pr.h>0){
@@ -2293,9 +2934,10 @@ function circleClick(e){
   const geo=new THREE.BufferGeometry().setFromPoints(new Array(49).fill(0).map(()=>new THREE.Vector3(c.x*MM,z0+0.02,c.y*MM)));
   const ln=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xD4FF3D,depthTest:false})); ln.renderOrder=999; scene.add(ln);
   const smk=new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xD4FF3D,depthTest:false})); smk.scale.setScalar(0.055); smk.renderOrder=1000; smk.position.set(c.x*MM,z0+0.03,c.y*MM); scene.add(smk);
-  ST.op={type:'circle',fid,z0,c,r:0,line:ln,startMk:smk};
+  const isPoly=ST.tool==='polygon';
+  ST.op={type:'circle',fid,z0,c,r:0,line:ln,startMk:smk,poly:isPoly,sides:isPoly?(ST.polySides||6):null};
   opOrbit(true);
-  vcbShow('반지름 (6s=육각형)','','mm');
+  vcbShow(isPoly?'반지름 (변 수: '+(ST.polySides||6)+'s)':'반지름 (6s=육각형)','','mm');
   invalidate();
 }
 function circleMove(e){
@@ -2303,17 +2945,20 @@ function circleMove(e){
   const raw=_planePt(e,op.z0); if(!raw) return;
   const sp=snap3(op.fid,raw,op.z0); showSnap(sp,op.z0);
   op.r=Math.round(Math.hypot(sp.x-op.c.x,sp.y-op.c.y)/10)*10;
-  const pos=op.line.geometry.attributes.position, n=pos.count-1;
-  for(let i=0;i<=n;i++){ const t=i/n*Math.PI*2; pos.setXYZ(i,(op.c.x+Math.cos(t)*op.r)*MM,op.z0+0.02,(op.c.y+Math.sin(t)*op.r)*MM); }
-  pos.needsUpdate=true; vcbShow('반지름 (6s=육각형)',op.r,'mm'); invalidate();
+  const pos=op.line.geometry.attributes.position;
+  const ts=vcbSides(); if(ts&&op.poly){ op.sides=ts; ST.polySides=ts; }
+  const segs=op.poly?op.sides:(pos.count-1);
+  for(let i=0;i<pos.count;i++){ const k=Math.min(i,segs); const t=k/segs*Math.PI*2-Math.PI/2; pos.setXYZ(i,(op.c.x+Math.cos(t)*op.r)*MM,op.z0+0.02,(op.c.y+Math.sin(t)*op.r)*MM); }
+  pos.needsUpdate=true; vcbShow(op.poly?'반지름 ('+op.sides+'각형 · Ns=변 수)':'반지름 (6s=육각형)',op.r,'mm'); invalidate();
 }
 function commitCircle(exact){
   const op=ST.op; if(!op||op.type!=='circle') return;
   const sides=vcbSides();
   const r=(exact!==null&&exact!==undefined&&exact>0)?Math.round(exact):op.r;
   if(r<100){ setStatus(statusLive,'반지름이 너무 작습니다 (100mm+) — 숫자 입력 가능'); return; }
-  if(!chan){ setStatus(false,'MiniCAD 창이 없어 면을 못 만듭니다'); return; }
-  const c=op.c, fid=op.fid, z0=op.z0, n=sides||32;
+  if(!canEdit()){ setStatus(false,'MiniCAD 창이 없어 면을 못 만듭니다'); return; }
+  if(sides&&op.poly) ST.polySides=sides;
+  const c=op.c, fid=op.fid, z0=op.z0, n=sides||(op.poly?op.sides:(ST.circleSides||32));
   const poly=(N)=>Array.from({length:N},(_,i)=>{const t=i/N*Math.PI*2-Math.PI/2; return {x:Math.round(c.x+Math.cos(t)*r),y:Math.round(c.y+Math.sin(t)*r)};});
   spawnPendingFace(poly(n),z0);
   emitEdit({type:'edit',op:'sketchcircle',floorId:fid,patch:{cx:c.x,cy:c.y,r,n}}); // 2026-09-04 점·선·면: 원 = 면 (Z 는 P 로)
@@ -2416,7 +3061,7 @@ function commitOffset(exact){
   const op=ST.op; if(!op||op.type!=='offset') return;
   const d=(exact!==null&&exact!==undefined&&exact!==0)?Math.round(exact):op.d;
   if(Math.abs(d)<50){ setStatus(statusLive,'오프셋 거리 50mm+ (숫자 입력 가능, 음수=바깥)'); return; }
-  if(!chan){ setStatus(false,'MiniCAD 창이 없어 면을 못 만듭니다'); return; }
+  if(!canEdit()){ setStatus(false,'MiniCAD 창이 없어 면을 못 만듭니다'); return; }
   const pts=offsetPoly(op.poly,d), fid=op.fid, z0=op.z0, poly=op.poly;
   if(Math.abs(polyArea(pts))<300*300){ setStatus(statusLive,'오프셋 결과 면이 너무 작습니다'); return; }
   spawnPendingFace(pts,z0);
@@ -2459,9 +3104,10 @@ function cancelOp(){
       op.g.rotation.y=-(op.obj.rot||0)*Math.PI/180; if(op.orig){ op.g.position.x=op.orig.x; op.g.position.z=op.orig.z; }
       (op.extras||[]).forEach(it=>{ it.g.rotation.y=-(it.obj.rot||0)*Math.PI/180; it.g.position.x=it.orig.x; it.g.position.z=it.orig.z; });
     }
-    if(op.type==='scale'&&op.g){ op.g.scale.x=op.baseSX; op.g.scale.z=op.baseSZ; }
+    if(op.type==='scale'&&op.g){ op.g.scale.x=op.baseSX; op.g.scale.z=op.baseSZ; if(op.baseSY!=null) op.g.scale.y=op.baseSY; }
     if(op.type==='pp'&&op.g){ op.g.scale.y=1; op.g.position.y=op.origY; if(op.baseSZ!=null) op.g.scale.z=op.baseSZ; }
     if(op.type==='vz'){ if(op.g) op.g.visible=true; if(op.ghost) disposeGhost(op.ghost); buildGrips(); }   // 2026-09-07 Z
+    if(op.type==='followme'&&op.g) _hl(op.g,ST.selSet.has(op.g));
     ['line','ghost','startMk','infLine','protractor','guideLine'].forEach(k=>{ if(op[k]){ disposeGhost(op[k]); } });
     hideSnap();
     invalidate(true);
@@ -2483,6 +3129,13 @@ function commitActive(exact){
   else if(op.type==='circle') commitCircle(exact);
   else if(op.type==='arc') commitArc(exact);
   else if(op.type==='offset') commitOffset(exact);
+  else if(op.type==='rotrect') commitRotrect(exact);
+  else if(op.type==='arc3') commitArc3();
+  else if(op.type==='pie') commitPie(exact);
+  else if(op.type==='protractor') commitProtractor(exact);
+  else if(op.type==='axesop'){ const a=Math.atan2(op.cur.y-op.c.y,op.cur.x-op.c.x)*180/Math.PI; setAxesOrigin(op.c.x,op.c.y,Math.round(a)); cancelOp(); }
+  else if(op.type==='freehand') freehandEnd();
+  else if(op.type==='poscam') poscamEnd();
 }
 // ---------------------------------------------------------------------------
 // 꼭짓점 그립 — Z축 3층(조작) · 2026-09-07
@@ -2816,6 +3469,7 @@ function commitSlide(exact){
 // --- 배율 (S · 스케치업 Scale) — 가구·기구·설비 footprint · Shift = 한 방향(비균등) ---
 const SCALABLE=new Set(['furniture','fixture','hvac']);
 function beginScale(g,obj,cy,cx){
+  if(obj.kind==='mass'&&ST.ffOn){ beginScaleMass(g,obj,cy,cx); return; }
   if(!SCALABLE.has(obj.kind)){ setStatus(statusLive,'배율은 가구·기구·설비만 (조명 규격은 인치·길이로)'); return; }
   ST.op={type:'scale',g,obj,startY:cy,startX:cx,factor:1,fx:1,fz:1,baseSX:g.scale.x,baseSZ:g.scale.z,baseW:(obj.meta&&obj.meta.w)||400,baseD:(obj.meta&&obj.meta.d)||400};
   opOrbit(true);
@@ -2823,6 +3477,7 @@ function beginScale(g,obj,cy,cx){
 }
 function applyScale(cy,shift,cx){
   const op=ST.op; if(!op||op.type!=='scale') return;
+  if(op.mass){ applyScaleMass(cy,shift); return; }
   let f=1+(op.startY-cy)*0.005;
   f=Math.max(0.2,Math.min(5,Math.round(f*20)/20));                    // 0.05 스냅
   if(shift){ // 비균등: 가로 끌기=X, 세로 끌기=Z
@@ -2837,6 +3492,7 @@ function applyScale(cy,shift,cx){
 }
 function commitScale(exact){
   const op=ST.op; if(!op||op.type!=='scale') return;
+  if(op.mass){ commitScaleMass(exact); return; }
   let fx=op.fx,fz=op.fz;
   const pr=vcbPair(); if(pr&&pr.w>0&&pr.h>0){ fx=pr.w; fz=pr.h; }
   else if(exact!==null&&exact!==undefined&&exact>0){ fx=exact; fz=exact; }
@@ -3070,6 +3726,12 @@ function doPaint(hit,e){
   if(e&&e.altKey){ samplePaint(hit); return; }
   const obj=hit.object.userData.obj; if(!obj) return;
   const c=ST.paint;
+  if(ST.ffOn&&obj.kind==='mass'&&obj.floorId==='freeform'&&e&&(e.ctrlKey||e.metaKey)&&hit.face){   // 스케치업: 그룹 안의 면 하나만
+    const g=hit.object.parent; const lp=g.worldToLocal(hit.point.clone());
+    const q=g.getWorldQuaternion(new THREE.Quaternion()).invert(); const ln=hit.face.normal.clone().transformDirection(hit.object.matrixWorld).applyQuaternion(q);
+    emitEdit({type:'edit',op:'facemat',kind:'masses',id:obj.id,floorId:'freeform',patch:{p:{x:lp.x/MM,y:lp.z/MM,z:lp.y/MM},n:{x:ln.x,y:ln.z,z:ln.y},mat:c.code}});
+    setStatus(statusLive,'🪣 면 하나에 '+c.code+' (Ctrl 없이 클릭=매스 전체)'); return;
+  }
   if(ST.ffOn&&obj.kind==='mass'&&obj.floorId==='freeform'){   // 프리폼: 매스 재질 — 어느 분류든 칠해진다
     const tg=(ST.selSet.size>1&&ST.selSet.has(hit.object.parent))
       ?[...ST.selSet].map(g=>g.userData.obj).filter(o=>o&&o.kind==='mass'&&o.floorId==='freeform'):[obj];
@@ -3150,8 +3812,9 @@ function tapeClick(hit,e){
       addGuide(op.fid,op.a.userData.mm,p.userData.mm,op.z0); _opDone(); setStatus(statusLive,'┆ 두 점 안내선 생성'); return;
     }
     _opDone();
-    setStatus(statusLive,'📏 '+d+' mm ('+(d/1000).toFixed(2)+' m)');
+    setStatus(statusLive,'📏 '+d+' mm ('+(d/1000).toFixed(2)+' m)'+(FF_STANDALONE?' — 숫자 입력=모델 전체 크기 조정':''));
     vcbShow('줄자',d,'mm');
+    if(FF_STANDALONE) ffTapeResize(d);
     invalidate();
   }
 }
@@ -3167,7 +3830,7 @@ function tapeMove(e){
 }
 // --- 포인터 흐름 (스케치업: 좌=도구 · 가운데 끌기=궤도(Shift=이동) · 우클릭=상황 메뉴/동작 취소 · 선택 도구 빈 곳 끌기=선택 상자) ---
 renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
-const CLICK_TOOLS=new Set(['tape','line','circle','arc','offset','dim','line3','rect3']); // line3/rect3 = 프리폼 면 위 그리기
+const CLICK_TOOLS=new Set(['tape','line','circle','arc','offset','dim','line3','rect3','rotrect','arc3','pie','protractor','axesop','followme']); // line3/rect3 = 프리폼 면 위 그리기
 renderer.domElement.addEventListener('pointerdown',e=>{
   hideCtx();
   drag={x:e.clientX,y:e.clientY,moved:false,id:e.pointerId,button:e.button,touch:e.pointerType==='touch'};
@@ -3233,8 +3896,20 @@ renderer.domElement.addEventListener('pointerdown',e=>{
       if(ST.ffOn&&ST.op&&(ST.op.type==='line3'||ST.op.type==='rect3')){ ff3Click(e,null,ST.tool); break; }
       if(ST.ffOn&&!ST.op){ const fp=_ffFacePick(e); if(fp){ ff3Click(e,fp,ST.tool); break; } }
       lineClick(e); break;
-    case 'circle': circleClick(e); break;
+    case 'circle': case 'polygon': circleClick(e); break;
     case 'arc': arcClick(e); break;
+    case 'rotrect': rotrectClick(e); break;
+    case 'freehand': freehandDown(e); renderer.domElement.setPointerCapture(e.pointerId); break;
+    case 'arc3': arc3Click(e); break;
+    case 'pie': pieClick(e); break;
+    case 'protractor': protractorClick(e); break;
+    case 'axes': axesClick(e); break;
+    case 'section': sectionClick(hit); break;
+    case 'followme': followClick(hit); break;
+    case 'text3d': text3dClick(e); break;
+    case 'zoomwin': if(!drag.touch) drag.zoomwin=true; break;
+    case 'poscam': poscamDown(e); renderer.domElement.setPointerCapture(e.pointerId); break;
+    case 'lookaround': case 'walk': break;
     case 'offset': offsetClick(e); break;
     case 'pushpull': if(hit) beginPP(hit); break;
     case 'paint': if(hit) doPaint(hit,e); break;
@@ -3247,7 +3922,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
 renderer.domElement.addEventListener('pointermove',e=>{
   if(ST.tool==='add'&&ST.add&&ST.add.ghost){ ghostFollow(e); }
   // 첫 클릭 전에도 스냅 마커 표시 (스케치업 추론 — 호버만으로 끝점/중간점/선에 흡착 예고)
-  if((ST.tool==='line'||ST.tool==='rect'||ST.tool==='circle'||ST.tool==='arc')&&!ST.op&&ST.mode==='orbit'){
+  if((ST.tool==='line'||ST.tool==='rect'||ST.tool==='circle'||ST.tool==='arc'||ST.tool==='polygon'||ST.tool==='rotrect'||ST.tool==='arc3'||ST.tool==='pie'||ST.tool==='protractor'||ST.tool==='axes'||ST.tool==='freehand'||ST.tool==='text3d')&&!ST.op&&ST.mode==='orbit'){
     const fid=_hoverFloorId(e);
     const f=ST.floors.find(x=>x.id===fid), z0=f?f.z0*MM:0;
     const raw=_planePt(e,z0);
@@ -3268,6 +3943,11 @@ renderer.domElement.addEventListener('pointermove',e=>{
     else if(t==='circle') circleMove(e);
     else if(t==='arc') arcMove(e);
     else if(t==='offset') offsetMove(e);
+    else if(t==='rotrect') rotrectMove(e);
+    else if(t==='arc3') arc3Move(e);
+    else if(t==='pie') pieMove(e);
+    else if(t==='protractor') protractorMove(e);
+    else if(t==='axesop') axesMove(e);
     else if(t==='dim'){ const hit=hitAt(e.clientX,e.clientY); if(hit){ const p=_tapeSnap(hit); const pos=ST.op.line.geometry.attributes.position; pos.setXYZ(1,p.x,p.y,p.z); pos.needsUpdate=true; vcbShow('치수',Math.round(ST.op.a.distanceTo(p)/MM),'mm'); invalidate(); } }
     return;
   }
@@ -3278,6 +3958,9 @@ renderer.domElement.addEventListener('pointermove',e=>{
   if(ST.op&&ST.op.type==='slide'&&!ST.op.sticky){ applySlideFromEvent(e); return; }
   if(ST.op&&ST.op.type==='vz'){ applyVertZ(e.clientY); return; }   // 2026-09-07 Z
   if(ST.op&&ST.op.type==='tape'){ tapeMove(e); return; }
+  if(ST.op&&ST.op.type==='freehand'){ freehandMove(e); return; }
+  if(ST.op&&ST.op.type==='poscam'){ poscamMove(e); return; }
+  if(drag.zoomwin&&drag.moved){ showSelBox(drag.x,drag.y,e.clientX,e.clientY); return; }
   if(drag.box&&drag.moved){ showSelBox(drag.x,drag.y,e.clientX,e.clientY); return; }
   if(drag.erase&&drag.moved){ const hit=hitAt(e.clientX,e.clientY); if(hit) eraseCollect(hit.object.parent); return; }
   if(ST.mode==='walk'&&drag.button===0){
@@ -3306,6 +3989,9 @@ renderer.domElement.addEventListener('pointerup',e=>{
     if(ST.op.moved){ commitVertZ(vcbTyped()); return; }
     ST.op.sticky=true; return;                       // 클릭만 했으면 스티키 — 다음 클릭이 확정
   }
+  if(ST.op&&ST.op.type==='freehand'){ freehandEnd(); return; }
+  if(ST.op&&ST.op.type==='poscam'){ poscamEnd(); return; }
+  if(d.zoomwin){ hideSelBox(); if(d.moved) zoomWindow(d.x,d.y,e.clientX,e.clientY); return; }
   if(d.box){ hideSelBox(); if(d.moved){ boxSelect(d.x,d.y,e.clientX,e.clientY,e); return; } }
   if(d.erase){ eraseFinish(e.shiftKey); return; }
   if(wasClick&&!ST.op) pick(e.clientX,e.clientY,e);
@@ -3333,7 +4019,7 @@ renderer.domElement.addEventListener('dblclick',e=>{
     if(obj&&obj.kind==='wall'&&!obj.locked){ sendEdit('set',obj,{height_mm:Math.max(300,obj.meta.H+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; }
     if(obj&&obj.kind==='ceiling'){ const base=Math.round((obj.prims&&obj.prims[0]&&obj.prims[0].z)||2400); sendEdit('set',{kind:'floor',id:String(obj.id).replace(/_ceil$/,''),floorId:obj.floorId},{ceilingHeight_mm:Math.max(300,base+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; }
     if(obj&&obj.kind==='mass'&&!obj.locked){ sendEdit('set',obj,{h_mm:Math.max(10,Math.round((obj.meta&&obj.meta.h_mm)||0)+ST.lastPP)}); setStatus(statusLive,'⇕ 반복 '+ST.lastPP+'mm'); return; } // 2026-09-04
-    if(obj&&obj.kind==='sketchFace'&&ST.lastPP>=10&&chan){ emitEdit({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z:ST.lastPP,as:'solid'}}); setStatus(statusLive,'⬆ 면 → 매스 Z='+ST.lastPP+' (반복)'); return; }
+    if(obj&&obj.kind==='sketchFace'&&ST.lastPP>=10&&canEdit()){ emitEdit({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z:ST.lastPP,as:'solid'}}); setStatus(statusLive,'⬆ 면 → 매스 Z='+ST.lastPP+' (반복)'); return; }
   }
   if(ST.ffOn&&obj&&obj.kind==='mass'&&obj.meta&&obj.meta.gid&&ST.tool==='select'){
     select(g);                                                  // 프리폼 ⑤: 더블클릭 = 그룹 안으로 (이 하나만)
@@ -3374,11 +4060,12 @@ function showCtx(e){
   if(!ctxEl){ ctxEl=document.createElement('div'); ctxEl.id='ctxmenu'; document.body.appendChild(ctxEl);
     document.addEventListener('pointerdown',ev=>{ if(ctxEl.style.display!=='none'&&!ctxEl.contains(ev.target)) hideCtx(); },true); }
   const items=[], sel=ST.selected&&ST.selected.userData.obj, n=ST.selSet.size;
-  if(sel){
+  if(FF_STANDALONE) ffCtxItems(e,sel,n).forEach(it=>items.push(it));
+  else if(sel){
     items.push(['info','개체 정보',()=>openTraySec('info')]);
     items.push(['-']);
     if(MOVABLE.has(sel.kind)||sel.kind==='door'||sel.kind==='window'||SKETCH_KINDS.has(sel.kind)) items.push(['del','지우기'+(n>1?' ('+n+'개)':'')+'\tDel',deleteSelected3D]);
-    if(sel.kind==='sketchFace') items.push(['ext','면 → 매스 (Z 입력)',()=>{ if(!_floorAwake(sel.floorId)){ _sleepNote('면은 올릴 수 없습니다'); return; } const z=window.prompt('Z 높이(mm)',String(ST.lastPP>=10?ST.lastPP:2400)); const v=parseLen(z); if(v>=10&&chan) emitEdit({type:'edit',op:'extrude',floorId:sel.floorId,patch:{id:sel.id,z:Math.round(v),as:'solid'}}); }]);
+    if(sel.kind==='sketchFace') items.push(['ext','면 → 매스 (Z 입력)',()=>{ if(!_floorAwake(sel.floorId)){ _sleepNote('면은 올릴 수 없습니다'); return; } const z=window.prompt('Z 높이(mm)',String(ST.lastPP>=10?ST.lastPP:2400)); const v=parseLen(z); if(v>=10&&canEdit()) emitEdit({type:'edit',op:'extrude',floorId:sel.floorId,patch:{id:sel.id,z:Math.round(v),as:'solid'}}); }]);
     if(sel.kind==='mass'){ items.push(['tosp','매스 → 공간',()=>massConvert3D(sel,'space')]); items.push(['towl','매스 → 벽',()=>massConvert3D(sel,'wall')]); }
     items.push(['hide','숨기기\tShift+H',hideSelected]);
     if(MOVABLE.has(sel.kind)) items.push(['lock',sel.locked?'잠금 해제':'잠금',()=>lockSelected(!sel.locked)]);
@@ -3509,6 +4196,7 @@ function renderProps(obj,opts){
     }else
     html+=`<div class="p-row"><label>면적</label><span style="font-size:12px">${((m.area||0)/1e6).toFixed(2)} ㎡ · 부피 ${((m.area||0)*(m.h_mm||0)/1e9).toFixed(2)} ㎥</span></div>`;
     html+=`<div class="p-row"><label>색</label><input type="color" data-f="color" value="${m.color||'#B9C6D2'}"></div>`;
+    if(ST.ffOn) html+=`<div class="p-row"><label>태그</label><select data-f="tag"><option value="">매스 (기본)</option>${ffTagNames().filter(t=>t!=='매스').map(t=>`<option value="${t}"${m.tag===t?' selected':''}>${t}</option>`).join('')}</select></div>`;
     html+=`<div class="p-btns"><button class="btn" data-a="rotl" title="반시계 15° (Shift+R)">↺ 15°</button><button class="btn" data-a="rotr" title="시계 15° (R)">↻ 15°</button><button class="btn" data-a="lock">🔒 잠금</button></div>`;
     // 2026-09-07 Z축 4층: 기울어진 매스는 방의 천장으로 삼을 수 있다 (천장 물량이 경사 실면적으로)
     if(m.solid&&!ST.ffOn){
@@ -3539,7 +4227,7 @@ function renderProps(obj,opts){
     html+=`<div class="p-note"><b style="color:#7FA8D4">파란 점(꼭짓점)을 끌면 그 점만 위아래로</b> — Shift=모서리 두 점 · Ctrl=천장고에 매달기(CH-300) · 숫자=정확한 높이 · 더블클릭=직전 높이 반복.<br>끌기=이동 · ↑=띄우기 · Q 회전 · P 윗면=높이 · Ctrl+끌기=복제 — 필요할 때 공간(바닥·천장·벽)이나 벽으로 바꿉니다.</div>`;
   }else if(obj.kind==='sketchFace'){
     html+=`<div class="p-row"><label>면적</label><span style="font-size:12px">${((m.area||0)/1e6).toFixed(2)} ㎡ · 꼭짓점 ${(m.poly||[]).length}</span></div>`;
-    html+=`<div class="p-row"><label>Z 높이</label><input type="number" step="50" min="10" data-f="_z" value="${ST.lastPP>=10?ST.lastPP:2400}"> <span style="font-size:11px">mm</span></div>`;
+    html+=`<div class="p-row"><label>Z 높이</label><input type="number" step="50" min="10" data-f="_z" value="${ST.lastPP>=10?ST.lastPP:(ST.defZ||2400)}"> <span style="font-size:11px">mm</span></div>`;
     html+=`<div class="p-row"><label>만들 것</label><select data-f="_as"><option value="solid">매스 (자유)</option><option value="space">공간 (바닥·천장·벽)</option><option value="wall">벽</option><option value="auto">자동 판별</option></select></div>`;
     html+=`<div class="p-btns"><button class="btn" data-a="ext">⬆ 객체 생성</button><button class="btn danger" data-a="del">🗑 삭제</button></div>`;
     html+=`<div class="p-note">P(밀기끌기)로 위로 끌어도 됩니다 — 점·선·면은 x,y 만, Z 를 주는 순간 객체가 됩니다.</div>`;
@@ -3585,7 +4273,7 @@ function renderProps(obj,opts){
     el.addEventListener('change',()=>{
       const f=el.dataset.f;
       if(f==='_z'||f==='_as') return;                                   // 스케치 면 Z·종류는 [객체 생성] 버튼에서
-      if(f==='name'||f==='color'){ sendEdit('set',obj,{[f]:el.value}); setStatus(statusLive,'수정 → 평면 반영'); return; } // 2026-09-04 매스 문자열 속성
+      if(f==='name'||f==='color'||f==='tag'){ sendEdit('set',obj,{[f]:el.value}); setStatus(statusLive,'수정 → 평면 반영'); return; } // 2026-09-04 매스 문자열 속성
       const v=(el.tagName==='SELECT'&&isNaN(Number(el.value)))?el.value:Number(el.value);
       if(f==='inch'||f==='length_mm'||f==='x'||f==='y') sendEdit('set',obj,{[f]:Number(el.value)});
       else sendEdit('set',obj,{[f]:v===''?null:v});
@@ -3621,7 +4309,7 @@ function renderProps(obj,opts){
       else if(a==='ext'){ const zi=props.querySelector('[data-f="_z"]'), ai=props.querySelector('[data-f="_as"]'); const z=Math.round(Number(zi&&zi.value)); // 2026-09-04 면 → 객체
         if(!(z>=10)){ setStatus(statusLive,'Z 높이 10mm+'); return; }
         if(!_floorAwake(obj.floorId)){ _sleepNote('면은 올릴 수 없습니다'); return; }
-        if(chan){ emitEdit({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z,as:(ai&&ai.value)||'solid'}}); ST.lastPP=z; setStatus(statusLive,'⬆ 면 → 객체 Z='+z); } }
+        if(canEdit()){ emitEdit({type:'edit',op:'extrude',floorId:obj.floorId,patch:{id:obj.id,z,as:(ai&&ai.value)||'solid'}}); ST.lastPP=z; setStatus(statusLive,'⬆ 면 → 객체 Z='+z); } }
     });
   });
 }
@@ -3641,11 +4329,14 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase(), ctrl=e.ctrlKey||e.metaKey;
   // Ctrl+Z / Ctrl+Y — MiniCAD 히스토리로 실행취소/재실행 (스케치업 그 이상: 평면과 한 몸)
   if(ctrl&&(k==='z'||k==='y')){
-    if(chan) emitEdit({type:'edit',op:(k==='y'||e.shiftKey)?'redo':'undo'});
+    if(canEdit()) emitEdit({type:'edit',op:(k==='y'||e.shiftKey)?'redo':'undo'});
     e.preventDefault(); return;
   }
   if(ctrl&&k==='s'){ if(e.shiftKey) screenshot(); else saveFeedback(); e.preventDefault(); return; } // Ctrl+S = 저장(평면) · Ctrl+Shift+S = PNG
   if(ctrl&&k==='a'){ selectAll(); e.preventDefault(); return; }
+  if(ctrl&&k==='t'){ select(null); e.preventDefault(); return; }                       // 스케치업 Ctrl+T = 선택 없음
+  if(ctrl&&k==='n'&&FF_STANDALONE){ if(window.confirm('새로 만들기 — 지금 모델을 비울까요? (파일로 저장하지 않은 것은 사라집니다)')) ffNew(); e.preventDefault(); return; }
+  if(ctrl&&k==='o'&&FF_STANDALONE){ ffImportFile(); e.preventDefault(); return; }
   if(ctrl&&k==='c'){ copySel(); e.preventDefault(); return; }
   if(ctrl&&k==='x'){ cutSel(); e.preventDefault(); return; }
   if(ctrl&&k==='v'){ pasteClip(ST.lastPtr); e.preventDefault(); return; }
@@ -3668,6 +4359,7 @@ window.addEventListener('keydown',e=>{
     if(ST.stampComp){ ST.stampComp=null; renderAddPal(); setStatus(statusLive,'스탬프 끝'); return; }   // 프리폼 ⑤
     if(ST.op) cancelOp(); else if(ST.tool==='add') setTool('select'); else select(null); return;
   }
+  if(ST.mode==='walk'&&FF_STANDALONE&&(k===' '||k==='escape')&&!ST.op){ setTool('select'); e.preventDefault(); return; }   // 걷기에서 Space/Esc = 조감·선택
   ST.walk.keys[k]=true;
   if(ST.mode==='orbit'){
     if(k==='shift'&&ST.op){                       // Shift 누르기 = 지금 방향 고정 (스케치업 추론 잠금)
@@ -3693,11 +4385,12 @@ window.addEventListener('keydown',e=>{
       if(k==='a'){ setTool('arc'); return; }           // 스케치업 A=Arc
       if(k==='f'&&!e.shiftKey){ setTool('offset'); return; } // 스케치업 F=Offset
       if(k==='d'){ setTool('dim'); return; }           // 스케치업 D=Dimension
-      if(k==='g'){ setTool('add'); return; }           // 배치 (스케치업 컴포넌트 자리)
+      if(k==='g'){ if(FF_STANDALONE){ if(e.shiftKey) ffMakeComp(); else ffMakeGroup(); e.preventDefault(); return; } setTool('add'); return; }           // 스케치업 G=그룹/컴포넌트 · 연동 뷰=배치
       if(k==='o'){ setTool('orbit'); return; }         // 스케치업 O=궤도
       if(k==='h'&&!e.shiftKey){ setTool('pan'); return; } // 스케치업 H=팬
       if(k==='z'&&!e.shiftKey){ setTool('zoom'); return; } // 스케치업 Z=줌
       if(k==='x'){ setXray(!ST.xray); return; }
+      if(k==='k'&&FF_STANDALONE){ setEdges(!ST.edges); return; }   // 스케치업 K = 모서리
     }
     const op=ST.op, lockable=op&&(op.type==='move'||op.type==='line'||op.type==='rect');
     // 프리폼: 면 위 선(line3)의 축 고정 — →=가로(u·빨강) · ↑=세로(v·파랑) · ←/↓=해제
@@ -3739,7 +4432,7 @@ window.addEventListener('keydown',e=>{
   }
   if(k==='1') setMode('orbit'); if(k==='2') setMode('walk');
   if(k==='3') setView('iso'); if(k==='4') setView('top'); if(k==='5') setView('front'); if(k==='6') setView('side');
-  if(k==='7') setView('back'); if(k==='8') setView('left'); if(k==='9') setView('right');
+  if(k==='7') setView('back'); if(k==='8') setView('left'); if(k==='9') setView(FF_STANDALONE?'bottom':'right');
   if(k==='n'&&!ctrl) setNight(!ST.night); // (L 은 스케치업 Line 도구로 — 조명 토글은 💡 버튼)
   if(k==='c'&&e.shiftKey) toggleCeil();  // Shift+C = 천장 (C 는 원 도구)
   if(e.shiftKey&&k==='z') fitView(true);  // Shift+Z = 전체 보기 (스케치업 Zoom Extents)
@@ -3799,7 +4492,7 @@ function screenshot(){
   download(fileStem()+'_3d.png',renderer.domElement.toDataURL('image/png'));
 }
 function saveFeedback(){ // Ctrl+S = 평면(미니캐드) 저장 — 3D 는 평면의 뷰이므로 저장은 평면이 한다
-  if(ST.ffOn){ ffAutosave(); setStatus(true,'🧊 프리폼 저장(브라우저 자동) — 파일로는 파일 ▸ 프리폼 파일 저장'); return; }
+  if(ST.ffOn){ if(FF_STANDALONE){ ffAutosave(); ffExportFile(); return; } ffAutosave(); setStatus(true,'🧊 프리폼 저장(브라우저 자동) — 파일로는 파일 ▸ 프리폼 파일 저장'); return; }
   if(FF_STANDALONE) return;                     // 단독 — 평면 저장 요청을 보낼 곳이 없다
   if(!chan){ setStatus(false,'MiniCAD 창이 없어 저장 요청 불가 (PNG 는 Ctrl+Shift+S)'); return; }
   chan.postMessage({type:'save',at:Date.now()});
@@ -3977,7 +4670,10 @@ function refreshStylePanel(){
   mi('mi-ff',ST.ffOn);
   mi('mi-label',ST.labels); mi('mi-shadow',ST.shadows); mi('mi-axes',ST.axes);
   mi('mi-xray',ST.xray); mi('mi-ortho',ST.ortho);
-  mi('mi-tray',!document.body.classList.contains('tray-off'));
+  mi('mi-tray',!document.body.classList.contains('tray-off')); mi('mi-tray2',!document.body.classList.contains('tray-off'));
+  mi('mi-hiddengeom',ST.hiddenGeom); mi('mi-sections',ST.sectionsOn); mi('mi-sectioncut',ST.sectionCut); mi('mi-guides',ST.guidesOn); mi('mi-fog',ST.fogOn); mi('mi-edges',ST.edges);
+  ['wire','hidden','shaded','textured','mono'].forEach(s=>mi('mi-fs-'+s,ST.faceStyle===s));
+  mi('mi-persp',!ST.ortho); mi('mi-toolbar',!document.body.classList.contains('tools-off'));
   const sun=$('st-sun'); if(sun&&document.activeElement!==sun) sun.value=Math.round(ST.sunT*100);
 }
 function toggleCeil(){ ST.ceil[ST.mode]=!ST.ceil[ST.mode]; refreshVisibility(); const b=$('b-ceil'); if(b) b.classList.toggle('on',ST.ceil[ST.mode]); }
@@ -3987,12 +4683,38 @@ function closeMenus(){ document.querySelectorAll('.menu.open').forEach(m=>m.clas
 function menuCmd(cmd){
   if(cmd.startsWith('tool-')){ setTool(cmd.slice(5)); return; }
   switch(cmd){
+    case 'obj': exportOBJ(); break;
+    case 'stl': exportSTL(); break;
+    case 'modelinfo': showModelInfo(true); break;
+    case 'mkgroup': ffMakeGroup(); break;
+    case 'mkcomp': ffMakeComp(); break;
+    case 'explode': ffExplode(); break;
+    case 'compupdate': ffCompUpdate(); break;
+    case 'sections-clear': clearSections(); break;
+    case 'hiddengeom': setHiddenGeom(!ST.hiddenGeom); break;
+    case 'sections': ST.sectionsOn=!ST.sectionsOn; applySections(); break;
+    case 'sectioncut': ST.sectionCut=!ST.sectionCut; applySections(); break;
+    case 'guides': setGuidesOn(!ST.guidesOn); break;
+    case 'fog': setFog(!ST.fogOn); break;
+    case 'edges': setEdges(!ST.edges); break;
+    case 'fs-wire': setFaceStyle('wire'); break;
+    case 'fs-hidden': setFaceStyle('hidden'); break;
+    case 'fs-shaded': setFaceStyle('shaded'); break;
+    case 'fs-textured': setFaceStyle('textured'); break;
+    case 'fs-mono': setFaceStyle('mono'); break;
+    case 'toolbar': document.body.classList.toggle('tools-off'); break;
+    case 'bottom': setView('bottom'); break;
+    case 'persp': setOrtho(false); break;
+    case 'twopt': if(ST.mode!=='orbit') setMode('orbit'); camPush(); orbit.target.y=camera.position.y; orbit.update(); invalidate(); camPush(); setStatus(statusLive,'2점 투시 — 수직선이 수직으로 (시선 수평)'); break;
+    case 'fov': { const v=parseFloat(window.prompt('시야각 (도, 10~120)',String(Math.round(persp.fov)))); if(v>=10&&v<=120){ persp.fov=v; persp.updateProjectionMatrix(); invalidate(); setStatus(statusLive,'시야각 '+v+'°'); } break; }
+    case 'zoomsel': if(ST.selected) zoomTo(ST.selected); else setStatus(statusLive,'선택된 것이 없습니다'); break;
+    case 'solid-union': case 'solid-subtract': case 'solid-intersect': case 'solid-trim': case 'solid-split': ffSolid(cmd.slice(6)); break;
     case 'shot': screenshot(); break;
     case 'glb': exportGLB(); break;
     case 'json': exportJSON(); break;
     case 'reload': if(chan) chan.postMessage({type:'hello',at:0}); loadStored(); break;
-    case 'undo': if(chan) emitEdit({type:'edit',op:'undo'}); break;
-    case 'redo': if(chan) emitEdit({type:'edit',op:'redo'}); break;
+    case 'undo': if(canEdit()) emitEdit({type:'edit',op:'undo'}); break;
+    case 'redo': if(canEdit()) emitEdit({type:'edit',op:'redo'}); break;
     case 'del': deleteSelected3D(); break;
     case 'deselect': select(null); break;
     case 'selectall': selectAll(); break;
@@ -4103,9 +4825,8 @@ if(FF_STANDALONE){
   document.title='프리폼 — 3D 모델링';
   const _bt=document.querySelector('.mtitle'); if(_bt) _bt.textContent='🧊 프리폼';
   // 미니캐드 관련 메뉴·버튼은 단독에서 뜻이 없다 — 걷어낸다
-  ['[data-cmd="reload"]','[data-cmd="ff-rebase"]','#b-reload','#mi-ff','[data-cmd="save"]'].forEach(sel=>{
-    const el=document.querySelector(sel); if(el) el.style.display='none';
-  });
+  ffStandaloneShell();                          // 스케치업 100% 셸 (메뉴·큰 도구 세트·단축키표)
+  refreshStylePanel();
   setStatus(true,'🧊 단독 프리폼 — 미니캐드와 연결되지 않습니다. 여기서 만든 것은 여기 저장 (파일 ▸ 프리폼 파일 저장/열기)');
 }
 if(!FF_STANDALONE&&!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
@@ -4121,6 +4842,8 @@ window.MC3DVIEW={ST,scene,THREE,get camera(){return camera;},renderer,build:acce
   addGuide,clearGuides,arcPts,offsetPoly,polyArea,parseLen,vcbTyped,vcbCoord,vcbSides,setLast,vcbPostOn,vcbPostEnter,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
+  // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,

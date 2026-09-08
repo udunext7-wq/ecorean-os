@@ -690,6 +690,19 @@ ck(/if\(FF_STANDALONE\) return false;\s*\/\/ 단독 — 받지도, 알리지도 
   const vjson = fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8');
   ck(/"\/freeform\(\/\.\*\)\?"/.test(vjson)&&/minicad\/3d\/\?ff=1/.test(vjson),'독립 프리폼: /freeform 라우트');
 }
+// 단독 프리폼 = 스케치업 100% 계약 (2026-09-08 대표 지시)
+ck(/const canEdit=\(\)=>!!chan\|\|ST\.ffOn;/.test(v3Src)&&!/if\(!chan\)\{ setStatus\(false,'MiniCAD 창이 없어 벽을/.test(v3Src),'단독 프리폼: 채널 없이도 그리기·undo (canEdit)');
+['ff-menus','ff-tools','ff-keys'].forEach(id=>ck(idx3d.includes('<template id="'+id+'">'),'스케치업 셸 템플릿 '+id));
+['tool-followme','tool-polygon','tool-rotrect','tool-freehand','tool-arc3','tool-pie','tool-protractor','tool-axes','tool-text3d','tool-section','tool-zoomwin','tool-poscam','solid-union','solid-split','fs-wire','fs-mono','hiddengeom','fog','edges','mkgroup','mkcomp','explode','compupdate','obj','stl','modelinfo'].forEach(c=>ck(idx3d.includes('data-cmd="'+c+'"'),'스케치업 메뉴 '+c));
+ck(/function ffStandaloneShell/.test(v3Src)&&/ffStandaloneShell\(\);/.test(v3Src),'단독 부팅이 셸을 갈아 끼운다');
+['scale','scaleall','sweep','massfrompoly','mkcomp','compupdate','facemat','solid'].forEach(op=>ck(new RegExp("case '"+op+"': \{").test(v3Src),'ffApply op '+op));
+{
+  const SK=require(path.join(ROOT,'js','sketch.js'));
+  ck(typeof SK.massCSG==='function'&&typeof SK.earTriangles==='function','sketch.js: massCSG·earTriangles 내보냄');
+  const tri=SK.earTriangles([{x:0,y:0,z:0},{x:2,y:0,z:0},{x:2,y:2,z:0},{x:1,y:1,z:0},{x:0,y:2,z:0}]);
+  ck(tri.length===3,'earTriangles: 오목 5각 → 삼각형 3');
+}
+ck(/byMat/.test(b3Src)&&/_sk\('earTriangles'\)/.test(b3Src),'build3d: 재질별 mesh prim · 귀 자르기 삼각화');
 // 파랑 축 · 면 스냅 계약 (2026-09-08 대표 지적 "파랑축으로는 작동이 안 된다")
 ck(/파랑 축 — 위로 그립니다/.test(v3Src),'파랑 축: 땅 선에서 ↑ = 세로 종이로 올라탄다');
 ck(/function _ff3Lock/.test(v3Src)&&/op\.axis==='u'\?/.test(v3Src),'파랑 축: 면 위 선에 u/v 축 고정');

@@ -1286,6 +1286,197 @@ function moldingProfile(kind,w,h){
   return [{u:0,v:0},{u:w,v:0},{u:w,v:h},{u:0,v:h}];                          // 걸레받이·평몰딩 (사각)
 }
 
+// ---------------------------------------------------------------------------
+// 솔리드 도구 (2026-09-08 스케치업 100% — Solid Tools: 결합·빼기·교차·다듬기·분할)
+//  BSP 트리 CSG (Evan Wallace csg.js 의 알고리즘). 매스 둘을 절대 좌표 다면체로 펴서
+//  불리언을 돌리고, 결과 조각을 같은 평면끼리 이어 붙여(coplanar merge) 자유 매스로 되돌린다.
+//  좌표는 mm — 평면 판정 오차 CSG_EPS 도 mm.
+// ---------------------------------------------------------------------------
+const CSG_EPS=0.02;
+function _cV(x,y,z){return {x,y,z};}
+function _cPlane(n,w){return {n,w};}
+function _cPlaneFrom(a,b,c){const n=_vNorm(_vCross(_vSub(b,a),_vSub(c,a)));return _cPlane(n,_vDot(n,a));}
+function _cFlipPlane(p){return _cPlane(_vScale(p.n,-1),-p.w);}
+function _cPoly(vs,shared){const p={vs,shared:shared||null,plane:_cPlaneFrom(vs[0],vs[1],vs[2])};return p;}
+function _cFlipPoly(p){return {vs:p.vs.slice().reverse(),shared:p.shared,plane:_cFlipPlane(p.plane)};}
+function _cSplit(plane,poly,cf,cb,f,b){
+  const CO=0,FR=1,BK=2,SP=3;
+  let type=0; const types=[];
+  for(const v of poly.vs){const t=_vDot(plane.n,v)-plane.w;const ty=(t<-CSG_EPS)?BK:(t>CSG_EPS)?FR:CO;type|=ty;types.push(ty);}
+  switch(type){
+    case CO: (_vDot(plane.n,poly.plane.n)>0?cf:cb).push(poly); break;
+    case FR: f.push(poly); break;
+    case BK: b.push(poly); break;
+    case SP: {
+      const fv=[],bv=[];
+      for(let i=0;i<poly.vs.length;i++){
+        const j=(i+1)%poly.vs.length,ti=types[i],tj=types[j],vi=poly.vs[i],vj=poly.vs[j];
+        if(ti!==BK) fv.push(vi);
+        if(ti!==FR) bv.push(ti!==BK?_v3(vi.x,vi.y,vi.z):vi);
+        if((ti|tj)===SP){const t=(plane.w-_vDot(plane.n,vi))/_vDot(plane.n,_vSub(vj,vi));const v=_vAdd(vi,_vScale(_vSub(vj,vi),t));fv.push(v);bv.push(_v3(v.x,v.y,v.z));}
+      }
+      if(fv.length>=3) f.push({vs:fv,shared:poly.shared,plane:poly.plane});
+      if(bv.length>=3) b.push({vs:bv,shared:poly.shared,plane:poly.plane});
+      break;
+    }
+  }
+}
+function _cNode(polys){const n={plane:null,front:null,back:null,polys:[]};if(polys&&polys.length)_cBuild(n,polys);return n;}
+function _cInvert(n){
+  n.polys=n.polys.map(_cFlipPoly); if(n.plane) n.plane=_cFlipPlane(n.plane);
+  if(n.front) _cInvert(n.front); if(n.back) _cInvert(n.back);
+  const t=n.front;n.front=n.back;n.back=t;
+}
+function _cClipPolys(n,polys){
+  if(!n.plane) return polys.slice();
+  let f=[],b=[];
+  for(const p of polys) _cSplit(n.plane,p,f,b,f,b);
+  if(n.front) f=_cClipPolys(n.front,f);
+  b=n.back?_cClipPolys(n.back,b):[];
+  return f.concat(b);
+}
+function _cClipTo(n,bsp){n.polys=_cClipPolys(bsp,n.polys);if(n.front)_cClipTo(n.front,bsp);if(n.back)_cClipTo(n.back,bsp);}
+function _cAll(n){let out=n.polys.slice();if(n.front)out=out.concat(_cAll(n.front));if(n.back)out=out.concat(_cAll(n.back));return out;}
+function _cBuild(n,polys){
+  if(!polys.length) return;
+  if(!n.plane) n.plane=polys[0].plane;
+  const f=[],b=[];
+  for(const p of polys) _cSplit(n.plane,p,n.polys,n.polys,f,b);
+  if(f.length){if(!n.front)n.front=_cNode();_cBuild(n.front,f);}
+  if(b.length){if(!n.back)n.back=_cNode();_cBuild(n.back,b);}
+}
+function csgUnion(a,b){const A=_cNode(a),B=_cNode(b);_cClipTo(A,B);_cClipTo(B,A);_cInvert(B);_cClipTo(B,A);_cInvert(B);_cBuild(A,_cAll(B));return _cAll(A);}
+function csgSubtract(a,b){const A=_cNode(a),B=_cNode(b);_cInvert(A);_cClipTo(A,B);_cClipTo(B,A);_cInvert(B);_cClipTo(B,A);_cInvert(B);_cBuild(A,_cAll(B));_cInvert(A);return _cAll(A);}
+function csgIntersect(a,b){const A=_cNode(a),B=_cNode(b);_cInvert(A);_cClipTo(B,A);_cInvert(B);_cClipTo(A,B);_cClipTo(B,A);_cBuild(A,_cAll(B));_cInvert(A);return _cAll(A);}
+// 매스 → 절대 좌표 다각형 목록 (회전·이동·띄움 적용)
+function massToCsgPolys(m,ctx){
+  const S=massSolid(m,ctx);
+  const th=(m.angle||0)*Math.PI/180,c=Math.cos(th),s=Math.sin(th),el=Number(m.elev_mm)||0;
+  const A=S.verts.map(v=>_v3(m.x+v.x*c-v.y*s,m.y+v.x*s+v.y*c,v.z+el));
+  const out=[];
+  S.faces.forEach(f=>{
+    const vs=f.vs.map(i=>A[i]);
+    if(vs.length<3) return;
+    // 오목 면은 부채꼴 삼각형으로 (BSP 는 볼록 다각형이 안전하다)
+    const tris=earTriangles(vs);
+    tris.forEach(t=>{const p=[vs[t[0]],vs[t[1]],vs[t[2]]];if(_vLen(_vCross(_vSub(p[1],p[0]),_vSub(p[2],p[0])))>1e-6)out.push(_cPoly(p,{mat:f.mat||null}));});
+  });
+  return out;
+}
+// 결과 다각형 → 같은 평면·맞닿은 변끼리 이어 붙여 면 고리로
+function csgMergeFaces(polys){
+  const key=v=>Math.round(v.x*10)+','+Math.round(v.y*10)+','+Math.round(v.z*10);
+  const groups=new Map();
+  polys.forEach(p=>{
+    const n=p.plane.n; const k=[Math.round(n.x*100),Math.round(n.y*100),Math.round(n.z*100),Math.round(p.plane.w/2)].join('|');
+    if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(p.vs.map(v=>({x:v.x,y:v.y,z:v.z,k:key(v)})));
+  });
+  const faces=[];
+  for(const rings of groups.values()){
+    let list=rings.map(r=>r.slice());
+    let merged=true;
+    while(merged){
+      merged=false;
+      outer: for(let i=0;i<list.length;i++) for(let j=i+1;j<list.length;j++){
+        const A=list[i],B=list[j];
+        for(let a=0;a<A.length;a++){
+          const a1=A[a],a2=A[(a+1)%A.length];
+          for(let b=0;b<B.length;b++){
+            const b1=B[b],b2=B[(b+1)%B.length];
+            if(a1.k===b2.k&&a2.k===b1.k){                     // 같은 변을 반대 방향으로 공유
+              // B 를 b2→…→b1 순서로 끼운다: B 는 b1,b2 를 잇는 변을 빼고 b2 다음부터 b1 전까지
+              const Bs=[]; for(let t=2;t<B.length;t++) Bs.push(B[(b+t)%B.length]);
+              const R=A.slice(0,a+1).concat(Bs,A.slice(a+1));
+              list.splice(j,1); list.splice(i,1,R); merged=true; break outer;
+            }
+          }
+        }
+      }
+    }
+    list.forEach(r=>{
+      // 이웃 중복점·일직선 점 정리
+      const out=[];
+      for(let i=0;i<r.length;i++){ const p=r[i],q=out[out.length-1]; if(q&&q.k===p.k) continue; out.push(p); }
+      while(out.length>1&&out[0].k===out[out.length-1].k) out.pop();
+      const clean=[];
+      for(let i=0;i<out.length;i++){
+        const p0=out[(i-1+out.length)%out.length],p1=out[i],p2=out[(i+1)%out.length];
+        const c=_vCross(_vSub(p1,p0),_vSub(p2,p1));
+        if(_vLen(c)<1e-3*Math.max(1,_vLen(_vSub(p2,p0)))) continue;   // 일직선
+        clean.push(p1);
+      }
+      if(clean.length>=3) faces.push(clean.map(v=>({x:v.x,y:v.y,z:v.z})));
+    });
+  }
+  return faces;
+}
+// 귀 자르기 삼각분할 (오목 다각형, 3D 면 — 법선의 주축으로 눕혀서)
+function earTriangles(vs){
+  const n=vs.length; if(n<3) return []; if(n===3) return [[0,1,2]];
+  const N=faceNormal(vs,vs.map((_,i)=>i));
+  const ax=Math.abs(N.x),ay=Math.abs(N.y),az=Math.abs(N.z);
+  const P=vs.map(v=>(az>=ax&&az>=ay)?{x:v.x,y:v.y}:(ax>=ay)?{x:v.y,y:v.z}:{x:v.z,y:v.x});
+  let area=0; for(let i=0;i<n;i++){const p=P[i],q=P[(i+1)%n];area+=p.x*q.y-q.x*p.y;}
+  const idx=[]; for(let i=0;i<n;i++) idx.push(i);
+  const flip=area<0; if(flip) idx.reverse();               // 귀 자르기는 CCW 로, 결과는 원래 감김으로 되돌린다
+  const T=(a,b,c)=>flip?[c,b,a]:[a,b,c];
+  const cross=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+  const inTri=(p,a,b,c)=>cross(a,b,p)>=-1e-9&&cross(b,c,p)>=-1e-9&&cross(c,a,p)>=-1e-9;
+  const tris=[]; let guard=0;
+  while(idx.length>3&&guard++<n*n){
+    let cut=false;
+    for(let i=0;i<idx.length;i++){
+      const i0=idx[(i-1+idx.length)%idx.length],i1=idx[i],i2=idx[(i+1)%idx.length];
+      const a=P[i0],b=P[i1],c=P[i2];
+      if(cross(a,b,c)<=1e-9) continue;                          // 오목한 귀
+      let ok=true;
+      for(const k of idx){ if(k===i0||k===i1||k===i2) continue; const p=P[k]; if(p.x===a.x&&p.y===a.y||p.x===b.x&&p.y===b.y||p.x===c.x&&p.y===c.y) continue; if(inTri(p,a,b,c)){ok=false;break;} }
+      if(!ok) continue;
+      tris.push(T(i0,i1,i2)); idx.splice(i,1); cut=true; break;
+    }
+    if(!cut){ // 퇴화 — 부채꼴로 마무리
+      for(let i=1;i<idx.length-1;i++) tris.push(T(idx[0],idx[i],idx[i+1]));
+      return tris;
+    }
+  }
+  if(idx.length===3) tris.push(T(idx[0],idx[1],idx[2]));
+  return tris;
+}
+// 결과 면 목록 → 자유 매스 (절대 → 중심 기준 로컬)
+function massFromCsgFaces(name,faces,color,free){
+  if(!faces.length) return null;
+  const vmap=new Map(),verts=[];
+  const vid=v=>{const k=Math.round(v.x*10)+','+Math.round(v.y*10)+','+Math.round(v.z*10);if(vmap.has(k))return vmap.get(k);const i=verts.length;verts.push({x:v.x,y:v.y,z:v.z});vmap.set(k,i);return i;};
+  const solidFaces=faces.map(f=>({vs:f.map(vid)})).filter(f=>new Set(f.vs).size>=3);
+  if(!solidFaces.length) return null;
+  const cx=verts.reduce((a,p)=>a+p.x,0)/verts.length, cy=verts.reduce((a,p)=>a+p.y,0)/verts.length;
+  const zmin=Math.min(...verts.map(v=>v.z)); const lift=zmin<0?-zmin:0;
+  const xs=verts.map(p=>p.x-cx),ys=verts.map(p=>p.y-cy);
+  const m={id:_skId('ms'),name:name||'솔리드',x:Math.round(cx),y:Math.round(cy),angle:0,elev_mm:0,color:color||MASS_COLOR,locked:false,
+    pts:[{x:Math.round(Math.min(...xs)),y:Math.round(Math.min(...ys))},{x:Math.round(Math.max(...xs)),y:Math.round(Math.min(...ys))},
+         {x:Math.round(Math.max(...xs)),y:Math.round(Math.max(...ys))},{x:Math.round(Math.min(...xs)),y:Math.round(Math.max(...ys))}],
+    h_mm:Math.round(Math.max(10,Math.max(...verts.map(v=>v.z+lift)))),
+    solidVerts:verts.map(v=>({x:Math.round((v.x-cx)*10)/10,y:Math.round((v.y-cy)*10)/10,z:Math.round((v.z+lift)*10)/10})),
+    solidFaces};
+  if(free){ if(!Array.isArray(free.masses)) free.masses=[]; free.masses.push(m); }
+  return m;
+}
+// 솔리드 도구 본체 — kind: union|subtract|intersect|trim|split. 스케치업 규약: 빼기·다듬기는 첫째(A)가 자르는 쪽, 둘째(B)가 잘리는 쪽.
+function massCSG(kind,A,B,ctx){
+  const pa=massToCsgPolys(A,ctx), pb=massToCsgPolys(B,ctx);
+  if(!pa.length||!pb.length) return [];
+  const mk=(name,polys,color)=>{const fs=csgMergeFaces(polys);return massFromCsgFaces(name,fs,color,null);};
+  const out=[];
+  if(kind==='union'){ const r=mk((A.name||'매스')+'+'+(B.name||'매스'),csgUnion(pa,pb),A.color); if(r) out.push(r); }
+  else if(kind==='subtract'||kind==='trim'){ const r=mk((B.name||'매스')+'−'+(A.name||'매스'),csgSubtract(pb,pa),B.color); if(r) out.push(r); }
+  else if(kind==='intersect'){ const r=mk((A.name||'매스')+'∩'+(B.name||'매스'),csgIntersect(pa,pb),A.color); if(r) out.push(r); }
+  else if(kind==='split'){
+    const i=mk('교집합',csgIntersect(pa,pb),A.color), a=mk((A.name||'매스')+'−'+(B.name||'매스'),csgSubtract(pa,pb),A.color), b=mk((B.name||'매스')+'−'+(A.name||'매스'),csgSubtract(pb,pa),B.color);
+    [i,a,b].forEach(r=>{ if(r) out.push(r); });
+  }
+  return out.filter(r=>r&&Math.abs(massVolume(r,ctx))>1e-6);
+}
+
 if(typeof module!=='undefined'&&module.exports){
   module.exports={zIsRef,zNum,zSet,zLabel,facePlanarDev,massHeal,splitFoldedRing,faceNormal,faceRole,faceFacing,faceTiltDeg,faceArea3,faceCentroid3,
     zEdit,massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
@@ -1293,5 +1484,6 @@ if(typeof module!=='undefined'&&module.exports){
     planeFrom,planeUV,planePt,planeSame,ffPlaneBag,planeFaceVerts,planeExtrude,
     massLocalFrame,massFaceAt,massRayExit,massAddCut,massCutsVolume,
     sweepProfile,massFromSweep,moldingProfile,
+    massCSG,earTriangles,csgMergeFaces,massToCsgPolys,massFromCsgFaces,csgUnion,csgSubtract,csgIntersect,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

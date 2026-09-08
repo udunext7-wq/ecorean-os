@@ -314,21 +314,26 @@ function buildMass(m){
   if(massIsPrismOf(m)&&!hasCuts){
     // 수직 각기둥 — 종전 그대로 (가볍고 빠르다)
     return Object.assign(base,{prims:[{t:'prism',pts:m.pts,z:0,h:H,color:col,mcode:m.mat||null}],
-      meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false,z:zgrip,gid:m.gid||null,mat:m.mat||null}});
+      meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:false,z:zgrip,gid:m.gid||null,cid:m.cid||null,tag:m.tag||null,mat:m.mat||null}});
   }
   // 자유 다면체 — 꼭짓점마다 높이가 다르다 (빗천장·박공·꺾인 천장)
   const S=massSolidOf(m,ctx);
   const cutFx=hasCuts?massCutPrims(m,S,ctx,col):null;    // 프리폼 ③: 파냄 (구멍 면 + 주머니)
-  const tris=[];
+  // 2026-09-08 스케치업 100%: 면마다 재질이 다를 수 있다 (Ctrl+페인트) — 재질별로 mesh prim 을 가른다
+  const byMat=new Map();
   S.faces.forEach((f,fi)=>{
     if(cutFx&&cutFx.holed.has(fi)) return;               // 구멍 난 면은 face3h 가 맡는다
-    for(let i=1;i<f.vs.length-1;i++) tris.push([f.vs[0],f.vs[i],f.vs[i+1],fi]);
+    const key=f.mat||''; if(!byMat.has(key)) byMat.set(key,[]); const tris=byMat.get(key);
+    const ear=_sk('earTriangles');                       // 오목 면(솔리드 도구 결과)도 바르게 — 귀 자르기
+    if(ear&&f.vs.length>3){ const vs=f.vs.map(i=>S.verts[i]); ear(vs).forEach(tt=>tris.push([f.vs[tt[0]],f.vs[tt[1]],f.vs[tt[2]],fi])); }
+    else for(let i=1;i<f.vs.length-1;i++) tris.push([f.vs[0],f.vs[i],f.vs[i+1],fi]);
   });
+  if(!byMat.size) byMat.set('',[]);
   const q=(_sk('massQuantities')||(()=>({})))(m,ctx);
   return Object.assign(base,{
-    prims:[{t:'mesh',verts:S.verts,tris,faces:S.faces.map(f=>({role:f.role,tilt:f.tilt})),z:0,color:col,mcode:m.mat||null}]
+    prims:[...byMat].map(([key,tris])=>({t:'mesh',verts:S.verts,tris,faces:S.faces.map(f=>({role:f.role,tilt:f.tilt})),z:0,color:col,mcode:key||m.mat||null}))
       .concat(cutFx?cutFx.prims:[]),
-    meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:true,gid:m.gid||null,mat:m.mat||null,
+    meta:{h_mm:H,elev_mm:m.elev_mm,area:polyAreaAbs(m.pts),color:col,solid:true,gid:m.gid||null,cid:m.cid||null,tag:m.tag||null,mat:m.mat||null,
       qty:q,faces:S.faces.length,maxTilt:q.maxTilt||0,z:zgrip,
       slopes:(_sk('massSlopes')||(()=>[]))(m,ctx)}});
 }

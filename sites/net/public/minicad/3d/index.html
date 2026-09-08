@@ -43,6 +43,14 @@
   .drop .mi.chk::before{content:'✓ ';color:var(--lime);width:14px}
   .drop .mi.unchk::before{content:'';display:inline-block;width:14px}
   .drop hr{border:0;border-top:1px solid var(--line);margin:5px 4px}
+  .drop .mh{padding:3px 10px 2px;font-size:10.5px;color:var(--gold);font-weight:700;letter-spacing:.02em}
+  body.tools-off #tools{display:none}
+  #modelinfo{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:20}
+  #modelinfo .kbox{background:#1A1B2E;border:1px solid var(--line);border-radius:14px;padding:20px 24px;width:min(92vw,420px)}
+  #modelinfo h3{margin:0 0 10px;color:var(--gold);font-size:15px}
+  #modelinfo .p-row{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:12.5px}
+  #modelinfo label{flex:0 0 110px;color:var(--mute)}
+  #modelinfo select,#modelinfo input{flex:1;background:#242640;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 7px;font-size:12px;font-family:inherit}
   /* ===== 툴바 (기존) ===== */
   .bar{position:fixed;left:0;right:0;top:30px;height:44px;display:flex;align-items:center;gap:5px;padding:0 8px;background:rgba(26,27,46,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);z-index:5;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
   .bar::-webkit-scrollbar{display:none}
@@ -332,7 +340,223 @@
   <button data-k="a">◀</button><button data-k="s">▼</button><button data-k="d">▶</button>
 </div>
 
+<!-- ===== 단독 프리폼 (?ff=1) = 스케치업 100% 셸 (2026-09-08 대표 지시) — 부팅 때 메뉴·툴바·단축키표를 이 틀로 갈아 끼운다 ===== -->
+<template id="ff-menus">
+  <span class="mtitle">🧊 프리폼</span>
+  <div class="menu"><button>파일</button><div class="drop">
+    <div class="mi" data-cmd="ff-new">새로 만들기<span class="acc">Ctrl+N</span></div>
+    <div class="mi" data-cmd="ff-open">열기…<span class="acc">Ctrl+O</span></div>
+    <div class="mi" data-cmd="ff-save">저장<span class="acc">Ctrl+S</span></div>
+    <hr><div class="mh">내보내기</div>
+    <div class="mi" data-cmd="shot">2D 그래픽 (PNG)<span class="acc">Ctrl+Shift+S</span></div>
+    <div class="mi" data-cmd="glb">3D 모델 (GLB — Blender)</div>
+    <div class="mi" data-cmd="obj">3D 모델 (OBJ)</div>
+    <div class="mi" data-cmd="stl">3D 모델 (STL — 3D 프린트)</div>
+    <div class="mi" data-cmd="json">데이터 (JSON)</div>
+    <hr><div class="mi" data-cmd="modelinfo">모델 정보 (단위·기본값)…</div>
+  </div></div>
+  <div class="menu"><button>편집</button><div class="drop">
+    <div class="mi" data-cmd="undo">실행취소<span class="acc">Ctrl+Z</span></div>
+    <div class="mi" data-cmd="redo">재실행<span class="acc">Ctrl+Y</span></div>
+    <hr><div class="mi" data-cmd="cut">잘라내기<span class="acc">Ctrl+X</span></div>
+    <div class="mi" data-cmd="copy">복사<span class="acc">Ctrl+C</span></div>
+    <div class="mi" data-cmd="paste">붙여넣기<span class="acc">Ctrl+V</span></div>
+    <div class="mi" data-cmd="del">삭제<span class="acc">Del</span></div>
+    <hr><div class="mi" data-cmd="selectall">모두 선택<span class="acc">Ctrl+A</span></div>
+    <div class="mi" data-cmd="deselect">선택 없음<span class="acc">Ctrl+T</span></div>
+    <hr><div class="mi" data-cmd="hide">숨기기<span class="acc">Shift+H</span></div>
+    <div class="mi" data-cmd="unhide">모두 보이기</div>
+    <div class="mi" data-cmd="lock">잠금</div>
+    <div class="mi" data-cmd="unlock">잠금 해제</div>
+    <hr><div class="mi" data-cmd="mkgroup">그룹 만들기<span class="acc">G</span></div>
+    <div class="mi" data-cmd="mkcomp">컴포넌트 만들기…<span class="acc">Shift+G</span></div>
+    <div class="mi" data-cmd="explode">분해</div>
+    <div class="mi" data-cmd="compupdate">컴포넌트 정의 갱신 (이 인스턴스로)</div>
+    <hr><div class="mi" data-cmd="guides-clear">안내선 모두 삭제</div>
+    <div class="mi" data-cmd="annots-clear">치수·문자 모두 삭제</div>
+    <div class="mi" data-cmd="sections-clear">단면 모두 삭제</div>
+  </div></div>
+  <div class="menu"><button>보기</button><div class="drop">
+    <div class="mi" data-cmd="hiddengeom" id="mi-hiddengeom">숨은 형상</div>
+    <div class="mi" data-cmd="sections" id="mi-sections">단면</div>
+    <div class="mi" data-cmd="sectioncut" id="mi-sectioncut">단면 자르기</div>
+    <div class="mi" data-cmd="axes" id="mi-axes">축</div>
+    <div class="mi" data-cmd="guides" id="mi-guides">안내선</div>
+    <div class="mi" data-cmd="shadow" id="mi-shadow">그림자</div>
+    <div class="mi" data-cmd="fog" id="mi-fog">안개</div>
+    <hr><div class="mh">모서리 스타일</div>
+    <div class="mi" data-cmd="edges" id="mi-edges">모서리<span class="acc">K</span></div>
+    <hr><div class="mh">면 스타일</div>
+    <div class="mi" data-cmd="xray" id="mi-xray">X-ray<span class="acc">X</span></div>
+    <div class="mi" data-cmd="fs-wire" id="mi-fs-wire">와이어프레임</div>
+    <div class="mi" data-cmd="fs-hidden" id="mi-fs-hidden">히든 라인</div>
+    <div class="mi" data-cmd="fs-shaded" id="mi-fs-shaded">셰이딩</div>
+    <div class="mi" data-cmd="fs-textured" id="mi-fs-textured">텍스처 셰이딩</div>
+    <div class="mi" data-cmd="fs-mono" id="mi-fs-mono">단색</div>
+    <hr><div class="mi" data-cmd="sky" id="mi-sky">하늘·바닥 배경</div>
+    <div class="mi" data-cmd="skyimg">배경 그림 불러오기…</div>
+    <div class="mi" data-cmd="night" id="mi-night">야간 무드<span class="acc">N</span></div>
+    <div class="mi" data-cmd="light" id="mi-light">조명 기구 점등</div>
+    <hr><div class="mi" data-cmd="toolbar" id="mi-toolbar">툴바 (큰 도구 세트)</div>
+    <div class="mi" data-cmd="tray" id="mi-tray">기본 트레이</div>
+  </div></div>
+  <div class="menu"><button>카메라</button><div class="drop">
+    <div class="mi" data-cmd="prev">이전</div>
+    <div class="mi" data-cmd="next">다음</div>
+    <hr><div class="mh">표준 뷰</div>
+    <div class="mi" data-cmd="iso">아이소<span class="acc">3</span></div>
+    <div class="mi" data-cmd="top">위<span class="acc">4</span></div>
+    <div class="mi" data-cmd="front">정면<span class="acc">5</span></div>
+    <div class="mi" data-cmd="right">우측<span class="acc">6</span></div>
+    <div class="mi" data-cmd="back">배면<span class="acc">7</span></div>
+    <div class="mi" data-cmd="left">좌측<span class="acc">8</span></div>
+    <div class="mi" data-cmd="bottom">아래<span class="acc">9</span></div>
+    <hr><div class="mi" data-cmd="ortho" id="mi-ortho">평행 투영</div>
+    <div class="mi" data-cmd="persp" id="mi-persp">원근</div>
+    <div class="mi" data-cmd="twopt">2점 투시</div>
+    <hr><div class="mi" data-cmd="tool-orbit">궤도<span class="acc">O</span></div>
+    <div class="mi" data-cmd="tool-pan">팬<span class="acc">H</span></div>
+    <div class="mi" data-cmd="tool-zoom">줌<span class="acc">Z</span></div>
+    <div class="mi" data-cmd="fov">시야각…</div>
+    <div class="mi" data-cmd="tool-zoomwin">줌 창</div>
+    <div class="mi" data-cmd="fit">전체 보기<span class="acc">Shift+Z</span></div>
+    <div class="mi" data-cmd="zoomsel">선택 확대</div>
+    <hr><div class="mi" data-cmd="tool-poscam">카메라 위치</div>
+    <div class="mi" data-cmd="tool-lookaround">둘러보기</div>
+    <div class="mi" data-cmd="tool-walk">걷기<span class="acc">2</span></div>
+    <hr><div class="mi" data-cmd="scene-add">장면 추가 (현재 시점)</div>
+  </div></div>
+  <div class="menu"><button>그리기</button><div class="drop">
+    <div class="mh">선</div>
+    <div class="mi" data-cmd="tool-line">선<span class="acc">L</span></div>
+    <div class="mi" data-cmd="tool-freehand">프리핸드</div>
+    <hr><div class="mh">도형</div>
+    <div class="mi" data-cmd="tool-rect">사각형<span class="acc">R</span></div>
+    <div class="mi" data-cmd="tool-rotrect">회전 사각형</div>
+    <div class="mi" data-cmd="tool-circle">원<span class="acc">C</span></div>
+    <div class="mi" data-cmd="tool-polygon">다각형</div>
+    <hr><div class="mh">호</div>
+    <div class="mi" data-cmd="tool-arc">2점 호<span class="acc">A</span></div>
+    <div class="mi" data-cmd="tool-arc3">3점 호</div>
+    <div class="mi" data-cmd="tool-pie">파이</div>
+  </div></div>
+  <div class="menu"><button>도구</button><div class="drop">
+    <div class="mi" data-cmd="tool-select">선택<span class="acc">Space</span></div>
+    <div class="mi" data-cmd="tool-erase">지우개<span class="acc">E</span></div>
+    <hr><div class="mi" data-cmd="tool-tape">줄자<span class="acc">T</span></div>
+    <div class="mi" data-cmd="tool-protractor">각도기</div>
+    <div class="mi" data-cmd="tool-axes">축</div>
+    <div class="mi" data-cmd="tool-dim">치수<span class="acc">D</span></div>
+    <div class="mi" data-cmd="tool-text">문자</div>
+    <div class="mi" data-cmd="tool-text3d">3D 문자</div>
+    <div class="mi" data-cmd="tool-section">단면</div>
+    <hr><div class="mi" data-cmd="tool-move">이동<span class="acc">M</span></div>
+    <div class="mi" data-cmd="tool-rotate">회전<span class="acc">Q</span></div>
+    <div class="mi" data-cmd="tool-scale">배율<span class="acc">S</span></div>
+    <div class="mi" data-cmd="tool-pushpull">밀기끌기<span class="acc">P</span></div>
+    <div class="mi" data-cmd="tool-followme">팔로우 미</div>
+    <div class="mi" data-cmd="tool-offset">오프셋<span class="acc">F</span></div>
+    <div class="mi" data-cmd="tool-paint">페인트<span class="acc">B</span></div>
+    <hr><div class="mh">솔리드 도구</div>
+    <div class="mi" data-cmd="solid-union">결합 (Union)</div>
+    <div class="mi" data-cmd="solid-subtract">빼기 (Subtract)</div>
+    <div class="mi" data-cmd="solid-intersect">교차 (Intersect)</div>
+    <div class="mi" data-cmd="solid-trim">다듬기 (Trim)</div>
+    <div class="mi" data-cmd="solid-split">분할 (Split)</div>
+  </div></div>
+  <div class="menu"><button>창</button><div class="drop">
+    <div class="mi" data-cmd="tray" id="mi-tray2">기본 트레이</div>
+    <hr><div class="mi" data-cmd="sec-info">개체 정보</div>
+    <div class="mi" data-cmd="sec-mat">재질</div>
+    <div class="mi" data-cmd="sec-comp">구성요소</div>
+    <div class="mi" data-cmd="sec-style">스타일</div>
+    <div class="mi" data-cmd="sec-tags">태그</div>
+    <div class="mi" data-cmd="sec-outline">아웃라이너</div>
+    <div class="mi" data-cmd="sec-scenes">장면</div>
+    <div class="mi" data-cmd="sec-instr">강사</div>
+    <hr><div class="mi" data-cmd="modelinfo">모델 정보…</div>
+  </div></div>
+  <div class="menu"><button>도움말</button><div class="drop">
+    <div class="mi" data-cmd="keys">단축키 목록<span class="acc">?</span></div>
+  </div></div>
+</template>
+<template id="ff-tools">
+  <button class="btn on" data-t="select" title="선택 (Space)">➤</button>
+  <button class="btn" data-t="mkcomp" title="컴포넌트 만들기 (G) — 선택한 것을 한 몸으로">⧈</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="paint" title="페인트 (B)">🪣</button>
+  <button class="btn" data-t="erase" title="지우개 (E) — Shift=숨기기">🧽</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="rect" title="사각형 (R)">▭</button>
+  <button class="btn" data-t="rotrect" title="회전 사각형 — 세 점">▱</button>
+  <button class="btn" data-t="line" title="선 (L)">╱</button>
+  <button class="btn" data-t="freehand" title="프리핸드 — 끌어서 그리기">〰</button>
+  <button class="btn" data-t="circle" title="원 (C) — 숫자=반지름 · 24s=변 수">○</button>
+  <button class="btn" data-t="polygon" title="다각형 — 숫자=반지름 · 6s=변 수">⬡</button>
+  <button class="btn" data-t="arc" title="2점 호 (A)">◜</button>
+  <button class="btn" data-t="arc3" title="3점 호 — 시작·호 위·끝">◠</button>
+  <button class="btn" data-t="pie" title="파이 — 중심·시작·끝 (부채꼴 면)">◔</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="move" title="이동 (M) — Ctrl=복사 · ←→↑=축 고정">✥</button>
+  <button class="btn" data-t="pushpull" title="밀기끌기 (P) — 면을 법선으로 · 더블클릭=반복">⇕</button>
+  <button class="btn" data-t="rotate" title="회전 (Q) — 각도기">↻</button>
+  <button class="btn" data-t="followme" title="팔로우 미 — 단면(면) 클릭 → 경로(매스) 클릭">⌐</button>
+  <button class="btn" data-t="scale" title="배율 (S) — Shift=한 방향 · 숫자=배율">⤢</button>
+  <button class="btn" data-t="offset" title="오프셋 (F)">⧉</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="tape" title="줄자 (T) — 안내선 · 두 점 재고 숫자 입력=모델 전체 크기 조정">📏</button>
+  <button class="btn" data-t="dim" title="치수 (D)">↔</button>
+  <button class="btn" data-t="protractor" title="각도기 — 중심·기준·각도 = 각도 안내선">∠</button>
+  <button class="btn" data-t="text" title="문자">A</button>
+  <button class="btn" data-t="axes" title="축 — 원점 클릭 · X 방향 클릭">⊹</button>
+  <button class="btn" data-t="text3d" title="3D 문자 — 글자를 입체로">𝟯</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="orbit" title="궤도 (O)">🔄</button>
+  <button class="btn" data-t="pan" title="팬 (H)">🖐</button>
+  <button class="btn" data-t="zoom" title="줌 (Z) · Shift+Z=전체">🔍</button>
+  <button class="btn" data-t="zoomwin" title="줌 창 — 끌어서 그 영역을 화면에">⛶</button>
+  <button class="btn" data-t="fit" title="전체 보기 (Shift+Z)">⤧</button>
+  <button class="btn" data-t="prevview" title="이전 시점">◀</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="poscam" title="카메라 위치 — 바닥 클릭 = 그 자리 눈높이 · 끌면 보는 방향">📍</button>
+  <button class="btn" data-t="walk" title="걷기 (2) — W A S D">🚶</button>
+  <button class="btn" data-t="lookaround" title="둘러보기 — 제자리에서 끌어 보기">👁</button>
+  <div class="tsep"></div>
+  <button class="btn" data-t="section" title="단면 — 면 클릭 = 그 면에 단면 · 숫자=밀기">▥</button>
+</template>
+<template id="ff-keys">
+  <h3>프리폼 단축키 (스케치업과 동일)</h3>
+  <table>
+    <tr><td>Space</td><td>선택 — 클릭 · Shift/Ctrl+클릭=추가/제거 · 끌기=선택 상자(←=걸치기) · 더블클릭=그룹 안 · 트리플=전체</td></tr>
+    <tr><td>L / R / C / A / F</td><td>선 / 사각형 / 원 / 2점 호 / 오프셋 (다각형·회전 사각형·3점 호·파이·프리핸드는 그리기 메뉴·툴바)</td></tr>
+    <tr><td>M / Q / S / P</td><td>이동(Ctrl=복사, x3·/3=배열) / 회전(각도기, Ctrl=복사) / 배율(Shift=한 방향) / 밀기끌기(더블클릭=반복, 안으로=파내기)</td></tr>
+    <tr><td>B / E / T / D</td><td>페인트(Alt+클릭=추출) / 지우개(Shift=숨기기) / 줄자(선에서=안내선 · 숫자=모델 크기 조정) / 치수</td></tr>
+    <tr><td>G / Shift+G</td><td>그룹 만들기 / 컴포넌트 만들기 (우클릭▸분해)</td></tr>
+    <tr><td>O / H / Z / Shift+Z</td><td>궤도 / 팬 / 줌 / 전체 보기</td></tr>
+    <tr><td>휠 드래그 · Shift+휠 드래그 · 휠</td><td>궤도 · 팬 · 줌</td></tr>
+    <tr><td>← → ↑ · Shift</td><td>축 고정(빨강·초록·파랑) · 지금 방향 고정 · ↓=평행/수직</td></tr>
+    <tr><td>숫자 입력</td><td>동작 중 길이·각도·배율 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · 3000,2000 사각형 · 6s 변 수 · 확정 직후 숫자=재입력</td></tr>
+    <tr><td>1 / 2</td><td>조감(궤도) / 걷기 (W A S D · Q/E 위아래)</td></tr>
+    <tr><td>3 4 5 6 7 8 9</td><td>아이소 · 위 · 정면 · 우측 · 배면 · 좌측 · 아래</td></tr>
+    <tr><td>X / K / N</td><td>X-ray / 모서리 / 야간 무드</td></tr>
+    <tr><td>Ctrl+Z / Y</td><td>실행취소 / 재실행</td></tr>
+    <tr><td>Ctrl+A / T / C / X / V</td><td>모두 선택 / 선택 없음 / 복사 / 잘라내기 / 붙여넣기</td></tr>
+    <tr><td>Ctrl+N / O / S</td><td>새로 만들기 / 열기 / 저장 · Ctrl+Shift+S = PNG</td></tr>
+    <tr><td>Del · Shift+H</td><td>삭제 · 숨기기 (편집▸모두 보이기)</td></tr>
+    <tr><td>우클릭</td><td>컨텍스트 메뉴 (개체 정보·지우기·숨기기·잠금·그룹·컴포넌트·분해·재질·몰딩) · 동작 중=취소</td></tr>
+    <tr><td>Esc</td><td>취소 · 선택 없음</td></tr>
+  </table>
+  <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
+</template>
+
 <!-- ===== 단축키표 ===== -->
+<div id="modelinfo"><div class="kbox"><h3>모델 정보</h3>
+  <div class="p-row"><label>길이 단위</label><select id="mi-units"><option value="mm">밀리미터 (mm)</option><option value="cm">센티미터 (cm)</option><option value="m">미터 (m)</option><option value="in">인치 (in)</option></select></div>
+  <div class="p-row"><label>기본 밀기 높이</label><input type="number" id="mi-defz" value="2400" step="100"> <span>mm</span></div>
+  <div class="p-row"><label>격자 스냅</label><select id="mi-grid"><option value="10">10 mm</option><option value="1">1 mm</option><option value="50">50 mm</option><option value="100">100 mm</option></select></div>
+  <div class="p-row"><label>원·호 변 수</label><input type="number" id="mi-sides" value="24" min="6" max="96"></div>
+  <div style="text-align:right;margin-top:12px"><button class="btn" id="mi-close">닫기</button></div>
+</div></div>
 <div id="keysmodal"><div class="kbox">
   <h3>미니폼 단축키 (스케치업과 동일)</h3>
   <table>
@@ -368,12 +592,12 @@
   <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
 </div></div>
 
-<script src="../js/data.js?v=3d35"></script>
-<script src="../js/library.js?v=3d35"></script>
+<script src="../js/data.js?v=3d36"></script>
+<script src="../js/library.js?v=3d36"></script>
 <!-- 2026-09-07: 매스 다면체(z 값) 계산은 2D 와 같은 파일을 쓴다 — 두 벌로 두면 평면과 3D 가 어긋난다 -->
-<script src="../js/sketch.js?v=3d35"></script>
-<script src="build3d.js?v=3d35"></script>
+<script src="../js/sketch.js?v=3d36"></script>
+<script src="build3d.js?v=3d36"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d35"></script>
+<script type="module" src="view3d.js?v=3d36"></script>
 </body>
 </html>
