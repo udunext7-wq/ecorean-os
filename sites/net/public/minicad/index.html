@@ -47,7 +47,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=tablet110">
+<link rel="stylesheet" href="css/style.css?v=tablet111">
 </head>
 <body>
 <div id="loading"><div class="spinner"></div><div class="msg">ECOREAN MiniCAD v6.0 로딩…</div></div>
@@ -148,6 +148,15 @@
           <input type="text" inputmode="decimal" id="pillar-rot" name="pillar-rot" aria-label="회전 (도)" value="0" min="-360" max="360" step="15" style="flex:1;min-width:0" placeholder="회전°">
         </div>
       </div>
+      <div class="field"><label class="field-label">천정 (K) — 낮춤(단내림)만큼 내려온 판</label>
+        <div class="field-row" style="gap:4px;margin-top:2px">
+          <button type="button" class="btn sm" id="ceil-mode-free" style="flex:1" title="프리 — 사각형을 직접 끌어 그린다 (커튼박스·부분 단내림)">프리</button>
+          <button type="button" class="btn sm" id="ceil-mode-quick" style="flex:1" title="빠른작업 — 방(바닥)을 클릭하면 그 바닥 모양 그대로 천정판">빠른작업</button>
+        </div>
+        <div class="field-row" style="gap:4px;margin-top:4px">
+          <input type="text" inputmode="decimal" id="ceil-drop" name="ceil-drop" aria-label="낮춤(단내림) mm" value="300" min="50" step="50" style="flex:1;min-width:0" placeholder="낮춤(단내림) mm">
+        </div>
+      </div>
       <div class="field"><label class="field-label">벽 정렬 (벽·내력벽 공통)</label>
         <div class="align-toggle" id="align-toggle" role="group" aria-label="벽 정렬 선택">
           <button type="button" class="align-btn" data-align="interior" title="내벽 정렬 — 그린 선 = 실내쪽 면, 두께는 바깥으로 (한국 평면도 표준)">내벽</button>
@@ -187,6 +196,7 @@
         <button class="tool-btn" data-tool="gabyeok" title="내력벽 — 일반 벽과 자동 분할/공간 경계 영향 없음"><span class="ti">▤</span><span>내력벽</span><span class="tk">S</span></button>
         <button class="tool-btn" data-tool="pillar" title="기둥 (RC) — 좌측 패널에서 형태/크기 설정"><span class="ti">◼</span><span>기둥</span><span class="tk">Q</span></button>
         <button class="tool-btn" data-tool="mass" title="매스 — 바닥을 그리고 Z 높이를 넣으면 자유 입체. 꼭짓점마다 높이를 달리 줄 수 있어 빗천장·박공도 된다. 공간과는 다른 개념"><span class="ti">⬢</span><span>매스</span><span class="tk">N</span></button>
+        <button class="tool-btn" data-tool="ceil" title="천정 — 프리: 직접 그린다 · 빠른작업: 방(바닥)을 클릭하면 그 바닥 모양 그대로. 낮춤(단내림)만큼 천장에서 내려온 판이 되어 미니폼에도 선다"><span class="ti">⬒</span><span>천정</span><span class="tk">K</span></button>
         <button class="tool-btn" data-tool="line"><span class="ti">╱</span><span>선</span><span class="tk">L</span></button>
         <button class="tool-btn" data-tool="xline" title="무한 안내선 (XLINE) — 다른 선·점을 안내하는 가는 실선, 화면 끝까지 무한 연장"><span class="ti">⟷</span><span>안내선</span><span class="tk">J</span></button>
         <button class="tool-btn" data-tool="section" title="절단선 — 도면에 선을 긋고 보는 쪽을 고르면 그 방향 입면도가 나온다"><span class="ti">⊟</span><span>절단선</span><span class="tk">K</span></button>
@@ -618,18 +628,18 @@
   </div>
 </div>
 
-<script src="js/state.js?v=tablet110"></script>
-<script src="js/data.js?v=tablet110"></script>
-<script src="js/library.js?v=tablet110"></script>
-<script src="js/engine.js?v=tablet110"></script>
-<script src="js/tools.js?v=tablet110"></script>
-<script src="js/sketch.js?v=tablet110"></script>
-<script src="js/ui.js?v=tablet110"></script>
-<script src="js/layout.js?v=tablet110"></script>
-<script src="js/touch.js?v=tablet110"></script>
-<script src="js/import-cad.js?v=tablet110"></script>
-<script src="js/estimate.js?v=tablet110"></script>
-<script src="js/tests.js?v=tablet110"></script>
+<script src="js/state.js?v=tablet111"></script>
+<script src="js/data.js?v=tablet111"></script>
+<script src="js/library.js?v=tablet111"></script>
+<script src="js/engine.js?v=tablet111"></script>
+<script src="js/tools.js?v=tablet111"></script>
+<script src="js/sketch.js?v=tablet111"></script>
+<script src="js/ui.js?v=tablet111"></script>
+<script src="js/layout.js?v=tablet111"></script>
+<script src="js/touch.js?v=tablet111"></script>
+<script src="js/import-cad.js?v=tablet111"></script>
+<script src="js/estimate.js?v=tablet111"></script>
+<script src="js/tests.js?v=tablet111"></script>
 <script>
 'use strict';
 // ===== v5.9: 저작권 보호 — EULA, 우클릭 차단, 워터마크, 콘솔 경고 =====

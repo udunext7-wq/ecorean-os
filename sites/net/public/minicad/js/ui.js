@@ -76,6 +76,9 @@ function setTool(tool){
   }
   if(typeof freePolyState!=='undefined'){freePolyState=null;document.getElementById('polyclose-fab')?.classList.add('hidden');} // v5.9
   drawGroup.destroyChildren();previewLayer.batchDraw();
+  // 2026-09-09: select 밖으로 나가면 꼭짓점 그립을 거둔다 — 남은 그립이 그리기 도구의
+  //  클릭(특히 천정 빠른작업의 방 클릭)을 삼키고 드래그도 계속 받던 문제
+  if(tool!=='select'&&typeof renderSpaceHandles==='function') renderSpaceHandles();
   container.className='tool-'+tool;
   document.querySelectorAll('.libcat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===tool));
   const libTools={furniture:FURNITURE_LIB,furniture2:FIXFURN_LIB,fixture:FIXTURE_LIB,light:LIGHT_LIB,electric:ELECTRIC_LIB,hvac:HVAC_FIRE_LIB};
@@ -329,6 +332,23 @@ function buildLayerUI(){
   });
 }
 // 2026-08-27: 스냅 설정 지속 (대표 보고 — 껐는데 새로고침·불러오기 때마다 그리드 스냅이 되살아남)
+// 2026-09-09 천정 도구 — 프리/빠른작업 모드 버튼 (좌측 패널)
+function refreshCeilUI(){
+  const f=document.getElementById('ceil-mode-free'), q=document.getElementById('ceil-mode-quick');
+  if(!f||!q) return;
+  const on='background:var(--gold);color:#1a1a1a;font-weight:700', off='';
+  f.style.cssText='flex:1;'+(STATE.ceilMode==='free'?on:off);
+  q.style.cssText='flex:1;'+(STATE.ceilMode!=='free'?on:off);
+}
+(function(){
+  const f=document.getElementById('ceil-mode-free'), q=document.getElementById('ceil-mode-quick'), d=document.getElementById('ceil-drop');
+  if(f) f.addEventListener('click',()=>{ STATE.ceilMode='free'; refreshCeilUI(); setTool('ceil');
+    cmdToast('천정 프리 — 사각형을 끌어 그리면 낮춤만큼 내려온 천정판이 됩니다'); });
+  if(q) q.addEventListener('click',()=>{ STATE.ceilMode='quick'; refreshCeilUI(); setTool('ceil');
+    cmdToast('천정 빠른작업 — 방(바닥)을 클릭하면 그 바닥 모양 그대로 천정판'); });
+  if(d) d.addEventListener('change',()=>{ STATE.ceilDrop=Math.max(50,parseInt(d.value)||300); d.value=STATE.ceilDrop; });
+  refreshCeilUI();
+})();
 const SNAP_LS_KEY='minicad.snap';
 function saveSnapPrefs(){
   try{localStorage.setItem(SNAP_LS_KEY,JSON.stringify({
@@ -986,7 +1006,7 @@ function refreshDetail(){
     const m=(STATE.masses||[]).find(x=>x.id===STATE.selectedId);
     if(!m) return;
     dc.innerHTML=
-      '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">매스</strong> — '+(massArea(m)/1e6).toFixed(2)+'㎡ · 점 '+m.pts.length+'개</p>'+
+      '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">선택: <strong style="color:var(--gold)">'+(m.ceil?'천정 (낮춤 판)':'매스')+'</strong> — '+(massArea(m)/1e6).toFixed(2)+'㎡ · 점 '+m.pts.length+'개</p>'+
       '<div class="field"><label class="field-label">이름</label><input type="text" id="ms-name" value="'+escapeHtml(m.name||'')+'"></div>'+
       '<div style="display:flex;gap:6px"><div class="field" style="flex:1"><label class="field-label">높이 H (mm)</label><input type="text" inputmode="decimal" id="ms-h" value="'+(m.h_mm||0)+'"></div>'+
       '<div class="field" style="flex:1"><label class="field-label">바닥에서 띄움 (mm)</label><input type="text" inputmode="decimal" id="ms-el" value="'+(m.elev_mm||0)+'"></div></div>'+
@@ -7044,6 +7064,7 @@ function processCommand(rawCmd){
   if(/^(el|elev|입면|입면도)$/i.test(c)){openElevationDialog();return;} // 2026-08-30
   if(/^(sc|section|절단|절단선)$/i.test(c)){setTool('section');return;} // 2026-08-30
   if(/^(ms|mass|매스)$/i.test(c)){setTool('mass');return;} // 2026-09-07 자유 입체
+  if(/^(cl|ceil|천정|천장)$/i.test(c)){setTool('ceil');return;} // 2026-09-09 천정
   // 2026-08-29: 고른 조명들을 한 번에 — link=스위치에, chain=서로 점핑
   if(/^(link|연결)$/i.test(c)){startCircuitAttach();return;}
   if(/^(chain|점핑)$/i.test(c)){chainSelectedLights();return;}

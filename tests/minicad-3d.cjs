@@ -766,8 +766,8 @@ ck(/function _ff3SnapList/.test(v3Src)&&/밑그림 매스 모서리에도/.test(
   '면 스냅: 매스 모서리(자유+밑그림)·선이 스냅 후보');
 ck(/snap:'endpoint'/.test(v3Src)&&/snap:'midpoint'/.test(v3Src)&&/snap:'edge'/.test(v3Src),
   '면 스냅: 끝점 > 중간점 > 선 위');
-ck(/function _ff3Mark/.test(v3Src)&&/mmPerPx\(pt\)\*14/.test(v3Src),
-  '면 스냅: 화면 14px 반경 + 3D 마커');
+ck(/function _ff3Mark/.test(v3Src)&&/mmPerPx\(pt\)\*16/.test(v3Src),
+  '면 스냅: 화면 16px 반경(땅 그리기와 같은 손맛) + 3D 마커');
 // 프리폼 스테이징 (배치물) 계약
 ck(/const FF_PLACE=\['furniture','fixtures','lights','electric','hvac'\]/.test(v3Src),
   '프리폼 스테이징: 배치물 5종이 자유 층에 산다');

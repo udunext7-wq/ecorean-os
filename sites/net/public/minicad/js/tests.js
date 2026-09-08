@@ -4514,6 +4514,52 @@ if(new URLSearchParams(location.search).get('test')==='1'){window.addEventListen
     assert('내력벽: 평면 벽 목록엔 그대로',STATE.walls.some(w=>w.id===_bw.id&&w.wallType==='bearing'));
     _bw.wallType=_bwType;
 
+    // [C] 2026-09-09 대표 지시 — 천정 도구 (프리 / 빠른작업)
+    {
+      const _cBak=JSON.parse(JSON.stringify({m:STATE.masses,cd:STATE.ceilDrop,cm:STATE.ceilMode}));
+      assert('C01: 도구 버튼·패널이 있다',
+        !!document.querySelector('[data-tool="ceil"]')&&!!document.getElementById('ceil-mode-free')
+        &&!!document.getElementById('ceil-mode-quick')&&!!document.getElementById('ceil-drop'));
+      assert('C02: 기본 = 빠른작업 · 낮춤 300',STATE.ceilMode==='quick'&&STATE.ceilDrop===300);
+      // 빠른작업 — 개별 천장고 2600 방을 클릭하면 그 바닥 모양 그대로
+      STATE.masses=[];
+      addSpace([{x:80000,y:80000},{x:84000,y:80000},{x:84000,y:83000},{x:80000,y:83000}]);
+      const _csp=STATE.spaces[STATE.spaces.length-1];
+      _csp.name='안방'; _csp.ceilingHeight_mm=2600;
+      STATE.ceilDrop=300;
+      const _cq=ceilQuickAt(82000,81500);
+      assert('C03: 빠른작업 — 천정판 생성',!!_cq&&_cq.ceil===true&&/^천정/.test(_cq.name));
+      assert('C04: 바닥 모양 그대로 (점 4·면적 12㎡)',_cq.pts.length===4&&Math.abs(massArea(_cq)/1e6-12)<0.01);
+      assert('C05: 낮춤 300 — 판 밑면 = 개별 천장고 2600-300',_cq.h_mm===300&&_cq.elev_mm===2300,
+        _cq.h_mm+'/'+_cq.elev_mm);
+      // 방 밖 클릭은 거부
+      assert('C06: 방 밖 클릭 거부',ceilQuickAt(200000,200000)===null&&STATE.masses.filter(x=>x.ceil).length===1);
+      // 프리 — 사각형 직접
+      STATE.ceilDrop=150;
+      const _cf=makeCeilingMass([{x:80500,y:80500},{x:82500,y:80500},{x:82500,y:81000},{x:80500,y:81000}],'시험');
+      assert('C07: 프리 — 커튼박스식 150 낮춤 (방 CH 따름)',_cf.ceil===true&&_cf.h_mm===150&&_cf.elev_mm===2450);
+      assert('C08: 이름 번호가 이어진다',_cf.name==='천정2');
+      // 낮춤 폭주 방지 — 천장고보다 크게 못 내린다
+      STATE.ceilDrop=99999;
+      const _cx=makeCeilingMass([{x:80200,y:82000},{x:80800,y:82000},{x:80800,y:82600},{x:80200,y:82600}],'클램프');
+      assert('C09: 낮춤은 천장고-50 에서 잘린다',_cx.h_mm===2550&&_cx.elev_mm===50,_cx.h_mm+'/'+_cx.elev_mm);
+      // 매스 규약 그대로 — 견적 벽면적·천장면적에 영향 없다 (매스는 원래 견적 무관)
+      assert('C10: 천정판은 견적에 영향 없다 (spCeilArea 불변)',Math.abs(spCeilArea(_csp)-12)<0.01);
+      // 3D — elev 로 천장에 매달린 판 (매스 기계 그대로)
+      if(typeof MC3D!=='undefined'&&MC3D.buildFloorScene){
+        const _cd=MC3D.normalizeDoc(buildAutosavePayload());
+        const _cs=MC3D.buildFloorScene(_cd,{FURNITURE_LIB,FIXFURN_LIB,FIXTURE_LIB,LIGHT_LIB,ELECTRIC_LIB,HVAC_FIRE_LIB});
+        const _c3=_cs.objects.find(o=>o.kind==='mass'&&o.id===_cq.id);
+        assert('C11: 미니폼 — 천정판이 2300 에 떠 있다',!!_c3&&_c3.elev===2300&&_c3.meta.h_mm===300);
+      }else assert('C11: 3D (노드 테스트가 검증)',true);
+      // 패널 제목
+      selectObj('masses',_cq.id); refreshUI();
+      assert('C12: 속성 패널 제목이 천정',/천정 \(낮춤 판\)/.test(document.getElementById('detail-content').innerHTML));
+      STATE.masses=_cBak.m; STATE.ceilDrop=_cBak.cd; STATE.ceilMode=_cBak.cm;
+      STATE.spaces=STATE.spaces.filter(x=>x.id!==_csp.id);
+      renderAll();
+    }
+
     // [B] 2026-09-08 대표 지시 — 내력벽 = 해칭 전용 · 레이어 · 3D 배제
     _bw.wallType='bearing';
     assert('B01: 레이어에 내력벽이 있다 (기본 켜짐)',STATE.layers.bearing===true);

@@ -769,6 +769,11 @@ function endRect(){
   const minX=Math.min(start.x,current.x),maxX=Math.max(start.x,current.x);
   const minY=Math.min(start.y,current.y),maxY=Math.max(start.y,current.y);
   if(maxX-minX>=100&&maxY-minY>=100){
+    if(STATE.selectedTool==='ceil'){                             // 2026-09-09 천정 프리 — 사각형이 곧 천정판
+      drawState=null;drawGroup.destroyChildren();previewLayer.batchDraw();
+      makeCeilingMass([{x:minX,y:minY},{x:maxX,y:minY},{x:maxX,y:maxY},{x:minX,y:maxY}],'천정 프리 '+(maxX-minX)+'×'+(maxY-minY)+'mm');
+      return;
+    }
     // 2026-09-07: '매스' 도구(N)로 그렸으면 면 → Z 입력 → 자유 입체.
     //  '사각공간' 도구(R)는 종전대로 곧바로 공간을 만든다 — 뜻이 다른 두 가지다.
     if(STATE.selectedTool==='mass'||STATE.sketchMode===true){
@@ -2429,6 +2434,10 @@ stage.on('mousedown touchstart',e=>{
   const isMiddleClick=e.evt&&e.evt.button===1; // v5.5: 휠클릭 패닝
   if(isMiddleClick||STATE.selectedTool==='pan'){isPanning=true;panStart={x:pos.x,y:pos.y};if(e.evt) e.evt.preventDefault();return;}
   if(STATE.selectedTool==='rect'||STATE.selectedTool==='mass') startRect(pos);
+  else if(STATE.selectedTool==='ceil'){                          // 2026-09-09 천정 (대표 지시)
+    if(STATE.ceilMode==='free') startRect(pos);                  // 프리 — 직접 끌어 그린다
+    else { const mm=getMm(pos); ceilQuickAt(mm.x,mm.y); }        // 빠른작업 — 바닥 클릭 한 번
+  }
   else if(STATE.selectedTool==='circlespace') startCircleSpace(pos);
   // v5.5: wall은 mousedown으로 시작 안 함 (클릭+클릭 모드만)
   else if(STATE.selectedTool==='circle') startCircle(pos);
@@ -3178,7 +3187,7 @@ stage.on('mousemove touchmove',e=>{
     STATE.rotateState.lastAngle=curAngle;
     return;
   }
-  if((STATE.selectedTool==='rect'||STATE.selectedTool==='mass')&&isMouseDown) updateRect(pos);
+  if((STATE.selectedTool==='rect'||STATE.selectedTool==='mass'||(STATE.selectedTool==='ceil'&&STATE.ceilMode==='free'))&&isMouseDown) updateRect(pos);
   // v5.5: wall은 mousemove 미리보기를 cmdMode wall-len에서 처리
   else if(STATE.selectedTool==='circlespace'&&isMouseDown) updateCircleSpace(pos);
   else if(STATE.selectedTool==='circle'&&isMouseDown) updateCircle(pos);
@@ -3467,7 +3476,7 @@ stage.on('mouseup touchend',e=>{
     STATE.dragSnapGuides=null;drawSnapMarker(); // 2026-08-19: 정렬 가이드 제거
     return;
   }
-  if(STATE.selectedTool==='rect'||STATE.selectedTool==='mass'){
+  if(STATE.selectedTool==='rect'||STATE.selectedTool==='mass'||(STATE.selectedTool==='ceil'&&STATE.ceilMode==='free')){
     if(isClick&&drawState&&drawState.type==='rect'){
       // 클릭만 = 단계별 프롬프트 모드
       drawState.current=drawState.start;
@@ -4175,6 +4184,7 @@ document.addEventListener('keydown',e=>{
     case 'v':setTool('select');break;
     case 'r':if(STATE.selectedKind&&STATE.selectedId) rotateSelected();else setTool('rect');break;
     case 'n':setTool('mass');cmdToast('매스 — 바닥을 끌어 그리고 Z 높이를 넣으면 입체가 됩니다 (공간과 다른 자유 형상)');break; // 2026-09-07
+    case 'k':setTool('ceil');cmdToast('천정 — '+(STATE.ceilMode==='free'?'프리: 사각형을 끌어 그리세요':'빠른작업: 방(바닥)을 클릭하세요')+' · 좌측 패널에서 방식·낮춤');break; // 2026-09-09
     case 'g':setTool('circle');break;
     case 'p':setTool('polygon');break;
     case 'a':setTool('arc');break;  // v5.6: A = arc (단독)
@@ -4250,4 +4260,35 @@ document.addEventListener('keydown',e=>{
 });
 
 
+}
+
+// ---------------------------------------------------------------------------
+// 천정 도구 (2026-09-09 대표 지시 — "도구에 천정버튼, 속성에 프리와 빠른작업")
+//  천정판 = 매스다. 새 종류를 만들지 않은 이유: 매스는 이미 이동·회전·복제·undo·
+//  미니폼 입체·프리폼까지 전부 통한다. elev(띄움) = 천장고 - 낮춤 으로 천장에 매달고,
+//  ceil:true 표시만 달아 이름·색을 가른다. 견적에는 아무 영향 없다(매스 규약 그대로).
+// ---------------------------------------------------------------------------
+function ceilCHAt(x,y){
+  const sp=(STATE.spaces||[]).find(s=>s.polygon&&s.polygon.length>=3&&skPtInPoly({x,y},s.polygon));
+  return {sp, ch:(sp&&sp.ceilingHeight_mm)||STATE.ceilingHeight||2400};
+}
+function makeCeilingMass(polyAbs,label){
+  const c=skPolyCentroid(polyAbs);
+  const {ch}=ceilCHAt(c.x,c.y);
+  const drop=Math.max(50,Math.min(ch-50,Math.round(Number(STATE.ceilDrop)||300)));
+  const m=massFromPoly(polyAbs,drop,STATE);
+  m.ceil=true;
+  m.color='#D9CFBE';
+  m.elev_mm=ch-drop;                       // 천장에서 낮춤만큼 내려온 판
+  m.name='천정'+STATE.masses.filter(x=>x.ceil).length;
+  saveHistory();renderAll();refreshUI();
+  if(typeof selectObj==='function') selectObj('masses',m.id);
+  showStatus('⬒ '+(label||'천정')+' — 낮춤 '+drop+'mm (천장 '+ch+' → 판 밑면 '+(ch-drop)+') · 매스처럼 이동·수정');
+  if(typeof push3D==='function') push3D(true);
+  return m;
+}
+function ceilQuickAt(x,y){
+  const {sp}=ceilCHAt(x,y);
+  if(!sp){ cmdToast('빠른작업 — 방(바닥) 안을 클릭하세요. 바닥이 없으면 프리로 그리세요'); return null; }
+  return makeCeilingMass(sp.polygon.map(p=>({x:p.x,y:p.y})),'천정 빠른작업: '+(sp.name||'방'));
 }
