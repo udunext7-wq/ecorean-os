@@ -781,9 +781,57 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       if(map)setTimeout(function(){map.resize();},50);
     }
   }
+  // ⑤ 주소·장소 검색 — 브이월드 주소 API(도로명→지번) 실패 시 장소검색 폴백 (2026-09-09 대표 지시)
+  function addrPin(lng,lat,label){
+    try{
+      if(!map.getSource('ec-addr'))map.addSource('ec-addr',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+      if(!map.getLayer('ec-addr-pt'))map.addLayer({id:'ec-addr-pt',type:'circle',source:'ec-addr',
+        paint:{'circle-radius':9,'circle-color':'#e04a3a','circle-stroke-width':2.5,'circle-stroke-color':'#fff'}});
+      map.getSource('ec-addr').setData({type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[lng,lat]}}]});
+    }catch(e){}
+    new maplibregl.Popup({offset:12}).setLngLat([lng,lat]).setHTML('<div style="font-size:12px">📍 '+esc(label||'')+'</div>').addTo(map);
+    camAnimating=true;
+    map.flyTo({center:[lng,lat],zoom:16.8,pitch:55,duration:1800,essential:true});
+    map.once('moveend',function(){camAnimating=false;});
+    vw3dFlyTo(lng,lat); // 3D 실사 모드가 켜져 있으면 같이 이동
+  }
+  var addrBusy=false;
+  function addrSearch(q){
+    q=String(q||'').trim();
+    if(!q||addrBusy)return;
+    addrBusy=true;
+    var base='https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=EPSG:4326&key='+VW_KEY+'&domain=https://ecorean.net&address='+encodeURIComponent(q);
+    var fin=function(){addrBusy=false;};
+    var fail3=function(){fin();showMapNote('「'+q+'」 위치를 찾지 못했습니다 — 주소나 아파트명을 확인해 주세요');};
+    var tryPlace=function(){
+      var su='https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&type=place&size=1&key='+VW_KEY+'&domain=https://ecorean.net&query='+encodeURIComponent(q);
+      vwJsonp(su,function(d){
+        var it=d&&d.response&&d.response.status==='OK'&&d.response.result&&d.response.result.items&&d.response.result.items[0];
+        if(it&&it.point){fin();addrPin(+it.point.x,+it.point.y,it.title||q);}else fail3();
+      },fail3);
+    };
+    var tryType=function(type,next){
+      vwJsonp(base+'&type='+type,function(d){
+        var r=d&&d.response;
+        if(r&&r.status==='OK'&&r.result&&r.result.point){fin();addrPin(+r.result.point.x,+r.result.point.y,(r.refined&&r.refined.text)||q);}
+        else next();
+      },next);
+    };
+    tryType('ROAD',function(){tryType('PARCEL',tryPlace);});
+  }
   var extrasHooked=null;
   function ecExtras(){
     var tb=document.getElementById('mapToolbar'),note=document.getElementById('mapNote');
+    if(!document.getElementById('mapAddrIn')){
+      var ai=document.createElement('input');
+      ai.id='mapAddrIn';ai.type='search';ai.placeholder='주소·아파트명 검색';
+      ai.style.cssText='width:190px;padding:5px 8px;border:1px solid #cfc9bc;border-radius:8px;font-size:12.5px';
+      ai.addEventListener('keydown',function(ev){if(ev.key==='Enter')addrSearch(ai.value);});
+      var ab=document.createElement('button');
+      ab.id='mapAddrGo';ab.type='button';ab.textContent='📍 이동';
+      ab.addEventListener('click',function(){addrSearch(ai.value);});
+      tb.insertBefore(ai,note);tb.insertBefore(ab,note);
+    }
     if(!document.getElementById('mapAging')){
       var a=document.createElement('button');
       a.id='mapAging';a.type='button';a.textContent='🕰 노후도';
