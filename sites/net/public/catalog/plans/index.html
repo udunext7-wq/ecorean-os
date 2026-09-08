@@ -46,7 +46,8 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
 .map-toolbar .mn{font-size:11.5px;color:#8a5a1c;background:#fdf6ec;border:1px solid #f0dcc0;
   border-radius:7px;padding:6px 11px;display:none}
 .map-shell{display:flex;gap:10px;align-items:stretch}
-.map-shell #map{flex:1 1 auto;min-width:0;position:relative}
+.map-shell #map,.map-shell #vwMap{flex:1 1 auto;min-width:0;position:relative}
+#vwMap{display:none;border-radius:12px;background:#0b1020}
 .cx-index{flex:0 0 258px;width:258px;
   background:#fffdf8;border:1px solid #e2dccc;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.10);
   display:flex;flex-direction:column;overflow:hidden}
@@ -159,6 +160,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       <div class="il" id="cxIndexList"></div>
     </div>
     <div id="map" style="border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);background:#e8e6e0"></div>
+    <div id="vwMap"></div>
     <div class="cx-panel" id="cxPanel">
       <div class="cx-head">
         <button type="button" class="cx-x" id="cxClose">✕</button>
@@ -429,7 +431,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     for(i=0;i<layers.length;i++)if(layers[i].type==='symbol'&&layers[i].layout&&layers[i].layout['text-field']){labelId=layers[i].id;break;}
     var sat=styleMode==='sat'; // 위성 위에는 지붕 실사가 비치도록 차분한 회갈색·높은 불투명
     map.addLayer({
-      id:'ecorean-3d-buildings',type:'fill-extrusion',source:srcId,'source-layer':'building',minzoom:14,
+      id:'ecorean-3d-buildings',type:'fill-extrusion',source:srcId,'source-layer':'building',minzoom:14,maxzoom:15.4,
       paint:{
         'fill-extrusion-color':sat
           ?['interpolate',['linear'],['coalesce',['get','render_height'],12],0,'#c8c2b6',60,'#aaa294',150,'#8e8574']
@@ -465,6 +467,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
         'sky-horizon-blend':0.6,'horizon-fog-blend':0.7,'fog-ground-blend':0.85});
     }catch(e){/* 구버전 maplibre — 하늘 미지원이어도 지도는 정상 */}
     add3DBuildings();
+    ensureExtrasLayers(); // 실건물·가상건물 레이어 — 스타일 교체 시 소스가 사라지므로 재구성
     if(mapReady)placeMarkers(false); // 스타일 교체 시 소스가 초기화되므로 마커 레이어만 재구성
   }
   // 마커는 GeoJSON 소스 + GPU 레이어로 그린다.
@@ -572,6 +575,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       // 지형이 켜졌다 꺼지는 구간을 지나며 흔들리지 않도록, 날아가는 동안은 지형 전환을 멈춘다
       camAnimating=true;
       map.flyTo({center:[c.lng,c.lat],zoom:16.4,pitch:62,bearing:-20,duration:2000,curve:1.5,essential:true});
+      vw3dFlyTo(c.lng,c.lat); // 3D 실사 모드가 켜져 있으면 같은 단지로 카메라 이동
       map.once('moveend',function(){camAnimating=false;syncTerrain();});
     }
   }
@@ -646,6 +650,206 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     });
     document.getElementById('mapToolbar').insertBefore(t,document.getElementById('mapNote'));
   }
+  // ══ 브이월드 심화 기능 (2026-09-08 대표 지시: 3D 모형·정밀 건물정보·시뮬레이션) ══
+  // ① 실건물 3D: 데이터 API LT_C_BLDGINFO(JSONP — WFS 는 CORS 미허용) 로 실제 외곽·실측 높이.
+  //    확대(z≥15.2)에서 OSM 추정 건물을 국가 실측 건물로 교체한다.
+  // ② 노후도 모드: 사용승인일 → 경과년수 색상 (인테리어 영업 타깃 = 오래된 단지).
+  // ③ 가상건물: 신축 볼륨 검토용 — 클릭 배치, 층수 지정, 다시 클릭해 제거.
+  // ④ 3D 실사: 브이월드 WebGL 엔진(iframe — 로더가 document.write 를 써서 동적 주입 불가) 로
+  //    브이월드 사이트와 같은 텍스처 3D 건물·정밀 지형을 그대로 본다.
+  // ※ 일조·경관·가시권 분석은 브이월드 '사이트 전용' 기능으로 오픈API 미제공 — 가져올 수 없다.
+  var VW_USE={'01':'단독주택','02':'공동주택','03':'제1종근린생활시설','04':'제2종근린생활시설','05':'문화 및 집회시설','06':'종교시설','07':'판매시설','08':'운수시설','09':'의료시설','10':'교육연구시설','11':'노유자시설','12':'수련시설','13':'운동시설','14':'업무시설','15':'숙박시설','16':'위락시설','17':'공장','18':'창고시설','19':'위험물 저장·처리시설','20':'자동차 관련시설','21':'동물 및 식물 관련시설','22':'자원순환 관련시설','23':'교정·군사시설','24':'방송통신시설','25':'발전시설','26':'묘지 관련시설','27':'관광휴게시설','28':'장례시설','29':'야영장시설'};
+  var VW_STR={'11':'벽돌구조','12':'블록구조','13':'석구조','21':'철근콘크리트구조','31':'철골구조','32':'철골철근콘크리트구조','41':'목구조'};
+  function vwJsonp(url,ok,fail){
+    var cb='__vwcb'+Math.floor(Math.random()*1e9);
+    var sc=document.createElement('script');
+    var done=false;
+    window[cb]=function(d){done=true;try{ok(d);}finally{delete window[cb];sc.remove();}};
+    sc.onerror=function(){if(!done){delete window[cb];sc.remove();if(fail)fail();}};
+    sc.src=url+'&callback='+cb;
+    document.head.appendChild(sc);
+  }
+  var bldData={type:'FeatureCollection',features:[]}, bldBusy=false, bldLastKey='', agingOn=false;
+  function bldColor(){
+    return agingOn
+      ?['case',['<',['get','age_y'],0],'#9aa0a6',
+        ['interpolate',['linear'],['get','age_y'],3,'#3fae6a',12,'#9dc355',20,'#d8c24a',28,'#e0873d',36,'#d05a4a']]
+      :(styleMode==='sat'?'#c9c2b3':'#d9d2c2');
+  }
+  function ensureExtrasLayers(){
+    if(!map)return;
+    try{
+      if(!map.getSource('ec-bld'))map.addSource('ec-bld',{type:'geojson',data:bldData});
+      if(!map.getSource('ec-vbld'))map.addSource('ec-vbld',{type:'geojson',data:vbldData});
+      var labelId=null,ls=map.getStyle().layers||[];
+      for(var i=0;i<ls.length;i++)if(ls[i].type==='symbol'){labelId=ls[i].id;break;}
+      if(!map.getLayer('ec-bld-3d'))map.addLayer({id:'ec-bld-3d',type:'fill-extrusion',source:'ec-bld',minzoom:15.2,
+        paint:{'fill-extrusion-color':bldColor(),
+          'fill-extrusion-height':['get','h_m'],'fill-extrusion-base':0,'fill-extrusion-opacity':0.93}},labelId||undefined);
+      if(!map.getLayer('ec-vbld-3d'))map.addLayer({id:'ec-vbld-3d',type:'fill-extrusion',source:'ec-vbld',
+        paint:{'fill-extrusion-color':'#4a7fd0','fill-extrusion-height':['get','h_m'],'fill-extrusion-base':0,'fill-extrusion-opacity':0.55}},labelId||undefined);
+      map.setPaintProperty('ec-bld-3d','fill-extrusion-color',bldColor());
+    }catch(e){if(console&&console.warn)console.warn('bld layer:',e.message);}
+  }
+  function refreshBld(){
+    if(!map||!mapReady||camAnimating)return;
+    if(map.getZoom()<15.2)return;              // 광역에서는 OSM 추정 건물이 그린다
+    var b=map.getBounds();
+    var key=[b.getWest().toFixed(4),b.getSouth().toFixed(4),b.getEast().toFixed(4),b.getNorth().toFixed(4)].join(',');
+    if(key===bldLastKey||bldBusy)return;
+    bldBusy=true;
+    var url='https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LT_C_BLDGINFO'
+      +'&key='+VW_KEY+'&domain=ecorean.net&format=json&crs=EPSG:4326&size=1000'
+      +'&geomFilter=BOX('+b.getWest()+','+b.getSouth()+','+b.getEast()+','+b.getNorth()+')';
+    vwJsonp(url,function(d){
+      bldBusy=false;
+      var r=d&&d.response;
+      if(!r||r.status!=='OK'){if(r&&r.status==='NOT_FOUND'){bldLastKey=key;bldData={type:'FeatureCollection',features:[]};var s0=map.getSource('ec-bld');if(s0)s0.setData(bldData);}return;}
+      bldLastKey=key;
+      var fc=r.result&&r.result.featureCollection;
+      var fs=(fc&&fc.features)||[];
+      var now=Date.now();
+      for(var i=0;i<fs.length;i++){
+        var p=fs[i].properties||{};
+        var h=+p.height;
+        if(!(h>2))h=(+p.grnd_flr||2)*3.1+3;    // 높이 미기재 → 층수×3.1m (추정임을 팝업에 표시)
+        p.h_m=Math.round(h*10)/10;
+        p.age_y=-1;
+        if(p.useapr_day&&/^\d{8}$/.test(p.useapr_day)){
+          var t=Date.UTC(+p.useapr_day.slice(0,4),+p.useapr_day.slice(4,6)-1,+p.useapr_day.slice(6,8));
+          p.age_y=Math.round((now-t)/315576e5*10)/10;
+        }
+      }
+      bldData={type:'FeatureCollection',features:fs};
+      var s=map.getSource('ec-bld');if(s)s.setData(bldData);
+      if(+((r.record||{}).total)>1000)showMapNote('건물이 많아 1,000동까지만 표시 — 더 확대하면 전부 나옵니다');
+    },function(){bldBusy=false;});
+  }
+  function fmtDay(d){return d&&/^\d{8}$/.test(d)?d.slice(0,4)+'.'+d.slice(4,6)+'.'+d.slice(6,8):null;}
+  function bldPopupHtml(p){
+    var use=VW_USE[String(p.usability||'').slice(0,2)]||(p.usability?'용도코드 '+p.usability:null);
+    var str=VW_STR[String(p.strct_cd||'')]||(p.strct_cd?'구조코드 '+p.strct_cd:null);
+    var apr=fmtDay(p.useapr_day);
+    var rows=[];
+    var nm=p.bld_nm||p.dong_nm;if(nm)rows.push('<b>'+esc(nm)+'</b>');
+    rows.push('지상 '+(p.grnd_flr!=null?p.grnd_flr:'?')+'층'+(p.ugrnd_flr?' · 지하 '+p.ugrnd_flr+'층':'')
+      +' · 높이 '+p.h_m+'m'+(+p.height>2?'':' (층수 추정)'));
+    if(use)rows.push(use+(str?' · '+str:''));
+    if(apr)rows.push('사용승인 '+apr+(p.age_y>=0?' <b>('+p.age_y+'년 경과)</b>':''));
+    if(p.totalarea)rows.push('연면적 '+Math.round(p.totalarea)+'㎡'+(p.archarea?' · 건축면적 '+Math.round(p.archarea)+'㎡':''));
+    if(p.bc_rat||p.vl_rat)rows.push('건폐율 '+(p.bc_rat||'?')+'% · 용적률 '+(p.vl_rat||'?')+'%');
+    if(String(p.viol_bd_yn)==='1')rows.push('<b style="color:#c0392b">⚠ 위반건축물</b>');
+    return '<div style="font-size:12px;line-height:1.55">'+rows.join('<br>')+'</div>';
+  }
+  // ③ 가상건물
+  var vbldData={type:'FeatureCollection',features:[]}, vbldPlacing=false, vbldSeq=1;
+  function vbldAt(lng,lat,floors){
+    var dLat=5/111320, dLng=7/(111320*Math.cos(lat*Math.PI/180)); // 14×10m 발자국
+    return {type:'Feature',properties:{vid:vbldSeq++,h_m:floors*3.1,fl:floors},
+      geometry:{type:'Polygon',coordinates:[[[lng-dLng,lat-dLat],[lng+dLng,lat-dLat],[lng+dLng,lat+dLat],[lng-dLng,lat+dLat],[lng-dLng,lat-dLat]]]}};
+  }
+  // ④ 브이월드 WebGL 3D 실사 (iframe)
+  var vw3dOn=false, vw3dFrame=null, vw3dLast=null;
+  function vw3dSrcdoc(lng,lat){
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body,#vmap{margin:0;width:100%;height:100%;overflow:hidden}</style>'
+      +'<scr'+'ipt src="https://map.vworld.kr/js/webglMapInit.js.do?version=3.0&apiKey='+VW_KEY+'&domain=ecorean.net"></scr'+'ipt>'
+      +'</head><body><div id="vmap"></div><scr'+'ipt>'
+      +'var m3;function boot(){try{'
+      +'var o=new vw.MapOptions(vw.BasemapType.GRAPHIC,"",vw.DensityType.FULL,vw.DensityType.BASIC,false,'
+      +'new vw.CameraPosition(new vw.CoordZ('+lng+','+(lat-0.004)+',700),new vw.Direction(0,-55,0)),'
+      +'new vw.CameraPosition(new vw.CoordZ('+lng+','+(lat-0.004)+',700),new vw.Direction(0,-55,0)));'
+      +'m3=new vw.Map("vmap",o);'
+      +'}catch(e){parent.postMessage({vw3d:"fail",msg:String(e&&e.message||e)},"*");}}'
+      +'if(window.vw&&vw.Map)boot();else{var n=0,t=setInterval(function(){if(window.vw&&vw.Map){clearInterval(t);boot();}else if(++n>100){clearInterval(t);parent.postMessage({vw3d:"fail",msg:"엔진 로드 시간 초과"},"*");}},150);}'
+      +'window.addEventListener("message",function(ev){var d=ev.data||{};if(d.vw3d==="fly"&&m3){try{'
+      +'m3.moveTo(new vw.CameraPosition(new vw.CoordZ(d.lng,d.lat-0.004,700),new vw.Direction(0,-55,0)));'
+      +'}catch(e){}}});'
+      +'</scr'+'ipt></body></html>';
+  }
+  function vw3dFlyTo(lng,lat){
+    vw3dLast=[lng,lat];
+    if(vw3dOn&&vw3dFrame&&vw3dFrame.contentWindow)vw3dFrame.contentWindow.postMessage({vw3d:'fly',lng:lng,lat:lat},'*');
+  }
+  function vw3dToggle(){
+    vw3dOn=!vw3dOn;
+    var host=document.getElementById('vwMap'),mapEl=document.getElementById('map');
+    var btn=document.getElementById('mapVw3d');
+    if(vw3dOn){
+      var c=vw3dLast||[map?map.getCenter().lng:127.0,map?map.getCenter().lat:37.55];
+      if(!vw3dFrame){
+        vw3dFrame=document.createElement('iframe');
+        vw3dFrame.style.cssText='width:100%;height:100%;border:0;border-radius:12px;background:#0b1020';
+        vw3dFrame.srcdoc=vw3dSrcdoc(c[0],c[1]);
+        host.appendChild(vw3dFrame);
+        window.addEventListener('message',function(ev){
+          var d=ev.data||{};
+          if(d.vw3d==='fail'){showMapNote('브이월드 3D 엔진을 못 열었습니다 — '+(d.msg||''));}
+        });
+      }else vw3dFlyTo(c[0],c[1]);
+      mapEl.style.display='none';host.style.display='block';
+      if(btn)btn.textContent='🗺 지도로 돌아가기';
+      showMapNote('브이월드 실사 3D — 마우스 드래그 회전 · 휠 확대');
+    }else{
+      host.style.display='none';mapEl.style.display='';
+      if(btn)btn.textContent='🏙 3D 실사';
+      if(map)setTimeout(function(){map.resize();},50);
+    }
+  }
+  var extrasHooked=null;
+  function ecExtras(){
+    var tb=document.getElementById('mapToolbar'),note=document.getElementById('mapNote');
+    if(!document.getElementById('mapAging')){
+      var a=document.createElement('button');
+      a.id='mapAging';a.type='button';a.textContent='🕰 노후도';
+      a.addEventListener('click',function(){
+        agingOn=!agingOn;
+        a.textContent=agingOn?'🕰 노후도 끄기':'🕰 노후도';
+        try{map.setPaintProperty('ec-bld-3d','fill-extrusion-color',bldColor());}catch(e){}
+        if(agingOn){
+          showMapNote('준공 경과년수: 🟢10년↓ 🟡20년 🟠30년 🔴35년↑ · 회색=미상 (확대해야 표시)');
+          if(map.getZoom()<15.2)map.easeTo({zoom:15.6,duration:700});
+        }
+      });
+      tb.insertBefore(a,note);
+      var v=document.createElement('button');
+      v.id='mapVbld';v.type='button';v.textContent='🏗 가상건물';
+      v.addEventListener('click',function(){
+        vbldPlacing=!vbldPlacing;
+        v.textContent=vbldPlacing?'🏗 배치중 — 지도 클릭':'🏗 가상건물';
+        if(vbldPlacing)showMapNote('지도를 클릭하면 가상건물이 서고, 가상건물을 클릭하면 없어집니다');
+      });
+      tb.insertBefore(v,note);
+      var w=document.createElement('button');
+      w.id='mapVw3d';w.type='button';w.textContent='🏙 3D 실사';
+      w.addEventListener('click',vw3dToggle);
+      tb.insertBefore(w,note);
+    }
+    if(extrasHooked!==map){ // 지도 인스턴스가 재생성되면 리스너도 다시 단다
+      extrasHooked=map;
+      map.on('moveend',refreshBld);
+      map.on('zoomend',refreshBld);
+      map.on('click',function(e){
+        if(!vbldPlacing)return;
+        var hit=map.queryRenderedFeatures(e.point,{layers:map.getLayer('ec-vbld-3d')?['ec-vbld-3d']:[]});
+        if(hit.length){ // 가상건물 클릭 → 제거
+          var vid=hit[0].properties.vid;
+          vbldData.features=vbldData.features.filter(function(f){return f.properties.vid!==+vid;});
+        }else{
+          var n=parseInt(prompt('가상건물 층수? (14×10m 발자국)','5'),10);
+          if(!(n>0&&n<100))return;
+          vbldData.features.push(vbldAt(e.lngLat.lng,e.lngLat.lat,n));
+        }
+        var s=map.getSource('ec-vbld');if(s)s.setData(vbldData);
+      });
+      map.on('click','ec-bld-3d',function(e){
+        if(vbldPlacing||!e.features.length)return;
+        new maplibregl.Popup({maxWidth:'300px'}).setLngLat(e.lngLat).setHTML(bldPopupHtml(e.features[0].properties)).addTo(map);
+      });
+      map.on('mouseenter','ec-bld-3d',function(){map.getCanvas().style.cursor='pointer';});
+      map.on('mouseleave','ec-bld-3d',function(){map.getCanvas().style.cursor='';});
+      refreshBld();
+    }
+  }
   var styleSwitching=false;
   function switchStyle(){
     if(!map)return;
@@ -712,7 +916,7 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
       map.on('movestart',function(){camAnimating=true;});
       map.on('moveend',function(){camAnimating=false;});
       // 지형 전환은 더 이상 확대·이동에 물리지 않는다 (버튼으로만) — 위 주석 참조
-      map.on('load',function(){mapReady=true;placeMarkers();applyStyleToggleUI();});
+      map.on('load',function(){mapReady=true;placeMarkers();applyStyleToggleUI();ecExtras();});
       map.on('error',function(e){ // 타일 실패는 콘솔만, 스타일 실패는 되돌려서 알린다
         var msg=(e&&e.error&&e.error.message)||'';
         if(console&&console.warn)console.warn('map:',msg||e);
