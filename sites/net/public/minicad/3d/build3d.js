@@ -567,23 +567,80 @@ function buildPillar(p,D,spaces){
   else prims.push(box(0,0,0,w,h,H,C.concrete));
   return {id:p.id,kind:'pillar',name:'기둥',x:p.x,y:p.y,rot:num(p.rotation,0),flip:false,prims,elev:Math.round(num(p.elev_mm,0))};
 }
+// 방 기준축(OBB) — 2D 의 _polyFrameMm 과 같은 규칙: 가장 긴 변의 각도를 90° 로 접어 (-45,45]
+//  로 정규화. 축정렬 방은 deg=0. 계단 도식이 이 틀 위에 그려지므로 3D 도 같은 틀 위에 세운다.
+function stairFrameOf(poly){
+  let bestLen=-1,ang=0;
+  for(let i=0;i<poly.length;i++){
+    const a=poly[i],b=poly[(i+1)%poly.length];
+    const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+    if(len>bestLen){bestLen=len;ang=Math.atan2(dy,dx);}
+  }
+  let deg=ang*180/Math.PI;
+  deg=((deg%90)+90)%90; if(deg>45) deg-=90;
+  if(Math.abs(deg)<0.05) deg=0;
+  const r=-deg*Math.PI/180, cos=Math.cos(r), sin=Math.sin(r);
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  poly.forEach(p=>{
+    const x=p.x*cos-p.y*sin, y=p.x*sin+p.y*cos;
+    if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;
+  });
+  const cxL=(minX+maxX)/2, cyL=(minY+maxY)/2;
+  const r2=deg*Math.PI/180, c2=Math.cos(r2), s2=Math.sin(r2);
+  return {deg,w:maxX-minX,h:maxY-minY,cx:cxL*c2-cyL*s2,cy:cxL*s2+cyL*c2};
+}
+// 계단 (2026-09-08 대표 지적 "미니폼의 계단과 평면도 상의 계단 방향이 다르다")
+//  종전 3D 는 긴 변 방향으로 리저 180 규칙의 제멋대로 계단을 세웠다. 이제 2D 도식
+//  (spaceStairInfo/buildSpaceStairShape)의 규약을 그대로 따른다:
+//  · 같은 틀(방 OBB) · 같은 단수(트레드 280 규칙·stepCount) · rot 90° 단위·mirror 동일 변환
+//  · I 는 틀의 세로(lh)를 따라 오르고, L 은 참(모서리)·꺾임, U 는 위 참·왕복 — 전부 도식 그대로
+//  · 높은 쪽 = 도식에서 위(참 쪽). UP 이든 DN 이든 화살표만 다를 뿐 밟는 판의 높이 분포는 같다
+//    (UP 은 화살촉 쪽이, DN 은 출발 동그라미 쪽이 이 층 바닥과 만나는 높은 끝 — 같은 자리다)
 function buildStairs(s,D){
   const st=s.stair||{};
-  const bb=polyBBox(s.polygon);
-  const c=polyCentroid(s.polygon);
+  const fr=stairFrameOf(s.polygon);
+  if(!fr||fr.w<600||fr.h<600) return null;               // 2D 와 같은 최소 크기
   const floorH=Math.max(600,num(st.floorHeight_mm,2800));
-  const horizontal=bb.w>=bb.h;
-  const run=horizontal?bb.w:bb.h;
-  const W=Math.max(300,Math.min(num(st.width_mm,0)||(horizontal?bb.h:bb.w),horizontal?bb.h:bb.w));
-  const N=Math.max(2,Math.round(num(st.stepCount,0)||floorH/180));
-  const T=run/N, R=floorH/N;
+  const rot=(((Math.round(num(st.rot,0)/90)*90)%360)+360)%360;
+  const mir=!!st.mirror;
+  const swap=(rot===90||rot===270);
+  const lw=swap?fr.h:fr.w, lh=swap?fr.w:fr.h;
+  const x0=-lw/2, y0=-lh/2;
+  const type=(st.type==='L'||st.type==='U')?st.type:'I';
   const prims=[];
-  for(let i=0;i<N;i++){
-    const a=-run/2+T*i+T/2;
-    prims.push(horizontal?box(a,0,0,T,W,R*(i+1),C.wood):box(0,a,0,W,T,R*(i+1),C.wood));
+  // 2D _xformShape 와 같은 변환: 미러(x→-x) 먼저, 그다음 90° 단위 회전
+  const tx=(x,y)=>{ if(mir)x=-x;
+    if(rot===90)return[-y,x]; if(rot===180)return[-x,-y]; if(rot===270)return[y,-x]; return[x,y]; };
+  const put=(cx,cy,w,d,h)=>{ const [X,Y]=tx(cx,cy);
+    prims.push(box(Math.round(X),Math.round(Y),0,swap?d:w,swap?w:d,Math.round(h),C.wood)); };
+  let N;
+  if(type==='I'){
+    N=Math.max(2,Math.round(num(st.stepCount,0)||lh/280));
+    const T=lh/N, R=floorH/N;
+    for(let j=0;j<N;j++) put(0,y0+T*(j+0.5),lw,T,R*(N-j));   // 위(-y)가 높은 쪽
+  }else if(type==='L'){
+    const W=Math.max(300,Math.min(Math.round(num(st.width_mm,0)||Math.min(lw,lh)*0.5),Math.min(lw,lh)-300));
+    const LA=lh-W, LB=lw-W;
+    N=Math.max(2,Math.round(num(st.stepCount,0)||(LA+LB)/280));
+    const N1=Math.max(1,Math.min(N-1,Math.round(num(st.splitCount,0)||N*LA/(LA+LB))));
+    const N2=N-N1, T1=LA/N1, T2=LB/N2, R=floorH/N;
+    for(let i=0;i<N1;i++) put(x0+W/2,y0+W+T1*(i+0.5),W,T1,R*(N1-i));   // 세로 플라이트 — 참에 붙을수록 높다
+    put(x0+W/2,y0+W/2,W,W,R*N1);                                        // 참 (좌상 모서리)
+    for(let i=0;i<N2;i++) put(x0+W+T2*(i+0.5),y0+W/2,T2,W,R*(N1+1+i)); // 가로 플라이트 — 바깥이 제일 높다
+  }else{
+    const W=lw/2;
+    const L0=Math.max(300,Math.min(Math.round(num(st.width_mm,0)||lw/2),Math.round(lh*0.5)));
+    const LF=lh-L0;
+    N=Math.max(2,Math.round(num(st.stepCount,0)||2*LF/280));
+    const N1=Math.max(1,Math.min(N-1,Math.round(num(st.splitCount,0)||N/2)));
+    const N2=N-N1, T1=LF/N1, T2=LF/N2, R=floorH/N;
+    for(let i=0;i<N1;i++) put(x0+W/2,y0+L0+T1*(i+0.5),W,T1,R*(N1-i));      // 왼 플라이트 — 참 쪽이 높다
+    put(0,y0+L0/2,lw,L0,R*N1);                                              // 참 (위 전체)
+    for(let i=0;i<N2;i++) put(x0+W*1.5,y0+L0+T2*(i+0.5),W,T2,R*(N1+1+i));  // 오른 — 아래 바깥이 제일 높다
   }
-  return {id:s.id+'_stair',kind:'stair',name:(s.name||'계단')+' '+N+'단',x:c.x,y:c.y,rot:num(st.rot,0),flip:false,prims,
-    meta:{approx:true,type:st.type||'I'}};
+  return {id:s.id+'_stair',kind:'stair',name:(s.name||'계단')+' '+N+'단',
+    x:Math.round(fr.cx),y:Math.round(fr.cy),rot:fr.deg,flip:false,prims,   // 방이 돌아가면 계단도 (2D 와 동일)
+    meta:{type,N,frame:{w:fr.w,h:fr.h,deg:fr.deg}}};
 }
 function ceilAt(o,D,spaces){
   const sp=(o.spaceId&&spaces.find(s=>s.id===o.spaceId))||spaces.find(s=>pointInPoly(o,s.polygon));
@@ -813,7 +870,7 @@ function buildFloorScene(D,libs){
     objects.push(buildCeiling(s,D));
     const c=polyCentroid(s.polygon);
     labels.push({id:s.id,x:c.x,y:c.y,z:1100,text:s.name||s.type||''});
-    if(s.type==='STAIRS') objects.push(buildStairs(s,D));
+    if(s.type==='STAIRS'){ const stb=buildStairs(s,D); if(stb) objects.push(stb); }
   });
   // 벽 + 개구부 — 정렬 오프셋을 먼저 전부 구해 두어야 모서리 메움이 이웃 몸체를 볼 수 있다
   const offs={}; D.walls.forEach(w=>{ if(!w.isLine) offs[w.id]=wallAlignOffset(w,D); });
