@@ -676,6 +676,17 @@ ck(/FF\._gidMap/.test(v3Src),'프리폼⑤: 그룹 복사는 새 그룹으로 (�
 ck(/gid:m\.gid\|\|null/.test(b3Src),'프리폼⑤: 조립이 gid 를 실어 준다');
 ck(/_ffCompsPal/.test(v3Src)&&/data-comp/.test(v3Src),'프리폼⑤: 구성요소 칸에 내 컴포넌트·스탬프');
 ck(/ST\.stampComp/.test(v3Src),'프리폼⑤: 클릭 스탬프 모드 (Esc=끝)');
+// 독립 프리폼 계약 (2026-09-08 대표 지시 "허브 설계견적 미니캐드 밑에 프리폼")
+ck(/FF_STANDALONE=\/\[\?&\]ff=1\//.test(v3Src),'독립 프리폼: ?ff=1 로 판별');
+ck(/독립 프리폼 — 연동 뷰가 없습니다/.test(v3Src),'독립 프리폼: 연동 뷰로 못 나간다');
+{
+  const hubSrc = fs.readFileSync(path.join(__dirname, '..', 'sites/net/app/hub/page.tsx'), 'utf8');
+  ck(/href: '\/freeform\/'/.test(hubSrc)&&/프리폼/.test(hubSrc),'독립 프리폼: 허브 설계·견적에 항목');
+  const iMc=hubSrc.indexOf("'/minicad/'"), iFf=hubSrc.indexOf("'/freeform/'");
+  ck(iMc>=0&&iFf>iMc&&iFf-iMc<200,'독립 프리폼: MiniCAD 바로 아래');
+  const vjson = fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8');
+  ck(/"\/freeform\(\/\.\*\)\?"/.test(vjson)&&/minicad\/3d\/\?ff=1/.test(vjson),'독립 프리폼: /freeform 라우트');
+}
 // 파랑 축 · 면 스냅 계약 (2026-09-08 대표 지적 "파랑축으로는 작동이 안 된다")
 ck(/파랑 축 — 위로 그립니다/.test(v3Src),'파랑 축: 땅 선에서 ↑ = 세로 종이로 올라탄다');
 ck(/function _ff3Lock/.test(v3Src)&&/op\.axis==='u'\?/.test(v3Src),'파랑 축: 면 위 선에 u/v 축 고정');

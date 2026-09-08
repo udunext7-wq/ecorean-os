@@ -1283,6 +1283,10 @@ function ff3Commit(exact){
 //  같은 코드가 같은 답을 낸다. 도구·스냅·VCB·그립은 한 벌 그대로 두 모드를 섬긴다.
 // ---------------------------------------------------------------------------
 const FF_SCHEMA='ECOREAN.FreeForm.v1';
+// 독립 프리폼 (2026-09-08 대표 지시 "허브에서 설계견적 미니캐드 밑에 프리폼이라는 3d모델링")
+//  /freeform → /minicad/3d/?ff=1. 평면 없이 곧장 자유 모델로 부팅하고, 연동 뷰로는 못 나간다.
+//  미니캐드가 다른 탭에 열려 있으면 평면 갱신이 받아져 [평면 다시 불러오기]로 밑그림을 깔 수 있다.
+const FF_STANDALONE=/[?&]ff=1/.test(location.search);
 let FF=null;   // {base, free:{sketchPts,sketchEdges,sketchFaces,masses}, hist, histPos, group, planLatest, planDirty}
 function ffCtx(){ return {ch:(ST.built&&ST.built.ceilH)||2400,fh:2800,fl:0}; }
 const FF_PLACE=['furniture','fixtures','lights','electric','hvac'];   // 프리폼 스테이징 배치물
@@ -1701,6 +1705,11 @@ function ffEnter(opts){
 }
 function ffExit(){
   if(!ST.ffOn) return;
+  if(FF_STANDALONE){
+    ffAutosave();
+    setStatus(true,'🧊 독립 프리폼 — 연동 뷰가 없습니다. 평면과 함께 쓰려면 미니캐드에서 미니폼을 여세요');
+    return;
+  }
   ffAutosave();
   const latest=FF&&FF.planLatest;
   if(FF&&FF.group) disposeGroup(FF.group);
@@ -4078,6 +4087,17 @@ function loop(now){
 requestAnimationFrame(loop);
 
 connect();
+if(FF_STANDALONE){
+  const EMPTY={schema:'ECOREAN.FloorPlan.v5.9',
+    meta:{project:'프리폼',ceilingHeight_mm:2400,wallThickness:100},
+    vertices:[],spaces:[],walls:[],openings:[],furniture:[],fixtures:[],lights:[],electric:[],hvac:[],pillars:[],
+    sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[]};
+  acceptDoc({at:Date.now(),data:EMPTY},'stored');
+  ffEnter();                                    // 저장본이 있으면 밑그림·자유 층 그대로 복원
+  document.title='프리폼 — 3D 모델링';
+  const _bt=document.querySelector('.mtitle'); if(_bt) _bt.textContent='🧊 프리폼';
+  setStatus(true,'🧊 독립 프리폼 — 여기서 만든 것은 여기 저장됩니다 (파일 ▸ 프리폼 파일 저장/열기 · 미니캐드가 열려 있으면 평면 다시 불러오기로 밑그림)');
+}
 if(!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
 // 테스트·디버그 훅
 window.MC3DVIEW={ST,scene,THREE,get camera(){return camera;},renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,

@@ -26,6 +26,7 @@
       "status": 308,
       "headers": { "Location": "/$1/" }
     },
+    { "src": "/freeform(/.*)?", "status": 308, "headers": { "Location": "/minicad/3d/?ff=1" } },
     {
       "src": "/(minicad|estimate|estform)(/.*)?",
       "missing": [
