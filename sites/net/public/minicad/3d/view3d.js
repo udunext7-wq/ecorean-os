@@ -1707,7 +1707,7 @@ function ffExit(){
   if(!ST.ffOn) return;
   if(FF_STANDALONE){
     ffAutosave();
-    setStatus(true,'🧊 독립 프리폼 — 연동 뷰가 없습니다. 평면과 함께 쓰려면 미니캐드에서 미니폼을 여세요');
+    setStatus(true,'🧊 단독 프리폼 — 미니캐드와 연결되지 않습니다');
     return;
   }
   ffAutosave();
@@ -1725,6 +1725,7 @@ function ffExit(){
   setStatus(true,'연동 뷰 복귀 — 여기서 고치면 평면에 반영 (프리폼은 저장돼 있습니다: 파일 ▸ 프리폼 모드)');
 }
 function ffRebase(){
+  if(FF_STANDALONE){ setStatus(true,'🧊 단독 프리폼 — 미니캐드와 연결되지 않습니다'); return; }
   if(!ST.ffOn||!FF) return;
   if(!FF.planLatest){ setStatus(true,'🧊 굳힌 뒤 바뀐 평면이 없습니다'); return; }
   FF.base=JSON.parse(JSON.stringify(FF.planLatest.data!==undefined?FF.planLatest.data:FF.planLatest));
@@ -3799,6 +3800,7 @@ function screenshot(){
 }
 function saveFeedback(){ // Ctrl+S = 평면(미니캐드) 저장 — 3D 는 평면의 뷰이므로 저장은 평면이 한다
   if(ST.ffOn){ ffAutosave(); setStatus(true,'🧊 프리폼 저장(브라우저 자동) — 파일로는 파일 ▸ 프리폼 파일 저장'); return; }
+  if(FF_STANDALONE) return;                     // 단독 — 평면 저장 요청을 보낼 곳이 없다
   if(!chan){ setStatus(false,'MiniCAD 창이 없어 저장 요청 불가 (PNG 는 Ctrl+Shift+S)'); return; }
   chan.postMessage({type:'save',at:Date.now()});
   setStatus(statusLive,'💾 저장 요청 → 미니캐드 (PNG 는 Ctrl+Shift+S)');
@@ -3814,6 +3816,7 @@ function acceptDoc(payload,src){
   const doc=payload&&payload.data?payload.data:payload;
   if(!doc||typeof doc!=='object') return false;
   if(ST.ffOn){                                              // 프리폼: 평면 갱신은 받아만 둔다
+    if(FF_STANDALONE) return false;                         // 단독 — 받지도, 알리지도 않는다
     if(FF){ FF.planLatest=payload; FF.planDirty=true; }
     setStatus(true,'🧊 프리폼 · ⚠ 평면이 바뀌었습니다 — 파일 ▸ 평면 다시 불러오기 (밑그림만 갱신·자유 층 유지)');
     return false;
@@ -3850,7 +3853,10 @@ function connect(){
   };
   chan.postMessage({type:'hello',at:Date.now(),proto:MF_PROTO});
 }
-window.addEventListener('storage',e=>{ if(e.key==='minicad.3d.doc'&&e.newValue){ try{acceptDoc(JSON.parse(e.newValue),'live');}catch(_){} } });
+window.addEventListener('storage',e=>{
+  if(FF_STANDALONE) return;                    // 단독 프리폼 — 평면을 받지 않는다
+  if(e.key==='minicad.3d.doc'&&e.newValue){ try{acceptDoc(JSON.parse(e.newValue),'live');}catch(_){} }
+});
 
 // ---------------------------------------------------------------------------
 // X-ray · 아웃라이너 · 장면 (스케치업 View▸Face Style▸X-ray · Outliner · Scenes)
@@ -4086,7 +4092,7 @@ function loop(now){
 }
 requestAnimationFrame(loop);
 
-connect();
+if(!FF_STANDALONE) connect();   // 단독 프리폼은 미니캐드와 연결하지 않는다 (2026-09-08 대표 지시)
 if(FF_STANDALONE){
   const EMPTY={schema:'ECOREAN.FloorPlan.v5.9',
     meta:{project:'프리폼',ceilingHeight_mm:2400,wallThickness:100},
@@ -4096,7 +4102,11 @@ if(FF_STANDALONE){
   ffEnter();                                    // 저장본이 있으면 밑그림·자유 층 그대로 복원
   document.title='프리폼 — 3D 모델링';
   const _bt=document.querySelector('.mtitle'); if(_bt) _bt.textContent='🧊 프리폼';
-  setStatus(true,'🧊 독립 프리폼 — 여기서 만든 것은 여기 저장됩니다 (파일 ▸ 프리폼 파일 저장/열기 · 미니캐드가 열려 있으면 평면 다시 불러오기로 밑그림)');
+  // 미니캐드 관련 메뉴·버튼은 단독에서 뜻이 없다 — 걷어낸다
+  ['[data-cmd="reload"]','[data-cmd="ff-rebase"]','#b-reload','#mi-ff','[data-cmd="save"]'].forEach(sel=>{
+    const el=document.querySelector(sel); if(el) el.style.display='none';
+  });
+  setStatus(true,'🧊 단독 프리폼 — 미니캐드와 연결되지 않습니다. 여기서 만든 것은 여기 저장 (파일 ▸ 프리폼 파일 저장/열기)');
 }
 if(!FF_STANDALONE&&!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
 // 독립 프리폼은 위에서 이미 부팅했다 — 이 폴백이 '연결 대기' 안내를 되살리면 안 된다

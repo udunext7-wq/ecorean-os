@@ -678,7 +678,10 @@ ck(/_ffCompsPal/.test(v3Src)&&/data-comp/.test(v3Src),'프리폼⑤: 구성요�
 ck(/ST\.stampComp/.test(v3Src),'프리폼⑤: 클릭 스탬프 모드 (Esc=끝)');
 // 독립 프리폼 계약 (2026-09-08 대표 지시 "허브 설계견적 미니캐드 밑에 프리폼")
 ck(/FF_STANDALONE=\/\[\?&\]ff=1\//.test(v3Src),'독립 프리폼: ?ff=1 로 판별');
-ck(/독립 프리폼 — 연동 뷰가 없습니다/.test(v3Src),'독립 프리폼: 연동 뷰로 못 나간다');
+ck(/단독 프리폼 — 미니캐드와 연결되지 않습니다/.test(v3Src),'단독 프리폼: 연동 뷰로 못 나간다');
+ck(/if\(!FF_STANDALONE\) connect\(\)/.test(v3Src),'단독 프리폼: 미니캐드 채널을 아예 안 연다 (대표 지시)');
+ck(/if\(FF_STANDALONE\) return false;\s*\/\/ 단독 — 받지도, 알리지도 않는다/.test(v3Src),
+  '단독 프리폼: 평면이 어떻게 와도 무시');
 {
   const hubSrc = fs.readFileSync(path.join(__dirname, '..', 'sites/net/app/hub/page.tsx'), 'utf8');
   ck(/href: '\/freeform\/'/.test(hubSrc)&&/프리폼/.test(hubSrc),'독립 프리폼: 허브 설계·견적에 항목');
