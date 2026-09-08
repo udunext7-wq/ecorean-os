@@ -647,6 +647,7 @@ function massToSolid(m,ctx){
 // 각기둥으로 되돌릴 수 있으면 되돌린다 (윗면 높이가 다시 다 같아졌을 때)
 function massTryPrism(m,ctx){
   if(!m||massIsPrism(m)) return m;
+  if(m.open) return m;                               // 면을 지운 열린 껍질은 각기둥으로 되돌리지 않는다 (4차)
   const N=(m.pts||[]).length;
   if(!N||m.solidVerts.length!==N*2) return m;
   for(let i=0;i<N;i++){
@@ -1624,6 +1625,58 @@ function massFaceInfo(m,lp,ln,ctx){
   return best;
 }
 
+// ---------------------------------------------------------------------------
+// 스케치업 100% 4차 (2026-09-08) — 면·모서리 단위 편집 (그룹 안으로 들어가 면을 잡는다)
+//  면·모서리는 인덱스가 아니라 **로컬 좌표**로 가리킨다 (각기둥↔다면체 변환에도 살아남는다)
+// ---------------------------------------------------------------------------
+function _massVIdx(m,pt,ctx){ const verts=_massNumVerts(m,ctx); let bi=-1,bd=1.5; verts.forEach((v,i)=>{ const d=Math.hypot(v.x-pt.x,v.y-pt.y,v.z-pt.z); if(d<bd){ bd=d; bi=i; } }); return bi; }
+// 클릭한 면의 고리(로컬)·법선·면적 — 원본은 건드리지 않는다
+function massFaceRing(m,lp,ln,ctx){
+  const S=massSolid(m,ctx);
+  let best=null,bd=25;
+  S.faces.forEach((f,fi)=>{ const n=f.n||faceNormal(S.verts,f.vs); if(_vDot(n,ln)<0.8) return; const d=Math.abs(_vDot(_vSub(lp,S.verts[f.vs[0]]),n)); if(d<bd){ bd=d; best={fi,ring:f.vs.map(i=>S.verts[i]),n,role:f.role,area:faceArea3(S.verts,f.vs)/1e6,mat:f.mat||null}; } });
+  return best;
+}
+// 모든 모서리 (로컬, 중복 제거)
+function massEdges(m,ctx){
+  const S=massSolid(m,ctx); const seen=new Set(); const out=[];
+  S.faces.forEach(f=>{ for(let i=0;i<f.vs.length;i++){ const a=f.vs[i],b=f.vs[(i+1)%f.vs.length]; const k=Math.min(a,b)+'_'+Math.max(a,b); if(seen.has(k)) continue; seen.add(k); out.push({a:S.verts[a],b:S.verts[b]}); } });
+  return out;
+}
+// 꼭짓점들을 (로컬 좌표로 지정) 옮긴다 — 면 이동·모서리 이동·꼭짓점 이동 공용
+function massMoveVerts(m,pts,d,ctx){
+  const dx=Math.round(Number(d.x)||0),dy=Math.round(Number(d.y)||0),dz=Math.round(Number(d.z)||0);
+  if(!dx&&!dy&&!dz) return null;
+  massToSolid(m,ctx);
+  const idx=new Set(); pts.forEach(p=>{ const i=_massVIdx(m,p,ctx); if(i>=0) idx.add(i); });
+  if(!idx.size) return null;
+  idx.forEach(i=>{ const v=m.solidVerts[i]; v.x=Math.round(v.x+dx); v.y=Math.round(v.y+dy); v.z=Math.round(zNum(v.z,ctx)+dz); });
+  _massNormalize(m,ctx);
+  return {n:idx.size};
+}
+// 면 삭제 — 열린 껍질이 된다 (스케치업과 같다). 열린 뒤엔 각기둥으로 되돌리지 않는다.
+function massDeleteFace(m,lp,ln,ctx){
+  const f=massFindFace(m,lp,ln,ctx); if(!f) return null;
+  m.solidFaces.splice(f.fi,1); m.open=true;
+  _massDropOrphans(m); return {fi:f.fi};
+}
+function _massDropOrphans(m){
+  const used=new Set(); m.solidFaces.forEach(f=>f.vs.forEach(i=>used.add(i)));
+  if(used.size===m.solidVerts.length) return;
+  const map=new Map(); const nv=[]; m.solidVerts.forEach((v,i)=>{ if(used.has(i)){ map.set(i,nv.length); nv.push(v); } });
+  m.solidVerts=nv; m.solidFaces.forEach(f=>{ f.vs=f.vs.map(i=>map.get(i)); });
+}
+// 모서리 삭제 — 그 모서리를 가진 면들이 함께 사라진다 (스케치업)
+function massDeleteEdge(m,a,b,ctx){
+  massToSolid(m,ctx); const ia=_massVIdx(m,a,ctx), ib=_massVIdx(m,b,ctx); if(ia<0||ib<0) return null;
+  const before=m.solidFaces.length;
+  m.solidFaces=m.solidFaces.filter(f=>!(f.vs.includes(ia)&&f.vs.includes(ib)));
+  if(m.solidFaces.length===before) return null;
+  m.open=true; _massDropOrphans(m); return {removed:before-m.solidFaces.length};
+}
+// 면 뒤집기 (Reverse Faces)
+function massReverseFace(m,lp,ln,ctx){ const f=massFindFace(m,lp,ln,ctx); if(!f) return null; f.face.vs.reverse(); f.face.roleFix=null; m.open=true; return {fi:f.fi}; }
+
 if(typeof module!=='undefined'&&module.exports){
   module.exports={zIsRef,zNum,zSet,zLabel,facePlanarDev,massHeal,splitFoldedRing,faceNormal,faceRole,faceFacing,faceTiltDeg,faceArea3,faceCentroid3,
     zEdit,massIsPrism,massSolid,massToSolid,massTryPrism,massVertZ,massSetTop,massQuantities,massVolume,massTopZ,
@@ -1633,5 +1686,6 @@ if(typeof module!=='undefined'&&module.exports){
     sweepProfile,massFromSweep,moldingProfile,
     massCSG,earTriangles,csgMergeFaces,massToCsgPolys,massFromCsgFaces,csgUnion,csgSubtract,csgIntersect,
     massFindFace,massPushFace,massExtrudeFaceNew,massVertXY,massRotate3,massFlip,massScaleAbout,massLocalBox,massFaceInfo,
+    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

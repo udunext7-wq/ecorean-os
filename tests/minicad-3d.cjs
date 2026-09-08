@@ -145,9 +145,16 @@ ck(byId('e1').prims[0].z === 1200 && byId('e1').rot === 90, '스위치 z1200 회
 ck(byId('h1').prims[0].z === 2400 - 45, '4way 천장 붙임');
 // 기둥
 ck(byId('p1').prims[0].h === 2400 && byId('p1').prims[0].w === 500, '기둥 500×500×2400');
-// 계단 — 15단(2800/180≈15.6 → 16)
+// 계단 — 2026-09-08: 평면 도식과 같은 규약. 3000×1000 방, I형:
+//  단수 = lh/280 = 1000/280 ≈ 4단 (2D 도식과 동일), 위(-y)가 높은 쪽, 최상단 = 층높이
 const st = byId('sp3_stair');
-ck(st && st.prims.length === Math.round(2800 / 180) && st.prims[st.prims.length - 1].h === 2800, '계단 단수·최상단 높이: ' + (st && st.prims.length));
+ck(st && st.prims.length === 4, '계단 단수 = 평면 도식과 동일 (1000/280→4): ' + (st && st.prims.length));
+ck(st && Math.max(...st.prims.map(p => p.h)) === 2800, '최상단 = 층높이 2800');
+{
+  const tall = st.prims.reduce((a, b) => (b.h > a.h ? b : a));
+  const low = st.prims.reduce((a, b) => (b.h < a.h ? b : a));
+  ck(tall.y < low.y, '높은 단이 도식의 위(-y) 쪽 — 평면 화살표와 같은 방향: ' + tall.y + ' < ' + low.y);
+}
 
 // 문서 형식 두 가지: {data:{...}} 래핑도 받는다
 const S2 = MC3D.buildScene({ at: 1, data: doc }, LIBS);
@@ -675,6 +682,47 @@ ck(/FF\._gidMap/.test(v3Src),'프리폼⑤: 그룹 복사는 새 그룹으로 (�
 ck(/gid:m\.gid\|\|null/.test(b3Src),'프리폼⑤: 조립이 gid 를 실어 준다');
 ck(/_ffCompsPal/.test(v3Src)&&/data-comp/.test(v3Src),'프리폼⑤: 구성요소 칸에 내 컴포넌트·스탬프');
 ck(/ST\.stampComp/.test(v3Src),'프리폼⑤: 클릭 스탬프 모드 (Esc=끝)');
+// ---- 2026-09-08 계단 — 평면 도식과 같은 규약 (대표 지적 "방향이 다르다") ------------
+//  I 는 틀의 위(-y)가 높고, L 은 좌상 참·가로 바깥이 최고, U 는 위 참·오른 아래가 최고.
+//  rot 는 90° 단위 도식 회전, mirror 는 x 반전, 방이 돌면(OBB) 계단도 함께 돈다.
+{
+  const mkStair=(poly,stair)=>{
+    const d={schema:'x',meta:{ceilingHeight_mm:2400},vertices:[],walls:[],openings:[],furniture:[],fixtures:[],
+      lights:[],electric:[],hvac:[],pillars:[],sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],
+      spaces:[{id:'st1',name:'계단',type:'STAIRS',polygon:poly,stair,holes:[]}]};
+    return MC3D.buildScene(d,{}).objects.find(o=>o.kind==='stair');
+  };
+  const rect=(x,y,w,h)=>[{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];
+  const tallOf=st=>st.prims.reduce((a,b)=>b.h>a.h?b:a);
+  const lowOf=st=>st.prims.reduce((a,b)=>b.h<a.h?b:a);
+  const s1=mkStair(rect(0,0,1200,4200),{type:'I',floorHeight_mm:2800});
+  ck(s1&&s1.prims.length===15&&Math.max(...s1.prims.map(p=>p.h))===2800,
+    'S1 I: 단수 15 = 도식(4200/280) · 최고 2800: '+(s1&&s1.prims.length));
+  ck(tallOf(s1).y<lowOf(s1).y&&Math.abs(tallOf(s1).x)<1,'S1 I: 높은 단이 위(-y)');
+  const s2=mkStair(rect(0,0,3000,2000),{type:'I',floorHeight_mm:2800,rot:90});
+  ck(tallOf(s2).x>0&&Math.abs(tallOf(s2).y)<1&&lowOf(s2).x<0,'S2 rot90: 높은 단이 +x: '+tallOf(s2).x);
+  const s3=mkStair(rect(0,0,3000,3000),{type:'L',floorHeight_mm:2800});
+  const land3=s3.prims.find(p=>Math.abs(p.w-p.d)<1&&p.w>=1000);
+  ck(land3&&land3.x<0&&land3.y<0,'S3 L: 참이 좌상(-x,-y): '+land3.x+','+land3.y);
+  const s3m=mkStair(rect(0,0,3000,3000),{type:'L',floorHeight_mm:2800,mirror:true});
+  const land3m=s3m.prims.find(p=>Math.abs(p.w-p.d)<1&&p.w>=1000);
+  ck(land3m&&land3m.x>0&&land3m.y<0,'S3 L mirror: 참이 우상(+x,-y)');
+  ck(Math.max(...s3.prims.map(p=>p.h))===2800&&tallOf(s3).x>0&&Math.abs(tallOf(s3).y-land3.y)<1,
+    'S4 L: 최고단은 가로 바깥(참 줄), 2800');
+  const s5=mkStair(rect(0,0,2400,4000),{type:'U',floorHeight_mm:2800});
+  const land5=s5.prims.find(p=>p.w>=2300);
+  ck(land5&&land5.y<0,'S5 U: 참이 위(-y) 전체 폭');
+  ck(tallOf(s5).x>0&&tallOf(s5).y>0&&lowOf(s5).x<0&&lowOf(s5).y>0,'S5 U: 최고=오른 아래 · 최저=왼 아래');
+  const th=30*Math.PI/180,c30=Math.cos(th),s30=Math.sin(th);
+  const rp=rect(0,0,1200,4200).map(p=>({x:Math.round(p.x*c30-p.y*s30),y:Math.round(p.x*s30+p.y*c30)}));
+  const s6=mkStair(rp,{type:'I',floorHeight_mm:2800});
+  ck(s6&&Math.abs(s6.rot-30)<0.5,'S6 회전 방: obj.rot=30 (2D 그룹 회전과 동일): '+(s6&&s6.rot));
+  ck(mkStair(rect(0,0,500,4000),{type:'I'})===undefined,'S7 좁은 방: 계단 없음 (2D 와 동일)');
+  const s8u=mkStair(rect(0,0,1200,4200),{type:'I',floorHeight_mm:2800,upDir:'up'});
+  const s8d=mkStair(rect(0,0,1200,4200),{type:'I',floorHeight_mm:2800,upDir:'down'});
+  ck(JSON.stringify(s8u.prims)===JSON.stringify(s8d.prims),'S8 upDir: 높이 분포 동일 (표기만 다름)');
+}
+
 // 독립 프리폼 계약 (2026-09-08 대표 지시 "허브 설계견적 미니캐드 밑에 프리폼")
 ck(/FF_STANDALONE=\/\[\?&\]ff=1\//.test(v3Src),'독립 프리폼: ?ff=1 로 판별');
 ck(/단독 프리폼 — 미니캐드와 연결되지 않습니다/.test(v3Src),'단독 프리폼: 연동 뷰로 못 나간다');
@@ -697,6 +745,9 @@ ck(/function ffStandaloneShell/.test(v3Src)&&/ffStandaloneShell\(\);/.test(v3Src
 ['scale','scaleall','sweep','massfrompoly','mkcomp','compupdate','facemat','solid','pushface','setxy','rotate3','flip','massfromfaces'].forEach(op=>ck(new RegExp("case '"+op+"': \{").test(v3Src),'ffApply op '+op));
 ['massPushFace','massVertXY','massRotate3','massFlip','massScaleAbout','massFaceInfo'].forEach(f=>ck(new RegExp('^function '+f+'\\(','m').test(fs.readFileSync(path.join(ROOT,'js','sketch.js'),'utf8')),'sketch.js 2차 기하 '+f));
 ck(/p\.verts\[t\[j===1\?2:j===2\?1:0\]\]/.test(v3Src),'mesh prim 감김 뒤집기 (법선 바깥)');
+['moveverts','delface','deledge','reverseface'].forEach(op=>ck(new RegExp("case '"+op+"': \{").test(v3Src),'4차 ffApply op '+op));
+ck(/function ffEnterEdit/.test(v3Src)&&/function ffPickInside/.test(v3Src)&&/function beginMoveSel/.test(v3Src),'4차: 그룹 안 면·모서리 선택·이동');
+ck(/if\(m\.open\) return m;/.test(fs.readFileSync(path.join(ROOT,'js','sketch.js'),'utf8')),'4차: 열린 껍질은 각기둥으로 되돌리지 않는다');
 ck(idx3d.includes('data-sec="sections"')&&idx3d.includes('id="st-date"')&&idx3d.includes('data-cmd="import-obj"')&&idx3d.includes('data-cmd="isolate"'),'3차 셸: 단면 트레이·그림자 날짜·OBJ 가져오기·선택만 보기');
 {
   const SK=require(path.join(ROOT,'js','sketch.js'));
