@@ -1674,6 +1674,13 @@ function massDeleteEdge(m,a,b,ctx){
   if(m.solidFaces.length===before) return null;
   m.open=true; _massDropOrphans(m); return {removed:before-m.solidFaces.length};
 }
+// 꼭짓점 삭제 — 그 점을 가진 면이 함께 사라진다
+function massDeleteVertex(m,p,ctx){
+  massToSolid(m,ctx); const i=_massVIdx(m,p,ctx); if(i<0) return null;
+  const before=m.solidFaces.length; m.solidFaces=m.solidFaces.filter(f=>!f.vs.includes(i));
+  if(m.solidFaces.length===before) return null;
+  m.open=true; _massDropOrphans(m); return {removed:before-m.solidFaces.length};
+}
 // 면 뒤집기 (Reverse Faces)
 function massReverseFace(m,lp,ln,ctx){ const f=massFindFace(m,lp,ln,ctx); if(!f) return null; f.face.vs.reverse(); f.face.roleFix=null; m.open=true; return {fi:f.fi}; }
 
@@ -1686,6 +1693,6 @@ if(typeof module!=='undefined'&&module.exports){
     sweepProfile,massFromSweep,moldingProfile,
     massCSG,earTriangles,csgMergeFaces,massToCsgPolys,massFromCsgFaces,csgUnion,csgSubtract,csgIntersect,
     massFindFace,massPushFace,massExtrudeFaceNew,massVertXY,massRotate3,massFlip,massScaleAbout,massLocalBox,massFaceInfo,
-    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,
+    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

@@ -116,7 +116,7 @@ const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.log((c?'  ✅ ':'  ❌ ')+m
     await J(`__side();MC3DVIEW.setTool('select');var p=__pt(1000,0,300);__click(p.x,p.y);'ok'`); await sleep(100);
     m=await J(`MC3DVIEW.ST.faceInfo&&{role:MC3DVIEW.ST.faceInfo.role,area:MC3DVIEW.ST.faceInfo.area}`);
     ck(m&&m.role==='wall'&&Math.abs(m.area-2)<0.01,'옆면 클릭 → 면 정보 벽면 2㎡ '+JSON.stringify(m));
-    ck((await J(`document.getElementById('props').textContent.includes('클릭한 면')`)),'개체 정보에 클릭한 면 표시');
+    ck((await J(`document.getElementById('props').textContent.startsWith('면')&&MC3DVIEW.ST.parts.length===1`)),'개체 정보 = 선택한 면 (면적)');
     await J(`__topv();MC3DVIEW.select(null);MC3DVIEW.setTool('rotate');var p=__pt(0,0,1000);__ev('pointermove',p.x,p.y);__ev('pointerdown',p.x,p.y,{ctrlKey:true});__ev('pointerup',p.x,p.y,{ctrlKey:true});'ok'`); await sleep(80);
     m=await J(`MC3DVIEW.ST.op&&MC3DVIEW.ST.op.type+':'+MC3DVIEW.ST.op.copy`);
     ck(m==='rotate:true','Ctrl+회전 → 복사 회전 op ('+m+')');

@@ -17,9 +17,9 @@ const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.log((c?'  ✅ ':'  ❌ ')+m
     await J(`__boxes();'ok'`); await sleep(200);
     let m=await J(`({colors:document.querySelectorAll('#paintpal [data-cat="color"]').length,custom:!!document.getElementById('pp-custom'),addimg:!!document.getElementById('pp-addimg')})`);
     ck(m.colors===24&&m.custom&&m.addimg,'재질 트레이: 스케치업 색상 24 · 사용자 색 · 이미지 재질 버튼 '+JSON.stringify(m));
-    await J(`document.querySelector('#paintpal [data-cat="color"][data-code="#FF3B30"]').click();var p=__pt(0,0,1000);__click(p.x,p.y);'ok'`); await sleep(200);
+    await J(`MC3DVIEW.setTool('select');var p=__pt(0,0,1000);__click(p.x,p.y);MC3DVIEW.renderer.domElement.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,clientX:p.x,clientY:p.y}));document.querySelector('#paintpal [data-cat="color"][data-code="#FF3B30"]').click();__click(p.x,p.y);'ok'`); await sleep(200);
     m=await J(`({tool:MC3DVIEW.ST.tool,c:__F().masses[1].color,others:[__F().masses[0].color,__F().masses[2].color]})`);
-    ck(m.tool==='paint'&&m.c==='#FF3B30'&&m.others.every(c=>c!=='#FF3B30'),'색상 클릭 → 페인트 · 가운데 상자만 빨강 '+JSON.stringify(m));
+    ck(m.tool==='paint'&&m.c==='#FF3B30'&&m.others.every(c=>c!=='#FF3B30'),'객체 더블클릭 → 색상 클릭 → 페인트 · 가운데 상자만 빨강 '+JSON.stringify(m));
     await J(`document.querySelector('#paintpal [data-cat="color"][data-code="#007AFF"]').click();var p=__pt(-3000,0,1000);__click(p.x,p.y,{shiftKey:true});'ok'`); await sleep(200);
     m=await J(`__F().masses.map(x=>x.color)`);
     ck(m[0]==='#007AFF'&&m[2]==='#007AFF'&&m[1]==='#FF3B30','Shift+클릭 → 같은 재질(기본색) 전부 파랑, 빨강은 그대로 '+JSON.stringify(m));
@@ -27,13 +27,13 @@ const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.log((c?'  ✅ ':'  ❌ ')+m
     await J(`MC3DVIEW.FF.free.mats=[{id:'IMG_test',name:'벽돌사진',url:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',S:0.5}];MC3DVIEW.setTool('select');MC3DVIEW.setTool('paint');'ok'`); await sleep(100);
     m=await J(`!!document.querySelector('#paintpal [data-cat="img"][data-code="IMG_test"]')`);
     ck(m,'이미지 재질이 트레이에 보인다');
-    await J(`document.querySelector('#paintpal [data-cat="img"][data-code="IMG_test"]').click();var p=__pt(3000,0,1000);__click(p.x,p.y);'ok'`); await sleep(250);
+    await J(`MC3DVIEW.setTool('select');var p=__pt(3000,0,1000);__click(p.x,p.y);MC3DVIEW.renderer.domElement.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,clientX:p.x,clientY:p.y}));document.querySelector('#paintpal [data-cat="img"][data-code="IMG_test"]').click();__click(p.x,p.y);'ok'`); await sleep(250);
     m=await J(`(()=>{ var g=MC3DVIEW.findGroup('freeform',__F().masses[2].id); var mesh=g.children[0]; return {mat:__F().masses[2].mat,map:!!(mesh.material&&mesh.material.map),rep:mesh.material&&mesh.material.map&&mesh.material.map.repeat.x}; })()`);
     ck(m.mat==='IMG_test'&&m.map&&m.rep===2,'이미지 재질 칠하기 → 텍스처(0.5m 반복=2) '+JSON.stringify(m));
     // Ctrl+면 하나 = 색상
-    await J(`document.querySelector('#paintpal [data-cat="color"][data-code="#FFCC00"]').click();var p=__pt(800,0,500);MC3DVIEW.setView('right');MC3DVIEW.drawFrame();p=__pt(800,0,500);__click(p.x,p.y,{ctrlKey:true});'ok'`); await sleep(250);
+    await J(`MC3DVIEW.setTool('select');MC3DVIEW.select(null);document.querySelector('#paintpal [data-cat="color"][data-code="#FFCC00"]').click();MC3DVIEW.setView('right');MC3DVIEW.drawFrame();var p=__pt(800,0,500);__click(p.x,p.y);'ok'`); await sleep(250);
     m=await J(`(__F().masses[1].solidFaces||[]).map(f=>f.mat).filter(Boolean)`);
-    ck(m.length===1&&m[0]==='C_FFCC00','Ctrl+면 하나 색상 → C_FFCC00 '+JSON.stringify(m));
+    ck(m.length===1&&m[0]==='C_FFCC00','선택 없이 면 클릭 페인트 → 그 면만 C_FFCC00 '+JSON.stringify(m));
     // 재질 추출 (Alt) → 색
     await J(`MC3DVIEW.setView('iso');MC3DVIEW.drawFrame();var p=__pt(-3000,0,1000);__click(p.x,p.y,{altKey:true});'ok'`); await sleep(100);
     m=await J(`MC3DVIEW.ST.paint`);

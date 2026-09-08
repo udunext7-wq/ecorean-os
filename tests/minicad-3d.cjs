@@ -745,8 +745,8 @@ ck(/function ffStandaloneShell/.test(v3Src)&&/ffStandaloneShell\(\);/.test(v3Src
 ['scale','scaleall','sweep','massfrompoly','mkcomp','compupdate','facemat','solid','pushface','setxy','rotate3','flip','massfromfaces'].forEach(op=>ck(new RegExp("case '"+op+"': \{").test(v3Src),'ffApply op '+op));
 ['massPushFace','massVertXY','massRotate3','massFlip','massScaleAbout','massFaceInfo'].forEach(f=>ck(new RegExp('^function '+f+'\\(','m').test(fs.readFileSync(path.join(ROOT,'js','sketch.js'),'utf8')),'sketch.js 2차 기하 '+f));
 ck(/p\.verts\[t\[j===1\?2:j===2\?1:0\]\]/.test(v3Src),'mesh prim 감김 뒤집기 (법선 바깥)');
-['moveverts','delface','deledge','reverseface'].forEach(op=>ck(new RegExp("case '"+op+"': \{").test(v3Src),'4차 ffApply op '+op));
-ck(/function ffEnterEdit/.test(v3Src)&&/function ffPickInside/.test(v3Src)&&/function beginMoveSel/.test(v3Src),'4차: 그룹 안 면·모서리 선택·이동');
+['moveverts','delface','deledge','delvert','reverseface'].forEach(op=>ck(new RegExp("case '"+op+"': \{").test(v3Src),'4차 ffApply op '+op));
+ck(/function ffEnterEdit/.test(v3Src)&&/function ffPickInside/.test(v3Src)&&/function beginMoveSel/.test(v3Src)&&/function ffPartNearScreen/.test(v3Src)&&/function ffSelectWhole/.test(v3Src),'4차: 점·선·면·객체 각각 선택 (화면 근접 픽·더블클릭=객체)');
 ck(/if\(m\.open\) return m;/.test(fs.readFileSync(path.join(ROOT,'js','sketch.js'),'utf8')),'4차: 열린 껍질은 각기둥으로 되돌리지 않는다');
 ck(idx3d.includes('data-sec="sections"')&&idx3d.includes('id="st-date"')&&idx3d.includes('data-cmd="import-obj"')&&idx3d.includes('data-cmd="isolate"'),'3차 셸: 단면 트레이·그림자 날짜·OBJ 가져오기·선택만 보기');
 {
