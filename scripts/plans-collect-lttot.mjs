@@ -72,7 +72,7 @@ async function allowed(url) {
 // 파일명이 평면도임을 강하게 시사하는 패턴만 채택한다.
 //  · 84a.jpg / 59B.png  (평형+타입)   · unit_84a.jpg / plan-84.png / type84a.jpg
 // 커뮤니티·조경·투시도 사진이 unit/type 을 포함해 오검출되던 문제로 화이트리스트 방식으로 전환.
-const PLAN_FILE = /(?:^|\/)(?:\d{2,3}\s*[a-z]?|(?:unit|plan|pyeong|hotype|type|pyung)[-_]?\d{0,3}\s*[a-z]?)(?:[-_](?:0?\d|big|large|org|origin|ex|expand|basic|kr|view|img))?\.(?:jpg|jpeg|png)$/i;
+const PLAN_FILE = /(?:^|\/)(?:\d{2,3}\s*[a-z]?|(?:unit|plan|pyeong|hotype|type|pyung)[-_]?\d{0,3}\s*[a-z]?)(?:[-_](?:0?\d|big|large|org|origin|ex|expand|basic|kr|view|img))?\.(?:jpg|jpeg|png|webp)$/i;
 // 경로 자체가 평면도 폴더면 파일명이 일반적이어도 후보로 본다 (/plan/01.jpg 같은 구조)
 const PLAN_DIR = /\/(?:plans?|units?|types?|pyeong|pyung|floorplan)\//i;
 const SKIP_HINT = /(icon|btn|logo|banner|blank|bg|arrow|thumb|sprite|_m_|\/m\/|community|커뮤니티|facility|조경|gallery|visual|main|view|cctv|map|premium|brand|\/theme\/|\/skin\/|\/tpl\/|\/common\/|\/layout\/)/i;
@@ -105,22 +105,34 @@ async function findPlanImages(home) {
       } catch { }
     }
     const found = new Map();
-    for (const p of [...pages].slice(0, 12)) {
+    // 메인→세대안내→타입별 2단 구조가 많아 1단 순회로는 빈손이었다 (2026-09-08)
+    const isPlanPage = u => /(plan|unit|type|pyeong|pyung|house|세대|평면|주택형)/i.test(u);
+    const queue = [...pages];
+    const visited = new Set();
+    while (queue.length && visited.size < 20) {
+      const p = queue.shift();
+      if (visited.has(p)) continue; visited.add(p);
       if (!await allowed(p)) continue;
       let t;
       try { const pr = await fetch(p, { headers: { ...UA, Referer: baseUrl } }); if (!pr.ok) continue; t = await pr.text(); }
       catch { continue; }
+      if (isPlanPage(p)) for (const m2 of t.matchAll(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]{0,60}?)<\/a>/g)) {
+        const tx = m2[2].replace(/<[^>]*>/g, '');
+        if (/타입|평형|㎡|Type|[0-9]{2,3}\s*[A-Da-d]/.test(tx) || isPlanPage(m2[1])) {
+          try { const u2 = new URL(m2[1], p); if (u2.origin === new URL(baseUrl).origin && !visited.has(u2.href)) queue.push(u2.href); } catch { }
+        }
+      }
       // src/href 속성 + CSS background-image + 스크립트에 박힌 경로까지 훑는다
       // (분양 사이트 상당수가 SPA·슬라이더라 img 태그로 안 나온다)
       const cands = [
-        ...[...t.matchAll(/(?:src|data-src|data-original|data-lazy|href)="([^"]+\.(?:jpg|jpeg|png))"/gi)].map(m => m[1]),
-        ...[...t.matchAll(/url\(\s*['"]?([^'")]+\.(?:jpg|jpeg|png))['"]?\s*\)/gi)].map(m => m[1]),
-        ...[...t.matchAll(/['"]([^'"\s]+\.(?:jpg|jpeg|png))['"]/gi)].map(m => m[1]),
+        ...[...t.matchAll(/(?:src|data-src|data-original|data-lazy|href)="([^"]+\.(?:jpg|jpeg|png|webp))"/gi)].map(m => m[1]),
+        ...[...t.matchAll(/url\(\s*['"]?([^'")]+\.(?:jpg|jpeg|png|webp))['"]?\s*\)/gi)].map(m => m[1]),
+        ...[...t.matchAll(/['"]([^'"\s]+\.(?:jpg|jpeg|png|webp))['"]/gi)].map(m => m[1]),
       ];
       for (const raw of cands) {
         const clean = raw.split('?')[0];
         if (SKIP_HINT.test(raw)) continue;
-        if (!PLAN_FILE.test(clean) && !PLAN_DIR.test(clean)) continue;
+        if (!PLAN_FILE.test(clean) && !PLAN_DIR.test(clean) && !isPlanPage(p)) continue;
         try { found.set(new URL(raw, p).href, true); } catch { }
       }
       await sleep(500);
@@ -141,6 +153,13 @@ function dims(b) {
       i += 2 + b.readUInt16BE(i + 2);
     }
   }
+  // WebP: 'RIFF'+'WEBP' + VP8 /VP8L/VP8X 헤더에서 치수
+  if (b.length > 30 && b.slice(0, 4).toString('latin1') === 'RIFF' && b.slice(8, 12).toString('latin1') === 'WEBP') {
+    const fmt = b.slice(12, 16).toString('latin1');
+    if (fmt === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
+    if (fmt === 'VP8L') { const bits = b.readUInt32LE(21); return { w: 1 + (bits & 0x3fff), h: 1 + ((bits >> 14) & 0x3fff) }; }
+    if (fmt === 'VP8 ') return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+  }
   return null;
 }
 
@@ -160,15 +179,20 @@ if (!ARG.includes('--collect')) { console.log('(--list 로 목록, --collect 로
 mkdirSync(OUT, { recursive: true });
 const manifest = existsSync('scripts/lttot-manifest.json') ? JSON.parse(readFileSync('scripts/lttot-manifest.json', 'utf8')) : [];
 const done = new Set(manifest.map(m => m.house_manage_no));
+// 실패 스킵 캐시 — 10분 단위로 끊어 돌릴 때 같은 죽은 사이트를 매번 재방문하지 않게 (2026-09-08)
+const SKIPF = 'scripts/lttot-skips.json';
+const skips = existsSync(SKIPF) ? JSON.parse(readFileSync(SKIPF, 'utf8')) : {};
+let skipDirty = 0;
+const recordSkip = (no, why) => { skips[no] = why; if (++skipDirty % 10 === 0) writeFileSync(SKIPF, JSON.stringify(skips)); };
 let ok = 0;
 for (const r of withHome) {
   if (ok >= LIMIT) break;
-  if (done.has(r.HOUSE_MANAGE_NO)) continue;
+  if (done.has(r.HOUSE_MANAGE_NO) || skips[r.HOUSE_MANAGE_NO] !== undefined) continue;
   const slug = slugify(r.HOUSE_NM);
   console.log(`\n▶ ${r.HOUSE_NM}  (${r.HMPG_ADRES})`);
   const { imgs, skipped } = await findPlanImages(r.HMPG_ADRES);
-  if (skipped) { console.log(`   건너뜀 — ${skipped}`); continue; }
-  if (!imgs.length) { console.log('   평면도 후보 없음'); continue; }
+  if (skipped) { console.log(`   건너뜀 — ${skipped}`); recordSkip(r.HOUSE_MANAGE_NO, String(skipped).slice(0, 60)); continue; }
+  if (!imgs.length) { console.log('   평면도 후보 없음'); recordSkip(r.HOUSE_MANAGE_NO, '후보없음'); continue; }
   const dir = `${OUT}/${slug}`;
   mkdirSync(dir, { recursive: true });
   const saved = [];
@@ -186,7 +210,7 @@ for (const r of withHome) {
       await sleep(600);
     } catch { }
   }
-  if (!saved.length) { console.log('   원본급 이미지 없음'); continue; }
+  if (!saved.length) { console.log('   원본급 이미지 없음'); recordSkip(r.HOUSE_MANAGE_NO, '원본급없음'); continue; }
   manifest.push({
     house_manage_no: r.HOUSE_MANAGE_NO, name: r.HOUSE_NM, slug,
     address: r.HSSPLY_ADRES, builder: r.CNSTRCT_ENTRPS_NM,
@@ -198,3 +222,5 @@ for (const r of withHome) {
   await sleep(1200);
 }
 console.log(`\n✅ 단지 ${ok}곳 수집 (누적 ${manifest.length}곳) → ${OUT}/ · scripts/lttot-manifest.json`);
+writeFileSync(SKIPF, JSON.stringify(skips));
+console.log('스킵 누적 ' + Object.keys(skips).length + '건');

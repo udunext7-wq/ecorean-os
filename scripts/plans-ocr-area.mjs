@@ -45,10 +45,13 @@ function expand(list) {
 const worker = await createWorker('eng');
 await worker.setParameters({ tessedit_char_whitelist: '0123456789.m2ABCDEFPT ' });
 
+// 정크 판정분은 OCR 하지 않는다 (2026-09-09 — 넓힌 수집기의 조감도·사진 컷)
+const junk = existsSync('scripts/lttot-junk.json') ? new Set(JSON.parse(readFileSync('scripts/lttot-junk.json','utf8')).filter(o => !o.plan).map(o => o.store_path)) : new Set();
 let done = 0, hit = 0, miss = 0;
 for (const r of rows) {
   if (done >= LIMIT) break;
   if (cache[r.store_path]) continue;
+  if (junk.has(r.store_path)) continue;
   done++;
 
   const read = async (width) => {

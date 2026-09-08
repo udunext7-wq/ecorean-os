@@ -56,7 +56,7 @@ let done = 0, skipped = 0;
 for (const c of manifest) {
   const dir = join(SRC, c.slug);
   if (!existsSync(dir)) { skipped++; continue; }
-  const files = readdirSync(dir).filter(f => /\.(jpe?g|png)$/i.test(f)).sort();
+  const files = readdirSync(dir).filter(f => /\.(jpe?g|png|webp)$/i.test(f)).sort();
   if (!files.length) { skipped++; continue; }
   const { sido, gugun } = parseRegion(c.address);
   const mdl = models[c.house_manage_no] || [];

@@ -1,7 +1,7 @@
 // 도면 아닌 이미지(조감도·인테리어 사진·브랜드 페이지·일정표) 자동 판별
 // 수집기 탐색을 넓히자 정밀도가 떨어져, 적재 전에 기계적으로 거를 기준이 필요해졌다.
 // 특징 3가지: ① 흰 바탕 비율 ② 채도(사진일수록 높다) ③ 축 정렬 획 비율(도면일수록 높다)
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp from 'sharp';
 
@@ -47,11 +47,17 @@ export function isPlan(f) {
 if (process.argv[1]?.endsWith('plans-junk-filter.mjs')) {
   const rows = JSON.parse(readFileSync('scripts/lttot-plans.json', 'utf8'));
   const from = +(process.argv[2] || 0), to = +(process.argv[3] || rows.length);
+  // 청크 실행 병합 — store_path 키로 기존 결과 유지 (2026-09-09)
+  const prev = existsSync('scripts/lttot-junk.json') ? JSON.parse(readFileSync('scripts/lttot-junk.json', 'utf8')) : [];
+  const byPath = new Map(prev.map(o => [o.store_path, o]));
   const out = [];
   for (let i = from; i < to; i++) {
     const f = await features(join('assets/plan-staging', rows[i].out));
     out.push({ i, store_path: rows[i].store_path, ...f, plan: isPlan(f) });
   }
-  writeFileSync('scripts/lttot-junk.json', JSON.stringify(out, null, 1));
+  for (const o of out) byPath.set(o.store_path, o);
+  const merged = [...byPath.values()];
+  writeFileSync('scripts/lttot-junk.json', JSON.stringify(merged, null, 1));
+  console.log('병합 누적 ' + merged.length + '장');
   console.log(`${out.length}장 — 도면 ${out.filter(o => o.plan).length} · 제외 ${out.filter(o => !o.plan).length}`);
 }

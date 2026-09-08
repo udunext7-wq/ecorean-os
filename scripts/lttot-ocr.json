@@ -6691,5 +6691,2351 @@
   "area": null,
   "source": "none",
   "nums": []
+ },
+ "2026000423/unit-101.webp": {
+  "area": 101.9795,
+  "house_ty": "101.9795 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   101.9795,
+   135.6815,
+   35.6815,
+   137.661,
+   37.661,
+   64.2485,
+   201.9095
+  ]
+ },
+ "2026000423/unit-114.webp": {
+  "area": 114.6527,
+  "house_ty": "114.6527 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   114.6527,
+   40.2409,
+   154.8936,
+   54.8936,
+   72.2327,
+   227.1263,
+   27.1263
+  ]
+ },
+ "2026000423/unit-59a.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   50.9808,
+   22.3653,
+   82.3461,
+   37.7886,
+   120.1347,
+   20.1347
+  ]
+ },
+ "2026000423/unit-74.webp": {
+  "area": 74.9304,
+  "house_ty": "074.9304 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   74.9304,
+   26.2793,
+   101.2097,
+   47.2071,
+   148.4168,
+   48.4168
+  ]
+ },
+ "2026000423/unit-84.webp": {
+  "area": 84.6795,
+  "house_ty": "084.6795 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   84.6795,
+   28.8678,
+   113.5473,
+   53.3492,
+   166.8965,
+   66.8965
+  ]
+ },
+ "2026000419/sub3-209c-1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000419/sub3-211e-1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000419/sub3-214a-1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000419/sub3-214d-1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000354/202608130336211250.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000354/202608130346222540.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000354/202608130357057710.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000354/202608130402207350.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000354/202608130404464960.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000354/202608130408051460.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000323/d45e96ea8e1147b79f4d7a20c6efec39.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000293/128-n1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000293/142-n1.webp": {
+  "area": 142.9957,
+  "house_ty": "142.9957 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   142.9957,
+   42.9957,
+   39.2962
+  ]
+ },
+ "2026000293/149-n1.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   189.6604,
+   89.6604
+  ]
+ },
+ "2026000293/156-n2.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   199.5936,
+   99.5936,
+   22.674
+  ]
+ },
+ "2026000293/220p-n1.webp": {
+  "area": 220.9338,
+  "house_ty": "220.9338P",
+  "letter": "P",
+  "source": "ocr+api",
+  "nums": [
+   220.9338,
+   20.9338,
+   173.2914,
+   73.2914
+  ]
+ },
+ "2026000293/223p-n1.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   63.649,
+   287.6226,
+   87.6226,
+   175.6749,
+   75.6749,
+   63.2975
+  ]
+ },
+ "2026000293/227p-n1.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   67.6133,
+   74.3789
+  ]
+ },
+ "2026000153/financing-plan01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000153/financing-plan02.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000153/ing.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000237/088ac3e1fcc9427e954607b91d0d22d2.webp": {
+  "area": 84.9343,
+  "house_ty": "084.9343A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   84.94
+  ]
+ },
+ "2026000237/959eec3eab794d28b9b03ad23ef91b68.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000120/telecom.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000128/9ac16f37ecd6477c98302475db5c0fec.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   59.74
+  ]
+ },
+ "2026000128/f7a372e2c54f428e9696991556318161.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000112/financing-plan01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000112/financing-plan02.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   221.52,
+   21.52
+  ]
+ },
+ "2026000109/special-n2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000109/unit-105-n9.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   81.0095,
+   230.965,
+   30.965,
+   141.23,
+   41.23
+  ]
+ },
+ "2026000109/unit-115op-n12.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000109/unit-84a-n9.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   64.9021
+  ]
+ },
+ "2026000109/unit-89a-n7.webp": {
+  "area": 89.9089,
+  "house_ty": "089.9089 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   89.9089,
+   68.8481
+  ]
+ },
+ "2026000045/202603191033185950.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000045/202603191034578030.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000045/202603191036341650.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000045/202603191040333090.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000045/202603191044301740.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000045/202603191051033180.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000008/funding-plan1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000008/funding-plan2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000008/unit-74a-260224.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   101.426,
+   50.2319
+  ]
+ },
+ "2026000008/unit-74a-260306.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   101.426,
+   50.2319
+  ]
+ },
+ "2026000008/unit-84a-260225.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   56.8651,
+   169.8156,
+   69.8156
+  ]
+ },
+ "2026000008/unit-84a-260306.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   112.9505,
+   56.8651,
+   169.8156,
+   69.8156
+  ]
+ },
+ "2026000008/unit-84b-260306.webp": {
+  "area": 84.7982,
+  "house_ty": "084.7982B",
+  "letter": "B",
+  "source": "ocr+api",
+  "nums": [
+   84.7982,
+   56.9269
+  ]
+ },
+ "2026000008/unit-99a-260306.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2026000008/unit-99b-260225.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   66.8114
+  ]
+ },
+ "2026000008/unit-99b-260306.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   128.9323,
+   28.9323,
+   66.8114
+  ]
+ },
+ "2025000624/m-sub-02-.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000624/sub-02-1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000624/sub-01-84a.webp": {
+  "area": 84.9559,
+  "house_ty": "084.9559A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   84.9559,
+   25.7977,
+   110.7536,
+   45.4129,
+   156.1665,
+   56.1665
+  ]
+ },
+ "2025000624/sub-01-84b.webp": {
+  "area": 84.9559,
+  "house_ty": "084.9559A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   84.9459,
+   26.4803,
+   111.4262,
+   45.4077,
+   156.8339,
+   56.8339
+  ]
+ },
+ "2025000624/-1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000624/-01-3.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000624/-02-1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000606/20251212070100013324.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000606/20251221020752013357.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000606/20251230114520019246.webp": {
+  "area": 168.3158,
+  "house_ty": "168.3158 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   25.12,
+   168.3158,
+   68.3158
+  ]
+ },
+ "2025000605/20251212070100013324.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000605/20251221020752013357.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000605/20251230114520019246.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   25.12,
+   168.3158,
+   68.3158
+  ]
+ },
+ "2025000564/04d238d70b1e4b539fea736c146dfd98.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000564/7849513203e94f9396bf21059898bfe4.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000445/202509251006250200.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000445/202509251011255540.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000445/202509251012378490.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000445/202510271038339300.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan01-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan01-01-2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan01-01-3.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan01-01-4.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan01-01-5.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan01-02-4.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan02-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan02-01-2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan02-01-3.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan02-02-2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000439/unitplan02-02-4.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000418/c6b45c0907044baf8ca03fb845cdeb90.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000329/29c25cd0468f49ffafde761eac6957fc.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000329/d2bc8ccadbc1473d812c175716370bf7.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000227/0717-.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000227/type-con1-m.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000227/type-con2-m.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000227/type-con3-m.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000144/7ab4b989ba684d5d85672896b239ee4e.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000144/c7ec25fbec734554808d0c4403f30aea.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000052/03da748c0e61f9252712eb826cdb2142.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2025000052/-84a.webp": {
+  "area": 84.99,
+  "house_ty": "084.9900 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   84.9979,
+   26.2415,
+   111.2394,
+   60.1479,
+   171.3873,
+   71.3873
+  ]
+ },
+ "2025000052/-84b.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.9313,
+   26.8792,
+   111.8105,
+   60.1009,
+   171.9114,
+   71.9114
+  ]
+ },
+ "2024000703/202603191033185950.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000703/202603191034578030.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000703/202603191036341650.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000703/202603191040333090.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000703/202603191044301740.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000703/202603191051033180.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000712/84a.webp": {
+  "area": 84.3216,
+  "house_ty": "084.3216A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   84.3216,
+   160.0894,
+   60.0894
+  ]
+ },
+ "2024000632/d738f9eedf974f02947a9eb2ddb66f3f.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000608/202411011058446630.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000608/202411011212159680.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000608/202411071053051620.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000608/202411071053175400.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000608/202411071053299150.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000608/202411071053556990.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000608/202411071117315690.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000608/202606020219573740.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000622/634fbb269540466c83197684ecd1d533.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000622/b06d9c9f6d2d41fe884a8e56f24a4594.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   50.7284
+  ]
+ },
+ "2024000517/399a94bfd1fe4693a5c692a5cd86be7a.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000517/9ac42e5ff55a44b4badbbd982afbcd25.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000307/202501230312368320.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000307/202501230315224460.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000307/202501230315351510.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000307/202501230315466670.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000307/202501230316008250.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000307/202501230316152950.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000427/m110a.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   69.5572,
+   216.1669,
+   16.1669
+  ]
+ },
+ "2024000427/m127a.webp": {
+  "area": 127.9515,
+  "house_ty": "127.9515A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   127.9515,
+   27.9515,
+   80.2396,
+   251.5308,
+   51.5308,
+   91.57
+  ]
+ },
+ "2024000427/m59a.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   19.6455,
+   37.5957,
+   117.2263,
+   17.2263
+  ]
+ },
+ "2024000427/m84a2-2.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   53.27,
+   164.9952,
+   64.9952
+  ]
+ },
+ "2024000427/m84a3.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   53.27
+  ]
+ },
+ "2024000427/m84b.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   165.1619,
+   65.1619
+  ]
+ },
+ "2024000427/m84c.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   27.853,
+   53.2466,
+   166.0559,
+   66.0559
+  ]
+ },
+ "2024000427/m84d.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   27.6723,
+   91.817
+  ]
+ },
+ "2024000427/m84e.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   53.2695,
+   91.87
+  ]
+ },
+ "2024000427/m84e1.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   53.2695
+  ]
+ },
+ "2024000427/m84f.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   164.9717,
+   64.9717
+  ]
+ },
+ "2024000364/202407190425379480.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000364/202407190430571090.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000278/planning.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000278/s-unit.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   49.3023,
+   19.3041,
+   68.6064,
+   71.1279,
+   19.3031,
+   50.0956,
+   36,
+   51.9369
+  ]
+ },
+ "2024000278/sub-31-con74a.webp": {
+  "area": 74.8584,
+  "house_ty": "074.8584A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   74.8584,
+   24.0882,
+   98.946,
+   53.6194,
+   152.566,
+   52.566
+  ]
+ },
+ "2024000278/sub-31-con74b.webp": {
+  "area": 74.8584,
+  "house_ty": "074.8584A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   74.873,
+   24.0029,
+   98.9659,
+   53.6208,
+   152.5957,
+   52.5957
+  ]
+ },
+ "2024000278/sub-31-con74c.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   24.0906,
+   98.9565,
+   53.6248,
+   152.5813,
+   52.5813
+  ]
+ },
+ "2024000311/share-1200x628.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000234/202405280303251650.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000234/202405280408473470.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000234/202405280410245510.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000234/202405280412169080.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000234/202405280413248300.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000234/202405280416468150.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000113/202505150849341520.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000113/202505150850180950.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000113/202505150851004290.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   44.85
+  ]
+ },
+ "2024000113/202505150851458080.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000113/202505150852208120.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000166/parcel-plan01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000166/parcel-plan02.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000181/202404300930176410.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000181/202404300931369030.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000181/202404300932427630.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000181/202404300934491570.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000181/202404300935574420.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000181/202404300937411020.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000164/202404250112330180.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000164/202404250113289160.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000164/202404250114248180.webp": {
+  "area": 59.9984,
+  "house_ty": "059.9984A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   59.9978
+  ]
+ },
+ "2024000164/202404250115121580.webp": {
+  "area": 59.9984,
+  "house_ty": "059.9984A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   59.9978
+  ]
+ },
+ "2024000164/202404250116005450.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000164/202404250949223280.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000156/202404220214355300.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000156/202404220215269810.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000156/202404220216184050.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000156/202404220217041070.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000156/202404220217512270.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000156/202404220218348980.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000083/101.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000083/115.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000083/59.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000083/84.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000083/-p-002.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000083/-m.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000083/-p.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000083/-p-003.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   101.6522,
+   136.2613,
+   36.2613,
+   85.0567,
+   221.318,
+   21.318
+  ]
+ },
+ "2024000083/-p-004.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   115.835,
+   15.835,
+   154.1875,
+   54.1875,
+   96.9241,
+   251.1116,
+   51.1116
+  ]
+ },
+ "2024000045/cal-img.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000067/unit01-img05.webp": {
+  "area": 129.4143,
+  "house_ty": "129.4143 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   129.4143,
+   29.4143,
+   44.2297,
+   173.644,
+   73.644,
+   229.2496,
+   29.2496
+  ]
+ },
+ "2024000067/unit01-img06.webp": {
+  "area": 147.6731,
+  "house_ty": "147.6731 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   147.6731,
+   47.6731,
+   50.0017,
+   198.5748,
+   98.5748,
+   63.4508,
+   262.0256,
+   62.0256
+  ]
+ },
+ "2024000067/unit01-img07.webp": {
+  "area": 176.0451,
+  "house_ty": "176.0451 ",
+  "letter": "",
+  "source": "ocr+api",
+  "nums": [
+   176.0451,
+   76.0451,
+   60.7086,
+   236.7537,
+   36.7537
+  ]
+ },
+ "2024000067/unit03-img01.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   44.94,
+   43.52
+  ]
+ },
+ "2024000067/unit04-img01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000067/unit04-img03.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000029/unit03-img01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000028/unit03-img01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2024000007/img-unit1.webp": {
+  "area": 49.473,
+  "house_ty": "049.4730A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   49.473,
+   39.126,
+   18.45,
+   107.049,
+   67.923
+  ]
+ },
+ "2024000007/img-unit2.webp": {
+  "area": 49.473,
+  "house_ty": "049.4730A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   49.473,
+   38.248,
+   19.081,
+   106.802,
+   68.554
+  ]
+ },
+ "2024000007/img-unit4.webp": {
+  "area": 59.959,
+  "house_ty": "059.9590A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   59.959,
+   46.355,
+   23.675,
+   129.989,
+   29.989
+  ]
+ },
+ "2023000670/img-unit1.webp": {
+  "area": 84.9966,
+  "house_ty": "084.9966A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   84.9966,
+   107.2843,
+   159.5337,
+   59.5337
+  ]
+ },
+ "2023000670/img-unit2.webp": {
+  "area": 84.959,
+  "house_ty": "084.9590B",
+  "letter": "B",
+  "source": "ocr+api",
+  "nums": [
+   84.959,
+   107.7519,
+   52.2263,
+   159.9782,
+   59.9782,
+   71.2
+  ]
+ },
+ "2023000670/img-unit4.webp": {
+  "area": 84.959,
+  "house_ty": "084.9590B",
+  "letter": "B",
+  "source": "ocr+api",
+  "nums": [
+   84.9438,
+   107.3947,
+   159.6116,
+   59.6116,
+   71.2
+  ]
+ },
+ "2023000670/img-unit5.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   28.2948,
+   139.2372,
+   39.2372,
+   207.4361
+  ]
+ },
+ "2023000654/6c0da57370454e3e9269ca31be4416ae.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000654/b432317f30b4494c9a06340ca082a1f2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000624/og-img-kakao-ver.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000637/a53320f976c94d2391bad944de7accda.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000589/202311300352233070.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000589/202311300353257800.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000589/202311300356161960.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000589/202311300357404420.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000589/202311300358488700.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000589/202311300400050990.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000621/og-img-kakao-ver.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000585/4501291f50bd43f7b92b184d4fc25066.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000566/84a-scaled.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   27.7248,
+   59.8074
+  ]
+ },
+ "2023000543/4d590fa79b0047e4b7e96dce7a23eece.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000477/og-img-kakao-ver.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000359/202309260124411870.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000359/202309260125135650.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000359/202309260125288480.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000359/202309260125440840.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000359/202309260126006330.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000441/unit1-a2bl-59a.webp": {
+  "area": 59.8471,
+  "house_ty": "059.8471A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   59.8471,
+   82.0317,
+   47.5053,
+   129.5371,
+   29.5371
+  ]
+ },
+ "2023000441/unit1-a2bl-59a-230914.webp": {
+  "area": 59.8471,
+  "house_ty": "059.8471A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   59.8471,
+   22.1846,
+   82.0317,
+   129.5371,
+   29.5371
+  ]
+ },
+ "2023000441/unit1-a2bl-59b.webp": {
+  "area": 59.7087,
+  "house_ty": "059.7087B",
+  "letter": "B",
+  "source": "ocr+api",
+  "nums": [
+   59.7087,
+   22.84,
+   82.5527,
+   47.3055,
+   129.9481,
+   29.9481
+  ]
+ },
+ "2023000441/unit1-a2bl-59b-230914.webp": {
+  "area": 59.7087,
+  "house_ty": "059.7087B",
+  "letter": "B",
+  "source": "ocr+api",
+  "nums": [
+   59.7087,
+   22.844,
+   82.5527,
+   129.9481,
+   29.9481
+  ]
+ },
+ "2023000441/unit1-a2bl-84a.webp": {
+  "area": 84.9192,
+  "house_ty": "084.9192A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   84.9192,
+   29.9561,
+   114.8753,
+   67.407
+  ]
+ },
+ "2023000441/unit1-a2bl-84a-230915.webp": {
+  "area": 84.9192,
+  "house_ty": "084.9192A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   84.9192,
+   29.9561,
+   67.407
+  ]
+ },
+ "2023000441/unit1-a2bl-84b.webp": {
+  "area": 84.9192,
+  "house_ty": "084.9192A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   84.9252,
+   115.1327,
+   15.1327,
+   67.4118,
+   182.5445,
+   82.5445
+  ]
+ },
+ "2023000441/unit1-a2bl-84b-230915.webp": {
+  "area": 84.9192,
+  "house_ty": "084.9192A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   84.9252,
+   30.2075,
+   115.1327,
+   15.1327,
+   67.418,
+   182.545,
+   82.545
+  ]
+ },
+ "2023000441/unit1-a5bl-116a.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   116.9623,
+   16.9623,
+   150.7385,
+   50.7385,
+   66.1131,
+   216.8516,
+   16.8516
+  ]
+ },
+ "2023000441/unit1-a5bl-116a-230915.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   116.9623,
+   16.9623,
+   33.762,
+   150.7385,
+   50.7385,
+   66.1131
+  ]
+ },
+ "2023000441/unit1-a5bl-116b.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   116.1991,
+   16.1991,
+   65.6817
+  ]
+ },
+ "2023000441/unit1-a5bl-116b-230915.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   116.1991,
+   16.1991,
+   34.5474,
+   150.7465,
+   50.7465,
+   65.6817
+  ]
+ },
+ "2023000441/unit1-a5bl-131a.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   131.6465,
+   31.6465,
+   171.1357,
+   71.1357
+  ]
+ },
+ "2023000441/unit1-a5bl-131a-230922.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   131.6465,
+   31.6465,
+   39.4892,
+   171.1357,
+   71.1357,
+   74.4133,
+   254.549,
+   54.549
+  ]
+ },
+ "2023000441/unit1-a5bl-184a-230915.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   184.9954,
+   84.9954,
+   242.152,
+   42.152,
+   104.5689,
+   46.7208
+  ]
+ },
+ "2023000441/unit1-a5bl-184b-230915.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   184.5926,
+   84.5926,
+   57.1612,
+   241.7538,
+   41.7538,
+   104.3412,
+   46.095
+  ]
+ },
+ "2023000440/unit1-a2bl-59a.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   59.8471,
+   82.0317,
+   47.5053,
+   129.5371,
+   29.5371
+  ]
+ },
+ "2023000440/unit1-a2bl-59a-230914.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   59.8471,
+   22.1846,
+   82.0317,
+   129.5371,
+   29.5371
+  ]
+ },
+ "2023000440/unit1-a2bl-59b.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   59.7087,
+   22.84,
+   82.5527,
+   47.3055,
+   129.9481,
+   29.9481
+  ]
+ },
+ "2023000440/unit1-a2bl-59b-230914.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   59.7087,
+   22.844,
+   82.5527,
+   129.9481,
+   29.9481
+  ]
+ },
+ "2023000440/unit1-a2bl-84a.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.9192,
+   29.9561,
+   114.8753,
+   67.407
+  ]
+ },
+ "2023000440/unit1-a2bl-84a-230915.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.9192,
+   29.9561,
+   67.407
+  ]
+ },
+ "2023000440/unit1-a2bl-84b.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.9252,
+   115.1327,
+   15.1327,
+   67.4118,
+   182.5445,
+   82.5445
+  ]
+ },
+ "2023000440/unit1-a2bl-84b-230915.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.9252,
+   30.2075,
+   115.1327,
+   15.1327,
+   67.418,
+   182.545,
+   82.545
+  ]
+ },
+ "2023000440/unit1-a5bl-116a.webp": {
+  "area": 116.9623,
+  "house_ty": "116.9623A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   116.9623,
+   16.9623,
+   150.7385,
+   50.7385,
+   66.1131,
+   216.8516,
+   16.8516
+  ]
+ },
+ "2023000440/unit1-a5bl-116a-230915.webp": {
+  "area": 116.9623,
+  "house_ty": "116.9623A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   116.9623,
+   16.9623,
+   33.762,
+   150.7385,
+   50.7385,
+   66.1131
+  ]
+ },
+ "2023000440/unit1-a5bl-116b.webp": {
+  "area": 116.1991,
+  "house_ty": "116.1991B",
+  "letter": "B",
+  "source": "ocr+api",
+  "nums": [
+   116.1991,
+   16.1991,
+   65.6817
+  ]
+ },
+ "2023000440/unit1-a5bl-116b-230915.webp": {
+  "area": 116.1991,
+  "house_ty": "116.1991B",
+  "letter": "B",
+  "source": "ocr+api",
+  "nums": [
+   116.1991,
+   16.1991,
+   34.5474,
+   150.7465,
+   50.7465,
+   65.6817
+  ]
+ },
+ "2023000440/unit1-a5bl-131a.webp": {
+  "area": 131.6465,
+  "house_ty": "131.6465A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   131.6465,
+   31.6465,
+   171.1357,
+   71.1357
+  ]
+ },
+ "2023000440/unit1-a5bl-131a-230922.webp": {
+  "area": 131.6465,
+  "house_ty": "131.6465A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   131.6465,
+   31.6465,
+   39.4892,
+   171.1357,
+   71.1357,
+   74.4133,
+   254.549,
+   54.549
+  ]
+ },
+ "2023000440/unit1-a5bl-184a-230915.webp": {
+  "area": 184.9954,
+  "house_ty": "184.9954A",
+  "letter": "A",
+  "source": "ocr+api",
+  "nums": [
+   184.9954,
+   84.9954,
+   242.152,
+   42.152,
+   104.5689,
+   46.7208
+  ]
+ },
+ "2023000440/unit1-a5bl-184b-230915.webp": {
+  "area": 184.5926,
+  "house_ty": "184.5926B",
+  "letter": "B",
+  "source": "ocr+api",
+  "nums": [
+   184.5926,
+   84.5926,
+   57.1612,
+   241.7538,
+   41.7538,
+   104.3412,
+   46.095
+  ]
+ },
+ "2023000433/60686f4ee62f467e8812a51019c730b3.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000414/c2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000385/4c61993c875b81027272f3b9eec9fa60.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000385/9feeb960faac0a5c1acc7a6fee34cb83.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000338/7a2fe9f8476e2452ac4a8f9bcdaa7059.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000338/c0ded6087c8d5cf8229c3e577bbd38f9.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000307/51074150f95d40c08eb96ff7dca82a07.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000307/ab685ccd2b3c499cab3e14e438901204.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290310066040.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290310072750.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290311011520.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290311017610.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290311532170.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290311538420.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290312371560.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290312377810.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290313425670.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290313432240.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290314494780.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000289/202306290314500880.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290310066040.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290310072750.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290311011520.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290311017610.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290311532170.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290311538420.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290312371560.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290312377810.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290313425670.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290313432240.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290314494780.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000288/202306290314500880.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000287/202306290830393320.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000287/202306290830399570.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000287/202306290836013030.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000287/202306290836019280.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000287/202306290837266690.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000287/202306290838332410.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000287/202306290840212470.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-location-1-1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-59a-02-v2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-59b-02-v2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-a1-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-a2-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-a3-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-a-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-b1-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-b2-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-b-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-c-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-d-01-v2.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-e-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/img-plane-f-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000189/og-img-kakao-ver.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000212/-105.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000212/-74b.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   74.9536
+  ]
+ },
+ "2023000212/-84b.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.9755,
+   170.835,
+   70.835
+  ]
+ },
+ "2023000165/911c585e1ab44accd4ea0ceb4316834e.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   23
+  ]
+ },
+ "2023000165/fa6fa9b7e0214917f866041f7ee161a1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000084/e5dc057e88b3b81a62b42e7a2652b0a5.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000052/911c585e1ab44accd4ea0ceb4316834e.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   23
+  ]
+ },
+ "2023000052/fa6fa9b7e0214917f866041f7ee161a1.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000879/sub22.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000879/sub52.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   23.0014,
+   25.0814,
+   33.31,
+   99.93,
+   140,
+   40,
+   272.4266,
+   72.4266
+  ]
+ },
+ "2022000879/sub54.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000879/sub55.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   23.03,
+   22.0824,
+   16.12,
+   19.11
+  ]
+ },
+ "2023000006/04c5df0d2b1bb56b4c236cc4c74dcb49.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000027/54937acf42da4e94a0561a9691cd8fcb.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2023000027/b88b985342bb41709faa5968b2033990.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000914/202212220846306100.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000913/202212220846306100.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000880/4ba0b3aad83be401f0a65b0133659e56.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.9338,
+   25.566,
+   110.4998,
+   62.7852,
+   173.285,
+   73.285
+  ]
+ },
+ "2022000880/55eb72d01e861f629f47899b1ae45f39.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.846,
+   26.9755,
+   111.8215,
+   174.5418,
+   74.5418
+  ]
+ },
+ "2022000880/f388cf0c8dc7c94c39adf18e23ff3006.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   110.3573,
+   33.0459,
+   143.4032,
+   43.4032,
+   81.579
+  ]
+ },
+ "2022000880/fd4f2dc0d9f02a1c471204928ba47551.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   75.2833,
+   23.6892,
+   98.9725,
+   55.6513,
+   154.6238,
+   54.6238
+  ]
+ },
+ "2022000870/img-cm-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000870/img-mdh-01-01.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000870/og-img-kakao-ver.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000826/-84a.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.9841,
+   120.556,
+   20.556,
+   36.285
+  ]
+ },
+ "2022000826/-84b.webp": {
+  "area": null,
+  "source": "ocr-only",
+  "nums": [
+   84.984,
+   120.556,
+   20.556,
+   35.285,
+   161.83,
+   61.83
+  ]
+ },
+ "2022000832/560fb63b70a32797f17f2d0c8728d13a.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000840/202212010125475880.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000840/202212011027587460.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000840/202212011036562560.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000840/202212011037088840.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000840/202212011039428340.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
+ },
+ "2022000840/202212011045400320.webp": {
+  "area": null,
+  "source": "none",
+  "nums": []
  }
 }

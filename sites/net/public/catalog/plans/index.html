@@ -803,12 +803,16 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
     var base='https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=EPSG:4326&key='+VW_KEY+'&domain=https://ecorean.net&address='+encodeURIComponent(q);
     var fin=function(){addrBusy=false;};
     var fail3=function(){fin();showMapNote('「'+q+'」 위치를 찾지 못했습니다 — 주소나 아파트명을 확인해 주세요');};
-    var tryPlace=function(){
-      var su='https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&type=place&size=1&key='+VW_KEY+'&domain=https://ecorean.net&query='+encodeURIComponent(q);
+    // 정형 좌표 API(getcoord) → 퍼지 검색 API(type=address road/parcel) → 장소명 순.
+    // getcoord 는 완전한 주소만 받아 '청라동 123' 같은 일반 주소가 떨어졌다 (2026-09-09 보강)
+    var trySearch=function(type,category,next){
+      var su='https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&key='+VW_KEY+'&domain=https://ecorean.net&type='+type+(category?'&category='+category:'')+'&query='+encodeURIComponent(q);
       vwJsonp(su,function(d){
-        var it=d&&d.response&&d.response.status==='OK'&&d.response.result&&d.response.result.items&&d.response.result.items[0];
-        if(it&&it.point){fin();addrPin(+it.point.x,+it.point.y,it.title||q);}else fail3();
-      },fail3);
+        var r=d&&d.response;
+        var it=r&&r.status==='OK'&&r.result&&r.result.items&&r.result.items[0];
+        if(it&&it.point){fin();addrPin(+it.point.x,+it.point.y,it.title||(it.address&&(it.address.road||it.address.parcel))||q);}
+        else next();
+      },next);
     };
     var tryType=function(type,next){
       vwJsonp(base+'&type='+type,function(d){
@@ -817,7 +821,9 @@ body{font-family:'Malgun Gothic',-apple-system,sans-serif;background:#f2efe9;col
         else next();
       },next);
     };
-    tryType('ROAD',function(){tryType('PARCEL',tryPlace);});
+    tryType('ROAD',function(){tryType('PARCEL',function(){
+      trySearch('address','road',function(){trySearch('address','parcel',function(){trySearch('place','',fail3);});});
+    });});
   }
   var extrasHooked=null;
   function ecExtras(){
