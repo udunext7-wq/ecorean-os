@@ -4098,7 +4098,8 @@ if(FF_STANDALONE){
   const _bt=document.querySelector('.mtitle'); if(_bt) _bt.textContent='🧊 프리폼';
   setStatus(true,'🧊 독립 프리폼 — 여기서 만든 것은 여기 저장됩니다 (파일 ▸ 프리폼 파일 저장/열기 · 미니캐드가 열려 있으면 평면 다시 불러오기로 밑그림)');
 }
-if(!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
+if(!FF_STANDALONE&&!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
+// 독립 프리폼은 위에서 이미 부팅했다 — 이 폴백이 '연결 대기' 안내를 되살리면 안 된다
 // 테스트·디버그 훅
 window.MC3DVIEW={ST,scene,THREE,get camera(){return camera;},renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
   setSky,setSkyImage,buildSky,drawFrame,
