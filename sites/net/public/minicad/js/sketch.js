@@ -1537,10 +1537,67 @@ function massPushFace(m,lp,ln,d,ctx){
     if(exit!=null) d=Math.max(d,-Math.max(0,Math.round(exit)-10));
     if(d===0) return null;
   }
-  const set=new Set(f.face.vs);
-  m.solidVerts.forEach((v,i)=>{ if(set.has(i)){ v.x=Math.round((v.x+f.n.x*d)*10)/10; v.y=Math.round((v.y+f.n.y*d)*10)/10; v.z=Math.round((zNum(v.z,ctx)+f.n.z*d)*10)/10; } });
+  _massExtrudeFaceInPlace(m,f,d,ctx);
   _massNormalize(m,ctx);
   return {d,n:f.n};
+}
+// 면 F 를 법선으로 d 만큼: 꼭짓점이 같은 평면의 이웃 면(분할선 너머)과 공유되면 옮기지 않고 복제해
+//  옆면을 새로 세운다 — 스케치업이 반쪽 면을 뽑을 때 갈라진 선을 따라 벽이 생기는 그것.
+//  공유 이웃이 전부 꺾인 면이면(보통의 상자) 그냥 꼭짓점을 옮긴다 (이웃이 늘어난다).
+function _massExtrudeFaceInPlace(m,f,d,ctx){
+  const F=f.face, n=f.n, verts=_massNumVerts(m,ctx);
+  const fn=g=>faceNormal(verts,g.vs);
+  const coplanar=g=>g!==F&&g.vs.length>=3&&Math.abs(_vDot(fn(g),n))>0.999&&Math.abs(_vDot(_vSub(verts[g.vs[0]],verts[F.vs[0]]),n))<1.5;
+  const cop=new Set(); m.solidFaces.forEach(g=>{ if(coplanar(g)) g.vs.forEach(i=>cop.add(i)); });
+  const dup=new Map();                                  // 원본 인덱스 → 복제 인덱스
+  const off=_vScale(n,d);
+  F.vs.forEach(i=>{ if(!cop.has(i)) return; const v=verts[i]; const ni=m.solidVerts.length; m.solidVerts.push({x:Math.round((v.x+off.x)*10)/10,y:Math.round((v.y+off.y)*10)/10,z:Math.round((v.z+off.z)*10)/10}); dup.set(i,ni); });
+  // 옮길 꼭짓점 (공유 이웃이 전부 꺾인 면)
+  F.vs.forEach(i=>{ if(dup.has(i)) return; const v=m.solidVerts[i]; v.x=Math.round((v.x+off.x)*10)/10; v.y=Math.round((v.y+off.y)*10)/10; v.z=Math.round((zNum(v.z,ctx)+off.z)*10)/10; });
+  if(dup.size){
+    const ring=F.vs.slice(); const L=ring.length; const newFaces=[];
+    for(let k=0;k<L;k++){
+      const u=ring[k], v=ring[(k+1)%L];
+      const G=m.solidFaces.find(g=>g!==F&&g.vs.some((p,q)=>{ const r=g.vs[(q+1)%g.vs.length]; return (p===u&&r===v)||(p===v&&r===u); }));
+      if(G&&coplanar(G)){ newFaces.push({vs:[u,v,dup.get(v),dup.get(u)],mat:F.mat||null}); }          // 갈라진 선 → 새 옆면
+      else if(G){ [u,v].forEach(w=>{ if(!dup.has(w)) return; const other=w===u?v:u; const q=G.vs.indexOf(w); if(q<0||G.vs.includes(dup.get(w))) return;
+          const nx=G.vs[(q+1)%G.vs.length], pv=G.vs[(q-1+G.vs.length)%G.vs.length];
+          if(nx===other) G.vs.splice(q+1,0,dup.get(w)); else if(pv===other) G.vs.splice(q,0,dup.get(w)); }); }
+    }
+    F.vs=ring.map(i=>dup.has(i)?dup.get(i):i);
+    m.solidFaces.push(...newFaces);
+  }
+}
+// 면 위의 선으로 면을 나눈다 (스케치업 Divide) — 양 끝이 면의 모서리(또는 꼭짓점)에 닿아야 한다
+function massSplitFace(m,lp,ln,a,b,ctx){
+  const f=massFindFace(m,lp,ln,ctx); if(!f) return null;
+  const F=f.face;
+  const place=P=>{
+    const V=_massNumVerts(m,ctx); let vi=-1,bd=2.5;
+    F.vs.forEach(i=>{ const v=V[i]; const d=Math.hypot(v.x-P.x,v.y-P.y,v.z-P.z); if(d<bd){ bd=d; vi=i; } });
+    if(vi>=0) return vi;
+    const ring=F.vs;
+    for(let i=0;i<ring.length;i++){
+      const ia=ring[i], ib=ring[(i+1)%ring.length]; const A=V[ia],B=V[ib]; const AB=_vSub(B,A), L2=_vDot(AB,AB)||1;
+      const t=_vDot(_vSub(P,A),AB)/L2; if(t<=1e-4||t>=1-1e-4) continue;
+      const Q=_vAdd(A,_vScale(AB,t)); if(_vLen(_vSub(Q,P))>2.5) continue;
+      const ni=m.solidVerts.length; m.solidVerts.push({x:Math.round(Q.x*10)/10,y:Math.round(Q.y*10)/10,z:Math.round(Q.z*10)/10});
+      m.solidFaces.forEach(g=>{ for(let k=0;k<g.vs.length;k++){ const p=g.vs[k],q=g.vs[(k+1)%g.vs.length]; if((p===ia&&q===ib)||(p===ib&&q===ia)){ g.vs.splice(k+1,0,ni); return; } } });
+      return ni;
+    }
+    return -1;
+  };
+  const va=place(a); if(va<0) return null;
+  const vb=place(b); if(vb<0||va===vb) return null;
+  const ring=F.vs; const ia=ring.indexOf(va), ib=ring.indexOf(vb); if(ia<0||ib<0) return null;
+  if((ia+1)%ring.length===ib||(ib+1)%ring.length===ia) return null;            // 이미 변이다
+  const r1=[],r2=[];
+  for(let k=ia;;k=(k+1)%ring.length){ r1.push(ring[k]); if(k===ib) break; }
+  for(let k=ib;;k=(k+1)%ring.length){ r2.push(ring[k]); if(k===ia) break; }
+  const fi=m.solidFaces.indexOf(F);
+  m.solidFaces.splice(fi,1,{vs:r1,mat:F.mat||null},{vs:r2,mat:F.mat||null});
+  m.open=m.open||false;
+  return {faces:2};
 }
 // Ctrl+밀기끌기 — 원래 면은 두고 새 매스를 뽑는다
 function massExtrudeFaceNew(m,lp,ln,d,ctx,free){
@@ -1693,6 +1750,6 @@ if(typeof module!=='undefined'&&module.exports){
     sweepProfile,massFromSweep,moldingProfile,
     massCSG,earTriangles,csgMergeFaces,massToCsgPolys,massFromCsgFaces,csgUnion,csgSubtract,csgIntersect,
     massFindFace,massPushFace,massExtrudeFaceNew,massVertXY,massRotate3,massFlip,massScaleAbout,massLocalBox,massFaceInfo,
-    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,
+    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,massSplitFace,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

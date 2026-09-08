@@ -138,7 +138,7 @@ const FF_HINT={
   rotate:'<b>회전</b> — 객체 클릭 → 각도기: 기준 방향 → 각도 · <b>세워진 면을 클릭하면 그 면의 법선이 축</b> · <b>Ctrl=복사</b>(뒤에 x3=방사 배열) · 15° 스냅(Shift=자유) · <b>숫자=각도</b>',
   scale:'<b>배율</b> — 매스를 고르면 <b>그립</b>: 초록 모서리=균등 · 빨강/파랑 면=한 축 · <b>Ctrl=중심 기준</b> · <b>숫자=배율</b>(1.5) 또는 <b>치수</b>(1500mm) · 가로,세로,높이',
   pushpull:'<b>밀기끌기</b> — <b>매스의 어느 면이든</b> 법선으로 밀면 매스가 늘고 줄어듭니다 · <b>Ctrl=면을 두고 새 매스 뽑기</b> · 바닥 면=위로(매스) · 벽면 위의 면=뽑기/안으로 밀면 파내기 · <b>숫자=mm</b>(−=안으로) · 더블클릭=직전 값',
-  line:'<b>선</b> — 클릭-클릭 사슬 · <b>고리가 닫히면 면</b> · 벽면을 클릭하면 그 면이 종이 · Shift=방향 고정 · ←→↑=축 고정 · 숫자=길이 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · Esc/더블클릭=끝',
+  line:'<b>선</b> — 클릭-클릭 사슬 · <b>고리가 닫히면 면</b> · <b>매스 면 위에 모서리에서 모서리로 그으면 면이 나뉜다</b>(나뉜 면은 각각 밀기끌기) · 벽면을 클릭하면 그 면이 종이 · Shift=방향 고정 · ←→↑=축 고정 · 숫자=길이 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · Esc/더블클릭=끝',
   rect:'<b>사각형</b> — 두 모서리 클릭=면 · 벽면 위도 됨 · <b>가로,세로</b> 입력 · P 로 밀면 입체',
   rotrect:'<b>회전 사각형</b> — 첫 변 두 점 클릭 → 폭 클릭 · 숫자=길이·폭',
   circle:'<b>원</b> — 중심 클릭 → 반지름 · <b>숫자=반지름</b> · <b>24s=변 수</b>',
@@ -2228,7 +2228,8 @@ function _ffFacePick(e){
   const n={x:nW.x,y:nW.z,z:nW.y};
   const p={x:hit.point.x/MM,y:hit.point.z/MM,z:hit.point.y/MM};
   if(Math.abs(n.z)>0.95&&p.z<50) return null;      // 땅바닥 = 종전 그대로 (기본 평면)
-  return {o:p,n};
+  const ho=hit.object.userData.obj;
+  return {o:p,n,mass:(ho&&ho.kind==='mass'&&ffEditable(ho)&&!ho.locked)?{id:ho.id}:null};   // 매스 면이면 선이 면을 나눌 수 있다
 }
 // 그 평면의 틀 — 이미 그래프가 있으면 그 틀 (u,v 가 이어져야 스냅이 맞는다)
 function _ffFrameFor(o,n){
@@ -2377,16 +2378,29 @@ function _ff3Ghost(op){
   op.line.geometry=g;
   invalidate();
 }
+// 면 위의 선 → 매스 면 분할 시도. 양 끝이 면 모서리(꼭짓점)에 닿을 때만 나뉘고, 아니면 false (면 위 스케치 선으로)
+function ffTrySplit(op,ua,ub){
+  const g=_massG(op.mass.id), m=_massOf(op.mass.id); if(!g||!m) return false;
+  const W=q=>planePt(op.fr,q.u,q.v);
+  const toL=w=>{ const l=g.worldToLocal(new THREE.Vector3(w.x*MM,w.z*MM,w.y*MM)); return {x:Math.round(l.x/MM*10)/10,y:Math.round(l.z/MM*10)/10,z:Math.round(l.y/MM*10)/10}; };
+  const A=toL(W(ua)), B=toL(W(ub));
+  const qi=g.getWorldQuaternion(new THREE.Quaternion()).invert(); const nL=new THREE.Vector3(op.fr.n.x,op.fr.n.z,op.fr.n.y).applyQuaternion(qi); const ln={x:nL.x,y:nL.z,z:nL.y};
+  const mid={x:(A.x+B.x)/2,y:(A.y+B.y)/2,z:(A.z+B.z)/2};
+  const probe=JSON.parse(JSON.stringify(m)); if(!massSplitFace(probe,mid,ln,A,B,ffCtx())) return false;
+  const ok=emitEdit({type:'edit',op:'splitface',kind:'masses',id:m.id,floorId:'freeform',patch:{p:mid,n:ln,a:A,b:B}});
+  if(ok) setStatus(statusLive,'╱ 면 분할 → 두 면 (각각 P 밀기끌기·B 페인트·M 이동 가능) · 이어서 그리면 또 나뉩니다');
+  return ok;
+}
 function ff3Click(e,fp,tool){
   if(!ST.op){
     const fr=_ffFrameFor(fp.o,fp.n);
     const uv=_ff3UV(e,fr);
     if(!uv) return;
-    ST.op={type:tool==='rect'?'rect3':'line3',fr,a:uv,cur:uv,line:null};
+    ST.op={type:tool==='rect'?'rect3':'line3',fr,a:uv,cur:uv,line:null,mass:fp.mass||null};
     opOrbit(true);
     _ff3Ghost(ST.op);
     const wallLike=Math.abs(fr.n.z)<0.95;
-    setStatus(statusLive,'🧊 '+(wallLike?'벽면':'윗면')+' 위에 그리는 중 — 닫히면 면이 되고, P 로 뽑으면 입체가 됩니다 (Esc=취소)');
+    setStatus(statusLive,'🧊 '+(wallLike?'벽면':'윗면')+' 위에 그리는 중 — '+(fp.mass?'양 끝이 모서리에 닿으면 면이 나뉘고, ':'')+'닫히면 면이 되고, P 로 뽑으면 입체가 됩니다 (Esc=취소)');
     vcbShow(tool==='rect'?'면 위 사각형':'면 위 선',0,'mm');
     return;
   }
@@ -2404,8 +2418,9 @@ function ff3Click(e,fp,tool){
     return;
   }
   if(Math.hypot(uv.u-op.a.u,uv.v-op.a.v)<10) return;
-  emitEdit({type:'edit',op:'sketchline',floorId:'freeform',
-    patch:{x1:op.a.u,y1:op.a.v,x2:uv.u,y2:uv.v,plane}});
+  if(!(op.mass&&ffTrySplit(op,op.a,uv)))                                       // 양 끝이 면의 모서리에 닿으면 면이 나뉜다 (스케치업 Divide)
+    emitEdit({type:'edit',op:'sketchline',floorId:'freeform',
+      patch:{x1:op.a.u,y1:op.a.v,x2:uv.u,y2:uv.v,plane}});
   op.a=uv;                                   // 선은 사슬로 잇는다 (더블클릭=끝)
   _ff3Ghost(op);
 }
@@ -2438,9 +2453,10 @@ function ff3Commit(exact){
   const L=Math.hypot(du,dv);
   if(L<1e-6){ setStatus(statusLive,'방향을 먼저 — 커서를 움직이거나 축을 고정하세요'); return; }
   const uv={u:Math.round(a.u+du/L*exact),v:Math.round(a.v+dv/L*exact)};
-  emitEdit({type:'edit',op:'sketchline',floorId:'freeform',
-    patch:{x1:a.u,y1:a.v,x2:uv.u,y2:uv.v,
-      plane:{origin:op.fr.origin,ex:op.fr.ex,ey:op.fr.ey,n:op.fr.n}}});
+  if(!(op.mass&&ffTrySplit(op,a,uv)))
+    emitEdit({type:'edit',op:'sketchline',floorId:'freeform',
+      patch:{x1:a.u,y1:a.v,x2:uv.u,y2:uv.v,
+        plane:{origin:op.fr.origin,ex:op.fr.ex,ey:op.fr.ey,n:op.fr.n}}});
   op.a=uv; op.cur=uv;
   _ff3Ghost(op);
 }
@@ -2974,6 +2990,11 @@ function ffApply(m){
       const r=massDeleteVertex(mass,p.p,ctx); if(!r) return no('그 꼭짓점을 찾지 못했습니다');
       if(!mass.solidFaces.length){ bag.masses=bag.masses.filter(x=>x!==mass); label='면이 다 사라져 매스 제거'; } else label='꼭짓점 삭제 (면 '+r.removed+'개 함께)';
       ok=true; break;
+    }
+    case 'splitface': {                                 // 면 위의 선으로 면을 나눈다
+      const mass=massOf(m.id); if(!mass) return no('밑그림 매스는 평면에서');
+      if(!massSplitFace(mass,p.p,p.n,p.a,p.b,ctx)) return no('선의 양 끝이 면의 모서리에 닿아야 면이 나뉩니다');
+      ok=true; label='면 분할'; break;
     }
     case 'reverseface': {
       const mass=massOf(m.id); if(!mass) return no('밑그림 매스는 평면에서');
@@ -5650,7 +5671,7 @@ window.MC3DVIEW={ST,scene,THREE,get camera(){return camera;},renderer,build:acce
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,
