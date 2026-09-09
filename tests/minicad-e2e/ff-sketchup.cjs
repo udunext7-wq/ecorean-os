@@ -136,12 +136,12 @@ var ck=(c,m)=>{ n++; if(!c) fails.push(m); console.log((c?'  ✅ ':'  ❌ ')+m);
     ck((await J(`MC3DVIEW.ST.sections.length`))===0,'단면 모두 삭제');
     // ---- 면 스타일 · 모서리 · 안개 · 숨은 형상 ----
     await J(`MC3DVIEW.menuCmd('fs-wire');'ok'`);
-    ck(await J(`(()=>{let w=0,t=0;MC3DVIEW.ST.root.traverse(o=>{if(o.isMesh&&o.userData.obj){t++;if(o.material.wireframe)w++;}});return w>0&&w===t;})()`),'와이어프레임 → 전 메시');
+    ck(await J(`(()=>{let w=0,t=0;MC3DVIEW.ST.root.traverse(o=>{if(o.isMesh&&o.userData.obj&&!o.userData.pick){t++;if(o.material.wireframe)w++;}});return w>0&&w===t;})()`),'와이어프레임 → 전 메시');
     await J(`MC3DVIEW.menuCmd('fs-hidden');'ok'`);
     ck(await J(`(()=>{let e=0;MC3DVIEW.ST.root.traverse(o=>{if(o.name==='__edges'&&o.visible)e++;});return e>0;})()`),'히든 라인 → 모서리 선');
     await J(`MC3DVIEW.menuCmd('fs-textured');__key('k');'ok'`);
     m=await J(`({edges:MC3DVIEW.ST.edges,style:MC3DVIEW.ST.faceStyle,chk:document.getElementById('mi-edges').classList.contains('chk')})`);
-    ck(m.edges===true&&m.style==='textured'&&m.chk,'K = 모서리 토글 + 메뉴 체크 '+JSON.stringify(m));
+    ck(m.edges===false&&m.style==='textured'&&!m.chk,'K = 모서리 토글(기본 ON → OFF) + 메뉴 체크 '+JSON.stringify(m));
     await J(`__key('k');MC3DVIEW.menuCmd('fog');'ok'`);
     ck(await J(`MC3DVIEW.ST.fogOn&&MC3DVIEW.scene.fog.near<60`),'안개 켜짐');
     await J(`MC3DVIEW.menuCmd('fog');MC3DVIEW.selectById('freeform',__F().masses[1].id);MC3DVIEW.hideSelected();MC3DVIEW.menuCmd('hiddengeom');'ok'`); await sleep(100);

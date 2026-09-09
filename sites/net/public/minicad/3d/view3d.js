@@ -132,14 +132,15 @@ const FF_OPS=new Set(['rotrect','freehand','arc3','pie','protractor','axesop','p
 // --- 글로우 (2026-09-09 대표 지시 "스냅 표시 점과 선이 너무 두껍고 크다 — 글로우 효과로") ---
 //  스냅 표시·시작점·스케치 점 = 화면 크기 고정 발광 스프라이트, 스케치 선 = 1px 코어 + 얇은 발광 헤일로
 let _glowTexC=null;
-function _glowTex(){ if(_glowTexC) return _glowTexC; const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d'); const g=x.createRadialGradient(32,32,0,32,32,32); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.22,'rgba(255,255,255,0.95)'); g.addColorStop(0.45,'rgba(255,255,255,0.35)'); g.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=g; x.fillRect(0,0,64,64); _glowTexC=new THREE.CanvasTexture(c); _glowTexC.colorSpace=THREE.SRGBColorSpace; return _glowTexC; }
+function _glowTex(){ if(_glowTexC) return _glowTexC; const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d'); const g=x.createRadialGradient(32,32,0,32,32,32); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.16,'rgba(255,255,255,0.98)'); g.addColorStop(0.3,'rgba(255,255,255,0.32)'); g.addColorStop(0.55,'rgba(255,255,255,0.08)'); g.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=g; x.fillRect(0,0,64,64); _glowTexC=new THREE.CanvasTexture(c); _glowTexC.colorSpace=THREE.SRGBColorSpace; return _glowTexC; }
 function _pxScale(px){ const h=Math.max(1,renderer.domElement.clientHeight); const f=(camera&&camera.isPerspectiveCamera)?2*Math.tan(camera.fov*Math.PI/360):2; return px*f/h; }
 function glowSprite(color,px){ const m=new THREE.SpriteMaterial({map:_glowTex(),color:color||0xD4FF3D,transparent:true,depthTest:false,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:false}); const s=new THREE.Sprite(m); s.scale.setScalar(_pxScale(px||14)); s.renderOrder=1000; s.userData.px=px||14; return s; }
 function _glowResize(){ scene.traverse(o=>{ if(o.isSprite&&o.userData.px) o.scale.setScalar(_pxScale(o.userData.px)); }); }
-function _mkStart(){ if(FF_STANDALONE) return glowSprite(0xD4FF3D,14); const m=_mkStart(); return m; }
+function _mkStart(){ if(FF_STANDALONE) return glowSprite(0xD4FF3D,10); const m=_mkStart(); return m; }
 // 발광 헤일로 재질 (스케치 선·점)
 const _haloCache=new Map();
-function haloMat(color){ const k=String(color); let m=_haloCache.get(k); if(m) return m; m=new THREE.MeshBasicMaterial({color:new THREE.Color(color),transparent:true,opacity:0.28,blending:THREE.AdditiveBlending,depthWrite:false}); _haloCache.set(k,m); return m; }
+let _pickMatC=null; function _pickMat(){ if(!_pickMatC){ _pickMatC=new THREE.MeshBasicMaterial({visible:false}); } return _pickMatC; }
+function haloMat(color){ const k=String(color); let m=_haloCache.get(k); if(m) return m; m=new THREE.MeshBasicMaterial({color:new THREE.Color(color),transparent:true,opacity:0.2,blending:THREE.AdditiveBlending,depthWrite:false}); _haloCache.set(k,m); return m; }
 const FF_CURSOR={polygon:'crosshair',rotrect:'crosshair',freehand:'crosshair',arc3:'crosshair',pie:'crosshair',followme:'copy',protractor:'crosshair',axes:'crosshair',text3d:'text',section:'crosshair',zoomwin:'zoom-in',poscam:'crosshair',lookaround:'grab',walk:'grab',mkcomp:'default',fit:'default',prevview:'default'};
 const FF_STATUS={polygon:'⬡ 다각형',rotrect:'▱ 회전 사각형',freehand:'〰 프리핸드',arc3:'◠ 3점 호',pie:'◔ 파이',followme:'⌐ 팔로우 미',protractor:'∠ 각도기',axes:'⊹ 축',text3d:'𝟯 3D 문자',section:'▥ 단면',zoomwin:'⛶ 줌 창',poscam:'📍 카메라 위치',lookaround:'👁 둘러보기',walk:'🚶 걷기'};
 // 강사 — 단독 프리폼 문구 (벽·평면·견적 이야기가 없다)
@@ -504,7 +505,7 @@ function applyFaceStyle(){
   const st=ST.faceStyle, edges=ST.edges||st==='hidden';
   ST.root.traverse(o=>{
     if(!o.isMesh) return;
-    const obj=o.userData.obj; if(!obj) return;
+    const obj=o.userData.obj; if(!obj||o.userData.pick) return;
     const g=o.parent; const hidKey=obj.floorId+'|'+obj.id;
     const ghost=ST.hiddenGeom&&ST.hidden.has(hidKey);
     if(!o.userData._fs0) o.userData._fs0=o.material;
@@ -521,7 +522,7 @@ function applyFaceStyle(){
     else o.material=want;
     // 모서리
     let eg=o.children.find(c=>c.name==='__edges');
-    if(edges&&!ghost){ if(!eg){ eg=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,25),new THREE.LineBasicMaterial({color:0x0E0F1A})); eg.name='__edges'; eg.raycast=()=>{}; o.add(eg); } eg.visible=true; }
+    if(edges&&!ghost){ if(!eg){ eg=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,25),new THREE.LineBasicMaterial({color:0x0E0F1A,transparent:true,opacity:st==='hidden'?1:0.55})); eg.name='__edges'; eg.raycast=()=>{}; o.add(eg); } eg.visible=true; }
     else if(eg) eg.visible=false;
   });
   invalidate(true);
@@ -878,7 +879,7 @@ function buildScaleGrips(){
   const g=arr[0], o=g.userData.obj; if(!o||o.kind!=='mass'||o.locked||!ffEditable(o)) { invalidate(); return; }
   const m=FF&&FF.free.masses.find(x=>x&&x.id===o.id); if(!m){ invalidate(); return; }
   const B=massLocalBox(m,ffCtx()); const z0=_massZ0(o); const gs=_gripSize(o)/GRIP_R;
-  const add=(p,a,kind,axes,col)=>{ const mk=new THREE.Mesh(gripGeo,new THREE.MeshBasicMaterial({color:col,depthTest:false,transparent:true,opacity:0.95})); mk.scale.setScalar(gs*(kind==='corner'?1:0.8)); mk.position.copy(_massWorld(o,p.x,p.y,p.z,z0)); mk.renderOrder=900; mk.userData.sgrip={obj:o,g,p,a,kind,axes}; gripsGrp.add(mk); };
+  const add=(p,a,kind,axes,col)=>{ const mk=glowSprite(col,kind==='corner'?9:8); mk.position.copy(_massWorld(o,p.x,p.y,p.z,z0)); mk.renderOrder=900; mk.userData.sgrip={obj:o,g,p,a,kind,axes}; gripsGrp.add(mk); };
   const xs=[B.x0,B.x1],ys=[B.y0,B.y1],zs=[B.z0,B.z1];
   xs.forEach((x,i)=>ys.forEach((y,j)=>zs.forEach((z,k)=>add({x,y,z},{x:xs[1-i],y:ys[1-j],z:zs[1-k]},'corner',['x','y','z'],0x2FA84F))));
   const cx=(B.x0+B.x1)/2,cy=(B.y0+B.y1)/2,cz=(B.z0+B.z1)/2;
@@ -1136,11 +1137,11 @@ function _fsDraw(){
   ST.parts.forEach(pt=>{ const g=_massG(pt.id); if(!g) return; const toW=p=>g.localToWorld(new THREE.Vector3(p.x*MM,p.z*MM,p.y*MM));
     if(pt.kind==='face'&&pt.ring&&pt.ring.length>=3){ const r=pt.ring; const tri=earTriangles(r); const pos=[]; tri.forEach(t=>t.forEach(k=>{ const w=toW(r[k]); pos.push(w.x,w.y,w.z); }));
       const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
-      const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x4C7DE2,transparent:true,opacity:0.35,side:THREE.DoubleSide,depthTest:false})); mesh.renderOrder=940; faceSelGrp.add(mesh);
-      const ln=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(r.map(toW)),new THREE.LineBasicMaterial({color:0x2F6193,depthTest:false})); ln.renderOrder=941; faceSelGrp.add(ln); }
-    else if(pt.kind==='edge'){ const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([toW(pt.a),toW(pt.b)]),new THREE.LineBasicMaterial({color:0x4C7DE2,depthTest:false})); ln.renderOrder=941; faceSelGrp.add(ln);
-      [pt.a,pt.b].forEach(p=>{ const mk=new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0x4C7DE2,depthTest:false})); mk.scale.setScalar(0.035); mk.position.copy(toW(p)); mk.renderOrder=942; faceSelGrp.add(mk); }); }
-    else if(pt.kind==='vert'){ const mk=new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xE24CE2,depthTest:false})); mk.scale.setScalar(0.06); mk.position.copy(toW(pt.p)); mk.renderOrder=943; faceSelGrp.add(mk); } });
+      const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x4C7DE2,transparent:true,opacity:0.22,side:THREE.DoubleSide,depthTest:false})); mesh.renderOrder=940; faceSelGrp.add(mesh);
+      const ln=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(r.map(toW)),new THREE.LineBasicMaterial({color:0x7FB2FF,depthTest:false,transparent:true,opacity:0.9})); ln.renderOrder=941; faceSelGrp.add(ln); }
+    else if(pt.kind==='edge'){ const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([toW(pt.a),toW(pt.b)]),new THREE.LineBasicMaterial({color:0x7FB2FF,depthTest:false,transparent:true,opacity:0.95})); ln.renderOrder=941; faceSelGrp.add(ln);
+      [pt.a,pt.b].forEach(p=>{ const mk=glowSprite(0x7FB2FF,7); mk.position.copy(toW(p)); mk.renderOrder=942; faceSelGrp.add(mk); }); }
+    else if(pt.kind==='vert'){ const mk=glowSprite(0xE24CE2,11); mk.position.copy(toW(pt.p)); mk.renderOrder=943; faceSelGrp.add(mk); } });
   invalidate();
 }
 // 재조립 뒤 같은 요소를 다시 잡는다
@@ -1391,14 +1392,15 @@ function primMesh(p,obj){
       if(p.t==='box'){ a=new THREE.Vector3((p.x-p.w/2)*MM,(p.z+p.h/2)*MM,p.y*MM); b=new THREE.Vector3((p.x+p.w/2)*MM,(p.z+p.h/2)*MM,p.y*MM); }
       else { a=new THREE.Vector3(p.a.x*MM,p.a.z*MM,p.a.y*MM); b=new THREE.Vector3(p.b.x*MM,p.b.z*MM,p.b.y*MM); }
       const L=a.distanceTo(b); if(L<1e-6) return null;
-      mesh=new THREE.Mesh(geoCyl,haloMat(col)); mesh.scale.set(14*MM,L,14*MM);
+      mesh=new THREE.Mesh(geoCyl,_pickMat()); mesh.scale.set(14*MM,L,14*MM); mesh.userData.pick=true;      // 집기용(안 보임)
       mesh.position.copy(a.clone().add(b).multiplyScalar(0.5)); mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),b.clone().sub(a).normalize());
-      const core=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-0.5,0),new THREE.Vector3(0,0.5,0)]),new THREE.LineBasicMaterial({color:new THREE.Color(col),transparent:true,opacity:0.95}));
+      const halo=new THREE.Mesh(geoCyl,haloMat(col)); halo.scale.set(4/14,1,4/14); halo.raycast=()=>{}; mesh.add(halo);   // 얇은 발광
+      const core=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-0.5,0),new THREE.Vector3(0,0.5,0)]),new THREE.LineBasicMaterial({color:new THREE.Color(col),transparent:true,opacity:0.92}));
       core.scale.set(1/(14*MM),1,1/(14*MM)); core.raycast=()=>{}; mesh.add(core);
       mesh.renderOrder=6;
     } else {
-      mesh=glowSprite(new THREE.Color(col).getHex(),11);
-      mesh.material.opacity=0.9;
+      mesh=glowSprite(new THREE.Color(col).getHex(),7);
+      mesh.material.opacity=0.95;
       if(p.t==='cyl') mesh.position.set(p.x*MM,(p.z+p.h/2)*MM,p.y*MM); else mesh.position.set(p.p.x*MM,p.p.z*MM,p.p.y*MM);
       mesh.renderOrder=7;
     }
@@ -2138,7 +2140,7 @@ function findGroup(floorId,id){
 //  ST.selSet = 선택된 그룹 집합, ST.selected = 대표(마지막) 객체 — 기존 단일 선택 코드와 호환
 function _hl(g,on){
   g.traverse(o=>{
-    if(!o.isMesh) return;
+    if(!o.isMesh||o.userData.pick) return;
     if(on){ if(o.userData._mat) return; o.userData._mat=o.material; const m=o.material.clone(); if(m.emissive){ m.emissive=new THREE.Color('#C9A961'); m.emissiveIntensity=0.45; } else if(m.color){ m.color=m.color.clone().lerp(new THREE.Color('#C9A961'),0.6); if(m.transparent&&m.opacity<1) m.opacity=Math.min(1,m.opacity+0.3); } o.material=m; }   // 발광 헤일로·스프라이트(emissive 없음)는 색만 밝힌다
     else if(o.userData._mat){ o.material=o.userData._mat; delete o.userData._mat; }
   });
@@ -2339,8 +2341,8 @@ function _ff3SnapList(fr){
 // 평면 스냅 마커 — 3D 자리에 직접 (땅 그리기의 showSnap 과 같은 색 규약)
 function _ff3Mark(kind,w){
   if(!kind||kind==='grid'){ hideSnap(); return; }
-  if(!snapMk){ snapMk=FF_STANDALONE?glowSprite(0xffffff,18):new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false})); if(!snapMk.isSprite) snapMk.scale.setScalar(0.045); snapMk.renderOrder=1000; scene.add(snapMk); }
-  if(snapMk.isSprite) snapMk.scale.setScalar(_pxScale(18));
+  if(!snapMk){ snapMk=FF_STANDALONE?glowSprite(0xffffff,12):new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false})); if(!snapMk.isSprite) snapMk.scale.setScalar(0.045); snapMk.renderOrder=1000; scene.add(snapMk); }
+  if(snapMk.isSprite) snapMk.scale.setScalar(_pxScale(12));
   snapMk.material.color.setHex(SNAP_COL[kind]||0xffffff);
   snapMk.position.set(w.x*MM,w.z*MM,w.y*MM);
   snapMk.visible=true; invalidate();
@@ -3486,8 +3488,8 @@ const SNAP_NAME={endpoint:'끝점',midpoint:'중간점',edge:'선 위',origin:'�
 let snapMk=null;
 function showSnap(s,z0){
   if(s.kind==='grid'){ hideSnap(); return; }
-  if(!snapMk){ snapMk=FF_STANDALONE?glowSprite(0xffffff,18):new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false})); if(!snapMk.isSprite) snapMk.scale.setScalar(0.045); snapMk.renderOrder=1000; scene.add(snapMk); }
-  if(snapMk.isSprite) snapMk.scale.setScalar(_pxScale(18));
+  if(!snapMk){ snapMk=FF_STANDALONE?glowSprite(0xffffff,12):new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false})); if(!snapMk.isSprite) snapMk.scale.setScalar(0.045); snapMk.renderOrder=1000; scene.add(snapMk); }
+  if(snapMk.isSprite) snapMk.scale.setScalar(_pxScale(12));
   snapMk.material.color.setHex(SNAP_COL[s.kind]||0xffffff);
   snapMk.position.set(s.x*MM,z0+0.03,s.y*MM);
   snapMk.visible=true;
@@ -3642,7 +3644,7 @@ function lineMove(e){
     vcbShow((closing?'시작점 — 클릭=면 닫기 · ':'')+(kind&&kind!=='grid'?SNAP_NAME[kind]+' · ':'')+'길이',len,'mm');
     // 미리보기 — 2026-09-04: 선은 얇은 스케치 선 (면 위를 가로지르면 분할 예고)
     if(len>50){
-      const th=FF_STANDALONE?0.012:0.03,H=FF_STANDALONE?0.006:0.02;
+      const th=FF_STANDALONE?0.006:0.03,H=FF_STANDALONE?0.003:0.02;
       op.ghost.visible=true;
       op.ghost.scale.set(len*MM,H,th);
       op.ghost.position.set((op.a.x+px)/2*MM,op.z0+H/2,(op.a.y+py)/2*MM);
@@ -3994,8 +3996,8 @@ function buildGrips(){
   const z0=_massZ0(o);
   const gs=_gripSize(o)/GRIP_R;
   o.meta.z.top.forEach(p=>{
-    const mk=new THREE.Mesh(gripGeo,p.ref?gripMatRef:gripMat);
-    mk.scale.setScalar(gs);
+    const mk=FF_STANDALONE?glowSprite(p.ref?0xC9A961:0x4C7DE2,9):new THREE.Mesh(gripGeo,p.ref?gripMatRef:gripMat);
+    if(!mk.isSprite) mk.scale.setScalar(gs);
     mk.position.copy(_massWorld(o,p.x,p.y,p.z,z0));
     mk.renderOrder=900;
     mk.userData.grip={obj:o,g,i:p.i,vi:p.vi,x:p.x,y:p.y,z:p.z,zr:p.zr,ref:p.ref,label:p.label};
@@ -4009,6 +4011,10 @@ function _gripAt(cx,cy){
   //  다음 rAF 전에 눌리면 matrixWorld 가 옛것이라 레이가 빗나간다 — 실제로 빗나갔다.
   gripsGrp.updateMatrixWorld(true); camera.updateMatrixWorld();
   const r=renderer.domElement.getBoundingClientRect();
+  if(gripsGrp.children[0]&&gripsGrp.children[0].isSprite){                    // 발광점 그립 = 화면 9px 안 (스케치업 픽 조리개)
+    let best=null,bd=9; gripsGrp.children.forEach(o=>{ if(!o.visible) return; const w=o.getWorldPosition(new THREE.Vector3()).project(camera); if(w.z>1) return; const d=Math.hypot(r.left+(w.x+1)/2*r.width-cx,r.top+(1-w.y)/2*r.height-cy); if(d<bd){ bd=d; best=o; } });
+    return best;
+  }
   const nd=new THREE.Vector2(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1);
   ray.setFromCamera(nd,camera);
   const hits=ray.intersectObjects(gripsGrp.children,false);
@@ -4601,9 +4607,9 @@ function addGuidePoint(fid,p,z0){
   if(!ST.guidePts) ST.guidePts=[];
   const g={fid,x:Math.round(p.x),y:Math.round(p.y)};
   const mk=new THREE.Group(); mk.name='guidept';
-  const s=0.06; const pts=[[-s,0,0],[s,0,0],[0,0,-s],[0,0,s]].map(a=>new THREE.Vector3(a[0],0,a[2]));
+  const s=0.02; const pts=[[-s,0,0],[s,0,0],[0,0,-s],[0,0,s]].map(a=>new THREE.Vector3(a[0],0,a[2]));
   mk.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x9A9AFF,depthTest:false})));
-  if(FF_STANDALONE){ const gl=glowSprite(0x9A9AFF,12); mk.add(gl); }
+  if(FF_STANDALONE){ const gl=glowSprite(0x9A9AFF,8); mk.add(gl); }
   mk.position.set(g.x*MM,z0+0.02,g.y*MM); mk.renderOrder=997; scene.add(mk); g.mk=mk;
   ST.guidePts.push(g); rebuildGuideSnap(fid); invalidate();
   setStatus(statusLive,'┼ 안내점 ('+g.x+', '+g.y+') — 그리기 스냅 · 지우개로 삭제 · 편집▸안내선 모두 삭제');
@@ -5713,6 +5719,7 @@ if(FF_STANDALONE){
   // 미니캐드 관련 메뉴·버튼은 단독에서 뜻이 없다 — 걷어낸다
   ffStandaloneShell();                          // 스케치업 100% 셸 (메뉴·큰 도구 세트·단축키표)
   ST.labels=false; refreshVisibility(); { const bl=$('b-label'); if(bl) bl.classList.remove('on'); }   // 이름표 기본 OFF (2026-09-09 대표 지시)
+  ST.edges=true; applyFaceStyle();               // 매스 모서리 얇게 기본 ON (스케치업처럼)
   refreshStylePanel();
   setStatus(true,'🧊 단독 프리폼 — 미니캐드와 연결되지 않습니다. 여기서 만든 것은 여기 저장 (파일 ▸ 프리폼 파일 저장/열기)');
 }

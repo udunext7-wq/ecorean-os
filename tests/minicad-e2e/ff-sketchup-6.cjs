@@ -7,10 +7,10 @@ const fails=[]; let n=0; const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.lo
     let m=await J(`({labels:MC3DVIEW.ST.labels,btn:document.getElementById('b-label').classList.contains('on')})`);
     ck(m.labels===false&&!m.btn,'이름표 기본 OFF '+JSON.stringify(m));
     await J(`MC3DVIEW.emitEdit({type:'edit',op:'sketchrect',floorId:'freeform',patch:{x1:0,y1:0,x2:3000,y2:2000}});MC3DVIEW.setView('top');MC3DVIEW.drawFrame();'ok'`); await sleep(200);
-    m=await J(`(()=>{ var sp=0,halo=0,thick=0; MC3DVIEW.ST.root.traverse(o=>{ var k=o.userData.obj&&o.userData.obj.kind; if(o.isSprite&&k==='sketchPt') sp++; if(o.isMesh&&k==='sketchEdge'){ halo++; if(o.material.blending!==MC3DVIEW.THREE.AdditiveBlending||o.scale.x>0.02) thick++; } }); return {sp,halo,thick}; })()`);
-    ck(m.sp===4&&m.halo===4&&m.thick===0,'스케치 점=발광 스프라이트 4 · 선=얇은 발광 헤일로 4 '+JSON.stringify(m));
+    m=await J(`(()=>{ var sp=0,halo=0,thick=0; MC3DVIEW.ST.root.traverse(o=>{ var k=o.userData.obj&&o.userData.obj.kind; if(o.isSprite&&k==='sketchPt') sp++; if(o.isMesh&&k==='sketchEdge'&&o.userData.pick){ halo++; var h=o.children.find(c=>c.isMesh); if(o.material.visible!==false||!h||h.scale.x>0.3||h.material.blending!==MC3DVIEW.THREE.AdditiveBlending) thick++; } }); return {sp,halo,thick}; })()`);
+    ck(m.sp===4&&m.halo===4&&m.thick===0,'스케치 점=발광 스프라이트 4 · 선=안 보이는 집기 원기둥+얇은 발광 헤일로(r4mm) 4 '+JSON.stringify(m));
     await J(`MC3DVIEW.setTool('line');var p=__pt(3000,2000);__ev('pointermove',p.x+3,p.y+2);MC3DVIEW.drawFrame();'ok'`); await sleep(100);
-    m=await J(`(()=>{ var s=null; MC3DVIEW.scene.children.forEach(o=>{ if(o.isSprite&&o.visible&&o.userData.px===18) s=o; }); return s?{ok:true,col:s.material.color.getHexString(),sz:s.scale.x<0.05}:{ok:false}; })()`);
+    m=await J(`(()=>{ var s=null; MC3DVIEW.scene.children.forEach(o=>{ if(o.isSprite&&o.visible&&o.userData.px===12) s=o; }); return s?{ok:true,col:s.material.color.getHexString(),sz:s.scale.x<0.05}:{ok:false}; })()`);
     ck(m.ok&&m.col==='2fa84f'&&m.sz,'끝점 호버 → 발광 스냅 마커(초록, 화면 고정 크기) '+JSON.stringify(m));
     // 안내점: 줄자 Ctrl+클릭
     await J(`MC3DVIEW.setTool('tape');var p=__pt(5000,5000);__click(p.x,p.y,{ctrlKey:true});'ok'`); await sleep(150);
