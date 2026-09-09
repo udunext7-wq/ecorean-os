@@ -749,6 +749,7 @@ ck(/p\.verts\[t\[j===1\?2:j===2\?1:0\]\]/.test(v3Src),'mesh prim 감김 뒤집�
 ck(/function ffEnterEdit/.test(v3Src)&&/function ffPickInside/.test(v3Src)&&/function beginMoveSel/.test(v3Src)&&/function ffPartNearScreen/.test(v3Src)&&/function ffSelectWhole/.test(v3Src),'4차: 점·선·면·객체 각각 선택 (화면 근접 픽·더블클릭=객체)');
 ck(/if\(m\.open\) return m;/.test(fs.readFileSync(path.join(ROOT,'js','sketch.js'),'utf8')),'4차: 열린 껍질은 각기둥으로 되돌리지 않는다');
 ck(/^function massSplitFace\(/m.test(fs.readFileSync(path.join(ROOT,'js','sketch.js'),'utf8'))&&/^function _massExtrudeFaceInPlace\(/m.test(fs.readFileSync(path.join(ROOT,'js','sketch.js'),'utf8'))&&/function ffTrySplit/.test(v3Src),'5차: 면 분할(Divide) · 분할면 밀기끌기(옆면 생성)');
+ck(/function glowSprite/.test(v3Src)&&/function addGuidePoint/.test(v3Src)&&/ST\.labels=false; refreshVisibility\(\);/.test(v3Src)&&/if\(m\.emissive\)\{ m\.emissive=/.test(v3Src),'6차: 글로우·안내점·이름표 OFF·emissive 가드');
 ck(idx3d.includes('data-sec="sections"')&&idx3d.includes('id="st-date"')&&idx3d.includes('data-cmd="import-obj"')&&idx3d.includes('data-cmd="isolate"'),'3차 셸: 단면 트레이·그림자 날짜·OBJ 가져오기·선택만 보기');
 {
   const SK=require(path.join(ROOT,'js','sketch.js'));
