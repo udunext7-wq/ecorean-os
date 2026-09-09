@@ -759,7 +759,8 @@ ck(idx3d.includes('data-sec="sections"')&&idx3d.includes('id="st-date"')&&idx3d.
 }
 ck(/byMat/.test(b3Src)&&/_sk\('earTriangles'\)/.test(b3Src),'build3d: 재질별 mesh prim · 귀 자르기 삼각화');
 // 파랑 축 · 면 스냅 계약 (2026-09-08 대표 지적 "파랑축으로는 작동이 안 된다")
-ck(/파랑 축 — 위로 그립니다/.test(v3Src),'파랑 축: 땅 선에서 ↑ = 세로 종이로 올라탄다');
+ck(/파랑 축\(Z\) — 위로 그립니다/.test(v3Src)&&/function ffBlueHop/.test(v3Src)&&/function _blueAligned/.test(v3Src),'파랑 축: 땅 선에서 ↑ 또는 위로 끌면 세로 종이로 올라탄다 (자동 추론)');
+ck(/function ffAutoExtrude/.test(v3Src)&&/ffAutoExtrude\(FF\.free\)/.test(v3Src),'R 사각형: 2번째 클릭 뒤 바로 높이 단계');
 ck(/function _ff3Lock/.test(v3Src)&&/op\.axis==='u'\?/.test(v3Src),'파랑 축: 면 위 선에 u/v 축 고정');
 ck(/function ff3Commit/.test(v3Src)&&/op\.type==='line3'\|\|op\.type==='rect3'\) ff3Commit/.test(v3Src),
   '파랑 축: 숫자 입력이 잠긴 축으로 정확한 길이');
