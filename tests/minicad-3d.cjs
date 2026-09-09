@@ -840,6 +840,10 @@ ck(/mcode:m\.mat\|\|null/.test(b3Src),'프리폼 재질: 조립이 mat 를 prim 
   ck(/p\.lit===false\?2:1/.test(v3Src), '뷰어: 꺼진 등 = 별도 재질 키');
   ck(/on&&m\.userData\.lit!==false/.test(v3Src), '뷰어: 전역 조명 ON 이어도 회로가 끈 등은 소등');
   ck(/ob\.meta\.on!==false\)/.test(v3Src), '뷰어: 포인트라이트는 켜진 등에만');
+  // 2026-09-09 대표 지시 "라이트마다 들어오게" — stride 표본 제거
+  ck(/function _plBudget/.test(v3Src)&&/maxFragmentUniforms/.test(v3Src), '뷰어: 광원 상한 = GPU 유니폼 예산');
+  ck(!/if\(i%stride!==0\) return;/.test(v3Src), '뷰어: stride 표본 제거 — 군데군데 금지');
+  ck(/lightGroups\.length<=budget/.test(v3Src)&&/CELL=2\.5/.test(v3Src), '뷰어: 예산 안 = 등마다 제 광원 · 초과 = 2.5m 격자 묶음(빈 구역 없음)');
 }
 
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }

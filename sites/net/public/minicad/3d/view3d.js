@@ -24,7 +24,13 @@ const LIBS={
   ELECTRIC_LIB:typeof ELECTRIC_LIB!=='undefined'?ELECTRIC_LIB:null,
   HVAC_FIRE_LIB:typeof HVAC_FIRE_LIB!=='undefined'?HVAC_FIRE_LIB:null,
 };
-const MAX_POINT_LIGHTS=24;
+// 2026-09-09 대표 지시 "라이트마다 들어오게" — 고정 24 상한 대신 GPU 유니폼 예산으로 계산.
+//  포인트라이트 1개 = 프래그먼트 유니폼 약 4 vec4. 재질·안개·그림자 몫 200을 빼고 나눈다.
+//  (약한 GPU 최소 사양 224 에서도 24개는 보장, 데스크톱·태블릿 1024+ 에서는 200개까지)
+function _plBudget(){
+  const mf=(renderer.capabilities&&renderer.capabilities.maxFragmentUniforms)||1024;
+  return Math.max(24,Math.min(200,Math.floor((mf-200)/4)));
+}
 // data.js 의 최상위 const 는 window 속성이 아니라 전역 렉시컬 바인딩 — typeof 로 안전하게 집는다
 /* global WALL_MATERIALS, FLOOR_MATERIALS, CEILING_MATERIALS */
 const MATS={
@@ -1731,19 +1737,35 @@ function retunePointLights(){
     const ob=g.userData.obj;
     if(ob&&ob.kind==='light'&&(!ob.meta||ob.meta.on!==false)) lightGroups.push(g);   // 2026-09-09: 회로가 끈 등엔 광원 없음
   }));
-  const stride=Math.max(1,Math.ceil(lightGroups.length/MAX_POINT_LIGHTS));
-  lightGroups.forEach((g,i)=>{
-    if(i%stride!==0) return;
+  // 2026-09-09 대표 지시: 종전 stride 표본(i%stride)은 등이 많으면 빛 풀이 군데군데만 생겼다.
+  const budget=_plBudget();
+  const mk=(g,inten,dist)=>{
     const obj=g.userData.obj;
-    const pl=new THREE.PointLight(0xFFE7B8,obj.meta&&obj.meta.linear?9:6,7,2);
+    const pl=new THREE.PointLight(0xFFE7B8,inten,dist,2);
     pl.position.set(0,((obj.meta&&obj.meta.lightZ)||2200)*MM,0);
     pl.visible=ST.lightsOn;
     g.add(pl); ST.pointLights.push(pl);
-  });
+  };
+  const inten1=g=>(g.userData.obj.meta&&g.userData.obj.meta.linear)?9:6;
+  if(lightGroups.length<=budget){
+    lightGroups.forEach(g=>mk(g,inten1(g),7));            // 등마다 제 광원
+  }else{
+    // 예산 초과(수백 등) — 2.5m 격자로 근접 등을 묶고 √n 배 세기로 대표 광원.
+    //  어느 등도 격자 대각(≈3.6m) 안에 광원이 있어 빈 구역이 없다.
+    const CELL=2.5, bins=new Map(), wp=new THREE.Vector3();
+    lightGroups.forEach(g=>{
+      g.getWorldPosition(wp);
+      const k=Math.round(wp.x/CELL)+'|'+Math.round(wp.z/CELL)+'|'+(g.parent&&g.parent.userData.floorId||'');
+      let b=bins.get(k); if(!b){ b=[]; bins.set(k,b); }
+      b.push(g);
+    });
+    bins.forEach(b=>{ const n=b.length; mk(b[0],inten1(b[0])*Math.sqrt(n),7+Math.sqrt(n)); });
+  }
 }
 function autoPerf(){
   const n=ST.pickables.length;
-  renderer.setPixelRatio(n>6000?1:n>3000?1.5:Math.min(window.devicePixelRatio||1,2));
+  const plq=ST.pointLights.length;   // 2026-09-09: 등마다 광원 — 많으면 픽셀비로 상쇄
+  renderer.setPixelRatio((n>6000||plq>96)?1:(n>3000||plq>48)?1.5:Math.min(window.devicePixelRatio||1,2));
   if(ST.shadowsAuto){
     const want=n<=3500;
     if(want!==ST.shadows){ setShadows(want,true); setStatus(statusLive,_statusTxt+(want?'':' · 대형 도면 — 그림자 자동 OFF')); }
@@ -5775,7 +5797,7 @@ if(FF_STANDALONE){
 if(!FF_STANDALONE&&!loadStored()){ $('empty').style.display='flex'; setStatus(false,'MiniCAD 연결 대기'); }
 // 독립 프리폼은 위에서 이미 부팅했다 — 이 폴백이 '연결 대기' 안내를 되살리면 안 된다
 // 테스트·디버그 훅
-window.MC3DVIEW={ST,scene,THREE,get camera(){return camera;},renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
+window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,build:acceptDoc,fitView,setMode,setLights,setView,setNight,
   setSky,setSkyImage,buildSky,drawFrame,
   ffEnter,ffExit,ffApply,ffRebase,ffNew,ffExportFile,emitEdit,get FF(){return FF;},
   buildGrips,beginVertZ,applyVertZ,commitVertZ,_gripAt,_massWorld,get grips(){return gripsGrp;},
