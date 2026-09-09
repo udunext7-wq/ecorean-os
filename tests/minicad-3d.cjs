@@ -844,6 +844,25 @@ ck(/mcode:m\.mat\|\|null/.test(b3Src),'프리폼 재질: 조립이 mat 를 prim 
   ck(/function _plBudget/.test(v3Src)&&/maxFragmentUniforms/.test(v3Src), '뷰어: 광원 상한 = GPU 유니폼 예산');
   ck(!/if\(i%stride!==0\) return;/.test(v3Src), '뷰어: stride 표본 제거 — 군데군데 금지');
   ck(/lightGroups\.length<=budget/.test(v3Src)&&/CELL=2\.5/.test(v3Src), '뷰어: 예산 안 = 등마다 제 광원 · 초과 = 2.5m 격자 묶음(빈 구역 없음)');
+  // 2026-09-09 대표 지시 "빛의 모양" — 동그란 등=둥근 풀, 선형 등=일직선 빛
+  {
+    const sdoc={schema:'x',meta:{ceilingHeight_mm:2400},vertices:[],spaces:[],walls:[],openings:[],
+      furniture:[],fixtures:[],hvac:[],texts:[],measures:[],pillars:[],
+      sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],electric:[],
+      lights:[
+        {id:'R1',type:'downlight',x:1000,y:1000},
+        {id:'S1',type:'line_t5',x:3000,y:1000,length_mm:2400},
+        {id:'S2',type:'cove',x:6000,y:1000},
+      ]};
+    const SS=MC3D.buildScene(sdoc,LIBS);
+    const gl=id=>SS.objects.find(x=>x.kind==='light'&&x.id===id);
+    ck(gl('R1').meta.lightLen===0,'빛 모양: 동그란 등은 lightLen 0 (점 광원 하나 = 둥근 풀)');
+    ck(gl('S1').meta.lightLen===2400,'빛 모양: T5 2400 은 발광 길이를 안다');
+    ck(gl('S2').meta.lightLen===1500,'빛 모양: 간접조명(코브)도 선형 — 규격 길이 그대로');
+    ck(/subsOf/.test(v3Src)&&/-m\.lightLen\/2\+step\*\(i\+0\.5\)/.test(v3Src),
+      '뷰어: 선형 등 = 길이 방향(로컬 X)으로 광원 줄지어 — 일직선 빛');
+    ck(/\(xmm\|\|0\)\*MM/.test(v3Src),'뷰어: 광원 X 오프셋이 등의 회전을 따른다 (그룹 로컬 좌표)');
+  }
 }
 
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }

@@ -799,13 +799,17 @@ function buildLight(o,def,D,spaces){
     default: prims=[cyl(0,0,H-60,size/2,60,C.lamp,em)];
   }
   const lz=prims.reduce((m,p)=>p.emissive?Math.min(m,p.z):m,H); // 광원 높이(포인트라이트용)
+  // 2026-09-09 대표 지시 "빛의 모양" — 선형 등은 발광 길이를 알려 빛이 일직선으로 나오게.
+  //  프림들이 전부 로컬 X 방향으로 길게 놓이므로 뷰어는 X 축을 따라 광원을 줄지어 단다.
+  const LIGHT_LINE=/^(line_t5|line_light|cove|fluorescent|kitchen_flat|pendant_linear|spot_bar_3|track|magnet_track)$/;
+  const lightLen=LIGHT_LINE.test(type)?Math.round(L):0;
   // 2026-09-09: 회로 점등 — 배선된 등은 스위치가, 미배선 등은 종전(전역 토글)이 결정한다
   const _cs=circuitLightState(D);
   const _on=_cs.wired.has(o.id)?_cs.lit.has(o.id):(o.circuitOn!==false);
   if(!_on) prims.forEach(p=>{ if(p.emissive) p.lit=false; });   // 재질이 등마다 갈라지도록
   return {id:o.id,kind:'light',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,
     elev:Math.round(num(o.elev_mm,0)),
-    meta:{type,inch:o.inch||null,lightZ:Math.max(100,lz-30),on:_on,linear:L!==size?L:0}};
+    meta:{type,inch:o.inch||null,lightZ:Math.max(100,lz-30),on:_on,linear:L!==size?L:0,lightLen}};
 }
 // 2026-09-09 대표 지시 "불이 들어오면 모든 등에 불이 들어온 것처럼 — 실제 빛 표현처럼"
 //  종전 3D 는 회로를 통째로 무시하고 전역 조명 토글 하나로 모든 램프를 켰다. 그래서

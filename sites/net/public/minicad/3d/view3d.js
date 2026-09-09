@@ -1740,16 +1740,29 @@ function retunePointLights(){
   }));
   // 2026-09-09 대표 지시: 종전 stride 표본(i%stride)은 등이 많으면 빛 풀이 군데군데만 생겼다.
   const budget=_plBudget();
-  const mk=(g,inten,dist)=>{
+  const mk=(g,inten,dist,xmm)=>{
     const obj=g.userData.obj;
     const pl=new THREE.PointLight(0xFFE7B8,inten,dist,2);
-    pl.position.set(0,((obj.meta&&obj.meta.lightZ)||2200)*MM,0);
+    pl.position.set((xmm||0)*MM,((obj.meta&&obj.meta.lightZ)||2200)*MM,0);   // 로컬 X = 등의 길이 방향
     pl.visible=ST.lightsOn;
     g.add(pl); ST.pointLights.push(pl);
   };
-  const inten1=g=>(g.userData.obj.meta&&g.userData.obj.meta.linear)?9:6;
-  if(lightGroups.length<=budget){
-    lightGroups.forEach(g=>mk(g,inten1(g),7));            // 등마다 제 광원
+  const inten1=g=>{const m=g.userData.obj.meta||{};return (m.lightLen||m.linear)?9:6;};
+  // 2026-09-09 대표 지시 "빛의 모양" — 선형 등(lightLen)은 길이를 따라 광원을 줄지어
+  //  달아 빛이 일직선이 된다. 동그란 등은 종전대로 점 광원 하나 = 둥근 풀.
+  const subsOf=g=>{const m=g.userData.obj.meta||{};
+    return (m.lightLen>=700)?Math.min(5,Math.max(2,Math.round(m.lightLen/600))):1;};
+  const put1=g=>{
+    const m=g.userData.obj.meta||{}, n=subsOf(g);
+    if(n<=1){ mk(g,inten1(g),7,0); return; }
+    const step=m.lightLen/n;
+    for(let i=0;i<n;i++) mk(g,Math.max(3,12/n),5.5,-m.lightLen/2+step*(i+0.5));
+  };
+  let demand=0; lightGroups.forEach(g=>{demand+=subsOf(g);});
+  if(demand<=budget){
+    lightGroups.forEach(put1);                            // 등마다 제 광원 — 선형은 줄지어
+  }else if(lightGroups.length<=budget){
+    lightGroups.forEach(g=>mk(g,inten1(g),7,0));          // 예산 빠듯 — 등마다 하나(선형은 가운데)
   }else{
     // 예산 초과(수백 등) — 2.5m 격자로 근접 등을 묶고 √n 배 세기로 대표 광원.
     //  어느 등도 격자 대각(≈3.6m) 안에 광원이 있어 빈 구역이 없다.
