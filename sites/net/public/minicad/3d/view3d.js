@@ -62,10 +62,10 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x0E0F1A);
 scene.fog=new THREE.Fog(0x0E0F1A,60,160);
 
-const persp=new THREE.PerspectiveCamera(55,view.clientWidth/view.clientHeight,0.05,400);
+const persp=new THREE.PerspectiveCamera(55,view.clientWidth/view.clientHeight,0.05,2000);
 persp.position.set(8,9,10);
 // 평행 투영 (스케치업 Camera▸Parallel Projection) — 같은 위치·방향의 직교 카메라로 바꿔 끼운다
-const orthoCam=new THREE.OrthographicCamera(-10,10,10,-10,-200,400);
+const orthoCam=new THREE.OrthographicCamera(-10,10,10,-10,-2000,2000);
 let camera=persp;
 
 const hemi=new THREE.HemisphereLight(0xEFEAFF,0x3A2F25,1.25);
@@ -504,7 +504,8 @@ function _fsMat(kind){
 }
 function setFaceStyle(st){ ST.faceStyle=st; applyFaceStyle(); refreshStylePanel(); setStatus(statusLive,'면 스타일: '+({wire:'와이어프레임',hidden:'히든 라인',shaded:'셰이딩',textured:'텍스처 셰이딩',mono:'단색'})[st]); }
 function setEdges(on){ ST.edges=!!on; applyFaceStyle(); refreshStylePanel(); }
-function setFog(on){ ST.fogOn=!!on; const b=ST.built?ST.built.bounds:null; const span=b?Math.max(b.maxX-b.minX,b.maxY-b.minY,4000)*MM:10; if(scene.fog){ scene.fog.near=ST.fogOn?span*0.6:60; scene.fog.far=ST.fogOn?span*2.4:160; } refreshStylePanel(); invalidate(); }
+function ffSpan(){ let mx=4000,mz=0; if(FF){ (FF.free.masses||[]).forEach(m=>{ const r=Math.max(...m.pts.map(q=>Math.hypot(q.x,q.y)))||0; mx=Math.max(mx,Math.abs(m.x)+r,Math.abs(m.y)+r); mz=Math.max(mz,(Number(m.elev_mm)||0)+(Array.isArray(m.solidVerts)?Math.max(...m.solidVerts.map(v=>zNum(v.z,ffCtx()))):zNum(m.h_mm,ffCtx()))); }); (FF.free.sketchPts||[]).forEach(q=>{ mx=Math.max(mx,Math.abs(q.x),Math.abs(q.y)); }); } return Math.max(mx*2,mz)*MM; }
+function setFog(on){ ST.fogOn=!!on; const b=ST.built?ST.built.bounds:null; let span=b?Math.max(b.maxX-b.minX,b.maxY-b.minY,4000)*MM:10; if(ST.built&&ST.built.totalHeight) span=Math.max(span,ST.built.totalHeight*MM); if(FF_STANDALONE) span=Math.max(span,ffSpan()); if(scene.fog){ scene.fog.near=ST.fogOn?span*0.6:Math.max(60,span*3); scene.fog.far=ST.fogOn?span*2.4:Math.max(160,span*10); } refreshStylePanel(); invalidate(); }
 function setHiddenGeom(on){ ST.hiddenGeom=!!on; refreshVisibility(); applyFaceStyle(); rebuildPickables(); refreshStylePanel(); }
 function setGuidesOn(on){ ST.guidesOn=!!on; ST.guides.forEach(g=>{ if(g.line) g.line.visible=ST.guidesOn; }); (ST.guidePts||[]).forEach(g=>{ if(g.mk) g.mk.visible=ST.guidesOn; }); refreshStylePanel(); invalidate(); }
 function applyFaceStyle(){
@@ -1727,7 +1728,7 @@ function setAxes(on){ ST.axes=on; if(axesGrp) axesGrp.visible=on; refreshStylePa
 function rebuildPickables(){
   ST.pickables=[];
   ST.root&&ST.root.traverse(o=>{ if((o.isMesh||o.isSprite)&&o.userData.obj&&o.userData.obj.kind!=='slab'&&!(ST.hiddenGeom&&ST.hidden.has(o.userData.obj.floorId+'|'+o.userData.obj.id))) ST.pickables.push(o); });
-  if(FF_STANDALONE){ applyFaceStyle(); applySections(); }
+  if(FF_STANDALONE){ applyFaceStyle(); applySections(); setFog(ST.fogOn); }   // 모델이 커지면 안개·시야도 따라간다
 }
 function retunePointLights(){
   ST.pointLights.forEach(pl=>{ if(pl.parent) pl.parent.remove(pl); });
@@ -3642,6 +3643,8 @@ function spawnPendingPoly(pts,z0){ // 다각형 면 + 둘레 벽 임시 표시
   scene.add(g); ST.pendingG.push(g); invalidate(true);
 }
 function _blueDir(worldA){ return _screenDir(worldA,new THREE.Vector3(0,1,0)); }
+// 시작 화면점에서 지금 화면점까지를 세계 방향 dirW 로 잰다 (mm, 줌 비례) — 축 방향으로 끈 만큼만
+function _dragAlong(worldAt,dirW,x0,y0,x1,y1){ const sd=_screenDir(worldAt,dirW); const mmpp=mmPerPx(worldAt); const k=sd.L*mmpp/1000; if(k<0.25) return -(y1-y0)*mmpp; return ((x1-x0)*sd.x+(y1-y0)*sd.y)*mmpp; }   // 축이 화면에서 1/4 이하로 눌려 보이면(정면) 위아래로
 function _blueAligned(worldA,e,minPx,maxDeg){
   const r=renderer.domElement.getBoundingClientRect(); const sa=worldA.clone().project(camera);
   const ax=r.left+(sa.x+1)/2*r.width, ay=r.top+(1-sa.y)/2*r.height; const dx=e.clientX-ax, dy=e.clientY-ay; const L=Math.hypot(dx,dy);
@@ -4165,7 +4168,7 @@ function beginVertZ(mk,e){
   // 기준점은 '누른 자리'다. 첫 pointermove 를 기준으로 잡으면 그 한 걸음만큼
   //  덜 올라간다 — 왕복 시험에서 800 을 끌었는데 600 이 들어왔다.
   ST.op={type:'vz',obj:o,g:gi.g,mk,idxs,i:gi.i,base:gi.z,z:gi.z,lean,ctx,ghost,gwire,z0,
-    startY:(e&&typeof e.clientY==='number')?e.clientY:null,
+    startY:(e&&typeof e.clientY==='number')?e.clientY:null,startX:(e&&typeof e.clientX==='number')?e.clientX:null,
     moved:false,ref:!!(e&&(e.ctrlKey||e.metaKey))||!!gi.ref,label};
   opOrbit(true);
   if(gi.g) gi.g.visible=false;                            // 실물은 잠시 감추고 미리보기를 본다
@@ -4207,7 +4210,8 @@ function _vzApply(z){
 function applyVertZ(clientY){
   const op=ST.op; if(!op||op.type!=='vz') return;
   if(op.startY===null){ op.startY=clientY; return; }
-  const d=Math.round((op.startY-clientY)*5/25)*25;        // 5mm/px · 25mm 스냅 (밀기끌기와 같은 손맛)
+  const mkW=op.mk?op.mk.getWorldPosition(new THREE.Vector3()):op.g.getWorldPosition(new THREE.Vector3());
+  const d=Math.round(_dragAlong(mkW,new THREE.Vector3(0,1,0),op.startX!=null?op.startX:0,op.startY,op.startX!=null?op.startX:0,clientY)/10)*10;   // 줌 비례 · 10mm 스냅
   const z=Math.max(0,op.base+d);
   if(z!==op.z){ op.moved=true; _vzApply(z); }
   vcbShow(op.label+(op.ref?' · CH':''),z,'mm');
@@ -4515,7 +4519,7 @@ function applyPP(clientY,clientX){
     const c0=op.g.position.clone().project(camera), c1=op.g.position.clone().add(op.n).project(camera);
     const sx=(c1.x-c0.x)*r.width/2, sy=-(c1.y-c0.y)*r.height/2, L=Math.hypot(sx,sy)||1;
     const px=(clientX!=null?clientX:op.startX)-op.startX, py=clientY-op.startY;
-    let d=Math.round(((px*sx+py*sy)/L)*3/10)*10;         // 3mm/px · 10mm 스냅
+    const mmppT=mmPerPx(op.g.position); let d=Math.round(((L*mmppT/1000<0.25)?-py:((px*sx+py*sy)/L))*mmppT/10)*10;         // 줌 비례 · 10mm 스냅 · 정면이면 위아래로
     d=Math.max(30-op.base,Math.min(600-op.base,d));
     op.delta=d; op.g.scale.z=op.baseSZ*(op.base+d)/op.base;
     vcbShow('벽 두께',op.base+d,'mm'); invalidate(true); return;
@@ -4526,7 +4530,7 @@ function applyPP(clientY,clientX){
     const s0=c0.clone().project(camera), s1=c0.clone().add(op.nW).project(camera);
     const sx=(s1.x-s0.x)*r.width/2, sy=-(s1.y-s0.y)*r.height/2, L=Math.hypot(sx,sy)||1;
     const px=(clientX!=null?clientX:op.startX)-op.startX, py=clientY-op.startY;
-    let d3=Math.round(((px*sx+py*sy)/L)*3/10)*10;       // 3mm/px · 10mm 스냅
+    const mmpp3=mmPerPx(c0); let d3=Math.round(((L*mmpp3/1000<0.25)?-py:((px*sx+py*sy)/L))*mmpp3/10)*10;       // 줌 비례 · 10mm 스냅 · 축을 정면으로 보면 위아래로
     op.delta=d3;                                         // 프리폼 ③: 음수 = 안으로 파낸다
     if(op.ghost){
       op.ghost.position.copy(op.nW.clone().multiplyScalar(d3*MM));
@@ -4535,7 +4539,9 @@ function applyPP(clientY,clientX){
     vcbShow(d3<0?'파내기 — 벽감 (끝까지 밀면 관통)':'면 뽑기 (법선 방향)',Math.abs(d3),'mm');
     invalidate(true); return;
   }
-  let d=Math.round((op.startY-clientY)*5/25)*25;      // 5mm/px · 25mm 스냅
+  // 줌 비례: 파랑(위) 축을 화면에 투영해 그 방향으로 끈 만큼 (스케치업식 — 한 번 끌기의 상한이 없다)
+  const cW=(op.obj&&op.obj.meta&&typeof op.obj.meta.cx==='number')?new THREE.Vector3(op.obj.meta.cx*MM,op.origY||0,op.obj.meta.cy*MM):op.g.getWorldPosition(new THREE.Vector3());
+  let d=Math.round(_dragAlong(cW,new THREE.Vector3(0,1,0),op.startX!=null?op.startX:clientX,op.startY,clientX!=null?clientX:op.startX,clientY)/10)*10;
   if(op.mode==='extrude'){                              // 2026-09-04 면 → 매스: 위로 끈 만큼이 Z
     d=Math.max(0,d); op.delta=d;
     op.ghost.visible=d>=10; op.ghost.scale.z=Math.max(d,10)*MM;
@@ -5808,7 +5814,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,_dragAlong,mmPerPx,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,

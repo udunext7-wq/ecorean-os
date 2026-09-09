@@ -8,6 +8,7 @@ node tests/minicad-e2e/ff-sketchup-4.cjs    # 4차: 점·선·면·객체 각각
 node tests/minicad-e2e/ff-sketchup-5.cjs    # 5차: 면 위 선 → 면 분할 · 분할면 밀기끌기 (10건)
 node tests/minicad-e2e/ff-sketchup-6.cjs    # 6차: 이름표 OFF · 발광 스냅/스케치 · 안내점 · 스냅 보강 (9건)
 node tests/minicad-e2e/ff-sketchup-7.cjs    # 7차: 파랑 축 자동 추론 세로 선 · R 두 클릭 뒤 바로 높이 (9건)
+node tests/minicad-e2e/ff-sketchup-8.cjs    # 8차: 높이 한계 제거 — 끌기 줌 비례 · far 2km · 안개 비례 (5건)
 node tests/minicad-e2e/ff-sketchup-3.cjs    # 3차: 재질(색상·이미지·Shift)·지우개·단면 목록·선택만 보기·애니메이션·그림자·통계·OBJ (24건)
 node tests/minicad-e2e/linked-view.cjs      # 연동 뷰 회귀 (부팅 오류 0 · 옛 셸 그대로)
 node tests/minicad-csg.cjs                  # 솔리드 도구 CSG 단위 (부피 검증)

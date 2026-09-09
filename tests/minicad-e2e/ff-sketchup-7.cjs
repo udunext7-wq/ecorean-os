@@ -15,8 +15,8 @@ const fails=[]; let n=0; const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.lo
     m=await J(`({masses:__F().masses.length,h:__F().masses[0]&&__F().masses[0].h_mm,faces:__F().sketchFaces.length,tool:MC3DVIEW.ST.tool,op:!!MC3DVIEW.ST.op})`);
     ck(m.masses===1&&m.h===1200&&m.faces===0&&m.tool==='rect'&&!m.op,'숫자 1200 → 상자 (면 소비 · 도구는 R 유지) '+JSON.stringify(m));
     // 3번째 클릭으로 확정
-    await J(`__cl(6000,0);__mv(8000,1500);__cl(8000,1500);var p=__pt(7000,750);__ev('pointermove',p.x,p.y-80);'ok'`); await sleep(100);
-    await J(`var p=__pt(7000,750);__ev('pointerdown',p.x,p.y-80);__ev('pointerup',p.x,p.y-80);'ok'`); await sleep(250);
+    await J(`__cl(6000,0);__mv(8000,1500);__cl(8000,1500);var p=__pt(8000,1500);var sd=MC3DVIEW._blueDir(new MC3DVIEW.THREE.Vector3(7,0,0.75));window.__q={x:p.x+sd.x*80,y:p.y+sd.y*80};__ev('pointermove',__q.x,__q.y);'ok'`); await sleep(100);
+    await J(`__ev('pointerdown',__q.x,__q.y);__ev('pointerup',__q.x,__q.y);'ok'`); await sleep(250);
     m=await J(`({masses:__F().masses.length,h:__F().masses[1]&&__F().masses[1].h_mm,op:!!MC3DVIEW.ST.op})`);
     ck(m.masses===2&&m.h>0&&!m.op,'3번째 클릭으로 높이 확정 '+JSON.stringify(m));
     // Esc → 면만
