@@ -796,5 +796,50 @@ ck(/mcode:m\.mat\|\|null/.test(b3Src),'프리폼 재질: 조립이 mat 를 prim 
     '프리폼 재질: 본체·주머니·구멍 면 전부에 mat 이 실린다 (' + mo.prims.length + '개 prim)');
 }
 
+// ---- 회로 점등 (2026-09-09 대표 지시 "불이 들어오면 모든 등에 불이 들어온 것처럼") ----
+//  스위치 구별 gangOn·lightGang + 점핑(jumpIds) 연쇄까지 문서만으로 재현되는지.
+{
+  const cdoc = {
+    schema: 'ECOREAN.FloorPlan.v5.9',
+    meta: { project: '회로', unit: 'mm', ceilingHeight_mm: 2400, wallThickness: 100 },
+    vertices: [], spaces: [], walls: [], openings: [], furniture: [], fixtures: [],
+    lights: [
+      { id: 'L1', type: 'downlight', x: 1000, y: 1000 },
+      { id: 'L2', type: 'downlight', x: 2000, y: 1000 },
+      { id: 'L3', type: 'downlight', x: 3000, y: 1000 },
+      { id: 'L4', type: 'downlight', x: 4000, y: 1000, jumpIds: ['L3'] },  // 꺼진 구에 점핑
+      { id: 'L5', type: 'downlight', x: 5000, y: 1000, jumpIds: ['L2'] },  // 켜진 구에 점핑 (직결 아님)
+      { id: 'L6', type: 'downlight', x: 6000, y: 1000 },                    // 미배선
+      { id: 'L7', type: 'ceiling',   x: 7000, y: 1000 },                    // 옛 문서형 스위치의 등
+    ],
+    electric: [
+      // 2구 스위치: 1구(L1·L2) ON, 2구(L3) OFF
+      { id: 'SW1', type: 'switch_2', x: 0, y: 0, lightIds: ['L1','L2','L3'],
+        lightGang: { L1: 0, L2: 0, L3: 1 }, gangOn: [true, false], circuitOn: true },
+      // 옛 문서: gangOn 없이 circuitOn 만 → 그 값을 따른다
+      { id: 'SW2', type: 'switch_1', x: 0, y: 500, lightIds: ['L7'], circuitOn: true },
+    ],
+    hvac: [], texts: [], measures: [], pillars: [],
+    sketchPts: [], sketchEdges: [], sketchFaces: [], masses: [],
+  };
+  const CS = MC3D.buildScene(cdoc, LIBS);
+  const lt = id => CS.objects.find(x => x.kind === 'light' && x.id === id);
+  const on = id => { const l = lt(id); return !!(l && l.meta && l.meta.on); };
+  ck(on('L1') && on('L2'), '회로: 켜진 구의 모든 직결 등이 점등 (첫 등만·끝 등만이 아니라)');
+  ck(!on('L3'), '회로: 꺼진 구의 등은 소등');
+  ck(!on('L4'), '회로: 꺼진 등에 점핑된 등도 소등');
+  ck(on('L5'), '회로: 점핑 연쇄로 이어진 등도 함께 점등');
+  ck(on('L6'), '회로: 어느 스위치에도 안 닿은 등은 종전처럼 켜진다 (도면 암전 방지)');
+  ck(on('L7'), '회로: 옛 문서(gangOn 없음)는 circuitOn 을 따른다');
+  const offPrim = (lt('L3').prims || []).find(p => p.emissive);
+  const onPrim  = (lt('L1').prims || []).find(p => p.emissive);
+  ck(offPrim && offPrim.lit === false, '회로: 꺼진 등의 발광 프림에 lit:false 도장 (재질이 갈린다)');
+  ck(onPrim && onPrim.lit !== false, '회로: 켜진 등의 프림은 그대로 발광');
+  // 뷰어 계약 — 점등 상태가 재질·포인트라이트에 실제로 반영되는지
+  ck(/p\.lit===false\?2:1/.test(v3Src), '뷰어: 꺼진 등 = 별도 재질 키');
+  ck(/on&&m\.userData\.lit!==false/.test(v3Src), '뷰어: 전역 조명 ON 이어도 회로가 끈 등은 소등');
+  ck(/ob\.meta\.on!==false\)/.test(v3Src), '뷰어: 포인트라이트는 켜진 등에만');
+}
+
 if (fail.length) { fail.forEach(m => console.error('  ❌ ' + m)); process.exit(1); }
 console.log('✅ MiniCAD 3D 조립 단위 테스트 통과 (객체 ' + S.objects.length + '개 · 벽 ' + kinds('wall').length + ' · 문창 ' + (kinds('door').length + kinds('window').length) + ' · 가구 ' + (kinds('furniture').length + kinds('fixture').length) + ' · 조명 ' + kinds('light').length + ')');

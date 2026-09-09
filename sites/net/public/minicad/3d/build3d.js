@@ -799,9 +799,49 @@ function buildLight(o,def,D,spaces){
     default: prims=[cyl(0,0,H-60,size/2,60,C.lamp,em)];
   }
   const lz=prims.reduce((m,p)=>p.emissive?Math.min(m,p.z):m,H); // 광원 높이(포인트라이트용)
+  // 2026-09-09: 회로 점등 — 배선된 등은 스위치가, 미배선 등은 종전(전역 토글)이 결정한다
+  const _cs=circuitLightState(D);
+  const _on=_cs.wired.has(o.id)?_cs.lit.has(o.id):(o.circuitOn!==false);
+  if(!_on) prims.forEach(p=>{ if(p.emissive) p.lit=false; });   // 재질이 등마다 갈라지도록
   return {id:o.id,kind:'light',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,
     elev:Math.round(num(o.elev_mm,0)),
-    meta:{type,inch:o.inch||null,lightZ:Math.max(100,lz-30),on:o.circuitOn!==false,linear:L!==size?L:0}};
+    meta:{type,inch:o.inch||null,lightZ:Math.max(100,lz-30),on:_on,linear:L!==size?L:0}};
+}
+// 2026-09-09 대표 지시 "불이 들어오면 모든 등에 불이 들어온 것처럼 — 실제 빛 표현처럼"
+//  종전 3D 는 회로를 통째로 무시하고 전역 조명 토글 하나로 모든 램프를 켰다. 그래서
+//  스위치를 꺼도 켜도 미니폼이 그대로였고, 회로 일부만 점등된 것처럼 보이는 착시도 났다.
+//  이제 2D 회로의 진실을 문서에서 그대로 읽는다 (engine.js litLightIds 와 같은 규칙):
+//  · 시드 = 켜진 구(gangOn[lightGang])에 걸린 직결 조명. gangOn 없는 옛 문서는 circuitOn.
+//  · 점핑(jumpIds, 양방향)으로 연쇄 확장 — 직결 안 된 등도 점핑으로 이어지면 함께 켜진다.
+//  · 어느 스위치에도 (직결·점핑 어느 쪽으로도) 닿지 않는 등 = 배선 미정 → 종전처럼 켠다.
+//    (회로를 안 그린 도면이 통째로 어두워지면 안 된다 — 전역 조명 토글만 따른다)
+const _litCache=new WeakMap();
+function circuitLightState(D){
+  let st=_litCache.get(D); if(st) return st;
+  const byId=new Set((D.lights||[]).map(l=>l.id));
+  const adj=new Map();
+  const link=(a,b)=>{ let g=adj.get(a); if(!g){g=new Set();adj.set(a,g);} g.add(b); };
+  (D.lights||[]).forEach(l=>(Array.isArray(l.jumpIds)?l.jumpIds:[]).forEach(j=>{
+    if(byId.has(j)){ link(l.id,j); link(j,l.id); } }));
+  const grow=seed=>{ const seen=new Set(),stk=[];
+    seed.forEach(id=>{ if(byId.has(id)&&!seen.has(id)){ seen.add(id); stk.push(id); } });
+    while(stk.length){ const c=stk.pop();
+      (adj.get(c)||[]).forEach(nb=>{ if(!seen.has(nb)){ seen.add(nb); stk.push(nb); } }); }
+    return seen; };
+  const onSeeds=[], allSeeds=[];
+  (D.electric||[]).forEach(sw=>{
+    if(!/^switch|^dimmer/.test(sw.type||'')||!Array.isArray(sw.lightIds)) return;
+    const gang=Array.isArray(sw.gangOn)?sw.gangOn:[];
+    sw.lightIds.forEach(id=>{
+      allSeeds.push(id);
+      const g=Math.max(0,Math.round((sw.lightGang&&sw.lightGang[id])||0));
+      const on=(g<gang.length)?!!gang[g]:!!sw.circuitOn;
+      if(on) onSeeds.push(id);
+    });
+  });
+  st={lit:grow(onSeeds),wired:grow(allSeeds)};
+  _litCache.set(D,st);
+  return st;
 }
 const ELEC_Z={outlet_w:300,outlet_w4:300,outlet_f:0,outlet_220:300,outlet_wp:1100,outlet_usb:300,
   switch_1:1200,switch_2:1200,switch_3:1200,switch_4:1200,switch_5:1200,switch_6:1200,switch_3way:1200,dimmer:1200,
