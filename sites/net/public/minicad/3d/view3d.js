@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import {OrbitControls} from '../vendor/three/OrbitControls.js';
 import {GLTFExporter} from '../vendor/three/GLTFExporter.js';
+import {RGBELoader} from '../vendor/three/RGBELoader.js';   // HDR(Radiance) 배경·환경광
 
 const $=id=>document.getElementById(id);
 const MM=1/1000;
@@ -643,7 +644,7 @@ function ffIconizeShell(){
   ffIconize('v-iso','iso'); ffIconize('v-top','top'); ffIconize('v-front','front'); ffIconize('v-side','side'); ffIconize('v-back','back'); ffIconize('v-prev','prev'); ffIconize('v-next','next');
   ffIconize('b-light','light'); ffIconize('b-night','night'); ffIconize('b-shadow','shadow'); ffIconize('b-shot','shot'); ffIconize('b-glb','glb','GLB'); ffIconize('b-reload','reload');
   ffIconize('st-light','light','조명'); ffIconize('st-night','night','야간'); ffIconize('st-ceil','ceil','천장'); ffIconize('st-label','label','이름표'); ffIconize('st-shadow','shadow','그림자');
-  ffIconize('st-axes','axes','축'); ffIconize('st-xray','xray','X-ray'); ffIconize('st-ortho','ortho','평행투영'); ffIconize('st-smooth','smooth','부드럽게'); ffSkyIcon();
+  ffIconize('st-axes','axes','축'); ffIconize('st-xray','xray','X-ray'); ffIconize('st-ortho','ortho','평행투영'); ffIconize('st-smooth','smooth','부드럽게'); ffIconize('st-hdr','sky','HDR 배경…'); ffIconize('st-hdrlight','light','환경광'); ffSkyIcon();
 }
 function ffSkyIcon(){ const sb=$('st-sky'); if(!sb||!document.body.classList.contains('ff-su')) return false; sb.innerHTML=ffSvg(ST.sky==='image'?'skyimg':ST.sky==='sky'?'sky':'plain')+'<span>'+(ST.sky==='image'?'배경 그림':ST.sky==='sky'?'하늘·바닥':'단색')+'</span>'; sb.classList.add('ico'); return true; }
 
@@ -809,6 +810,9 @@ function renderWPBar(){
 }
 
 
+function ffHdrUIBuild(){
+  const r=$('st-hdrexp'); if(r) r.oninput=()=>ffHdrExposure(parseInt(r.value,10)/100);
+}
 function ffSaveUIBuild(){
   let el=$('savewarn');
   if(!el){ el=document.createElement('div'); el.id='savewarn'; document.body.appendChild(el); }
@@ -878,6 +882,7 @@ function ffStandaloneShell(){
   const hint=$('hint'); if(hint) hint.innerHTML='<b>스케치업식:</b> Space 선택 · L 선 · R 사각형 · C 원 · A 호 · F 오프셋 · M 이동 · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · G 그룹 · O 궤도 · H 팬 · Z 줌 | 숫자=정확값 · Esc 취소 · ?=단축키표';
   if(ST.smooth==null) ST.smooth=true;          // 부드러운 곡면 기본 켬
   ffSaveUIBuild();
+  ffHdrUIBuild();
   ffWPBarBuild();
   ffIconizeShell();
   renderTags(); renderPaintPal(); renderSections();
@@ -2348,7 +2353,7 @@ function buildSky(){
     uUpV:{value:new THREE.Vector3(0,1,0)},
     uFwd:{value:new THREE.Vector3(0,0,-1)},
     uScale:{value:new THREE.Vector2(1,1)},                // 화면 반각(tan)
-    uTex:{value:skyBlank}, uHasTex:{value:0},
+    uTex:{value:skyBlank}, uHasTex:{value:0}, uHdr:{value:0}, uExp:{value:1.0},
   };
   const mat=new THREE.ShaderMaterial({
     uniforms:skyUni, depthTest:false, depthWrite:false, fog:false,
@@ -2359,8 +2364,11 @@ function buildSky(){
       varying vec2 vUv;
       uniform vec3 uUp,uHz,uGd,uDn,uRight,uUpV,uFwd;
       uniform vec2 uScale;
-      uniform float uLine,uHasTex;
+      uniform float uLine,uHasTex,uHdr,uExp;
       uniform sampler2D uTex;
+      vec3 aces(vec3 x){                                  // 필름 톤매핑 — 본 장면과 같은 규약
+        return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);
+      }
       void main(){
         vec3 d=normalize(uFwd + uRight*(vUv.x*uScale.x) + uUpV*(vUv.y*uScale.y));
         vec3 col;
@@ -2368,6 +2376,7 @@ function buildSky(){
           float u=atan(d.z,-d.x)/6.2831853+0.5;           // 파노라마를 방향으로 찍어 본다
           float v=asin(clamp(d.y,-1.0,1.0))/3.1415927+0.5;
           col=texture2D(uTex,vec2(u,v)).rgb;
+          if(uHdr>0.5){ col=aces(col*uExp); col=pow(col,vec3(1.0/2.2)); }   // HDR = 노출·톤매핑·감마
         }else{
           float t=d.y;                                    // 0 인 곳이 참 지평선
           if(t>=0.0) col=mix(uHz,uUp,pow(clamp(t,0.0,1.0),0.55));
@@ -2426,6 +2435,123 @@ function pickSkyImage(){
   };
   inp.click();
 }
+
+// ===========================================================================
+// HDR 배경 · 환경광 (2026-09-10 대표 지시 "기본적으로 배경에 hdr 파일도 읽힐 수 있도록")
+//  .hdr(Radiance 파노라마) 한 장을 두르고, 같은 그림을 PMREM 으로 구워 scene.environment 에 건다.
+//  → 배경이 진짜 하늘·실내가 되고, 유리·금속이 그 빛을 비춘다(IBL).
+//  파일은 크므로 문서에 넣지 않는다 — 로그인이면 freeform 버킷에 올리고 URL 만 기억한다.
+// ===========================================================================
+let hdrTex=null, hdrEnv=null, _pmrem=null;
+// 불러온 HDR 의 평균 밝기 — 노출을 자동으로 맞춘다 (하늘 HDR 은 값이 크고 실내는 작다)
+function _hdrAvgLum(tex){
+  const im=tex&&tex.image; if(!im||!im.data) return null;
+  const d=im.data, n=(im.width*im.height)|0; if(!n) return null;
+  const half=(d instanceof Uint16Array), F=THREE.DataUtils&&THREE.DataUtils.fromHalfFloat;
+  if(half&&!F) return null;
+  const step=Math.max(1,Math.floor(n/8192));
+  let s=0,k=0;
+  for(let i=0;i<n;i+=step){
+    const o=i*4;
+    const r=half?F(d[o]):d[o], g=half?F(d[o+1]):d[o+1], b=half?F(d[o+2]):d[o+2];
+    if(!isFinite(r)||!isFinite(g)||!isFinite(b)) continue;
+    s+=0.2126*r+0.7152*g+0.0722*b; k++;
+  }
+  return k?(s/k):null;
+}
+function _ffPmrem(){ if(!_pmrem){ _pmrem=new THREE.PMREMGenerator(renderer); _pmrem.compileEquirectangularShader(); } return _pmrem; }
+function ffHdrClear(){
+  if(hdrEnv){ hdrEnv.dispose(); hdrEnv=null; }
+  if(hdrTex){ hdrTex.dispose(); hdrTex=null; }
+  scene.environment=null;
+  ST.hdrUrl=null; ST.hdrName=''; ST.hdrExp=null;
+  skyTex=null;
+  if(skyUni){ skyUni.uHdr.value=0; }
+}
+// HDR 을 적용한다 — url 은 blob:/data:/https: 무엇이든
+function ffSetHdr(url,name,keepUrl){
+  if(!url){ ffHdrClear(); setSky('sky'); return Promise.resolve(false); }
+  setStatus(true,'☀ HDR 읽는 중…');
+  return new Promise(res=>{
+    new RGBELoader().setDataType(THREE.HalfFloatType).load(url,tex=>{
+      try{
+        if(hdrEnv){ hdrEnv.dispose(); } if(hdrTex){ hdrTex.dispose(); }
+        tex.mapping=THREE.EquirectangularReflectionMapping;
+        hdrTex=tex;
+        hdrEnv=_ffPmrem().fromEquirectangular(tex).texture;   // 재질이 비칠 환경광
+        scene.environment=(ST.hdrLight!==false)?hdrEnv:null; applyMood();
+        skyTex=tex;                                            // 배경 셰이더도 같은 그림을 쓴다
+        if(ST.hdrExp==null||ST.hdrAuto!==false){                // 자동 노출 — 평균 밝기를 중간 회색쯤으로
+          const L=_hdrAvgLum(tex);
+          if(L&&L>1e-4) ST.hdrExp=Math.max(0.08,Math.min(6,Math.round(0.42/L*100)/100));
+          else if(ST.hdrExp==null) ST.hdrExp=1;
+        }
+        ST.sky='image'; ST.hdrName=name||'HDR';
+        if(keepUrl) ST.hdrUrl=url;
+        applySkyColors();
+        if(skyUni){ skyUni.uHdr.value=1; skyUni.uExp.value=ST.hdrExp==null?1:ST.hdrExp; }
+        refreshStylePanel(); ffAutosave(); invalidate(true);
+        setStatus(true,'☀ HDR 배경 «'+(name||'HDR')+'» — 배경과 반사광에 함께 씁니다 (스타일▸환경광·노출)');
+        res(true);
+      }catch(e){ setStatus(false,'HDR 적용 실패 — '+(e&&e.message||e)); res(false); }
+    },undefined,()=>{ setStatus(false,'HDR 파일을 읽지 못했습니다 (Radiance .hdr 인지 확인)'); res(false); });
+  });
+}
+function ffHdrLight(on){
+  ST.hdrLight=!!on;
+  scene.environment=(on&&hdrEnv)?hdrEnv:null;
+  applyMood(); refreshStylePanel(); invalidate(true);
+  setStatus(statusLive,on?'☀ HDR 환경광 켬 — 유리·금속이 배경을 비춥니다':'☀ HDR 환경광 끔 — 배경 그림만');
+}
+function ffHdrExposure(x){
+  ST.hdrAuto=false;
+  ST.hdrExp=Math.max(0.05,Math.min(8,Number(x)||1));
+  if(skyUni) skyUni.uExp.value=ST.hdrExp;
+  if(hdrEnv) scene.environmentIntensity=ST.hdrExp;         // three r170: 환경광 세기
+  refreshStylePanel(); invalidate(true);
+}
+// 파일 고르기 — .hdr 이면 HDR 경로, 그림이면 종전 파노라마
+function pickSkyFile(){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='.hdr,image/vnd.radiance,image/*';
+  inp.onchange=async()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    if(/\.hdr$/i.test(f.name)){
+      const blob=URL.createObjectURL(f);
+      const ok=await ffSetHdr(blob,f.name.replace(/\.hdr$/i,''),false);
+      if(ok){
+        const up=await _ffHdrUpload(f);                    // 로그인이면 버킷에 올려 다음에도 열린다
+        if(up){ ST.hdrUrl=up; ffAutosave(); setStatus(true,'☀ HDR «'+ST.hdrName+'» — 클라우드에 올렸습니다 (문서를 열면 다시 붙습니다)'); }
+        else setStatus(true,'☀ HDR «'+ST.hdrName+'» — 이 세션에만 적용됩니다 (로그인하면 문서에 남습니다)');
+      }
+      setTimeout(()=>URL.revokeObjectURL(blob),30000);
+      return;
+    }
+    const fr=new FileReader();
+    fr.onload=()=>{ if(skyUni) skyUni.uHdr.value=0; ST.hdrUrl=null; ST.hdrName=''; scene.environment=null; setSkyImage(String(fr.result)); };
+    fr.readAsDataURL(f);
+  };
+  inp.click();
+}
+async function _ffHdrUpload(file){
+  const sess=window.ECOREAN_AUTH&&window.ECOREAN_AUTH.session;
+  const tok=sess&&sess.access_token; if(!tok) return null;
+  if(file.size>20*1024*1024){ setStatus(false,'HDR 이 20MB 를 넘어 올리지 못했습니다 (이 세션에만 적용)'); return null; }
+  try{
+    const path='hdr_'+Date.now().toString(36)+'.hdr';
+    const r=await fetch(FF_SB+'/storage/v1/object/'+FF_TEX_BUCKET+'/'+path,{
+      method:'POST',
+      headers:{apikey:FF_ANON,Authorization:'Bearer '+tok,'Content-Type':'image/vnd.radiance','x-upsert':'true','cache-control':'31536000'},
+      body:file});
+    if(!r.ok) return null;
+    return FF_SB+'/storage/v1/object/public/'+FF_TEX_BUCKET+'/'+path;
+  }catch(_){ return null; }
+}
+// 문서를 열 때 기억해 둔 HDR 을 다시 붙인다
+function ffHdrRestore(){
+  const u=ST.hdrUrl;
+  if(u&&/^https?:/.test(u)) ffSetHdr(u,ST.hdrName||'HDR',true);
+}
 // 지금 무드(주/야)에 맞춰 하늘 색을 맞춘다
 function applySkyColors(){
   const P=ST.night?SKY_PRESET.night:SKY_PRESET.day;
@@ -2450,6 +2576,8 @@ function setSky(mode){
   if(mode!=='sky'&&mode!=='plain'&&mode!=='image') mode='sky';
   if(mode==='image'&&!skyTex) mode='sky';        // 그림이 없으면 하늘로
   ST.sky=mode;
+  if(skyUni) skyUni.uHdr.value=(mode==='image'&&hdrTex)?1:0;
+  scene.environment=(mode==='image'&&hdrEnv&&ST.hdrLight!==false)?hdrEnv:null; applyMood();
   applySkyColors();
   refreshStylePanel();
   setStatus(statusLive,'배경: '+(mode==='sky'?'하늘·바닥 (지평선에서 갈라 칠함)':mode==='image'?'그림':'단색'));
@@ -2474,6 +2602,7 @@ function setNight(on){
 function applyMood(){
   if(ST.night){ hemi.intensity=0.32; sun.intensity=0.22; }
   else{ hemi.intensity=ST.lightsOn?1.25:1.6; sun.intensity=ST.lightsOn?2.0:2.6; }
+  if(scene.environment){ hemi.intensity*=0.22; sun.intensity*=0.55; }   // HDR 이 주변광을 맡는다 (겹쳐서 날아가지 않게)
   applySkyColors();   // 2026-09-07: 배경(하늘·바닥)도 무드를 따라간다
   invalidate(true);
 }
@@ -3618,7 +3747,7 @@ function ffApply(m){
 }
 // 저장·복원 — 프리폼은 자기 문서를 가진다
 const FF_QUOTA=5*1024*1024;                       // 브라우저 저장소 한도 (실측 약 4.9MB)
-function ffDocJSON(){ return JSON.stringify({schema:FF_SCHEMA,at:Date.now(),base:FF.base,free:FF.free}); }
+function ffDocJSON(){ return JSON.stringify({schema:FF_SCHEMA,at:Date.now(),base:FF.base,free:FF.free,hdr:ST.hdrUrl?{url:ST.hdrUrl,name:ST.hdrName||'HDR',exp:ST.hdrExp==null?1:ST.hdrExp,light:ST.hdrLight!==false}:null}); }
 function ffAutosave(){
   if(!FF) return;
   let s;
@@ -3668,6 +3797,8 @@ function ffApplyDoc(j,label){
   FF.free=j.free;
   build(FF.base);
   FF.hist=[]; FF.histPos=-1; ffCommit(label||'열기');
+  if(j.hdr&&j.hdr.url){ ST.hdrExp=j.hdr.exp==null?1:j.hdr.exp; ST.hdrLight=j.hdr.light!==false; ffSetHdr(j.hdr.url,j.hdr.name,true); }
+  else if(ST.hdrUrl){ ffHdrClear(); setSky('sky'); }
   return true;
 }
 // ===========================================================================
@@ -6752,6 +6883,10 @@ function refreshStylePanel(){
   const sb=$('st-sky'); if(sb&&!ffSkyIcon()) sb.textContent=(ST.sky==='image'?'🖼 배경 그림':ST.sky==='sky'?'🌄 하늘·바닥':'🌑 단색');
   set('st-label',ST.labels); set('st-shadow',ST.shadows); set('st-axes',ST.axes);
   set('st-xray',ST.xray); set('st-ortho',ST.ortho); set('st-smooth',ST.smooth!==false);
+  set('st-hdrlight',!!hdrEnv&&ST.hdrLight!==false);
+  const hb=$('st-hdr'); if(hb){ const t=hb.querySelector('span'); if(t) t.textContent=hdrTex?('HDR · '+(ST.hdrName||'')) : 'HDR 배경…'; hb.classList.toggle('on',!!hdrTex); }
+  const hr=$('st-hdrexp'); if(hr&&document.activeElement!==hr) hr.value=Math.round((ST.hdrExp==null?1:ST.hdrExp)*100);
+  const hw=$('hdrrow'); if(hw) hw.style.display=hdrTex?'':'none';
   const mi=(id,on)=>{ const el=$(id); if(el){ el.classList.toggle('chk',!!on); el.classList.toggle('unchk',!on); } };
   mi('mi-light',ST.lightsOn); mi('mi-night',ST.night); mi('mi-ceil',ST.ceil[ST.mode]);
   mi('mi-sky',ST.sky!=='plain');
@@ -6843,7 +6978,7 @@ function menuCmd(cmd){
     case 'light': setLights(!ST.lightsOn); break;
     case 'night': setNight(!ST.night); break;
     case 'sky': setSky(ST.sky==='plain'?'sky':'plain'); break;                 // 2026-09-07
-    case 'skyimg': pickSkyImage(); break;
+    case 'skyimg': pickSkyFile(); break;
     case 'ceil': toggleCeil(); break;
     case 'label': toggleLabels(); break;
     case 'shadow': setShadows(!ST.shadows); break;
@@ -6852,6 +6987,9 @@ function menuCmd(cmd){
     case 'walk': setMode('walk'); break;
     case 'iso': case 'top': case 'front': case 'side': setView(cmd); break;
     case 'smooth': setSmooth(ST.smooth===false); break;
+    case 'hdr': pickSkyFile(); break;
+    case 'hdr-clear': ffHdrClear(); setSky('sky'); refreshStylePanel(); setStatus(statusLive,'HDR 해제'); break;
+    case 'hdr-light': ffHdrLight(ST.hdrLight===false); break;
     case 'wp-auto': ffSetWP('auto'); break;
     case 'wp-xy': ffSetWP('xy'); break;
     case 'wp-xz': ffSetWP('xz'); break;
@@ -6890,7 +7028,8 @@ document.querySelectorAll('.tsec .th').forEach(th=>{
 const _stWire={'st-light':()=>setLights(!ST.lightsOn),'st-night':()=>setNight(!ST.night),'st-ceil':toggleCeil,
   'st-sky':()=>setSky(ST.sky==='plain'?'sky':'plain'),
   'st-label':toggleLabels,'st-shadow':()=>setShadows(!ST.shadows),'st-axes':()=>setAxes(!ST.axes),
-  'st-xray':()=>setXray(!ST.xray),'st-ortho':()=>setOrtho(!ST.ortho),'st-smooth':()=>setSmooth(ST.smooth===false)};
+  'st-xray':()=>setXray(!ST.xray),'st-ortho':()=>setOrtho(!ST.ortho),'st-smooth':()=>setSmooth(ST.smooth===false),
+  'st-hdr':()=>pickSkyFile(),'st-hdrlight':()=>ffHdrLight(ST.hdrLight===false||!scene.environment)};
 const _sun=$('st-sun'); if(_sun) _sun.addEventListener('input',()=>setSunT(_sun.value/100));
 const _sd=$('st-date'); if(_sd) _sd.addEventListener('input',()=>setSunDate(+_sd.value));
 const _sl=$('st-light'); if(_sl) _sl.addEventListener('input',()=>setLightDark(_sl.value/100,null));
@@ -6955,7 +7094,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setSmooth,_ffSoften,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setSmooth,_ffSoften,ffSetHdr,ffHdrClear,ffHdrLight,ffHdrExposure,ffHdrRestore,pickSkyFile,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,
