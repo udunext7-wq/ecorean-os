@@ -223,7 +223,7 @@
   body.ff-su .bar .btn{border-color:rgba(255,255,255,.06);background:rgba(255,255,255,.028);color:#C9D3E6}
   body.ff-su .bar .btn.on{color:#fff}
   body.ff-su .sep{background:linear-gradient(180deg,transparent,rgba(120,160,220,.4),transparent);height:26px}
-  body.ff-su #status{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+  body.ff-su #status{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);max-width:min(38vw,420px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   body.ff-su #status.live::before{animation:ffPulse 2.4s ease-in-out infinite}
   @keyframes ffPulse{0%,100%{opacity:1}50%{opacity:.35}}
   body.ff-su #tools{border:1px solid transparent;background:linear-gradient(var(--panel),var(--panel)) padding-box,var(--gb) border-box;box-shadow:0 20px 50px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.35)}
@@ -793,12 +793,12 @@
   <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
 </div></div>
 
-<script src="../js/data.js?v=3d53"></script>
-<script src="../js/library.js?v=3d53"></script>
+<script src="../js/data.js?v=3d54"></script>
+<script src="../js/library.js?v=3d54"></script>
 <!-- 2026-09-07: 매스 다면체(z 값) 계산은 2D 와 같은 파일을 쓴다 — 두 벌로 두면 평면과 3D 가 어긋난다 -->
-<script src="../js/sketch.js?v=3d53"></script>
-<script src="build3d.js?v=3d53"></script>
+<script src="../js/sketch.js?v=3d54"></script>
+<script src="build3d.js?v=3d54"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d53"></script>
+<script type="module" src="view3d.js?v=3d54"></script>
 </body>
 </html>

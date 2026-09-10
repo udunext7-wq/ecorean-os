@@ -13,21 +13,26 @@ const fails=[]; let n=0; const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.lo
     ck(m.pts===8&&m.edges===12,'상자 하나 = 점 8 · 모서리 12 를 3D 로 모은다 '+JSON.stringify(m));
     // 바닥 그리기 중 공중의 윗면 꼭짓점이 잡힌다 (투영)
     await J(`MC3DVIEW.setTool('line');__mv(2000,1500,4000);'ok'`); await sleep(200);
-    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,proj:s&&s.proj,tip:__tip(),line:__proj()}})()`);
-    ck(m.kind==='endpoint'&&m.proj&&Math.round(m.proj.z)===4000&&/투영/.test(m.tip.txt)&&m.line,'공중 꼭짓점(z=4000) → 끝점 투영 + 점선 안내 '+JSON.stringify(m));
-    // 그 자리를 클릭하면 바로 아래(바닥)에 점이 찍힌다
+    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,z:s&&s.W&&Math.round(s.W.y*1000),tip:__tip()}})()`);
+    ck(m.kind==='endpoint'&&m.z===4000&&m.tip.txt==='끝점','공중 꼭짓점(z=4000) → 그 자리에 끝점 기호 (자유 3D 선이라 투영 아님) '+JSON.stringify(m));
+    // 그 자리를 클릭하면 바닥이 아니라 그 3D 점에서 시작한다
     await J(`(()=>{var p=__pt(2000,1500,4000);__click(p.x,p.y);return 1})()`); await sleep(250);
-    m=await J(`(()=>{var op=MC3DVIEW.ST.op;return {op:op&&op.type,a:op&&op.a}})()`);
-    ck(m.op==='line'&&m.a&&Math.round(m.a.x)===2000&&Math.round(m.a.y)===1500,'클릭 → 그 점 바로 아래 바닥 자리에서 시작 '+JSON.stringify(m));
+    m=await J(`(()=>{var op=MC3DVIEW.ST.op;return {op:op&&op.type,z:op&&op.fr&&Math.round(op.fr.origin.z)}})()`);
+    ck(m.op==='line3'&&m.z===4000,'클릭 → 투영하지 않고 그 3D 점(z=4000)에서 시작 '+JSON.stringify(m));
     await J(`__key('Escape');'ok'`); await sleep(150);
     // 공중의 윗면 모서리 중간점도 잡힌다
     await J(`__mv(1000,1500,4000);'ok'`); await sleep(200);
-    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,pz:s&&s.proj&&Math.round(s.proj.z),tip:__tip().txt}})()`);
-    ck((m.kind==='midpoint'||m.kind==='endpoint')&&m.pz===4000&&/투영/.test(m.tip),'공중 윗면 모서리 중간점도 잡힌다 '+JSON.stringify(m));
+    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,z:s&&s.W&&Math.round(s.W.y*1000),tip:__tip().txt}})()`);
+    ck((m.kind==='midpoint'||m.kind==='endpoint')&&m.z===4000,'공중 윗면 모서리 중간점도 그 자리에서 잡힌다 '+JSON.stringify(m));
     // 세로 모서리 중간 높이도 잡힌다
     await J(`__mv(0,0,2000);'ok'`); await sleep(200);
-    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,pz:s&&s.proj&&Math.round(s.proj.z),tip:__tip().txt}})()`);
-    ck(m.kind==='edge'&&m.pz>800&&m.pz<3200&&/투영/.test(m.tip),'세로 모서리의 중간 높이도 「선 위」로 잡힌다 '+JSON.stringify(m));
+    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,z:s&&s.W&&Math.round(s.W.y*1000),tip:__tip().txt}})()`);
+    ck(m.kind==='edge'&&m.z>800&&m.z<3200&&m.tip==='선 위','세로 모서리의 중간 높이도 「선 위」로 그 자리에서 잡힌다 '+JSON.stringify(m));
+    // 작업 평면을 잡으면 투영 + 점선 안내 (자유 3D 선이 꺼진다)
+    await J(`__key('Escape');MC3DVIEW.ffSetWP('xy',null,1,true);MC3DVIEW.setTool('line');__mv(2000,1500,4000);'ok'`); await sleep(250);
+    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,pz:s&&s.proj&&Math.round(s.proj.z),tip:__tip().txt,line:__proj()}})()`);
+    ck(m.kind==='endpoint'&&m.pz===4000&&/투영/.test(m.tip)&&m.line,'작업 평면을 잡으면 그 면으로 투영 + 점선 안내 '+JSON.stringify(m));
+    await J(`MC3DVIEW.ffSetWP('auto',null,1,true);'ok'`); await sleep(150);
     // 바닥 위 것은 종전대로 투영이 아니라 진짜 스냅
     await J(`__mv(2000,1500,0);'ok'`); await sleep(200);
     m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,proj:s&&s.proj,tip:__tip().txt,line:__proj()}})()`);
@@ -38,8 +43,8 @@ const fails=[]; let n=0; const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.lo
     m=await J(`({op:MC3DVIEW.ST.op&&MC3DVIEW.ST.op.type,nx:MC3DVIEW.ST.op&&MC3DVIEW.ST.op.fr&&Math.abs(MC3DVIEW.ST.op.fr.n.x)})`);
     ck(m.op==='line3'&&m.nx>0.99,'오른쪽 벽면 위 그리기 시작 '+JSON.stringify(m));
     await J(`__mv(7000,1500,900);'ok'`); await sleep(220);
-    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,px:s&&s.proj&&Math.round(s.proj.x),tip:__tip().txt}})()`);
-    ck(!!m.kind&&m.px===7000&&/투영/.test(m.tip),'벽면에 그리는 중 다른 상자(x=7000)의 점이 잡힌다 '+JSON.stringify(m));
+    m=await J(`(()=>{var op=MC3DVIEW.ST.op,s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,bx:op&&op.b3&&Math.round(op.b3.x),bz:op&&op.b3&&Math.round(op.b3.z),prev:!!(op&&op._p3&&op._p3.visible)}})()`);
+    ck(m.kind==='endpoint'&&m.bx===7000&&m.prev,'벽면에 그리는 중 다른 상자(x=7000)의 점이 잡혀 3D 로 이어진다 '+JSON.stringify(m));
     await J(`__key('Escape');'ok'`);
     // 가늘어졌나
     m=await J(`(()=>{MC3DVIEW.setView('iso');MC3DVIEW.drawFrame();MC3DVIEW.setTool('line');var p=__pt(2000,1500,0);__ev('pointermove',p.x,p.y);
