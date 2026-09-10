@@ -1257,29 +1257,126 @@ const SU_COLORS=[['#FFFFFF','흰색'],['#E6E6E6','밝은 회색'],['#B3B3B3','�
   ['#8B6F47','목재'],['#C9B98E','모래'],['#D2B48C','황갈'],['#A0522D','벽돌'],['#7B8A8B','슬레이트'],['#B9C6D2','매스 기본'],['#F5F1EB','크림'],['#2F6193','강청'],['#6B8E23','올리브']];
 function _ffMats(){ if(!FF) return []; if(!Array.isArray(FF.free.mats)) FF.free.mats=[]; return FF.free.mats; }
 // 이미지 재질 (IMG_…) · 단색 재질 (C_RRGGBB) — floorMat 이 코드로 만든다
+
+// ===========================================================================
+// 재질 속성 · 원본 해상도 텍스처 (2026-09-10 대표 지시 "계속 개선해줘")
+//  · 속성은 코드별로 FF.free.matProps 에 — 색(C_)·이미지(IMG_)·기본 마감 모두 같은 방식
+//  · 이미지는 Supabase Storage 'freeform' 버킷에 원본(최대 2048px)으로 올리고 URL 만 문서에 둔다
+//    (로그인이 없으면 종전처럼 512px data URL 로 문서 안에 — 오프라인에서도 작업은 된다)
+// ===========================================================================
+const FF_TEX_BUCKET='freeform';
+const FF_SB='https://gdcfqbdgubgpzusbtftf.supabase.co';
+const FF_ANON='sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ';
+const MAT_DEF={op:1,ro:0.82,me:0.02,rot:0};
+const MAT_PRESETS={
+  matte:{name:'무광',op:1,ro:0.95,me:0},
+  satin:{name:'반광',op:1,ro:0.55,me:0},
+  gloss:{name:'광택',op:1,ro:0.18,me:0},
+  metal:{name:'금속',op:1,ro:0.28,me:0.9},
+  glass:{name:'유리',op:0.28,ro:0.05,me:0},
+};
+function _ffMatKey(code){ const s=String(code||''); if(/^#/.test(s)) return 'C_'+s.slice(1).toUpperCase(); if(/^C_/i.test(s)) return 'C_'+s.slice(2).toUpperCase(); return s; }
+function _ffMatProps(){ if(!FF) return {}; if(!FF.free.matProps||typeof FF.free.matProps!=='object') FF.free.matProps={}; return FF.free.matProps; }
+function ffMatProp(code){ const p=_ffMatProps()[_ffMatKey(code)]||{}; return {op:p.op==null?MAT_DEF.op:p.op, ro:p.ro==null?MAT_DEF.ro:p.ro, me:p.me==null?MAT_DEF.me:p.me, rot:p.rot==null?MAT_DEF.rot:p.rot}; }
+function ffSetMatProp(code,patch){
+  if(!code||!FF) return;
+  const key=_ffMatKey(code);
+  const P=_ffMatProps(); const cur=Object.assign({},P[key]||{});
+  Object.keys(patch||{}).forEach(k=>{ cur[k]=patch[k]; });
+  P[key]=cur;
+  texCache.delete(key); texCache.delete(code);            // 다음 그릴 때 새 재질로
+  matCache.clear();                                       // 매스 통짜 색도 새 속성으로 다시
+  _ffRetintCode(key);
+  ffAutosave(); invalidate(true);
+}
+// 이미 화면에 붙어 있는 같은 코드의 재질을 그 자리에서 갱신 (다시 세우지 않고)
+function _ffRetintCode(code){
+  const p=ffMatProp(code);
+  scene.traverse(o=>{
+    const m=o.material; if(!m||!m.name) return;
+    const arr=Array.isArray(m)?m:[m];
+    const want=['MC_'+code,'MC_'+String(code).replace(/^C_/,'')];
+    arr.forEach(mm=>{
+      if(want.indexOf(mm.name)<0) return;
+      mm.opacity=p.op; mm.transparent=p.op<0.999; mm.depthWrite=p.op>0.92;
+      if('roughness' in mm) mm.roughness=p.ro;
+      if('metalness' in mm) mm.metalness=p.me;
+      if(mm.map){ mm.map.rotation=(p.rot||0)*Math.PI/180; mm.map.center.set(0.5,0.5); mm.map.needsUpdate=true; }
+      mm.needsUpdate=true;
+    });
+  });
+}
+// 재질 하나를 그림 파일에서 만든다 — 로그인이면 Storage 원본, 아니면 문서 안 512px
+async function ffAddImageMat(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=async()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    const S=parseFloat(window.prompt('이 그림 한 장이 덮는 실제 폭 (m)','1'))||1;
+    const nm=window.prompt('재질 이름',f.name.replace(/\.[^.]+$/,''))||'이미지';
+    const id='IMG_'+Date.now();
+    setStatus(true,'🖼 재질 만드는 중…');
+    let url=null, full=false;
+    try{ url=await _ffTexUpload(f,id); full=!!url; }catch(_){ url=null; }
+    if(!url) url=await _ffTexDataURL(f,512);               // 로그인 없음·업로드 실패 → 종전 방식
+    _ffMats().push({id,name:nm,url,S,full});
+    ffAutosave(); texCache.delete(id);
+    ST.paint={cat:'img',code:id}; renderPaintPal(); if(ST.tool!=='paint') setTool('paint');
+    setStatus(true,'🖼 재질 "'+nm+'" — 클릭해서 칠하기 ('+(full?'원본 해상도 · 클라우드':'512px · 문서 안')+')');
+  };
+  inp.click();
+}
+function _ffTexDataURL(file,max){
+  return new Promise(res=>{
+    const fr=new FileReader();
+    fr.onload=()=>{ const img=new Image(); img.onload=()=>{
+      const sc=Math.min(1,max/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas'); cv.width=Math.max(1,Math.round(img.width*sc)); cv.height=Math.max(1,Math.round(img.height*sc));
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      res(cv.toDataURL('image/jpeg',0.82));
+    }; img.onerror=()=>res(null); img.src=fr.result; };
+    fr.onerror=()=>res(null);
+    fr.readAsDataURL(file);
+  });
+}
+// 원본(최대 2048px, JPEG 0.9) 을 버킷에 올리고 공개 URL 을 돌려준다. 실패면 null
+async function _ffTexUpload(file,id){
+  const sess=window.ECOREAN_AUTH&&window.ECOREAN_AUTH.session;
+  const tok=sess&&sess.access_token; if(!tok) return null;
+  const durl=await _ffTexDataURL(file,2048); if(!durl) return null;
+  const blob=_ffDataURLBlob(durl); if(!blob) return null;
+  const path=id+'.jpg';
+  const r=await fetch(FF_SB+'/storage/v1/object/'+FF_TEX_BUCKET+'/'+path,{
+    method:'POST',
+    headers:{apikey:FF_ANON,Authorization:'Bearer '+tok,'Content-Type':'image/jpeg','x-upsert':'true','cache-control':'31536000'},
+    body:blob});
+  if(!r.ok) return null;
+  return FF_SB+'/storage/v1/object/public/'+FF_TEX_BUCKET+'/'+path;
+}
+function _ffDataURLBlob(d){
+  try{ const p=d.split(','); const mime=(p[0].match(/:(.*?);/)||[])[1]||'image/jpeg';
+    const bin=atob(p[1]); const a=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i);
+    return new Blob([a],{type:mime});
+  }catch(_){ return null; }
+}
 function ffCustomMat(code){
-  if(/^C_[0-9A-Fa-f]{6}$/.test(code)){ const m=new THREE.MeshStandardMaterial({color:new THREE.Color('#'+code.slice(2)),roughness:0.82,metalness:0.02,side:THREE.DoubleSide}); m.name='MC_'+code.slice(2); return m; }
+  const P=ffMatProp(code);
+  if(/^C_[0-9A-Fa-f]{6}$/.test(code)){
+    const m=new THREE.MeshStandardMaterial({color:new THREE.Color('#'+code.slice(2)),roughness:P.ro,metalness:P.me,side:THREE.DoubleSide,
+      transparent:P.op<0.999,opacity:P.op,depthWrite:P.op>0.92});
+    m.name='MC_'+code.slice(2); return m; }
   if(/^IMG_/.test(code)){
     const rec=_ffMats().find(x=>x.id===code); if(!rec) return null;
     const tex=new THREE.Texture(); tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.colorSpace=THREE.SRGBColorSpace;
     const S=Math.max(0.1,Number(rec.S)||1); tex.repeat.set(1/S,1/S); tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
-    const img=new Image(); img.onload=()=>{ tex.image=img; tex.needsUpdate=true; invalidate(true); }; img.src=rec.url;
-    const m=new THREE.MeshStandardMaterial({map:tex,roughness:0.8,metalness:0.02,side:THREE.DoubleSide}); m.name='MC_'+code; return m;
+    tex.center.set(0.5,0.5); tex.rotation=(P.rot||0)*Math.PI/180;
+    const img=new Image(); if(/^https?:/.test(rec.url)) img.crossOrigin='anonymous';    // 버킷 텍스처
+    img.onload=()=>{ tex.image=img; tex.needsUpdate=true; invalidate(true); }; img.src=rec.url;
+    const m=new THREE.MeshStandardMaterial({map:tex,roughness:P.ro,metalness:P.me,side:THREE.DoubleSide,
+      transparent:P.op<0.999,opacity:P.op,depthWrite:P.op>0.92});
+    m.name='MC_'+code; return m;
   }
   return null;
-}
-function ffAddImageMat(){
-  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
-  inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
-    const fr=new FileReader(); fr.onload=()=>{ const img=new Image(); img.onload=()=>{
-      const cv=document.createElement('canvas'); const W=512; cv.width=W; cv.height=Math.max(1,Math.round(W*img.height/img.width)); cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-      const url=cv.toDataURL('image/jpeg',0.82);
-      const S=parseFloat(window.prompt('이 그림 한 장이 덮는 실제 폭 (m)','1'))||1;
-      const nm=window.prompt('재질 이름',f.name.replace(/\.[^.]+$/,''))||'이미지';
-      const id='IMG_'+Date.now(); _ffMats().push({id,name:nm,url,S}); ffAutosave(); texCache.delete(id);
-      ST.paint={cat:'img',code:id}; renderPaintPal(); if(ST.tool!=='paint') setTool('paint');
-      setStatus(statusLive,'🖼 이미지 재질 "'+nm+'" — 클릭해서 칠하기 (문서에 저장됩니다)'); }; img.src=fr.result; }; fr.readAsDataURL(f); };
-  inp.click();
 }
 function ffPaintPalExtra(pal){
   if(!FF_STANDALONE) return;
@@ -1573,7 +1670,13 @@ function ffFaceCtxItems(e){
 // ---------------------------------------------------------------------------
 const matCache=new Map();
 function matFor(p){
-  const key=[p.color,p.opacity??1,p.emissive?(p.lit===false?2:1):0,p.glass?1:0].join('|');   // 2026-09-09: 꺼진 등은 별도 재질
+  // 단독 프리폼: 재질 손보기(투명도·거칠기·금속감)를 매스 통짜 색에도 적용한다
+  let ff=null;
+  if(FF_STANDALONE&&FF&&p.color&&!p.glass&&!p.emissive){
+    const c=_ffMatKey(p.color);
+    if(_ffMatProps()[c]) ff=ffMatProp(c);
+  }
+  const key=[p.color,p.opacity??1,p.emissive?(p.lit===false?2:1):0,p.glass?1:0,ff?ff.op+':'+ff.ro+':'+ff.me:''].join('|');   // 2026-09-09: 꺼진 등은 별도 재질
   let m=matCache.get(key);
   if(m) return m;
   const col=new THREE.Color(p.color||'#CCCCCC');
@@ -1589,6 +1692,7 @@ function matFor(p){
       if(!litOK) m.color.multiplyScalar(0.55);   // 꺼진 갓 — 소등된 실등의 잿빛
     }
   }
+  if(ff){ m.roughness=ff.ro; m.metalness=ff.me; m.opacity=ff.op; m.transparent=ff.op<0.999; m.depthWrite=ff.op>0.92; }
   m.name='MC_'+String(p.color||'CCC').replace('#','')+(p.glass?'_glass':'')+(p.emissive?(p.lit===false?'_emitoff':'_emit'):''); // Blender 재질 매핑용 이름
   matCache.set(key,m);
   return m;
@@ -5283,6 +5387,49 @@ function commitPP(exact){
   setStatus(statusLive,'⇕ 높이 '+nv+'mm → 평면 반영');
 }
 // --- 페인트 (B) · Alt+클릭 = 재질 추출 (스케치업 Sample Paint) ---
+
+// 고른 재질의 속성 편집 — 재질 패널 맨 위 (긴 마감 목록에 묻히지 않게)
+function ffMatEditor(pal){
+  if(!FF_STANDALONE||!pal) return;
+  const c=ST.paint&&ST.paint.cat, code=ST.paint&&ST.paint.code;
+  const editable=(c==='color'||c==='img');
+  const key=editable?_ffMatKey(code):null;
+  const P=key?ffMatProp(key):null;
+  const rec=(c==='img')?_ffMats().find(x=>x.id===code):null;
+  let html='<div class="pp-cat">지금 고른 재질 손보기</div>';
+  if(!editable){
+    html+='<div class="me-off">색상이나 내 재질을 고르면 투명도·거칠기·금속감을 조절할 수 있습니다</div>';
+  }else{
+    html+='<div class="me-pre">'+Object.keys(MAT_PRESETS).map(k=>'<button class="btn sm" data-pre="'+k+'">'+MAT_PRESETS[k].name+'</button>').join('')+'</div>'+
+      _meRow('op','투명도',Math.round((1-P.op)*100),0,95,1,'%')+
+      _meRow('ro','거칠기',Math.round(P.ro*100),0,100,1,'%')+
+      _meRow('me','금속감',Math.round(P.me*100),0,100,1,'%');
+    if(rec) html+=_meRow('S','무늬 폭',Math.round((Number(rec.S)||1)*100)/100,0.05,20,0.05,'m')+
+      _meRow('rot','무늬 회전',Math.round(P.rot||0),0,180,1,'°')+
+      '<div class="me-off">'+(rec.full?'원본 해상도 · 클라우드 저장':'512px · 문서 안 (로그인하면 원본으로 올라갑니다)')+'</div>';
+    html+='<div class="me-pre"><button class="btn sm" data-pre="reset">기본값</button></div>';
+  }
+  pal.insertAdjacentHTML('afterbegin',html);
+  pal.querySelectorAll('[data-me]').forEach(r=>{
+    const k=r.dataset.me, inp=r.querySelector('input'), out=r.querySelector('.me-v');
+    inp.oninput=()=>{
+      const val=parseFloat(inp.value); out.textContent=val+(r.dataset.unit||'');
+      if(k==='S'){ const rc=_ffMats().find(x=>x.id===code); if(rc){ rc.S=Math.max(0.05,val); texCache.delete(code); ffAutosave(); ffRender&&ffRender(); invalidate(true); } return; }
+      ffSetMatProp(key,k==='op'?{op:1-val/100}:k==='rot'?{rot:val}:{[k]:val/100});
+    };
+  });
+  pal.querySelectorAll('[data-pre]').forEach(b=>{ b.onclick=()=>{
+    const k=b.dataset.pre;
+    if(k==='reset') ffSetMatProp(key,{op:MAT_DEF.op,ro:MAT_DEF.ro,me:MAT_DEF.me,rot:0});
+    else { const p=MAT_PRESETS[k]; if(p) ffSetMatProp(key,{op:p.op,ro:p.ro,me:p.me}); }
+    renderPaintPal();
+  }; });
+}
+function _meRow(k,label,val,mn,mx,st,unit){
+  return '<label class="me-r" data-me="'+k+'" data-unit="'+unit+'"><span class="me-l">'+label+'</span>'+
+    '<input type="range" min="'+mn+'" max="'+mx+'" step="'+st+'" value="'+val+'">'+
+    '<span class="me-v">'+val+unit+'</span></label>';
+}
 function renderPaintPal(){
   const pal=$('paintpal'); if(!pal) return;
   const cats=[['wall','벽 마감',MATS.WALL],['floor','바닥재',MATS.FLOOR],['ceil','천장재',MATS.CEIL]];
@@ -5290,6 +5437,7 @@ function renderPaintPal(){
     Object.entries(TBL).map(([k,v])=>'<button class="pp-it'+((ST.paint.cat===cat&&ST.paint.code===k)?' on':'')+'" data-cat="'+cat+'" data-code="'+k+'"><span class="pp-chip" style="background:'+(MC3D.WALL_COLORS[k]||MC3D.FLOOR_COLORS[k]||'#B9B2A6')+'"></span>'+(v.name||k)+'</button>').join('')+'</div>'):'').join('');
   pal.querySelectorAll('.pp-it').forEach(b=>{ b.onclick=()=>{ ST.paint={cat:b.dataset.cat,code:b.dataset.code}; renderPaintPal(); if(ST.tool!=='paint') setTool('paint'); }; }); // 스케치업: 재질 고르면 페인트 도구
   ffPaintPalExtra(pal);
+  ffMatEditor(pal);
 }
 function samplePaint(hit){
   const obj=hit.object.userData.obj; if(!obj) return;
@@ -6510,7 +6658,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,

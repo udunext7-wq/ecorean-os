@@ -295,6 +295,16 @@
   body.ff-su #ffcloud h3{font-family:'Cormorant Garamond','Inter',serif;font-size:24px;font-weight:600;color:#F3E3BE}
   body.ff-su #ffcloud .cl-it:hover{background:rgba(89,210,255,.10);border-color:rgba(89,210,255,.3)}
   body.ff-su #savewarn{backdrop-filter:blur(14px);background:rgba(38,16,10,.9)}
+  #paintpal .me-r{display:flex;align-items:center;gap:7px;margin:5px 0;font-size:11px;color:var(--mute)}
+  #paintpal .me-l{width:52px;flex:none}
+  #paintpal .me-r input{flex:1;min-width:0;accent-color:var(--gold)}
+  #paintpal .me-v{width:44px;text-align:right;flex:none;font-family:'JetBrains Mono',monospace;font-size:10.5px}
+  #paintpal .me-pre{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+  #paintpal .me-pre .btn{padding:3px 8px;font-size:11px}
+  #paintpal .me-off{font-size:10.5px;color:var(--mute);line-height:1.5;margin:5px 0}
+  body.ff-su #paintpal .me-r input{-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(230,199,135,.7),rgba(89,210,255,.7));outline:none}
+  body.ff-su #paintpal .me-r input::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:#fff;border:2px solid #0B0F1B;box-shadow:0 0 0 1px rgba(89,210,255,.6),0 0 9px rgba(89,210,255,.5);cursor:pointer}
+  body.ff-su #paintpal .me-pre .btn{border-color:rgba(255,255,255,.07);background:rgba(255,255,255,.03);color:#C9D3E6}
   @media (max-width:760px){ #tray{display:none} #hint{display:none} }
 </style>
 </head>
@@ -783,12 +793,12 @@
   <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
 </div></div>
 
-<script src="../js/data.js?v=3d52"></script>
-<script src="../js/library.js?v=3d52"></script>
+<script src="../js/data.js?v=3d53"></script>
+<script src="../js/library.js?v=3d53"></script>
 <!-- 2026-09-07: 매스 다면체(z 값) 계산은 2D 와 같은 파일을 쓴다 — 두 벌로 두면 평면과 3D 가 어긋난다 -->
-<script src="../js/sketch.js?v=3d52"></script>
-<script src="build3d.js?v=3d52"></script>
+<script src="../js/sketch.js?v=3d53"></script>
+<script src="build3d.js?v=3d53"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d52"></script>
+<script type="module" src="view3d.js?v=3d53"></script>
 </body>
 </html>
