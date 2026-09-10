@@ -156,7 +156,7 @@ const FF_HINT={
   rotate:'<b>회전</b> — 객체 클릭 → 각도기: 기준 방향 → 각도 · <b>세워진 면을 클릭하면 그 면의 법선이 축</b> · <b>Ctrl=복사</b>(뒤에 x3=방사 배열) · 15° 스냅(Shift=자유) · <b>숫자=각도</b>',
   scale:'<b>배율</b> — 매스를 고르면 <b>그립</b>: 초록 모서리=균등 · 빨강/파랑 면=한 축 · <b>Ctrl=중심 기준</b> · <b>숫자=배율</b>(1.5) 또는 <b>치수</b>(1500mm) · 가로,세로,높이',
   pushpull:'<b>밀기끌기</b> — <b>매스의 어느 면이든</b> 법선으로 밀면 매스가 늘고 줄어듭니다 · <b>Ctrl=면을 두고 새 매스 뽑기</b> · 바닥 면=위로(매스) · 벽면 위의 면=뽑기/안으로 밀면 파내기 · <b>숫자=mm</b>(−=안으로) · 더블클릭=직전 값',
-  line:'<b>선</b> — 클릭-클릭 사슬 · <b>어느 점이든 이어집니다</b>(높이가 달라도 — 작업 평면이 <b>자동</b>일 때) · <b>위로 끌면 파랑(Z) 축</b>(숫자=높이, ↑=고정) · <b>고리가 닫히면 면</b> · <b>매스 면 위에 모서리에서 모서리로 그으면 면이 나뉜다</b>(나뉜 면은 각각 밀기끌기) · 벽면을 클릭하면 그 면이 종이 · Shift=방향 고정 · ←→↑=축 고정 · 숫자=길이 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · Esc/더블클릭=끝',
+  line:'<b>선</b> — 클릭-클릭 사슬 · <b>어느 점이든 이어집니다</b>(높이가 달라도 — 작업 평면이 <b>자동</b>일 때) · <b>세 점이면 종이가 정해지고 고리를 닫으면 기울어진 면도 생깁니다</b> · <b>위로 끌면 파랑(Z) 축</b>(숫자=높이, ↑=고정) · <b>고리가 닫히면 면</b> · <b>매스 면 위에 모서리에서 모서리로 그으면 면이 나뉜다</b>(나뉜 면은 각각 밀기끌기) · 벽면을 클릭하면 그 면이 종이 · Shift=방향 고정 · ←→↑=축 고정 · 숫자=길이 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · Esc/더블클릭=끝',
   rect:'<b>사각형</b> — 두 모서리 클릭 → <b>바로 높이</b>(위로 끌어 3번째 클릭 또는 숫자) = 상자 · 벽면 위도 됨 · <b>W=작업 평면</b>(바닥·정면·측면 — 자라는 축이 바뀐다) · <b>가로,세로</b> 입력 · Esc=면만',
   rotrect:'<b>회전 사각형</b> — 첫 변 두 점 클릭 → 폭 클릭 · 숫자=길이·폭',
   circle:'<b>원</b> — 중심 클릭 → 반지름 · <b>숫자=반지름</b> · <b>24s=변 수</b>',
@@ -2480,10 +2480,22 @@ function fitView(keepDir){
   if(ST.mode==='orbit'){
     if(!keepDir){ setView('iso'); return; }
     camPush();                                     // 스케치업 Zoom Extents: 보던 방향 그대로 전체가 들어오게
-    const b=ST.built.bounds, cx=(b.minX+b.maxX)/2*MM, cz=(b.minY+b.maxY)/2*MM;
-    const span=Math.max(b.maxX-b.minX,b.maxY-b.minY,4000)*MM;
+    const b0=ST.built.bounds;
+    let bx0=b0.minX,bx1=b0.maxX,by0=b0.minY,by1=b0.maxY,bz0=0,bz1=(ST.built.totalHeight||2700);
+    if(FF_STANDALONE&&ST.ffOn){                    // 3D 스케치(평면 위 점·선·면)도 전체 보기에 넣는다
+      const A=_ffAll3D(), P=A.P; let any=false;
+      if(P&&P.length){ bx0=by0=bz0=Infinity; bx1=by1=bz1=-Infinity;
+        for(let i=0;i<P.length;i+=3){ any=true;
+          if(P[i]<bx0)bx0=P[i]; if(P[i]>bx1)bx1=P[i];
+          if(P[i+1]<by0)by0=P[i+1]; if(P[i+1]>by1)by1=P[i+1];
+          if(P[i+2]<bz0)bz0=P[i+2]; if(P[i+2]>bz1)bz1=P[i+2]; }
+      }
+      if(!any){ bx0=b0.minX;bx1=b0.maxX;by0=b0.minY;by1=b0.maxY;bz0=0;bz1=(ST.built.totalHeight||2700); }
+    }
+    const cx=(bx0+bx1)/2*MM, cz=(by0+by1)/2*MM;
+    const span=Math.max(bx1-bx0,by1-by0,bz1-bz0,4000)*MM;
     const dir=camera.position.clone().sub(orbit.target); if(dir.length()<1e-6) dir.set(0.35,0.95,0.85); dir.normalize();
-    orbit.target.set(cx,Math.min((ST.built.totalHeight||2700)*MM/2,1.2),cz);
+    orbit.target.set(cx,(bz0+bz1)/2*MM,cz);
     camera.position.copy(orbit.target).addScaledVector(dir,span*1.3+2);
     if(ST.ortho){ orthoCam.zoom=1; _orthoFit(); }
     orbit.update(); invalidate(); camPush(); return;
@@ -2896,14 +2908,15 @@ function ff3Click(e,fp,tool){
     return;
   }
   const op=ST.op;
-  if(op.type==='line3'&&op.b3&&ffFree3()){                   // 이 종이 밖의 점으로 잇는다
-    const A=planePt(op.fr,op.a.u,op.a.v), B=op.b3;
-    const L=_ffLen3(A,B);
-    if(L<10) return;
-    const fr=ffEmitEdge3(A,B);
-    ffLineBegin3(B,fr);
-    setStatus(statusLive,'╱ 3D 선 '+L+'mm — 이어서 클릭 (Esc·더블클릭=끝)');
+  if(op.type==='line3'&&op.b3&&ffFree3()){                   // 이 종이 밖의 점 — 사슬로
+    if(!op.chain3||!op.chain3.length) op.chain3=[planePt(op.fr,op.a.u,op.a.v)];
+    ffChain3Commit(op,op.b3);
     return;
+  }
+  if(op.type==='line3'&&ffFree3()&&op.chain3&&op.chain3.length&&!op.lockFr){
+    // 종이가 아직 안 정해진 사슬 — 이 종이 위의 점도 사슬로 모아야 면이 된다
+    const uv2=_ff3UV(e,op.fr); if(uv2){ const P=planePt(op.fr,_ff3Lock(op,uv2).u,_ff3Lock(op,uv2).v);
+      if(op.chain3.length>=2||_ffLen3(op.chain3[op.chain3.length-1],P)>=10){ ffChain3Commit(op,P); return; } }
   }
   let uv=_ff3UV(e,op.fr);
   if(!uv) return;
@@ -4406,15 +4419,112 @@ function ffEmitEdge3(A,B){
   return fr;
 }
 // 그 3D 점에서 선을 새로 시작 — 바닥이면 종전 경로, 아니면 그 종이 위
-function ffLineBegin3(P,fr){
+function ffLineBegin3(P,fr,chain3,lockFr){
+  if(ST.op) ST.op._keep=true;                     // 넘겨받은 사슬은 cancelOp 에서 다시 넣지 않는다
   cancelOp();
-  if(!fr&&Math.abs(P.z)<1){ _lineBeginAt('freeform',0,{x:Math.round(P.x),y:Math.round(P.y)},false,null); return; }
   const F=fr||_ffFrameFor({x:P.x,y:P.y,z:P.z},{x:0,y:0,z:1});
   const a=planeUV(F,P);
   const A={u:Math.round(a.u),v:Math.round(a.v)};
-  ST.op={type:'line3',fr:F,a:A,cur:{u:A.u,v:A.v},line:null,drew:false,free3:true};
+  ST.op={type:'line3',fr:F,a:A,cur:{u:A.u,v:A.v},line:null,drew:false,free3:true,
+    chain3:(chain3&&chain3.length)?chain3.slice():[{x:P.x,y:P.y,z:P.z}],lockFr:lockFr||null};
   opOrbit(true); _ff3Ghost(ST.op);
   vcbShow('길이',0,'mm');
+}
+
+// ===========================================================================
+// 3D 사슬 → 면 (2026-09-10 대표 지시 "점이 각 위치가 다르더라도 연결이 되면 면이 생겼으면")
+//  고리가 면이 되려면 그 고리의 모든 변이 한 종이(평면 그래프)에 있어야 한다.
+//  그래서 3D 사슬은 세 번째 점에서 **종이를 잡고**(세 점이 평면 하나를 정한다),
+//  그 뒤 구간을 모두 그 종이에 넣는다. 시작점으로 돌아오면 그 종이에서 면이 생긴다.
+//   · 두 점만 찍고 끝내면(Esc·더블클릭) 그때 짝 평면에 넣는다 — 종전과 같다.
+//   · 넷째 점이 그 종이를 벗어나면 그 구간만 따로 넣고 사슬을 새로 시작한다 (면은 안 생긴다).
+// ===========================================================================
+const FF_COPLANAR=2;                                   // 한 종이로 볼 오차 (mm)
+// 점들이 한 평면에 있나 — 첫 비공선 세 점으로 종이를 잡고 나머지를 검사
+function _ffFitPlane(pts,tol){
+  if(!pts||pts.length<3) return null;
+  const A=pts[0]; let n=null;
+  for(let i=1;i+1<pts.length&&!n;i++) for(let j=i+1;j<pts.length;j++){
+    const u={x:pts[i].x-A.x,y:pts[i].y-A.y,z:pts[i].z-A.z};
+    const w={x:pts[j].x-A.x,y:pts[j].y-A.y,z:pts[j].z-A.z};
+    const c={x:u.y*w.z-u.z*w.y,y:u.z*w.x-u.x*w.z,z:u.x*w.y-u.y*w.x};
+    const L=Math.hypot(c.x,c.y,c.z);
+    if(L>2e5){ n={x:c.x/L,y:c.y/L,z:c.z/L}; break; }   // 삼각형 면적이 너무 작으면(≈공선) 다음 점으로
+  }
+  if(!n) return null;
+  const T=tol==null?FF_COPLANAR:tol;
+  for(let i=0;i<pts.length;i++){
+    const p=pts[i];
+    if(Math.abs((p.x-A.x)*n.x+(p.y-A.y)*n.y+(p.z-A.z)*n.z)>T) return null;
+  }
+  return _ffFrameFor({x:A.x,y:A.y,z:A.z},n);
+}
+function _ffPlaneDist(fr,P){ return (P.x-fr.origin.x)*fr.n.x+(P.y-fr.origin.y)*fr.n.y+(P.z-fr.origin.z)*fr.n.z; }
+// 선 하나를 넣는 편집 op — 바닥 높이의 수평 종이는 종전 바닥 그래프로
+function _ffEdgeOp(fr,A,B){
+  if(!fr||(Math.abs(fr.n.z)>0.999&&Math.abs(fr.origin.z)<1&&Math.abs(A.z)<1&&Math.abs(B.z)<1))
+    return {op:'sketchline',floorId:'freeform',patch:{x1:Math.round(A.x),y1:Math.round(A.y),x2:Math.round(B.x),y2:Math.round(B.y)}};
+  const a=planeUV(fr,A), b=planeUV(fr,B);
+  return {op:'sketchline',floorId:'freeform',
+    patch:{x1:Math.round(a.u),y1:Math.round(a.v),x2:Math.round(b.u),y2:Math.round(b.v),
+           plane:{origin:fr.origin,ex:fr.ex,ey:fr.ey,n:fr.n}}};
+}
+function _ffEmitOps(ops,label){
+  if(!ops.length) return;
+  if(ops.length===1) emitEdit(Object.assign({type:'edit'},ops[0]));
+  else emitEdit({type:'edit',op:'batch',label:label||'3D 선',ops});
+}
+// 사슬의 다음 점 — 넣을 것은 넣고, 새 op 를 세운다. 고리가 닫히면 true
+function ffChain3Commit(op,B){
+  const ch=(op.chain3&&op.chain3.length)?op.chain3.slice():[];
+  if(!ch.length) return false;
+  const A=ch[ch.length-1];
+  if(_ffLen3(A,B)<10) return false;
+  if(!canEdit()){ setStatus(false,'편집할 수 없습니다'); return false; }
+  // 시작점으로 돌아오면 닫는다 (화면 12px 또는 60mm 안)
+  const near=Math.max(60,mmPerPx(new THREE.Vector3(B.x*MM,B.z*MM,B.y*MM))*12);
+  const closing=ch.length>=3&&_ffLen3(B,ch[0])<=near;
+  const P=closing?{x:ch[0].x,y:ch[0].y,z:ch[0].z}:B;
+  let fr=op.lockFr||null, ops=[], note='';
+  if(fr&&Math.abs(_ffPlaneDist(fr,P))<=FF_COPLANAR){          // 잡아 둔 종이 위 — 그대로 잇는다
+    ops.push(_ffEdgeOp(fr,A,P)); ch.push(P);
+  }else if(fr){                                                // 종이를 벗어났다 — 이 구간만 따로, 사슬은 새로
+    ops.push(_ffEdgeOp(ffPlaneThrough(A,P),A,P));
+    _ffEmitOps(ops,'3D 선');
+    ffLineBegin3(P,null,[{x:P.x,y:P.y,z:P.z}],null);
+    setStatus(statusLive,'╱ 이 점은 앞의 종이를 벗어납니다 — 새 사슬로 이어 갑니다 (면은 한 종이 안에서 닫힐 때)');
+    return false;
+  }else{
+    ch.push(P);
+    fr=_ffFitPlane(ch);                                        // 세 점이 모이면 종이가 정해진다
+    if(fr){ for(let i=0;i+1<ch.length;i++) ops.push(_ffEdgeOp(fr,ch[i],ch[i+1])); note='종이 정해짐 · '; }
+    else if(ch.length>=3){                                     // 세 점이 한 줄 위 — 아직 종이가 없다
+      setStatus(statusLive,'╱ 3D 선 — 아직 한 줄입니다. 다음 점을 꺾으면 종이가 정해집니다');
+      ffLineBegin3(P,null,ch,null); return false;
+    }else{                                                     // 두 점 — 종이는 다음 점에서
+      setStatus(statusLive,'╱ 3D 선 '+_ffLen3(A,P)+'mm — 세 번째 점을 찍으면 면이 될 종이가 정해집니다 (Esc·더블클릭=선으로 끝)');
+      ffLineBegin3(P,null,ch,null); return false;
+    }
+  }
+  _ffEmitOps(ops,'3D 선');
+  if(closing){
+    cancelOp();
+    setStatus(statusLive,'╱ 고리 닫힘 → 면 — P(밀기끌기)로 입체가 됩니다');
+    return true;
+  }
+  ffLineBegin3(P,fr,ch,fr);
+  setStatus(statusLive,'╱ '+note+'3D 선 '+_ffLen3(A,P)+'mm — 시작점으로 돌아오면 면 (Esc·더블클릭=끝)');
+  return false;
+}
+// 사슬을 끝낼 때 아직 안 넣은 구간을 넣는다 (종이가 안 정해진 2~n 점)
+function ffChain3Flush(op){
+  if(!op||op.type!=='line3'||op.lockFr) return;
+  const ch=op.chain3; if(!ch||ch.length<2) return;
+  if(!canEdit()) return;
+  const ops=[];
+  for(let i=0;i+1<ch.length;i++) ops.push(_ffEdgeOp(ffPlaneThrough(ch[i],ch[i+1]),ch[i],ch[i+1]));
+  op.chain3=null;
+  _ffEmitOps(ops,'3D 선');
 }
 // A(3D) → B(3D) 미리보기 선
 function _ffPrev3(op,A,B){
@@ -4423,7 +4533,10 @@ function _ffPrev3(op,A,B){
       new THREE.LineBasicMaterial({color:0xD4FF3D,depthTest:false}));
     op._p3.renderOrder=999; scene.add(op._p3);
   }
-  op._p3.geometry.setFromPoints([new THREE.Vector3(A.x*MM,A.z*MM,A.y*MM),new THREE.Vector3(B.x*MM,B.z*MM,B.y*MM)]);
+  const V3=p=>new THREE.Vector3(p.x*MM,p.z*MM,p.y*MM);
+  const ch=(op.chain3&&op.lockFr==null&&op.chain3.length>1)?op.chain3:null;   // 아직 안 넣은 구간도 함께 보여 준다
+  if(ch){ op._p3.geometry.setFromPoints(ch.map(V3).concat([V3(B)])); }
+  else op._p3.geometry.setFromPoints([V3(A),V3(B)]);
   op._p3.visible=true;
   if(op.line) op.line.visible=false;
   if(op.ghost) op.ghost.visible=false;
@@ -4643,14 +4756,13 @@ function commitLine(exact){
       const w=parseLen(m[1]),h=parseLen(m[2]); if(!(w>=100&&h>=100)) return false;
       emitEdit({type:'edit',op:'sketchrect',floorId:fid,patch:{x1:A.x,y1:A.y,x2:Math.round(A.x+sx*w),y2:Math.round(A.y+sy*h)}}); return true; });
   }else{
-    if(op.b3&&ffFree3()){                                    // 자유 3D 선 — 두 점을 품은 종이에 넣고 그 점에서 이어 간다
-      const A={x:a.x,y:a.y,z:(op.z0||0)/MM}, B=op.b3;
-      const L=_ffLen3(A,B);
-      if(L<10){ setStatus(statusLive,'너무 짧습니다'); return; }
-      if(!canEdit()){ setStatus(false,'편집할 수 없습니다'); return; }
-      const fr=ffEmitEdge3(A,B);
-      ffLineBegin3(B,fr);
-      setStatus(statusLive,'╱ 3D 선 '+L+'mm — 이어서 클릭 (Esc·더블클릭=끝)');
+    if(op.b3&&ffFree3()){                                    // 자유 3D 선 — 사슬로 넘긴다 (세 점에서 종이가 정해진다)
+      const A={x:a.x,y:a.y,z:(op.z0||0)/MM};
+      const chain=(op.chain&&op.chain.length>1)
+        ? op.chain.map(p=>({x:p.x,y:p.y,z:(op.z0||0)/MM}))    // 바닥에서 이어 오던 사슬도 3D 로
+        : [A];
+      const bag={type:'line3',chain3:chain,lockFr:null};
+      ffChain3Commit(bag,op.b3);
       return;
     }
     if(Math.hypot(cur.x-a.x,cur.y-a.y)<100){ setStatus(statusLive,'너무 짧습니다 (100mm+)'); return; }
@@ -4859,6 +4971,7 @@ function clearAnnots(){ ST.annots.forEach(a=>{ scene.remove(a); }); ST.annots=[]
 function cancelOp(){
   const op=ST.op; ST.op=null; ST.axisLock=null; vcbHide();
   if(op){
+    if(op.type==='line3'&&!op._keep) ffChain3Flush(op);   // 두 점만 찍고 끝내면 그때 넣는다
     if(op.type==='move'&&op.g){
       const restore=(it)=>{ if(it.copy){ if(it.g.parent) it.g.parent.remove(it.g); } else { it.g.position.x=it.orig.x; it.g.position.z=it.orig.z; if(it.orig.y!=null) it.g.position.y=it.orig.y; } };
       restore(op); (op.extras||[]).forEach(restore);
@@ -6774,7 +6887,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,

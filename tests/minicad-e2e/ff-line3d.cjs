@@ -34,19 +34,20 @@ const fails=[]; let n=0; const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.lo
     const want=Math.round(Math.hypot(5000-2000,0-1500,1000-3000));
     ck(Math.abs(parseInt(m.len)-want)<=2,'3D 길이 표시 '+m.len+'mm (계산 '+want+')');
     await J(`__cl(5000,0,1000);'ok'`); await sleep(400);
+    m=await J(`(()=>({segs:__seg3().length,st:document.getElementById('status').textContent}))()`);
+    ck(m.segs===0&&/세 번째 점/.test(m.st),'두 점 단계 = 아직 안 넣는다 (세 번째 점에서 종이가 정해짐) '+JSON.stringify(m));
+    // 사슬 계속 — 세 번째 점은 바닥 꼭짓점 → 여기서 종이가 정해지고 두 구간이 들어간다
+    await J(`__mv(7000,1500,0);'ok'`); await sleep(250);
+    await J(`__cl(7000,1500,0);'ok'`); await sleep(450);
     m=await J(`__seg3()`);
     const hit=m.find(s=>(s.a.z===3000&&s.b.z===1000)||(s.a.z===1000&&s.b.z===3000));
     ck(!!hit,'높이가 다른 두 점이 실제로 이어졌다 '+JSON.stringify(hit||m.slice(0,3)));
-    ck(hit&&((hit.a.x===2000&&hit.a.y===1500&&hit.b.x===5000&&hit.b.y===0)||(hit.b.x===2000&&hit.b.y===1500&&hit.a.x===5000&&hit.a.y===0)),'양 끝이 정확히 그 두 꼭짓점 '+JSON.stringify(hit));
-    ck(hit&&hit.nz===0,'두 점을 품은 세로 종이에 들어갔다 (법선 z=0) '+JSON.stringify(hit&&{nz:hit.nz}));
-    // 사슬 계속 — 세 번째 점은 바닥 꼭짓점
-    m=await J(`(()=>{var op=MC3DVIEW.ST.op;return {op:op&&op.type,a:op&&op.a}})()`);
-    ck(m.op==='line3','선 사슬이 이어진다 '+JSON.stringify(m));
-    await J(`__mv(7000,1500,0);'ok'`); await sleep(250);
-    await J(`__cl(7000,1500,0);'ok'`); await sleep(400);
-    m=await J(`__seg3()`);
+    const near2=(p,q)=>Math.abs(p.x-q.x)<=2&&Math.abs(p.y-q.y)<=2&&Math.abs(p.z-q.z)<=2;
+    const P1={x:2000,y:1500,z:3000},P2={x:5000,y:0,z:1000};
+    ck(hit&&((near2(hit.a,P1)&&near2(hit.b,P2))||(near2(hit.b,P1)&&near2(hit.a,P2))),'양 끝이 그 두 꼭짓점 (기울어진 종이 좌표 반올림 ±2mm) '+JSON.stringify(hit));
     const h2=m.find(s=>(s.a.z===1000&&s.b.z===0&&s.b.x===7000)||(s.b.z===1000&&s.a.z===0&&s.a.x===7000));
     ck(!!h2,'세 번째 점(바닥 z=0)까지 이어진다 '+JSON.stringify(h2||m.map(s=>s.a.z+'→'+s.b.z)));
+    ck(m.length===2&&m[0].pl===m[1].pl,'세 점의 두 구간이 한 종이에 모였다 (닫으면 면) '+JSON.stringify(m.map(s=>s.pl)));
     await J(`__key('Escape');'ok'`); await sleep(150);
     // 같은 높이의 두 공중 점 = 수평 종이
     await J(`MC3DVIEW.ffNew();MC3DVIEW.emitEdit({type:'edit',op:'batch',label:'x',ops:[
@@ -54,7 +55,8 @@ const fails=[]; let n=0; const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.lo
       {op:'massfrompoly',floorId:'freeform',patch:{pts:[{x:5000,y:0},{x:7000,y:0},{x:7000,y:1500},{x:5000,y:1500}],z:2000,name:'B'}}]});
       MC3DVIEW.setView('iso');MC3DVIEW.fitView(true);MC3DVIEW.setTool('line');MC3DVIEW.drawFrame();'ok'`); await sleep(500);
     await J(`__mv(2000,0,2000);'ok'`); await sleep(200); await J(`__cl(2000,0,2000);'ok'`); await sleep(250);
-    await J(`__mv(5000,0,2000);'ok'`); await sleep(220); await J(`__cl(5000,0,2000);'ok'`); await sleep(400);
+    await J(`__mv(5000,0,2000);'ok'`); await sleep(220); await J(`__cl(5000,0,2000);'ok'`); await sleep(300);
+    await J(`__key('Escape');'ok'`); await sleep(450);      // 두 점만 긋고 끝내면 그때 들어간다
     m=await J(`__seg3()`);
     const h3=m.find(s=>s.a.z===2000&&s.b.z===2000&&Math.abs(s.a.x-s.b.x)===3000);
     ck(!!h3&&h3.nz===1,'같은 높이(z=2000)의 두 공중 점 = 그 높이의 수평 종이 '+JSON.stringify(h3||m));
