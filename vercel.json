@@ -47,9 +47,9 @@
     },
     { "src": "/daily/dashboard/?", "dest": "/sites/net/daily/dashboard/index.html" },
     { "src": "/order/(door|wood|tile)", "status": 308, "headers": { "Location": "/order/$1/" } },
-    { "src": "/spec/(interior|electrical|mechanical)", "status": 308, "headers": { "Location": "/spec/$1/" } },
+    { "src": "/spec/(interior|electrical|mechanical|carpentry|painting|tilework)", "status": 308, "headers": { "Location": "/spec/$1/" } },
     { "src": "/order/(door|wood|tile)/", "dest": "/sites/net/order/$1/index.html" },
-    { "src": "/spec/(interior|electrical|mechanical)/", "dest": "/sites/net/spec/$1/index.html" },
+    { "src": "/spec/(interior|electrical|mechanical|carpentry|painting|tilework)/", "dest": "/sites/net/spec/$1/index.html" },
     { "src": "/(minicad|estimate|estform|pms|work|daily|vector|editor|biz|order|spec)/", "dest": "/sites/net/$1/index.html" },
     { "src": "/(.*)", "dest": "/sites/net/$1" }
   ]
