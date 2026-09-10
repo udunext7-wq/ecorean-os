@@ -157,7 +157,7 @@ const FF_HINT={
   scale:'<b>배율</b> — 매스를 고르면 <b>그립</b>: 초록 모서리=균등 · 빨강/파랑 면=한 축 · <b>Ctrl=중심 기준</b> · <b>숫자=배율</b>(1.5) 또는 <b>치수</b>(1500mm) · 가로,세로,높이',
   pushpull:'<b>밀기끌기</b> — <b>매스의 어느 면이든</b> 법선으로 밀면 매스가 늘고 줄어듭니다 · <b>Ctrl=면을 두고 새 매스 뽑기</b> · 바닥 면=위로(매스) · 벽면 위의 면=뽑기/안으로 밀면 파내기 · <b>숫자=mm</b>(−=안으로) · 더블클릭=직전 값',
   line:'<b>선</b> — 클릭-클릭 사슬 · <b>위로 끌면 파랑(Z) 축</b>(숫자=높이, ↑=고정) · <b>고리가 닫히면 면</b> · <b>매스 면 위에 모서리에서 모서리로 그으면 면이 나뉜다</b>(나뉜 면은 각각 밀기끌기) · 벽면을 클릭하면 그 면이 종이 · Shift=방향 고정 · ←→↑=축 고정 · 숫자=길이 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · Esc/더블클릭=끝',
-  rect:'<b>사각형</b> — 두 모서리 클릭 → <b>바로 높이</b>(위로 끌어 3번째 클릭 또는 숫자) = 상자 · 벽면 위도 됨 · <b>가로,세로</b> 입력 · Esc=면만',
+  rect:'<b>사각형</b> — 두 모서리 클릭 → <b>바로 높이</b>(위로 끌어 3번째 클릭 또는 숫자) = 상자 · 벽면 위도 됨 · <b>W=작업 평면</b>(바닥·정면·측면 — 자라는 축이 바뀐다) · <b>가로,세로</b> 입력 · Esc=면만',
   rotrect:'<b>회전 사각형</b> — 첫 변 두 점 클릭 → 폭 클릭 · 숫자=길이·폭',
   circle:'<b>원</b> — 중심 클릭 → 반지름 · <b>숫자=반지름</b> · <b>24s=변 수</b>',
   polygon:'<b>다각형</b> — 중심 클릭 → 반지름 · <b>6s=변 수</b>(기본 6) · 숫자=반지름',
@@ -505,6 +505,8 @@ function _fsMat(kind){
 function setFaceStyle(st){ ST.faceStyle=st; applyFaceStyle(); refreshStylePanel(); setStatus(statusLive,'면 스타일: '+({wire:'와이어프레임',hidden:'히든 라인',shaded:'셰이딩',textured:'텍스처 셰이딩',mono:'단색'})[st]); }
 function setEdges(on){ ST.edges=!!on; applyFaceStyle(); refreshStylePanel(); }
 function ffSpan(){ let mx=4000,mz=0; if(FF){ (FF.free.masses||[]).forEach(m=>{ const r=Math.max(...m.pts.map(q=>Math.hypot(q.x,q.y)))||0; mx=Math.max(mx,Math.abs(m.x)+r,Math.abs(m.y)+r); mz=Math.max(mz,(Number(m.elev_mm)||0)+(Array.isArray(m.solidVerts)?Math.max(...m.solidVerts.map(v=>zNum(v.z,ffCtx()))):zNum(m.h_mm,ffCtx()))); }); (FF.free.sketchPts||[]).forEach(q=>{ mx=Math.max(mx,Math.abs(q.x),Math.abs(q.y)); }); } return Math.max(mx*2,mz)*MM; }
+let _wpT=0;
+function ffWPRefresh(){ if(!FF_STANDALONE||!ST.wp) return; clearTimeout(_wpT); _wpT=setTimeout(()=>{ if(ST.wp) ffWPDraw(); },90); }
 function setFog(on){ ST.fogOn=!!on; const b=ST.built?ST.built.bounds:null; let span=b?Math.max(b.maxX-b.minX,b.maxY-b.minY,4000)*MM:10; if(ST.built&&ST.built.totalHeight) span=Math.max(span,ST.built.totalHeight*MM); if(FF_STANDALONE) span=Math.max(span,ffSpan()); if(scene.fog){ scene.fog.near=ST.fogOn?span*0.6:Math.max(60,span*3); scene.fog.far=ST.fogOn?span*2.4:Math.max(160,span*10); } refreshStylePanel(); invalidate(); }
 function setHiddenGeom(on){ ST.hiddenGeom=!!on; refreshVisibility(); applyFaceStyle(); rebuildPickables(); refreshStylePanel(); }
 function setGuidesOn(on){ ST.guidesOn=!!on; ST.guides.forEach(g=>{ if(g.line) g.line.visible=ST.guidesOn; }); (ST.guidePts||[]).forEach(g=>{ if(g.mk) g.mk.visible=ST.guidesOn; }); refreshStylePanel(); invalidate(); }
@@ -642,6 +644,203 @@ function ffIconizeShell(){
   ffIconize('st-axes','axes','축'); ffIconize('st-xray','xray','X-ray'); ffIconize('st-ortho','ortho','평행투영'); ffSkyIcon();
 }
 function ffSkyIcon(){ const sb=$('st-sky'); if(!sb||!document.body.classList.contains('ff-su')) return false; sb.innerHTML=ffSvg(ST.sky==='image'?'skyimg':ST.sky==='sky'?'sky':'plain')+'<span>'+(ST.sky==='image'?'배경 그림':ST.sky==='sky'?'하늘·바닥':'단색')+'</span>'; sb.classList.add('ico'); return true; }
+
+// ===========================================================================
+// 작업 평면 + 방향기 (2026-09-10 대표 지시
+//   "x→y→z 순만 말고 x→z→y 등 z 축 순서로도 객체가 만들어지도록, 방향성은 방향기로 잡게")
+//   바닥(빨강·초록에 그림) → 파랑으로 자란다  = x,y → z
+//   정면(빨강·파랑에 그림) → 초록으로 자란다  = x,z → y
+//   측면(초록·파랑에 그림) → 빨강으로 자란다  = y,z → x
+//   방향기의 축 손잡이를 누르면 그 손잡이가 가리키는 쪽이 곧 '자라는 방향'.
+// ===========================================================================
+const WP_KINDS={
+  xy:{name:'바닥',plan:'빨강·초록',n:{x:0,y:0,z:1},col:0x4C7DE2,ax:'파랑',ord:'x,y → z'},
+  xz:{name:'정면',plan:'빨강·파랑',n:{x:0,y:-1,z:0},col:0x4CAF50,ax:'초록',ord:'x,z → y'},
+  yz:{name:'측면',plan:'초록·파랑',n:{x:1,y:0,z:0},col:0xE24C4C,ax:'빨강',ord:'y,z → x'},
+};
+const WP_AXCOL={x:0xE24C4C,y:0x4CAF50,z:0x4C7DE2};
+const WP_AXNAME={x:'빨강',y:'초록',z:'파랑'};
+const WP_AX2KIND={x:'yz',y:'xz',z:'xy'};
+// 지금 작업 평면의 틀 (없으면 null = 자동)
+function ffWPFrame(){
+  const w=ST.wp; if(!w||!WP_KINDS[w.kind]) return null;
+  const d=WP_KINDS[w.kind], s=(w.sign||1);
+  return planeFrom(w.origin,{x:d.n.x*s,y:d.n.y*s,z:d.n.z*s});
+}
+// 바닥 + 원점 z=0 + 정방향 = 종전 기본 평면 그대로 (기존 동작·테스트 보존)
+function ffWPGround(){ const w=ST.wp; return !!(w&&w.kind==='xy'&&(w.sign||1)>0&&Math.abs(w.origin.z)<1); }
+function ffWPLabel(){
+  const w=ST.wp; if(!w) return '자동 (면을 따라감)';
+  const d=WP_KINDS[w.kind], s=(w.sign||1);
+  return d.name+' — '+d.plan+'에 그리고 '+(s>0?'':'−')+d.ax+'으로 자람 ('+d.ord+')';
+}
+function ffSetWP(kind,origin,sign,quiet){
+  if(!kind||kind==='auto'){ ST.wp=null; }
+  else if(WP_KINDS[kind]){
+    const o=origin||(ST.wp&&ST.wp.origin)||{x:0,y:0,z:0};
+    ST.wp={kind,origin:{x:Math.round(o.x||0),y:Math.round(o.y||0),z:Math.round(o.z||0)},sign:sign||(ST.wp&&ST.wp.kind===kind?ST.wp.sign:1)||1};
+  }
+  ST.wpPick=false; cancelOp();
+  ffWPDraw(); renderWPBar();
+  if(!quiet) setStatus(statusLive,'▦ 작업 평면 — '+ffWPLabel());
+  return ST.wp;
+}
+function ffWPFlip(){
+  if(!ST.wp){ setStatus(statusLive,'작업 평면을 먼저 고르세요 (W)'); return; }
+  ST.wp.sign=-(ST.wp.sign||1); ffWPDraw(); renderWPBar();
+  setStatus(statusLive,'⇅ 자라는 방향 뒤집기 — '+ffWPLabel());
+}
+function ffWPCycle(){
+  const seq=['auto','xy','xz','yz'];
+  const i=seq.indexOf(ST.wp?ST.wp.kind:'auto');
+  ffSetWP(seq[(i+1)%seq.length]);
+}
+// 방향기 축 손잡이를 눌렀을 때 — 그 축이 자라는 방향, 그 축에 수직인 평면이 그리는 면
+function ffWPPickAxis(ax,sign){
+  const kind=WP_AX2KIND[ax]; if(!kind) return;
+  const base=WP_KINDS[kind].n, want=(ax==='y')?-sign:sign;   // 정면은 기본 법선이 −y
+  ffSetWP(kind,(ST.wp&&ST.wp.origin)||null,want);
+}
+function ffWPOriginPick(){
+  if(!ST.wp){ ffSetWP('xy',null,1,true); }
+  ST.wpPick=true; renderWPBar();
+  setStatus(statusLive,'⌖ 작업 평면 원점 — 옮길 자리를 클릭하세요 (Esc 취소)');
+}
+function ffWPSetOrigin(p){
+  if(!p) return;
+  ffSetWP((ST.wp&&ST.wp.kind)||'xy',{x:p.x,y:p.y,z:p.z||0},(ST.wp&&ST.wp.sign)||1,true);
+  setStatus(statusLive,'⌖ 작업 평면 원점 '+Math.round(p.x)+', '+Math.round(p.y)+', '+Math.round(p.z||0)+' mm — '+ffWPLabel());
+}
+// 클릭한 면에 작업 평면을 맞춘다 (면 ▸ 우클릭 · 방향기 "면 맞춤")
+function ffWPFromFace(){
+  const fp=ST.lastPtr?_ffFacePickRaw({clientX:ST.lastPtr.clientX,clientY:ST.lastPtr.clientY}):null;
+  if(!fp){ setStatus(statusLive,'면 위에 커서를 두고 다시 시도하세요'); return; }
+  const n=fp.n, ax=(Math.abs(n.x)>Math.abs(n.y)&&Math.abs(n.x)>Math.abs(n.z))?'x':(Math.abs(n.y)>Math.abs(n.z)?'y':'z');
+  const s=(ax==='x'?n.x:ax==='y'?n.y:n.z)>0?1:-1;
+  ffWPPickAxis(ax,ax==='y'?-s:s); ffWPSetOrigin(fp.o);
+}
+// ---- 방향기: 3D 손잡이 (축마다 ±) + 작업 평면 격자 ----
+let wpGrp=null, wpHandles=[];
+function _wpClear(){
+  if(!wpGrp) return;
+  scene.remove(wpGrp);
+  wpGrp.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material&&o.material.map&&o.material.map.dispose) o.material.map.dispose(); if(o.material&&o.material.dispose) o.material.dispose(); });
+  wpGrp=null; wpHandles=[];
+}
+function ffWPDraw(){
+  if(!FF_STANDALONE) return;
+  _wpClear();
+  const fr=ffWPFrame(); if(!fr){ invalidate(); return; }
+  wpGrp=new THREE.Group(); wpGrp.name='__wp'; wpGrp.renderOrder=60;
+  const O=new THREE.Vector3(fr.origin.x*MM,fr.origin.z*MM,fr.origin.y*MM);
+  const mmpp=mmPerPx(O);
+  const half=Math.max(2500,mmpp*230);                 // 화면에서 대략 460px 폭 — 줌과 무관하게 보인다
+  const step=Math.max(100,Math.pow(10,Math.round(Math.log10(half/6))));
+  const col=WP_KINDS[ST.wp.kind].col;
+  const P=(u,vv)=>{ const p=planePt(fr,u,vv); return new THREE.Vector3(p.x*MM,p.z*MM,p.y*MM); };
+  // 격자
+  const gp=[];
+  for(let t=-half;t<=half+0.5;t+=step){ gp.push(P(t,-half),P(t,half),P(-half,t),P(half,t)); }
+  const grid=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gp),
+    new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0.22,depthTest:false}));
+  grid.renderOrder=60; wpGrp.add(grid);
+  // 테두리 (평면을 이루는 두 축의 색으로)
+  const uAx=(ST.wp.kind==='yz')?'y':'x', vAx=(ST.wp.kind==='xy')?'y':'z';
+  const bd=(pts,c)=>{ const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({color:c,transparent:true,opacity:0.75,depthTest:false})); l.renderOrder=61; wpGrp.add(l); };
+  bd([P(-half,-half),P(half,-half)],WP_AXCOL[uAx]); bd([P(-half,half),P(half,half)],WP_AXCOL[uAx]);
+  bd([P(-half,-half),P(-half,half)],WP_AXCOL[vAx]); bd([P(half,-half),P(half,half)],WP_AXCOL[vAx]);
+  // 축 손잡이 — 원점에서 ±방향, 화면 고정 거리
+  const R=mmpp*78;
+  const AX={x:{x:1,y:0,z:0},y:{x:0,y:1,z:0},z:{x:0,y:0,z:1}};
+  const nrm=fr.n;
+  ['x','y','z'].forEach(ax=>{
+    const d=AX[ax];
+    const w=(s)=>new THREE.Vector3((fr.origin.x+d.x*R*s)*MM,(fr.origin.z+d.z*R*s)*MM,(fr.origin.y+d.y*R*s)*MM);
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([w(-1),w(1)]),
+      new THREE.LineBasicMaterial({color:WP_AXCOL[ax],transparent:true,opacity:0.8,depthTest:false}));
+    line.renderOrder=62; wpGrp.add(line);
+    [1,-1].forEach(s=>{
+      const along=Math.abs((ax==='x'?nrm.x:ax==='y'?nrm.y:nrm.z));
+      const isN=along>0.9&&(((ax==='x'?nrm.x:ax==='y'?nrm.y:nrm.z)>0?1:-1)===s);   // 지금 자라는 방향
+      const mk=glowSprite(WP_AXCOL[ax],isN?18:11);
+      mk.position.copy(w(1*s)); mk.renderOrder=64;
+      mk.userData.wpAxis=ax; mk.userData.wpSign=s; mk.userData.wpOn=isN;
+      wpGrp.add(mk); wpHandles.push(mk);
+    });
+  });
+  // 자라는 방향 — 법선 쪽 굵은 선 (방향기의 '이쪽으로 자란다')
+  { const na={x:nrm.x,y:nrm.y,z:nrm.z};
+    const tip=new THREE.Vector3((fr.origin.x+na.x*R*1.35)*MM,(fr.origin.z+na.z*R*1.35)*MM,(fr.origin.y+na.y*R*1.35)*MM);
+    const ar=new THREE.Line(new THREE.BufferGeometry().setFromPoints([O,tip]),
+      new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0.95,depthTest:false}));
+    ar.renderOrder=63; wpGrp.add(ar); }
+  // 원점 알갱이
+  const oc=glowSprite(0xFFFFFF,9); oc.position.copy(O); oc.renderOrder=65; wpGrp.add(oc);
+  scene.add(wpGrp); invalidate();
+}
+// 화면 11px 안의 방향기 손잡이
+function _ffWPHandleAt(cx,cy){
+  if(!wpGrp||!wpHandles.length) return null;
+  wpGrp.updateMatrixWorld(true); camera.updateMatrixWorld();
+  const r=renderer.domElement.getBoundingClientRect();
+  let best=null,bd=11;
+  wpHandles.forEach(o=>{
+    const w=o.getWorldPosition(new THREE.Vector3()).project(camera); if(w.z>1) return;
+    const d=Math.hypot(r.left+(w.x+1)/2*r.width-cx, r.top+(1-w.y)/2*r.height-cy);
+    if(d<bd){ bd=d; best=o; }
+  });
+  return best;
+}
+// ---- 방향기 막대 (상단 가운데) ----
+function renderWPBar(){
+  const el=$('wpbar'); if(!el) return;
+  const cur=ST.wp?ST.wp.kind:'auto';
+  el.querySelectorAll('[data-wp]').forEach(b=>{
+    const k=b.dataset.wp;
+    if(k==='flip') b.classList.toggle('on',!!(ST.wp&&(ST.wp.sign||1)<0));
+    else if(k==='origin') b.classList.toggle('on',!!ST.wpPick);
+    else b.classList.toggle('on',k===cur);
+  });
+  const n=el.querySelector('.wn');
+  if(n) n.textContent=ST.wp?(((ST.wp.sign||1)<0?'−':'')+WP_KINDS[ST.wp.kind].ax+'으로 자람'):'면을 따라감';
+}
+
+function ffWPBarBuild(){
+  if($('wpbar')) return;
+  const ico=(d)=>'<svg viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>';
+  const P={
+    auto:'<path d="M4 15l8-4 8 4-8 4z"/><path d="M12 11V4"/><path d="M9 7l3-3 3 3"/>',
+    xy:'<path d="M3 15l9-4.5 9 4.5-9 4.5z"/><path d="M12 10.5V3"/><path d="M9.2 5.8L12 3l2.8 2.8"/>',
+    xz:'<path d="M4 4h16v12H4z"/><path d="M20 10h3"/><path d="M21 8l2 2-2 2"/>',
+    yz:'<path d="M8 4l8 3v13l-8-3z"/><path d="M8 12H3"/><path d="M5 10l-2 2 2 2"/>',
+    flip:'<path d="M8 4v16M12 7l-4-4-4 4M8 20l-4-4M12 17l-4 4"/><path d="M16 6h5M16 12h5M16 18h5" stroke-opacity=".55"/>',
+    origin:'<circle cx="12" cy="12" r="4"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>',
+    face:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M12 12l8-4M12 12v8M12 12L4 8"/>',
+  };
+  const B=(k,t,label)=>'<button class="btn sm" data-wp="'+k+'" title="'+t+'">'+ico(P[k])+(label?'<span>'+label+'</span>':'')+'</button>';
+  const el=document.createElement('div'); el.id='wpbar';
+  el.innerHTML='<span class="wl">작업 평면</span>'+
+    B('auto','자동 — 면을 클릭하면 그 면 위에 그린다 (W 로 순환)','자동')+
+    B('xy','바닥 — 빨강·초록에 그리고 파랑으로 자란다 (x,y → z)','바닥')+
+    B('xz','정면 — 빨강·파랑에 그리고 초록으로 자란다 (x,z → y)','정면')+
+    B('yz','측면 — 초록·파랑에 그리고 빨강으로 자란다 (y,z → x)','측면')+
+    '<span class="sep"></span>'+
+    B('flip','자라는 방향 뒤집기 (Shift+W)','')+
+    B('origin','원점 옮기기 — 다음에 클릭한 점으로','')+
+    B('face','커서 아래 면에 맞추기','')+
+    '<span class="wn"></span>';
+  document.body.appendChild(el);
+  el.querySelectorAll('[data-wp]').forEach(b=>{ b.onclick=()=>{
+    const k=b.dataset.wp;
+    if(k==='flip') ffWPFlip();
+    else if(k==='origin') ffWPOriginPick();
+    else if(k==='face') ffWPFromFace();
+    else ffSetWP(k);
+    renderWPBar();
+  }; });
+  renderWPBar();
+}
 function ffStandaloneShell(){
   document.body.classList.add('ff-su');           // 미래적 유리 프레임 (index.html body.ff-su 규칙)
   if(!$('ffvig')){ const vg=document.createElement('div'); vg.id='ffvig'; const vw=$('view'); if(vw) vw.insertAdjacentElement('afterend',vg); }   // 비네트 (클릭 통과)
@@ -655,6 +854,7 @@ function ffStandaloneShell(){
   const mg=$('mi-grid'); if(mg) mg.onchange=()=>{ ST.gridMM=parseInt(mg.value)||10; };
   const ms=$('mi-sides'); if(ms) ms.onchange=()=>{ ST.circleSides=Math.max(6,Math.min(96,parseInt(ms.value)||24)); };
   const hint=$('hint'); if(hint) hint.innerHTML='<b>스케치업식:</b> Space 선택 · L 선 · R 사각형 · C 원 · A 호 · F 오프셋 · M 이동 · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · G 그룹 · O 궤도 · H 팬 · Z 줌 | 숫자=정확값 · Esc 취소 · ?=단축키표';
+  ffWPBarBuild();
   ffIconizeShell();
   renderTags(); renderPaintPal(); renderSections();
 }
@@ -2129,7 +2329,8 @@ function camGo(i){
 }
 function camPrev(){ if(ST.camPos>0) camGo(ST.camPos-1); else setStatus(statusLive,'이전 시점 없음'); }
 function camNext(){ if(ST.camPos<ST.camHist.length-1) camGo(ST.camPos+1); else setStatus(statusLive,'다음 시점 없음'); }
-orbit.addEventListener('end',()=>camPush());
+orbit.addEventListener('end',()=>{ camPush(); ffWPRefresh(); });
+orbit.addEventListener('change',()=>ffWPRefresh());   // 휠 줌에도 방향기는 화면 기준 크기 유지
 function setView(name){
   if(!ST.built) return;
   const b=ST.built.bounds, cx=(b.minX+b.maxX)/2*MM, cz=(b.minY+b.maxY)/2*MM;
@@ -2356,6 +2557,12 @@ function boxSelect(x0,y0,x1,y1,e){
 // 클릭한 자리가 '세울 만한 면'인가 — 평면 원점·법선(도면 좌표계: x우 y아래 z위)
 function _ffFacePick(e){
   if(!ST.ffOn) return null;
+  const wf=ffWPFrame();                                  // 작업 평면이 잡혀 있으면 그 평면이 먼저 (면 클릭보다 우선)
+  if(wf&&!ffWPGround()) return {o:wf.origin,n:wf.n,mass:null,wp:true};
+  if(wf) return null;                                    // 바닥·z0·정방향 = 종전 기본 평면 경로 그대로
+  return _ffFacePickRaw(e);
+}
+function _ffFacePickRaw(e){
   const hit=hitAt(e.clientX,e.clientY);
   if(!hit||!hit.face) return null;
   const nW=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
@@ -4840,6 +5047,16 @@ renderer.domElement.addEventListener('pointerdown',e=>{
     else if(t==='rotate3'){ rotate3Click(e); drag=null; return; }
     else { commitActive(vcbTyped()); drag=null; return; }
   }
+  // 방향기가 먼저다 — 손잡이를 눌러 자라는 방향(축)을 바꾼다
+  if(FF_STANDALONE&&!ST.op){
+    const wh=_ffWPHandleAt(e.clientX,e.clientY);
+    if(wh){ ffWPPickAxis(wh.userData.wpAxis,wh.userData.wpSign); drag=null; return; }
+    if(ST.wpPick){
+      const ht=hitAt(e.clientX,e.clientY);
+      const p=ht?{x:ht.point.x/MM,y:ht.point.z/MM,z:ht.point.y/MM}:(()=>{const q=_planePt(e,0);return q?{x:q.x,y:q.y,z:0}:null;})();
+      ST.wpPick=false; ffWPSetOrigin(p); renderWPBar(); drag=null; return;
+    }
+  }
   // 2026-09-07 Z: 꼭짓점 그립이 먼저다. 몸통보다 앞에 집어야 지붕을 기울일 수 있다.
   if(FF_STANDALONE&&ST.tool==='scale'&&!ST.op){
     const smk=_gripAt(e.clientX,e.clientY);
@@ -5377,6 +5594,7 @@ window.addEventListener('keydown',e=>{
   if(!ST.op&&ST.lastCommit&&!ctrl&&/^[0-9.\-x*\/]$/.test(e.key)){ if(vcbPostOn(e.key)){ e.preventDefault(); return; } }
   if(e.key==='Enter'&&ST.op){ commitActive(vcbTyped()); return; }
   if(k==='escape'){
+    if(FF_STANDALONE&&ST.wpPick){ ST.wpPick=false; renderWPBar(); setStatus(statusLive,'원점 지정 취소'); e.preventDefault(); return; }
     hideCtx();
     if(ST.anim){ scenePlay(false); return; }
     const km=$('keysmodal');
@@ -5420,6 +5638,7 @@ window.addEventListener('keydown',e=>{
       if(k==='h'&&!e.shiftKey){ setTool('pan'); return; } // 스케치업 H=팬
       if(k==='z'&&!e.shiftKey){ setTool('zoom'); return; } // 스케치업 Z=줌
       if(k==='x'){ setXray(!ST.xray); return; }
+      if(k==='w'&&FF_STANDALONE){ if(e.shiftKey) ffWPFlip(); else ffWPCycle(); e.preventDefault(); return; }   // 작업 평면 순환 · Shift=방향 뒤집기
       if(k==='k'&&FF_STANDALONE){ setEdges(!ST.edges); return; }   // 스케치업 K = 모서리
     }
     const op=ST.op, lockable=op&&(op.type==='move'||op.type==='line'||op.type==='rect'||op.type==='movesel');
@@ -5782,6 +6001,13 @@ function menuCmd(cmd){
     case 'orbit': setMode('orbit'); break;
     case 'walk': setMode('walk'); break;
     case 'iso': case 'top': case 'front': case 'side': setView(cmd); break;
+    case 'wp-auto': ffSetWP('auto'); break;
+    case 'wp-xy': ffSetWP('xy'); break;
+    case 'wp-xz': ffSetWP('xz'); break;
+    case 'wp-yz': ffSetWP('yz'); break;
+    case 'wp-flip': ffWPFlip(); break;
+    case 'wp-origin': ffWPOriginPick(); break;
+    case 'wp-face': ffWPFromFace(); break;
     case 'fit': fitView(true); break;
     case 'tray': setTray(document.body.classList.contains('tray-off')); break;
     case 'sec-info': openTraySec('info'); break;
@@ -5878,7 +6104,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,_dragAlong,mmPerPx,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,_dragAlong,mmPerPx,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,

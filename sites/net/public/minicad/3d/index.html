@@ -260,6 +260,19 @@
   body.ff-su #keysmodal h3,body.ff-su #modelinfo h3{font-family:'Cormorant Garamond','Inter',serif;font-size:24px;font-weight:600;letter-spacing:.01em;color:#F3E3BE}
   body.ff-su #keysmodal td:first-child{font-family:'JetBrains Mono',monospace;color:var(--cyan);font-size:11.5px}
   body.ff-su #ffvig{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(120% 90% at 50% 45%,transparent 55%,rgba(3,5,12,.42) 100%),linear-gradient(180deg,rgba(3,5,12,.35),transparent 18%)}
+  /* 방향기 (작업 평면 막대) — 상단 가운데 */
+  body.ff-su #wpbar{position:fixed;top:88px;left:50%;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:4px;
+    padding:6px 10px;border-radius:12px;border:1px solid transparent;
+    background:linear-gradient(rgba(11,15,27,.86),rgba(11,15,27,.86)) padding-box,var(--gb) border-box;
+    backdrop-filter:blur(16px) saturate(1.2);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+  body.ff-su #wpbar .wl{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#DCC48E;padding-right:6px}
+  body.ff-su #wpbar .btn{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-color:rgba(255,255,255,.07);background:rgba(255,255,255,.03);color:#C9D3E6;font-size:11.5px}
+  body.ff-su #wpbar .btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  body.ff-su #wpbar .btn.on{background:linear-gradient(145deg,rgba(230,199,135,.26),rgba(89,210,255,.22));border-color:rgba(255,255,255,.16);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 0 14px rgba(89,210,255,.2)}
+  body.ff-su #wpbar .btn.on svg{filter:drop-shadow(0 0 5px rgba(243,227,190,.85))}
+  body.ff-su #wpbar .sep{height:18px}
+  body.ff-su #wpbar .wn{font-size:10.5px;color:var(--mute);padding-left:4px;font-family:'JetBrains Mono',monospace}
+  @media (max-width:1100px){ body.ff-su #wpbar .btn span{display:none} body.ff-su #wpbar .wn{display:none} }
   @media (max-width:760px){ #tray{display:none} #hint{display:none} }
 </style>
 </head>
@@ -563,6 +576,14 @@
     <div class="mi" data-cmd="tool-rotrect">회전 사각형</div>
     <div class="mi" data-cmd="tool-circle">원<span class="acc">C</span></div>
     <div class="mi" data-cmd="tool-polygon">다각형</div>
+    <hr><div class="mh">작업 평면 (그리는 면 · 자라는 방향)</div>
+    <div class="mi" data-cmd="wp-auto">자동 — 면을 따라감<span class="acc">W</span></div>
+    <div class="mi" data-cmd="wp-xy">바닥 — 빨강·초록 → 파랑</div>
+    <div class="mi" data-cmd="wp-xz">정면 — 빨강·파랑 → 초록</div>
+    <div class="mi" data-cmd="wp-yz">측면 — 초록·파랑 → 빨강</div>
+    <div class="mi" data-cmd="wp-flip">자라는 방향 뒤집기<span class="acc">Shift+W</span></div>
+    <div class="mi" data-cmd="wp-origin">원점 옮기기…</div>
+    <div class="mi" data-cmd="wp-face">커서 아래 면에 맞추기</div>
     <hr><div class="mh">호</div>
     <div class="mi" data-cmd="tool-arc">2점 호<span class="acc">A</span></div>
     <div class="mi" data-cmd="tool-arc3">3점 호</div>
@@ -669,6 +690,7 @@
     <tr><td>숫자 입력</td><td>동작 중 길이·각도·배율 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · 3000,2000 사각형 · 6s 변 수 · 확정 직후 숫자=재입력</td></tr>
     <tr><td>1 / 2</td><td>조감(궤도) / 걷기 (W A S D · Q/E 위아래)</td></tr>
     <tr><td>3 4 5 6 7 8 9</td><td>아이소 · 위 · 정면 · 우측 · 배면 · 좌측 · 아래</td></tr>
+    <tr><td>W / Shift+W</td><td><b>작업 평면</b> 순환(자동→바닥→정면→측면) / <b>자라는 방향 뒤집기</b> — 정면을 고르면 빨강·파랑에 그리고 초록으로 자란다(x,z → y) · 방향기의 축 손잡이를 눌러도 된다</td></tr>
     <tr><td>X / K / N</td><td>X-ray / 모서리 / 야간 무드</td></tr>
     <tr><td>Ctrl+Z / Y</td><td>실행취소 / 재실행</td></tr>
     <tr><td>Ctrl+A / T / C / X / V</td><td>모두 선택 / 선택 없음 / 복사 / 잘라내기 / 붙여넣기</td></tr>
@@ -725,12 +747,12 @@
   <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
 </div></div>
 
-<script src="../js/data.js?v=3d48"></script>
-<script src="../js/library.js?v=3d48"></script>
+<script src="../js/data.js?v=3d49"></script>
+<script src="../js/library.js?v=3d49"></script>
 <!-- 2026-09-07: 매스 다면체(z 값) 계산은 2D 와 같은 파일을 쓴다 — 두 벌로 두면 평면과 3D 가 어긋난다 -->
-<script src="../js/sketch.js?v=3d48"></script>
-<script src="build3d.js?v=3d48"></script>
+<script src="../js/sketch.js?v=3d49"></script>
+<script src="build3d.js?v=3d49"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d48"></script>
+<script type="module" src="view3d.js?v=3d49"></script>
 </body>
 </html>
