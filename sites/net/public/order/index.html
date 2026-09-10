@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#05070d">
+<meta name="robots" content="noindex">
+<title>ECOREAN 발주서 — 자재별 발주 양식</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --bg:#05070d; --bg2:#0c111c; --bg3:#111827; --line:#1c2536;
+    --text:#e8ecf4; --dim:#8b95a8; --accent:#4ade80; --accent-dim:rgba(74,222,128,.12);
+    --blue:#60a5fa; --amber:#fbbf24;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Pretendard','Inter Tight',-apple-system,'Malgun Gothic',sans-serif;line-height:1.55;font-size:15px;padding:0 16px}
+  .wrap{max-width:960px;margin:0 auto;padding-block:36px 60px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+  .logo{font-size:17px;font-weight:700;letter-spacing:.12em}
+  .logo span{color:var(--accent)}
+  .back{color:var(--dim);text-decoration:none;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:7px 13px}
+  .back:hover{background:var(--bg3);color:var(--text)}
+  h1{font-size:25px;font-weight:700;margin:22px 0 7px}
+  .sub{color:var(--dim);font-size:14px;margin-bottom:28px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+  a.card{display:block;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:22px 20px;text-decoration:none;color:inherit;transition:border-color .15s,background .15s}
+  a.card:hover{background:var(--bg3);border-color:#2f4368}
+  .ico{font-size:27px;line-height:1;margin-bottom:13px}
+  .card h2{font-size:16px;font-weight:700;margin-bottom:6px}
+  .card p{color:var(--dim);font-size:13px;margin-bottom:13px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;color:var(--accent);background:var(--accent-dim);border-radius:999px;padding:3px 9px}
+  .note{margin-top:30px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:17px 19px;font-size:13px;color:var(--dim)}
+  .note b{color:var(--text)}
+  .note ol{margin:9px 0 0 18px;display:grid;gap:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="logo">ECO<span>REAN</span></div>
+    <a class="back" href="/work/#po">← 직원 포털 · 발주서</a>
+  </div>
+
+  <h1>자재별 발주서</h1>
+  <p class="sub">자재 도감에서 품목을 고르면 규격·단가가 채워집니다. 작성 후 <b>인쇄/PDF</b>로 거래처에 보내고, <b>JSON</b>으로 내려받아 보관하세요.</p>
+
+  <div class="grid">
+    <a class="card" href="/order/tile/">
+      <div class="ico">🧱</div>
+      <h2>타일 자재 발주서</h2>
+      <p>유송타일 도감 연동. 규격·색상·소재로 찾아 담고 소요 면적으로 박스 수량을 산출합니다.</p>
+      <div class="tags"><span class="tag">도감 포함</span><span class="tag">면적→수량</span></div>
+    </a>
+
+    <a class="card" href="/order/wood/">
+      <div class="ico">🪵</div>
+      <h2>실내목공 자재 발주서</h2>
+      <p>석고보드·다루끼·합판·타카핀·부자재 도감. 천장·벽 산출 근거를 품목 비고에 남깁니다.</p>
+      <div class="tags"><span class="tag">도감 포함</span><span class="tag">산출 비고</span></div>
+    </a>
+
+    <a class="card" href="/order/door/">
+      <div class="ico">🚪</div>
+      <h2>도어 발주서</h2>
+      <p>도어·문틀·세트 구분에 따라 규격 칸이 두께↔댑스로 바뀝니다. 종류·타공 선택 시 표준사양 자동입력.</p>
+      <div class="tags"><span class="tag">표준사양</span><span class="tag">납품+설치</span></div>
+    </a>
+  </div>
+
+  <div class="note">
+    <b>발주 후 장부에 반영하는 순서</b>
+    <ol>
+      <li>발주서를 작성하고 <b>인쇄/PDF</b>로 거래처에 송부합니다.</li>
+      <li><a href="/work/#po" style="color:var(--blue)">직원 포털 › 발주서</a>에 같은 내용으로 등록합니다 — 현장·거래처·금액이 여기에 있어야 장부가 읽습니다.</li>
+      <li><a href="/biz/" style="color:var(--blue)">사업장부</a> › 설정 › <b>발주서에서 지출 가져오기</b>로 미지급에 올립니다. 단가가 0이면 목록에 뜨지 않습니다.</li>
+    </ol>
+  </div>
+</div>
+</body>
+</html>

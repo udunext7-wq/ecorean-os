@@ -20,6 +20,7 @@ const SECTIONS: HubSection[] = [
     desc: '발주 · 일보 · 계산서 — 매일 쓰는 업무',
     items: [
       { href: '/work/#po', name: '발주서', desc: '직원 포털' },
+      { href: '/order/', name: '자재 발주서 양식', desc: '타일 · 실내목공 · 도어 (도감 연동)' },
       { href: '/work/#daily', name: '공사일보', desc: '현장 대시보드·일보 작성' },
       { href: '/work/#invoice', name: '계산서', desc: '직원 포털' },
       { href: '/biz/', name: '사업장부', desc: 'BOC BIZ' },

@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECOREAN 도어 발주서</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --ink:#1d2433;
+    --sub:#877c64;
+    --line:#e6d6b0;
+    --line-strong:#d0bd8e;
+    --line-2:#d0bd8e;
+    --brand:#172a47;
+    --brand-2:#26406b;
+    --brand-soft:#f6eedb;
+    --accent:#9c7635;
+    --gold:#b89a5e;
+    --gold-2:#cdb480;
+    --gold-soft:#ece2cd;
+    --gold-mid:#b8924e;
+    --gold-deep:#9c7635;
+    --paper:#ffffff;
+    --bg:#f1f1ef;
+    --warn:#a8432c;
+    --radius:12px;
+    --fs:13.5px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Pretendard","Pretendard Variable",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    font-size:var(--fs); line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+
+  /* ===== Toolbar (screen only) ===== */
+  .toolbar{
+    position:sticky; top:0; z-index:50;
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+    padding:12px 18px; background:rgba(255,255,255,.92);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
+  }
+  .toolbar .grow{flex:1;}
+  .toolbar .hint{color:var(--sub); font-size:12px;}
+  button{
+    font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    border:1px solid var(--line-strong); background:#fff; color:var(--ink);
+    padding:8px 14px; border-radius:8px; transition:.15s; white-space:nowrap;
+  }
+  button:hover{border-color:var(--accent); color:var(--accent);}
+  button.primary{background:var(--brand); color:#fff; border-color:var(--brand);}
+  button.primary:hover{background:var(--accent); border-color:var(--accent); color:#fff;}
+  button.ghost{background:transparent;}
+  button.danger{color:var(--warn); border-color:#e7c4bc;}
+  button.danger:hover{background:#fbeee9; border-color:var(--warn);}
+
+  /* ===== Paper ===== */
+  .sheet{
+    width:210mm; min-height:297mm; margin:22px auto; background:var(--paper);
+    padding:18mm 16mm 16mm; box-shadow:0 4px 30px rgba(20,40,30,.10);
+  }
+
+  /* Header */
+  .doc-head{display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:3px solid var(--brand); padding-bottom:14px; margin-bottom:6px;}
+  .brand-block{display:flex; align-items:center; gap:12px;}
+  .logo{
+    width:46px; height:46px; border-radius:10px; background:var(--brand);
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:20px; letter-spacing:-1px;
+  }
+  .brand-name{font-weight:800; font-size:17px; letter-spacing:-.3px;}
+  .brand-sub{color:var(--sub); font-size:11.5px; margin-top:1px;}
+  .doc-title{text-align:right;}
+  .doc-title h1{margin:0; font-size:30px; letter-spacing:8px; font-weight:800; color:var(--brand);}
+  .doc-title .en{color:var(--sub); font-size:11px; letter-spacing:3px; margin-top:2px;}
+
+  /* Section */
+  .sec{margin-top:16px;}
+  .sec-h{display:flex; align-items:center; gap:8px; margin-bottom:7px;}
+  .sec-h .no{width:18px; height:18px; border-radius:5px; background:var(--brand);
+    color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+  .sec-h .t{font-weight:700; font-size:13.5px;}
+  .sec-h .tip{color:var(--sub); font-size:11px; font-weight:400;}
+
+  /* Field grid table */
+  table.grid{width:100%; border-collapse:collapse; table-layout:fixed;}
+  table.grid th, table.grid td{border:1px solid var(--line); padding:0; vertical-align:middle;}
+  table.grid th{
+    background:var(--brand-soft); color:var(--brand); font-weight:600;
+    font-size:12px; padding:7px 8px; text-align:left; white-space:nowrap;
+  }
+  .cell-in{width:100%; border:0; background:transparent; font-family:inherit;
+    font-size:13px; color:var(--ink); padding:7px 8px;}
+  .cell-in:focus{outline:2px solid var(--accent); outline-offset:-2px; background:#f6fbf8;}
+  select.cell-in{appearance:none; cursor:pointer;}
+  .dim{display:flex; align-items:center; gap:5px;}
+  .dim-field{display:flex; align-items:center; flex:1 1 0; min-width:0;}
+  .dim-field .cell-in{flex:1 1 0; min-width:0; text-align:right; padding-right:1px;}
+  .dim-sfx{color:var(--brand); font-size:11px; font-weight:700; padding:0 2px 0 1px; flex:0 0 auto;}
+  .dim-x{color:var(--sub); flex:0 0 auto; font-size:12px;}
+  .dim-unit{color:var(--sub); flex:0 0 auto; padding-right:6px; font-size:12px;}
+
+  /* Two columns party block */
+  .party{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media (max-width:760px){ .party{grid-template-columns:1fr;} }
+  .party-head{display:flex; align-items:center; justify-content:space-between; padding:6px 8px; gap:8px;}
+  .preset-ctrl{display:flex; gap:4px; align-items:center;}
+  .preset-ctrl select{font-family:inherit; font-size:11px; border:1px solid rgba(255,255,255,.5);
+    background:rgba(255,255,255,.15); color:#fff; border-radius:6px; padding:3px 6px; cursor:pointer; max-width:130px;}
+  .preset-ctrl select option{color:#1a2420;}
+  .preset-ctrl button{font-size:11px; padding:3px 8px; border:1px solid rgba(255,255,255,.5);
+    background:transparent; color:#fff;}
+  .preset-ctrl button:hover{background:rgba(255,255,255,.2); color:#fff;}
+
+  /* Item card */
+  .item{border:1px solid var(--line-strong); border-radius:var(--radius); margin-bottom:10px; overflow:hidden;}
+  .item-bar{display:flex; align-items:center; gap:8px; background:var(--brand-soft);
+    padding:6px 10px; border-bottom:1px solid var(--line);}
+  .item-bar .idx{width:20px; height:20px; border-radius:50%; background:var(--brand); color:#fff;
+    font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+  .item-bar .lbl{font-weight:700; font-size:12.5px; color:var(--brand);}
+  .item-bar .sp{flex:1;}
+  .item-bar button{padding:4px 9px; font-size:11.5px;}
+  .item table.grid th{background:#f3f7f4;}
+  .amt{text-align:right; font-variant-numeric:tabular-nums; padding:7px 8px; font-weight:600;}
+
+  /* 개폐방향 그림 선택기 */
+  .hand-picker{padding:7px 8px;}
+  .hand-row{display:flex; gap:6px; flex-wrap:wrap;}
+  .hand-opt{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+    min-width:64px; min-height:62px; padding:5px 7px; border:1px solid var(--line); border-radius:9px;
+    background:#fff; color:var(--sub); font-size:10.5px; line-height:1.3; cursor:pointer; transition:.12s;}
+  .hand-opt span{font-size:10.5px;}
+  .hand-opt .hi-big{font-size:12.5px; font-weight:700; color:var(--ink);}
+  .hand-opt:hover{border-color:var(--accent); color:var(--accent);}
+  .hand-opt.sel{border-color:var(--brand); background:var(--brand-soft); color:var(--brand); font-weight:600; box-shadow:inset 0 0 0 1px var(--brand);}
+  .hand-opt.sel .hi-big{color:var(--brand);}
+  .hand-direct{justify-content:center;}
+  .hand-custom{margin-top:7px; width:100%; border:1px solid var(--line); border-radius:6px;}
+  @media print{
+    .hand-opt{display:none;}
+    .hand-opt.sel{display:flex;}
+  }
+
+  /* Totals */
+  .totals{display:flex; justify-content:flex-end; margin-top:10px;}
+  .totals table{border-collapse:collapse; min-width:340px;}
+  .totals td{padding:8px 12px; border:1px solid var(--line); font-variant-numeric:tabular-nums;}
+  .totals .k{background:var(--brand-soft); color:var(--brand); font-weight:600; text-align:right; width:140px;}
+  .totals .v{text-align:right; font-weight:600;}
+  .totals .grand .k{background:var(--brand); color:#fff;}
+  .totals .grand .v{background:#f6fbf8; font-size:16px; font-weight:800; color:var(--brand);}
+  .vat-toggle{display:inline-flex; gap:4px; align-items:center; font-size:11px; color:var(--sub);}
+  .vat-toggle select{font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:5px; padding:2px 4px;}
+
+  /* Terms */
+  textarea.cell-in{resize:vertical; min-height:34px; width:100%;}
+
+  /* Sign */
+  .sign{display:grid; grid-template-columns:repeat(3,1fr); gap:0; margin-top:14px; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  .sign div{border-right:1px solid var(--line); text-align:center;}
+  .sign div:last-child{border-right:0;}
+  .sign .role{background:var(--brand-soft); color:var(--brand); font-weight:600; font-size:12px; padding:6px;}
+  .sign .box{height:64px;}
+
+  .footnote{margin-top:14px; padding-top:10px; border-top:1px dashed var(--line);
+    color:var(--sub); font-size:10.5px; display:flex; justify-content:space-between;}
+
+  /* Print */
+  @media print{
+    @page{size:A4; margin:0;}
+    body{background:#fff;}
+    .toolbar{display:none !important;}
+    .sheet{width:auto; min-height:auto; margin:0; box-shadow:none; padding:14mm 12mm;}
+    .cell-in:focus{outline:none; background:transparent;}
+    .item-bar button, .no-print{display:none !important;}
+    .item{break-inside:avoid;}
+    select.cell-in{background-image:none;}
+  }
+  /* ===== ECOREAN 네이비·골드 디자인 업그레이드 (override) ===== */
+  *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; color-adjust:exact; }
+  .sheet{ box-shadow:0 10px 40px rgba(23,42,71,.12); border:1px solid var(--gold-soft); border-radius:2px; }
+  .doc-head{ border-bottom:1px solid var(--gold-mid); align-items:flex-end; padding-bottom:18px; margin-bottom:22px; }
+  .brand-block{ align-items:flex-end; gap:14px; }
+  .brandlogo{ height:78px; width:auto; display:block; }
+  @media (max-width:860px){ .brandlogo{ height:58px; } }
+  .doc-title .en{ color:var(--gold); font-size:10.5px; letter-spacing:3.5px; font-weight:700; text-transform:uppercase; margin-top:0; }
+  .doc-title h1{ font-size:30px; letter-spacing:11px; font-weight:800; color:var(--brand); }
+  .sec-h .no{ font-family:"Georgia","Times New Roman",serif; background:linear-gradient(135deg,var(--gold-mid),var(--gold-deep)); color:#fff; }
+  .sec-h::after{ content:""; flex:1; height:1px; background:linear-gradient(90deg,var(--gold-soft),transparent); margin-left:6px; }
+  table.grid th{ background:var(--brand-soft); color:var(--brand); }
+  .cell-in:focus{ background:#fbf6ea; box-shadow:inset 0 0 0 2px var(--gold-mid); outline:0; }
+  .totals .grand .k{ background:linear-gradient(135deg,var(--gold-mid),var(--gold-deep)); color:#fff; }
+  .totals .grand .v{ background:#fbf6ea; color:var(--brand); }
+  button.primary{ background:var(--brand); border-color:var(--brand); }
+  button.primary:hover{ background:var(--brand-2); border-color:var(--brand-2); color:#fff; }
+  button:hover{ border-color:var(--gold-deep); color:var(--gold-deep); }
+  button.primary:hover{ color:#fff; }
+  .item-bar{ background:var(--brand-soft); }
+  .item-bar .lbl{ color:var(--brand); }
+  .hand-opt.sel{ border-color:var(--gold-deep); background:var(--gold-soft); color:var(--gold-deep); box-shadow:inset 0 0 0 1px var(--gold-deep); }
+  .hand-opt.sel .hi-big{ color:var(--gold-deep); }
+  @media print{ html,body{ background:#fff !important; } *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; } }
+
+  /* ===== 자재 도감 모달 ===== */
+  .modal{ position:fixed; inset:0; background:rgba(20,30,50,.5); display:none; z-index:100; align-items:flex-start; justify-content:center; padding:24px; }
+  .modal.open{ display:flex; }
+  .modal-card{ background:#fff; width:min(1000px,100%); max-height:90vh; display:flex; flex-direction:column; border-radius:14px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  .cat-top{ display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .cat-top .mt{ font-weight:800; color:var(--brand); font-size:16px; }
+  .cat-top .mt small{ display:block; font-weight:400; color:var(--sub); font-size:11px; margin-top:2px; }
+  .cat-top input[type=search]{ flex:1; min-width:140px; border:1px solid var(--line); border-radius:8px; padding:9px 12px; font-family:inherit; font-size:13px; }
+  .cat-tools{ display:none; gap:8px; align-items:center; flex-wrap:wrap; padding:10px 18px; background:#fbf6ea; border-bottom:1px solid var(--line); font-size:12px; }
+  .cat-tools.on{ display:flex; }
+  .cat-tools button{ padding:6px 11px; }
+  .cat-body{ overflow:auto; padding:14px 18px 26px; }
+  .cat-group{ margin-bottom:18px; }
+  .cat-gh{ display:flex; align-items:center; gap:8px; font-weight:700; color:var(--brand); margin-bottom:8px; padding-bottom:5px; border-bottom:1px solid var(--gold-soft); }
+  .cat-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; }
+  .cat-item{ border:1px solid var(--line); border-radius:10px; padding:10px 11px; display:flex; flex-direction:column; gap:3px; background:#fff; }
+  .cat-item .cimg{ width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#faf8f3; margin-bottom:4px; }
+  .cat-item .cimg-ph{ width:100%; aspect-ratio:1/1; border-radius:8px; border:1px dashed var(--line); background:#faf8f3; display:flex; align-items:center; justify-content:center; color:var(--text-muted,#b6b5b5); font-size:24px; margin-bottom:4px; }
+  .cat-item .cc{ font-family:monospace; font-size:10.5px; color:var(--gold-deep); }
+  .cat-item .cn{ font-weight:700; font-size:13px; line-height:1.35; }
+  .cat-item .cs{ font-size:11.5px; color:var(--sub); flex:1; }
+  .cat-item .cp{ font-size:12.5px; font-weight:700; color:var(--brand); }
+  .cat-item .cp .was{ font-size:11px; font-weight:500; color:var(--text-muted,#b6b5b5); text-decoration:line-through; margin-right:5px; }
+  .cat-item .clink{ font-size:10.5px; color:var(--sub); text-decoration:none; margin-top:2px; }
+  .cat-item .clink:hover{ color:var(--gold-deep); text-decoration:underline; }
+  @media print{ .modal{ display:none !important; } }
+  .cat-item .cbtn{ margin-top:5px; display:flex; gap:5px; }
+  .cat-item .badd{ flex:1; background:var(--brand); color:#fff; border:0; border-radius:7px; padding:7px; font-weight:700; cursor:pointer; }
+  .cat-item .badd:hover{ background:var(--brand-2); }
+  .cat-item input,.cat-item select{ border:1px solid var(--line); border-radius:6px; padding:5px 7px; font-family:inherit; font-size:12px; width:100%; }
+  .cat-item .wrn{ color:var(--warn); border:1px solid #e7c4bc; background:#fff; border-radius:6px; cursor:pointer; padding:6px 8px; font-weight:600; }
+  .bulk{ display:none; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:14px; background:#fffdf7; }
+  .bulk.on{ display:block; }
+  .bulk textarea{ width:100%; box-sizing:border-box; font-family:monospace; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:8px; }
+  .bulk button{ padding:6px 12px; }
+  @media print{ .modal{ display:none !important; } }
+
+  /* ===== 자동저장 표시 ===== */
+  .savestate{ font-size:11.5px; color:var(--accent); font-weight:600; white-space:nowrap; }
+  .savestate.idle{ color:var(--sub); font-weight:500; }
+
+  /* ===== 📱 모바일 반응형 ===== */
+  @media (max-width:780px){
+    .sheet{ width:100%; min-height:auto; margin:10px 0; padding:16px 12px; border-radius:0; }
+    .doc-title h1{ font-size:24px; letter-spacing:6px; }
+    .brandlogo{ height:48px; }
+    .toolbar{ padding:9px 10px; gap:6px; }
+    .toolbar .hint{ display:none; }
+  }
+  @media (max-width:640px){
+    :root{ --fs:14px; }
+    /* iOS 입력 시 자동 확대 방지: 입력요소 16px 이상 */
+    .cell-in, select.cell-in, textarea.cell-in,
+    .cat-top input[type=search], .cat-item input, .cat-item select, .bulk textarea{ font-size:16px !important; }
+
+    /* 툴바: 가로 스크롤 대신 버튼 줄바꿈 + 터치 크기 */
+    .toolbar{ position:sticky; top:0; }
+    .toolbar button{ flex:1 1 auto; min-height:42px; padding:9px 10px; font-size:13px; }
+    .toolbar .grow{ display:none; }
+    .savestate{ flex-basis:100%; text-align:center; order:99; padding-top:2px; }
+
+    .sheet{ padding:14px 9px; }
+    .doc-head{ padding-bottom:12px; margin-bottom:16px; }
+    .doc-title h1{ font-size:21px; letter-spacing:4px; }
+
+    /* grid 테이블: 셀을 세로로 쌓아 라벨↑/입력↓ 형태로 */
+    table.grid{ table-layout:auto; }
+    table.grid colgroup{ display:none; }
+    table.grid, table.grid tbody, table.grid tr{ display:block; width:100%; }
+    table.grid th, table.grid td{ display:block; width:100% !important; border:0; }
+    table.grid tr{ border:1px solid var(--line); border-radius:8px; margin-bottom:8px; overflow:hidden; }
+    table.grid th{ background:var(--brand-soft); color:var(--brand); padding:8px 10px; border-bottom:1px solid var(--line); font-size:12.5px; }
+    table.grid td{ padding:2px 4px; }
+    .cell-in{ padding:11px 10px; }
+    /* 발주자/공급자 두 칼럼은 모바일에서 1열 (기존 .party 760px 규칙 보강) */
+    .party{ grid-template-columns:1fr; }
+    /* 거래조건 textarea/colspan 셀도 동일하게 블록 */
+    textarea.cell-in{ min-height:64px; }
+
+    /* 규격 W×H×T 한 줄 유지 */
+    .dim{ flex-wrap:nowrap; }
+    .dim-field .cell-in{ padding:10px 4px; }
+
+    /* 개폐방향: 한 행에 적절히 */
+    .hand-opt{ flex:1 1 28%; min-width:0; }
+
+    /* 합계: 폭 100% */
+    .totals{ justify-content:stretch; }
+    .totals table{ min-width:0; width:100%; }
+
+    /* 서명란: 3칸 → 세로 */
+    .sign{ grid-template-columns:1fr; }
+    .sign div{ border-right:0; border-bottom:1px solid var(--line); }
+    .sign div:last-child{ border-bottom:0; }
+
+    .footnote{ flex-direction:column; gap:4px; }
+
+    /* 도감 모달: 거의 풀스크린 + 2열 카드 */
+    .modal{ padding:0; }
+    .modal-card{ width:100%; max-height:100vh; height:100vh; border-radius:0; }
+    .cat-top{ padding:11px 12px; }
+    .cat-top .mt{ font-size:14px; }
+    .cat-top input[type=search]{ flex-basis:100%; order:5; }
+    .cat-body{ padding:12px 12px 30px; }
+    .cat-grid{ grid-template-columns:repeat(2,1fr); gap:8px; }
+    .cat-item .badd{ padding:10px; }
+    .cat-item .wrn{ padding:9px; }
+  }
+  @media (max-width:380px){
+    .cat-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="primary" onclick="addItem()">＋ 도어 품목 추가</button>
+  <button class="ghost" onclick="openCatalog()">📖 자재 도감</button>
+  <button class="ghost" onclick="saveHTML()">💾 저장(HTML)</button>
+  <button class="ghost" onclick="window.print()">🖨 인쇄 / PDF</button>
+  <button class="ghost" onclick="exportJSON()">⤓ JSON(BOC)</button>
+  <button class="ghost" onclick="triggerImport()">⤒ JSON 불러오기</button>
+  <input type="file" id="import_file" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
+  <span class="grow"></span>
+  <span class="savestate idle" id="saveState">자동저장 대기</span>
+  <span class="hint">작성 중 자동저장(이 기기) · HTML/JSON=백업·전송 · PDF=발주송부</span>
+  <button class="danger" onclick="resetAll()">🆕 새 발주서</button>
+</div>
+
+<div class="sheet" id="sheet">
+
+  <!-- HEADER -->
+  <div class="doc-head">
+    <div class="brand-block">
+      <img id="brandLogo" class="brandlogo" alt="ECOREAN INTERIOR DESIGN" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onerror="this.onerror=null;this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';">
+    </div>
+    <div class="doc-title">
+      <h1>발 주 서</h1>
+      <div class="en">PURCHASE ORDER · DOOR</div>
+    </div>
+  </div>
+
+  <!-- ① 문서 메타 -->
+  <div class="sec">
+    <div class="sec-h"><span class="no">1</span><span class="t">문서 정보</span></div>
+    <table class="grid">
+      <colgroup><col style="width:14%"><col style="width:19%"><col style="width:14%"><col style="width:19%"><col style="width:11%"><col style="width:23%"></colgroup>
+      <tr>
+        <th>발주번호</th><td><input class="cell-in" id="po_no" placeholder="ORD-2026-0001"></td>
+        <th>발주일자</th><td><input class="cell-in" type="date" id="order_date"></td>
+        <th>상태</th>
+        <td><select class="cell-in" id="status">
+          <option value="draft">작성중</option>
+          <option value="sent">발주완료</option>
+          <option value="confirmed">공급확정</option>
+        </select></td>
+      </tr>
+      <tr>
+        <th>프로젝트</th><td><input class="cell-in" id="project_id" placeholder="PRJ-2026-0001"></td>
+        <th>현장명</th><td><input class="cell-in" id="site_name" placeholder="○○아파트 101동 1203호"></td>
+        <th>납기요청일</th><td><input class="cell-in" type="date" id="due_date"></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ②③ 발주자 / 공급자 -->
+  <div class="sec">
+    <div class="sec-h"><span class="no">2</span><span class="t">거래 당사자</span><span class="tip">발주자 = ECOREAN(갑) · 공급자 = 도어 제조/유통사(을)</span></div>
+    <div class="party">
+      <table class="grid">
+        <tr><th colspan="2" style="background:var(--brand); color:#fff; padding:0;">
+          <div class="party-head">
+            <span>발주자 (갑)</span>
+            <span class="preset-ctrl no-print">
+              <select id="preset_b" onchange="applyPreset('b',this.value)" title="프리셋 선택">
+                <option value="">프리셋 선택…</option>
+              </select>
+              <button type="button" onclick="savePreset('b')" title="현재 입력값을 프리셋으로 저장">＋저장</button>
+            </span>
+          </div>
+        </th></tr>
+        <tr><th style="width:34%">상호</th><td><input class="cell-in" id="b_name" value="ECOREAN"></td></tr>
+        <tr><th>사업자등록번호</th><td><input class="cell-in" id="b_biz" placeholder="000-00-00000"></td></tr>
+        <tr><th>대표자</th><td><input class="cell-in" id="b_ceo"></td></tr>
+        <tr><th>담당자 / 연락처</th><td><input class="cell-in" id="b_mgr" placeholder="홍길동 / 010-0000-0000"></td></tr>
+        <tr><th>주소</th><td><input class="cell-in" id="b_addr"></td></tr>
+      </table>
+      <table class="grid">
+        <tr><th colspan="2" style="background:#556a60; color:#fff; padding:0;">
+          <div class="party-head">
+            <span>공급자 (을)</span>
+            <span class="preset-ctrl no-print">
+              <select id="preset_s" onchange="applyPreset('s',this.value)" title="프리셋 선택">
+                <option value="">프리셋 선택…</option>
+              </select>
+              <button type="button" onclick="savePreset('s')" title="현재 입력값을 프리셋으로 저장">＋저장</button>
+            </span>
+          </div>
+        </th></tr>
+        <tr><th style="width:34%">상호</th><td><input class="cell-in" id="s_name" placeholder="○○도어 / ○○ABS"></td></tr>
+        <tr><th>사업자등록번호</th><td><input class="cell-in" id="s_biz" placeholder="000-00-00000"></td></tr>
+        <tr><th>대표자</th><td><input class="cell-in" id="s_ceo"></td></tr>
+        <tr><th>담당자 / 연락처</th><td><input class="cell-in" id="s_mgr" placeholder="담당자 / 전화·팩스"></td></tr>
+        <tr><th>주소</th><td><input class="cell-in" id="s_addr"></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ③ 거래조건 -->
+  <div class="sec">
+    <div class="sec-h"><span class="no">3</span><span class="t">거래 조건</span></div>
+    <table class="grid">
+      <colgroup><col style="width:14%"><col style="width:36%"><col style="width:14%"><col style="width:36%"></colgroup>
+      <tr>
+        <th>납품장소</th><td><input class="cell-in" id="ship_to" placeholder="현장 직납 / 창고 입고"></td>
+        <th>결제조건</th><td><input class="cell-in" id="pay_terms" placeholder="납품 후 월말 정산 등"></td>
+      </tr>
+      <tr>
+        <th>인도·운송</th><td><input class="cell-in" id="delivery" placeholder="공급자 부담 현장 하차 등"></td>
+        <th>검수방법</th><td><input class="cell-in" id="inspect" placeholder="수량·규격·하자 검수 후 인수"></td>
+      </tr>
+      <tr>
+        <th>지체상금</th><td><input class="cell-in" id="penalty" placeholder="납기 초과 1일당 ○○ 등"></td>
+        <th>설치 여부</th>
+        <td><select class="cell-in" id="install">
+          <option value="supply_only">자재 납품만</option>
+          <option value="supply_install">납품+설치</option>
+        </select></td>
+      </tr>
+      <tr>
+        <th>특기사항</th><td colspan="3"><textarea class="cell-in" id="notes" placeholder="문틀 색상 통일, 경첩 매립형, A/S 조건 등 자유 기재"></textarea></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ④ 도어 품목 -->
+  <div class="sec">
+    <div class="sec-h"><span class="no">4</span><span class="t">도어 발주 품목</span><span class="tip">발주구분(도어/문틀/세트)에 따라 규격 3번째 칸이 두께↔댑스로 바뀜 · 종류·타공 선택 시 표준사양 자동입력 → 특이점만 수정</span></div>
+    <div id="items"></div>
+    <button class="ghost no-print" onclick="addItem()" style="width:100%; border-style:dashed;">＋ 품목 한 줄 더 추가</button>
+  </div>
+
+  <!-- ⑤ 합계 -->
+  <div class="sec">
+    <div class="sec-h"><span class="no">5</span><span class="t">금액 합계</span>
+      <span class="tip">
+        <span class="vat-toggle">VAT
+          <select id="vat_mode" onchange="recalc()">
+            <option value="add">별도(공급가의 10%)</option>
+            <option value="incl">포함</option>
+            <option value="none">없음(면세)</option>
+          </select>
+        </span>
+      </span>
+    </div>
+    <div class="totals">
+      <table>
+        <tr><td class="k">공급가액</td><td class="v" id="t_supply">0</td></tr>
+        <tr><td class="k">부가세 (VAT)</td><td class="v" id="t_vat">0</td></tr>
+        <tr class="grand"><td class="k">합계금액</td><td class="v" id="t_total">0</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="footnote">
+    <span>본 발주서는 상기 조건에 따른 도어 납품을 요청하며, 세부 계약은 별도 계약서/약관에 따른다.</span>
+    <span>ECOREAN BOC · door PO v1</span>
+  </div>
+
+</div>
+
+<script>
+/* ===== 도어 품목 상태 (메모리 보관 · 프리셋만 로컬 저장) ===== */
+let items = [];
+let seq = 0;
+
+/* 도어 종류 — 제조사 라인업 기준 전체(용도/디자인/중문/슬라이딩/기능) */
+const DOOR_TYPE_GROUPS = [
+  {g:"용도(실내)", items:["방문","욕실문","주방문","드레스룸문","다용도실문","팬트리문","펫도어","키즈도어"]},
+  {g:"용도(현관·외부)", items:["현관문","방화문","단열현관문"]},
+  {g:"디자인·문선", items:["일반도어(18~21mm)","9mm 문선도어","12mm 문선도어","슬림도어","스텝도어","히든도어(무문선)","플러시도어","타공도어","글라스(유리)도어","아치도어","루버도어"]},
+  {g:"중문·연동", items:["3연동 중문","2연동 중문","4연동 중문","6연동 중문","양개 중문","외여닫이 중문","슬림 알루미늄 중문","ㄱ자 3연동","자동 3연동","원슬라이딩 중문","파티션"]},
+  {g:"슬라이딩·기타개폐", items:["슬라이딩(노출형)","슬라이딩(매립형)","포켓도어","외포켓도어","폴딩도어","스윙도어(양방향)","터닝(스윙세이프)도어","자동도어"]},
+  {g:"기능", items:["차음·방음도어","단열도어","내화도어"]}
+];
+const MATERIALS  = ["ABS","멤브레인","무늬목","원목","도장(래커)","갈바(스틸)","알루미늄","유리","기타"];
+const HAND_OPTS  = ["좌수(안)","우수(안)","좌수(밖)","우수(밖)"];
+const BORE_TYPES = ["무타공","원형(실린더)","모티스(레버)","디지털도어락","욕실용(표시정)","양면손잡이","기타"];
+const SCOPES     = ["도어만","문틀만","도어+문틀(세트)"];
+
+/* ===== 발주자/공급자 프리셋 (선택 시 자동 채움 · 값은 그대로 수정 가능) =====
+   ▼ 아래 기본 프리셋의 사업자번호·대표자·담당자·주소를 실제 값으로 바꿔두면
+     매번 입력할 필요가 없습니다. PC에 파일을 받아 열면 '＋저장'한 프리셋이 영구 보관됩니다. */
+const FIELD_MAP = {
+  b:["b_name","b_biz","b_ceo","b_mgr","b_addr"],
+  s:["s_name","s_biz","s_ceo","s_mgr","s_addr"]
+};
+const DEFAULT_PRESETS = {
+  b:[ {label:"ECOREAN 본사", name:"ECOREAN", biz:"000-00-00000", ceo:"", mgr:"", addr:""} ],
+  s:[ {label:"(예시) ○○도어", name:"○○도어", biz:"", ceo:"", mgr:"", addr:""} ]
+};
+let presets = {b:[], s:[]};
+
+function canStore(){ try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); return true; }catch(e){ return false; } }
+function loadPresets(){
+  presets = {b:[...DEFAULT_PRESETS.b], s:[...DEFAULT_PRESETS.s]};
+  try{
+    const raw = localStorage.getItem("ecorean_po_presets");
+    if(raw){ const s=JSON.parse(raw); ["b","s"].forEach(k=>{ if(Array.isArray(s[k])) presets[k]=presets[k].concat(s[k]); }); }
+  }catch(e){}
+}
+function persistPresets(){
+  try{
+    const userOnly={ b:presets.b.slice(DEFAULT_PRESETS.b.length), s:presets.s.slice(DEFAULT_PRESETS.s.length) };
+    localStorage.setItem("ecorean_po_presets", JSON.stringify(userOnly));
+  }catch(e){}
+}
+function refreshPresetSelect(side){
+  const sel=document.getElementById("preset_"+side); if(!sel) return;
+  sel.innerHTML='<option value="">프리셋 선택…</option>'+presets[side].map((p,i)=>`<option value="${i}">${esc(p.label)}</option>`).join("");
+}
+function applyPreset(side,idx){
+  if(idx===""||idx==null) return;
+  const p=presets[side][+idx]; if(!p) return;
+  const f=FIELD_MAP[side], set=(id,v)=>{const el=document.getElementById(id); if(el) el.value=v||"";};
+  set(f[0],p.name); set(f[1],p.biz); set(f[2],p.ceo); set(f[3],p.mgr); set(f[4],p.addr);
+}
+function savePreset(side){
+  const f=FIELD_MAP[side], g=id=>(document.getElementById(id)||{}).value||"";
+  if(!g(f[0])){ alert("상호를 먼저 입력하세요."); return; }
+  const label=prompt("프리셋 이름을 입력하세요", g(f[0])); if(label===null) return;
+  presets[side].push({label:label||g(f[0]), name:g(f[0]), biz:g(f[1]), ceo:g(f[2]), mgr:g(f[3]), addr:g(f[4])});
+  persistPresets(); refreshPresetSelect(side);
+  alert("프리셋 저장 완료"+(canStore()?"":" (이 미리보기에서는 임시 저장 — PC에 파일을 받아 열면 영구 보관됩니다)"));
+}
+
+/* ===== 표준사양(기본값) — 종류/타공 선택 시 자동 적용, 이후 수정 가능 ===== */
+function baseSpec(){
+  return { material:"멤브레인", width:"900", height:"2100", thickness:"40",
+    undercut:"10", hand:"우수(안)", hand_custom:"",
+    bore_type:"원형(실린더)", backset:"60", bore_dia:"54", bore_height:"1000" };
+}
+function defaultsForType(t){
+  const d=baseSpec(), has=s=>t.includes(s);
+  const sliding = has("슬라이딩")||has("연동")||has("포켓")||has("원슬라이딩")||has("자동");
+  const folding = has("폴딩");
+  const swing2  = has("스윙")||has("터닝");
+  const jungmun = has("중문")||has("파티션")||has("슬림 알루미늄");
+
+  if(has("욕실")||has("화장실")){ d.material="ABS"; d.width="800"; d.undercut="12"; d.bore_type="욕실용(표시정)"; }
+  else if(has("현관")||has("방화")){ d.material="갈바(스틸)"; d.width="1000"; d.thickness="45"; d.undercut="5";
+    d.bore_type="디지털도어락"; d.backset="100"; d.bore_dia="32"; d.bore_height="1050"; }
+
+  if(jungmun){ d.material="알루미늄"; d.width="1200"; d.thickness="40"; }
+  if(sliding||folding||swing2){
+    d.bore_type="무타공"; d.backset=""; d.bore_dia=""; d.bore_height=""; d.undercut="0";
+    if(sliding) d.width="1200";
+    d.hand="직접입력";
+    d.hand_custom = has("포켓")?"포켓(벽속 매립)" : folding?"폴딩" : swing2?"스윙(양방향)" : "슬라이딩";
+  }
+  if(has("양개")){ d.hand="직접입력"; d.hand_custom="양개(양쪽 여닫이)"; if(!jungmun){ d.material="알루미늄"; d.width="1200"; } }
+  if(has("히든")||has("플러시")){ d.material="도장(래커)"; }
+  if(has("글라스")||has("유리")||has("타공")){ d.material="유리"; }
+  return d;
+}
+function defaultsForBore(b){
+  switch(b){
+    case "무타공": return {backset:"", bore_dia:"", bore_height:""};
+    case "디지털도어락": return {backset:"100", bore_dia:"32", bore_height:"1050"};
+    case "원형(실린더)": case "모티스(레버)": case "욕실용(표시정)": case "양면손잡이":
+      return {backset:"60", bore_dia:"54", bore_height:"1000"};
+    default: return {};
+  }
+}
+function applyTypeDefaults(uid,val){
+  const it=items.find(x=>x.uid===uid); if(!it) return;
+  it.door_type=val; Object.assign(it, defaultsForType(val)); render();
+}
+function applyBoreDefaults(uid,val){
+  const it=items.find(x=>x.uid===uid); if(!it) return;
+  it.bore_type=val; Object.assign(it, defaultsForBore(val)); render();
+}
+function reapplyDefaults(uid){
+  const it=items.find(x=>x.uid===uid); if(!it) return;
+  if(!confirm("이 품목 사양을 '"+it.door_type+"' 기본값으로 되돌릴까요?\n(품명·색상·수량·단가·비고는 유지)")) return;
+  Object.assign(it, defaultsForType(it.door_type)); render();
+}
+
+function blankItem(){
+  const it={ uid:++seq, door_type:"방문", scope:"도어+문틀(세트)", item_name:"", color:"", hardware:"", depth:"", qty:1, unit_price:"", remark:"" };
+  Object.assign(it, defaultsForType("방문"));
+  return it;
+}
+function updateScope(uid,val){
+  const it=items.find(x=>x.uid===uid); if(!it) return;
+  it.scope=val; render();
+}
+function dimInput(it,key,abbr,ph){
+  return `<span class="dim-field"><input class="cell-in" value="${esc(it[key])}" placeholder="${ph}" oninput="upd(${it.uid},'${key}',this.value)"><span class="dim-sfx">${abbr}</span></span>`;
+}
+function dimFields(it){
+  const x='<span class="dim-x">×</span>';
+  const W=dimInput(it,'width','W','폭'), H=dimInput(it,'height','H','높이');
+  const T=dimInput(it,'thickness','T','두께'), D=dimInput(it,'depth','D','깊이');
+  let parts;
+  if(it.scope==='도어만') parts=[W,x,H,x,T];
+  else                    parts=[W,x,H,x,D];
+  return `<div class="dim">${parts.join('')}</div>`;
+}
+
+function opts(arr, val){
+  return arr.map(o=>`<option ${o===val?"selected":""}>${o}</option>`).join("");
+}
+function groupOpts(groups, val){
+  return groups.map(grp=>`<optgroup label="${grp.g}">`+
+    grp.items.map(o=>`<option ${o===val?"selected":""}>${o}</option>`).join("")+`</optgroup>`).join("");
+}
+
+/* 개폐방향 평면도 아이콘 (정면=실내 기준, 점=경첩) */
+function handIcon(v){
+  const W='stroke="currentColor" stroke-width="2.4" opacity="0.45" stroke-linecap="round"';
+  const D='stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"';
+  const m={
+    "좌수(안)":`<line x1="4" y1="14" x2="13" y2="14" ${W}/><line x1="37" y1="14" x2="46" y2="14" ${W}/><line x1="13" y1="14" x2="13" y2="38" ${D}/><path d="M13 38 A24 24 0 0 0 37 14" ${D}/><circle cx="13" cy="14" r="2.4" fill="currentColor"/>`,
+    "우수(안)":`<line x1="4" y1="14" x2="13" y2="14" ${W}/><line x1="37" y1="14" x2="46" y2="14" ${W}/><line x1="37" y1="14" x2="37" y2="38" ${D}/><path d="M37 38 A24 24 0 0 1 13 14" ${D}/><circle cx="37" cy="14" r="2.4" fill="currentColor"/>`,
+    "좌수(밖)":`<line x1="4" y1="30" x2="13" y2="30" ${W}/><line x1="37" y1="30" x2="46" y2="30" ${W}/><line x1="13" y1="30" x2="13" y2="6" ${D}/><path d="M13 6 A24 24 0 0 1 37 30" ${D}/><circle cx="13" cy="30" r="2.4" fill="currentColor"/>`,
+    "우수(밖)":`<line x1="4" y1="30" x2="13" y2="30" ${W}/><line x1="37" y1="30" x2="46" y2="30" ${W}/><line x1="37" y1="30" x2="37" y2="6" ${D}/><path d="M37 6 A24 24 0 0 0 13 30" ${D}/><circle cx="37" cy="30" r="2.4" fill="currentColor"/>`
+  };
+  return `<svg viewBox="0 0 50 44" width="40" height="35" aria-hidden="true">${m[v]||""}</svg>`;
+}
+function handPicker(it){
+  const btns=HAND_OPTS.map(v=>`<button type="button" class="hand-opt${it.hand===v?' sel':''}" data-v="${v}" onclick="setHand(${it.uid},'${v}')">${handIcon(v)}<span>${v}</span></button>`).join("");
+  const custom=`<button type="button" class="hand-opt hand-direct${it.hand==='직접입력'?' sel':''}" data-v="직접입력" onclick="setHand(${it.uid},'직접입력')"><span class="hi-big">직접입력</span><span>슬라이딩·연동 등</span></button>`;
+  const ci=`<input class="cell-in hand-custom" placeholder="예) 우측 슬라이딩 / 천장 매립 / 3연동 좌측열림" value="${esc(it.hand_custom)}" oninput="upd(${it.uid},'hand_custom',this.value)" style="display:${it.hand==='직접입력'?'block':'none'}">`;
+  return `<div class="hand-picker" data-uid="${it.uid}"><div class="hand-row">${btns}${custom}</div>${ci}</div>`;
+}
+function setHand(uid,val){
+  const it=items.find(x=>x.uid===uid); if(!it) return;
+  it.hand=val;
+  const box=document.querySelector('.hand-picker[data-uid="'+uid+'"]');
+  if(box){
+    box.querySelectorAll('.hand-opt').forEach(b=>b.classList.toggle('sel', b.dataset.v===val));
+    const ci=box.querySelector('.hand-custom'); if(ci) ci.style.display=(val==='직접입력')?'block':'none';
+  }
+}
+
+function render(){
+  const wrap = document.getElementById("items");
+  wrap.innerHTML = items.map((it,i)=>`
+    <div class="item">
+      <div class="item-bar">
+        <span class="idx">${i+1}</span>
+        <span class="lbl">도어 품목 ${i+1}</span>
+        <span class="sp"></span>
+        <button class="ghost no-print" onclick="reapplyDefaults(${it.uid})" title="이 종류의 표준사양으로 되돌리기">기본값</button>
+        <button class="danger" onclick="removeItem(${it.uid})">삭제</button>
+      </div>
+      <table class="grid">
+        <colgroup><col style="width:12%"><col style="width:21%"><col style="width:12%"><col style="width:18%"><col style="width:12%"><col style="width:25%"></colgroup>
+        <tr>
+          <th>종류</th>
+          <td><select class="cell-in" onchange="applyTypeDefaults(${it.uid},this.value)">${groupOpts(DOOR_TYPE_GROUPS,it.door_type)}</select></td>
+          <th>소재</th>
+          <td><select class="cell-in" onchange="upd(${it.uid},'material',this.value)">${opts(MATERIALS,it.material)}</select></td>
+          <th>품명</th>
+          <td><input class="cell-in" value="${esc(it.item_name)}" placeholder="예) ABS 방문 화이트" oninput="upd(${it.uid},'item_name',this.value)"></td>
+        </tr>
+        <tr>
+          <th>발주구분</th>
+          <td><select class="cell-in" onchange="updateScope(${it.uid},this.value)">${opts(SCOPES,it.scope)}</select></td>
+          <th>수량</th>
+          <td><input class="cell-in" type="number" min="0" style="text-align:right" value="${esc(it.qty)}" oninput="upd(${it.uid},'qty',this.value)"></td>
+          <th>단가(원)</th>
+          <td><input class="cell-in" type="number" min="0" style="text-align:right" value="${esc(it.unit_price)}" oninput="upd(${it.uid},'unit_price',this.value)"></td>
+        </tr>
+        <tr>
+          <th>규격(mm)</th>
+          <td colspan="3">${dimFields(it)}</td>
+          <th>색상/마감</th>
+          <td><input class="cell-in" value="${esc(it.color)}" placeholder="예) 화이트 / 오크" oninput="upd(${it.uid},'color',this.value)"></td>
+        </tr>
+        <tr>
+          <th>개폐방향</th>
+          <td colspan="5">${handPicker(it)}</td>
+        </tr>
+        <tr>
+          <th>하드웨어</th>
+          <td colspan="5"><input class="cell-in" value="${esc(it.hardware)}" placeholder="경첩/손잡이/도어락 사양 (문틀 포함여부는 위 '발주구분'에서 결정)" oninput="upd(${it.uid},'hardware',this.value)"></td>
+        </tr>
+        <tr>
+          <th>바닥이격</th>
+          <td><input class="cell-in" style="text-align:right" value="${esc(it.undercut)}" placeholder="mm · 예 8~10" oninput="upd(${it.uid},'undercut',this.value)"></td>
+          <th>타공종류</th>
+          <td colspan="3"><select class="cell-in" onchange="applyBoreDefaults(${it.uid},this.value)">${opts(BORE_TYPES,it.bore_type)}</select></td>
+        </tr>
+        <tr>
+          <th>백셋(mm)</th>
+          <td><input class="cell-in" style="text-align:right" value="${esc(it.backset)}" placeholder="60 / 100" oninput="upd(${it.uid},'backset',this.value)"></td>
+          <th>타공Ø(mm)</th>
+          <td><input class="cell-in" style="text-align:right" value="${esc(it.bore_dia)}" placeholder="예 54" oninput="upd(${it.uid},'bore_dia',this.value)"></td>
+          <th>타공높이</th>
+          <td><input class="cell-in" style="text-align:right" value="${esc(it.bore_height)}" placeholder="바닥기준 mm 예 1000" oninput="upd(${it.uid},'bore_height',this.value)"></td>
+        </tr>
+        <tr>
+          <th>공급가액</th>
+          <td class="amt" id="line_${it.uid}">0</td>
+          <th>비고</th>
+          <td colspan="3"><input class="cell-in" value="${esc(it.remark)}" placeholder="현장 실측치 적용 / 우측 시공 등" oninput="upd(${it.uid},'remark',this.value)"></td>
+        </tr>
+      </table>
+    </div>
+  `).join("");
+  recalc();
+  scheduleAutosave();
+}
+
+function esc(v){ return String(v??"").replace(/"/g,"&quot;"); }
+function num(v){ const n=parseFloat(String(v).replace(/,/g,"")); return isNaN(n)?0:n; }
+function fmt(n){ return Math.round(n).toLocaleString("ko-KR"); }
+
+function upd(uid,key,val){
+  const it = items.find(x=>x.uid===uid); if(!it) return;
+  it[key]=val;
+  if(key==="qty"||key==="unit_price") recalc();
+}
+
+function recalc(){
+  let supply=0;
+  items.forEach(it=>{
+    const line = num(it.qty)*num(it.unit_price);
+    supply += line;
+    const cell=document.getElementById("line_"+it.uid);
+    if(cell) cell.textContent = fmt(line);
+  });
+  const mode=document.getElementById("vat_mode").value;
+  let base=supply, vat=0, total=0;
+  if(mode==="add"){ vat=supply*0.1; total=supply+vat; }
+  else if(mode==="incl"){ base=supply/1.1; vat=supply-base; total=supply; }
+  else { vat=0; total=supply; }
+  document.getElementById("t_supply").textContent = fmt(mode==="incl"?base:supply);
+  document.getElementById("t_vat").textContent = fmt(vat);
+  document.getElementById("t_total").textContent = fmt(total);
+}
+
+function addItem(){ items.push(blankItem()); render(); }
+function removeItem(uid){ items = items.filter(x=>x.uid!==uid); render(); }
+function resetAll(){
+  if(!confirm("이 기기의 자동저장 내용을 지우고 새 발주서로 시작할까요?\n(내보낸 HTML/JSON 파일은 영향 없음)")) return;
+  clearDraft();
+  items=[blankItem()];
+  document.querySelectorAll(".cell-in").forEach(el=>{ if(el.id) el.value=""; });
+  document.getElementById("b_name").value="ECOREAN";
+  initDates();
+  render();
+}
+
+/* ===== 작성 중 자동저장 (이 기기 브라우저 localStorage) ===== */
+const DRAFT_KEY="ecorean_po_draft_v1";
+let _autosaveT=null, _autosaveReady=false;
+function scheduleAutosave(){ if(!_autosaveReady) return; clearTimeout(_autosaveT); _autosaveT=setTimeout(doAutosave,600); }
+function doAutosave(){
+  try{
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(buildPayload()));
+    const el=document.getElementById("saveState");
+    if(el){ const d=new Date(), p=n=>String(n).padStart(2,"0");
+      el.textContent="✓ 자동저장됨 "+p(d.getHours())+":"+p(d.getMinutes()); el.classList.remove("idle"); }
+  }catch(e){
+    const el=document.getElementById("saveState"); if(el){ el.textContent="⚠ 자동저장 불가(시크릿모드?)"; el.classList.add("idle"); }
+  }
+}
+function loadDraft(){
+  try{ const raw=localStorage.getItem(DRAFT_KEY); if(raw){ const d=JSON.parse(raw); if(d&&d.order){ loadFromData(d); return true; } } }catch(e){}
+  return false;
+}
+function clearDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+
+/* ===== BOC orders/order_items 스키마로 내보내기 ===== */
+function val(id){ return (document.getElementById(id)||{}).value || ""; }
+function buildPayload(){
+  recalc();
+  const supply = num(document.getElementById("t_supply").textContent);
+  const vat = num(document.getElementById("t_vat").textContent);
+  const total = num(document.getElementById("t_total").textContent);
+  return {
+    order:{
+      id: val("po_no"),
+      project_id: val("project_id"),
+      site_name: val("site_name"),
+      order_date: val("order_date"),
+      due_date: val("due_date"),
+      status: val("status"),
+      category: "door",
+      supplier:{ name:val("s_name"), biz_no:val("s_biz"), ceo:val("s_ceo"), manager:val("s_mgr"), address:val("s_addr") },
+      orderer:{ name:val("b_name"), biz_no:val("b_biz"), ceo:val("b_ceo"), manager:val("b_mgr"), address:val("b_addr") },
+      ship_to: val("ship_to"),
+      delivery: val("delivery"),
+      payment_terms: val("pay_terms"),
+      inspection: val("inspect"),
+      penalty: val("penalty"),
+      install_scope: val("install"),
+      notes: val("notes"),
+      vat_mode: val("vat_mode"),
+      supply_amount: supply,
+      vat: vat,
+      total_amount: total
+    },
+    order_items: items.map((it,i)=>({
+      line_no: i+1,
+      order_scope: it.scope,
+      door_type: it.door_type,
+      item_name: it.item_name,
+      spec: {
+        width_mm:num(it.width), height_mm:num(it.height),
+        thickness_mm: it.scope==="도어만" ? num(it.thickness) : null,
+        depth_mm: it.scope==="도어만" ? null : num(it.depth)
+      },
+      material: it.material,
+      color: it.color,
+      hand: it.hand==="직접입력" ? (it.hand_custom||"직접입력") : it.hand,
+      hand_input: it.hand==="직접입력" ? it.hand_custom : "",
+      hardware: it.hardware,
+      undercut_mm: num(it.undercut),
+      bore: { type:it.bore_type, backset_mm:num(it.backset), diameter_mm:num(it.bore_dia), height_mm:num(it.bore_height) },
+      quantity: num(it.qty),
+      unit_price: num(it.unit_price),
+      supply_amount: num(it.qty)*num(it.unit_price),
+      remark: it.remark
+    }))
+  };
+}
+function downloadBlob(content, filename, type){
+  const blob=new Blob([content],{type});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function exportJSON(){
+  downloadBlob(JSON.stringify(buildPayload(),null,2), (val("po_no")||"ORD-door")+".json", "application/json");
+}
+/* ===== HTML로 저장 — 데이터(발주+도감)를 DOM에 주입한 자기완결 HTML ===== */
+function saveHTML(){
+  const se=document.getElementById("ecorean-saved-state"); if(se) se.textContent=JSON.stringify(buildPayload()).replace(/</g,"\\u003c");
+  const ce=document.getElementById("ecorean-catalog"); if(ce) ce.textContent=JSON.stringify(DOOR_CAT).replace(/</g,"\\u003c");
+  const html="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
+  downloadBlob(html, (val("po_no")||"ORD-door")+".html", "text/html");
+}
+
+/* ===== 저장본 다시 불러오기 — 스키마 역매핑 ===== */
+function triggerImport(){ document.getElementById("import_file").click(); }
+function fromExport(r){
+  const it=blankItem(), sp=r.spec||{}, b=r.bore||{};
+  it.scope=r.order_scope||it.scope;
+  it.door_type=r.door_type||it.door_type;
+  it.item_name=r.item_name||"";
+  it.width=sp.width_mm||""; it.height=sp.height_mm||"";
+  it.thickness=(sp.thickness_mm==null?"":sp.thickness_mm); it.depth=(sp.depth_mm==null?"":sp.depth_mm);
+  it.material=r.material||it.material; it.color=r.color||"";
+  if(r.hand_input){ it.hand="직접입력"; it.hand_custom=r.hand_input; }
+  else if(HAND_OPTS.includes(r.hand)){ it.hand=r.hand; }
+  else if(r.hand){ it.hand="직접입력"; it.hand_custom=r.hand; }
+  it.hardware=r.hardware||"";
+  it.undercut=r.undercut_mm||"";
+  it.bore_type=b.type||it.bore_type; it.backset=b.backset_mm||""; it.bore_dia=b.diameter_mm||""; it.bore_height=b.height_mm||"";
+  it.qty=(r.quantity??1); it.unit_price=(r.unit_price??"");
+  it.remark=r.remark||"";
+  return it;
+}
+function loadFromData(d){
+  const o=d.order||{};
+  const sv=(id,v)=>{const el=document.getElementById(id); if(el) el.value=(v==null?"":v);};
+  sv("po_no",o.id); sv("project_id",o.project_id); sv("site_name",o.site_name);
+  sv("order_date",o.order_date); sv("due_date",o.due_date);
+  if(o.status) sv("status",o.status);
+  const sup=o.supplier||{}, ord=o.orderer||{};
+  sv("s_name",sup.name); sv("s_biz",sup.biz_no); sv("s_ceo",sup.ceo); sv("s_mgr",sup.manager); sv("s_addr",sup.address);
+  sv("b_name",ord.name); sv("b_biz",ord.biz_no); sv("b_ceo",ord.ceo); sv("b_mgr",ord.manager); sv("b_addr",ord.address);
+  sv("ship_to",o.ship_to); sv("delivery",o.delivery); sv("pay_terms",o.payment_terms);
+  sv("inspect",o.inspection); sv("penalty",o.penalty); sv("notes",o.notes);
+  if(o.install_scope) sv("install",o.install_scope);
+  if(o.vat_mode) sv("vat_mode",o.vat_mode);
+  const its=Array.isArray(d.order_items)?d.order_items:[];
+  items = its.length ? its.map(fromExport) : [blankItem()];
+  render();
+}
+function importJSON(input){
+  const file=input.files[0]; if(!file) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{ loadFromData(JSON.parse(rd.result)); alert("불러오기 완료 — 품목 "+items.length+"건 복원"); }
+    catch(e){ alert("불러오기 실패: ECOREAN 발주서 JSON 형식이 아닙니다."); }
+    input.value="";
+  };
+  rd.readAsText(file);
+}
+
+function initDates(){
+  const today=new Date().toISOString().slice(0,10);
+  if(!val("order_date")) document.getElementById("order_date").value=today;
+  if(!val("po_no")) document.getElementById("po_no").placeholder="ORD-"+new Date().getFullYear()+"-0001";
+}
+
+/* init */
+/* ===== 도어 자재 도감 (catalog) ===== */
+let DOOR_CAT = [
+  { cat:"한글도어 · 방문/실내문", icon:"🚪", items:[
+    {code:"HG-45-2134", name:"에이스 ABS도어 AD-001 민자", spec:"정가 90,000원 · 한글도어", unit:"세트", price:84000, list:90000, img:"https://www.hangel.co.kr/web/product/medium/202504/f07e58f255049ab6265318fb071d7548.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2134&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1698", name:"예림 ABS도어 EZ-민자 (★특대제작)", spec:"정가 107,000원 · 한글도어", unit:"세트", price:103000, list:107000, img:"https://www.hangel.co.kr/web/product/medium/202504/c0830d89c3d4a422b75837ef79064a2b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1698&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1575", name:"[🔎유리포함] 예림 ABS 타공도어 유리문 YAT-837 일리", spec:"한글도어(하우스엔젤)", unit:"세트", price:263000, img:"https://www.hangel.co.kr/web/product/medium/202504/83f814b00fcb627a9224001d60655708.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1575&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1432", name:"예림 ABS 웨인스코팅도어 YA-101P 베넷 (★특대제작)", spec:"한글도어(하우스엔젤)", unit:"세트", price:187000, img:"https://www.hangel.co.kr/web/product/medium/202504/866492bcab57f2161eb5cab450b1b47e.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1432&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1658", name:"[🔎유리포함] 예림 ABS 타공도어 유리문 YAT-836 셀리나", spec:"한글도어(하우스엔젤)", unit:"세트", price:308000, img:"https://www.hangel.co.kr/web/product/medium/202504/2691962a4c7f24f59f2a65c9e25c92f6.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1658&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-3999", name:"우딘 하부고시 갤러리도어 통풍갤러리", spec:"한글도어(하우스엔젤)", unit:"세트", price:188000, img:"https://www.hangel.co.kr/web/product/medium/202509/82707b532d2d2a96dbda9c72a774185e.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3999&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1418", name:"크로스 ABS도어 민자", spec:"한글도어(하우스엔젤)", unit:"세트", price:73000, img:"https://www.hangel.co.kr/web/product/medium/202303/1e209ce52dbed494d05d2d36689fc72a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1418&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1695", name:"예림 칠판도어 ABS YFD-200 노트", spec:"정가 225,000원 · 한글도어", unit:"세트", price:216000, list:225000, img:"https://www.hangel.co.kr/web/product/medium/202305/2ff565766b2674a4a119cf311c538b6c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1695&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-660", name:"에이스 ABS도어 AD-107", spec:"정가 95,000원 · 한글도어", unit:"세트", price:89000, list:95000, img:"https://www.hangel.co.kr/web/product/medium/202504/40f72ecde1316ea641c7016ec53f0ddb.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=660&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-3610", name:"예림 프리미엄 무광 ABS도어 YA-820 매트", spec:"정가 149,000원 · 한글도어", unit:"세트", price:143000, list:149000, img:"https://www.hangel.co.kr/web/product/medium/202504/65f1a04e6055fe83ecbb31d083294bb6.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3610&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1532", name:"은은하게 빛이 투과되는 아크릴 도어 예림 AR-001", spec:"정가 224,000원 · 한글도어", unit:"세트", price:214000, list:224000, img:"https://www.hangel.co.kr/web/product/medium/202504/23525982df770bc19c4b9c21834fa72f.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1532&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1422", name:"예림 ABS도어 EZ-04 코트", spec:"정가 116,000원 · 한글도어", unit:"세트", price:111000, list:116000, img:"https://www.hangel.co.kr/web/product/medium/202504/d3c02ea6eff848ee293ba0e9bc5af4ce.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1422&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1442", name:"예림 ABS도어 YA-702 모디쉬 프로방스 (★특대제작)", spec:"한글도어(하우스엔젤)", unit:"세트", price:150000, img:"https://www.hangel.co.kr/web/product/medium/202504/ffb899b3c1cb8b45039c9aae0829d9ea.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1442&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-750", name:"재현 ABS도어 파이브 JA005", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202407/9d4eda3b27ab94f31a9239687a703d2b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=750&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1186", name:"우딘 ABS 웨인스코팅도어 도스 플러스", spec:"한글도어(하우스엔젤)", unit:"세트", price:192000, img:"https://www.hangel.co.kr/web/product/medium/202302/92693779091361e5314e975ab3cfe227.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1186&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-722", name:"크로스 ABS도어 CB-11", spec:"한글도어(하우스엔젤)", unit:"세트", price:76000, img:"https://www.hangel.co.kr/web/product/medium/202301/3d4a4fc0e56a6142d2a66db61f4cc2a5.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=722&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1423", name:"예림 ABS도어 EZ-19 버티컬 (★특대제작)", spec:"정가 116,000원 · 한글도어", unit:"세트", price:111000, list:116000, img:"https://www.hangel.co.kr/web/product/medium/202504/eb6f3dcedd3b912eedb3dee9e7036a07.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1423&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1439", name:"예림 ABS도어 YA-350 (★특대제작)", spec:"정가 148,000원 · 한글도어", unit:"세트", price:142000, list:148000, img:"https://www.hangel.co.kr/web/product/medium/202504/166cb782846a5e7d40213fe33a500774.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1439&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1419", name:"[45T도어] 예림 ABS도어 YA-001 민자", spec:"한글도어(하우스엔젤)", unit:"세트", price:153000, img:"https://www.hangel.co.kr/web/product/medium/202504/b8d4135009aabc40aeb0c088a8ae4559.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1419&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-645", name:"에이스 ABS도어 AD-203", spec:"정가 100,000원 · 한글도어", unit:"세트", price:93000, list:100000, img:"https://www.hangel.co.kr/web/product/medium/202504/6cc2a34291c96e137ed51ce3d3a17d8b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=645&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1178", name:"우딘 ABS 웨인스코팅도어 우노", spec:"한글도어(하우스엔젤)", unit:"세트", price:174000, img:"https://www.hangel.co.kr/web/product/medium/202302/1e2a204457c80fc05484b60880486f7b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1178&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-630", name:"에이스 ABS도어 AD-306", spec:"정가 95,000원 · 한글도어", unit:"세트", price:89000, list:95000, img:"https://www.hangel.co.kr/web/product/medium/202504/7f72d2e2e4202accb9637c79a0bd07df.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=630&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1085", name:"우딘 ABS도어 코르", spec:"한글도어(하우스엔젤)", unit:"세트", price:139000, img:"https://www.hangel.co.kr/web/product/medium/202301/4fcec72216e61871a06c4f5462ad54e9.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1085&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-663", name:"에이스 ABS도어 AD-102", spec:"정가 95,000원 · 한글도어", unit:"세트", price:89000, list:95000, img:"https://www.hangel.co.kr/web/product/medium/202504/b8f4182cbff2af662c0d9d0fd76fa430.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=663&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1596", name:"에이스 에어컨 에어컨장 갤러리도어 (상부살형)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202304/5cc4b588a01f8ee0883b21c63e1d61ad.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1596&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1433", name:"예림 ABS 웨인스코팅도어 YA-102P 루앙 (★특대제작)", spec:"한글도어(하우스엔젤)", unit:"세트", price:207000, img:"https://www.hangel.co.kr/web/product/medium/202504/95bc1894dacf6b8c5d4d9c94c0c26bba.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1433&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1435", name:"예림 ABS도어 YA-09 제리코", spec:"정가 143,000원 · 한글도어", unit:"세트", price:137000, list:143000, img:"https://www.hangel.co.kr/web/product/medium/202504/14210d87afa6914c680b7082089d5690.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1435&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-3537", name:"에이스 ABS도어 AD-405", spec:"정가 95,000원 · 한글도어", unit:"세트", price:89000, list:95000, img:"https://www.hangel.co.kr/web/product/medium/202504/9b874ddda5d633c5fcf76b56609cd193.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3537&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1420", name:"우딘 에디트 ABS도어 ED-민자", spec:"정가 100,000원 · 한글도어", unit:"세트", price:92000, list:100000, img:"https://www.hangel.co.kr/web/product/medium/202303/812e4e9502112ebb5f0c1b94f85ba5a5.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1420&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1598", name:"에이스 중간살 갤러리도어 통풍갤러리", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202304/c5a7640efce061930d94603c1874ff9c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1598&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1144", name:"우딘 슈퍼 와이드 ABS도어 (최대폭 1,400까지 가능)", spec:"정가 307,000원 · 한글도어", unit:"세트", price:294000, list:307000, img:"https://www.hangel.co.kr/web/product/medium/202604/31a37babfdbaa2a0342d4f4cb1b69375.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1144&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2145", name:"재현 리딩 ABS도어 JA332-1 벨칸토", spec:"한글도어(하우스엔젤)", unit:"세트", price:105000, img:"https://www.hangel.co.kr/web/product/medium/202405/d9057321282274bd5c2d0304f1d4a5c6.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2145&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-633", name:"에이스 ABS도어 AD-303", spec:"정가 95,000원 · 한글도어", unit:"세트", price:89000, list:95000, img:"https://www.hangel.co.kr/web/product/medium/202504/06ad4f61e3c4d269f55127d24d1a1b57.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=633&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2183", name:"재현 ABS도어 JA340-1 엔트로피 크리스탈 포인트", spec:"한글도어(하우스엔젤)", unit:"세트", price:145000, img:"https://www.hangel.co.kr/web/product/medium/202407/cac06196683f4a5ed2ee6e450a489b51.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2183&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1558", name:"[🔎유리포함] 예림 ABS 타공도어 유리문 YAT-817", spec:"한글도어(하우스엔젤)", unit:"세트", price:257000, img:"https://www.hangel.co.kr/web/product/medium/202304/428d2273d60f4589eb47d92605c35dfe.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1558&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1436", name:"예림 ABS도어 YA-10 큐브", spec:"정가 143,000원 · 한글도어", unit:"세트", price:137000, list:143000, img:"https://www.hangel.co.kr/web/product/medium/202504/0fc3b884bb55dde5745eafa7dda02885.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1436&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1090", name:"우딘 ABS도어 샤르", spec:"한글도어(하우스엔젤)", unit:"세트", price:139000, img:"https://www.hangel.co.kr/web/product/medium/202301/5d875e2f8e0ae85b9c38dedf81674bf7.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1090&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2149", name:"재현 리딩 ABS도어 JA162-1 벨록스", spec:"한글도어(하우스엔젤)", unit:"세트", price:105000, img:"https://www.hangel.co.kr/web/product/medium/202602/d69575f208adc5cb1a43d9206c66acbe.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2149&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1447", name:"예림 ABS도어 YA-711", spec:"한글도어(하우스엔젤)", unit:"세트", price:150000, img:"https://www.hangel.co.kr/web/product/medium/202504/91d8d61908592e8df171aa8488cc33f2.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1447&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1579", name:"[🔎유리포함] 예림 ABS 타공도어 유리문 YAT-840", spec:"한글도어(하우스엔젤)", unit:"세트", price:180000, img:"https://www.hangel.co.kr/web/product/medium/202504/007219ad8547dcf835d2793d9d75fa8b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1579&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2143", name:"재현 리딩 ABS도어 JA365-1 엘라스티코", spec:"한글도어(하우스엔젤)", unit:"세트", price:145000, img:"https://www.hangel.co.kr/web/product/medium/202405/9d3b28ad461f94cff2ff0d3433ca9142.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2143&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2176", name:"재현 ABS도어 JA155-1 팅커벨 드로잉 포인트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202407/42f2dc4d6ae77d4c81d5888597201784.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2176&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-752", name:"선앤엘 ABS도어 DAS-100 민자", spec:"한글도어(하우스엔젤)", unit:"세트", price:83000, img:"https://www.hangel.co.kr/web/product/medium/202301/a91f7cd904e8e48916ea0875bd0a82ef.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=752&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2178", name:"재현 ABS도어 JA320-1 만다라 크리스탈 포인트", spec:"한글도어(하우스엔젤)", unit:"세트", price:145000, img:"https://www.hangel.co.kr/web/product/medium/202407/92df7f60ac0cba86fc41f85dfcd881e8.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2178&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-1996", name:"예림 ABS 펫도어 타공 양방향 폴딩 타입 YAT-001 (소형/대형)", spec:"정가 351,000원 · 한글도어", unit:"세트", price:290000, list:351000, img:"https://www.hangel.co.kr/web/product/medium/202504/c7187831862b3b9c5141f3c2452133cf.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1996&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2180", name:"재현 ABS도어 JA159-1 마틸다 헤어라인 포인트", spec:"한글도어(하우스엔젤)", unit:"세트", price:145000, img:"https://www.hangel.co.kr/web/product/medium/202407/ce41fb09c5b0737ca78886f2d6c9f7a5.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2180&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2164", name:"재현 ABS도어 JA338-1 피오지아", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202407/d8799a1c035dac7bf82e667991b19108.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2164&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2170", name:"재현 ABS도어 JA331-1 초콜릿", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202407/08a36d59803bc34fb649fc25256a3ebb.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2170&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-45-2159", name:"재현 리딩 ABS도어 JA001 리쏘", spec:"한글도어(하우스엔젤)", unit:"세트", price:105000, img:"https://www.hangel.co.kr/web/product/medium/202407/1f1a4cace2e0c54ee4081cda1d4c9091.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2159&cate_no=45", door_type:"방문", scope:"도어+문틀(세트)"}
+  ]}
+  ,{ cat:"한글도어 · ABS도어+문틀", icon:"🚪", items:[
+    {code:"HG-82-3540", name:"선앤엘 발포문틀 + ABS도어 세트 (가스켓 기본포함)", spec:"정가 146,000원 · 한글도어", unit:"세트", price:140000, list:146000, img:"https://www.hangel.co.kr/web/product/medium/202504/c3bd959d082a1b1b385b67bae42d8707.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3540&cate_no=82", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-82-3539", name:"에이스 발포문틀 + ABS도어 세트 (가스켓 기본포함)", spec:"정가 162,000원 · 한글도어", unit:"세트", price:153000, list:162000, img:"https://www.hangel.co.kr/web/product/medium/202504/164cbf9e9fb19cea6b0c59276374fbd1.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3539&cate_no=82", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-82-3528", name:"예림 발포문틀 + ABS도어 세트 (가스켓 기본포함)", spec:"정가 197,000원 · 한글도어", unit:"세트", price:190000, list:197000, img:"https://www.hangel.co.kr/web/product/medium/202606/4794965ba523ec98272c200fd039899b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3528&cate_no=82", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-82-3538", name:"우딘 발포문틀 + ABS도어 세트 (가스켓 기본포함)", spec:"정가 186,000원 · 한글도어", unit:"세트", price:174000, list:186000, img:"https://www.hangel.co.kr/web/product/medium/202504/a10513bbc560f187147d4eb685b51e94.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3538&cate_no=82", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-82-3541", name:"크로스 발포문틀 + ABS도어 세트 (가스켓 기본포함)", spec:"한글도어(하우스엔젤)", unit:"세트", price:122000, img:"https://www.hangel.co.kr/web/product/medium/202504/8c3675cae71cb82c0528184e189de837.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3541&cate_no=82", door_type:"방문", scope:"도어+문틀(세트)"}
+  ]}
+  ,{ cat:"한글도어 · 슬림문선&무문선", icon:"🚪", items:[
+    {code:"HG-79-1995", name:"예림 슬림문틀 + ABS도어 세트│슬림문선 9mm 12mm", spec:"정가 197,000원 · 한글도어", unit:"세트", price:193000, list:197000, img:"https://www.hangel.co.kr/web/product/medium/202505/6d03d3e36a44e888d35ea55a9c8bf430.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1995&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-2667", name:"예림 히든도어 + 히든문틀 + 히든 하드웨어 세트 무문선 무몰딩", spec:"정가 500,000원 · 한글도어", unit:"세트", price:398000, list:500000, img:"https://www.hangel.co.kr/web/product/medium/202509/e23660208f64df82764ff145e0351edf.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2667&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-1992", name:"에이스 슬림문틀 + ABS도어 세트│슬림문선 10mm", spec:"한글도어(하우스엔젤)", unit:"세트", price:162000, img:"https://www.hangel.co.kr/web/product/medium/202505/cbd71eea2fd55b18d5d13e1c1a8ba0e3.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1992&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-4003", name:"예림 슬림라운드 발포 모듈러 문틀 + ABS도어 세트", spec:"정가 230,000원 · 한글도어", unit:"세트", price:226000, list:230000, img:"https://www.hangel.co.kr/web/product/medium/202509/c5e5c1c0e13c7bd7b644c9e05fdbb598.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=4003&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-3829", name:"예림 아치 도어 문틀 세트 무문선 인테리어", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/3214becd4982b0260334c53f2206de2a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3829&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-3824", name:"예림 알루미늄 모듈러 도어 + 문틀 세트 (히든경첩+마그네틱핸들 포함)", spec:"한글도어(하우스엔젤)", unit:"세트", price:1753000, img:"https://www.hangel.co.kr/web/product/medium/202506/60f85e068c357612879982e703b666cf.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3824&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-3825", name:"예림 알루미늄 모듈러 히든 도어 + 문틀 세트 (히든경첩+마그네틱핸들 포함)", spec:"한글도어(하우스엔젤)", unit:"세트", price:2403000, img:"https://www.hangel.co.kr/web/product/medium/202506/6182e822aa396b80436ebbd5654d75f4.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3825&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-3826", name:"예림 코너라운드 발포 모듈러 문틀 + ABS도어 세트", spec:"정가 230,000원 · 한글도어", unit:"세트", price:226000, list:230000, img:"https://www.hangel.co.kr/web/product/medium/202509/b4f2a23d92ead60cbec1839d6957bd3e.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3826&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-2403", name:"예림x인테리어쇼 스텝도어 + 스텝문틀 + 히든경첩 세트 무문선 무몰딩", spec:"한글도어(하우스엔젤)", unit:"세트", price:500000, img:"https://www.hangel.co.kr/web/product/medium/202509/ea85a1f5f106b05f2a9ea51d77547c86.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2403&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-4139", name:"우딘 뎁스도어 + 뎁스문틀 + 히든경첩 세트 무문선 무몰딩", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202604/f1e58c7815e907f68872fb76ed8e8945.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=4139&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-4138", name:"우딘 스텝도어 + 스텝문틀 + 히든경첩 세트 무문선 무몰딩", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202604/01e919b6cbe80796df495a9dcc151e28.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=4138&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-1990", name:"우딘 슬림문틀 + ABS도어 세트│슬림문선 10mm", spec:"한글도어(하우스엔젤)", unit:"세트", price:184000, img:"https://www.hangel.co.kr/web/product/medium/202505/a16f1b081f97b633d4f7b06861b952f2.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1990&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-2123", name:"우딘 아치도어 아치문틀", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202404/2a4e98c9edc0a5d03474ecb01d62364a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2123&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"},
+    {code:"HG-79-2125", name:"우딘 히든아치도어 + 문틀 세트 무문선 무몰딩", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202404/a56315186e7e3fb7ae469264126c6b83.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2125&cate_no=79", door_type:"슬림도어", scope:"도어+문틀(세트)"}
+  ]}
+  ,{ cat:"한글도어 · 차음/방음도어", icon:"🔇", items:[
+    {code:"HG-1457-2108", name:"예림 ABS 멤브레인 차음도어 방음도어 문틀 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:228000, img:"https://www.hangel.co.kr/web/product/medium/202501/f15476045964ba895b2086c358afba81.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2108&cate_no=1457", door_type:"차음·방음도어", scope:"도어+문틀(세트)"}
+  ]}
+  ,{ cat:"한글도어 · 슬라이딩도어", icon:"🚪", items:[
+    {code:"HG-675-3980", name:"예림 프리미엄 리안 슬림 원슬라이딩 중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:600000, img:"https://www.hangel.co.kr/web/product/medium/202509/37ff208c79ab48cd7fad6a6fecd7c1bb.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3980&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2162", name:"[기획상품] 벽면형 슬라이딩 도어 + 행거레일 철물 세트", spec:"정가 150,000원 · 한글도어", unit:"세트", price:120000, list:150000, img:"https://www.hangel.co.kr/web/product/medium/202412/6778dc077d419b9940bc18b79db5845e.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2162&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2001", name:"예림 히든 슬라이딩 도어 + 행거레일 철물 세트 (양방향 댐퍼)", spec:"정가 390,000원 · 한글도어", unit:"세트", price:374000, list:390000, img:"https://www.hangel.co.kr/web/product/medium/202505/53f25848110e4c567e1155215d1d4670.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2001&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2000", name:"예림 커버형 슬라이딩 도어 + 행거레일 세트 (양방향 댐퍼)", spec:"한글도어(하우스엔젤)", unit:"세트", price:374000, img:"https://www.hangel.co.kr/web/product/medium/202505/ca225c91b4c6d9f385ea32791f222634.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2000&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-3981", name:"예림 프리미엄 리안 아치 원슬라이딩 중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:940000, img:"https://www.hangel.co.kr/web/product/medium/202509/8c1012b4077fea6ecd62e88fea48a35a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3981&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-3979", name:"예림 프리미엄 리안 바움 원목 포인트 원슬라이딩 중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202509/e23c6027e22700efd4644e1f51b1cc5a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3979&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-3973", name:"예림 프리미엄 리안 간살 원슬라이딩 중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202509/08276b76a168fdca0f33fb7db650ebd5.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3973&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-3743", name:"4짝미서기 세트 주문제작", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/63dabfff6c7e5cafcb5559360a751dd4.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3743&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-3742", name:"2짝미서기 세트 주문제작", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/29619fe00fbc2cc92de6d451dff1fa24.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3742&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-3741", name:"외미서기 세트 주문제작", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/6b8a763fbdf398807ab9518cae635edf.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3741&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-3633", name:"포켓도어 + 포켓문틀(포켓집) + 매립형 행거레일 + ABS도어 세트 (기본 양방향 댐퍼)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202509/7ad7824fc898bd129ff10d615a88d351.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3633&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-3632", name:"예림 스텐 노출형 슬라이딩 도어 + 행거레일 철물 세트 B타입", spec:"한글도어(하우스엔젤)", unit:"세트", price:466000, img:"https://www.hangel.co.kr/web/product/medium/202505/1c599b9b47a9d63f2ee7cdbf0c9a989c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3632&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2398", name:"예림 프레임리스 글래스 슬라이딩 중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202409/32344b6a686cc23191f86b82755c32ed.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2398&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2008", name:"우딘 히든 슬라이딩 도어 + 행거레일 철물 세트 (양방향 댐퍼)", spec:"정가 400,000원 · 한글도어", unit:"세트", price:367000, list:400000, img:"https://www.hangel.co.kr/web/product/medium/202604/42cb3557c6b20862ea3fffe7e4e49f75.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2008&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2007", name:"우딘 스텐 노출 슬라이딩도어 댐퍼레일 행거 철물 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202307/08b8221da57920d1a7946fb5a2ac2adb.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2007&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2006", name:"우딘 커버형 노출 슬라이딩도어 댐퍼레일 행거 철물 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202604/92d7fdf208d859701fef7e83f9f03fd6.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2006&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2005", name:"우딘 노출형 슬라이딩 도어 + 행거레일 철물 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202604/e7d9ea15f688f1396fedbff402a59f1c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2005&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2004", name:"예림 스텐 노출형 슬라이딩 도어 + 행거레일 철물 세트 A타입", spec:"한글도어(하우스엔젤)", unit:"세트", price:420000, img:"https://www.hangel.co.kr/web/product/medium/202505/1cf46043d8e1f87961cbc7754db0f00b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2004&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2003", name:"예림 노출형 슬라이딩 도어 + 행거레일 철물 세트 B타입", spec:"정가 327,000원 · 한글도어", unit:"세트", price:305000, list:327000, img:"https://www.hangel.co.kr/web/product/medium/202505/f2d6797f5644f433ffe4f03a4364bb10.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2003&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"},
+    {code:"HG-675-2002", name:"예림 노출형 슬라이딩 도어 + 행거레일 철물 세트 A타입", spec:"정가 310,000원 · 한글도어", unit:"세트", price:305000, list:310000, img:"https://www.hangel.co.kr/web/product/medium/202505/589a9612dcb844aa99f3f5c0dfc42fa1.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2002&cate_no=675", door_type:"슬라이딩(노출형)", scope:"도어+문틀(세트)"}
+  ]}
+  ,{ cat:"한글도어 · 중문", icon:"🚪", items:[
+    {code:"HG-84-3475", name:"[180도 스윙] 예림 프리미엄 중문 리안 뉴밸런스 도어(양개/편개)", spec:"정가 961,000원 · 한글도어", unit:"세트", price:921000, list:961000, img:"https://www.hangel.co.kr/web/product/medium/202502/487d8481568b43be03464aa8d0d77fdf.jpg", url:"https://www.hangel.co.kr/product/detail.html?product_no=3475&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3830", name:"레일 노출 없는 예림 리안 상부구동 3연동 중문 (기본댐핑&양방향개폐)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/6031eaf7728c33b5965730bdb82c4a65.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3830&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3474", name:"예림 프리미엄 중문 리안 여닫이 YFL-100", spec:"정가 830,000원 · 한글도어", unit:"세트", price:800000, list:830000, img:"https://www.hangel.co.kr/web/product/medium/202504/2c1fe399a5cb3121581cac7dafb7fb93.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3474&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3513", name:"[180도 스윙] 예림 프리미엄 중문 리안 라이트 간살 양방향 여닫이 세트", spec:"정가 1,530,000원 · 한글도어", unit:"세트", price:1470000, list:1530000, img:"https://www.hangel.co.kr/web/product/medium/202504/406a987dce5452b88fa713c1073f1265.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3513&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2431", name:"[180도 스윙] 예림 프리미엄 중문 리안 양방향 라운드 아치 여닫이", spec:"정가 1,300,000원 · 한글도어", unit:"세트", price:1250000, list:1300000, img:"https://www.hangel.co.kr/web/product/medium/202504/70bf2aa48cddeb57790c309cafb7fdca.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2431&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3476", name:"[180도 스윙] 예림 프리미엄 중문 리안 양방향 여닫이", spec:"정가 990,000원 · 한글도어", unit:"세트", price:950000, list:990000, img:"https://www.hangel.co.kr/web/product/medium/202504/da087e0850cae4fd357c3d8f1d2daa7a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3476&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3509", name:"[수납형] 예림 프리미엄 수퍼슬림 3연동 알루미늄 중문 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/bd8d5bf57cac54813522a1b5fb9a2dbf.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3509&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3831", name:"레일 노출 없는 예림 리안 상부구동 6연동 중문 (기본댐핑&양방향개폐)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/6913f6872d2de69b49ef89641bad8d68.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3831&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2074", name:"선앤엘 양개 중문 DAS-P03 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202306/80c3e9c17da870c69e75b3b7683550c1.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2074&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2075", name:"선앤엘 양개 중문 DAS-P12 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202306/8aaaecaed48ead7b1fae09809176ef67.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2075&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2073", name:"선앤엘 양개 중문 DAS-P17 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202306/1d06a392c40e1b1eb0a0c11373ffdac8.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2073&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2072", name:"선앤엘 양개 중문 DAS-P18 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202306/1fd7d336fd66281061ce1ad39ddd5df4.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2072&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-668", name:"에이스 양개 중문 AFD-02 여닫이 프렌치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202304/db15604a7734ac5dd986342766ba04ea.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=668&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-669", name:"에이스 양개 중문 AT-웨이브타공 여닫이 프렌치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202306/f0ab0e0b391ce3f2ba04d242f16d8e81.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=669&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-667", name:"에이스 양개 중문 AT-입구타공 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202306/2431c6bace1fec999a5fc32f3f09abd8.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=667&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3986", name:"예림 LED 무드 슬라이딩 중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202509/fa65eadd0f763be04f245bb807ded788.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3986&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3832", name:"예림 리안 피봇 도어 (대폭 사이즈 제작 가능)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/a93fc0d84b4e5f42c4debe7fb4bab8f3.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3832&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3809", name:"예림 삼각형 시스템 알루미늄 파티션 + 중문 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/c147d37a923b328d3d46fcac079e1458.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3809&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3505", name:"예림 양개 중문 YAT-1200 플로리아 여닫이 프렌치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/485d308a339333a7d15e5b4b4b0d82b2.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3505&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2047", name:"예림 양개 중문 YAT-1210 로렐 여닫이 프렌치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/441869b79de00548e9f7a67dda137ffd.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2047&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2046", name:"예림 양개 중문 YAT-1220 베르너 여닫이 프렌치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/6a16c31db657c865e2ccf8d04b29cbcb.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2046&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2058", name:"예림 양개 중문 YAT-802 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/64266376d741e39e01eca505329dd1e9.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2058&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2057", name:"예림 양개 중문 YAT-803 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/66599d1f28be262eb3dc6b50da91c162.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2057&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2056", name:"예림 양개 중문 YAT-804 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/b0926d871d3afccdd9d4148c4dbd9734.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2056&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2055", name:"예림 양개 중문 YAT-805 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/980c6a3dc0a71c25270709ab3951052e.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2055&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2054", name:"예림 양개 중문 YAT-830M 프레 여닫이 프렌치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/d3e147c034189705ef2a3f824bee4506.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2054&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2053", name:"예림 양개 중문 YAT-831M 아델라 여닫이 프렌치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/8261c89b4ee29432818a0ae0a949cd58.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2053&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2052", name:"예림 양개 중문 YAT-832M 아델라 여닫이 프렌치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/1ebb5dde84f06c834640685ff0da0354.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2052&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2051", name:"예림 양개 중문 YAT-836 셀리나 여닫이 아치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/7c952a403395f6c6b3d6942de5016a60.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2051&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2050", name:"예림 양개 중문 YAT-847 그랑 여닫이 아치 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/4cb7e2ee1706ea65226bf0452597546d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2050&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2049", name:"예림 양개 중문 YAT-900 여닫이 현관중문", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202304/606482c78e1387670443d6baccedbb13.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2049&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3808", name:"예림 오피스형 시스템 알루미늄 파티션 (람마형) + 중문 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/5ef6224a725e097596b44b3fb5698579.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3808&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3804", name:"예림 오피스형 시스템 알루미늄 파티션 (입구형) + 중문 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/9300ba221e8697f0571a5a946f89022b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3804&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3807", name:"예림 코너형 ㄱ자형 목재 파티션 + 3연동 중문 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/86f371d800202cd397b38fbaa4fe9795.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3807&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3806", name:"예림 코너형 ㄱ자형 시스템 알루미늄 파티션 + 중문 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/225421a97b97a37185186db9a5957939.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3806&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-2397", name:"예림 프레임리스 글래스 스윙도어", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202409/db8261e0f28cc2b5d0b7b1f9911469a5.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2397&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3511", name:"예림 프리미엄 라이트 간살 3연동 알루미늄 중문 세트", spec:"정가 1,060,000원 · 한글도어", unit:"세트", price:1020000, list:1060000, img:"https://www.hangel.co.kr/web/product/medium/202504/20f27a04c2cdedd658ebd0ef8e518f62.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3511&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3508", name:"예림 프리미엄 수퍼슬림 3연동 알루미늄 중문 세트", spec:"정가 730,000원 · 한글도어", unit:"세트", price:700000, list:730000, img:"https://www.hangel.co.kr/web/product/medium/202504/f628974c12ea4401922e79fcd7cb531d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3508&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3510", name:"예림 프리미엄 수퍼슬림 4연동 알루미늄 중문 세트", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/c0d004ce02142e10ce3c9cab45871978.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3510&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3507", name:"예림 프리미엄 슬림 3연동 알루미늄 중문 세트", spec:"정가 730,000원 · 한글도어", unit:"세트", price:700000, list:730000, img:"https://www.hangel.co.kr/web/product/medium/202504/1727e8782c18e4a51f446bc008a1bab3.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3507&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3506", name:"예림 프리미엄 중문 리안 라운드 여닫이 세트", spec:"정가 1,150,000원 · 한글도어", unit:"세트", price:1100000, list:1150000, img:"https://www.hangel.co.kr/web/product/medium/202504/f04ef205974a5a23678ccb40454f6b02.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3506&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"},
+    {code:"HG-84-3512", name:"예림 프리미엄 중문 리안 라이트 간살 여닫이 세트", spec:"정가 1,250,000원 · 한글도어", unit:"세트", price:1200000, list:1250000, img:"https://www.hangel.co.kr/web/product/medium/202504/127d5304580ee6d4b752a4b1318dde29.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3512&cate_no=84", door_type:"3연동 중문", scope:"도어+문틀(세트)"}
+  ]}
+  ,{ cat:"한글도어 · 특수문/방화문", icon:"🚪", items:[
+    {code:"HG-679-2107", name:"방사선 차단 특수 기능성 납도어 (납두께 선택 가능)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202510/1387604fc25b8a2bd2a24b12be286acf.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2107&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-2105", name:"예림 방화문 품질인증 FDG-301", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202404/53b60c577aaee68ada146a1564414df7.jpg", url:"https://www.hangel.co.kr/product/detail.html?product_no=2105&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-2091", name:"예림 방화문 품질인증 FDP-507", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202404/fccb37a3be6e8e5a7feb6cd884fdcb17.jpg", url:"https://www.hangel.co.kr/product/detail.html?product_no=2091&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-2086", name:"예림 방화문 품질인증 FDP-512", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202404/1c0a6b227929b1af342f1f2dd7f93a86.jpg", url:"https://www.hangel.co.kr/product/detail.html?product_no=2086&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3987", name:"예림 멤브레인 방염 도어 + 문틀 세트 (방염 인증서류 제공)", spec:"한글도어(하우스엔젤)", unit:"세트", price:286000, img:"https://www.hangel.co.kr/web/product/medium/202509/9a002b48a07f1851fd623e6c252832e3.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3987&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3828", name:"예림 준불연 도어 + 문틀 세트 (방염 인증서류 제공)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202506/89d8e5ac72d44a26c4c3d9ea96250d0b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3828&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3606", name:"예림 방염도어 클래식 YM-102P 루앙 (★특대제작)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/283349ec34c0cfba113a82238ad004e9.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3606&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3605", name:"예림 방염도어 클래식 YM-101P 베넷 (★특대제작)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/5fb12e40e616233bcad8d9d6bb738bfb.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3605&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3604", name:"예림 방염 타공도어 유리문 YMT-1210 로렐", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/b869bb43367a6fca9cb3f15e96572d45.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3604&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3603", name:"예림 방염 타공도어 유리문 YMT-1200 플로리아", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/503072ebe3fae11e5204fad1d81a7d0b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3603&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3601", name:"예림 방염 타공도어 유리문 YMT-840", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/4637858f40a4d5d2d7e62826166b3dbd.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3601&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3600", name:"예림 방염 타공도어 유리문 YMT-838 리프", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/e52a326cc1d34554d984ed4c6294c9f9.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3600&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3599", name:"예림 방염 타공도어 유리문 YMT-837B 일리B", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/ffa25e66698cb818ba796096681e6c5a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3599&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3598", name:"예림 방염 타공도어 유리문 YMT-837 일리", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/9bc3f4bab3ec9f9a1188104361886e64.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3598&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3597", name:"예림 방염 타공도어 유리문 YMT-836 셀리나", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/0724953005107327f8bd031a1094d075.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3597&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3596", name:"예림 방염 타공도어 유리문 YMT-832M 아델라", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/53a624488babb3edde30db63ffd337dc.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3596&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3595", name:"예림 방염 타공도어 유리문 YMT-831M 아델라", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/72680048e76763cec2faf413ae1655b8.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3595&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3594", name:"예림 방염 타공도어 유리문 YMT-830M", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/5ba749682e15d57b34cf5e60f3ce6563.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3594&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3593", name:"예림 방염 타공도어 유리문 YMT-829", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/514012bf970357f51e85d29a30cc7a9a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3593&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3592", name:"예림 방염 타공도어 유리문 YMT-828", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/1eac9f8790220145d064b6a5f5272f5c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3592&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3591", name:"예림 방염 타공도어 유리문 YMT-827", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/bcf15ff47d40108199f8f28cd885a97a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3591&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3590", name:"예림 방염 타공도어 유리문 YMT-826", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/236bb250dcf2bcf7c8bca7d8e07a0b59.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3590&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3589", name:"예림 방염 타공도어 유리문 YMT-825", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/68f9ff026021b73d97bd1a609f6fe29f.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3589&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3588", name:"예림 방염 타공도어 유리문 YMT-824", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/08f1f5d601856944e7ed578725e839b9.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3588&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3587", name:"예림 방염 타공도어 유리문 YMT-823", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/5b188c61d9e5ee7a70fb67b3819af5bd.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3587&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3586", name:"예림 방염 타공도어 유리문 YMT-822", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/c1c640c49102df0bdc011acdec1ca0e4.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3586&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3585", name:"예림 방염 타공도어 유리문 YMT-821", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/867acc1a9fbca3a48350d1e55a601524.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3585&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3584", name:"예림 방염 타공도어 유리문 YMT-820", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/ce3bef9ce5a16f5a471e9916af50104a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3584&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3583", name:"예림 방염 타공도어 유리문 YMT-819", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/00a66204b71bd42096c966a6bdd89afc.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3583&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3582", name:"예림 방염 타공도어 유리문 YMT-818", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/187fda30ebec20a622240ea6712d833f.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3582&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3581", name:"예림 방염 타공도어 유리문 YMT-817", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/8a5910fe65fda19b5799f194177bce2e.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3581&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3580", name:"예림 방염 타공도어 유리문 YMT-815", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/f9a35ab80cc4606f88894d2c8ad6b41c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3580&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3579", name:"예림 방염 타공도어 유리문 YMT-814", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/1c4ab01d78b36641d185d4acc84f80c0.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3579&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3578", name:"예림 방염 타공도어 유리문 YMT-813", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/c650059486dd86a29ea1d2dbaac34544.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3578&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3577", name:"예림 방염 타공도어 유리문 YMT-812", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/2a0fb29c014b06fec7b5f7520851ca10.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3577&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3576", name:"예림 방염 타공도어 유리문 YMT-811", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/97d532e9915180e4fc25b1fe31d79dd4.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3576&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3575", name:"예림 방염 타공도어 유리문 YMT-808", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/213015bd35025d96da1edfce245949e3.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3575&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3574", name:"예림 방염 타공도어 유리문 YMT-807", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/a0e31d7bc695d145b9e84e7ac64d3128.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3574&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3573", name:"예림 방염 타공도어 유리문 YMT-806", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/d59ec293a57115cb20c29c2bb2670922.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3573&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3572", name:"예림 방염 타공도어 유리문 YMT-805", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/fe3a21683a700cc29ea5faa25792a290.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3572&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3571", name:"예림 방염 타공도어 유리문 YMT-804", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/2f34bf1c99d28d0a0e5c4d2d06804c5c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3571&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3570", name:"예림 방염 타공도어 유리문 YMT-803", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/7493abf7ec1428ae91d721d03c0107c3.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3570&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3569", name:"예림 방염 타공도어 유리문 YMT-802", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/de7048421a71ee2034e5eefa58b4af71.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3569&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3568", name:"예림 방염 타공도어 유리문 YMT-801", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/eb82da71a83e7ea322ea7b97488baade.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3568&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3567", name:"예림 방염 타공도어 유리문 YMT-800", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/0aa3574408b41b7840a750fc9f0fdf79.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3567&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3566", name:"예림 방염 타공도어 유리문 YMT-404", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/2e348bc7b021cb216cd33e4964077255.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3566&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3565", name:"예림 방염 타공도어 유리문 YMT-403", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/6cac8cf8e01e2eff27ef2bdd3513435d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3565&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3564", name:"예림 방염 타공도어 유리문 YMT-402", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/331da61620d00869c99989ac7401c1f8.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3564&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3563", name:"예림 방염 타공도어 유리문 YMT-08", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/9ebd8e37ecaaee80b063c560c948d33b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3563&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"},
+    {code:"HG-679-3562", name:"예림 방염 타공도어 유리문 YMT-04", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202504/1ff7e20e75010976aa5dca74df790f2d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3562&cate_no=679", door_type:"방화문", scope:"도어+문틀(세트)"}
+  ]}
+  ,{ cat:"한글도어 · 도어 부속/하드웨어", icon:"🔩", items:[
+    {code:"HG-1270-1191", name:"비플랜 방문손잡이 BPL-6401 (2 color)", spec:"한글도어(하우스엔젤)", unit:"개", price:12000, img:"https://www.hangel.co.kr/web/product/medium/202505/164b3c8cfb5ec25fb449b6de535f8f60.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1191&cate_no=1270"},
+    {code:"HG-1270-2482", name:"예림 방문손잡이 YDL-210 (블랙/화이트/골드유광/브론즈/스텐)", spec:"정가 22,000원 · 한글도어", unit:"개", price:21000, list:22000, img:"https://www.hangel.co.kr/web/product/medium/202505/b1332d552ab241807755a30469c34ddb.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2482&cate_no=1270"},
+    {code:"HG-1270-1217", name:"동성 방문손잡이 TP-160 스틱 (3 color)", spec:"한글도어(하우스엔젤)", unit:"개", price:12000, img:"https://www.hangel.co.kr/web/product/medium/202505/641d4c1b950ae014d4778b46e22477a0.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1217&cate_no=1270"},
+    {code:"HG-1270-1195", name:"비플랜 방문손잡이 BPL-5001 (2 color)", spec:"한글도어(하우스엔젤)", unit:"개", price:12000, img:"https://www.hangel.co.kr/web/product/medium/202505/a0a335606925c2a53b67db218180e8b6.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1195&cate_no=1270"},
+    {code:"HG-1270-3728", name:"예스코리아 스텐 방문손잡이 615SS", spec:"정가 18,000원 · 한글도어", unit:"개", price:13000, list:18000, img:"https://www.hangel.co.kr/web/product/medium/202505/0823f21430ab5c458f821c582a287ca7.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3728&cate_no=1270"},
+    {code:"HG-1270-1024", name:"인조대리석마감재 문지방 도어씰", spec:"한글도어(하우스엔젤)", unit:"개", price:21500, img:"https://www.hangel.co.kr/web/product/medium/202302/b290f8e5d09144428a76f5156b479e4b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1024&cate_no=1270"},
+    {code:"HG-1270-1600", name:"인조대리석마감재 7자형 재료분리대", spec:"한글도어(하우스엔젤)", unit:"개", price:18000, img:"https://www.hangel.co.kr/web/product/medium/202304/6d504be0a5a19101f6f00d8d41f4d895.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1600&cate_no=1270"},
+    {code:"HG-1270-1275", name:"엔젤금속 방문경첩 이지경첩 4350", spec:"한글도어(하우스엔젤)", unit:"개", price:6000, img:"https://www.hangel.co.kr/web/product/medium/202505/9c6dbba7861047d2e2459b150d239c1d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1275&cate_no=1270"},
+    {code:"HG-1270-3680", name:"예림 데드락 히든도어 손잡이 YDL-512 (실버/골드)", spec:"한글도어(하우스엔젤)", unit:"개", price:0, img:"https://www.hangel.co.kr/web/product/medium/202505/6dbf0a303199ce6ec43b301d5a7def0e.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3680&cate_no=1270"},
+    {code:"HG-1270-2529", name:"예림 모티스락 방문손잡이 YY-001M (다크그레이/실버)", spec:"한글도어(하우스엔젤)", unit:"개", price:125000, img:"https://www.hangel.co.kr/web/product/medium/202505/5e4e9704110d368a2b425a349cadbcad.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2529&cate_no=1270"},
+    {code:"HG-1270-3679", name:"예림 데드락 히든도어 손잡이 YDL-511 (블랙/실버/골드)", spec:"한글도어(하우스엔젤)", unit:"개", price:0, img:"https://www.hangel.co.kr/web/product/medium/202505/642fc0d552ae21038b9a27fd93d2f8bd.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3679&cate_no=1270"},
+    {code:"HG-1270-2480", name:"예림 방문손잡이 YDL-401", spec:"정가 22,000원 · 한글도어", unit:"개", price:21000, list:22000, img:"https://www.hangel.co.kr/web/product/medium/202505/aa9752d215fceb377380b91a77df3921.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2480&cate_no=1270"},
+    {code:"HG-1270-1201", name:"예스코리아 방문손잡이 YS-375 (2 color)", spec:"한글도어(하우스엔젤)", unit:"개", price:13000, img:"https://www.hangel.co.kr/web/product/medium/202505/f7bd409a86c21fd012cfc3899fb7dc89.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1201&cate_no=1270"},
+    {code:"HG-1270-1196", name:"비플랜 방문손잡이 BPL-101 (2 color)", spec:"한글도어(하우스엔젤)", unit:"개", price:17500, img:"https://www.hangel.co.kr/web/product/medium/202505/418afed11318197708fac4479f2e72d3.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1196&cate_no=1270"},
+    {code:"HG-1270-2481", name:"예림 방문손잡이 YDL-400", spec:"정가 21,000원 · 한글도어", unit:"개", price:20000, list:21000, img:"https://www.hangel.co.kr/web/product/medium/202505/60f432eb8e043943f021563b5f0ae657.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2481&cate_no=1270"},
+    {code:"HG-1270-2524", name:"예림 향균 방문손잡이 YDL-805 (그린/아이보리/핑크)", spec:"정가 21,000원 · 한글도어", unit:"개", price:20000, list:21000, img:"https://www.hangel.co.kr/web/product/medium/202505/c72e4b3aac3bef03842546dcc8016c5a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2524&cate_no=1270"},
+    {code:"HG-1270-2474", name:"예림 방문손잡이 YDL-4000 (실버/블랙)", spec:"정가 16,000원 · 한글도어", unit:"개", price:15000, list:16000, img:"https://www.hangel.co.kr/web/product/medium/202505/d1e560916410ad5a4a53392469b85627.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2474&cate_no=1270"},
+    {code:"HG-1270-3649", name:"예림 가와준 방문손잡이 YK-003T 샴페인 (✅전용가공 필수)", spec:"정가 468,000원 · 한글도어", unit:"개", price:449000, list:468000, img:"https://www.hangel.co.kr/web/product/medium/202505/2f22a894439b0cb5c662bb79313d3591.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3649&cate_no=1270"},
+    {code:"HG-1270-3653", name:"예림 가와준 모티스락 손잡이 YK-006M 카타니아 (✅전용가공 필수)", spec:"정가 516,000원 · 한글도어", unit:"개", price:495000, list:516000, img:"https://www.hangel.co.kr/web/product/medium/202505/84e0edb9f43e7761ca0528786a8c71f1.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3653&cate_no=1270"},
+    {code:"HG-1270-1225", name:"엔젤금속 방문손잡이 ATL-501", spec:"한글도어(하우스엔젤)", unit:"개", price:13000, img:"https://www.hangel.co.kr/web/product/medium/202505/e3d330c96c06d11e15cc71b0c63caa8c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1225&cate_no=1270"},
+    {code:"HG-1270-1219", name:"동성 방문손잡이 TP-157 마루 그레이", spec:"한글도어(하우스엔젤)", unit:"개", price:14000, img:"https://www.hangel.co.kr/web/product/medium/202505/4ad453ffedeed6125968f3aaa753c93d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1219&cate_no=1270"},
+    {code:"HG-1270-2479", name:"예림 방문손잡이 YDL-402", spec:"정가 21,000원 · 한글도어", unit:"개", price:20000, list:21000, img:"https://www.hangel.co.kr/web/product/medium/202505/8fe7378f0123e7ea3e993c6f90da1c0d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2479&cate_no=1270"},
+    {code:"HG-1270-2521", name:"예림 방문손잡이 YDL-602 새틴니켈", spec:"정가 47,000원 · 한글도어", unit:"개", price:45000, list:47000, img:"https://www.hangel.co.kr/web/product/medium/202505/afaea1cb7d6bff9a68d3b15c7a429103.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2521&cate_no=1270"},
+    {code:"HG-1270-2520", name:"예림 방문손잡이 YDL-603", spec:"정가 38,000원 · 한글도어", unit:"개", price:36000, list:38000, img:"https://www.hangel.co.kr/web/product/medium/202505/a418400d0a75906a54e879f9647e7242.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2520&cate_no=1270"},
+    {code:"HG-1270-1198", name:"코스 방문손잡이 COS-703 (4 color)", spec:"한글도어(하우스엔젤)", unit:"개", price:18500, img:"https://www.hangel.co.kr/web/product/medium/202505/8a361fc4f32b40079d46e4d5706e4421.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1198&cate_no=1270"},
+    {code:"HG-1270-1281", name:"벤투스 도어스토퍼 BS-310A", spec:"한글도어(하우스엔젤)", unit:"개", price:2200, img:"https://www.hangel.co.kr/web/product/medium/202412/9006488a3f7366f5e9442497d96ef026.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1281&cate_no=1270"},
+    {code:"HG-1270-1218", name:"동성 방문손잡이 TP-158 토토 그레이", spec:"한글도어(하우스엔젤)", unit:"개", price:13500, img:"https://www.hangel.co.kr/web/product/medium/202505/e2d9bdd78013a094d472aa03fd31140a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1218&cate_no=1270"},
+    {code:"HG-1270-1200", name:"코스 방문손잡이 COS-601 (4 color)", spec:"한글도어(하우스엔젤)", unit:"개", price:16000, img:"https://www.hangel.co.kr/web/product/medium/202606/9205a96a024b6608b64225915cbddf6f.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1200&cate_no=1270"},
+    {code:"HG-1270-2518", name:"예림 방문손잡이 YDL-605 (블랙/실버/골드유광)", spec:"정가 60,000원 · 한글도어", unit:"개", price:58000, list:60000, img:"https://www.hangel.co.kr/web/product/medium/202505/d12d4de38a1efa774366eec7407a5e76.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2518&cate_no=1270"},
+    {code:"HG-1270-2475", name:"예림 방문손잡이 YDL-6000 다크그레이", spec:"정가 16,000원 · 한글도어", unit:"개", price:15000, list:16000, img:"https://www.hangel.co.kr/web/product/medium/202505/9e85a6a1fd02914418e02857f3df6782.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2475&cate_no=1270"},
+    {code:"HG-1270-2522", name:"예림 방문손잡이 YDL-601 (블랙/실버/화이트)", spec:"정가 47,000원 · 한글도어", unit:"개", price:45000, list:47000, img:"https://www.hangel.co.kr/web/product/medium/202505/ce4d24f5b918f19e9f29848f0184a994.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2522&cate_no=1270"},
+    {code:"HG-1270-3652", name:"예림 가와준 모티스락 손잡이 YK-005M 브라이트 (✅전용가공 필수)", spec:"정가 408,000원 · 한글도어", unit:"개", price:391000, list:408000, img:"https://www.hangel.co.kr/web/product/medium/202505/7b21a6728090e4808b3ca3f864148ae7.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3652&cate_no=1270"},
+    {code:"HG-1270-1199", name:"코스 방문손잡이 COS-702", spec:"한글도어(하우스엔젤)", unit:"개", price:19000, img:"https://www.hangel.co.kr/web/product/medium/202505/1dc0a1ce6728ca4052003b73dbb68fa1.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1199&cate_no=1270"},
+    {code:"HG-1270-1276", name:"벤투스 스프링 댐퍼 도어스토퍼 BS-300", spec:"한글도어(하우스엔젤)", unit:"개", price:2400, img:"https://www.hangel.co.kr/web/product/medium/202508/28134fda35c03698a7cd6ef0ac3440da.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1276&cate_no=1270"},
+    {code:"HG-1270-1288", name:"벤투스 벽체용 도어스토퍼 BS-307S", spec:"한글도어(하우스엔젤)", unit:"개", price:800, img:"https://www.hangel.co.kr/web/product/medium/202302/3a33c84254c61c5452921f6f4b8a6dbb.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1288&cate_no=1270"},
+    {code:"HG-1270-2528", name:"[예림x인테리어쇼] 프리미엄 마그네틱 핸들 YIL-001M", spec:"한글도어(하우스엔젤)", unit:"개", price:88000, img:"https://www.hangel.co.kr/web/product/medium/202505/a25749a8ab5dc7cc6d768075fbc46f60.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2528&cate_no=1270"},
+    {code:"HG-1270-2525", name:"예림 데드락 히든도어 손잡이 YDL-513 (월넛/애쉬)", spec:"한글도어(하우스엔젤)", unit:"개", price:0, img:"https://www.hangel.co.kr/web/product/medium/202505/da925fd4988667505e8e7f0cace121c8.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2525&cate_no=1270"},
+    {code:"HG-1270-2466", name:"예림 실내용 목문 디지털도어락 ADL-04", spec:"한글도어(하우스엔젤)", unit:"개", price:153000, img:"https://www.hangel.co.kr/web/product/medium/202412/615cc1ecd939c14ffac9707fb624056b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2466&cate_no=1270"},
+    {code:"HG-1270-2538", name:"예림 강화도어손잡이 YH-007 340mm 풀핸들", spec:"정가 45,000원 · 한글도어", unit:"개", price:43000, list:45000, img:"https://www.hangel.co.kr/web/product/medium/202412/bed95b20e65a632a22bd7f56961538be.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2538&cate_no=1270"},
+    {code:"HG-1270-1203", name:"예스코리아 방문손잡이 코디 블랙", spec:"한글도어(하우스엔젤)", unit:"개", price:12000, img:"https://www.hangel.co.kr/web/product/medium/202504/a13843631cea72e7299fb4dc78a56eaf.jpg", url:"https://www.hangel.co.kr/product/detail.html?product_no=1203&cate_no=1270"},
+    {code:"HG-1270-2472", name:"예림 방문손잡이 YDL-005 (블랙/실버)", spec:"정가 16,000원 · 한글도어", unit:"개", price:15000, list:16000, img:"https://www.hangel.co.kr/web/product/medium/202505/23f574f7d184d5fcecdc5af534734197.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2472&cate_no=1270"},
+    {code:"HG-1270-1285", name:"벤투스 도어캐치 스텐 빠찌링 대형 BS-6004", spec:"한글도어(하우스엔젤)", unit:"개", price:1800, img:"https://www.hangel.co.kr/web/product/medium/202302/ec23f83adc48a873b563edfda23237ec.jpeg", url:"https://www.hangel.co.kr/product/detail.html?product_no=1285&cate_no=1270"},
+    {code:"HG-1270-1202", name:"예스코리아 열쇠 방문손잡이 제니스", spec:"한글도어(하우스엔젤)", unit:"개", price:13000, img:"https://www.hangel.co.kr/web/product/medium/202505/1990578d3c056459b51c6f77e58b5a31.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1202&cate_no=1270"},
+    {code:"HG-1270-2469", name:"예림 현관문 디지털도어락 ADL-101 타이탄", spec:"한글도어(하우스엔젤)", unit:"개", price:116000, img:"https://www.hangel.co.kr/web/product/medium/202412/af432bcc6af41ea8fcd7d970d701f73d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2469&cate_no=1270"},
+    {code:"HG-1270-3654", name:"예림 가와준 방문손잡이 YK-006T 카타니아 (✅전용가공 필수)", spec:"정가 444,000원 · 한글도어", unit:"개", price:426000, list:444000, img:"https://www.hangel.co.kr/web/product/medium/202505/244b7a000e342e0dd7cdcdd8dfb16804.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3654&cate_no=1270"},
+    {code:"HG-1270-2527", name:"예림 마그네틱 핸들 YDL-105M (다크그레이/실버)", spec:"한글도어(하우스엔젤)", unit:"개", price:0, img:"https://www.hangel.co.kr/web/product/medium/202505/b49b8447becd7fffc0dd985c7a341475.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2527&cate_no=1270"},
+    {code:"HG-1270-3663", name:"예림 모티스락 더미 손잡이 YDL-700M 크롬유광 (✅전용가공 필수)", spec:"정가 54,000원 · 한글도어", unit:"개", price:52000, list:54000, img:"https://www.hangel.co.kr/web/product/medium/202505/af069fec7ee538306e4a781deb03cca5.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3663&cate_no=1270"},
+    {code:"HG-1270-3661", name:"예림 모티스락 더미 손잡이 YDL-700M 골드유광 (✅전용가공 필수)", spec:"정가 54,000원 · 한글도어", unit:"개", price:52000, list:54000, img:"https://www.hangel.co.kr/web/product/medium/202505/4a735ebf55a661f8120de5e91149dfd1.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3661&cate_no=1270"}
+  ]}
+  ,{ cat:"한글도어 · 시공 패키지/서비스", icon:"🛠", items:[
+    {code:"HG-1458-3483", name:"상담 후 결제 (031-8027-2602)", spec:"한글도어(하우스엔젤)", unit:"건", price:0, img:"https://www.hangel.co.kr/web/product/medium/202509/bb53117c662230f18f37f254fb693274.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3483&cate_no=1458"},
+    {code:"HG-1458-2038", name:"[서비스신청] 전문가 실측 서비스", spec:"한글도어(하우스엔젤)", unit:"건", price:30000, img:"https://www.hangel.co.kr/web/product/medium/202412/45679d79bff780836c15666f8368cd32.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2038&cate_no=1458"}
+  ]}
+  ,{ cat:"한글도어 · 예림도어(기타)", icon:"🏷", items:[
+    {code:"HG-648-1721", name:"(방염) 예림 아트월 아르떼월글램 부클레 (295폭/550폭)", spec:"정가 53,000원 · 한글도어", unit:"세트", price:51000, list:53000, img:"https://www.hangel.co.kr/web/product/medium/202605/9af5836f4a9034dae63848facb6d1aad.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1721&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-1717", name:"(방염) 예림 아트월 아르떼월 대리석 폰티아 무광 유광 (380폭)", spec:"정가 51,000원 · 한글도어", unit:"세트", price:49000, list:51000, img:"https://www.hangel.co.kr/web/product/medium/202605/44b514d4e22244a313baed56bfe2470d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1717&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-4230", name:"(방염) 예림 아트월 아르떼월 대리석 무광 포그화이트 (550폭)", spec:"정가 99,000원 · 한글도어", unit:"세트", price:95000, list:99000, img:"https://www.hangel.co.kr/web/product/medium/202605/e83563776b034cbc1962ffb73b352635.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=4230&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-4231", name:"(방염) 예림 아트월 아르떼월 대리석 무광 모데나크림 (550폭)", spec:"정가 99,000원 · 한글도어", unit:"세트", price:95000, list:99000, img:"https://www.hangel.co.kr/web/product/medium/202605/e317061794a39248f63c55311d5882a2.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=4231&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-116", name:"예림 인테리어필름 HS004 크림화이트 WA-06", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/94ad6751fd4d889a60f7f195a0de9230.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=116&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-145", name:"예림 인테리어필름 HP522 쁘레 회벽웜그레이", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/ed29269ffacc3621469f8952123d121f.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=145&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-146", name:"예림 인테리어필름 HP521 쁘레 회벽화이트", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/212b49537d6cefd2b4a78d88c6339bce.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=146&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-189", name:"예림 인테리어필름 HW1064 오크딥(G5104) 예림135", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/757336280cde71e6ac4ad8910de89171.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=189&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-2425", name:"예림 강마루 리시오 스노우화이트 (95폭) YR-102", spec:"정가 88,000원 · 한글도어", unit:"세트", price:77000, list:88000, img:"https://www.hangel.co.kr/web/product/medium/202409/059495792d181c905584e88c72813445.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2425&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-2332", name:"예림 인테리어필름 HN2009 유로 스톤화이트", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/6b49aecba9c7a3a2a33454877f328012.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2332&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-207", name:"예림 인테리어필름 HS005 밀크화이트 예림114", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/266b071a114f0005725d321ac896e68f.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=207&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-137", name:"예림 인테리어필름 HP508 웜그레이페인트 PW-03", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/582e445d1b29763986ec25e2e1ec4f60.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=137&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-2334", name:"예림 인테리어필름 HW1077 카멜사펠레", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/33789a29b2a4db22fc6a789f2a33dc7f.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2334&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-3956", name:"예림 인테리어필름 HP540 쁘레 회벽크렘", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/0a05384c95228d901f68846e9a09d1b2.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3956&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-190", name:"예림 인테리어필름 HW1019 오크마일드 예림134", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/480ec286f9936c9494c87dc6c4d88d08.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=190&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-150", name:"예림 인테리어필름 HW1073 브랜디오크", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/f8079787f04a64f5898c96c7f3b6feb0.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=150&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-264", name:"예림 인테리어필름 HS002 유백 예림6", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/d7ba4e46fb5da7e5173a7ad168416ff5.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=264&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-157", name:"예림 인테리어필름 HW1065 브릭월넛", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/8ea077575ab9f3cf3b0e72d0ff512248.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=157&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-2363", name:"예림 인테리어필름 HSM03 매트 캐시미어", spec:"한글도어(하우스엔젤)", unit:"세트", price:13200, img:"https://www.hangel.co.kr/web/product/medium/202408/48f0b581dcdd4a015473d8f6cd6a7443.jpg", url:"https://www.hangel.co.kr/product/detail.html?product_no=2363&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-2333", name:"예림 인테리어필름 HS046", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/1addab046ada116e22c3f1eba54c82f3.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2333&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-2364", name:"예림 인테리어필름 HSM02 매트 밀크화이트", spec:"한글도어(하우스엔젤)", unit:"세트", price:13200, img:"https://www.hangel.co.kr/web/product/medium/202408/6a54d25eba9cc6796fb23ec28cf506f0.jpg", url:"https://www.hangel.co.kr/product/detail.html?product_no=2364&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-1728", name:"예림 사각 템바보드 디자인루바 S22 중형 112x12T 방염 가능", spec:"한글도어(하우스엔젤)", unit:"세트", price:10000, img:"https://www.hangel.co.kr/web/product/medium/202509/b0be198b08c1c18d23215e4dd316c1be.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1728&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-143", name:"예림 인테리어필름 HP524 쁘레 회벽코지브라운", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/9dd4261954c9e9f7d905017a61834623.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=143&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-139", name:"예림 인테리어필름 HP506 화이트페인트 PW-01", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/c3c48afee052e41d948f35fd04ecc59f.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=139&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-2370", name:"예림 벨로체 인테리어필름 PP우드 HO4301 카타니아오크", spec:"한글도어(하우스엔젤)", unit:"세트", price:21900, img:"https://www.hangel.co.kr/web/product/medium/202408/82e382a3480a3c40a5916da6b13dac88.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2370&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-222", name:"예림 인테리어필름 HW1016 프렌치오크 예림98", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/c10b4aabffc8e376782656dc08026f05.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=222&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-2122", name:"예림 향균 인테리어필름 HC801 퓨어화이트 CL-01", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/c6eb76f5ce6405f4e4a819b7fbfa7405.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2122&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-158", name:"예림 인테리어필름 HN2003 솔리드스톤그레이", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/fdc4a2ccf23f3dbffd9e49dfb04c7490.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=158&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-144", name:"예림 인테리어필름 HP523 쁘레 회벽쿨그레이", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/f1dd0c47c1603ed34baa0a4228ed2931.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=144&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-178", name:"예림 인테리어필름 HE403 소프트화이트 예림148", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/87974da2e7be091b12a697aa9d9275ff.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=178&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-232", name:"예림 인테리어필름 HW1004 크림오크 예림85", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/60fa9324021be02274283daf390ea211.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=232&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-247", name:"예림 인테리어필름 HW1033 그레이오크 예림58", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/df49170d3aeb6725bfe77156cd146634.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=247&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-171", name:"예림 향균 인테리어필름 HC802 페일그레이 CL-02", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/3e112e3d8ac2abc10c8b04249cfe087c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=171&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-167", name:"예림 향균 인테리어필름 HL1852 스킨오크 CL-06", spec:"한글도어(하우스엔젤)", unit:"세트", price:9800, img:"https://www.hangel.co.kr/web/product/medium/202508/fed65c589ccad86481f07ce1ca70291a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=167&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-648-260", name:"예림 인테리어필름 HW1024 로열워시오크 예림10", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/a22daa20365e58d851388cff886e4f6a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=260&cate_no=648", door_type:"방문", scope:"도어+문틀(세트)"}
+  ]}
+  ,{ cat:"한글도어 · 우딘도어(기타)", icon:"🏷", items:[
+    {code:"HG-649-1335", name:"우딘 원목 직각 투톤 템바보드 (300x27T)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202509/d6bf6781e493812da47abc6d04974d3e.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1335&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-937", name:"우딘 인테리어필름 WS036 도브화이트", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/c303a878e1b44527a0e6b9d40e87f595.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=937&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-956", name:"우딘 인테리어필름 WW1128 나르본오크 (S128)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/4ef230b43810da1730414322e1500520.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=956&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-2084", name:"우딘 프리미엄 아트월 세라민타일 (💧방수기능성)", spec:"정가 176,000원 · 한글도어", unit:"세트", price:168000, list:176000, img:"https://www.hangel.co.kr/web/product/medium/202403/634f11f6431b3312952441813970c277.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2084&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-1298", name:"우딘 프리미엄 아트월 비지오그란데 (강화마루겸용)", spec:"정가 53,000원 · 한글도어", unit:"세트", price:51000, list:53000, img:"https://www.hangel.co.kr/web/product/medium/202302/abff4e3f33567d37333c74f9699f1cd7.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1298&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-1336", name:"우딘 직각 투톤 템바보드 (300x27T, 300x34T)", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202509/5979285a3301faee70d307e932177550.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1336&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-991", name:"우딘 인테리어필름 WW1002 라이온월넛", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/23ea424cc47e99d11075b260af674d9a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=991&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-1098", name:"우딘 멤브레인도어 목문 레이", spec:"한글도어(하우스엔젤)", unit:"세트", price:145000, img:"https://www.hangel.co.kr/web/product/medium/202301/c78aab59999e4f6fa5ba758efe57ae14.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1098&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-989", name:"우딘 인테리어필름 WW1027 소노마오크 (P27)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/5022873b913a660f603a819a2b6f6557.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=989&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-984", name:"우딘 인테리어필름 WE105 갤럭시화이트 (S105)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/84259626cf7ac3558b36a368edb81353.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=984&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-938", name:"우딘 인테리어필름 WS034 파스텔중백색", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/28cf9c84b982ac19d99ef65b2ef1b230.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=938&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-958", name:"우딘 인테리어필름 WW1124 리얼오크 (S124)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/c6db33681947a3be630b6d1ef3c8be0b.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=958&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-996", name:"우딘 인테리어필름 WW1008 살리나스", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/2c3c4f884d16a3749bc49cedb17de5b7.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=996&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-935", name:"우딘 인테리어필름 WS031 WAL94 (S31)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/47ece12a17e8ab36a0d39b78f5514a75.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=935&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-936", name:"우딘 인테리어필름 WS037 유백색", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/baf119e7fe29efd206305b0a51c2f072.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=936&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-3388", name:"우딘 인테리어필름 WS035 웜화이트", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/afa31504571a7abbfb2f51aa8a586495.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3388&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-939", name:"우딘 인테리어필름 WS033 파스텔백색", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/c27bcfe746f14c33b0fb58e49245b985.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=939&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-982", name:"우딘 인테리어필름 WW1010 네이처오크", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/197d6670407f8218f78f3b6e643ec3f8.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=982&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-3380", name:"우딘 인테리어필름 WW1135 헤이즐넛오크 (S135)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/2a32451e649441ee817269c951ef833d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3380&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-1236", name:"우딘 PS몰딩 도장용 천장 몰딩 2계단 25x15", spec:"한글도어(하우스엔젤)", unit:"세트", price:3300, img:"https://www.hangel.co.kr/web/product/medium/202301/30583889c9bc479c33d52e90d034dd5c.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1236&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-3384", name:"우딘 인테리어필름 WS030 모던화이트", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/d58d47726b634a0b9600279146a2e849.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3384&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-1341", name:"우딘 포인트 템바보드", spec:"한글도어(하우스엔젤)", unit:"세트", price:0, img:"https://www.hangel.co.kr/web/product/medium/202509/4edb899fd32925c4e39779c332d9c1cb.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1341&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-1025", name:"우딘 PS몰딩 도장용 걸레받이 몰딩 100x13", spec:"한글도어(하우스엔젤)", unit:"세트", price:8600, img:"https://www.hangel.co.kr/web/product/medium/202301/7732a34d8b0b443fa3ff9e23360d4a11.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1025&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-986", name:"우딘 인테리어필름 WE046 화이트펄 (S46)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/5eff22e2f8d7c9444daca71f418dd45a.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=986&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-985", name:"우딘 인테리어필름 WW1056 인디언오크 (S56)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/3deb576dfacdd48eb32e24d47ef9eeee.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=985&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-931", name:"우딘 인테리어필름 WS080 도브그레이", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/826d9ad3038760a56fe16324a10a310d.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=931&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-968", name:"우딘 인테리어필름 WW1095 골드애쉬 (S95)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9900, img:"https://www.hangel.co.kr/web/product/medium/202508/6a615aa1ef92ae0e65f51821305bf6a8.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=968&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-912", name:"우딘 인테리어필름 WS069 블루그레이", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/64d2662dfb60f031d884066aff3b51be.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=912&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-934", name:"우딘 인테리어필름 WS038 파스텔크림", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/e5da21c0af40acef20ea4fbe98492171.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=934&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-993", name:"우딘 인테리어필름 WW1004 프렌치오크", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/c3b2146bfbccfeea645eaed09d36eb81.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=993&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-2127", name:"우딘 인테리어필름 WW1001 아카시아", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/6975a42bcaaa7d3ba4a57133a2ee8fad.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=2127&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-995", name:"우딘 인테리어필름 WW1007 펄오크", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/7ada7edc7cc994bb47907c7e4a078d77.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=995&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-926", name:"우딘 인테리어필름 WS086 진회색", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/747836b78e753f57ee6c07a83576d8bd.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=926&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-1051", name:"우딘 랩핑 천장 몰딩 마이너스 25x15", spec:"한글도어(하우스엔젤)", unit:"세트", price:2900, img:"https://www.hangel.co.kr/web/product/medium/202301/f929c6be737cdb1d393340524d9b0889.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=1051&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-3382", name:"우딘 인테리어필름 WS084 뉴트럴샌드", spec:"한글도어(하우스엔젤)", unit:"세트", price:9200, img:"https://www.hangel.co.kr/web/product/medium/202508/a6c4f0f87669649fd77c9b469892d210.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3382&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-3392", name:"우딘 인테리어필름 WM503 콘트라베이지", spec:"한글도어(하우스엔젤)", unit:"세트", price:9900, img:"https://www.hangel.co.kr/web/product/medium/202508/33e9627e08d48b0939f4edc92fc0cb72.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=3392&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"},
+    {code:"HG-649-953", name:"우딘 인테리어필름 WW1131 S131 (W879)", spec:"한글도어(하우스엔젤)", unit:"세트", price:9600, img:"https://www.hangel.co.kr/web/product/medium/202508/0271bd70153e39f7c78dc9f35f0f420f.png", url:"https://www.hangel.co.kr/product/detail.html?product_no=953&cate_no=649", door_type:"방문", scope:"도어+문틀(세트)"}
+  ]}
+
+];
+const DOOR_CAT_JSON = JSON.stringify(DOOR_CAT);
+let CAT_BY_CODE={}, CAT_BY_NAME={}, catEdit=false;
+function catRebuild(){ CAT_BY_CODE={}; CAT_BY_NAME={}; DOOR_CAT.forEach(function(g){ g.items.forEach(function(it){ if(it&&it.code){ CAT_BY_CODE[it.code]=it; CAT_BY_NAME[it.name]=it; } }); }); }
+function catLoad(){ var raw=null; var emb=document.getElementById("ecorean-catalog"); if(emb&&emb.textContent.trim()) raw=emb.textContent; if(!raw){ try{ raw=localStorage.getItem("ecorean_door_catalog_v1"); }catch(e){} } if(raw){ try{ var p=JSON.parse(raw); if(Array.isArray(p)&&p.length) DOOR_CAT=p; }catch(e){} } catRebuild(); }
+function catPersist(){ try{ localStorage.setItem("ecorean_door_catalog_v1", JSON.stringify(DOOR_CAT)); }catch(e){} var emb=document.getElementById("ecorean-catalog"); if(emb) emb.textContent=JSON.stringify(DOOR_CAT).replace(/</g,"\\u003c"); }
+function catApply(){ catPersist(); catRebuild(); }
+function openCatalog(){ document.getElementById("catModal").classList.add("open"); catBuild(); catFilter(); }
+function closeCatalog(){ document.getElementById("catModal").classList.remove("open"); }
+function toggleCatEdit(){ catEdit=!catEdit; var b=document.getElementById("catEditBtn"); if(b) b.textContent=catEdit?"✓ 편집완료":"✏ 편집"; var t=document.getElementById("catTools"); if(t) t.classList.toggle("on",catEdit); catBuild(); catFilter(); }
+function catUnits(){ return ["세트","짝","개","조","본","롤","박스","통","EA"]; }
+function uopts(v){ return catUnits().map(function(u){ return '<option'+(u===v?' selected':'')+'>'+u+'</option>'; }).join(''); }
+function catBuild(){
+  var grid=document.getElementById("catGrid"); if(!grid) return; var h="";
+  DOOR_CAT.forEach(function(g,gi){
+    h+='<div class="cat-group" data-g="'+gi+'"><div class="cat-gh"><span>'+(g.icon||"📦")+'</span><span>'+esc(g.cat)+'</span>'+(catEdit?' <button class="wrn" style="margin-left:auto" onclick="catDelGroup('+gi+')">그룹삭제</button>':'')+'</div><div class="cat-grid">';
+    g.items.forEach(function(it,ii){
+      if(catEdit){
+        h+='<div class="cat-item" data-k="'+esc(it.code+" "+it.name)+'">'
+          +'<input value="'+esc(it.code)+'" onchange="catEditItem('+gi+','+ii+',\'code\',this.value)" placeholder="코드">'
+          +'<input value="'+esc(it.name)+'" onchange="catEditItem('+gi+','+ii+',\'name\',this.value)" placeholder="품명">'
+          +'<input value="'+esc(it.spec)+'" onchange="catEditItem('+gi+','+ii+',\'spec\',this.value)" placeholder="규격">'
+          +'<div style="display:flex;gap:5px"><select onchange="catEditItem('+gi+','+ii+',\'unit\',this.value)" style="flex:0 0 78px">'+uopts(it.unit)+'</select>'
+          +'<input type="number" min="0" value="'+esc(it.price)+'" onchange="catEditItem('+gi+','+ii+',\'price\',this.value)" placeholder="단가(0=문의)"></div>'
+          +'<input value="'+esc(it.img||"")+'" onchange="catEditItem('+gi+','+ii+',\'img\',this.value)" placeholder="이미지 URL">'
+          +'<div class="cbtn"><button class="wrn" style="flex:1" onclick="catDelItem('+gi+','+ii+')">🗑 삭제</button></div></div>';
+      } else {
+        var imgH = it.img ? '<img class="cimg" loading="lazy" src="'+esc(it.img)+'" alt="'+esc(it.name)+'" onerror="this.outerHTML=\'<div class=&quot;cimg-ph&quot;>🚪</div>\'">' : '<div class="cimg-ph">'+(g.icon||"🚪")+'</div>';
+        var priceH = it.price>0 ? ((it.list&&it.list>it.price?'<span class="was">₩'+fmt(it.list)+'</span>':'')+"₩"+fmt(it.price)+" /"+esc(it.unit)) : '<span style="color:var(--warn)">견적문의</span>';
+        var linkH = it.url ? '<a class="clink" href="'+esc(it.url)+'" target="_blank" rel="noopener">상세보기 ↗</a>' : '';
+        h+='<div class="cat-item" data-k="'+esc(it.code+" "+it.name+" "+it.spec)+'">'
+          +imgH
+          +'<div class="cc">'+esc(it.code)+'</div><div class="cn">'+esc(it.name)+'</div><div class="cs">'+esc(it.spec)+'</div>'
+          +'<div class="cp">'+priceH+'</div>'+linkH
+          +'<div class="cbtn"><button class="badd" onclick="addFromCatalog(\''+esc(it.code)+'\')">＋담기</button></div></div>';
+      }
+    });
+    if(catEdit) h+='<div class="cat-item" style="justify-content:center;align-items:center;border-style:dashed"><button onclick="catAddItem('+gi+')">＋ 품목추가</button></div>';
+    h+='</div></div>';
+  });
+  grid.innerHTML=h;
+}
+function catFilter(){
+  var q=(document.getElementById("catQ").value||"").trim().toLowerCase(); var any=false;
+  document.querySelectorAll("#catGrid .cat-item").forEach(function(c){ var dk=c.getAttribute("data-k"); var hit=!q||((dk||"").toLowerCase().indexOf(q)>=0); c.style.display=hit?"":"none"; if(hit&&dk) any=true; });
+  document.querySelectorAll("#catGrid .cat-group").forEach(function(g){ var vis=[].slice.call(g.querySelectorAll(".cat-item")).some(function(c){ return c.style.display!=="none"&&c.getAttribute("data-k"); }); g.style.display=vis?"":"none"; });
+  var em=document.getElementById("catEmpty"); if(em) em.style.display=any?"none":"block";
+}
+function catEditItem(gi,ii,key,val){ var it=DOOR_CAT[gi].items[ii]; if(!it) return; it[key]=(key==="price")?(parseInt(String(val).replace(/[^0-9]/g,""),10)||0):val; catApply(); }
+function catAddItem(gi){ DOOR_CAT[gi].items.push({code:"USR-"+String(Date.now()).slice(-6), name:"새 품목", spec:"", unit:"개", price:0}); catApply(); catBuild(); catFilter(); }
+function catDelItem(gi,ii){ if(!confirm("이 품목을 삭제할까요?")) return; DOOR_CAT[gi].items.splice(ii,1); catApply(); catBuild(); catFilter(); }
+function catAddGroup(){ var n=prompt("새 그룹 이름","새 그룹"); if(n===null) return; DOOR_CAT.push({cat:n||"새 그룹", icon:"📦", items:[]}); catApply(); catBuild(); catFilter(); }
+function catDelGroup(gi){ if(!confirm("그룹 전체를 삭제할까요?")) return; DOOR_CAT.splice(gi,1); catApply(); catBuild(); catFilter(); }
+function catReset(){ if(!confirm("도감을 기본값으로 되돌릴까요? 추가/수정 내용이 사라집니다.")) return; DOOR_CAT=JSON.parse(DOOR_CAT_JSON); catApply(); catBuild(); catFilter(); }
+function openBulk(){ document.getElementById("bulkPanel").classList.add("on"); var t=document.getElementById("bulkText"); if(t) t.focus(); }
+function closeBulk(){ document.getElementById("bulkPanel").classList.remove("on"); }
+function runBulk(){
+  var ta=document.getElementById("bulkText"); if(!ta) return; var raw=(ta.value||"").trim(); var msg=document.getElementById("bulkMsg");
+  if(!raw){ if(msg) msg.textContent="붙여넣은 내용이 없습니다."; return; }
+  var lines=raw.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
+  var added=0,gmade=0,seq=0,defG=null;
+  var fg=function(name){ name=(name||"").trim(); if(!name) return null; var g=DOOR_CAT.find(function(x){return x.cat===name;}); if(!g){ g={cat:name,icon:"📦",items:[]}; DOOR_CAT.push(g); gmade++; } return g; };
+  lines.forEach(function(ln,idx){
+    var c=ln.split(/\t|,|\|/).map(function(x){return x.trim();});
+    if(idx===0 && /품명|품목|name|코드|code/i.test(ln) && !/\d/.test(c[c.length-1]||"")) return;
+    var grp=c[0],code=c[1],name=c[2],spec=c[3],unit=c[4],price=c[5];
+    if(c.length===1){ name=c[0]; grp=code=spec=unit=price=""; }
+    else if(c.length===2){ code=c[0]; name=c[1]; grp=spec=unit=price=""; }
+    else if(c.length===3){ grp=""; code=c[0]; name=c[1]; spec=c[2]; }
+    if(!name) return;
+    var g=fg(grp)||defG||(defG=fg("대량등록"));
+    var cc=(code||"").trim(); if(!cc) cc="USR-"+String(Date.now()).slice(-5)+(seq++);
+    while(CAT_BY_CODE[cc]) cc=cc+"-"+(seq++);
+    var pr=parseInt(String(price||"").replace(/[^0-9]/g,""),10)||0;
+    var item={code:cc,name:name,spec:(spec||""),unit:(unit||"").trim()||"개",price:pr};
+    g.items.push(item); CAT_BY_CODE[cc]=item; added++;
+  });
+  catApply(); catBuild(); catFilter();
+  if(msg) msg.textContent="추가 "+added+"건"+(gmade?(" · 새 그룹 "+gmade):"")+" 완료"+((typeof canStore==="function"&&!canStore())?" (임시)":"");
+  ta.value="";
+}
+function addFromCatalog(code){ var c=CAT_BY_CODE[code]; if(!c) return; var it=blankItem(); it.item_name=c.name; it.unit_price=(c.price>0?c.price:""); it.remark=(c.spec||"")+(c.url?(c.spec?" · ":"")+c.url:""); if(c.scope) it.scope=c.scope; if(c.door_type) it.door_type=c.door_type; items.push(it); render(); var m=document.getElementById("bulkMsg"); }
+
+function __init(){
+  loadPresets(); refreshPresetSelect("b"); refreshPresetSelect("s");
+  catLoad();
+  const savedEl = document.getElementById("ecorean-saved-state");
+  if(savedEl && savedEl.textContent.trim()){
+    // 저장된 HTML 파일을 직접 연 경우 — 파일에 담긴 내용 우선
+    try{ loadFromData(JSON.parse(savedEl.textContent)); initDates(); }
+    catch(e){ if(!loadDraft()){ items=[blankItem()]; } initDates(); render(); }
+  }else if(loadDraft()){
+    // 이 기기에 자동저장된 작성 중 발주서 복원
+    initDates();
+    const el=document.getElementById("saveState"); if(el){ el.textContent="✓ 이전 작성내용 복원됨"; el.classList.remove("idle"); }
+  }else{
+    items=[blankItem()]; initDates(); render();
+  }
+  // 입력 변화 감지 → 자동저장
+  const sheet=document.getElementById("sheet");
+  if(sheet) sheet.addEventListener("input", scheduleAutosave);
+  _autosaveReady=true;
+}
+if(document.readyState!=="loading") __init(); else document.addEventListener("DOMContentLoaded", __init);
+
+/* ===== ECOREAN 로고 주입 ===== */
+const LOGO="data:image/jpeg;base64,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";
+(function(){ var set=function(){ var bl=document.getElementById("brandLogo"); if(bl) bl.src=LOGO; }; if(document.readyState!=="loading") set(); else document.addEventListener("DOMContentLoaded",set); })();
+</script>
+
+<div class="modal" id="catModal">
+  <div class="modal-card">
+    <div class="cat-top">
+      <div class="mt">도어 자재 도감<small>한글도어(하우스엔젤) 303개 상품 수록 · ＋담기로 발주에 추가 · ✏ 편집으로 코드·품목·단가·이미지 수정(자동저장) · 📥 대량등록 · 가격/이미지 기준일 2026-06-29</small></div>
+      <input type="search" id="catQ" placeholder="검색: ABS / 현관문 / 경첩 / 도어록 / 중문…" oninput="catFilter()">
+      <button class="ghost" id="catEditBtn" onclick="toggleCatEdit()">✏ 편집</button>
+      <button class="ghost" onclick="closeCatalog()">✕ 닫기</button>
+    </div>
+    <div class="cat-tools" id="catTools">
+      <span>✏ 편집모드 — 수정 시 즉시 반영·자동저장</span><span style="flex:1"></span>
+      <button onclick="catAddGroup()">＋ 그룹추가</button>
+      <button onclick="openBulk()">📥 대량등록</button>
+      <button class="wrn" onclick="catReset()">기본값 복원</button>
+    </div>
+    <div class="cat-body">
+      <div class="bulk" id="bulkPanel">
+        <div style="font-weight:700;color:var(--brand);margin-bottom:6px">📥 대량등록 — 엑셀/표 붙여넣기</div>
+        <div style="font-size:12px;color:var(--sub);margin-bottom:8px">열: 그룹·코드·품명·규격·단위·단가 · 탭/쉼표 구분 · 품명만 있어도 됨 · 첫 줄 머리글 자동무시</div>
+        <textarea id="bulkText" rows="7" placeholder="예) 방문·실내문, DR-INT-ABS, ABS 방문 화이트, 실내 방문, 짝, 0"></textarea>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button onclick="runBulk()">＋ 추가</button><button class="wrn" onclick="closeBulk()">취소</button>
+          <span id="bulkMsg" style="font-size:12px;color:var(--sub)"></span>
+        </div>
+      </div>
+      <div id="catGrid"></div>
+      <div id="catEmpty" style="display:none;color:var(--sub);text-align:center;padding:30px">검색 결과가 없습니다.</div>
+    </div>
+  </div>
+</div>
+<script id="ecorean-saved-state" type="application/json"></script>
+<script id="ecorean-catalog" type="application/json"></script>
+</body>
+</html>

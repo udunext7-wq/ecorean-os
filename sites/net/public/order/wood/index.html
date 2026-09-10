@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<title>ECOREAN 실내목공 자재 발주서 + 도감</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --ink:#1d2433; --sub:#877c64; --line:#e6d6b0; --line-2:#d0bd8e;
+    --paper:#ffffff; --bg:#f1f1ef;
+    --brand:#172a47; --brand-2:#26406b; --brand-soft:#f6eedb;
+    --gold:#b89a5e; --gold-2:#cdb480; --gold-soft:#ece2cd; --gold-mid:#b8924e; --gold-deep:#9c7635;
+    --warn:#a8432c; --radius:14px; --fs:14px;
+  }
+  *{box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-adjust:exact;}
+  body{margin:0; background:
+      radial-gradient(120% 60% at 50% 0%, #f7f6f4 0%, var(--bg) 60%) fixed;
+    color:var(--ink); font-family:"Pretendard","Pretendard Variable",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    font-size:var(--fs); line-height:1.55; -webkit-font-smoothing:antialiased;}
+
+  .toolbar{position:sticky; top:0; z-index:50; display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    padding:14px 22px; background:rgba(255,254,251,.88); backdrop-filter:blur(12px); border-bottom:1px solid var(--line);}
+  .toolbar .grow{flex:1;}
+  .toolbar .hint{color:var(--sub); font-size:12px; letter-spacing:.2px;}
+  button{font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--line-2);
+    background:#fff; color:var(--ink); padding:11px 17px; border-radius:11px; transition:.18s; white-space:nowrap; letter-spacing:.2px;}
+  button:hover{border-color:var(--gold-mid); color:var(--brand); transform:translateY(-1px);}
+  button.primary{background:linear-gradient(135deg,var(--gold-mid),var(--gold-deep)); color:#fff; border-color:var(--gold-deep); box-shadow:0 4px 14px rgba(140,105,40,.30);}
+  button.primary:hover{background:var(--gold-deep); color:#fff;}
+  button.ghost{background:transparent;}
+  button.danger{color:var(--warn); border-color:#e3c6bd;}
+  button.danger:hover{background:#fbeee9; border-color:var(--warn); color:var(--warn);}
+
+  .sheet{width:210mm; max-width:100%; margin:28px auto; background:var(--paper);
+    padding:20mm 16mm 16mm; box-shadow:0 18px 50px rgba(20,40,75,.14); border-radius:3px; position:relative;}
+  .sheet::before{content:""; position:absolute; inset:8mm; border:1px solid var(--gold-2); border-radius:2px; pointer-events:none;}
+
+  .doc-head{display:flex; justify-content:space-between; align-items:flex-end; padding-bottom:18px; margin-bottom:24px;
+    border-bottom:1px solid var(--gold-mid); position:relative;}
+  .doc-head::after{content:none;}
+  .brand-block{display:flex; align-items:flex-end; gap:14px;}
+  .brandlogo{height:84px; width:auto; display:block;}
+  @media (max-width:860px){ .brandlogo{height:64px;} }
+  .logo{width:52px; height:52px; border-radius:14px; background:linear-gradient(150deg,var(--brand),var(--brand-2));
+    color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:23px; letter-spacing:-1px;
+    box-shadow:0 6px 18px rgba(20,40,75,.28);}
+  .brand-name{font-weight:800; font-size:19px; letter-spacing:1px;}
+  .brand-sub{color:var(--sub); font-size:11px; margin-top:3px; letter-spacing:1.5px; text-transform:uppercase;}
+  .doc-title{text-align:right;}
+  .doc-title .en{color:var(--gold); font-size:10.5px; letter-spacing:3.5px; font-weight:700; text-transform:uppercase; margin-bottom:5px;}
+  .doc-title h1{margin:0; font-size:30px; letter-spacing:11px; font-weight:800; color:var(--brand); padding-left:11px;}
+
+  .sec{margin-top:26px;}
+  .sec-h{display:flex; align-items:center; gap:11px; margin-bottom:12px;}
+  .sec-h .no{font-family:"Georgia","Times New Roman",serif; font-size:12px; font-weight:700; color:var(--gold);
+    width:27px; height:27px; border:1px solid var(--gold-soft); border-radius:50%; background:#fff;
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .sec-h .t{font-weight:700; font-size:15px; letter-spacing:.4px;}
+  .sec-h .tip{color:var(--sub); font-size:11.5px; font-weight:400;}
+  .sec-h::after{content:""; flex:1; height:1px; background:linear-gradient(90deg,var(--gold-soft),transparent); margin-left:6px;}
+
+  table.grid{width:100%; border-collapse:collapse; table-layout:fixed; background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  table.grid th, table.grid td{border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:0; vertical-align:middle;}
+  table.grid tr:last-child th, table.grid tr:last-child td{border-bottom:0;}
+  table.grid td:last-child{border-right:0;}
+  table.grid th{background:var(--brand-soft); color:var(--brand); font-weight:600; font-size:12.5px; padding:13px 16px; text-align:left; white-space:nowrap; letter-spacing:.2px;}
+  .cell-in{width:100%; border:0; background:transparent; font-family:inherit; font-size:14px; color:var(--ink); padding:13px 16px;}
+  .cell-in::placeholder{color:#b3b6aa;}
+  .cell-in:focus{outline:0; background:#fbf6ea; box-shadow:inset 0 0 0 2px var(--gold-mid);}
+  select.cell-in{appearance:none; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23777' fill='none' stroke-width='1.4'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center;}
+
+  .party{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:760px){ .party{grid-template-columns:1fr;} }
+  .party-head{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; gap:8px; font-weight:700; letter-spacing:1px; font-size:13px;}
+  .preset-ctrl{display:flex; gap:5px; align-items:center;}
+  .preset-ctrl select{font-family:inherit; font-size:11px; border:1px solid rgba(255,255,255,.45); background:rgba(255,255,255,.14); color:#fff; border-radius:7px; padding:4px 7px; cursor:pointer; max-width:118px;}
+  .preset-ctrl select option{color:#23271f;}
+  .preset-ctrl button{font-size:11px; padding:4px 9px; border:1px solid rgba(255,255,255,.45); background:transparent; color:#fff; border-radius:7px;}
+  .preset-ctrl button:hover{background:rgba(255,255,255,.18); color:#fff;}
+
+  table.items{width:100%; border-collapse:collapse; table-layout:fixed; border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  table.items th, table.items td{border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:0; vertical-align:middle;}
+  table.items td:last-child, table.items th:last-child{border-right:0;}
+  table.items tbody tr:last-child td{border-bottom:0;}
+  table.items thead th{background:linear-gradient(var(--gold-mid),var(--gold-deep)); color:#fff; font-size:11.5px; font-weight:600; padding:12px 6px; text-align:center; white-space:nowrap; letter-spacing:.4px;}
+  table.items tbody tr:nth-child(even){background:#faf9f4;}
+  table.items td{font-size:13px;}
+  table.items .cell-in{padding:11px 9px; font-size:13px;}
+  table.items .rownum{text-align:center; color:var(--sub); font-size:12px; font-variant-numeric:tabular-nums;}
+  table.items .amt{text-align:right; font-variant-numeric:tabular-nums; padding:11px 10px; font-weight:700; color:var(--brand);}
+  .col-del button, .col-pic button{width:100%; border:0; background:transparent; font-size:15px; padding:6px; cursor:pointer;}
+  .col-del button{color:var(--warn);} .col-del button:hover{background:#fbeee9;}
+  .col-pic button{color:var(--brand-2);} .col-pic button:hover{background:var(--brand-soft);}
+  .pcell{display:flex; align-items:center;}
+  .pcell .cell-in{flex:1; min-width:0;}
+  .pcell button{flex:0 0 auto; border:0; background:transparent; color:var(--sub); font-size:14px; padding:5px 7px; cursor:pointer;}
+  .pcell button:hover{color:var(--brand);}
+  .add-row{width:100%; border-style:dashed; margin-top:10px; padding:12px; color:var(--sub);}
+  .add-row:hover{color:var(--brand); border-color:var(--gold-mid);}
+
+  .totals{display:flex; justify-content:flex-end; margin-top:14px;}
+  .totals table{border-collapse:collapse; min-width:360px; border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  .totals td{padding:13px 18px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums;}
+  .totals tr:last-child td{border-bottom:0;}
+  .totals .k{background:var(--brand-soft); color:var(--brand); font-weight:600; text-align:right; width:150px;}
+  .totals .v{text-align:right; font-weight:700;}
+  .totals .grand .k{background:linear-gradient(135deg,var(--gold-mid),var(--gold-deep)); color:#fff;}
+  .totals .grand .v{background:#fbf6ea; font-size:18px; font-weight:800; color:var(--brand);}
+  .vat-toggle{display:inline-flex; gap:5px; align-items:center; font-size:11px; color:var(--sub);}
+  .vat-toggle select{font-family:inherit; font-size:11px; border:1px solid var(--line-2); border-radius:6px; padding:3px 6px;}
+
+  textarea.cell-in{resize:vertical; min-height:46px; width:100%;}
+  .footnote{margin-top:24px; padding-top:15px; border-top:1px solid var(--gold-soft); color:var(--sub); font-size:10.5px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;}
+
+  /* 모달 / 도감 */
+  .modal{position:fixed; inset:0; z-index:200; background:rgba(14,24,48,.5); display:none; padding:22px; backdrop-filter:blur(3px);}
+  .modal.on{display:flex; align-items:flex-start; justify-content:center;}
+  .modal-box{background:var(--bg); width:min(1060px,100%); max-height:90vh; max-height:90dvh; border-radius:18px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 30px 80px rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.4);}
+  .modal-top{display:flex; align-items:center; gap:12px; padding:16px 20px; background:#fff; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  .modal-top .mt{font-weight:800; font-size:15px; letter-spacing:.3px;}
+  .modal-top .mt small{display:block; color:var(--sub); font-size:11px; font-weight:500; letter-spacing:.2px;}
+  .modal-top input{flex:1; min-width:180px; padding:11px 14px; border:1px solid var(--line-2); border-radius:11px; font-family:inherit; font-size:14px;}
+  .modal-top input:focus{outline:0; box-shadow:inset 0 0 0 2px var(--gold-mid);}
+  .modal-top .x{margin-left:auto;}
+  .modal-body{overflow:auto; padding:18px 20px 32px;}
+  .grp{margin-top:22px;} .grp:first-child{margin-top:4px;}
+  .grp-h{display:flex; align-items:center; gap:9px; margin-bottom:11px;}
+  .grp-h .ic{width:26px; height:26px; border-radius:8px; background:#fff; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:14px;}
+  .grp-h .nm{font-weight:700; font-size:14px; letter-spacing:.2px;} .grp-h .ct{color:var(--sub); font-size:11.5px;}
+  .grp-h::after{content:""; flex:1; height:1px; background:linear-gradient(90deg,var(--line),transparent);}
+  .cardgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(212px,1fr)); gap:11px;}
+  .card{background:#fff; border:1px solid var(--line); border-radius:13px; overflow:hidden; display:flex; flex-direction:column; transition:.16s;}
+  .card:hover{border-color:var(--gold-2); box-shadow:0 8px 22px rgba(20,40,75,.1); transform:translateY(-2px);}
+  .thumb{height:98px; display:flex; align-items:center; justify-content:center; background:#fff; position:relative; overflow:hidden;}
+  .thumb .cimg{width:100%; height:100%; object-fit:contain; padding:7px;}
+  .delimg{position:absolute; top:6px; right:6px; width:22px; height:22px; border:0; border-radius:50%; background:rgba(20,30,55,.78); color:#fff; font-size:11px; line-height:1; cursor:pointer;}
+  .delimg:hover{background:var(--warn);}
+  .cmeta .imgbtn{color:var(--brand);}
+  .thumb .code{position:absolute; top:7px; left:8px; font-size:9.5px; color:var(--brand); background:rgba(255,255,255,.85); padding:2px 6px; border-radius:6px; font-weight:700; letter-spacing:.3px;}
+  .cbody{padding:10px 11px 11px; flex:1; display:flex; flex-direction:column; gap:3px;}
+  .cnm{font-weight:700; font-size:12.5px; line-height:1.35;}
+  .csp{color:var(--sub); font-size:11px; flex:1;}
+  .cpr{font-size:12.5px; font-weight:800; color:var(--brand);}
+  .cmeta{display:flex; align-items:center; gap:5px; margin-top:7px;}
+  .cmeta .unit{font-size:10.5px; color:var(--brand); background:var(--brand-soft); padding:2px 8px; border-radius:20px; font-weight:600;}
+  .cmeta .sp{flex:1;}
+  .cmeta button{font-size:11px; font-weight:600; padding:5px 9px; border-radius:8px;}
+  .badd{background:linear-gradient(135deg,var(--gold-mid),var(--gold-deep)); color:#fff; border-color:var(--gold-deep);}
+  .badd:hover{background:var(--gold); border-color:var(--gold); color:#fff;}
+  .empty{display:none; text-align:center; color:var(--sub); padding:40px;}
+
+  /* 산출 마법사 */
+  .asm-btns{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+  .asm-btns button{border:1px solid var(--line-2); background:#fff; padding:10px 15px; border-radius:11px; font-size:13px;}
+  .asm-btns button.on{background:linear-gradient(135deg,var(--gold-mid),var(--gold-deep)); color:#fff; border-color:var(--gold-deep); box-shadow:0 4px 12px rgba(140,105,40,.25);}
+  .calc-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media(max-width:760px){ .calc-grid{grid-template-columns:1fr;} }
+  .panel{background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px;}
+  .panel h4{margin:0 0 10px; font-size:13px; color:var(--brand); letter-spacing:.3px;}
+  .arow, .alabel{display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr auto; gap:7px; align-items:center;}
+  .alabel{font-size:11px; color:var(--sub); margin-bottom:5px;}
+  .arow{margin-bottom:7px;}
+  .arow input{border:1px solid var(--line-2); border-radius:9px; padding:9px 10px; font-family:inherit; font-size:13px; width:100%;}
+  .arow input:focus{outline:0; box-shadow:inset 0 0 0 2px var(--gold-mid);}
+  .arow .rm{border:0; background:transparent; color:var(--warn); cursor:pointer; font-size:16px;}
+  .ply{display:inline-flex; gap:6px; margin-left:6px;}
+  .ply button{border:1px solid var(--line-2); background:#fff; padding:8px 17px; border-radius:9px; font-size:13px;}
+  .ply button.on{background:linear-gradient(135deg,var(--gold-mid),var(--gold-deep)); color:#fff; border-color:var(--gold-deep);}
+  .coef{display:grid; grid-template-columns:1fr 1fr; gap:8px 11px; margin-top:7px;}
+  .coef label{font-size:11.5px; color:var(--sub); display:flex; flex-direction:column; gap:3px;}
+  .coef input{border:1px solid var(--line-2); border-radius:8px; padding:8px 9px; font-size:13px; font-family:inherit;}
+  .coef input:focus{outline:0; box-shadow:inset 0 0 0 2px var(--gold-mid);}
+  .selrow{display:flex; gap:9px; align-items:center; margin:9px 0;}
+  .selrow select{flex:1; border:1px solid var(--line-2); border-radius:9px; padding:9px 11px; font-family:inherit; font-size:13px;}
+  table.bd{width:100%; border-collapse:collapse; margin-top:4px;}
+  table.bd th, table.bd td{border:1px solid var(--line); padding:8px 10px; font-size:12px; text-align:left; vertical-align:top;}
+  table.bd th{background:var(--brand-soft); color:var(--brand);}
+  table.bd .q{text-align:right; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  table.bd .f{color:var(--sub); font-size:11px;}
+  .bd-sum{text-align:right; font-weight:800; color:var(--brand); margin-top:9px; font-size:14px;}
+
+  @media (max-width:860px){
+    .sheet{padding:26px 18px; margin:14px auto; border-radius:2px;}
+    .sheet::before{inset:11px;}
+    .doc-title h1{font-size:24px; letter-spacing:7px;}
+    .logo{width:46px;height:46px;font-size:20px;}
+    .modal{padding:12px;}
+  }
+
+  @media print{
+    @page{size:A4; margin:0;}
+    html, body{background:#fff !important;}
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    .toolbar{display:none !important;}
+    .modal{display:none !important;}
+    .party{grid-template-columns:1fr 1fr !important; gap:10px;}
+    .sheet{margin:0; box-shadow:none;}
+    .cell-in:focus{outline:none; box-shadow:none; background:transparent;}
+  }
+  .modal-sub{display:flex; align-items:center; gap:8px; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--brand-soft); flex-wrap:wrap;}
+  .modal-sub .eh{font-size:12.5px; color:var(--brand); font-weight:600;}
+  .modal-sub .sp{flex:1;}
+  .ghost.on{background:var(--brand); color:#fff; border-color:var(--brand);}
+  .ghost.wrn{color:var(--warn); border-color:#e6c4b6;}
+  .card.edit{padding:0;}
+  .card.edit .cbody{padding:10px;}
+  .edr{display:flex; align-items:center; gap:6px; margin-bottom:6px;}
+  .edr label{width:34px; flex:none; font-size:11.5px; color:var(--sub); font-weight:700;}
+  .edr input, .edr select{flex:1; min-width:0; padding:6px 8px; border:1px solid var(--line); border-radius:7px; font-size:12.5px; font-family:inherit; background:#fff;}
+  .edr input:focus, .edr select:focus{outline:none; border-color:var(--gold-mid); box-shadow:0 0 0 2px var(--brand-soft);}
+  .edr .hh{font-size:10.5px; color:var(--sub); flex:none;}
+  .grp-h .edg{padding:4px 8px; border:1px solid var(--line); border-radius:7px; font-size:13px; font-weight:700; font-family:inherit; background:#fff; color:var(--brand);}
+  .grp-h .sp{flex:1;}
+
+  /* 변형(사이즈 선택) 카드 */
+  .vsel{ width:100%; margin:4px 0 2px; padding:7px 8px; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:12.5px; background:#fff; }
+  .vbadge{ position:absolute; left:8px; bottom:8px; background:var(--brand); color:#fff; font-size:10px; padding:2px 7px; border-radius:20px; font-weight:700; }
+  .vedit{ border:1px dashed var(--line); border-radius:8px; padding:8px; margin:4px 0; }
+  .vhdr{ font-size:11px; color:var(--sub); margin-bottom:5px; font-weight:700; }
+  .vrow{ display:grid; grid-template-columns:1fr 0.9fr 0.9fr auto; gap:5px; margin-bottom:5px; }
+  .vrow input{ width:100%; box-sizing:border-box; padding:5px 6px; border:1px solid var(--line); border-radius:6px; font-size:12px; }
+  .vrow .wrn{ padding:4px 8px; }
+  .addv{ font-size:12px; width:100%; }
+
+  /* 셀 줄바꿈 + 세로 가운데 정렬: 품목·규격·비고 전체 표시 */
+  table.items td{ vertical-align:middle; }
+  .cell-in.wrapcell{ white-space:pre-wrap; word-break:break-word; overflow:hidden; resize:none; line-height:1.42; min-height:40px; display:block; text-align:center; }
+  table.items select.cell-in{ text-align:center; text-align-last:center; }
+  .pcell{ align-items:center; }
+  .pickbtn{ flex:0 0 auto; width:24px; height:30px; padding:0; border:1px solid var(--line-2); border-radius:8px; background:#fff; color:var(--sub); cursor:pointer; }
+  .pickbtn:hover{ border-color:var(--gold-mid); }
+  @media print{ .cell-in.wrapcell{ min-height:0; } .pickbtn{ display:none; } }
+
+  /* ===== 모바일 반응형 + 키보드 겹침 방지 ===== */
+  .tbl-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:12px; }
+  input, select, textarea{ scroll-margin-top:96px; scroll-margin-bottom:120px; }
+  @media (max-width:640px){
+    /* iOS 입력 포커스 시 자동 확대 방지(폰트 16px↑) */
+    input, select, textarea, .cell-in{ font-size:16px !important; }
+    .sheet{ width:100%; padding:16px 11px; margin:8px auto; border-radius:2px; }
+    .sheet::before{ display:none; }
+    .toolbar{ padding:9px 11px; gap:6px; }
+    .toolbar button{ padding:9px 11px; font-size:12px; border-radius:9px; }
+    .toolbar .hint{ display:none; }
+    .doc-head{ flex-direction:column; align-items:flex-start; gap:12px; }
+    .doc-title{ text-align:left; }
+    .doc-title h1{ font-size:22px; letter-spacing:4px; padding-left:0; }
+    .brandlogo{ height:54px; }
+    .sec-h{ flex-wrap:wrap; } .sec-h .tip{ display:none; }
+    table.items{ min-width:660px; }            /* 가로 스크롤로 9열 유지 */
+    table.items thead th{ font-size:10.5px; }
+    .cardgrid{ grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:9px; }
+    .totals{ justify-content:stretch; }
+    .totals table{ min-width:0; width:100%; }
+    .modal{ padding:0; }
+    .modal.on{ align-items:stretch; }
+    .modal-box{ width:100%; max-height:100dvh; height:100dvh; border-radius:0; }
+    .modal-body{ padding:14px 13px calc(28px + env(safe-area-inset-bottom)); }
+    .modal-top{ padding:12px 14px; }
+    .footnote{ font-size:9.5px; }
+    .calc-grid{ gap:12px; }
+    .arow, .alabel{ grid-template-columns:1.3fr 1fr 1fr 1fr auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="primary" onclick="openCalc()">🧮 자재 산출</button>
+  <button class="primary" onclick="openCatalog()">📖 자재 도감에서 담기</button>
+  <button class="ghost" onclick="addItem()">＋ 빈 줄 추가</button>
+  <button class="ghost" onclick="saveHTML()">💾 저장(HTML)</button>
+  <button class="ghost" onclick="window.print()">🖨 인쇄</button>
+  <button class="primary" onclick="savePDF()">📄 PDF 저장</button>
+  <button class="ghost" onclick="exportJSON()">⤓ JSON(BOC)</button>
+  <button class="ghost" onclick="triggerImport()">⤒ 불러오기</button>
+  <input type="file" id="import_file" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
+  <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="onImgPick(this)">
+  <span class="grow"></span>
+  <span class="hint">품목 선택 시 규격·단위·단가 자동입력 · 단가는 싹다(ssakda) 기준·수정가능 · 견적문의 품목은 단가 빈칸</span>
+  <button class="danger" onclick="resetAll()">초기화</button>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="doc-head">
+    <div class="brand-block">
+      <img id="brandLogo" class="brandlogo" alt="ECOREAN INTERIOR DESIGN" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onerror="this.onerror=null;this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';">
+    </div>
+    <div class="doc-title"><div class="en">Purchase Order · 실내목공 자재</div><h1>자재 발주서</h1></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="no">01</span><span class="t">문서 정보</span></div>
+    <table class="grid">
+      <colgroup><col style="width:14%"><col style="width:19%"><col style="width:14%"><col style="width:18%"><col style="width:15%"><col style="width:20%"></colgroup>
+      <tr>
+        <th>발주번호</th><td><input class="cell-in" id="po_no" placeholder="ORD-2026-0001"></td>
+        <th>발주일자</th><td><input class="cell-in" type="date" id="order_date"></td>
+        <th>상태</th>
+        <td><select class="cell-in" id="status"><option value="draft">작성중</option><option value="sent">발주완료</option><option value="confirmed">공급확정</option></select></td>
+      </tr>
+      <tr>
+        <th>프로젝트</th><td><input class="cell-in" id="project_id" placeholder="PRJ-2026-0001"></td>
+        <th>현장명</th><td><input class="cell-in" id="site_name" placeholder="○○아파트 101동 1203호"></td>
+        <th>납기요청일</th><td><input class="cell-in" type="date" id="due_date"></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="no">02</span><span class="t">거래 당사자</span><span class="tip">발주자 = ECOREAN · 공급자 = 자재상/목재상</span></div>
+    <div class="party">
+      <table class="grid">
+        <tr><th colspan="2" style="background:linear-gradient(135deg,var(--gold-mid),var(--gold-deep)); color:#fff; padding:0;">
+          <div class="party-head"><span>발주자</span>
+            <span class="preset-ctrl no-print">
+              <select id="preset_b" onchange="applyPreset('b',this.value)"><option value="">프리셋…</option></select>
+              <button type="button" onclick="savePreset('b')">＋저장</button>
+            </span></div></th></tr>
+        <tr><th style="width:34%">상호</th><td><input class="cell-in" id="b_name" value="ECOREAN"></td></tr>
+        <tr><th>사업자등록번호</th><td><input class="cell-in" id="b_biz" placeholder="000-00-00000"></td></tr>
+        <tr><th>대표자</th><td><input class="cell-in" id="b_ceo"></td></tr>
+        <tr><th>담당자 / 연락처</th><td><input class="cell-in" id="b_mgr" placeholder="홍길동 / 010-0000-0000"></td></tr>
+        <tr><th>주소</th><td><input class="cell-in" id="b_addr"></td></tr>
+      </table>
+      <table class="grid">
+        <tr><th colspan="2" style="background:#9c8a63; color:#fff; padding:0;">
+          <div class="party-head"><span>공급자</span>
+            <span class="preset-ctrl no-print">
+              <select id="preset_s" onchange="applyPreset('s',this.value)"><option value="">프리셋…</option></select>
+              <button type="button" onclick="savePreset('s')">＋저장</button>
+            </span></div></th></tr>
+        <tr><th style="width:34%">상호</th><td><input class="cell-in" id="s_name" placeholder="○○목재 / ○○자재"></td></tr>
+        <tr><th>사업자등록번호</th><td><input class="cell-in" id="s_biz" placeholder="000-00-00000"></td></tr>
+        <tr><th>대표자</th><td><input class="cell-in" id="s_ceo"></td></tr>
+        <tr><th>담당자 / 연락처</th><td><input class="cell-in" id="s_mgr" placeholder="담당자 / 전화·팩스"></td></tr>
+        <tr><th>주소</th><td><input class="cell-in" id="s_addr"></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="no">03</span><span class="t">거래 조건</span></div>
+    <table class="grid">
+      <colgroup><col style="width:16%"><col style="width:34%"><col style="width:16%"><col style="width:34%"></colgroup>
+      <tr><th>납품장소</th><td><input class="cell-in" id="ship_to" placeholder="현장 직납 / 창고 입고"></td>
+        <th>결제조건</th><td><input class="cell-in" id="pay_terms" placeholder="납품 후 월말 정산 등"></td></tr>
+      <tr><th>인도·운송</th><td><input class="cell-in" id="delivery" placeholder="공급자 부담 현장 하차 / 양중 포함"></td>
+        <th>검수방법</th><td><input class="cell-in" id="inspect" placeholder="수량·규격·파손 검수 후 인수"></td></tr>
+      <tr><th>지체상금</th><td><input class="cell-in" id="penalty" placeholder="납기 초과 1일당 ○○"></td>
+        <th>반품·교환</th><td><input class="cell-in" id="install" placeholder="파손·규격상이 시 교환"></td></tr>
+      <tr><th>특기사항</th><td colspan="3"><textarea class="cell-in" id="notes" placeholder="현장 양중, 분할 납품, 잔재 회수, 친환경 등급(E0/SE0) 등"></textarea></td></tr>
+    </table>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="no">04</span><span class="t">실내목공 자재 품목</span>
+      <span class="tip">「📖 자재 도감」으로 담거나, 품목 선택 시 규격·단위·참고단가 자동입력 → 현장 견적가로 수정 · 🔍=실물사진</span></div>
+    <div class="tbl-scroll"><table class="items">
+      <colgroup>
+        <col style="width:3%"><col style="width:23%"><col style="width:18%"><col style="width:6%">
+        <col style="width:7%"><col style="width:11%"><col style="width:12%"><col style="width:17%"><col style="width:3%">
+      </colgroup>
+      <thead><tr>
+        <th>No</th><th>분류 · 품목</th><th>규격 / 사양</th><th>단위</th><th>수량</th><th>단가(원)</th><th>공급가액</th><th>비고</th><th class="no-print">×</th>
+      </tr></thead>
+      <tbody id="items"></tbody>
+    </table></div>
+    <button class="ghost add-row" onclick="addItem()">＋ 빈 줄 추가</button>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="no">05</span><span class="t">금액 합계</span>
+      <span class="tip"><span class="vat-toggle">VAT
+        <select id="vat_mode" onchange="recalc()"><option value="add">별도(공급가의 10%)</option><option value="incl">포함</option><option value="none">없음(면세)</option></select>
+      </span></span></div>
+    <div class="totals"><table>
+      <tr><td class="k">공급가액</td><td class="v" id="t_supply">0</td></tr>
+      <tr><td class="k">부가세 (VAT)</td><td class="v" id="t_vat">0</td></tr>
+      <tr class="grand"><td class="k">합계금액</td><td class="v" id="t_total">0</td></tr>
+    </table></div>
+  </div>
+
+  <div class="footnote">
+    <span>본 발주서는 상기 조건에 따른 자재 납품을 요청하며, 세부 계약은 별도 계약서/약관에 따른다.</span>
+    <span>단가=싹다(ssakda) 기준(2026.06·VAT별도), 견적문의 품목은 전화확인 · 실제 발주가는 확인 후 확정 · ECOREAN BOC</span>
+  </div>
+</div>
+
+<!-- 자재 도감 모달 -->
+<div class="modal" id="catModal">
+  <div class="modal-box">
+    <div class="modal-top">
+      <div class="mt">실내목공 자재 도감<small>품목 ＋담기 · 📷 사진첨부 · ✏ 편집으로 단가·품목 직접 수정(자동저장)</small></div>
+      <input id="catQ" type="search" placeholder="검색: 이보드 / 타카핀 / 422 / 소프트월 / 합판…" oninput="catFilter()">
+      <button id="catEditBtn" class="ghost" onclick="toggleCatEdit()">✏ 편집</button>
+      <button class="ghost x" onclick="closeCatalog()">✕ 닫기</button>
+    </div>
+    <div class="modal-sub" id="catEditTools" style="display:none">
+      <span class="eh">✏ 편집모드 — 단가·품목을 고치면 발주서·산출·재단에 즉시 반영되고 자동 저장됩니다.</span>
+      <span class="sp"></span>
+      <button class="ghost" onclick="addCatGroup()">＋ 그룹추가</button>
+      <button class="ghost wrn" onclick="resetCatalog()">기본값 복원</button>
+    </div>
+    <div class="modal-body">
+      <div id="catGrid"></div>
+      <div class="empty" id="catEmpty">검색 결과가 없습니다.</div>
+    </div>
+  </div>
+</div>
+
+<!-- 자재 산출 마법사 -->
+<div class="modal" id="calcModal">
+  <div class="modal-box">
+    <div class="modal-top">
+      <div class="mt">자재 산출 마법사<small>면적 입력 → 주자재·각재·부자재 자동 산출 → 발주표에 담기</small></div>
+      <button class="ghost x" onclick="closeCalc()">✕ 닫기</button>
+    </div>
+    <div class="modal-body">
+      <div class="asm-btns" id="modeBtns" style="margin-bottom:10px">
+        <button class="on" id="mode_area" onclick="setMode('area')">📐 면적 기반 공법 산출</button>
+        <button id="mode_cut" onclick="setMode('cut')">✂️ 판재 재단(원장→조각) 산출</button>
+      </div>
+      <div id="modeArea">
+      <div class="asm-btns" id="asmBtns"></div>
+      <div class="calc-grid">
+        <div>
+          <div class="panel">
+            <h4>① 면적 구간 <span style="font-weight:400;color:var(--sub);font-size:11px">가로·세로 입력 시 ㎡ 자동 (㎡ 직접 입력도 가능)</span></h4>
+            <div class="alabel"><span>구간명</span><span>가로(m)</span><span>세로(m)</span><span>면적(㎡)</span><span></span></div>
+            <div id="areaRows"></div>
+            <button class="ghost" style="margin-top:4px;font-size:12px;padding:5px 10px" onclick="addArea()">＋ 구간 추가</button>
+            <div style="margin-top:8px;font-size:13px">합계 <b id="areaTotal" style="color:var(--brand)">0</b> ㎡ <span id="pyeong" style="color:var(--sub)"></span></div>
+          </div>
+          <div class="panel" style="margin-top:12px" id="optPanel"></div>
+        </div>
+        <div class="panel">
+          <h4>③ 산출 내역 <span style="font-weight:400;color:var(--sub);font-size:11px">계수 수정 시 자동 재계산</span></h4>
+          <table class="bd"><thead><tr><th>자재</th><th>산출식</th><th>수량(편집)</th><th class="no-print">제외</th></tr></thead><tbody id="bdBody"></tbody></table>
+          <div class="bd-sum" id="bdSum"></div>
+          <button class="primary" style="width:100%;margin-top:10px" onclick="addCalcToOrder()">＋ 산출 결과 발주표에 담기</button>
+          <div style="margin-top:7px;font-size:10.5px;color:var(--sub)">※ 산출 계수는 현장 표준 가정값입니다. 시공 방식·간격에 맞게 수정 후 사용하세요.</div>
+        </div>
+      </div>
+      </div><!-- /modeArea -->
+
+      <div id="modeCut" style="display:none">
+        <div class="calc-grid">
+          <div>
+            <div class="panel">
+              <h4>① 원장(재고 판재) 선택 <span style="font-weight:400;color:var(--sub);font-size:11px">원장 크기·단가 자동 (수정 가능)</span></h4>
+              <div class="selrow"><span style="font-size:12.5px;white-space:nowrap">원장</span><select id="stockSel" onchange="onStock(this.value)"></select></div>
+              <div class="coef">
+                <label>원장 가로 W(mm)<input type="number" id="stW" value="1220" oninput="cutCalc()"></label>
+                <label>원장 세로 H(mm)<input type="number" id="stH" value="2440" oninput="cutCalc()"></label>
+                <label>톱 두께 kerf(mm)<input type="number" id="kerf" value="5" oninput="cutCalc()"></label>
+                <label style="justify-content:flex-end"><span>결방향 회전 허용</span><input type="checkbox" id="rot" checked onchange="cutCalc()" style="width:18px;height:18px;align-self:flex-start"></label>
+              </div>
+            </div>
+            <div class="panel" style="margin-top:12px">
+              <h4>② 재단 조각 목록 (필요한 조각 크기·수량)</h4>
+              <div class="alabel" style="grid-template-columns:1.4fr 1fr 1fr .9fr auto"><span>조각명</span><span>가로 w(mm)</span><span>세로 h(mm)</span><span>수량</span><span></span></div>
+              <div id="cutRows"></div>
+              <button class="ghost" style="margin-top:4px;font-size:12px;padding:5px 10px" onclick="addCut()">＋ 조각 추가</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h4>③ 재단 산출 결과 <span style="font-weight:400;color:var(--sub);font-size:11px">원장 1장당 수율 기준</span></h4>
+            <table class="bd"><thead><tr><th>조각</th><th>1장당 / 산출</th><th>소요</th></tr></thead><tbody id="cutBody"></tbody></table>
+            <div class="bd-sum" id="cutSum"></div>
+            <button class="primary" style="width:100%;margin-top:10px" onclick="addCutToOrder()">＋ 원장 소요량 발주표에 담기</button>
+            <div style="margin-top:7px;font-size:10.5px;color:var(--sub)">※ 조각별 독립 재단 기준(가이드라인 컷)입니다. 한 원장에서 여러 조각을 섞어 재단하면 매수가 더 줄 수 있습니다.</div>
+          </div>
+        </div>
+      </div><!-- /modeCut -->
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== 실내목공 자재 카탈로그 (BOC materials) — 규격·단위·참고단가 ===== */
+let WOOD_CATALOG = [{"cat":"석고보드","icon":"🧱","items":[{"code":"GYP-R","name":"일반 석고보드 (GB-R)","spec":"천장/벽 · 떠붙임/피스","unit":"장","variants":[{"sz":"9.5T (900×1800)","code":"GYP-R095","price":3550,"spec":"900×1800 · GB-R"},{"sz":"12.5T (900×1800)","code":"GYP-R125","price":4780,"spec":"900×1800 · GB-R"},{"sz":"12.5T (900×2400)","code":"GYP-R125L","price":6500,"spec":"900×2400"},{"sz":"9.5T (900×2400)","code":"SSK001","price":4780,"spec":"900×2400 · 싹다"},{"sz":"9.5T (900×2500)","code":"SSK002","price":5040,"spec":"900×2500 · 싹다"},{"sz":"9.5T (900×2550)","code":"SSK003","price":5140,"spec":"900×2550 · 싹다"},{"sz":"9.5T (900×2600)","code":"SSK004","price":5250,"spec":"900×2600 · 싹다"},{"sz":"9.5T (900×2650)","code":"SSK005","price":5350,"spec":"900×2650 · 싹다"},{"sz":"9.5T (900×2700)","code":"SSK006","price":5450,"spec":"900×2700 · 싹다"},{"sz":"12.5T (900×2550)","code":"SSK007","price":6920,"spec":"900×2550 · 싹다"}]},{"code":"GYP-F","name":"방화 석고보드 (GB-F)","spec":"방화구획·내화","unit":"장","variants":[{"sz":"12.5T","code":"GYP-F125","price":6150,"spec":"900×1800 · GB-F"},{"sz":"15T","code":"GYP-F150","price":7790,"spec":"900×1800"},{"sz":"12.5T (900×2400)","code":"SSK015","price":0,"spec":"900×2400 · 견적문의 · 싹다"},{"sz":"15T (900×2400)","code":"SSK016","price":0,"spec":"900×2400 · 견적문의 · 싹다"},{"sz":"19T (900×1800)","code":"SSK017","price":10900,"spec":"900×1800 · 싹다"},{"sz":"25T (600×1800)","code":"SSK018","price":10230,"spec":"600×1800 · 싹다"}]},{"code":"GYP-S","name":"방수 석고보드 (GB-S)","spec":"욕실·주방 등 습부위","unit":"장","variants":[{"sz":"9.5T","code":"GYP-S095","price":5740,"spec":"900×1800 · GB-S"},{"sz":"12.5T","code":"GYP-S125","price":8170,"spec":"900×1800"},{"sz":"9.5T (900×2400)","code":"SSK008","price":7760,"spec":"900×2400 · 싹다"},{"sz":"9.5T (900×2500)","code":"SSK009","price":8090,"spec":"900×2500 · 싹다"},{"sz":"9.5T (900×2550)","code":"SSK010","price":8250,"spec":"900×2550 · 싹다"},{"sz":"12.5T (900×2400)","code":"SSK011","price":11500,"spec":"900×2400 · 싹다"},{"sz":"12.5T (900×2550)","code":"SSK012","price":0,"spec":"900×2550 · 견적문의 · 싹다"},{"sz":"15T (900×1800)","code":"SSK013","price":0,"spec":"900×1800 · 견적문의 · 싹다"},{"sz":"15T (900×2400)","code":"SSK014","price":0,"spec":"900×2400 · 견적문의 · 싹다"}]},{"code":"GYP-SD","name":"차음 석고보드","spec":"세대간벽·고밀도","unit":"장","variants":[{"sz":"12.5T","code":"GYP-SD125","price":5580,"spec":"900×1800"},{"sz":"15T (고밀도)","code":"GYP-SD150","price":6920,"spec":"900×1800 · 고밀도"},{"sz":"12.5T (900×2400)","code":"SSK019","price":0,"spec":"900×2400 · 견적문의 · 싹다"}]},{"code":"GYP-FS","name":"방화방수 석고보드","spec":"방화+방수 겸용","unit":"장","variants":[{"sz":"12.5T","code":"GYP-FS125","price":10450,"spec":"900×1800"},{"sz":"15T","code":"GYP-FS150","price":12750,"spec":"900×1800"},{"sz":"15T (900×2400)","code":"SSK020","price":0,"spec":"900×2400 · 견적문의 · 싹다"},{"sz":"19T (900×1800)","code":"SSK021","price":0,"spec":"900×1800 · 견적문의 · 싹다"}]},{"code":"GYP-AB","name":"방균 석고보드","spec":"곰팡이 억제","unit":"장","variants":[{"sz":"9.5T (900×1800)","code":"GYP-AB095","price":3880,"spec":"900×1800"},{"sz":"9.5T (900×2400)","code":"GYP-AB095L","price":5240,"spec":"900×2400"},{"sz":"12.5T (900×2400)","code":"GYP-AB125","price":7000,"spec":"900×2400"},{"sz":"12.5T (900×1800)","code":"SSK022","price":5260,"spec":"900×1800 · 싹다"}]},{"code":"GYP-AS","name":"유공흡음 석고보드 (KCC)","spec":"흡음·타공 12.5T","unit":"장","variants":[{"sz":"아트사운드","code":"GYP-ARTS","price":31600,"spec":"900×1800 · KCC"},{"sz":"사운드윈","code":"GYP-SNDW","price":30500,"spec":"900×1800 · KCC"}]},{"code":"GYP-BOND","name":"석고본드 25kg","spec":"25kg · 떠붙임","unit":"포","price":11800},{"code":"SSK040","name":"사운드원(12.5T)","spec":"싹다","unit":"EA","variants":[{"sz":"900×1800","code":"SSK041","price":30500,"spec":"900×1800"},{"sz":"1200×2400","code":"SSK042","price":54230,"spec":"1200×2400"}]}]},{"cat":"판재 (합판·MDF·OSB)","icon":"🪵","items":[{"code":"PNL-PLY","name":"일반합판","spec":"1220×2440 (4×8)","unit":"장","variants":[{"sz":"2.7T (MLH)","code":"PNL-PLY027","price":7100,"spec":"1220×2440 (4×8)"},{"sz":"4.8T","code":"PNL-PLY048","price":9200,"spec":"1220×2440 (4×8)"},{"sz":"8.5T","code":"PNL-PLY085","price":14500,"spec":"1220×2440"},{"sz":"11.5T","code":"PNL-PLY115","price":21000,"spec":"1220×2440"},{"sz":"14.5T","code":"PNL-PLY145","price":25800,"spec":"1220×2440"},{"sz":"17.5T","code":"PNL-PLY175","price":31800,"spec":"1220×2440"}]},{"code":"PNL-CP","name":"내수(방수)합판","spec":"1220×2440","unit":"장","variants":[{"sz":"12T (동남아)","code":"PNL-CP120","price":23500,"spec":"1220×2440 · 동남아"},{"sz":"18T (국산 E1)","code":"PNL-CP18","price":44900,"spec":"1220×2440"}]},{"code":"PNL-MSP","name":"미송합판 (유절)","spec":"1220×2440","unit":"장","variants":[{"sz":"8.5T","code":"PNL-MSP085","price":17900,"spec":"1220×2440"},{"sz":"15T","code":"PNL-MSP15","price":36800,"spec":"1220×2440"}]},{"code":"PNL-MDF","name":"MDF","spec":"1220×2440 · E0/E1","unit":"장","variants":[{"sz":"3T","code":"PNL-MDF030","price":4500,"spec":"1220×2440"},{"sz":"6T (E1)","code":"PNL-MDF06","price":0,"spec":"1220×2440"},{"sz":"9T","code":"PNL-MDF090","price":10000,"spec":"1220×2440"},{"sz":"12T (E0)","code":"PNL-MDF12","price":0,"spec":"1220×2440"},{"sz":"15T","code":"PNL-MDF15","price":0,"spec":"1220×2440"},{"sz":"18T","code":"PNL-MDF180","price":18000,"spec":"1220×2440"},{"sz":"25T","code":"PNL-MDF25","price":0,"spec":"1220×2440"}]},{"code":"PNL-OSB","name":"OSB","spec":"1220×2440 · 유럽산","unit":"장","variants":[{"sz":"9T","code":"PNL-OSB090","price":10500,"spec":"1220×2440 · 유럽산"},{"sz":"11T","code":"PNL-OSB110","price":13500,"spec":"1220×2440"},{"sz":"18T","code":"PNL-OSB180","price":19500,"spec":"1220×2440"}]},{"code":"PNL-CORE18","name":"코아합판 18T","spec":"1220×2440 · 알비자","unit":"장","price":21500},{"code":"PNL-BIR12","name":"자작합판 12T(러시아)","spec":"1220×2440 · S/BB","unit":"장","price":56000},{"code":"PNL-HINO08","name":"편백(히노끼)합판 8T","spec":"1220×2440 · 유절","unit":"장","price":34300},{"code":"PNL-GLM180","name":"집성목 18T","spec":"600×2400 · 적/홍송","unit":"장","price":35000},{"code":"PNL-LAR115","name":"낙엽송합판 11.5T (엠보)","spec":"1220×2440","unit":"장","price":31500},{"code":"SSK182","name":"합판 4.6Tx3x6 일비자","spec":"910×1820 · 싹다","unit":"－","price":7500},{"code":"SSK183","name":"합판 8.5Tx3x6 일비자","spec":"910×1820 · 싹다","unit":"－","price":10900},{"code":"SSK184","name":"합판 11.5Tx3x6 일비자","spec":"910×1820 · 싹다","unit":"－","price":15000},{"code":"SSK185","name":"합판 14.5Tx3x6 일비자","spec":"910×1820 · 싹다","unit":"－","price":20500},{"code":"SSK186","name":"합판 2.7Tx4x8 일비자","spec":"1220×2440 · 싹다","unit":"－","price":6700},{"code":"SSK187","name":"합판 4.6Tx4x8 일비자","spec":"1220×2440 · 싹다","unit":"－","price":8000},{"code":"SSK188","name":"합판 8.5Tx4x8 일비자","spec":"1220×2440 · 싹다","unit":"－","price":15000},{"code":"SSK189","name":"합판 11.5Tx4x8 일비자","spec":"1220×2440 · 싹다","unit":"－","price":19000},{"code":"SSK190","name":"합판 14.5Tx4x8 콤비","spec":"1220×2440 · 싹다","unit":"－","price":26000},{"code":"SSK191","name":"합판 17.5Tx4x8 콤비","spec":"1220×2440 · 싹다","unit":"－","price":31700},{"code":"SSK192","name":"합판 8.5Tx4x8 MLH 베트남","spec":"1220×2440 · 싹다","unit":"－","price":15600},{"code":"SSK193","name":"합판 11.5Tx4x8 MLH 베트남","spec":"1220×2440 · 싹다","unit":"－","price":17200},{"code":"SSK194","name":"합판 14.5Tx4x8 MLH 베트남","spec":"1220×2440 · 싹다","unit":"－","price":22500},{"code":"SSK195","name":"합판 17.5Tx4x8 MLH 베트남","spec":"1220×2440 · 싹다","unit":"－","price":26500},{"code":"SSK196","name":"합판 11.5Tx3x6 MLH","spec":"910×1820 · 싹다","unit":"－","price":15100},{"code":"SSK197","name":"합판 2.7Tx4x8 MLH","spec":"1220×2440 · 싹다","unit":"－","price":8600},{"code":"SSK198","name":"합판 4.6Tx4x8 MLH","spec":"1220×2440 · 싹다","unit":"－","price":12400},{"code":"SSK199","name":"합판 8.5Tx4x8 MLH","spec":"1220×2440 · 싹다","unit":"－","price":19600},{"code":"SSK200","name":"합판 11.5Tx4x8 MLH","spec":"1220×2440 · 싹다","unit":"－","price":26000},{"code":"SSK201","name":"합판 14.5Tx4x8 MLH","spec":"1220×2440 · 싹다","unit":"－","price":35200},{"code":"SSK202","name":"합판 17.5Tx4x8 MLH","spec":"1220×2440 · 싹다","unit":"－","price":40400},{"code":"SSK203","name":"합판 내수 12TX4X8 국산 E1","spec":"1220×2440 · 싹다","unit":"－","price":29100},{"code":"SSK204","name":"합판 내수 15TX4X8 국산 E1","spec":"1220×2440 · 싹다","unit":"－","price":38900},{"code":"SSK205","name":"합판 내수 18TX4X8 국산 E1","spec":"1220×2440 · 싹다","unit":"－","price":44700},{"code":"SSK206","name":"합판 오징어 4TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":11900},{"code":"SSK207","name":"합판 코어 15TX4X8 인도네시아","spec":"1220×2440 · 싹다","unit":"－","price":23800},{"code":"SSK208","name":"합판 코어 18TX4X8 인도네시아","spec":"1220×2440 · 싹다","unit":"－","price":25600},{"code":"SSK209","name":"합판 태고 12TX3X6 베트남","spec":"910×1820 · 싹다","unit":"－","price":12200},{"code":"SSK210","name":"합판 태고 12TX4X8 베트남","spec":"1220×2440 · 싹다","unit":"－","price":21500},{"code":"SSK211","name":"합판 태고 12TX4X8 (성창)","spec":"1220×2440 · 싹다","unit":"－","price":32600}]},{"cat":"목재 · 각재","icon":"🪵","items":[{"code":"LMB-2X","name":"구조재 SPF (2-by)","spec":"L3.6m(12자) · SPF","unit":"개","variants":[{"sz":"2×2 (38×38)","code":"LMB-2X2","price":4600,"spec":"38×38×3600 · SPF"},{"sz":"2×4 (38×89)","code":"LMB-2X4","price":10700,"spec":"38×89×3600 · SPF"},{"sz":"2×6 (38×140)","code":"LMB-2X6","price":14900,"spec":"38×140×3600"},{"sz":"2×8 (38×184)","code":"LMB-2X8","price":22200,"spec":"38×184×3600"},{"sz":"2×10 (38×235)","code":"LMB-2X10","price":34800,"spec":"38×235×3600"},{"sz":"2×12 (38×286)","code":"LMB-2X12","price":44400,"spec":"38×286×3600"}]},{"code":"LMB-DRS","name":"소송건조 다루끼 (A급·단)","spec":"30×30 · 단위:단","unit":"단","variants":[{"sz":"8자 (2400)","code":"LMB-DRS8","price":22700,"spec":"30×30×2400"},{"sz":"9자 (2700)","code":"LMB-DRS9","price":25600,"spec":"30×30×2700"},{"sz":"12자 (3600)","code":"LMB-DRS12","price":27600,"spec":"30×30×3600"}]},{"code":"LMB-DR","name":"다루끼 30×30 (시공용·본)","spec":"L3.6m · 소송","unit":"본","price":2200},{"code":"LMB-DRF","name":"뉴송폼 다루끼","spec":"39×51×3600","unit":"개","price":3300},{"code":"LMB-DRSH","name":"사재다루끼 (잇승각) 30×30","spec":"30×30×3600 · 12본/단 · 사재","unit":"단","price":19500},{"code":"LMB-DR42","name":"정재다루끼 (승온부각) 42×42","spec":"42×42×3600 · 9본/단 · 정재","unit":"단","price":25000},{"code":"LMB-BB","name":"부비끼 30×21","spec":"30×21×3600 · 12본/단 · 반자대용","unit":"단","price":13000},{"code":"LMB-TBS","name":"사재투바이 (니삼부×승잇찌) 69×30","spec":"69×30×3600 · 6본/단 · 사재","unit":"단","price":36600},{"code":"LMB-TB","name":"투바이(미터) 30×69","spec":"L3.6m · 본","unit":"본","price":3500},{"code":"LMB-OB","name":"오비끼/산승각 90×90","spec":"L3.6m · 뉴송","unit":"본","price":9000},{"code":"LMB-LV","name":"루바(개판)","spec":"편백/삼나무 9T","unit":"㎡","price":18000},{"code":"SSK153","name":"라왕 심재","spec":"30×40 · 싹다","unit":"－","price":2800},{"code":"SSK154","name":"라왕 후지","spec":"10×40 · 싹다","unit":"－","price":1500},{"code":"SSK155","name":"구조재 1x10x12자","spec":"19×235 · 싹다","unit":"－","price":0},{"code":"SSK156","name":"구조재 1x12x12자","spec":"19×285 · 싹다","unit":"－","price":0},{"code":"SSK157","name":"구조재 2x10x12자","spec":"38×235 · 싹다","unit":"－","price":34800},{"code":"SSK158","name":"구조재 2x12x12자","spec":"38×285 · 싹다","unit":"－","price":44400},{"code":"SSK159","name":"타카핀 422J (ㄷ자)","spec":"－ · 싹다","unit":"－","price":3000},{"code":"SSK160","name":"타카핀 DT 64","spec":"－ · 싹다","unit":"－","price":11300},{"code":"SSK161","name":"타카핀 ST 25","spec":"－ · 싹다","unit":"－","price":5000},{"code":"SSK162","name":"타카핀 ST 32","spec":"－ · 싹다","unit":"－","price":5900},{"code":"SSK163","name":"타카핀 ST 38","spec":"－ · 싹다","unit":"－","price":3500},{"code":"SSK164","name":"타카핀 ST 45","spec":"－ · 싹다","unit":"－","price":3800},{"code":"SSK165","name":"타카핀 ST 50","spec":"－ · 싹다","unit":"－","price":4100},{"code":"SSK166","name":"타카핀 T50","spec":"－ · 싹다","unit":"－","price":10300},{"code":"SSK167","name":"타카핀 T57","spec":"－ · 싹다","unit":"－","price":9300},{"code":"SSK168","name":"타카핀 F30","spec":"－ · 싹다","unit":"－","price":3000},{"code":"SSK169","name":"목공본드 205","spec":"－ · 싹다","unit":"－","price":3300},{"code":"SSK170","name":"반코팅장갑","spec":"－ · 싹다","unit":"－","price":250},{"code":"SSK171","name":"피스","spec":"싹다","unit":"EA","variants":[{"sz":"6*25 양날","code":"SSK172","price":10,"spec":"6*25 양날"},{"sz":"6*32 양날","code":"SSK173","price":12,"spec":"6*32 양날"},{"sz":"6*38 양날","code":"SSK174","price":14,"spec":"6*38 양날"},{"sz":"6*41 양날","code":"SSK175","price":15,"spec":"6*41 양날"},{"sz":"6*25 외날","code":"SSK176","price":9,"spec":"6*25 외날"},{"sz":"6*32 외날","code":"SSK177","price":10,"spec":"6*32 외날"},{"sz":"6*38 외날","code":"SSK178","price":12,"spec":"6*38 외날"},{"sz":"6*25 마이텍스","code":"SSK179","price":10,"spec":"6*25 마이텍스"},{"sz":"3*21 텍스 양날","code":"SSK180","price":9,"spec":"3*21 텍스 양날"},{"sz":"3*20 페이트 외날 집텍스","code":"SSK181","price":11,"spec":"3*20 페이트 외날 집텍스"}]},{"code":"SSK383","name":"스크린 루바","spec":"－ · 싹다","unit":"EA","price":0},{"code":"SSK384","name":"스크린 루바 고정 브라켓","spec":"－ · 싹다","unit":"EA","price":0},{"code":"SSK385","name":"그리드 루바","spec":"－ · 싹다","unit":"EA","price":0},{"code":"SSK386","name":"익스펜디드 메탈망","spec":"－ · 싹다","unit":"EA","price":0}]},{"cat":"경량천장틀 · 철물","icon":"🔩","items":[{"code":"FRM-CR","name":"캐링찬넬 KS","spec":"L4m · 아연도 · 싹다","unit":"본","price":590},{"code":"FRM-MB","name":"마이너찬넬 KS","spec":"L4m · 싱글","unit":"본","price":380},{"code":"FRM-HG","name":"행거","spec":"캐링-달대 연결","unit":"개","price":220},{"code":"FRM-CL","name":"클립","spec":"캐링-마이너 연결","unit":"개","price":200},{"code":"FRM-AB","name":"달대볼트(전산)","spec":"M8 + 세트앙카","unit":"개","price":800},{"code":"FRM-LA","name":"L앵글 40×40","spec":"L3.6m · 아연도","unit":"본","price":4000},{"code":"FRM-HGR","name":"달대받이 (슬라브 인서트/받침)","spec":"달대·전산볼트 받이 · 세트앙카 체결","unit":"개","price":0},{"code":"FRM-SA","name":"세트앙카 (슬라브 고정)","spec":"M10 · 달대받이/런너/수평목 슬라브 고정","unit":"개","price":0},{"code":"SSK043","name":"M-BAR","spec":"싹다","unit":"M","variants":[{"sz":"KS","code":"SSK044","price":450,"spec":"KS"},{"sz":"BS","code":"SSK045","price":340,"spec":"BS"}]},{"code":"SSK046","name":"크립-BAR","spec":"－ · 싹다","unit":"M","price":580},{"code":"SSK047","name":"메인 T바 KS","spec":"－ · 싹다","unit":"M","price":690},{"code":"SSK048","name":"크로스 T바","spec":"싹다","unit":"M","variants":[{"sz":"L300","code":"SSK049","price":340,"spec":"L300"},{"sz":"L600","code":"SSK050","price":390,"spec":"L600"}]},{"code":"SSK051","name":"아파트용 엠바(0.4T)","spec":"36×14 · 싹다","unit":"M","price":0},{"code":"SSK052","name":"아파트용 엠바(0.45T)","spec":"50×14 · 싹다","unit":"M","price":0},{"code":"SSK053","name":"아파트용 캐리어(0.8T)","spec":"싹다","unit":"M","variants":[{"sz":"22×15","code":"SSK054","price":0,"spec":"22×15 · 견적문의"},{"sz":"22×12","code":"SSK055","price":0,"spec":"22×12 · 견적문의"}]},{"code":"SSK056","name":"M바 클립","spec":"싹다","unit":"EA","variants":[{"sz":"KS","code":"SSK057","price":45,"spec":"KS"},{"sz":"BS","code":"SSK058","price":40,"spec":"BS"}]},{"code":"SSK059","name":"M바 조인트","spec":"싹다","unit":"EA","variants":[{"sz":"KS","code":"SSK060","price":50,"spec":"KS"},{"sz":"BS","code":"SSK061","price":45,"spec":"BS"}]},{"code":"SSK062","name":"클립바 조인트","spec":"－ · 싹다","unit":"EA","price":80},{"code":"SSK063","name":"행거핀","spec":"－ · 싹다","unit":"EA","price":11},{"code":"SSK064","name":"무핀 행거","spec":"싹다","unit":"EA","variants":[{"sz":"100","code":"SSK065","price":130,"spec":"100"},{"sz":"150","code":"SSK066","price":140,"spec":"150"}]},{"code":"SSK067","name":"앙카","spec":"－ · 싹다","unit":"EA","price":75},{"code":"SSK068","name":"너트","spec":"－ · 싹다","unit":"EA","price":17},{"code":"SSK069","name":"판스프링","spec":"－ · 싹다","unit":"EA","price":100},{"code":"SSK070","name":"마이너 찬넬 클립","spec":"KS · 싹다","unit":"EA","price":100},{"code":"SSK071","name":"와이어클립","spec":"－ · 싹다","unit":"EA","price":45},{"code":"SSK072","name":"클립바클립","spec":"－ · 싹다","unit":"EA","price":170},{"code":"SSK073","name":"나비클립(시티클립)","spec":"－ · 싹다","unit":"EA","price":100},{"code":"SSK074","name":"마이너찬넬 볼트 클립(MB클립)","spec":"－ · 싹다","unit":"EA","price":0},{"code":"SSK075","name":"카프링(연결너트)","spec":"－ · 싹다","unit":"EA","price":95},{"code":"SSK076","name":"C형강 브라켓","spec":"－ · 싹다","unit":"EA","price":120},{"code":"SSK077","name":"양날브라켓(모자)","spec":"－ · 싹다","unit":"EA","price":130},{"code":"SSK078","name":"AL몰딩(ㄷ)","spec":"15×30 · 싹다","unit":"M","price":1110},{"code":"SSK079","name":"AL몰딩(ㄱ) 무도장","spec":"19×19 · 싹다","unit":"M","price":690},{"code":"SSK080","name":"AL몰딩(ㄱ) 도장","spec":"19×19 · 싹다","unit":"M","price":860},{"code":"SSK081","name":"AL몰딩(W) 무도장","spec":"15×15 · 싹다","unit":"M","price":1050},{"code":"SSK082","name":"AL몰딩(W) 도장","spec":"15×15 · 싹다","unit":"M","price":1150},{"code":"SSK083","name":"스팬드럴 몰딩 22X25","spec":"25×25 · 싹다","unit":"M","price":950},{"code":"SSK084","name":"메지 몰딩","spec":"－ · 싹다","unit":"M","price":980},{"code":"SSK085","name":"마이너스 몰딩","spec":"－ · 싹다","unit":"M","price":1290},{"code":"SSK086","name":"케싱비드 (9.5T)","spec":"－ · 싹다","unit":"M","price":330},{"code":"SSK087","name":"케싱비드 (12.5T)","spec":"－ · 싹다","unit":"M","price":340},{"code":"SSK088","name":"코너비드","spec":"싹다","unit":"M","variants":[{"sz":"30형","code":"SSK089","price":440,"spec":"30형"},{"sz":"40형","code":"SSK090","price":500,"spec":"40형"}]},{"code":"SSK091","name":"T바 몰딩","spec":"22×22 · 싹다","unit":"M","price":800}]},{"cat":"몰딩","icon":"📏","items":[{"code":"MLD-CRN","name":"천장몰딩(크라운)","spec":"폭 5.5~10.5cm · PS · L2.4m","unit":"본","price":4200},{"code":"MLD-FLT","name":"평몰딩","spec":"폭 30~60mm · MDF · L2.4m","unit":"본","price":3000},{"code":"MLD-STP","name":"계단몰딩","spec":"폭 30mm · L2.4m","unit":"본","price":3500},{"code":"MLD-BSB","name":"걸레받이","spec":"H60mm · MDF · L2.4m","unit":"본","price":3000},{"code":"MLD-DRJ","name":"문선몰딩","spec":"9mm 문선 · MDF · L2.4m","unit":"본","price":3500},{"code":"MLD-COR","name":"코너몰딩·코너비드","spec":"PS/금속 · L2.4m","unit":"본","price":3000},{"code":"MLD-LV","name":"루바/템바보드(렉스판)","spec":"폭·골 별도 · L2.4m","unit":"본","price":8000}]},{"cat":"단열 · 차음 · 방습","icon":"🧊","items":[{"code":"INS-XPS","name":"아이소핑크 (압출법 XPS)","spec":"900×1800 · 1~3호","unit":"장","variants":[{"sz":"30T","code":"INS-XPS30","price":5500,"spec":"900×1800 · 1~3호"},{"sz":"50T","code":"INS-XPS50","price":9000,"spec":"900×1800"},{"sz":"80T (900×1800)","code":"SSK032","price":14400,"spec":"900×1800 · 싹다"},{"sz":"100T (900×1800)","code":"SSK033","price":18000,"spec":"900×1800 · 싹다"},{"sz":"120T (900×1800)","code":"SSK034","price":21600,"spec":"900×1800 · 싹다"},{"sz":"150T (900×1800)","code":"SSK035","price":27000,"spec":"900×1800 · 싹다"}]},{"code":"INS-EPS","name":"비드법 스티로폼(EPS)","spec":"1·2종 · 900×1800","unit":"장","price":5000},{"code":"INS-GW24","name":"글라스울 24K","spec":"50/100/200T · KS L 9102","unit":"㎡","price":3500},{"code":"INS-MW","name":"미네랄울(암면)","spec":"50~120K · 준불연","unit":"㎡","price":6000,"variants":[{"sz":"50~120K · 준불연","code":"INS-MW","price":6000,"spec":"50~120K · 준불연"},{"sz":"50T (450×1250)","code":"SSK028","price":43900,"spec":"450×1250 · 싹다"},{"sz":"50T (450×1000)","code":"SSK029","price":16700,"spec":"450×1000 · 싹다"},{"sz":"50T (500×1000)","code":"SSK030","price":18600,"spec":"500×1000 · 싹다"},{"sz":"100T (500×1000)","code":"SSK031","price":23800,"spec":"500×1000 · 싹다"}]},{"code":"INS-PF","name":"PF보드(페놀폼)","spec":"준불연","unit":"장","price":25000},{"code":"INS-SND","name":"차음시트","spec":"2.0T · KS F 2810","unit":"롤","price":60000},{"code":"INS-VAP","name":"방습필름(PE)","spec":"0.2T · 겹침 200mm","unit":"롤","price":25000},{"code":"SSK323","name":"프리보드(50T , 24K)","spec":"450×1000 · 싹다","unit":"장","price":39800},{"code":"SSK324","name":"프리보드(50T , 48K)","spec":"450×1000 · 싹다","unit":"장","price":65600},{"code":"SSK325","name":"크린매트(50T , 24K)","spec":"450×1000 · 싹다","unit":"장","price":42800},{"code":"SSK326","name":"크린매트(50T , 48K)","spec":"450×1000 · 싹다","unit":"장","price":36700},{"code":"SSK327","name":"1면 준불연 , 내장용","spec":"싹다","unit":"－","variants":[{"sz":"30~40T","code":"SSK328","price":270,"spec":"30~40T"},{"sz":"50~200T","code":"SSK329","price":210,"spec":"50~200T"},{"sz":"40T","code":"SSK330","price":205,"spec":"40T"},{"sz":"50~200T","code":"SSK331","price":190,"spec":"50~200T"}]},{"code":"SSK332","name":"심재 준불연, 외장용","spec":"싹다","unit":"－","variants":[{"sz":"30~40T","code":"SSK333","price":295,"spec":"30~40T"},{"sz":"50~120T","code":"SSK334","price":295,"spec":"50~120T"}]},{"code":"SSK335","name":"2종 2호 , 내장용","spec":"싹다","unit":"－","variants":[{"sz":"40T","code":"SSK336","price":165,"spec":"40T"},{"sz":"50~200T","code":"SSK337","price":140,"spec":"50~200T"}]},{"code":"SSK338","name":"심재 준불연 , 외장용","spec":"싹다","unit":"－","variants":[{"sz":"50T","code":"SSK339","price":255,"spec":"50T"},{"sz":"60~120T","code":"SSK340","price":255,"spec":"60~120T"}]}]},{"cat":"복합단열보드 (이보드)","icon":"🧊","items":[{"code":"SPC-EB","name":"일반 이보드","spec":"900×2400 · XPS+PP · 도배용","unit":"장","variants":[{"sz":"13T","code":"SPC-EB13","price":16500,"spec":"900×2400 · XPS+PP · 도배용"},{"sz":"23T","code":"SPC-EB23","price":22000,"spec":"900×2400"},{"sz":"33T","code":"SPC-EB33","price":28000,"spec":"900×2400"}]},{"code":"SPC-EBS","name":"슈퍼이보드(자체마감)","spec":"900×2400 · 평활도↑","unit":"장","price":24000},{"code":"SPC-EBN","name":"난연이보드","spec":"900×2400 · V0","unit":"장","price":26000},{"code":"SPC-EBC","name":"준불연 CRC이보드 13.2T","spec":"900×2400 · CRC표면","unit":"장","price":25000},{"code":"SSK341","name":"열반사 단열재 (단면접착)","spec":"싹다","unit":"M2","variants":[{"sz":"1000×45","code":"SSK342","price":1100,"spec":"1000×45"},{"sz":"1000×50","code":"SSK343","price":2250,"spec":"1000×50"},{"sz":"1000×25","code":"SSK344","price":3350,"spec":"1000×25"}]},{"code":"SSK345","name":"열반사 단열재 (양면접착/비접착)","spec":"싹다","unit":"M2","variants":[{"sz":"1000×25","code":"SSK346","price":0,"spec":"1000×25 · 견적문의"},{"sz":"1000×20","code":"SSK347","price":0,"spec":"1000×20 · 견적문의"},{"sz":"1000×15","code":"SSK348","price":0,"spec":"1000×15 · 견적문의"},{"sz":"1000×10","code":"SSK349","price":0,"spec":"1000×10 · 견적문의"},{"sz":"50T 1000X8M  (양면비접착)","code":"SSK350","price":0,"spec":"50T 1000X8M  (양면비접착) · 견적문의"}]},{"code":"SSK351","name":"스카이비바 24K, 25T","spec":"싹다","unit":"EA","variants":[{"sz":"450×1000","code":"SSK352","price":1575,"spec":"450×1000"},{"sz":"1000×2000","code":"SSK353","price":7000,"spec":"1000×2000"}]},{"code":"SSK354","name":"스카이비바 40K, 50T","spec":"싹다","unit":"EA","variants":[{"sz":"450×1000","code":"SSK355","price":1900,"spec":"450×1000"},{"sz":"1000×2000","code":"SSK356","price":8400,"spec":"1000×2000"}]},{"code":"SSK357","name":"비드법","spec":"싹다","unit":"장","variants":[{"sz":"1종 1~4호  10~100T","code":"SSK358","price":0,"spec":"1종 1~4호  10~100T · 견적문의"},{"sz":"2종 1~4호  20~600T","code":"SSK359","price":0,"spec":"2종 1~4호  20~600T · 견적문의"}]}]},{"cat":"특수 판넬 · 마감보드","icon":"🎨","items":[{"code":"SPC-CRC","name":"CRC보드 900×1800","spec":"준불연 · 900×1800","unit":"장","variants":[{"sz":"4.5T","code":"SPC-CRC45","price":6800,"spec":"900×1800"},{"sz":"6T","code":"SPC-CRC60","price":9700,"spec":"900×1800"},{"sz":"9T","code":"SPC-CRC90","price":13100,"spec":"900×1800"},{"sz":"12T","code":"SPC-CRC120","price":18100,"spec":"900×1800"},{"sz":"3.5T (900×1800)","code":"SSK036","price":5500,"spec":"900×1800 · 싹다"},{"sz":"4.5T (1220×2440)","code":"SSK037","price":9800,"spec":"1220×2440 · 싹다"},{"sz":"6T (1220×2440)","code":"SSK038","price":12900,"spec":"1220×2440 · 싹다"},{"sz":"9T (1220×2440)","code":"SSK039","price":18800,"spec":"1220×2440 · 싹다"}]},{"code":"SPC-CRCL","name":"CRC보드 4×8","spec":"준불연 · 1220×2440","unit":"장","variants":[{"sz":"4.5T","code":"SPC-CRC45L","price":9800,"spec":"1220×2440"},{"sz":"6T","code":"SPC-CRC60L","price":12500,"spec":"1220×2440"},{"sz":"9T","code":"SPC-CRC90L","price":18000,"spec":"1220×2440"}]},{"code":"SPC-MGO","name":"MgO보드(마그네슘)","spec":"불연 · 두께별","unit":"장","price":13000},{"code":"SPC-TEX","name":"미네랄 텍스(천장)","spec":"600×600 · 마이톤","unit":"장","price":1500},{"code":"SPC-ACM","name":"알루미늄 복합패널(ACM)","spec":"3·4T","unit":"장","price":35000},{"code":"SPC-MEL","name":"멜라민/LPM 패널 18T","spec":"양면 무늬","unit":"장","price":25000},{"code":"SPC-UHPC","name":"UHPC 3D패널","spec":"600×600×35 · 콘크리트룩","unit":"장","price":45000},{"code":"SPC-CER","name":"세라믹 대형판(슬랩)","spec":"1200×2700 · 포세린","unit":"장","price":250000},{"code":"SPC-3DP","name":"3D 입체패널(PU/PE)","spec":"600×600 등","unit":"장","price":6000}]},{"cat":"흡음 · 소프트월","icon":"🔇","items":[{"code":"SPC-AP","name":"흡음패널 (펠트)","spec":"펠트 흡음","unit":"장","variants":[{"sz":"9T (600×600)","code":"SPC-AP9","price":8000,"spec":"600×600 등"},{"sz":"24T (600×1200)","code":"SPC-AP24","price":15000,"spec":"600×1200 등"}]},{"code":"SPC-SW","name":"소프트월(패브릭 쿠션)","spec":"천/펠트 · 두께별","unit":"㎡","price":60000},{"code":"SPC-FAB","name":"패브릭 흡음보드","spec":"프레임+천","unit":"㎡","price":70000},{"code":"SPC-FELT","name":"펠트 파티션/보드","spec":"9/18/20mm · 울","unit":"㎡","price":25000},{"code":"SPC-EGG","name":"흡음폼(웨지/계란판)","spec":"30~50T","unit":"장","price":5000},{"code":"SSK297","name":"15T 600X600","spec":"600×600 · 싹다","unit":"EA","price":8000},{"code":"SSK298","name":"15T 600X1200","spec":"600×1200 · 싹다","unit":"EA","price":15900},{"code":"SSK299","name":"15T 600X2400","spec":"600×2400 · 싹다","unit":"EA","price":31700},{"code":"SSK300","name":"20T 600X600","spec":"600×600 · 싹다","unit":"EA","price":8400},{"code":"SSK301","name":"20T 600X1200","spec":"600×1200 · 싹다","unit":"EA","price":16700},{"code":"SSK302","name":"20T 600X2400","spec":"600×2400 · 싹다","unit":"EA","price":33400},{"code":"SSK303","name":"25T 600X600","spec":"600×600 · 싹다","unit":"EA","price":8800},{"code":"SSK304","name":"25T 600X1200","spec":"600×1200 · 싹다","unit":"EA","price":17600},{"code":"SSK305","name":"25T 600X2400","spec":"600×2400 · 싹다","unit":"EA","price":35200},{"code":"SSK306","name":"흡음 타공보드 9T(방염)","spec":"1200×2400 · 싹다","unit":"EA","price":41500},{"code":"SSK307","name":"흡음 타공보드 9T (라인,방염) 1184","spec":"1184×2400 · 싹다","unit":"EA","price":47600},{"code":"SSK308","name":"흡음 타공보드 9T (라인,방염) 1200","spec":"1200×2400 · 싹다","unit":"EA","price":49200},{"code":"SSK309","name":"흡음 타공보드 12T (방염)","spec":"1200×2400 · 싹다","unit":"EA","price":0},{"code":"SSK310","name":"흡음 타공보드 15T (방염)","spec":"1200×2400 · 싹다","unit":"EA","price":0},{"code":"SSK311","name":"흡음 타공보드 18T (방염)","spec":"1200×2400 · 싹다","unit":"EA","price":0},{"code":"SSK312","name":"차음시트 2T 1000X1000","spec":"1000×1000 · 싹다","unit":"EA","price":4600},{"code":"SSK313","name":"차음시트 3T 1000X1000","spec":"1000×1000 · 싹다","unit":"EA","price":6000},{"code":"SSK314","name":"계란판 25T 1000X2000","spec":"1000×2000 · 싹다","unit":"EA","price":10400},{"code":"SSK315","name":"계란판 50T 1000X2000","spec":"1000×2000 · 싹다","unit":"EA","price":15000},{"code":"SSK316","name":"아트보드 9T (비방염)","spec":"1220×2420 · 싹다","unit":"EA","price":22500},{"code":"SSK317","name":"아트보드 9T (방염)","spec":"1220×2420 · 싹다","unit":"EA","price":29400},{"code":"SSK318","name":"보양지(골판지)","spec":"－ · 싹다","unit":"롤","price":18000},{"code":"SSK319","name":"보양지(PVC판형) 3T","spec":"900×1800 · 싹다","unit":"EA","price":2300},{"code":"SSK320","name":"비닐 0.1T 1800X50M","spec":"900×1800 · 싹다","unit":"롤","price":13600},{"code":"SSK321","name":"방수시트 (1면 부직포)","spec":"1000×10 · 싹다","unit":"롤","price":24000},{"code":"SSK322","name":"보온덮개 4T (팥죽색)","spec":"1800×12 · 싹다","unit":"롤","price":0}]},{"cat":"타카핀 · 목재용 (제일)","icon":"📌","items":[{"code":"STP4","name":"ㄷ자 스테이플 4mm폭","spec":"목재-목재 · 1갑 5,000발 · 적용 422/BF30","unit":"갑","variants":[{"sz":"410 (10mm)","code":"410","price":4080},{"sz":"413 (13mm)","code":"413","price":4380},{"sz":"416 (16mm)","code":"416","price":4830},{"sz":"419 (19mm)","code":"419","price":5430},{"sz":"422 (22mm)","code":"422","price":6040}]},{"code":"STP10","name":"ㄷ자 스테이플 10mm폭","spec":"목재-목재 · 1갑 5,000발 · 적용 1013/1022","unit":"갑","variants":[{"sz":"1005 (5mm)","code":"1005","price":3170},{"sz":"1006 (6mm)","code":"1006","price":3480},{"sz":"1008 (8mm)","code":"1008","price":3930},{"sz":"1010 (10mm)","code":"1010","price":4230},{"sz":"1013 (13mm)","code":"1013","price":4830},{"sz":"1016 (16mm)","code":"1016","price":5740},{"sz":"1019 (19mm)","code":"1019","price":6490},{"sz":"1022 (22mm)","code":"1022","price":6790}]},{"code":"PINF","name":"일자핀 F (1.1mm)","spec":"목재-목재 · 1갑 5,000발 · 적용 F30/F50 · 마감","unit":"갑","variants":[{"sz":"F10 (10mm)","code":"F10","price":3320},{"sz":"F15 (15mm)","code":"F15","price":4230},{"sz":"F20 (20mm)","code":"F20","price":5280},{"sz":"F25 (25mm)","code":"F25","price":5740},{"sz":"F30 (30mm)","code":"F30","price":6490},{"sz":"F40 (40mm)","code":"F40","price":9050},{"sz":"F50 (50mm)","code":"F50","price":10300}]},{"code":"PINT","name":"일자핀 T (1.4mm)","spec":"목재-목재 · 적용 T50/T-64R · 각목 접합","unit":"갑","variants":[{"sz":"T30 (30mm)","code":"T30","price":13600},{"sz":"T35 (35mm)","code":"T35","price":13600},{"sz":"T40 (40mm)","code":"T40","price":14400},{"sz":"T45 (45mm)","code":"T45","price":15100},{"sz":"T50 (50mm)","code":"T50","price":16300},{"sz":"T57 (57mm)","code":"T57","price":18100},{"sz":"T64 (64mm)","code":"T64","price":19900}]},{"code":"PINDT","name":"일자핀 DT (2.2mm)","spec":"목재-목재 · 1갑 3,000발 · 적용 CT-64RS/ST-25R/UD64","unit":"갑","variants":[{"sz":"DT50 (50mm)","code":"DT50","price":15900},{"sz":"DT64 (64mm)","code":"DT64","price":19600}]}]},{"cat":"타카핀 · 콘크리트용 (제일)","icon":"🧱","items":[{"code":"PINST","name":"ST 콘크리트핀 (2.2mm)","spec":"목재-콘크리트 · 적용 ST-25R·ST-64C·CT-64RS·UD64","unit":"갑","variants":[{"sz":"ST18 (18mm)","code":"ST18","price":5590},{"sz":"ST25 (25mm)","code":"ST25","price":6500},{"sz":"ST32 (32mm)","code":"ST32","price":7710},{"sz":"ST38 (38mm)","code":"ST38","price":4690},{"sz":"ST45 (45mm)","code":"ST45","price":5440},{"sz":"ST57 (57mm)","code":"ST57","price":7250},{"sz":"ST64 (64mm)","code":"ST64","price":7860}]},{"code":"PINJST","name":"JST 콘크리트핀 (테이프접합)","spec":"목재-콘크리트 · 본드접합 · 적용 ST-25R·CT-64RS·UD64","unit":"갑","variants":[{"sz":"JST18 (18mm)","code":"JST18","price":7240},{"sz":"JST25 (25mm)","code":"JST25","price":8000},{"sz":"JST32 (32mm)","code":"JST32","price":9350},{"sz":"JST38 (38mm)","code":"JST38","price":5900},{"sz":"JST45 (45mm)","code":"JST45","price":6500},{"sz":"JST50 (50mm)","code":"JST50","price":7100},{"sz":"JST57 (57mm)","code":"JST57","price":8450},{"sz":"JST64 (64mm)","code":"JST64","price":9350}]},{"code":"PINFST","name":"FST 콘크리트핀 (1.8mm)","spec":"목재-콘크리트 · 1갑 1,500발 · 적용 CS15/50","unit":"갑","variants":[{"sz":"FST18 (18mm)","code":"FST18","price":8450},{"sz":"FST22 (22mm)","code":"FST22","price":8450},{"sz":"FST25 (25mm)","code":"FST25","price":8750},{"sz":"FST30 (30mm)","code":"FST30","price":10600},{"sz":"FST32 (32mm)","code":"FST32","price":11000},{"sz":"FST35 (35mm)","code":"FST35","price":11500},{"sz":"FST40 (40mm)","code":"FST40","price":12400},{"sz":"FST45 (45mm)","code":"FST45","price":12900},{"sz":"FST50 (50mm)","code":"FST50","price":13600}]}]},{"cat":"타카핀 · 실타카·알루미늄 (제일)","icon":"✨","items":[{"code":"PINSIL","name":"실타카 실핀 (무두)","spec":"1갑 10,000발 · 적용 630R·B635BC·640 · 흔적최소","unit":"갑","variants":[{"sz":"615 (15mm)","code":"615","price":5740},{"sz":"618 (18mm)","code":"618","price":5740},{"sz":"625 (25mm)","code":"625","price":6350},{"sz":"630 (30mm)","code":"630","price":7100},{"sz":"640 (40mm)","code":"640","price":11300}]},{"code":"PINAL","name":"알루미늄 ㄷ자핀","spec":"목재-알루미늄 · 적용 722","unit":"갑","variants":[{"sz":"710 (10mm)","code":"710","price":6040},{"sz":"722 (22mm)","code":"722","price":10600}]}]},{"cat":"부자재 · 피스/본드/폼","icon":"🔧","items":[{"code":"FAS-DW25","name":"드라이월 피스 25mm","spec":"흑색 · 석고용","unit":"박스","price":5000},{"code":"FAS-DW32","name":"드라이월 피스 32mm","spec":"흑색","unit":"박스","price":5500},{"code":"FAS-CHR","name":"추라이(목공 직결)","spec":"황색 · 목재용","unit":"박스","price":6000},{"code":"FAS-ANC","name":"칼블럭·석고앙카","spec":"중량물 고정","unit":"박스","price":4000},{"code":"FAS-B205","name":"목공본드(오공205)","spec":"초산비닐 · 800g","unit":"통","price":4000},{"code":"FAS-PU","name":"우레탄폼","spec":"700ml · 충진용","unit":"개","price":6000},{"code":"FAS-SILG","name":"실리콘(일반)","spec":"290ml · 건식 단부·이음·점접착","unit":"개","price":2500},{"code":"FAS-SILB","name":"실리콘(바이오)","spec":"290ml · 습식(욕실·주방) 방미","unit":"개","price":3000},{"code":"FAS-JC","name":"조인트컴파운드(퍼티)","spec":"석고계 · 20kg","unit":"포","price":12000},{"code":"FAS-JT-M","name":"조인트테이프(메쉬)","spec":"50mm","unit":"롤","price":3000},{"code":"FAS-CNAIL","name":"콘크리트못 (수평목·각재 고정)","spec":"25~38mm · 벽/슬라브 직타","unit":"갑","price":0}]},{"cat":"텍스 · 마이톤 (천장)","icon":"🔳","items":[{"code":"TEX-SUK-F","name":"석고텍스 9.5T","spec":"300×600 · 18매/박스","unit":"박스","variants":[{"sz":"KCC","code":"TEX-SUK","price":15800,"spec":"300×600 · 18매/박스"},{"sz":"벽산","code":"TEX-SUKB","price":15900,"spec":"300×600 · 18매/박스"},{"sz":"집텍스(크나우프)","code":"TEX-JIP","price":15900,"spec":"300×600 · 18매/박스"},{"sz":"KCC 450×900","code":"TEX-SUK49","price":0,"spec":"450×900"}]},{"code":"TEX-AB","name":"흡음텍스 12T","spec":"300×600","unit":"박스","variants":[{"sz":"이지톤","code":"TEX-EASY","price":24100,"spec":"300×600"},{"sz":"마이텍스(KCC)","code":"TEX-MT441","price":23700,"spec":"300×600 · 18매/박스"},{"sz":"엑시텍스","code":"TEX-EXI","price":0,"spec":"300×600"}]},{"code":"TEX-MT","name":"마이톤 (KCC)","spec":"클립인 · 바별","unit":"박스","variants":[{"sz":"T바 15T (MT400)","code":"TEX-MT400","price":27800,"spec":"603×603"},{"sz":"M바 12T (MT441)","code":"TEX-MMB441","price":31500,"spec":"600×600"},{"sz":"M바 9T (MT440)","code":"TEX-MT440","price":32000,"spec":"300×600 · 미네랄울 흡음"},{"sz":"M바 12T (MT440)","code":"TEX-MMB440","price":24100,"spec":"300×600"},{"sz":"TH바 15T (MT420)","code":"TEX-MTH420","price":37200,"spec":"300×1210"}]},{"code":"TEX-AS","name":"아스텍스 6T","spec":"300×600 · 18매/박스","unit":"박스","price":14400},{"code":"TEX-SIS","name":"시스톤 T바 15T (STF400)","spec":"603×603","unit":"박스","price":27800},{"code":"TEX-RAD","name":"레이더 클리마플러스(흡음) 15.5T","spec":"603×603","unit":"박스","price":0}]},{"cat":"경량철골 (스터드·런너)","icon":"🔩","items":[{"code":"FRM-STD","name":"C-스터드 (KS)","spec":"L3m · 싹다","unit":"본","variants":[{"sz":"65형","code":"FRM-ST65","price":1170,"spec":"L3m · 싹다"},{"sz":"50형","code":"FRM-ST50","price":1080,"spec":"L3m"}]},{"code":"FRM-RUN","name":"C-런너 (KS)","spec":"L3m","unit":"본","variants":[{"sz":"65형","code":"FRM-RN65","price":1040,"spec":"L3m"},{"sz":"50형","code":"FRM-RN50","price":920,"spec":"L3m"}]},{"code":"FRM-MBR","name":"엠바 (M-bar)","spec":"L4m · 마감재 받침","unit":"본","variants":[{"sz":"KS","code":"FRM-MBAR","price":450,"spec":"L4m · 마감재 받침"},{"sz":"BS","code":"FRM-MBARB","price":340,"spec":"L4m"}]},{"code":"FRM-CLBAR","name":"클립바(내진)","spec":"금속천장 받침","unit":"본","price":580},{"code":"FRM-MBCLIP","name":"엠바 클립 KS","spec":"부속","unit":"개","price":45},{"code":"FRM-TBOLT","name":"전산볼트","spec":"달대볼트","unit":"개","price":620},{"code":"SSK092","name":"CH-스터드","spec":"싹다","unit":"M","variants":[{"sz":"75형","code":"SSK093","price":1690,"spec":"75형"},{"sz":"127형","code":"SSK094","price":2080,"spec":"127형"}]},{"code":"SSK095","name":"J-런너","spec":"싹다","unit":"M","variants":[{"sz":"75형","code":"SSK096","price":1080,"spec":"75형"},{"sz":"127형-","code":"SSK097","price":0,"spec":"127형-"}]},{"code":"SSK098","name":"커튼박스","spec":"－ · 싹다","unit":"주문제작","price":0},{"code":"SSK099","name":"AL점검구 무도장","spec":"싹다","unit":"EA","variants":[{"sz":"300각","code":"SSK100","price":10000,"spec":"300각"},{"sz":"450각","code":"SSK101","price":12000,"spec":"450각"},{"sz":"600각","code":"SSK102","price":13000,"spec":"600각"}]},{"code":"SSK103","name":"AL점검구 도장","spec":"싹다","unit":"EA","variants":[{"sz":"300각","code":"SSK104","price":11000,"spec":"300각"},{"sz":"450각","code":"SSK105","price":13000,"spec":"450각"},{"sz":"600각","code":"SSK106","price":14000,"spec":"600각"}]},{"code":"SSK107","name":"글라스울 보온핀","spec":"－ · 싹다","unit":"EA","price":0}]},{"cat":"DMC · 금속천장재 (DMC/SMC/AL)","icon":"🪟","items":[{"code":"DMC-J","name":"DMC 준불연","spec":"금속천장","unit":"장","variants":[{"sz":"600×600","code":"DMC-J66","price":3650,"spec":"600×600"},{"sz":"450×450","code":"DMC-J45","price":2450,"spec":"450×450"},{"sz":"300×600","code":"DMC-J36","price":2250,"spec":"300×600"}]},{"code":"DMC-B","name":"DMC 불연 (KS)","spec":"금속천장","unit":"장","variants":[{"sz":"600×600","code":"DMC-B66","price":4050,"spec":"600×600"},{"sz":"450×450","code":"DMC-B45","price":2750,"spec":"450×450"},{"sz":"300×600","code":"DMC-B36","price":2550,"spec":"300×600"}]},{"code":"DMC-AL","name":"불연 AL-TILE","spec":"알루미늄 천장타일","unit":"장","variants":[{"sz":"300×300","code":"DMC-AL33","price":2900,"spec":"300×300"},{"sz":"300×600","code":"DMC-AL36","price":4800,"spec":"300×600"},{"sz":"450×450","code":"DMC-AL45","price":5100,"spec":"450×450"},{"sz":"600×600","code":"DMC-AL66","price":8100,"spec":"600×600"}]},{"code":"DMC-SMC","name":"SMC 600×600","spec":"600×600 · 열경화성","unit":"장","price":3900,"variants":[{"sz":"600×600 · 열경화성","code":"DMC-SMC","price":3900,"spec":"600×600 · 열경화성"},{"sz":"(450×450)","code":"SSK023","price":3200,"spec":"450×450 · 싹다"},{"sz":"(300×300)","code":"SSK024","price":1600,"spec":"300×300 · 싹다"},{"sz":"(300×600)","code":"SSK025","price":2400,"spec":"300×600 · 싹다"}]},{"code":"DMC-CAP","name":"DMC 외부용 캡(원/투피스)","spec":"부속","unit":"개","price":300},{"code":"SSK117","name":"금속천장재 불연 DMC","spec":"싹다","unit":"EA","variants":[{"sz":"300×600","code":"SSK118","price":2550,"spec":"300×600"},{"sz":"600×600","code":"SSK119","price":4050,"spec":"600×600"},{"sz":"450×450","code":"SSK120","price":2750,"spec":"450×450"}]},{"code":"SSK121","name":"육각 금속천장재 불연 DMC-H","spec":"－ · 싹다","unit":"EA","price":5500},{"code":"SSK122","name":"금속천장재 준불연 DMC","spec":"싹다","unit":"EA","variants":[{"sz":"300×600","code":"SSK123","price":2250,"spec":"300×600"},{"sz":"600×600","code":"SSK124","price":3650,"spec":"600×600"},{"sz":"450×450","code":"SSK125","price":2450,"spec":"450×450"}]},{"code":"SSK126","name":"육각 금속천장재 준불연 DMC-H","spec":"－ · 싹다","unit":"EA","price":4900},{"code":"SSK127","name":"DMC 외부용 원피스캡","spec":"45×45 · 싹다","unit":"EA","price":300},{"code":"SSK128","name":"DMC 외부용 투피스캡","spec":"45×45 · 싹다","unit":"EA","price":300},{"code":"SSK129","name":"DMC-H 외부용캡","spec":"－ · 싹다","unit":"EA","price":300},{"code":"SSK130","name":"내진 DMC","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK131","name":"내풍압 DMC","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK132","name":"AL 흡음 6*6 화이트 평판","spec":"600×600 · 싹다","unit":"EA","price":0},{"code":"SSK133","name":"AL 흡음 3*6 화이트 평판","spec":"300×600 · 싹다","unit":"EA","price":0},{"code":"SSK134","name":"외부용 사각캡 (상,하)","spec":"－ · 싹다","unit":"EA","price":400},{"code":"SSK135","name":"스팬드럴 100S","spec":"0.5T · 싹다","unit":"M","price":2250},{"code":"SSK136","name":"스팬드럴 150S","spec":"0.5T · 싹다","unit":"M","price":3650},{"code":"SSK137","name":"스팬드럴 200S","spec":"0.5T · 싹다","unit":"M","price":4850},{"code":"SSK138","name":"스팬드럴 몰딩 22x25","spec":"25×25 · 싹다","unit":"M","price":1150},{"code":"SSK139","name":"SDOM 1260 아치+점검구","spec":"450×450 · 싹다","unit":"EA","price":0},{"code":"SSK140","name":"PVC 리빙우드","spec":"－ · 싹다","unit":"M","price":0},{"code":"SSK141","name":"흡음 천장재 불연 P18","spec":"싹다","unit":"EA","variants":[{"sz":"300×600","code":"SSK142","price":0,"spec":"300×600"},{"sz":"600×600","code":"SSK143","price":0,"spec":"600×600"}]},{"code":"SSK144","name":"흡음 천장재 불연 P40","spec":"싹다","unit":"EA","variants":[{"sz":"300×600","code":"SSK145","price":0,"spec":"300×600"},{"sz":"600×600","code":"SSK146","price":0,"spec":"600×600"}]},{"code":"SSK147","name":"흡음 천장재 준불연 P18","spec":"싹다","unit":"EA","variants":[{"sz":"300×600","code":"SSK148","price":0,"spec":"300×600"},{"sz":"600×600","code":"SSK149","price":0,"spec":"600×600"}]},{"code":"SSK150","name":"흡음 천장재 준불연 P40","spec":"싹다","unit":"EA","variants":[{"sz":"300×600","code":"SSK151","price":0,"spec":"300×600"},{"sz":"600×600","code":"SSK152","price":0,"spec":"600×600"}]}]},{"cat":"욕실돔 · SMC","icon":"🚿","items":[{"code":"DOM-FLAT","name":"욕실천장 SMC 평형","spec":"점검구 포함 · 습부위","unit":"식","price":0},{"code":"DOM-DOME","name":"욕실천장 돔형","spec":"돔 천장 세트","unit":"식","price":0},{"code":"SSK108","name":"욕실돔 중앙판+점검구 1300","spec":"1300×1750 · 싹다","unit":"EA","price":44500},{"code":"SSK109","name":"욕실돔 중앙판+점검구 1350","spec":"1350×1750 · 싹다","unit":"EA","price":46000},{"code":"SSK110","name":"사이드 700","spec":"700×1750 · 싹다","unit":"EA","price":23000},{"code":"SSK111","name":"사이드 800","spec":"800×1750 · 싹다","unit":"EA","price":25500},{"code":"SSK112","name":"사이드 1000","spec":"1000×1750 · 싹다","unit":"EA","price":31500},{"code":"SSK113","name":"환풍기(일반)","spec":"0.5kg · 싹다","unit":"EA","price":7000},{"code":"SSK114","name":"환풍기(역풍방지)","spec":"0.85kg · 싹다","unit":"EA","price":12000},{"code":"SSK115","name":"실리콘(백색)","spec":"－ · 싹다","unit":"EA","price":3500},{"code":"SSK116","name":"PVC 리빙우드(렉스판)","spec":"－ · 싹다","unit":"EA","price":0}]},{"cat":"방부재 · 데크재","icon":"🪵","items":[{"code":"DECK-PT","name":"방부목 데크재 (ACQ)","spec":"L3.6m","unit":"본","variants":[{"sz":"38×140","code":"DECK-PT38","price":14000,"spec":"L3.6m · ACQ"},{"sz":"20×120","code":"DECK-PT20","price":9000,"spec":"L3.6m"}]},{"code":"DECK-SYN","name":"합성데크(WPC)","spec":"목분+PE · L3.6m","unit":"본","price":25000,"variants":[{"sz":"목분+PE · L3.6m","code":"DECK-SYN","price":25000,"spec":"목분+PE · L3.6m"},{"sz":"(20×140)","code":"SSK026","price":0,"spec":"20×140 · 견적문의 · 싹다"},{"sz":"(25×150)","code":"SSK027","price":0,"spec":"25×150 · 견적문의 · 싹다"}]},{"code":"DECK-JOIST","name":"방부 장선 90×90","spec":"L3.6m · ACQ","unit":"본","price":18000},{"code":"SSK212","name":"방부목 2X2X12","spec":"38×38 · 싹다","unit":"EA","price":4600},{"code":"SSK213","name":"방부목 2X4X12","spec":"38×89 · 싹다","unit":"EA","price":9200},{"code":"SSK214","name":"방부목 2X6X12","spec":"38×140 · 싹다","unit":"EA","price":14400},{"code":"SSK215","name":"방부목 2X8X12","spec":"38×184 · 싹다","unit":"EA","price":20900},{"code":"SSK216","name":"방부목 2X10X12","spec":"38×235 · 싹다","unit":"EA","price":34300},{"code":"SSK217","name":"방부목 2X12X12","spec":"38×285 · 싹다","unit":"EA","price":45600},{"code":"SSK218","name":"방부목 4X4X12","spec":"90×90 · 싹다","unit":"EA","price":24200},{"code":"SSK219","name":"방부목 4X4X12(크로바)","spec":"90×90 · 싹다","unit":"EA","price":25500},{"code":"SSK220","name":"방부목 5X5X12(크로바)","spec":"120×120 · 싹다","unit":"EA","price":39500},{"code":"SSK221","name":"방부목 6X6X12(크로바)","spec":"140×140 · 싹다","unit":"EA","price":53400},{"code":"SSK222","name":"주춧돌","spec":"싹다","unit":"EA","variants":[{"sz":"4*4 (90 기둥용)","code":"SSK223","price":10000,"spec":"4*4 (90 기둥용)"},{"sz":"6*6 (140/150 기둥용)","code":"SSK224","price":14000,"spec":"6*6 (140/150 기둥용)"}]},{"code":"SSK225","name":"방부데크","spec":"싹다","unit":"EA","variants":[{"sz":"15×95","code":"SSK226","price":4400,"spec":"15×95"},{"sz":"21×120","code":"SSK227","price":6200,"spec":"21×120"},{"sz":"25×140","code":"SSK228","price":9300,"spec":"25×140"},{"sz":"27×140","code":"SSK229","price":0,"spec":"27×140 · 견적문의"}]},{"code":"SSK230","name":"집성판 라디에타 12TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":33900},{"code":"SSK231","name":"집성판 라디에타 15TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":39600},{"code":"SSK232","name":"집성판 라디에타 18TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":50900},{"code":"SSK233","name":"집성판 라디에타 24TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":64500},{"code":"SSK234","name":"집성판 멀바우 12TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":50900},{"code":"SSK235","name":"집성판 멀바우 15TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":59400},{"code":"SSK236","name":"집성판 멀바우 18TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":69500},{"code":"SSK237","name":"집성판 멀바우 24TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":99500},{"code":"SSK238","name":"집성판 히노끼 12TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":0},{"code":"SSK239","name":"집성판 히노끼 15TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":0},{"code":"SSK240","name":"집성판 히노끼 18TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":0},{"code":"SSK241","name":"집성판 라왕 18TX4X8","spec":"1210×2400 · 싹다","unit":"－","price":67000},{"code":"SSK242","name":"집성판 아카시아 유절 18TX4X8","spec":"1220×2440 · 싹다","unit":"－","price":0},{"code":"SSK243","name":"집성판 삼목","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK244","name":"집성판 오크","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK245","name":"집성판 고무나무","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK246","name":"집성판 애쉬","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK247","name":"집성판 소노클링","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK248","name":"집성판 옐다","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK249","name":"집성판 와루","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK250","name":"삼목루바","spec":"싹다","unit":"－","variants":[{"sz":"11×115","code":"SSK251","price":18600,"spec":"11×115"},{"sz":"11×115","code":"SSK252","price":28800,"spec":"11×115"}]},{"code":"SSK253","name":"히노끼루바 (유절)","spec":"싹다","unit":"－","variants":[{"sz":"10×100","code":"SSK254","price":0,"spec":"10×100 · 견적문의"},{"sz":"10×105","code":"SSK255","price":0,"spec":"10×105 · 견적문의"}]},{"code":"SSK256","name":"레드파인루바","spec":"싹다","unit":"－","variants":[{"sz":"120×2400","code":"SSK257","price":31300,"spec":"120×2400"},{"sz":"120×3600","code":"SSK258","price":46900,"spec":"120×3600"}]},{"code":"SSK259","name":"항목루바","spec":"싹다","unit":"－","variants":[{"sz":"115×2400","code":"SSK260","price":23600,"spec":"115×2400"},{"sz":"115×3600","code":"SSK261","price":36500,"spec":"115×3600"}]},{"code":"SSK262","name":"스프러스루바","spec":"싹다","unit":"－","variants":[{"sz":"120×2400","code":"SSK263","price":31300,"spec":"120×2400"},{"sz":"120×3600","code":"SSK264","price":46900,"spec":"120×3600"}]},{"code":"SSK265","name":"히노끼 마감재","spec":"싹다","unit":"－","variants":[{"sz":"10×40","code":"SSK266","price":0,"spec":"10×40 · 견적문의"},{"sz":"10×60","code":"SSK267","price":0,"spec":"10×60 · 견적문의"},{"sz":"10×80","code":"SSK268","price":0,"spec":"10×80 · 견적문의"}]},{"code":"SSK269","name":"멀바우후로링","spec":"싹다","unit":"－","variants":[{"sz":"70×450","code":"SSK270","price":0,"spec":"70×450 · 견적문의"},{"sz":"70×600","code":"SSK271","price":0,"spec":"70×600 · 견적문의"},{"sz":"70×750","code":"SSK272","price":0,"spec":"70×750 · 견적문의"},{"sz":"70×900","code":"SSK273","price":0,"spec":"70×900 · 견적문의"},{"sz":"80×450","code":"SSK274","price":0,"spec":"80×450 · 견적문의"},{"sz":"80×600","code":"SSK275","price":0,"spec":"80×600 · 견적문의"},{"sz":"80×750","code":"SSK276","price":0,"spec":"80×750 · 견적문의"},{"sz":"80×900","code":"SSK277","price":0,"spec":"80×900 · 견적문의"}]},{"code":"SSK278","name":"나왕후로링","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK279","name":"큐링후로링","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK280","name":"소노클린후로링","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK281","name":"멀바우후로링 (UV)","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK282","name":"천연데크(멀바우,방킬라이,이페)","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK283","name":"천연데크(큐링,말라스,캠파스)","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK284","name":"합성난간","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK285","name":"합성사이딩","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK286","name":"집성계단판 멀바우","spec":"싹다","unit":"－","variants":[{"sz":"300×3600","code":"SSK287","price":0,"spec":"300×3600 · 견적문의"},{"sz":"300×3600","code":"SSK288","price":0,"spec":"300×3600 · 견적문의"}]},{"code":"SSK289","name":"집성계단판 라디에이타","spec":"싹다","unit":"－","variants":[{"sz":"300×3600","code":"SSK290","price":0,"spec":"300×3600 · 견적문의"},{"sz":"300×3600","code":"SSK291","price":0,"spec":"300×3600 · 견적문의"}]},{"code":"SSK292","name":"계단재 나왕","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK293","name":"계단재 애쉬","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK294","name":"계단재 아카시아","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK295","name":"계단재 오크","spec":"－ · 싹다","unit":"－","price":0},{"code":"SSK296","name":"계단재 고무나무","spec":"－ · 싹다","unit":"－","price":0}]},{"cat":"페인트 · 도료","icon":"🎨","items":[{"code":"PNT-WB18","name":"수성페인트 18L","spec":"내부 벽/천장","unit":"통","price":45000},{"code":"PNT-OIL4","name":"유성페인트 4L","spec":"철재/목재","unit":"통","price":25000},{"code":"PNT-PRM18","name":"수성 프라이머/젯소 18L","spec":"하지 도포","unit":"통","price":50000},{"code":"PNT-PUTTY","name":"수성퍼티(핸디코트)","spec":"면 평탄화","unit":"통","price":15000},{"code":"PNT-LAC","name":"락카 스프레이","spec":"보수/소물","unit":"개","price":3000},{"code":"SSK360","name":"에폭시 세트(평당)","spec":"면적 당 세트구매 · 싹다","unit":"평","price":0},{"code":"SSK361","name":"유니폭시 희석제 4L","spec":"－ · 싹다","unit":"EA","price":14100},{"code":"SSK362","name":"유니폭시 희석제 17L","spec":"－ · 싹다","unit":"EA","price":42000},{"code":"SSK363","name":"유니폭시 코팅PTA(상도) 12.6KG","spec":"－ · 싹다","unit":"EA","price":84000},{"code":"SSK364","name":"유니폭시 코팅PTA(상도) 16KG 백색","spec":"백색 · 싹다","unit":"EA","price":89000},{"code":"SSK365","name":"유니폭시 코팅PTA(상도) 16KG 적갈색","spec":"적갈색 · 싹다","unit":"EA","price":84000},{"code":"SSK366","name":"유니폭시 코팅PTA(상도) 16KGA","spec":"녹색, 회색 · 싹다","unit":"EA","price":84000},{"code":"SSK367","name":"유니폭시 라이닝(중도)","spec":"－ · 싹다","unit":"EA","price":97000},{"code":"SSK368","name":"유니폭시 ECO(하도) 3.5L","spec":"－ · 싹다","unit":"EA","price":23600},{"code":"SSK369","name":"유니폭시 ECO(하도) 14L","spec":"－ · 싹다","unit":"EA","price":69500},{"code":"SSK370","name":"우레탄 세트(평당)","spec":"면적 당 세트구매 · 싹다","unit":"평","price":0},{"code":"SSK371","name":"스포탄 희석제 4L","spec":"－ · 싹다","unit":"EA","price":14100},{"code":"SSK372","name":"스포탄 희석제 17L","spec":"－ · 싹다","unit":"EA","price":42000},{"code":"SSK373","name":"모노탄(1액형 상도) 3.6L","spec":"－ · 싹다","unit":"EA","price":34700},{"code":"SSK374","name":"모노탄(1액형 상도) 12.6L","spec":"－ · 싹다","unit":"EA","price":98000},{"code":"SSK375","name":"모노탄 1액형 노출방수제 플러스 16KG","spec":"－ · 싹다","unit":"EA","price":50000},{"code":"SSK376","name":"스포탄 PTA(상도) 3.6L 녹색","spec":"－ · 싹다","unit":"EA","price":31700},{"code":"SSK377","name":"스포탄 PTA(상도) 3.6L 회색","spec":"－ · 싹다","unit":"EA","price":31700},{"code":"SSK378","name":"스포탄 PTA(상도) 3.6L 진녹색","spec":"－ · 싹다","unit":"EA","price":30000},{"code":"SSK379","name":"스포탄 PTA(상도) 12.6L","spec":"－ · 싹다","unit":"EA","price":90000},{"code":"SSK380","name":"스포탄 노출방수PTA (2액형 중도) 20KG","spec":"－ · 싹다","unit":"EA","price":61000},{"code":"SSK381","name":"스포탄 ECO(하도) 4KG","spec":"－ · 싹다","unit":"EA","price":20500},{"code":"SSK382","name":"스포탄 ECO(하도) 14KG","spec":"－ · 싹다","unit":"EA","price":58000}]},{"cat":"바닥재","icon":"🟫","items":[{"code":"FLR-DECO","name":"데코타일(우드타일)","spec":"3T · 접착","unit":"㎡","price":12000},{"code":"FLR-LUM","name":"장판(륨바닥재)","spec":"1.8~2.2T · 폭1.8m","unit":"㎡","price":10000},{"code":"FLR-GANGHWA","name":"강화마루","spec":"8T · 클릭","unit":"㎡","price":25000},{"code":"FLR-GANG","name":"강마루(합판)","spec":"7.5T · 접착","unit":"㎡","price":35000},{"code":"FLR-ONDOL","name":"합판 온돌마루","spec":"7.5T","unit":"㎡","price":40000},{"code":"FLR-WOOD","name":"원목마루","spec":"고급 · 헤링본 가능","unit":"㎡","price":80000},{"code":"FLR-PORC","name":"포세린 타일 600각","spec":"600×600 · 9~10T","unit":"장","price":8000},{"code":"SSK387","name":"CONCRETE 3T","spec":"싹다","unit":"BOX","variants":[{"sz":"600×600","code":"SSK388","price":0,"spec":"600×600 · 견적문의"},{"sz":"600×600","code":"SSK389","price":0,"spec":"600×600 · 견적문의"}]},{"code":"SSK390","name":"STONE 3T","spec":"600×600 · 싹다","unit":"BOX","price":0},{"code":"SSK391","name":"STONE/CONCRETE 3T","spec":"457×457 · 싹다","unit":"BOX","price":0},{"code":"SSK392","name":"TExTILE 3T","spec":"457×457 · 싹다","unit":"BOX","price":0},{"code":"SSK393","name":"WOOD 3T","spec":"184×950 · 싹다","unit":"BOX","price":0},{"code":"SSK394","name":"CARPET 3T","spec":"싹다","unit":"BOX","variants":[{"sz":"455×455","code":"SSK395","price":0,"spec":"455×455 · 견적문의"},{"sz":"600×600","code":"SSK396","price":0,"spec":"600×600 · 견적문의"}]},{"code":"SSK397","name":"GRANITE 3T","spec":"455×455 · 싹다","unit":"BOX","price":0},{"code":"SSK398","name":"HERE CONCRETE 3T","spec":"600×600 · 싹다","unit":"BOX","price":0},{"code":"SSK399","name":"MARBLE 3T","spec":"455×455 · 싹다","unit":"BOX","price":0},{"code":"SSK400","name":"SAHARA NOIR 3T","spec":"600×600 · 싹다","unit":"BOX","price":0},{"code":"SSK401","name":"SOFR CONCRETE 3T","spec":"455×455 · 싹다","unit":"BOX","price":0},{"code":"SSK402","name":"STARNDARD WOOD 3T","spec":"184×950 · 싹다","unit":"BOX","price":0},{"code":"SSK403","name":"TERRAZZO 3T","spec":"455×455 · 싹다","unit":"BOX","price":0},{"code":"SSK404","name":"WIDE WOOD 3T","spec":"229×1219 · 싹다","unit":"BOX","price":0},{"code":"SSK405","name":"ABCRACT 3T","spec":"455×455 · 싹다","unit":"BOX","price":0},{"code":"SSK406","name":"마스터 3T","spec":"싹다","unit":"BOX","variants":[{"sz":"450×450","code":"SSK407","price":0,"spec":"450×450 · 견적문의"},{"sz":"600×600","code":"SSK408","price":0,"spec":"600×600 · 견적문의"},{"sz":"186×940","code":"SSK409","price":0,"spec":"186×940 · 견적문의"}]},{"code":"SSK410","name":"클래식 3T","spec":"싹다","unit":"BOX","variants":[{"sz":"186×940","code":"SSK411","price":0,"spec":"186×940 · 견적문의"},{"sz":"500×500","code":"SSK412","price":0,"spec":"500×500 · 견적문의"},{"sz":"600×600","code":"SSK413","price":0,"spec":"600×600 · 견적문의"},{"sz":"178×1220","code":"SSK414","price":0,"spec":"178×1220 · 견적문의"}]},{"code":"SSK415","name":"2T","spec":"300×300 · 싹다","unit":"BOX","price":0},{"code":"SSK416","name":"3T","spec":"싹다","unit":"BOX","variants":[{"sz":"300×300","code":"SSK417","price":0,"spec":"300×300 · 견적문의"},{"sz":"450×450","code":"SSK418","price":0,"spec":"450×450 · 견적문의"}]},{"code":"SSK419","name":"골드 3T","spec":"450×450 · 싹다","unit":"BOX","price":0},{"code":"SSK420","name":"전도성 3T","spec":"450×450 · 싹다","unit":"BOX","price":0}]}];
+const DEFAULT_CATALOG_JSON = JSON.stringify(WOOD_CATALOG);
+let BY_CODE = {}, BY_NAME = {};
+function rebuildIndexes(){ BY_CODE={}; BY_NAME={}; WOOD_CATALOG.forEach(g=>g.items.forEach(it=>{ if(it&&it.variants&&it.variants.length){ it.variants.forEach(v=>{ const syn={code:v.code, name:it.name+" "+v.sz, spec:(v.spec||it.spec), unit:it.unit, price:num(v.price)}; if(v.code){ BY_CODE[v.code]=syn; } BY_NAME[syn.name]=syn; }); } else if(it&&it.code){ BY_CODE[it.code]=it; BY_NAME[it.name]=it; } })); }
+rebuildIndexes();
+const WOOD_UNITS = ["장","본","개","m","㎡","롤","박스","통","포","말","식","EA"];
+
+let items=[]; let seq=0;
+function esc(v){ return String(v??"").replace(/"/g,"&quot;"); }
+function num(v){ const n=parseFloat(String(v).replace(/,/g,"")); return isNaN(n)?0:n; }
+function fmt(n){ return Math.round(n).toLocaleString("ko-KR"); }
+function val(id){ return (document.getElementById(id)||{}).value || ""; }
+function opts(arr,v){ return arr.map(o=>`<option ${o===v?"selected":""}>${o}</option>`).join(""); }
+function photo(name){ window.open("https://www.google.com/search?tbm=isch&q="+encodeURIComponent(name+" 인테리어 자재"),"_blank","noopener"); }
+
+function blankItem(){ return { uid:++seq, item_name:"", custom:false, spec:"", unit:"장", qty:1, unit_price:"", remark:"" }; }
+function itemFromCat(c){ return { uid:++seq, item_name:c.name, custom:false, spec:c.spec, unit:c.unit, qty:1, unit_price:(c.price>0?c.price:""), remark:"" }; }
+
+function catalogOpts(v){
+  let h='<option value="">— 품목 선택 —</option>';
+  WOOD_CATALOG.forEach(g=>{ h+=`<optgroup label="${g.cat}">`; g.items.forEach(it=>{ if(it.variants&&it.variants.length){ it.variants.forEach(vr=>{ const nm=it.name+" "+vr.sz; h+=`<option ${nm===v?"selected":""}>${nm}</option>`; }); } else { h+=`<option ${it.name===v?"selected":""}>${it.name}</option>`; } }); h+='</optgroup>'; });
+  h+='<option value="__custom">✏ 직접입력…</option>';
+  return h;
+}
+function onItemSelect(uid,v){
+  const it=items.find(x=>x.uid===uid); if(!it) return;
+  if(v==="__custom"){ it.custom=true; it.item_name=""; render(); return; }
+  const c=BY_NAME[v]; it.item_name=v; it.custom=false;
+  if(c){ it.spec=c.spec; it.unit=c.unit; it.unit_price=(c.price>0?c.price:""); }
+  render();
+}
+function uncustom(uid){ const it=items.find(x=>x.uid===uid); if(it){ it.custom=false; render(); } }
+
+function texc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function autoGrow(el){ if(!el) return; el.style.height="auto"; el.style.height=(el.scrollHeight)+"px"; }
+function growAll(){ document.querySelectorAll("#items textarea.wrapcell").forEach(autoGrow); }
+function itemCell(it){
+  return `<div class="pcell">
+    <textarea class="cell-in wrapcell" rows="1" placeholder="분류·품목명" oninput="upd(${it.uid},'item_name',this.value);autoGrow(this)">${texc(it.item_name)}</textarea>
+    <select class="pickbtn no-print" title="카탈로그에서 선택" onchange="onItemSelect(${it.uid},this.value)">${catalogOpts(it.item_name)}</select>
+    <button type="button" class="no-print" title="실물사진" onclick="photo('${esc(it.item_name).replace(/'/g,"\\'")}')">🔍</button></div>`;
+}
+
+function render(){
+  document.getElementById("items").innerHTML = items.map((it,i)=>`
+    <tr>
+      <td class="rownum">${i+1}</td>
+      <td>${itemCell(it)}</td>
+      <td><textarea class="cell-in wrapcell" rows="1" placeholder="규격/사양" oninput="upd(${it.uid},'spec',this.value);autoGrow(this)">${texc(it.spec)}</textarea></td>
+      <td><select class="cell-in" onchange="upd(${it.uid},'unit',this.value)">${opts(WOOD_UNITS,it.unit)}</select></td>
+      <td><input class="cell-in" type="number" min="0" style="text-align:right" value="${esc(it.qty)}" oninput="upd(${it.uid},'qty',this.value)"></td>
+      <td><input class="cell-in" type="number" min="0" style="text-align:right" value="${esc(it.unit_price)}" oninput="upd(${it.uid},'unit_price',this.value)"></td>
+      <td class="amt" id="line_${it.uid}">0</td>
+      <td><textarea class="cell-in wrapcell" rows="1" placeholder="비고" oninput="upd(${it.uid},'remark',this.value);autoGrow(this)">${texc(it.remark)}</textarea></td>
+      <td class="col-del no-print"><button type="button" title="삭제" onclick="removeItem(${it.uid})">×</button></td>
+    </tr>`).join("");
+  growAll();
+  recalc();
+}
+function upd(uid,key,v){ const it=items.find(x=>x.uid===uid); if(!it) return; it[key]=v; if(key==="qty"||key==="unit_price") recalc(); }
+function recalc(){
+  let supply=0;
+  items.forEach(it=>{ const line=num(it.qty)*num(it.unit_price); supply+=line; const c=document.getElementById("line_"+it.uid); if(c) c.textContent=fmt(line); });
+  const mode=document.getElementById("vat_mode").value;
+  let base=supply, vat=0, total=0;
+  if(mode==="add"){ vat=supply*0.1; total=supply+vat; }
+  else if(mode==="incl"){ base=supply/1.1; vat=supply-base; total=supply; }
+  else { total=supply; }
+  document.getElementById("t_supply").textContent=fmt(mode==="incl"?base:supply);
+  document.getElementById("t_vat").textContent=fmt(vat);
+  document.getElementById("t_total").textContent=fmt(total);
+}
+function addItem(){ items.push(blankItem()); render(); }
+function removeItem(uid){ items=items.filter(x=>x.uid!==uid); render(); }
+function resetAll(){
+  if(!confirm("입력 내용을 모두 지우고 처음부터 시작할까요?")) return;
+  document.querySelectorAll(".cell-in").forEach(el=>{ if(el.id) el.value=""; });
+  document.getElementById("b_name").value="ECOREAN";
+  items=[blankItem()]; initDates(); render();
+}
+
+/* ===== 자재 도감 모달 ===== */
+let catEdit=false;
+function buildCatalog(){
+  let h="";
+  WOOD_CATALOG.forEach((g,gi)=>{
+    h+=`<section class="grp" data-grp="1"><div class="grp-h"><span class="ic">${g.icon}</span><span class="nm">${catEdit?`<input class="edg" value="${esc(g.cat)}" onchange="editGroup(${gi},this.value)">`:esc(g.cat)}</span><span class="ct">${g.items.length}종</span>${catEdit?`<span class="sp"></span><button class="ghost" onclick="addCatItem(${gi})">＋ 품목추가</button> <button class="ghost wrn" onclick="delCatGroup(${gi})">그룹삭제</button>`:""}</div><div class="cardgrid">`;
+    g.items.forEach((it,ii)=>{
+      const vstr = it.variants? it.variants.map(v=>v.sz+" "+v.code).join(" ") : "";
+      const key=(it.name+" "+it.spec+" "+it.code+" "+vstr).toLowerCase();
+      if(catEdit){
+        if(it.variants){
+          h+=`<div class="card edit" data-k="${esc(key)}">
+          <div class="cbody">
+            <div class="edr"><label>코드</label><input value="${esc(it.code)}" onchange="editItem(${gi},${ii},'code',this.value)"></div>
+            <div class="edr"><label>품목</label><input value="${esc(it.name)}" onchange="editItem(${gi},${ii},'name',this.value)"></div>
+            <div class="edr"><label>공통규격</label><input value="${esc(it.spec)}" onchange="editItem(${gi},${ii},'spec',this.value)"></div>
+            <div class="edr"><label>단위</label><select onchange="editItem(${gi},${ii},'unit',this.value)">${opts(WOOD_UNITS,it.unit)}</select></div>
+            <div class="vedit"><div class="vhdr">사이즈 · 코드 · 단가</div>
+              ${it.variants.map((v,vi)=>`<div class="vrow"><input value="${esc(v.sz)}" placeholder="사이즈" onchange="editVar(${gi},${ii},${vi},'sz',this.value)"><input value="${esc(v.code)}" placeholder="코드" onchange="editVar(${gi},${ii},${vi},'code',this.value)"><input type="number" min="0" value="${esc(v.price)}" placeholder="단가" onchange="editVar(${gi},${ii},${vi},'price',this.value)"><button class="ghost wrn" title="사이즈 삭제" onclick="delVar(${gi},${ii},${vi})">×</button></div>`).join("")}
+              <button class="ghost addv" onclick="addVar2(${gi},${ii})">＋ 사이즈 추가</button>
+            </div>
+            <div class="cmeta"><button class="ghost imgbtn" title="사진" onclick="pickImg('${it.code}')">📷</button><span class="sp"></span><button class="ghost wrn" onclick="delCatItem(${gi},${ii})">🗑 품목삭제</button></div>
+          </div></div>`;
+        } else {
+          h+=`<div class="card edit" data-k="${esc(key)}">
+          <div class="cbody">
+            <div class="edr"><label>코드</label><input value="${esc(it.code)}" onchange="editItem(${gi},${ii},'code',this.value)"></div>
+            <div class="edr"><label>품목</label><input value="${esc(it.name)}" onchange="editItem(${gi},${ii},'name',this.value)"></div>
+            <div class="edr"><label>규격</label><input value="${esc(it.spec)}" onchange="editItem(${gi},${ii},'spec',this.value)"></div>
+            <div class="edr"><label>단위</label><select onchange="editItem(${gi},${ii},'unit',this.value)">${opts(WOOD_UNITS,it.unit)}</select></div>
+            <div class="edr"><label>단가</label><input type="number" min="0" value="${esc(it.price)}" onchange="editItem(${gi},${ii},'price',this.value)"><span class="hh">0=견적문의</span></div>
+            <div class="cmeta"><button class="ghost imgbtn" title="사진" onclick="pickImg('${it.code}')">📷</button><span class="sp"></span><button class="ghost wrn" onclick="delCatItem(${gi},${ii})">🗑 삭제</button></div>
+          </div></div>`;
+        }
+      } else {
+        if(it.variants){
+          const vid="vs_"+gi+"_"+ii; const v0=it.variants[0]||{price:0};
+          h+=`<div class="card" data-k="${esc(key)}">
+          <div class="thumb"><img class="cimg" src="${imgFor(it.code)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';"><span class="code">${esc(it.code)}</span><span class="vbadge">${it.variants.length} 사이즈</span></div>
+          <div class="cbody">
+            <div class="cnm">${esc(it.name)}</div>
+            <div class="csp">${esc(it.spec)}</div>
+            <select class="vsel" id="${vid}" onchange="onVarChange(${gi},${ii},'${vid}')">${it.variants.map((v,vi)=>`<option value="${vi}">${esc(v.sz)}${v.price>0?" · ₩"+fmt(v.price):" · 견적문의"}</option>`).join("")}</select>
+            <div class="cpr" id="${vid}_p">${v0.price>0?("₩"+fmt(v0.price)+' <span style="color:var(--sub);font-weight:500">/'+it.unit+'</span>'):'<span style="color:var(--warn)">견적문의</span>'}</div>
+            <div class="cmeta">
+              <button class="ghost" onclick="photo('${esc(it.name).replace(/'/g,"\\'")}')">🔍</button>
+              <button class="ghost imgbtn" title="사진 업로드·교체" onclick="pickImg('${it.code}')">📷</button>
+              <span class="sp"></span>
+              <button class="badd" onclick="addVar(${gi},${ii},'${vid}')">＋담기</button>
+            </div>
+          </div></div>`;
+        } else {
+          h+=`<div class="card" data-k="${esc(key)}">
+          <div class="thumb"><img class="cimg" src="${imgFor(it.code)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';"><span class="code">${it.code}</span>${catalogImages[it.code]?`<button class="delimg" title="이미지 삭제" onclick="deleteImg('${it.code}')">✕</button>`:''}</div>
+          <div class="cbody">
+            <div class="cnm">${esc(it.name)}</div>
+            <div class="csp">${esc(it.spec)}</div>
+            <div class="cpr">${it.price>0?("₩"+fmt(it.price)+' <span style="color:var(--sub);font-weight:500">/'+it.unit+'</span>'):'<span style="color:var(--warn)">견적문의</span>'}</div>
+            <div class="cmeta">
+              <button class="ghost" onclick="photo('${esc(it.name).replace(/'/g,"\\'")}')">🔍</button>
+              <button class="ghost imgbtn" title="사진 업로드·교체" onclick="pickImg('${it.code}')">📷</button>
+              <span class="sp"></span>
+              <button class="badd" onclick="addFromCatalog('${it.code}')">＋담기</button>
+            </div>
+          </div></div>`;
+        }
+      }
+    });
+
+    h+=`</div></section>`;
+  });
+  document.getElementById("catGrid").innerHTML=h;
+}
+function applyCatalog(){ persistCatalog(); rebuildIndexes(); rebuildStock(); if(typeof render==="function") render(); }
+function editItem(gi,ii,field,v){ const it=WOOD_CATALOG[gi]&&WOOD_CATALOG[gi].items[ii]; if(!it) return; it[field]=(field==="price"?num(v):v); applyCatalog(); }
+function delCatItem(gi,ii){ if(!confirm("이 품목을 삭제할까요?")) return; WOOD_CATALOG[gi].items.splice(ii,1); applyCatalog(); buildCatalog(); catFilter(); }
+function addCatItem(gi){ WOOD_CATALOG[gi].items.push({code:"USR-"+String(Date.now()).slice(-6), name:"새 품목", spec:"", unit:"장", price:0}); applyCatalog(); buildCatalog(); catFilter(); }
+function editGroup(gi,v){ if(WOOD_CATALOG[gi]) WOOD_CATALOG[gi].cat=v; applyCatalog(); }
+function delCatGroup(gi){ if(!confirm("이 그룹 전체를 삭제할까요?")) return; WOOD_CATALOG.splice(gi,1); applyCatalog(); buildCatalog(); catFilter(); }
+function addCatGroup(){ WOOD_CATALOG.push({cat:"새 그룹", icon:"📦", items:[]}); applyCatalog(); buildCatalog(); catFilter(); }
+function toggleCatEdit(){ catEdit=!catEdit; const b=document.getElementById("catEditBtn"); if(b){ b.textContent=catEdit?"✓ 편집완료":"✏ 편집"; b.classList.toggle("on",catEdit); } const t=document.getElementById("catEditTools"); if(t) t.style.display=catEdit?"flex":"none"; buildCatalog(); catFilter(); }
+function resetCatalog(){ if(!confirm("카탈로그를 기본값으로 되돌릴까요? 직접 추가/수정한 품목·단가가 모두 사라집니다.")) return; WOOD_CATALOG=JSON.parse(DEFAULT_CATALOG_JSON); applyCatalog(); buildCatalog(); catFilter(); }
+function openCatalog(){ document.getElementById("catModal").classList.add("on"); document.getElementById("catQ").value=""; catFilter(); }
+function closeCatalog(){ document.getElementById("catModal").classList.remove("on"); }
+function catFilter(){
+  const q=document.getElementById("catQ").value.trim().toLowerCase(); let shown=0;
+  document.querySelectorAll("#catGrid .grp").forEach(grp=>{
+    let g=0;
+    grp.querySelectorAll(".card").forEach(c=>{ const hit=!q||c.dataset.k.includes(q); c.style.display=hit?"":"none"; if(hit){g++;shown++;} });
+    grp.style.display=g?"":"none";
+  });
+  document.getElementById("catEmpty").style.display=shown?"none":"block";
+}
+function onVarChange(gi,ii,vid){ const it=WOOD_CATALOG[gi].items[ii]; const sel=document.getElementById(vid); if(!it||!sel) return; const v=it.variants[+sel.value]; const pe=document.getElementById(vid+"_p"); if(pe&&v) pe.innerHTML = v.price>0?("₩"+fmt(v.price)+' <span style="color:var(--sub);font-weight:500">/'+it.unit+'</span>'):'<span style="color:var(--warn)">견적문의</span>'; }
+function addVar(gi,ii,vid){ const it=WOOD_CATALOG[gi].items[ii]; const sel=document.getElementById(vid); if(!it||!sel) return; const v=it.variants[+sel.value]; if(!v) return; if(items.length===1 && !items[0].item_name && !items[0].custom) items=[]; items.push({uid:++seq, item_name:it.name+" "+v.sz, custom:false, spec:(v.spec||it.spec), unit:it.unit, qty:1, unit_price:(v.price>0?v.price:""), remark:""}); render(); }
+function editVar(gi,ii,vi,field,v){ const it=WOOD_CATALOG[gi]&&WOOD_CATALOG[gi].items[ii]; if(!it||!it.variants||!it.variants[vi]) return; it.variants[vi][field]=(field==="price"?num(v):v); applyCatalog(); }
+function delVar(gi,ii,vi){ const it=WOOD_CATALOG[gi]&&WOOD_CATALOG[gi].items[ii]; if(!it||!it.variants) return; if(it.variants.length<=1){ alert("사이즈가 1개뿐입니다. 품목삭제를 이용하세요."); return; } it.variants.splice(vi,1); applyCatalog(); buildCatalog(); catFilter(); }
+function addVar2(gi,ii){ const it=WOOD_CATALOG[gi]&&WOOD_CATALOG[gi].items[ii]; if(!it) return; if(!it.variants) it.variants=[]; it.variants.push({sz:"새 사이즈", code:"USR-"+String(Date.now()).slice(-6), price:0}); applyCatalog(); buildCatalog(); catFilter(); }
+function addFromCatalog(code){
+  const c=BY_CODE[code]; if(!c) return;
+  if(items.length===1 && !items[0].item_name && !items[0].custom) items=[];
+  items.push(itemFromCat(c)); render();
+}
+
+/* ===== 프리셋 ===== */
+const FIELD_MAP={ b:["b_name","b_biz","b_ceo","b_mgr","b_addr"], s:["s_name","s_biz","s_ceo","s_mgr","s_addr"] };
+const DEFAULT_PRESETS={ b:[{label:"ECOREAN 본사", name:"ECOREAN", biz:"000-00-00000", ceo:"", mgr:"", addr:""}], s:[{label:"(예시) ○○목재", name:"○○목재", biz:"", ceo:"", mgr:"", addr:""}] };
+let presets={b:[],s:[]};
+function canStore(){ try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); return true; }catch(e){ return false; } }
+function loadPresets(){ presets={ b:[...DEFAULT_PRESETS.b], s:[...DEFAULT_PRESETS.s] }; try{ const r=localStorage.getItem("ecorean_wood_presets"); if(r){ const s=JSON.parse(r); ["b","s"].forEach(k=>{ if(Array.isArray(s[k])) presets[k]=presets[k].concat(s[k]); }); } }catch(e){} }
+function persistPresets(){ const pp={ b:presets.b.slice(DEFAULT_PRESETS.b.length), s:presets.s.slice(DEFAULT_PRESETS.s.length) }; try{ localStorage.setItem("ecorean_wood_presets", JSON.stringify(pp)); }catch(e){} if(typeof cloudPush==="function") cloudPush("wood_presets",function(){ return pp; }); }
+function refreshPresetSelect(side){ const sel=document.getElementById("preset_"+side); if(!sel) return; sel.innerHTML='<option value="">프리셋…</option>'+presets[side].map((p,i)=>`<option value="${i}">${esc(p.label)}</option>`).join(""); }
+function applyPreset(side,idx){ if(idx===""||idx==null) return; const p=presets[side][+idx]; if(!p) return; const f=FIELD_MAP[side], set=(id,v)=>{const el=document.getElementById(id); if(el) el.value=v||"";}; set(f[0],p.name); set(f[1],p.biz); set(f[2],p.ceo); set(f[3],p.mgr); set(f[4],p.addr); }
+function savePreset(side){ const f=FIELD_MAP[side], g=id=>(document.getElementById(id)||{}).value||""; if(!g(f[0])){ alert("상호를 먼저 입력하세요."); return; } const label=prompt("프리셋 이름", g(f[0])); if(label===null) return; presets[side].push({label:label||g(f[0]), name:g(f[0]), biz:g(f[1]), ceo:g(f[2]), mgr:g(f[3]), addr:g(f[4])}); persistPresets(); refreshPresetSelect(side); alert("프리셋 저장 완료"+(canStore()?"":" (미리보기 임시 — PC 파일로 열면 영구)")); }
+
+/* ===== JSON / HTML 저장 / 불러오기 ===== */
+function buildPayload(){
+  recalc();
+  const supply=num(val("t_supply")||document.getElementById("t_supply").textContent);
+  const sv=document.getElementById("t_supply").textContent, vt=document.getElementById("t_vat").textContent, tt=document.getElementById("t_total").textContent;
+  return {
+    order:{ id:val("po_no"), project_id:val("project_id"), site_name:val("site_name"), order_date:val("order_date"), due_date:val("due_date"),
+      status:val("status"), category:"woodwork_material", price_basis:"참고단가 2026.06 VAT별도",
+      supplier:{ name:val("s_name"), biz_no:val("s_biz"), ceo:val("s_ceo"), manager:val("s_mgr"), address:val("s_addr") },
+      orderer:{ name:val("b_name"), biz_no:val("b_biz"), ceo:val("b_ceo"), manager:val("b_mgr"), address:val("b_addr") },
+      ship_to:val("ship_to"), delivery:val("delivery"), payment_terms:val("pay_terms"), inspection:val("inspect"),
+      penalty:val("penalty"), return_terms:val("install"), notes:val("notes"), vat_mode:val("vat_mode"),
+      supply_amount:num(sv), vat:num(vt), total_amount:num(tt) },
+    order_items: items.map((it,i)=>{ const c=BY_NAME[it.item_name]; return {
+      line_no:i+1, material_code:(c?c.code:""), item_name:it.item_name, spec:it.spec, unit:it.unit,
+      quantity:num(it.qty), unit_price:num(it.unit_price), supply_amount:num(it.qty)*num(it.unit_price), remark:it.remark }; })
+  };
+}
+function downloadBlob(content,filename,type){ const b=new Blob([content],{type}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=filename; a.click(); URL.revokeObjectURL(a.href); }
+function exportJSON(){ downloadBlob(JSON.stringify(buildPayload(),null,2), (val("po_no")||"ORD-wood")+".json","application/json"); }
+function saveHTML(){
+  const _ie=document.getElementById("ecorean-cat-images"); if(_ie) _ie.textContent=JSON.stringify(catalogImages).replace(/</g,"\\u003c");
+  const _ce=document.getElementById("ecorean-catalog"); if(_ce) _ce.textContent=JSON.stringify(WOOD_CATALOG).replace(/</g,"\\u003c");
+  const _se=document.getElementById("ecorean-saved-state"); if(_se) _se.textContent=JSON.stringify(buildPayload()).replace(/</g,"\\u003c");
+  const html="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
+  downloadBlob(html, (val("po_no")||"ORD-wood")+".html","text/html");
+}
+function savePDF(){
+  const name=(val("po_no")||"ECOREAN_자재발주서");
+  const prev=document.title; document.title=name;
+  window.print();
+  setTimeout(function(){ document.title=prev; }, 800);
+}
+function triggerImport(){ document.getElementById("import_file").click(); }
+function fromExport(r){ const it=blankItem(); it.item_name=r.item_name||""; it.spec=r.spec||""; it.unit=r.unit||"장"; it.custom=it.item_name!=="" && !BY_NAME[it.item_name]; it.qty=(r.quantity??1); it.unit_price=(r.unit_price??""); it.remark=r.remark||""; return it; }
+function loadFromData(d){
+  const o=d.order||{}; const sv=(id,v)=>{const el=document.getElementById(id); if(el) el.value=(v==null?"":v);};
+  sv("po_no",o.id); sv("project_id",o.project_id); sv("site_name",o.site_name); sv("order_date",o.order_date); sv("due_date",o.due_date); if(o.status) sv("status",o.status);
+  const sup=o.supplier||{}, ord=o.orderer||{};
+  sv("s_name",sup.name); sv("s_biz",sup.biz_no); sv("s_ceo",sup.ceo); sv("s_mgr",sup.manager); sv("s_addr",sup.address);
+  sv("b_name",ord.name); sv("b_biz",ord.biz_no); sv("b_ceo",ord.ceo); sv("b_mgr",ord.manager); sv("b_addr",ord.address);
+  sv("ship_to",o.ship_to); sv("delivery",o.delivery); sv("pay_terms",o.payment_terms); sv("inspect",o.inspection); sv("penalty",o.penalty); sv("install",o.return_terms); sv("notes",o.notes);
+  if(o.vat_mode) sv("vat_mode",o.vat_mode);
+  const its=Array.isArray(d.order_items)?d.order_items:[]; items=its.length?its.map(fromExport):[blankItem()]; render();
+}
+function importJSON(input){ const f=input.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ try{ loadFromData(JSON.parse(rd.result)); alert("불러오기 완료 — 품목 "+items.length+"건"); }catch(e){ alert("불러오기 실패: 올바른 JSON이 아닙니다."); } input.value=""; }; rd.readAsText(f); }
+
+function initDates(){ const t=new Date().toISOString().slice(0,10); if(!val("order_date")) document.getElementById("order_date").value=t; if(!val("po_no")) document.getElementById("po_no").placeholder="ORD-"+new Date().getFullYear()+"-0001"; }
+
+/* ===== 자재 산출 마법사 (공법 레시피 → 연쇄 산출) ===== */
+const ASSEMBLIES = [
+  { id:"gyp_ceil", name:"천장·석고보드", ply:true,
+    sheetOpts:[ {code:"GYP-R095",label:"일반 9.5T 900×1800 (1.62㎡)",area:1.62},
+                {code:"GYP-R125",label:"일반 12.5T 900×1800 (1.62㎡)",area:1.62},
+                {code:"GYP-R125L",label:"일반 12.5T 900×2400 (2.16㎡)",area:2.16},
+                {code:"GYP-F125",label:"방화 12.5T 900×1800 (1.62㎡)",area:1.62} ],
+    methods:[
+      { id:"wood", label:"목상(다루끼)",
+        coeffs:[ {k:"loss",label:"할증률 %",v:10},{k:"bar",label:"다루끼 본/㎡(반자대+달대)",v:1.3},
+                 {k:"perim",label:"수평목 둘레계수(≈4×√㎡)",v:4},{k:"danBon",label:"다루끼 본/단(사재12·0=낱본)",v:12},
+                 {k:"two4",label:"투바이 본수(보강·직접입력·0=off)",v:0},{k:"twoDan",label:"투바이 본/단(사재6)",v:6},
+                 {k:"ply",label:"보강합판 장수(점검구·직접·0=off)",v:0},{k:"staple",label:"422발/㎡(석고+각재)",v:70},
+                 {k:"dt",label:"DT핀발/㎡(목재 조립)",v:25},{k:"stpin",label:"ST핀발/㎡(콘크리트고정)",v:5},
+                 {k:"bond",label:"목공본드 ㎡/통(0=off)",v:40},{k:"sil",label:"실리콘 ㎡/개(단부·이음)",v:30} ],
+        build(A,p,s,c){
+          const L=1+c.loss/100, sh=Math.ceil(A*p*L/s.area);
+          const perim=Math.ceil(c.perim*Math.sqrt(A));
+          const bar=Math.ceil(A*c.bar)+Math.ceil(perim/3.6);
+          const r=[ {code:s.code,qty:sh,f:`${A}㎡×${p}P×할증${c.loss}%÷${s.area}㎡`} ];
+          if(c.danBon>0){ const d=Math.ceil(bar/c.danBon); r.push({code:"LMB-DRSH",qty:d,f:`다루끼 ${bar}본(반자대+달대+수평목 둘레${perim}m)÷${c.danBon}본/단=${d}단`}); }
+          else r.push({code:"LMB-DR",qty:bar,f:`다루끼 ${bar}본(반자대+달대+수평목 둘레${perim}m)`});
+          if(c.two4>0){ const tb=Math.ceil(c.two4), tdR=(c.twoDan>0?c.twoDan:6), td=Math.ceil(tb/tdR); r.push({code:"LMB-TBS",qty:td,f:`투바이 보강 ${tb}본(직접)÷${tdR}본/단=${td}단`}); }
+          if(c.ply>0)  r.push({code:"PNL-PLY115",qty:Math.ceil(c.ply),f:`보강합판 ${c.ply}장(직접)`});
+          r.push({code:"422",qty:Math.max(1,Math.ceil(A*c.staple/5000)),f:`422 스테이플 ${A}×${c.staple}발÷5000(석고+각재)`});
+          if(c.dt>0)    r.push({code:"DT50",qty:Math.max(1,Math.ceil(A*c.dt/3000)),f:`DT핀 목재조립 ${A}×${c.dt}발÷3000`});
+          if(c.stpin>0) r.push({code:"ST38",qty:Math.max(1,Math.ceil(A*c.stpin/2000)),f:`ST핀 수평목·달대 콘크리트고정 ${A}×${c.stpin}발÷2000`});
+          if(c.bond>0)  r.push({code:"FAS-B205",qty:Math.ceil(A/c.bond),f:`목공본드 ${A}㎡÷${c.bond}㎡/통`});
+          if(c.sil>0)   r.push({code:"FAS-SILG",qty:Math.max(1,Math.ceil(A/c.sil)),f:`실리콘 단부·이음 ${A}㎡÷${c.sil}㎡/개`});
+          return r;
+        } },
+      { id:"steel", label:"경량철골(M-Bar)",
+        coeffs:[ {k:"loss",label:"할증률 %",v:10},{k:"cr",label:"캐링찬넬 본/㎡",v:0.95},
+                 {k:"mb",label:"M-Bar 본/㎡",v:1.3},{k:"hg",label:"행거 개/㎡",v:1.0},
+                 {k:"cl",label:"클립 개/㎡",v:2.2},{k:"ab",label:"달대볼트 개/㎡",v:1.0},
+                 {k:"perim",label:"테두리 L앵글 둘레계수(≈4×√㎡)",v:4},{k:"screw",label:"피스개/석고장",v:35},
+                 {k:"sil",label:"실리콘 ㎡/개(단부·이음)",v:30} ],
+        build(A,p,s,c){
+          const L=1+c.loss/100, sh=Math.ceil(A*p*L/s.area), ab=Math.ceil(A*c.ab);
+          const perim=Math.ceil(c.perim*Math.sqrt(A));
+          const r=[ {code:s.code,qty:sh,f:`${A}㎡×${p}P×할증${c.loss}%÷${s.area}㎡`},
+                    {code:"FRM-CR",qty:Math.ceil(A*c.cr),f:`캐링 ${A}×${c.cr}본/㎡`},
+                    {code:"FRM-MB",qty:Math.ceil(A*c.mb),f:`M바 ${A}×${c.mb}본/㎡`},
+                    {code:"FRM-HG",qty:Math.ceil(A*c.hg),f:`행거 ${A}×${c.hg}개/㎡`},
+                    {code:"FRM-CL",qty:Math.ceil(A*c.cl),f:`클립 ${A}×${c.cl}개/㎡`},
+                    {code:"FRM-AB",qty:ab,f:`달대볼트 ${A}×${c.ab}개/㎡`},
+                    {code:"FRM-HGR",qty:ab,f:`달대받이(인서트) 달대볼트 ${ab}개분`},
+                    {code:"FRM-SA",qty:ab,f:`세트앙카 슬라브 ${ab}개분`} ];
+          if(c.perim>0) r.push({code:"FRM-LA",qty:Math.ceil(perim/3.6),f:`테두리 L앵글 둘레≈${perim}m÷3.6`});
+          r.push({code:"FAS-DW25",qty:Math.ceil(sh*c.screw/1000),f:`피스 석고${sh}×${c.screw}÷1000`});
+          if(c.sil>0) r.push({code:"FAS-SILG",qty:Math.max(1,Math.ceil(A/c.sil)),f:`실리콘 단부·이음 ${A}㎡÷${c.sil}㎡/개`});
+          return r;
+        } }
+    ] },
+  { id:"gyp_wall", name:"벽·석고보드", ply:true,
+    sheetOpts:[ {code:"GYP-R125",label:"일반 12.5T 900×1800 (1.62㎡)",area:1.62},
+                {code:"GYP-R125L",label:"일반 12.5T 900×2400 (2.16㎡)",area:2.16},
+                {code:"GYP-F125",label:"방화 12.5T 900×1800 (1.62㎡)",area:1.62} ],
+    methods:[
+      { id:"wood", label:"목상(다루끼)",
+        coeffs:[ {k:"loss",label:"할증률 %",v:7},{k:"bar",label:"다루끼 본/㎡(세로상+보강)",v:1.0},
+                 {k:"danBon",label:"다루끼 본/단(사재12·0=낱본)",v:12},{k:"two4",label:"투바이 본수(문틀·중량벽·직접·0=off)",v:0},
+                 {k:"twoDan",label:"투바이 본/단(사재6)",v:6},{k:"ply",label:"보강합판 장수(직접·0=off)",v:0},
+                 {k:"staple",label:"422발/㎡(석고+각재)",v:60},{k:"dt",label:"DT핀발/㎡(목재 조립)",v:20},
+                 {k:"stpin",label:"ST핀발/㎡(상 콘크리트고정)",v:8},{k:"bond",label:"목공본드 ㎡/통(0=off)",v:0},
+                 {k:"sil",label:"실리콘 ㎡/개(단부·이음)",v:40} ],
+        build(A,p,s,c){
+          const L=1+c.loss/100, sh=Math.ceil(A*p*L/s.area), bar=Math.ceil(A*c.bar);
+          const r=[ {code:s.code,qty:sh,f:`${A}㎡×${p}P×할증${c.loss}%÷${s.area}㎡`} ];
+          if(c.danBon>0){ const d=Math.ceil(bar/c.danBon); r.push({code:"LMB-DRSH",qty:d,f:`다루끼 ${bar}본(세로상+보강)÷${c.danBon}본/단=${d}단`}); }
+          else r.push({code:"LMB-DR",qty:bar,f:`다루끼 ${bar}본(세로상+보강)`});
+          if(c.two4>0){ const tb=Math.ceil(c.two4), tdR=(c.twoDan>0?c.twoDan:6), td=Math.ceil(tb/tdR); r.push({code:"LMB-TBS",qty:td,f:`투바이 문틀·중량벽 ${tb}본(직접)÷${tdR}본/단=${td}단`}); }
+          if(c.ply>0)  r.push({code:"PNL-PLY115",qty:Math.ceil(c.ply),f:`보강합판 ${c.ply}장(직접)`});
+          r.push({code:"422",qty:Math.max(1,Math.ceil(A*c.staple/5000)),f:`422 스테이플 ${A}×${c.staple}발÷5000(석고+각재)`});
+          if(c.dt>0)    r.push({code:"DT50",qty:Math.max(1,Math.ceil(A*c.dt/3000)),f:`DT핀 목재조립 ${A}×${c.dt}발÷3000`});
+          if(c.stpin>0) r.push({code:"ST38",qty:Math.max(1,Math.ceil(A*c.stpin/2000)),f:`ST핀 상 콘크리트고정 ${A}×${c.stpin}발÷2000`});
+          if(c.bond>0)  r.push({code:"FAS-B205",qty:Math.ceil(A/c.bond),f:`목공본드 ${A}㎡÷${c.bond}㎡/통`});
+          if(c.sil>0)   r.push({code:"FAS-SILG",qty:Math.max(1,Math.ceil(A/c.sil)),f:`실리콘 단부·이음 ${A}㎡÷${c.sil}㎡/개`});
+          return r;
+        } },
+      { id:"steel", label:"경량철골(스터드)",
+        coeffs:[ {k:"loss",label:"할증률 %",v:7},{k:"stud",label:"C-스터드 본/㎡",v:1.0},
+                 {k:"runner",label:"C-런너 본/㎡",v:0.4},{k:"anc",label:"세트앙카 개/㎡(런너 고정)",v:0.8},
+                 {k:"screw",label:"피스개/석고장",v:35},{k:"sil",label:"실리콘 ㎡/개(단부·이음)",v:40} ],
+        build(A,p,s,c){
+          const L=1+c.loss/100, sh=Math.ceil(A*p*L/s.area);
+          const r=[ {code:s.code,qty:sh,f:`${A}㎡×${p}P×할증${c.loss}%÷${s.area}㎡`},
+                    {code:"FRM-ST65",qty:Math.ceil(A*c.stud),f:`스터드 ${A}×${c.stud}본/㎡`},
+                    {code:"FRM-RN65",qty:Math.ceil(A*c.runner),f:`런너 ${A}×${c.runner}본/㎡`} ];
+          if(c.anc>0) r.push({code:"FRM-SA",qty:Math.ceil(A*c.anc),f:`세트앙카 런너 고정 ${A}×${c.anc}개/㎡`});
+          r.push({code:"FAS-DW32",qty:Math.ceil(sh*c.screw/1000),f:`피스 석고${sh}×${c.screw}÷1000`});
+          if(c.sil>0) r.push({code:"FAS-SILG",qty:Math.max(1,Math.ceil(A/c.sil)),f:`실리콘 단부·이음 ${A}㎡÷${c.sil}㎡/개`});
+          return r;
+        } }
+    ] },
+  { id:"tex_ceil", name:"천장·텍스/마이톤", ply:false,
+    sheetOpts:[ {code:"TEX-SUK",label:"석고텍스 9.5T 18매/박스 (3.24㎡)",area:3.24},
+                {code:"TEX-MT441",label:"마이텍스 MT441 18매/박스 (3.24㎡)",area:3.24},
+                {code:"TEX-MT400",label:"마이톤 MT400 10매/박스 (3.63㎡)",area:3.63} ],
+    coeffs:[ {k:"loss",label:"할증률 %",v:7},{k:"cr",label:"캐링 본/㎡",v:0.5},
+             {k:"mb",label:"M-Bar 본/㎡",v:0.7},{k:"hg",label:"행거 개/㎡",v:1.0},
+             {k:"cl",label:"클립 개/㎡",v:1.5},{k:"ab",label:"달대볼트 개/㎡",v:1.0} ],
+    build(A,p,s,c){
+      const L=1+c.loss/100;
+      return [ {code:s.code,qty:Math.ceil(A*L/s.area),f:`${A}㎡×할증${c.loss}%÷${s.area}㎡/박스`},
+               {code:"FRM-CR",qty:Math.ceil(A*c.cr),f:`${A}㎡×${c.cr}본/㎡`},
+               {code:"FRM-MB",qty:Math.ceil(A*c.mb),f:`${A}㎡×${c.mb}본/㎡`},
+               {code:"FRM-HG",qty:Math.ceil(A*c.hg),f:`${A}㎡×${c.hg}개/㎡`},
+               {code:"FRM-CL",qty:Math.ceil(A*c.cl),f:`${A}㎡×${c.cl}개/㎡`},
+               {code:"FRM-AB",qty:Math.ceil(A*c.ab),f:`${A}㎡×${c.ab}개/㎡`} ];
+    } },
+  { id:"eboard_wall", name:"벽·이보드 단열", ply:false,
+    sheetOpts:[ {code:"SPC-EB13",label:"이보드 13T 900×2400 (2.16㎡)",area:2.16},
+                {code:"SPC-EB23",label:"이보드 23T 900×2400 (2.16㎡)",area:2.16},
+                {code:"SPC-EB33",label:"이보드 33T 900×2400 (2.16㎡)",area:2.16} ],
+    coeffs:[ {k:"loss",label:"할증률 %",v:8},{k:"bond",label:"실리콘 ㎡/개(점접착)",v:4},
+             {k:"foam",label:"폼본드 ㎡/개",v:6},{k:"fix",label:"고정타카 개/장",v:7} ],
+    build(A,p,s,c){
+      const L=1+c.loss/100, sh=Math.ceil(A*L/s.area);
+      return [ {code:s.code,qty:sh,f:`${A}㎡×할증${c.loss}%÷${s.area}㎡`},
+               {code:"FAS-SILG",qty:Math.ceil(A/c.bond),f:`실리콘 점접착 ${A}㎡÷${c.bond}㎡/개`},
+               {code:"FAS-PU",qty:Math.ceil(A/c.foam),f:`${A}㎡÷${c.foam}㎡/개`},
+               {code:"630",qty:Math.max(sh>0?1:0,Math.ceil(sh*c.fix/5000)),f:`이보드${sh}×${c.fix}개÷5000발`} ];
+    } },
+  { id:"floor", name:"바닥·마루", ply:false,
+    sheetOpts:[ {code:"FLR-GANG",label:"강마루(합판)",area:1},{code:"FLR-GANGHWA",label:"강화마루",area:1},
+                {code:"FLR-ONDOL",label:"합판 온돌마루",area:1},{code:"FLR-DECO",label:"데코타일",area:1} ],
+    coeffs:[ {k:"loss",label:"할증률 %",v:8},{k:"bond",label:"접착본드 ㎡/통(0=클릭)",v:0},
+             {k:"wf",label:"둘레계수(≈4×√면적)",v:4} ],
+    build(A,p,s,c){
+      const L=1+c.loss/100, per=Math.ceil(c.wf*Math.sqrt(A));
+      const r=[ {code:s.code,qty:Math.ceil(A*L),f:`${A}㎡×할증${c.loss}%`},
+                {code:"MLD-BSB",qty:Math.ceil(per/2.4),f:`둘레≈${per}m÷2.4m/본`} ];
+      if(c.bond>0) r.push({code:"FAS-B205",qty:Math.ceil(A/c.bond),f:`${A}㎡÷${c.bond}㎡/통`});
+      return r;
+    } }
+];
+
+let CASM=null, cPly=1, cSheet=0, cMethod=0, cCoef={}, CALC_ROWS=[];
+function curM(){ return (CASM&&CASM.methods)?CASM.methods[cMethod]:CASM; }
+let cAreas=[{name:"구간1",w:"",h:"",m2:""}];
+
+function buildAsmBtns(){ document.getElementById("asmBtns").innerHTML = ASSEMBLIES.map((a,i)=>`<button class="${CASM&&CASM.id===a.id?'on':''}" onclick="selectAsm(${i})">${a.name}</button>`).join(""); }
+function selectAsm(i){ CASM=ASSEMBLIES[i]; cPly=1; cSheet=0; cMethod=0; cCoef={}; curM().coeffs.forEach(c=>cCoef[c.k]=c.v); buildAsmBtns(); renderOpt(); calc(); }
+function renderOpt(){
+  let h="<h4>② 시공 옵션</h4>";
+  if(CASM.methods) h+=`<div style="font-size:12.5px;margin-bottom:6px">시공방법<span class="ply">`+CASM.methods.map((mm,i)=>`<button class="${cMethod===i?'on':''}" onclick="setMethod(${i})">${mm.label}</button>`).join("")+`</span></div>`;
+  if(CASM.ply) h+=`<div style="font-size:12.5px">겹 수<span class="ply"><button class="${cPly===1?'on':''}" onclick="setPly(1)">1P (1겹)</button><button class="${cPly===2?'on':''}" onclick="setPly(2)">2P (2겹)</button></span></div>`;
+  h+=`<div class="selrow"><span style="font-size:12.5px;white-space:nowrap">규격</span><select onchange="setSheet(this.value)">`+CASM.sheetOpts.map((s,i)=>`<option value="${i}" ${i===cSheet?'selected':''}>${s.label}</option>`).join("")+`</select></div>`;
+  h+=`<div style="font-size:12px;color:var(--brand);margin-top:4px">산출 계수 (현장 맞게 수정)</div><div class="coef">`+curM().coeffs.map(c=>`<label>${c.label}<input type="number" step="0.1" value="${cCoef[c.k]}" oninput="setCoef('${c.k}',this.value)"></label>`).join("")+`</div>`;
+  document.getElementById("optPanel").innerHTML=h;
+}
+function setPly(p){ cPly=p; renderOpt(); calc(); }
+function setSheet(i){ cSheet=+i; calc(); }
+function setCoef(k,v){ cCoef[k]=parseFloat(v)||0; calc(); }
+function setMethod(i){ cMethod=+i; cCoef={}; curM().coeffs.forEach(c=>cCoef[c.k]=c.v); renderOpt(); calc(); }
+
+function renderAreas(){
+  document.getElementById("areaRows").innerHTML = cAreas.map((a,i)=>`
+    <div class="arow">
+      <input value="${esc(a.name)}" oninput="updArea(${i},'name',this.value)">
+      <input type="number" min="0" value="${esc(a.w)}" oninput="updArea(${i},'w',this.value)">
+      <input type="number" min="0" value="${esc(a.h)}" oninput="updArea(${i},'h',this.value)">
+      <input type="number" min="0" id="am2_${i}" value="${esc(a.m2)}" oninput="updArea(${i},'m2',this.value)">
+      <button class="rm" title="삭제" onclick="rmArea(${i})">×</button>
+    </div>`).join("");
+}
+function updArea(i,k,v){
+  cAreas[i][k]=v;
+  if(k==="w"||k==="h"){ const w=parseFloat(cAreas[i].w), hh=parseFloat(cAreas[i].h); if(w>0&&hh>0){ cAreas[i].m2=(w*hh).toFixed(2); const el=document.getElementById("am2_"+i); if(el) el.value=cAreas[i].m2; } }
+  refreshAreaTotal(); calc();
+}
+function addArea(){ cAreas.push({name:"구간"+(cAreas.length+1),w:"",h:"",m2:""}); renderAreas(); }
+function rmArea(i){ if(cAreas.length<=1) return; cAreas.splice(i,1); renderAreas(); refreshAreaTotal(); calc(); }
+function totalArea(){ return cAreas.reduce((s,a)=>s+(parseFloat(a.m2)||0),0); }
+function refreshAreaTotal(){ const A=totalArea(); document.getElementById("areaTotal").textContent=A.toFixed(2); document.getElementById("pyeong").textContent=A>0?("(약 "+(A/3.3058).toFixed(1)+"평)"):""; }
+
+function mergeRows(rows){ const map={},order=[]; rows.forEach(r=>{ if(map[r.code]){ map[r.code].qty+=r.qty; map[r.code].f+=" + "+r.f; } else { map[r.code]={code:r.code,qty:r.qty,f:r.f}; order.push(r.code); } }); return order.map(c=>map[c]); }
+function calc(){
+  if(!CASM) return;
+  const A=+totalArea().toFixed(2);
+  if(A<=0){ document.getElementById("bdBody").innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--sub);padding:18px">면적을 입력하세요.</td></tr>'; document.getElementById("bdSum").textContent=""; CALC_ROWS=[]; return; }
+  const s=CASM.sheetOpts[cSheet];
+  CALC_ROWS=mergeRows(curM().build(A,cPly,s,cCoef).filter(r=>r.qty>0));
+  renderCalcRows();
+}
+function renderCalcRows(){
+  let sum=0;
+  document.getElementById("bdBody").innerHTML = CALC_ROWS.map((r,i)=>{
+    const m=BY_CODE[r.code]||{name:r.code,unit:"",spec:"",price:0};
+    const amt=m.price>0?m.price*r.qty:0; sum+=amt;
+    return `<tr><td><b>${m.name}</b><div class="f">${m.spec||""}</div></td>
+      <td class="f">${r.f}</td>
+      <td class="q"><input type="number" min="0" step="1" value="${r.qty}" onchange="editCalcQty(${i},this.value)" style="width:56px;text-align:right;padding:3px 4px"> ${m.unit}${m.price>0?'<div class="f">₩'+fmt(amt)+'</div>':'<div class="f" style="color:var(--warn)">견적문의</div>'}</td>
+      <td class="no-print" style="text-align:center"><button type="button" title="이 자재 제외" onclick="delCalcRow(${i})" style="border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;padding:2px 9px;color:var(--warn);font-weight:700">×</button></td></tr>`;
+  }).join("");
+  const _A=totalArea(); const _el=document.getElementById("bdSum");
+  let _w=""; if(_A>0 && sum/_A>100000){ _w=" ⚠ ㎡당 ₩"+fmt(Math.round(sum/_A))+" — 비정상적으로 높습니다. 본/㎡ 등 계수 입력을 확인하세요"; }
+  _el.innerHTML = (sum>0?("참고 합계 ₩"+fmt(sum)+" (VAT별도)"):"") + (_w?('<span style="color:var(--warn);font-weight:700">'+_w+'</span>'):"");
+}
+function editCalcQty(i,v){ if(CALC_ROWS[i]){ CALC_ROWS[i].qty=Math.max(0,parseFloat(v)||0); renderCalcRows(); } }
+function delCalcRow(i){ CALC_ROWS.splice(i,1); renderCalcRows(); }
+function addCalcToOrder(){
+  if(!CALC_ROWS||!CALC_ROWS.length){ alert("면적을 입력하세요."); return; }
+  if(items.length===1 && !items[0].item_name && !items[0].custom) items=[];
+  let n=0;
+  CALC_ROWS.forEach(r=>{ const c=BY_CODE[r.code]; if(!c||r.qty<=0) return; const it=itemFromCat(c); it.qty=r.qty; it.remark="산출:"+CASM.name; items.push(it); n++; });
+  render(); closeCalc();
+  alert("산출 결과 "+n+"개 품목을 발주표에 담았습니다.");
+}
+function openCalc(){ if(!CASM) selectAsm(0); else { buildAsmBtns(); renderOpt(); } renderAreas(); refreshAreaTotal(); calc(); document.getElementById("calcModal").classList.add("on"); }
+function closeCalc(){ document.getElementById("calcModal").classList.remove("on"); }
+
+/* ===== 판재 재단(원장→조각) 산출 ===== */
+function parseSize(spec){ const m=String(spec).match(/(\d{3,4})\s*[×xX*]\s*(\d{3,4})/); return m?{w:+m[1],h:+m[2]}:null; }
+let STOCK=[];
+let curStock="", CUT_RESULT=null;
+function rebuildStock(){ STOCK.length=0; WOOD_CATALOG.forEach(g=>g.items.forEach(it=>{ if(it.variants){ if(it.unit==="장"){ it.variants.forEach(v=>{ const sz=parseSize(v.spec||it.spec)||{w:1220,h:2440}; STOCK.push({code:v.code,name:it.name+" "+v.sz,w:sz.w,h:sz.h,price:num(v.price)}); }); } return; } if(it.unit==="장"){ const sz=parseSize(it.spec)||{w:1220,h:2440}; STOCK.push({code:it.code,name:it.name,w:sz.w,h:sz.h,price:it.price}); }})); if(!STOCK.find(s=>s.code===curStock)) curStock=STOCK[0]?STOCK[0].code:""; }
+rebuildStock();
+let cutRows=[{name:"조각1",w:"",h:"",qty:""}];
+
+function across(L,p,k){ if(p<=0) return 0; return Math.max(0,Math.floor((L+k)/(p+k))); }
+function ppsheet(W,H,w,h,k,rot){
+  function grid(w,h){ return across(W,w,k)*across(H,h,k); }
+  let best=grid(w,h);
+  if(rot) best=Math.max(best,grid(h,w));
+  if(rot){
+    let mn=across(W,w,k);
+    for(let n=0;n<=mn;n++){ const lw=W-n*(w+k); const r1=n*across(H,h,k); const r2=lw>0?across(lw,h,k)*across(H,w,k):0; best=Math.max(best,r1+r2); }
+    let mm=across(W,h,k);
+    for(let m=0;m<=mm;m++){ const lw=W-m*(h+k); const r1=m*across(H,w,k); const r2=lw>0?across(lw,w,k)*across(H,h,k):0; best=Math.max(best,r1+r2); }
+  }
+  return best;
+}
+function buildStockSel(){
+  const sel=document.getElementById("stockSel");
+  sel.innerHTML=STOCK.map(s=>`<option value="${s.code}" ${s.code===curStock?"selected":""}>${esc(s.name)} (${s.w}×${s.h})</option>`).join("");
+}
+function onStock(code){ curStock=code; const s=STOCK.find(x=>x.code===code); if(s){ document.getElementById("stW").value=s.w; document.getElementById("stH").value=s.h; } cutCalc(); }
+function renderCutRows(){
+  document.getElementById("cutRows").innerHTML = cutRows.map((c,i)=>`
+    <div class="arow" style="grid-template-columns:1.4fr 1fr 1fr .9fr auto">
+      <input value="${esc(c.name)}" oninput="updCut(${i},'name',this.value)">
+      <input type="number" min="0" value="${esc(c.w)}" oninput="updCut(${i},'w',this.value)">
+      <input type="number" min="0" value="${esc(c.h)}" oninput="updCut(${i},'h',this.value)">
+      <input type="number" min="0" value="${esc(c.qty)}" oninput="updCut(${i},'qty',this.value)">
+      <button class="rm" title="삭제" onclick="rmCut(${i})">×</button>
+    </div>`).join("");
+}
+function updCut(i,k,v){ cutRows[i][k]=v; cutCalc(); }
+function addCut(){ cutRows.push({name:"조각"+(cutRows.length+1),w:"",h:"",qty:""}); renderCutRows(); }
+function rmCut(i){ if(cutRows.length<=1) return; cutRows.splice(i,1); renderCutRows(); cutCalc(); }
+function gv(id){ return parseFloat(document.getElementById(id).value)||0; }
+function cutCalc(){
+  const W=gv("stW"),H=gv("stH"),k=gv("kerf"),rot=document.getElementById("rot").checked;
+  let total=0, usedArea=0, html="";
+  cutRows.forEach((c,i)=>{
+    const w=+c.w,h=+c.h,q=+c.qty, nm=esc(c.name)||("조각"+(i+1));
+    if(!(w>0&&h>0&&q>0)){ html+=`<tr><td>${nm}</td><td class="f">크기·수량 입력</td><td class="q">-</td></tr>`; return; }
+    const per=ppsheet(W,H,w,h,k,rot);
+    if(per<=0){ html+=`<tr><td>${nm}</td><td class="f" style="color:var(--warn)">원장보다 큼·재단 불가</td><td class="q">-</td></tr>`; return; }
+    const sheets=Math.ceil(q/per); total+=sheets; usedArea+=q*w*h;
+    html+=`<tr><td><b>${nm}</b><div class="f">${w}×${h} · ${q}개</div></td>
+      <td class="f">1장당 ${per}개<br>${q} ÷ ${per} = ${sheets}장</td><td class="q">${sheets}장</td></tr>`;
+  });
+  document.getElementById("cutBody").innerHTML = html || '<tr><td colspan="3" style="text-align:center;color:var(--sub);padding:14px">조각을 입력하세요.</td></tr>';
+  const yld=(total>0&&W>0&&H>0)?(usedArea/(total*W*H)*100):0;
+  const st=STOCK.find(s=>s.code===curStock); const amt=(st&&st.price>0)?st.price*total:0;
+  document.getElementById("cutSum").innerHTML = total>0?(`원장 합계 <b>${total}장</b> · 수율 ${yld.toFixed(0)}%${amt>0?" · 참고 ₩"+fmt(amt):""}`):"";
+  CUT_RESULT={code:curStock, sheets:total};
+}
+function addCutToOrder(){
+  if(!CUT_RESULT||CUT_RESULT.sheets<=0){ alert("재단 조각을 입력하세요."); return; }
+  const c=BY_CODE[CUT_RESULT.code]; if(!c){ alert("원장 선택 오류"); return; }
+  if(items.length===1 && !items[0].item_name && !items[0].custom) items=[];
+  const it=itemFromCat(c); it.qty=CUT_RESULT.sheets;
+  it.remark="재단: "+cutRows.filter(r=>+r.w>0&&+r.h>0).map(r=>(r.name||"조각")+" "+r.w+"×"+r.h+"×"+r.qty).join(", ");
+  items.push(it); render(); closeCalc();
+  alert(c.name+" "+CUT_RESULT.sheets+"장을 발주표에 담았습니다.");
+}
+function setMode(m){
+  document.getElementById("modeArea").style.display = m==="area"?"":"none";
+  document.getElementById("modeCut").style.display = m==="cut"?"":"none";
+  document.getElementById("mode_area").classList.toggle("on", m==="area");
+  document.getElementById("mode_cut").classList.toggle("on", m==="cut");
+  if(m==="cut"){ buildStockSel(); renderCutRows(); cutCalc(); }
+}
+
+/* ===== 도감 이미지 (기본=로고, 업로드/삭제/편집) ===== */
+const LOGO="data:image/jpeg;base64,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";
+let catalogImages={};
+function imgFor(code){ return catalogImages[code]||LOGO; }
+function loadCatImages(){
+  const emb=document.getElementById("ecorean-cat-images");
+  if(emb){ try{ const o=JSON.parse(emb.textContent); if(o&&typeof o==="object") catalogImages=o; }catch(e){} }
+  try{ const r=localStorage.getItem("ecorean_wood_catimg"); if(r){ const o=JSON.parse(r); catalogImages=Object.assign({},o,catalogImages); } }catch(e){}
+}
+function persistCatImages(){ try{ localStorage.setItem("ecorean_wood_catimg", JSON.stringify(catalogImages)); }catch(e){} if(typeof cloudPush==="function") cloudPush("wood_catimg",function(){ return catalogImages; }); }
+function loadCatalog(){
+  let raw=null;
+  const emb=document.getElementById("ecorean-catalog");
+  if(emb && emb.textContent && emb.textContent.trim()) raw=emb.textContent;
+  if(!raw){ try{ raw=localStorage.getItem("ecorean_wood_catalog_v1"); }catch(e){} }
+  if(raw){ try{ const o=JSON.parse(raw); if(Array.isArray(o)&&o.length){ WOOD_CATALOG=o; } }catch(e){} }
+}
+function persistCatalog(){
+  try{ localStorage.setItem("ecorean_wood_catalog_v1", JSON.stringify(WOOD_CATALOG)); }catch(e){}
+  const emb=document.getElementById("ecorean-catalog"); if(emb) emb.textContent=JSON.stringify(WOOD_CATALOG).replace(/</g,"\\u003c");
+  if(typeof cloudPush==="function") cloudPush("wood_catalog",function(){ return WOOD_CATALOG; });
+}
+let imgTarget=null;
+function pickImg(code){ imgTarget=code; document.getElementById("imgInput").click(); }
+function onImgPick(input){
+  const f=input.files[0]; input.value=""; if(!f||!imgTarget) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ const im=new Image(); im.onload=()=>{
+    const max=300, sc=Math.min(1,max/Math.max(im.width,im.height));
+    const cv=document.createElement("canvas"); cv.width=Math.round(im.width*sc)||1; cv.height=Math.round(im.height*sc)||1;
+    cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);
+    catalogImages[imgTarget]=cv.toDataURL("image/jpeg",0.58);
+    persistCatImages(); buildCatalog(); catFilter();
+  }; im.onerror=()=>alert("이미지를 불러올 수 없습니다."); im.src=rd.result; };
+  rd.readAsDataURL(f);
+}
+function deleteImg(code){ if(!catalogImages[code]) return; if(!confirm("이 이미지를 기본 로고로 되돌릴까요?")) return; delete catalogImages[code]; persistCatImages(); buildCatalog(); catFilter(); }
+
+/* ===== Supabase 클라우드 동기화 (여러 기기 공유) ===== */
+const SB_URL="https://gdcfqbdgubgpzusbtftf.supabase.co";
+const SB_KEY="sb_publishable_LU8lIQH-L5K8B1qwtezCUg_PkcCrAOQ";
+const SB_TBL="ecorean_store";
+const SB_H={ "apikey":SB_KEY, "Authorization":"Bearer "+SB_KEY, "Content-Type":"application/json" };
+let _cloudOK=false, _lastEdit=0, _ver={}, _saveT={};
+function cloudStatus(s,c){ const e=document.getElementById("cloudStat"); if(e){ e.textContent=s; e.style.color=c||"#877c64"; } }
+async function cloudLoad(key){
+  try{ const r=await fetch(SB_URL+"/rest/v1/"+SB_TBL+"?store_key=eq."+key+"&select=data_json,updated_at&limit=1",{headers:SB_H});
+    if(!r.ok) return null; const rows=await r.json();
+    if(rows&&rows[0]){ _ver[key]=rows[0].updated_at; try{ return JSON.parse(rows[0].data_json); }catch(e){ return null; } } }
+  catch(e){} return null;
+}
+async function cloudSave(key,data){
+  try{ const body=[{store_key:key, data_json:JSON.stringify(data), updated_at:new Date().toISOString()}];
+    const r=await fetch(SB_URL+"/rest/v1/"+SB_TBL,{method:"POST",headers:Object.assign({},SB_H,{"Prefer":"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(body)});
+    if(r.ok){ _ver[key]=body[0].updated_at; cloudStatus("☁ 저장됨","#2a7d4f"); return true; } }
+  catch(e){} cloudStatus("☁ 오프라인","#a8432c"); return false;
+}
+function cloudPush(key,getData){ _lastEdit=Date.now(); clearTimeout(_saveT[key]); _saveT[key]=setTimeout(function(){ if(_cloudOK) cloudSave(key,getData()); },1200); }
+async function cloudPull(){
+  const res=await Promise.all([cloudLoad("wood_catalog"),cloudLoad("wood_catimg"),cloudLoad("wood_presets")]);
+  const cat=res[0], img=res[1], pre=res[2]; let changed=false;
+  if(Array.isArray(cat)&&cat.length){ WOOD_CATALOG=cat; rebuildIndexes(); rebuildStock(); changed=true; }
+  if(img&&typeof img==="object"){ catalogImages=img; changed=true; }
+  if(pre&&typeof pre==="object"&&(Array.isArray(pre.b)||Array.isArray(pre.s))){ presets={b:[].concat(DEFAULT_PRESETS.b,pre.b||[]),s:[].concat(DEFAULT_PRESETS.s,pre.s||[])}; refreshPresetSelect("b"); refreshPresetSelect("s"); }
+  if(changed){ buildCatalog(); const cm=document.getElementById("catModal"); if(cm&&cm.classList.contains("on")&&typeof catFilter==="function") catFilter(); if(typeof render==="function") render(); }
+  return {cat:!!cat,img:!!img};
+}
+async function cloudInit(){
+  const tb=document.querySelector(".toolbar");
+  if(tb&&!document.getElementById("cloudBtn")){
+    const b=document.createElement("button"); b.className="ghost"; b.id="cloudBtn"; b.type="button"; b.textContent="☁ 동기화";
+    b.onclick=function(){ cloudStatus("☁ 불러오는 중…"); cloudPull().then(function(){ cloudStatus("☁ 최신","#2a7d4f"); }); };
+    const s=document.createElement("span"); s.id="cloudStat"; s.className="hint"; s.style.marginLeft="3px";
+    tb.appendChild(b); tb.appendChild(s);
+  }
+  cloudStatus("☁ 연결 중…");
+  try{
+    const got=await cloudPull(); _cloudOK=true;
+    if(!got.cat){ await cloudSave("wood_catalog",WOOD_CATALOG); }            // 클라우드 비면 현재 카탈로그로 시드
+    if(!got.img && Object.keys(catalogImages).length){ await cloudSave("wood_catimg",catalogImages); }
+    cloudStatus("☁ 최신","#2a7d4f");
+  }catch(e){ _cloudOK=false; cloudStatus("☁ 오프라인","#a8432c"); return; }
+  setInterval(async function(){
+    if(!_cloudOK) return; if(Date.now()-_lastEdit<8000) return;
+    const ae=document.activeElement; if(ae&&ae.matches&&ae.matches("input,select,textarea")) return;  // 입력 중엔 갱신 안 함
+    try{ const r=await fetch(SB_URL+"/rest/v1/"+SB_TBL+"?store_key=eq.wood_catalog&select=updated_at&limit=1",{headers:SB_H});
+      const rows=await r.json(); const v=rows&&rows[0]&&rows[0].updated_at;
+      if(v && v!==_ver["wood_catalog"]){ await cloudPull(); cloudStatus("☁ 갱신됨","#2a7d4f"); } }catch(e){}
+  },20000);
+}
+
+/* init */
+function __init(){
+  loadCatImages(); loadCatalog(); rebuildIndexes(); rebuildStock();
+  loadPresets(); refreshPresetSelect("b"); refreshPresetSelect("s");
+  { const bl=document.getElementById("brandLogo"); if(bl) bl.src=LOGO; }
+  buildCatalog();
+  if(typeof cloudInit==="function") cloudInit();
+  const saved=document.getElementById("ecorean-saved-state");
+  if(saved && saved.textContent.trim()){ try{ loadFromData(JSON.parse(saved.textContent)); initDates(); }catch(e){ items=[blankItem()]; initDates(); render(); } }
+  else { items=[blankItem()]; initDates(); render(); }
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",__init); else __init();
+</script>
+<script id="ecorean-cat-images" type="application/json">{}</script>
+<script id="ecorean-catalog" type="application/json"></script>
+<script id="ecorean-saved-state" type="application/json"></script>
+<script>
+/* 모바일 키보드 겹침 방지: 입력 포커스 시 화면 안으로 스크롤 */
+(function(){
+  var t;
+  function bring(el){ if(!el) return; try{ el.scrollIntoView({block:"center", behavior:"smooth"}); }catch(_){ try{ el.scrollIntoView(); }catch(__){} } }
+  document.addEventListener("focusin", function(e){
+    var el=e.target;
+    if(el && el.matches && el.matches("input,select,textarea")){
+      clearTimeout(t); t=setTimeout(function(){ bring(el); }, 330);
+    }
+  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize", function(){
+      var el=document.activeElement;
+      if(el && el.matches && el.matches("input,select,textarea")) bring(el);
+    });
+  }
+})();
+</script>
+</body>
+</html>
