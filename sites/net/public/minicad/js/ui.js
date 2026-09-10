@@ -1199,7 +1199,18 @@ function refreshDetail(){
       const linkingJ=!!(window._jumpLink&&window._jumpLink.lightId===obj.id);
       const litNow=(typeof litLightIds==='function')&&litLightIds().has(obj.id);
       const feeder=(STATE.electric||[]).filter(e=>Array.isArray(e.lightIds)&&e.lightIds.indexOf(obj.id)>=0).length;
+      // 2026-09-10 대표 지시 — 광원 조정: 색온도(비우면 타입 기본)·밝기. 미니폼에 즉시 반영.
+      const _cctCur=(obj.cct==='warm'||obj.cct==='neutral'||obj.cct==='day')?obj.cct:null;
+      const _cctBtn=(v,lb)=>'<button type="button" class="btn sm d-cct" data-v="'+v+'" style="flex:1'+(_cctCur===v?';background:var(--gold);color:#1a1a1a;font-weight:700':'')+'">'+lb+'</button>';
+      const _briV=Math.max(30,Math.min(250,parseInt(obj.bright_pct,10)||100));
       jumpHtml=
+        '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.08);border:1px solid rgba(212,184,114,0.35);border-radius:4px">'+
+        '<div class="field-label" style="margin-bottom:6px;color:#D4B872">광원 — 색온도 · 밝기 (미니폼 즉시)</div>'+
+        '<div style="display:flex;gap:4px">'+_cctBtn('warm','전구색')+_cctBtn('neutral','주백색')+_cctBtn('day','주광색')+'</div>'+
+        '<div style="display:flex;gap:6px;margin-top:6px;align-items:center">'+
+        '<input type="range" id="d-bright" name="d-bright" aria-label="밝기 %" min="30" max="250" step="10" value="'+_briV+'" style="flex:1;min-width:0">'+
+        '<span id="d-bright-v" style="width:44px;text-align:right;font-size:11px;color:#D4B872">'+_briV+'%</span></div>'+
+        '<div class="hint" style="margin-top:4px">같은 버튼을 다시 누르면 타입 기본으로 — 방등·평판 주광색 · 매입·T5 주백색 · 펜던트·간접 전구색</div></div>'+
         '<div style="margin-top:8px;padding:8px;background:rgba(212,184,114,0.08);border:1px solid rgba(212,184,114,0.35);border-radius:4px">'+
         '<div class="field-label" style="margin-bottom:6px;color:#D4B872">배선 — 점핑 <b>'+nb.length+'</b>개'+(feeder?' · 스위치 직결':'')+
         ' <span style="color:'+(litNow?'#D4B872':'#7B82B5')+'">'+(litNow?'● 점등 중':'○ 소등')+'</span></div>'+
@@ -1369,6 +1380,23 @@ function refreshDetail(){
       if(dfx) dfx.addEventListener('click',()=>cleanDuplicateLights(obj.id));
     }
     if(isLightSel){
+      // 2026-09-10: 광원 조정 배선
+      document.querySelectorAll('.d-cct').forEach(b=>b.addEventListener('click',()=>{
+        const v=b.dataset.v;
+        if(obj.cct===v) delete obj.cct; else obj.cct=v;   // 다시 누르면 타입 기본
+        saveHistory();renderAll();refreshUI();
+        cmdToast('색온도 — '+(obj.cct?({warm:'전구색 2700K',neutral:'주백색 4000K',day:'주광색 6500K'})[obj.cct]:'타입 기본'));
+      }));
+      const _bri=document.getElementById('d-bright');
+      if(_bri){
+        const _bv=document.getElementById('d-bright-v');
+        _bri.addEventListener('input',()=>{ if(_bv) _bv.textContent=_bri.value+'%'; });
+        _bri.addEventListener('change',()=>{
+          obj.bright_pct=Math.max(30,Math.min(250,parseInt(_bri.value,10)||100));
+          saveHistory();renderAll();refreshUI();
+          cmdToast('밝기 '+obj.bright_pct+'%');
+        });
+      }
       const jb=document.getElementById('d-jump-link');
       if(jb) jb.addEventListener('click',()=>{
         if(window._jumpLink&&window._jumpLink.lightId===obj.id) endJumpLink();

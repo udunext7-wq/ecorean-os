@@ -794,7 +794,7 @@ function buildLight(o,def,D,spaces){
     case 'cove': prims=[box(0,0,H-120,L,80,25,C.lamp,em),box(0,60,H-160,L,40,160,C.ceiling)]; break;
     case 'fluorescent': case 'kitchen_flat': prims=[box(0,0,H-45,L,Math.min(300,L*0.25),45,C.lamp,em)]; break;
     case 'edge_flat_600': prims=[box(0,0,H-15,size,size,15,C.lamp,em)]; break;
-    case 'ceiling_fan': prims=[cyl(0,0,H-300,60,300,C.dark),box(0,0,H-330,size,120,20,C.wood),box(0,0,H-330,120,size,20,C.wood)]; break;
+    case 'ceiling_fan': prims=[cyl(0,0,H-300,60,300,C.dark),box(0,0,H-330,size,120,20,C.wood),box(0,0,H-330,120,size,20,C.wood),cyl(0,0,H-400,130,70,C.lamp,em)]; break; // 2026-09-10: '실링팬 조명'인데 등이 없었다
     case 'step_light': prims=[box(0,-20,300,size,40,size*0.5,C.lamp,em)]; break;
     default: prims=[cyl(0,0,H-60,size/2,60,C.lamp,em)];
   }
@@ -803,13 +803,57 @@ function buildLight(o,def,D,spaces){
   //  프림들이 전부 로컬 X 방향으로 길게 놓이므로 뷰어는 X 축을 따라 광원을 줄지어 단다.
   const LIGHT_LINE=/^(line_t5|line_light|cove|fluorescent|kitchen_flat|pendant_linear|spot_bar_3|track|magnet_track)$/;
   const lightLen=LIGHT_LINE.test(type)?Math.round(L):0;
+  // ── 2026-09-10 대표 지시 "각각의 조명을 확실하게 공부해 사실적으로" ──────────────
+  //  타입마다 실물의 광형·색온도·광량을 광원 명세(emitters)로 적는다. 뷰어는 그대로 켠다.
+  //  · k:'pt' = 확산(둥근 풀 — 방등·평판·갓등) · k:'spot' = 원뿔(매입·스팟, up=천장 워시)
+  //  · x = 길이 방향(로컬 X) 오프셋 mm · z = 광원 높이 mm · i = 세기 · d = 도달 m
+  //  · 색온도 국내 시공 관행: 방등·평판·욕실·센서 = 주광색 6500K / 매입·T5·라인·리니어
+  //    = 주백색 4000K / 펜던트·스탠드·벽등·간접·스팟·샹들리에·발목등 = 전구색 2700K
+  //  · 등마다 조정: o.cct('warm'|'neutral'|'day') · o.bright_pct(30~250%)
+  const CCT_LIGHT={warm:'#FFD9A0',neutral:'#FFEECF',day:'#EDF4FF'};
+  const CCT_LAMP={warm:'#FFE3B0',neutral:'#FFF3D8',day:'#F3F8FF'};
+  const CCT_DEF={ceiling:'day',edge_flat_600:'day',kitchen_flat:'day',fluorescent:'day',
+    bath_light:'day',sensor_light:'day',ceiling_fan:'neutral',
+    downlight:'neutral',line_t5:'neutral',line_light:'neutral',pendant_linear:'neutral'};
+  const cct=(o.cct==='warm'||o.cct==='neutral'||o.cct==='day')?o.cct:(CCT_DEF[type]||'warm');
+  const _br=Math.max(0.3,Math.min(2.5,num(o.bright_pct,100)/100));
+  prims.forEach(p=>{ if(p.emissive) p.color=CCT_LAMP[cct]; });   // 갓 발광색도 색온도를 따른다
+  const _C0=CCT_LIGHT[cct], _E=[];
+  const _pt=(x,z,i,d)=>_E.push({k:'pt',x:Math.round(x),z:Math.round(z),c:_C0,i:Math.round(i*_br*100)/100,d});
+  const _sp=(x,z,i,d,ang,up)=>{const e={k:'spot',x:Math.round(x),z:Math.round(z),c:_C0,i:Math.round(i*_br*100)/100,d,ang};if(up)e.up=true;_E.push(e);};
+  const _rowX=(len,fn)=>{ const n=Math.min(5,Math.max(2,Math.round(len/600))), st=len/n;
+    for(let i=0;i<n;i++) fn(-len/2+st*(i+0.5),n); };
+  switch(type){
+    case 'downlight': _sp(0,lz,5,6,0.50); break;                          // 매입 — 아래 원뿔 약 55°
+    case 'bath_light': _pt(0,lz,7,5); break;                               // 방습등 — 확산
+    case 'ceiling': _pt(0,lz,13,9); break;                                 // 방등 — 방 전체 확산
+    case 'sensor_light': _pt(0,lz,4,3.5); break;                           // 현관 — 작은 확산
+    case 'pendant': _sp(0,1800,5,5,0.70); break;                           // 갓 아래 식탁 풀
+    case 'pendant_cluster': _pt(-size*0.3,1900,2.5,3.5); _pt(size*0.3,1750,2.5,3.5); _pt(0,1650,2.5,3.5); break;
+    case 'pendant_linear': _rowX(L,(x,n)=>_pt(x,1900,Math.max(3,12/n),5)); break;
+    case 'chandelier': _pt(0,H-450,9,8); break;                            // 다등 — 넓은 확산
+    case 'wall_lamp': _pt(0,1800,3,4); break;                              // 벽 워시
+    case 'floor_lamp': _pt(0,1650,3.5,4); break;                           // 장스탠드 무드
+    case 'table_lamp': _pt(0,1050,2.5,3); break;                           // 단스탠드 무드
+    case 'track': [-L/3,0,L/3].forEach(x=>_sp(x,H-160,4,5,0.40)); break;   // 헤드마다 좁은 원뿔
+    case 'magnet_track': { const n=Math.max(2,Math.round(L/500)); for(let i=0;i<n;i++) _sp(-L/2+L/(n*2)+i*L/n,H-140,3.5,5,0.40); break; }
+    case 'spot_cyl': _sp(0,H-145,5,5.5,0.35); break;                       // 직부 스팟 — 가장 좁게
+    case 'spot_bar_3': [-L/3,0,L/3].forEach(x=>_sp(x,H-150,4,5,0.42)); break;
+    case 'line_t5': case 'line_light': _rowX(L,(x,n)=>_pt(x,lz,Math.max(3,12/n),5.5)); break;
+    case 'cove': _rowX(L,(x,n)=>{ _sp(x,H-140,6,3,1.05,true); _pt(x,H-160,2.2,4); }); break; // 위 워시 + 약한 스필
+    case 'fluorescent': case 'kitchen_flat': _rowX(L,(x,n)=>_pt(x,lz,Math.max(4,14/n),6)); break;
+    case 'edge_flat_600': _pt(0,lz,9,7); break;                            // 평판 — 사무실식 확산
+    case 'ceiling_fan': _pt(0,H-420,7,6); break;                           // 팬 밑의 등
+    case 'step_light': _pt(0,350,1.2,1.8); break;                          // 발밑만 살짝
+    default: _pt(0,lz,6,7);
+  }
   // 2026-09-09: 회로 점등 — 배선된 등은 스위치가, 미배선 등은 종전(전역 토글)이 결정한다
   const _cs=circuitLightState(D);
   const _on=_cs.wired.has(o.id)?_cs.lit.has(o.id):(o.circuitOn!==false);
   if(!_on) prims.forEach(p=>{ if(p.emissive) p.lit=false; });   // 재질이 등마다 갈라지도록
   return {id:o.id,kind:'light',name,x:num(o.x,0),y:num(o.y,0),rot:num(o.angle,0),flip:!!o.flipped,prims,locked:!!o.locked,
     elev:Math.round(num(o.elev_mm,0)),
-    meta:{type,inch:o.inch||null,lightZ:Math.max(100,lz-30),on:_on,linear:L!==size?L:0,lightLen}};
+    meta:{type,inch:o.inch||null,lightZ:Math.max(100,lz-30),on:_on,linear:L!==size?L:0,lightLen,emitters:_E,cct}};
 }
 // 2026-09-09 대표 지시 "불이 들어오면 모든 등에 불이 들어온 것처럼 — 실제 빛 표현처럼"
 //  종전 3D 는 회로를 통째로 무시하고 전역 조명 토글 하나로 모든 램프를 켰다. 그래서

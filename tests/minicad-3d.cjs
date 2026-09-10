@@ -859,9 +859,50 @@ ck(/mcode:m\.mat\|\|null/.test(b3Src),'프리폼 재질: 조립이 mat 를 prim 
     ck(gl('R1').meta.lightLen===0,'빛 모양: 동그란 등은 lightLen 0 (점 광원 하나 = 둥근 풀)');
     ck(gl('S1').meta.lightLen===2400,'빛 모양: T5 2400 은 발광 길이를 안다');
     ck(gl('S2').meta.lightLen===1500,'빛 모양: 간접조명(코브)도 선형 — 규격 길이 그대로');
-    ck(/subsOf/.test(v3Src)&&/-m\.lightLen\/2\+step\*\(i\+0\.5\)/.test(v3Src),
-      '뷰어: 선형 등 = 길이 방향(로컬 X)으로 광원 줄지어 — 일직선 빛');
+    ck(/subsOf/.test(v3Src)&&/meta\.emitters/.test(v3Src)&&/SpotLight/.test(v3Src),
+      '뷰어: 광원 명세(emitters)를 그대로 켠다 — pt/spot');
     ck(/\(xmm\|\|0\)\*MM/.test(v3Src),'뷰어: 광원 X 오프셋이 등의 회전을 따른다 (그룹 로컬 좌표)');
+  }
+  // 2026-09-10 대표 지시 "각각의 조명을 공부해 사실적으로 · 광원 조정" — 타입별 광원 명세
+  {
+    const rdoc={schema:'x',meta:{ceilingHeight_mm:2400},vertices:[],spaces:[],walls:[],openings:[],
+      furniture:[],fixtures:[],hvac:[],texts:[],measures:[],pillars:[],
+      sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],electric:[],
+      lights:[
+        {id:'DL',type:'downlight',x:1000,y:1000},
+        {id:'BD',type:'ceiling',x:2000,y:1000},
+        {id:'PD',type:'pendant',x:3000,y:1000},
+        {id:'TR',type:'track',x:4000,y:1000},
+        {id:'CV',type:'cove',x:5000,y:1000},
+        {id:'FN',type:'ceiling_fan',x:6000,y:1000},
+        {id:'ST',type:'step_light',x:7000,y:1000},
+        {id:'D2',type:'downlight',x:8000,y:1000,cct:'day'},
+        {id:'B2',type:'ceiling',x:9000,y:1000,bright_pct:50},
+        {id:'B3',type:'ceiling',x:9500,y:1000,bright_pct:5},
+      ]};
+    const RS=MC3D.buildScene(rdoc,LIBS);
+    const em=id=>RS.objects.find(x=>x.kind==='light'&&x.id===id).meta.emitters;
+    const pr=id=>RS.objects.find(x=>x.kind==='light'&&x.id===id).prims;
+    ck(em('DL').length===1&&em('DL')[0].k==='spot'&&em('DL')[0].c==='#FFEECF',
+      '광원: 다운라이트 = 아래 원뿔 스팟 · 주백색 기본');
+    ck(em('BD').length===1&&em('BD')[0].k==='pt'&&em('BD')[0].c==='#EDF4FF'&&em('BD')[0].i===13,
+      '광원: 방등 = 넓은 확산 · 주광색 기본 · 세기 13');
+    ck(em('PD')[0].k==='spot'&&em('PD')[0].z===1800&&em('PD')[0].c==='#FFD9A0',
+      '광원: 펜던트 = 1800 갓 아래 원뿔 · 전구색');
+    ck(em('TR').length===3&&em('TR').every(e=>e.k==='spot'&&e.ang===0.40),
+      '광원: 트랙 = 헤드 3개 각각 좁은 원뿔');
+    ck(em('CV').some(e=>e.k==='spot'&&e.up===true)&&em('CV').some(e=>e.k==='pt'),
+      '광원: 간접(코브) = 천장 위 워시 + 약한 스필');
+    ck(em('FN').length===1&&pr('FN').some(p=>p.emissive),
+      '광원: 실링팬 조명 — 등이 생겼다 (종전엔 팬만 있고 등이 없었다)');
+    ck(em('ST')[0].z===350&&em('ST')[0].d<=2,
+      '광원: 발목등 = 낮게 · 짧게');
+    ck(em('D2')[0].c==='#EDF4FF'&&pr('D2').find(p=>p.emissive).color==='#F3F8FF',
+      '조정: cct=day — 광원색·갓 발광색이 함께 주광색');
+    ck(em('B2')[0].i===6.5,'조정: 밝기 50% — 세기 반');
+    ck(em('B3')[0].i===13*0.3,'조정: 밝기 하한 30% 클램프');
+    ck(/d-cct/.test(uiSrc)&&/d-bright/.test(uiSrc)&&/bright_pct/.test(uiSrc),
+      '조정: 2D 조명 속성에 색온도·밝기 조정이 있다');
   }
 }
 
