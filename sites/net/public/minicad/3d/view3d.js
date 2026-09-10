@@ -575,6 +575,7 @@ function ffTapeResize(d){
 // --- 단위 · 모델 정보 ---
 function showModelInfo(on){ const m=$('modelinfo'); if(!m) return; m.style.display=on?'flex':'none'; if(on){ $('mi-units').value=ST.units; $('mi-defz').value=ST.defZ; $('mi-grid').value=String(ST.gridMM); $('mi-sides').value=ST.circleSides;
   const st=ffStats(); const el=$('mi-stats'); if(el&&st) el.innerHTML='<b>통계</b> — 매스 '+st.masses+' · 면 '+st.faces+' · 스케치 점 '+st.sketchPts+' / 선 '+st.sketchEdges+' / 면 '+st.sketchFaces+' · 평면 '+st.planes+' · 그룹 '+st.groups+' · 컴포넌트 '+st.comps+' (미사용 '+st.unused+') · 이미지 재질 '+st.mats;
+  ffSaveMeter();
   const pb=$('mi-purge'); if(pb) pb.onclick=ffPurge; } }
 // --- OBJ · STL 내보내기 ---
 function _exportTris(){
@@ -806,6 +807,26 @@ function renderWPBar(){
   if(n) n.textContent=ST.wp?(((ST.wp.sign||1)<0?'−':'')+WP_KINDS[ST.wp.kind].ax+'으로 자람'):'면을 따라감';
 }
 
+
+function ffSaveUIBuild(){
+  let el=$('savewarn');
+  if(!el){ el=document.createElement('div'); el.id='savewarn'; document.body.appendChild(el); }
+  if(!el.querySelector('.sw-t')){                      // index.html 에 빈 껍데기가 이미 있다 — 속을 채운다
+    el.innerHTML='<span class="sw-i">⚠</span><span class="sw-t"></span>'+
+      '<button class="btn sm" data-sw="cloud">☁ 클라우드에 저장</button>'+
+      '<button class="btn sm" data-sw="file">파일로 저장</button>'+
+      '<button class="btn sm" data-sw="x" title="닫기">✕</button>';
+    el.querySelector('[data-sw="cloud"]').onclick=()=>ffCloudSave(false);
+    el.querySelector('[data-sw="file"]').onclick=()=>ffExportFile();
+    el.querySelector('[data-sw="x"]').onclick=()=>{ el.style.display='none'; };
+  }
+  const m=$('ffcloud');
+  if(m){
+    const c=m.querySelector('[data-cl="close"]'); if(c) c.onclick=()=>{ m.style.display='none'; };
+    const s=m.querySelector('[data-cl="saveas"]'); if(s) s.onclick=()=>{ m.style.display='none'; ffCloudSave(true); };
+    m.onclick=e=>{ if(e.target===m) m.style.display='none'; };
+  }
+}
 function ffWPBarBuild(){
   if($('wpbar')) return;
   const ico=(d)=>'<svg viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>';
@@ -854,6 +875,7 @@ function ffStandaloneShell(){
   const mg=$('mi-grid'); if(mg) mg.onchange=()=>{ ST.gridMM=parseInt(mg.value)||10; };
   const ms=$('mi-sides'); if(ms) ms.onchange=()=>{ ST.circleSides=Math.max(6,Math.min(96,parseInt(ms.value)||24)); };
   const hint=$('hint'); if(hint) hint.innerHTML='<b>스케치업식:</b> Space 선택 · L 선 · R 사각형 · C 원 · A 호 · F 오프셋 · M 이동 · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · G 그룹 · O 궤도 · H 팬 · Z 줌 | 숫자=정확값 · Esc 취소 · ?=단축키표';
+  ffSaveUIBuild();
   ffWPBarBuild();
   ffIconizeShell();
   renderTags(); renderPaintPal(); renderSections();
@@ -3388,9 +3410,40 @@ function ffApply(m){
   return true;
 }
 // 저장·복원 — 프리폼은 자기 문서를 가진다
+const FF_QUOTA=5*1024*1024;                       // 브라우저 저장소 한도 (실측 약 4.9MB)
+function ffDocJSON(){ return JSON.stringify({schema:FF_SCHEMA,at:Date.now(),base:FF.base,free:FF.free}); }
 function ffAutosave(){
   if(!FF) return;
-  try{ localStorage.setItem(ffKey(),JSON.stringify({schema:FF_SCHEMA,at:Date.now(),base:FF.base,free:FF.free})); }catch(_){ }
+  let s;
+  try{ s=ffDocJSON(); }catch(_){ return; }
+  ST.saveBytes=s.length;
+  try{
+    localStorage.setItem(ffKey(),s);
+    if(ST.saveFail){ ST.saveFail=null; ffSaveBanner(); }        // 다시 들어갔다 — 경고 내림
+  }catch(err){
+    ST.saveFail=(err&&err.name)||'QuotaExceededError';           // 종전엔 여기서 조용히 삼켰다 (작업이 날아가도 모름)
+    ffSaveBanner();
+  }
+  ffSaveMeter();
+}
+// 저장이 막혔다는 것을 화면에 남긴다 — 상태줄은 다음 동작에 덮이므로 배너로
+function ffSaveBanner(){
+  const el=$('savewarn'); if(!el) return;
+  if(!ST.saveFail){ el.style.display='none'; return; }
+  const mb=((ST.saveBytes||0)/1048576).toFixed(1);
+  const t=el.querySelector('.sw-t'); if(t) t.textContent='브라우저 저장소가 가득 찼습니다 ('+mb+'MB · 한도 약 5MB) — 이 뒤의 작업은 자동 저장되지 않습니다';
+  el.style.display='flex';
+  setStatus(false,'⚠ 자동 저장 실패 — 파일이나 클라우드로 저장하세요');
+}
+function ffSaveMeter(){
+  const el=$('mi-save'); if(!el) return;
+  const b=ST.saveBytes||0, pct=Math.min(100,Math.round(b/FF_QUOTA*1000)/10);
+  const col=pct>90?'#FF7A59':pct>70?'#E6C787':'#7CF2D6';
+  el.innerHTML='<b>저장 용량</b> — '+(b/1024).toFixed(0)+' KB / 약 5 MB ('+pct+'%)'+
+    (ST.saveFail?' <b style="color:#FF7A59">· 가득 참: 자동 저장 멈춤</b>':'')+
+    '<div style="height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden">'+
+    '<div style="height:100%;width:'+pct+'%;background:'+col+';box-shadow:0 0 8px '+col+'"></div></div>'+
+    '<div style="margin-top:5px;font-size:10.5px">클라우드에 저장하면 이 한도를 받지 않고 다른 기기에서도 열립니다 (파일 ▸ 클라우드에 저장)</div>';
 }
 function ffLoadLocal(){
   try{
@@ -3399,6 +3452,86 @@ function ffLoadLocal(){
     const j=JSON.parse(raw);
     return (j&&j.schema===FF_SCHEMA&&j.free)?j:null;
   }catch(_){ return null; }
+}
+// 프리폼 문서 하나를 통째로 적용 — 파일 열기·클라우드 열기가 같은 길을 쓴다
+function ffApplyDoc(j,label){
+  if(!j||j.schema!==FF_SCHEMA||!j.free) throw new Error('프리폼 문서가 아닙니다');
+  if(!ST.ffOn) ffEnter({fresh:true});
+  FF.base=j.base||FF.base;
+  FF.free=j.free;
+  build(FF.base);
+  FF.hist=[]; FF.histPos=-1; ffCommit(label||'열기');
+  return true;
+}
+// ===========================================================================
+// 클라우드 저장 (2026-09-10) — 이미 페이지에 실려 있는 APP_CLOUD(Supabase app_documents).
+//  브라우저 저장소 5MB 한도를 받지 않고, 다른 기기·팀원과 같은 문서를 연다.
+//  로그인(직원 세션)이 필요하다. 없으면 파일 저장으로 안내하고 로컬 자동저장은 그대로 둔다.
+// ===========================================================================
+const FF_CLOUD_APP='freeform';
+function ffCloudReady(){ return typeof APP_CLOUD!=='undefined'&&APP_CLOUD&&typeof APP_CLOUD.ready==='function'&&APP_CLOUD.ready(); }
+function ffCloudGuard(){
+  if(ffCloudReady()) return true;
+  setStatus(false,'클라우드 저장은 로그인이 필요합니다 — 업무시스템에 로그인한 뒤 다시 시도하세요 (지금은 파일 ▸ 프리폼 파일 저장)');
+  return false;
+}
+function ffCloudKey(){ try{ return localStorage.getItem('minicad.freeform.cloudkey')||''; }catch(_){ return ''; } }
+function ffCloudTitle(){ try{ return localStorage.getItem('minicad.freeform.cloudtitle')||''; }catch(_){ return ''; } }
+function ffCloudSetKey(k,title){ try{ localStorage.setItem('minicad.freeform.cloudkey',k||''); if(title!=null) localStorage.setItem('minicad.freeform.cloudtitle',title); }catch(_){ } }
+function ffCloudSave(asNew){
+  if(!FF||!ffCloudGuard()) return;
+  const prev=ffCloudTitle();
+  const title=(window.prompt('클라우드에 저장할 이름', prev||((ST.built&&ST.built.project)||'프리폼 모델'))||'').trim();
+  if(!title) return;
+  let key=ffCloudKey();
+  if(asNew||!key||title!==prev) key='ff_'+Date.now().toString(36)+'_'+Math.floor(Math.random()*1e4).toString(36);
+  let data; try{ data=JSON.parse(ffDocJSON()); }catch(_){ setStatus(false,'모델을 읽지 못했습니다'); return; }
+  setStatus(true,'☁ 저장 중…');
+  return APP_CLOUD.save(FF_CLOUD_APP,key,title,data).then(()=>{
+    ffCloudSetKey(key,title);
+    setStatus(true,'☁ 클라우드 저장 완료 — '+title+' ('+((ST.saveBytes||0)/1024).toFixed(0)+' KB)');
+    if(ST.saveFail){ ST.saveFail=null; ffSaveBanner(); }         // 클라우드에 들어갔으니 경고 내림
+  }).catch(e=>setStatus(false,'☁ 저장 실패 — '+(e&&e.message||e)));
+}
+function ffCloudOpen(){
+  if(!ffCloudGuard()) return;
+  const m=$('ffcloud'); if(!m) return;
+  const list=m.querySelector('.cl-list');
+  list.innerHTML='<div class="cl-msg">불러오는 중…</div>';
+  m.style.display='flex';
+  return APP_CLOUD.list(FF_CLOUD_APP).then(rows=>{
+    rows=rows||[];
+    if(!rows.length){ list.innerHTML='<div class="cl-msg">저장된 모델이 없습니다. 파일 ▸ 클라우드에 저장 으로 먼저 올리세요.</div>'; return; }
+    const pad=n=>String(n).padStart(2,'0');
+    list.innerHTML=rows.map(r=>{
+      const t=new Date(r.updated_at);
+      const when=isNaN(t.getTime())?'':(t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())+' '+pad(t.getHours())+':'+pad(t.getMinutes()));
+      return '<div class="cl-it" data-k="'+r.doc_key+'" data-t="'+String(r.title||'').replace(/"/g,'&quot;')+'">'+
+        '<span class="cl-n">'+(r.title||r.doc_key)+'</span>'+
+        '<span class="cl-m">'+when+(r.updated_by?' · '+r.updated_by:'')+'</span>'+
+        '<button class="btn sm cl-del" data-del="'+r.doc_key+'" title="클라우드에서 삭제">✕</button></div>';
+    }).join('');
+    list.querySelectorAll('.cl-it').forEach(b=>{ b.onclick=ev=>{
+      const del=ev.target&&ev.target.dataset&&ev.target.dataset.del;
+      if(del){ ev.stopPropagation();
+        if(!window.confirm('클라우드에서 삭제할까요? 되돌릴 수 없습니다.')) return;
+        APP_CLOUD.remove(FF_CLOUD_APP,del).then(()=>ffCloudOpen()).catch(e=>setStatus(false,'삭제 실패 — '+(e&&e.message||e)));
+        return; }
+      ffCloudLoad(b.dataset.k,b.dataset.t);
+    }; });
+  }).catch(e=>{ list.innerHTML='<div class="cl-msg" style="color:#FF7A59">'+(e&&e.message||e)+'</div>'; });
+}
+function ffCloudLoad(key,title){
+  if(!ffCloudGuard()) return;
+  setStatus(true,'☁ 여는 중…');
+  return APP_CLOUD.load(FF_CLOUD_APP,key).then(row=>{
+    const j=row&&row.data;
+    try{ ffApplyDoc(j,'클라우드 열기'); }
+    catch(e){ setStatus(false,'☁ '+e.message); return; }
+    ffCloudSetKey(key,title||(row&&row.title)||'');
+    const m=$('ffcloud'); if(m) m.style.display='none';
+    setStatus(true,'☁ 클라우드에서 열었습니다 — '+(title||(row&&row.title)||key));
+  }).catch(e=>setStatus(false,'☁ 열기 실패 — '+(e&&e.message||e)));
 }
 function ffExportFile(){
   if(!FF) return;
@@ -3415,12 +3548,7 @@ function ffImportFile(){
     fr.onload=()=>{
       try{
         const j=JSON.parse(String(fr.result));
-        if(!j||j.schema!==FF_SCHEMA||!j.free) throw new Error('프리폼 파일이 아닙니다');
-        if(!ST.ffOn) ffEnter({fresh:true});
-        FF.base=j.base||FF.base;
-        FF.free=j.free;
-        build(FF.base);
-        FF.hist=[]; FF.histPos=-1; ffCommit('파일 열기');
+        ffApplyDoc(j,'파일 열기');
       }catch(e){ setStatus(false,'프리폼 파일을 읽지 못했습니다: '+e.message); }
     };
     fr.readAsText(f);
@@ -5733,6 +5861,7 @@ window.addEventListener('keydown',e=>{
   if(!ST.op&&ST.lastCommit&&!ctrl&&/^[0-9.\-x*\/]$/.test(e.key)){ if(vcbPostOn(e.key)){ e.preventDefault(); return; } }
   if(e.key==='Enter'&&ST.op){ commitActive(vcbTyped()); return; }
   if(k==='escape'){
+    { const cm=$('ffcloud'); if(cm&&cm.style.display==='flex'){ cm.style.display='none'; e.preventDefault(); return; } }
     if(FF_STANDALONE&&ST.wpPick){ ST.wpPick=false; renderWPBar(); setStatus(statusLive,'원점 지정 취소'); e.preventDefault(); return; }
     hideCtx();
     if(ST.anim){ scenePlay(false); return; }
@@ -6126,6 +6255,9 @@ function menuCmd(cmd){
     case 'save': saveFeedback(); break;
     case 'ff': ST.ffOn?ffExit():ffEnter(); break;           // 2026-09-07 프리폼
     case 'ff-rebase': ffRebase(); break;
+    case 'ff-cloud-save': ffCloudSave(false); break;
+    case 'ff-cloud-saveas': ffCloudSave(true); break;
+    case 'ff-cloud-open': ffCloudOpen(); break;
     case 'ff-save': ffExportFile(); break;
     case 'ff-open': ffImportFile(); break;
     case 'ff-new': ffNew(); break;
@@ -6243,7 +6375,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,
