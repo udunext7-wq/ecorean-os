@@ -607,6 +607,7 @@ function bindMenus(){
 }
 function bindTools(){ document.querySelectorAll('#tools .btn').forEach(b=>{ b.onclick=()=>{ const t=b.dataset.t; if(t==='mkcomp'){ ffMakeGroup(); return; } if(t==='fit'){ fitView(true); return; } if(t==='prevview'){ camPrev(); return; } setTool(t); }; }); }
 function ffStandaloneShell(){
+  document.body.classList.add('ff-su');           // 미래적 유리 프레임 (index.html body.ff-su 규칙)
   const mb=$('menubar'), tm=$('ff-menus'); if(mb&&tm){ mb.innerHTML=''; mb.appendChild(tm.content.cloneNode(true)); bindMenus(); }
   const tl=$('tools'), tt=$('ff-tools'); if(tl&&tt){ tl.innerHTML=''; tl.appendChild(tt.content.cloneNode(true)); bindTools(); }
   const km=document.querySelector('#keysmodal .kbox'), tk=$('ff-keys'); if(km&&tk){ km.innerHTML=''; km.appendChild(tk.content.cloneNode(true)); const kc=$('keys-close'); if(kc) kc.onclick=()=>showKeys(false); }

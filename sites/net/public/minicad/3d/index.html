@@ -147,6 +147,59 @@
   #keysmodal table{width:100%;border-collapse:collapse;font-size:12.5px}
   #keysmodal td{padding:4px 6px;border-bottom:1px solid #262845}
   #keysmodal td:first-child{font-family:'JetBrains Mono',monospace;color:var(--lime);width:120px}
+
+  /* ===== 단독 프리폼 셸 — 미래적 유리 프레임 (2026-09-09 대표 지시 "세련되고 미래적으로") ===== */
+  body.ff-su{--bg:#070A12;--panel:rgba(11,15,27,.78);--line:rgba(120,160,220,.18);--line2:rgba(89,210,255,.45);--ink:#E8ECF4;--mute:#8C96AC;--gold:#E6C787;--lime:#7CF2D6;--cyan:#59D2FF;--orange:#FF7A59}
+  body.ff-su{font-family:'Inter Tight','Inter','Noto Sans KR',system-ui,sans-serif;letter-spacing:.005em}
+  body.ff-su #menubar{height:34px;background:linear-gradient(180deg,rgba(9,13,24,.96),rgba(7,10,19,.86));backdrop-filter:blur(16px) saturate(1.3);border-bottom:1px solid var(--line);box-shadow:0 1px 0 rgba(89,210,255,.08),0 8px 30px rgba(0,0,0,.35)}
+  body.ff-su #menubar .mtitle{background:linear-gradient(90deg,#E6C787 0%,#59D2FF 100%);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;letter-spacing:.08em;padding-right:14px}
+  body.ff-su .menu>button{color:var(--ink);opacity:.86;border-radius:8px;height:26px;margin:4px 1px;padding:0 12px}
+  body.ff-su .menu>button:hover,body.ff-su .menu.open>button{background:rgba(89,210,255,.10);opacity:1;box-shadow:inset 0 0 0 1px rgba(89,210,255,.25)}
+  body.ff-su .menu .drop{top:34px;max-height:calc(100vh - 44px);overflow-y:auto;scrollbar-width:thin;background:rgba(11,15,27,.94);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 0 1px rgba(89,210,255,.06)}
+  body.ff-su .drop .mi:hover{background:rgba(89,210,255,.12)}
+  body.ff-su .drop .mi.chk::before{color:var(--lime)}
+  body.ff-su .bar{top:34px;height:44px;background:rgba(9,13,24,.66);backdrop-filter:blur(16px) saturate(1.2);border-bottom:1px solid var(--line)}
+  body.ff-su .btn{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:10px;color:var(--ink);transition:border-color .15s,box-shadow .15s,background .15s,transform .08s}
+  body.ff-su .btn:hover{border-color:var(--line2);box-shadow:0 0 0 1px rgba(89,210,255,.12),0 0 16px rgba(89,210,255,.16)}
+  body.ff-su .btn:active{transform:translateY(1px)}
+  body.ff-su .btn.on{background:linear-gradient(135deg,rgba(89,210,255,.26),rgba(230,199,135,.16));border-color:rgba(89,210,255,.8);color:#fff;font-weight:700;box-shadow:inset 0 0 0 1px rgba(89,210,255,.25),0 0 18px rgba(89,210,255,.28)}
+  body.ff-su .sep{background:var(--line)}
+  body.ff-su #status{color:var(--mute)}
+  body.ff-su #status.live::before{color:var(--lime);text-shadow:0 0 8px rgba(124,242,214,.8)}
+  /* 2열 큰 도구 세트 */
+  body.ff-su #tools{top:88px;left:12px;display:grid;grid-template-columns:40px 40px;gap:3px;padding:7px;background:var(--panel);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(18px) saturate(1.2);box-shadow:0 14px 44px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05);max-height:calc(100vh - 96px);overflow-y:auto;scrollbar-width:none}
+  body.ff-su #tools::-webkit-scrollbar{display:none}
+  body.ff-su #tools .btn{width:40px;height:31px;padding:0;display:flex;align-items:center;justify-content:center;color:#C9D3E6;border-radius:9px}
+  body.ff-su #tools .btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 0 transparent);transition:filter .15s}
+  body.ff-su #tools .btn:hover{color:#fff}
+  body.ff-su #tools .btn:hover svg{filter:drop-shadow(0 0 5px rgba(89,210,255,.55))}
+  body.ff-su #tools .btn.on{color:#fff}
+  body.ff-su #tools .btn.on svg{stroke-width:1.8;filter:drop-shadow(0 0 6px rgba(89,210,255,.85))}
+  body.ff-su #tools .tsep{grid-column:1/3;height:1px;margin:1px 6px;background:linear-gradient(90deg,transparent,rgba(120,160,220,.35),transparent)}
+  /* 트레이 */
+  body.ff-su #tray{width:262px;top:88px;gap:8px}
+  body.ff-su .tsec{background:var(--panel);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(18px) saturate(1.2);box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.05)}
+  body.ff-su .tsec .th{color:var(--gold);letter-spacing:.06em;font-size:11.5px;text-transform:uppercase}
+  body.ff-su .tsec .tb{border-top:1px solid var(--line)}
+  body.ff-su #props h4{color:var(--cyan)}
+  body.ff-su #props input,body.ff-su #props select,body.ff-su #modelinfo input,body.ff-su #modelinfo select{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px}
+  body.ff-su #props input:focus,body.ff-su #props select:focus{outline:none;border-color:var(--line2);box-shadow:0 0 0 2px rgba(89,210,255,.15)}
+  body.ff-su .pp-it.on{background:rgba(89,210,255,.12);border-color:rgba(89,210,255,.5)}
+  body.ff-su #stylepanel .sun input{accent-color:var(--cyan)}
+  /* 수치 입력 · 상태 안내 · 우클릭 메뉴 · 모달 */
+  body.ff-su #vcb{background:rgba(11,15,27,.9);border:1px solid var(--line2);border-radius:12px;backdrop-filter:blur(16px);box-shadow:0 0 0 1px rgba(89,210,255,.1),0 10px 30px rgba(0,0,0,.45),0 0 22px rgba(89,210,255,.18)}
+  body.ff-su #vcb .v-v{background:rgba(255,255,255,.05);border:1px solid rgba(89,210,255,.35);color:var(--lime);border-radius:8px}
+  body.ff-su #hint{left:130px;max-width:min(52vw,520px);background:rgba(11,15,27,.78);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(14px);color:var(--mute)}
+  body.ff-su #hint b{color:var(--ink)}
+  body.ff-su #instructor b{color:var(--ink)}
+  body.ff-su #ctxmenu{background:rgba(11,15,27,.95);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(18px);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+  body.ff-su #ctxmenu button:hover{background:rgba(89,210,255,.12)}
+  body.ff-su #keysmodal .kbox,body.ff-su #modelinfo .kbox{background:rgba(11,15,27,.96);border:1px solid var(--line);border-radius:18px;backdrop-filter:blur(20px);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  body.ff-su #keysmodal h3,body.ff-su #modelinfo h3{color:var(--cyan)}
+  body.ff-su #keysmodal td:first-child{color:var(--lime)}
+  body.ff-su #selbox{border-color:var(--cyan);background:rgba(89,210,255,.07)}
+  body.ff-su #selbox.cross{border-color:var(--lime);background:rgba(124,242,214,.06)}
+  body.ff-su #tip{background:rgba(11,15,27,.94);border:1px solid var(--line2);border-radius:9px}
   @media (max-width:760px){ #tray{display:none} #hint{display:none} }
 </style>
 </head>
@@ -498,48 +551,48 @@
   </div></div>
 </template>
 <template id="ff-tools">
-  <button class="btn on" data-t="select" title="선택 (Space)">➤</button>
-  <button class="btn" data-t="mkcomp" title="컴포넌트 만들기 (G) — 선택한 것을 한 몸으로">⧈</button>
+  <button class="btn on" data-t="select" title="선택 (Space)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l14 9-6 1.5L16 20l-2.5 1.2-3-6.6L6 19z"/></svg></button>
+  <button class="btn" data-t="mkcomp" title="그룹·컴포넌트 만들기 (G · Shift+G)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/><circle cx="18" cy="6" r="3.2" fill="var(--bg)" stroke="currentColor"/><path d="M18 4.6v2.8M16.6 6h2.8"/></svg></button>
   <div class="tsep"></div>
-  <button class="btn" data-t="paint" title="페인트 (B)">🪣</button>
-  <button class="btn" data-t="erase" title="지우개 (E) — Shift=숨기기">🧽</button>
+  <button class="btn" data-t="paint" title="페인트 (B)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10l7-7 8 8-7 7z"/><path d="M4 10h11"/><path d="M19 14c0 2 1.5 3 1.5 4.3a1.5 1.5 0 0 1-3 0C17.5 17 19 16 19 14z"/></svg></button>
+  <button class="btn" data-t="erase" title="지우개 (E) — Shift=숨기기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15l8-8 6 6-5 5H8.5L4 15z"/><path d="M12 19h8"/></svg></button>
   <div class="tsep"></div>
-  <button class="btn" data-t="rect" title="사각형 (R)">▭</button>
-  <button class="btn" data-t="rotrect" title="회전 사각형 — 세 점">▱</button>
-  <button class="btn" data-t="line" title="선 (L)">╱</button>
-  <button class="btn" data-t="freehand" title="프리핸드 — 끌어서 그리기">〰</button>
-  <button class="btn" data-t="circle" title="원 (C) — 숫자=반지름 · 24s=변 수">○</button>
-  <button class="btn" data-t="polygon" title="다각형 — 숫자=반지름 · 6s=변 수">⬡</button>
-  <button class="btn" data-t="arc" title="2점 호 (A)">◜</button>
-  <button class="btn" data-t="arc3" title="3점 호 — 시작·호 위·끝">◠</button>
-  <button class="btn" data-t="pie" title="파이 — 중심·시작·끝 (부채꼴 면)">◔</button>
+  <button class="btn" data-t="rect" title="사각형 (R) — 두 번째 클릭 뒤 바로 높이"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
+  <button class="btn" data-t="rotrect" title="회전 사각형 — 세 점"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 6-3 10L4 14z"/></svg></button>
+  <button class="btn" data-t="line" title="선 (L) — 위로 끌면 파랑(Z) 축"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19L20 5"/><circle cx="4" cy="19" r="1.4" fill="currentColor"/><circle cx="20" cy="5" r="1.4" fill="currentColor"/></svg></button>
+  <button class="btn" data-t="freehand" title="프리핸드 — 끌어서 그리기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16c3-8 6-8 8-2s5 6 10-4"/></svg></button>
+  <button class="btn" data-t="circle" title="원 (C) — 숫자=반지름 · 24s=변 수"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button>
+  <button class="btn" data-t="polygon" title="다각형 — 6s=변 수"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 5.8-3 9.4H7L4 8.8z"/></svg></button>
+  <button class="btn" data-t="arc" title="2점 호 (A)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18A11 11 0 0 1 20 18"/><circle cx="4" cy="18" r="1.3" fill="currentColor"/><circle cx="20" cy="18" r="1.3" fill="currentColor"/></svg></button>
+  <button class="btn" data-t="arc3" title="3점 호"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17A9 9 0 0 1 20 17"/><circle cx="4" cy="17" r="1.3" fill="currentColor"/><circle cx="12" cy="8.2" r="1.3" fill="currentColor"/><circle cx="20" cy="17" r="1.3" fill="currentColor"/></svg></button>
+  <button class="btn" data-t="pie" title="파이 — 부채꼴 면"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12V3a9 9 0 0 1 9 9z"/><path d="M12 12L4.5 17"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg></button>
   <div class="tsep"></div>
-  <button class="btn" data-t="move" title="이동 (M) — Ctrl=복사 · ←→↑=축 고정">✥</button>
-  <button class="btn" data-t="pushpull" title="밀기끌기 (P) — 면을 법선으로 · 더블클릭=반복">⇕</button>
-  <button class="btn" data-t="rotate" title="회전 (Q) — 각도기">↻</button>
-  <button class="btn" data-t="followme" title="팔로우 미 — 단면(면) 클릭 → 경로(매스) 클릭">⌐</button>
-  <button class="btn" data-t="scale" title="배율 (S) — Shift=한 방향 · 숫자=배율">⤢</button>
-  <button class="btn" data-t="offset" title="오프셋 (F)">⧉</button>
+  <button class="btn" data-t="move" title="이동 (M) — Ctrl=복사 · ←→↑=축 고정"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18"/><path d="M9 6l3-3 3 3M9 18l3 3 3-3M6 9L3 12l3 3M18 9l3 3-3 3"/></svg></button>
+  <button class="btn" data-t="pushpull" title="밀기끌기 (P) — 어느 면이든 · 더블클릭=반복"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="13" width="14" height="7" rx="1"/><path d="M12 13V3M8.5 6.5L12 3l3.5 3.5"/></svg></button>
+  <button class="btn" data-t="rotate" title="회전 (Q) — 각도기 · 세워진 면=그 면의 축"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/></svg></button>
+  <button class="btn" data-t="followme" title="팔로우 미 — 단면 클릭 → 경로(매스) 클릭"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h5v-4l5-2v-4h8"/><path d="M21 6l-2.2 2.2M21 6l-2.2-2.2"/><path d="M3 18c0-2 2-3 5-3"/></svg></button>
+  <button class="btn" data-t="scale" title="배율 (S) — 그립 · 숫자=배율/치수"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M9 15l-4 4M15 9l4-4M5 19v-4h4M19 5v4h-4"/></svg></button>
+  <button class="btn" data-t="offset" title="오프셋 (F)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg></button>
   <div class="tsep"></div>
-  <button class="btn" data-t="tape" title="줄자 (T) — 안내선 · 두 점 재고 숫자 입력=모델 전체 크기 조정">📏</button>
-  <button class="btn" data-t="dim" title="치수 (D)">↔</button>
-  <button class="btn" data-t="protractor" title="각도기 — 중심·기준·각도 = 각도 안내선">∠</button>
-  <button class="btn" data-t="text" title="문자">A</button>
-  <button class="btn" data-t="axes" title="축 — 원점 클릭 · X 방향 클릭">⊹</button>
-  <button class="btn" data-t="text3d" title="3D 문자 — 글자를 입체로">𝟯</button>
+  <button class="btn" data-t="tape" title="줄자 (T) — 선에서=안내선 · Ctrl+클릭=안내점"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15l12-12 6 6-12 12z"/><path d="M8 12l2 2M11 9l2 2M14 6l2 2"/></svg></button>
+  <button class="btn" data-t="dim" title="치수 (D)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14M20 5v14M4 12h16"/><path d="M7 9.5L4 12l3 2.5M17 9.5l3 2.5-3 2.5"/></svg></button>
+  <button class="btn" data-t="protractor" title="각도기 — 각도 안내선"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h18"/><path d="M3 17A9 9 0 0 1 21 17"/><path d="M12 17l6-6.4M12 17v-3M8.2 9.6l1.5 2.5M15.8 9.6l-1.5 2.5"/></svg></button>
+  <button class="btn" data-t="text" title="문자"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M12 6v13M9 19h6"/></svg></button>
+  <button class="btn" data-t="axes" title="축 — 원점·X 방향"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V9M12 9l8-4M12 9L4 5"/><circle cx="12" cy="9" r="1.4" fill="currentColor"/></svg></button>
+  <button class="btn" data-t="text3d" title="3D 문자"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17l4-11h1l4 11M7.6 13h5.8"/><path d="M18 6l3-2v11l-3 2"/><path d="M9 20l3 2 9-5"/></svg></button>
   <div class="tsep"></div>
-  <button class="btn" data-t="orbit" title="궤도 (O)">🔄</button>
-  <button class="btn" data-t="pan" title="팬 (H)">🖐</button>
-  <button class="btn" data-t="zoom" title="줌 (Z) · Shift+Z=전체">🔍</button>
-  <button class="btn" data-t="zoomwin" title="줌 창 — 끌어서 그 영역을 화면에">⛶</button>
-  <button class="btn" data-t="fit" title="전체 보기 (Shift+Z)">⤧</button>
-  <button class="btn" data-t="prevview" title="이전 시점">◀</button>
+  <button class="btn" data-t="orbit" title="궤도 (O)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><ellipse cx="12" cy="12" rx="10" ry="3.5"/></svg></button>
+  <button class="btn" data-t="pan" title="팬 (H)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V5a1.5 1.5 0 0 1 3 0v5M12 10V4.5a1.5 1.5 0 0 1 3 0V11M15 11V6.5a1.5 1.5 0 0 1 3 0V14a6 6 0 0 1-6 6h-1.5a5 5 0 0 1-4.3-2.4L3 12.5a1.5 1.5 0 0 1 2.5-1.6L9 14"/></svg></button>
+  <button class="btn" data-t="zoom" title="줌 (Z) · Shift+Z=전체"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M8 10.5h5M10.5 8v5"/></svg></button>
+  <button class="btn" data-t="zoomwin" title="줌 창"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="13" height="10" rx="1" stroke-dasharray="2 2"/><circle cx="16" cy="15" r="4"/><path d="M19 18l3 3"/></svg></button>
+  <button class="btn" data-t="fit" title="전체 보기 (Shift+Z)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg></button>
+  <button class="btn" data-t="prevview" title="이전 시점"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L4 12l7 7M4 12h16"/></svg></button>
   <div class="tsep"></div>
-  <button class="btn" data-t="poscam" title="카메라 위치 — 바닥 클릭 = 그 자리 눈높이 · 끌면 보는 방향">📍</button>
-  <button class="btn" data-t="walk" title="걷기 (2) — W A S D">🚶</button>
-  <button class="btn" data-t="lookaround" title="둘러보기 — 제자리에서 끌어 보기">👁</button>
+  <button class="btn" data-t="poscam" title="카메라 위치 — 바닥 클릭=눈높이"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-5.5-6-10a6 6 0 0 1 12 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg></button>
+  <button class="btn" data-t="walk" title="걷기 (2)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4.5" r="1.8"/><path d="M9 21l2.5-6 3 2 1.5 4M7 13l3-5 3.5-1 2.5 3 3 1M11 8l-1.5 5 2.5 2"/></svg></button>
+  <button class="btn" data-t="lookaround" title="둘러보기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
   <div class="tsep"></div>
-  <button class="btn" data-t="section" title="단면 — 면 클릭 = 그 면에 단면 · 숫자=밀기">▥</button>
+  <button class="btn" data-t="section" title="단면 — 면 클릭"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15l8-4 8 4-8 4z"/><path d="M12 11V4M4 8l8 3.5L20 8"/><path d="M4 8v7M20 8v7"/></svg></button>
 </template>
 <template id="ff-keys">
   <h3>프리폼 단축키 (스케치업과 동일)</h3>
@@ -612,12 +665,12 @@
   <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
 </div></div>
 
-<script src="../js/data.js?v=3d45"></script>
-<script src="../js/library.js?v=3d45"></script>
+<script src="../js/data.js?v=3d46"></script>
+<script src="../js/library.js?v=3d46"></script>
 <!-- 2026-09-07: 매스 다면체(z 값) 계산은 2D 와 같은 파일을 쓴다 — 두 벌로 두면 평면과 3D 가 어긋난다 -->
-<script src="../js/sketch.js?v=3d45"></script>
-<script src="build3d.js?v=3d45"></script>
+<script src="../js/sketch.js?v=3d46"></script>
+<script src="build3d.js?v=3d46"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d45"></script>
+<script type="module" src="view3d.js?v=3d46"></script>
 </body>
 </html>
