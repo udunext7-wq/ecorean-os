@@ -644,6 +644,7 @@ function ffIconizeShell(){
 function ffSkyIcon(){ const sb=$('st-sky'); if(!sb||!document.body.classList.contains('ff-su')) return false; sb.innerHTML=ffSvg(ST.sky==='image'?'skyimg':ST.sky==='sky'?'sky':'plain')+'<span>'+(ST.sky==='image'?'배경 그림':ST.sky==='sky'?'하늘·바닥':'단색')+'</span>'; sb.classList.add('ico'); return true; }
 function ffStandaloneShell(){
   document.body.classList.add('ff-su');           // 미래적 유리 프레임 (index.html body.ff-su 규칙)
+  if(!$('ffvig')){ const vg=document.createElement('div'); vg.id='ffvig'; const vw=$('view'); if(vw) vw.insertAdjacentElement('afterend',vg); }   // 비네트 (클릭 통과)
   const mb=$('menubar'), tm=$('ff-menus'); if(mb&&tm){ mb.innerHTML=''; mb.appendChild(tm.content.cloneNode(true)); bindMenus(); }
   const tl=$('tools'), tt=$('ff-tools'); if(tl&&tt){ tl.innerHTML=''; tl.appendChild(tt.content.cloneNode(true)); bindTools(); }
   const km=document.querySelector('#keysmodal .kbox'), tk=$('ff-keys'); if(km&&tk){ km.innerHTML=''; km.appendChild(tk.content.cloneNode(true)); const kc=$('keys-close'); if(kc) kc.onclick=()=>showKeys(false); }

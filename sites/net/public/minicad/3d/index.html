@@ -205,6 +205,61 @@
   body.ff-su #selbox{border-color:var(--cyan);background:rgba(89,210,255,.07)}
   body.ff-su #selbox.cross{border-color:var(--lime);background:rgba(124,242,214,.06)}
   body.ff-su #tip{background:rgba(11,15,27,.94);border:1px solid var(--line2);border-radius:9px}
+  /* ===== 단독 셸 2단계 — 고급 마감: 그라디언트 헤어라인·워드마크·커스텀 슬라이더·키캡·비네트 ===== */
+  body.ff-su{--gb:linear-gradient(135deg,rgba(230,199,135,.42),rgba(89,210,255,.30) 45%,rgba(255,255,255,.05) 70%,rgba(230,199,135,.22))}
+  body.ff-su #menubar .mtitle{display:flex;align-items:center;gap:8px;background:none;color:var(--ink);padding:0 16px 0 6px;letter-spacing:0;-webkit-text-fill-color:initial}
+  body.ff-su #menubar .mtitle .mk{width:14px;height:14px;border-radius:4px;background:conic-gradient(from 210deg,#E6C787,#59D2FF,#7CF2D6,#E6C787);box-shadow:0 0 10px rgba(89,210,255,.55),inset 0 0 0 3px #070A12;transform:rotate(45deg) scale(.86)}
+  body.ff-su #menubar .mtitle .wm{font-family:'Cormorant Garamond','Inter',serif;font-weight:600;font-size:18px;letter-spacing:.02em;line-height:1;background:linear-gradient(90deg,#F3E3BE,#E6C787 60%,#B8D9F0);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+  body.ff-su #menubar .mtitle small{font-size:10px;font-weight:500;letter-spacing:.12em;color:var(--mute);opacity:.8;padding-left:9px;border-left:1px solid rgba(120,160,220,.28)}
+  body.ff-su .menu>button{font-size:12.5px;font-weight:500;letter-spacing:.02em;color:#C9D3E6}
+  body.ff-su .menu .drop{border:1px solid transparent;background:linear-gradient(rgba(11,15,27,.95),rgba(11,15,27,.95)) padding-box,var(--gb) border-box;padding:6px;animation:ffIn .14s ease-out}
+  body.ff-su .drop .mi{border-radius:8px;padding:6px 10px}
+  body.ff-su .drop .mi .acc{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:rgba(140,150,172,.85);background:rgba(255,255,255,.04);padding:1px 6px;border-radius:5px}
+  body.ff-su .drop hr{border-top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(120,160,220,.35),transparent);margin:6px 4px}
+  body.ff-su .drop .mh{color:var(--gold);letter-spacing:.14em;font-size:9.5px;text-transform:uppercase;opacity:.9}
+  @keyframes ffIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  body.ff-su .bar{background:linear-gradient(180deg,rgba(9,13,24,.72),rgba(9,13,24,.50));border-bottom:1px solid transparent;border-image:linear-gradient(90deg,rgba(230,199,135,.25),rgba(89,210,255,.25),transparent) 1}
+  body.ff-su .bar .btn{border-color:rgba(255,255,255,.06);background:rgba(255,255,255,.028);color:#C9D3E6}
+  body.ff-su .bar .btn.on{color:#fff}
+  body.ff-su .sep{background:linear-gradient(180deg,transparent,rgba(120,160,220,.4),transparent);height:26px}
+  body.ff-su #status{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+  body.ff-su #status.live::before{animation:ffPulse 2.4s ease-in-out infinite}
+  @keyframes ffPulse{0%,100%{opacity:1}50%{opacity:.35}}
+  body.ff-su #tools{border:1px solid transparent;background:linear-gradient(var(--panel),var(--panel)) padding-box,var(--gb) border-box;box-shadow:0 20px 50px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.35)}
+  body.ff-su #tools .btn{border-color:transparent;background:transparent;color:#B7C2D8}
+  body.ff-su #tools .btn:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);box-shadow:none}
+  body.ff-su #tools .btn.on{background:linear-gradient(145deg,rgba(230,199,135,.30),rgba(89,210,255,.26));border-color:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 18px rgba(89,210,255,.22)}
+  body.ff-su #tools .btn.on svg{filter:drop-shadow(0 0 6px rgba(243,227,190,.9))}
+  body.ff-su .tsec{border:1px solid transparent;background:linear-gradient(var(--panel),var(--panel)) padding-box,var(--gb) border-box;transition:box-shadow .2s}
+  body.ff-su .tsec:hover{box-shadow:0 10px 30px rgba(0,0,0,.35),0 0 24px rgba(89,210,255,.08)}
+  body.ff-su .tsec .th{display:flex;justify-content:flex-start;align-items:center;font-size:10.5px;letter-spacing:.14em;color:#DCC48E;padding:9px 12px}
+  body.ff-su .tsec .th::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);margin-right:8px;flex:none}
+  body.ff-su .tsec .th::after{content:'';width:6px;height:6px;border-right:1.5px solid var(--mute);border-bottom:1.5px solid var(--mute);transform:rotate(-45deg);margin-right:3px;margin-left:auto;transition:transform .18s}
+  body.ff-su .tsec.open .th::after{transform:rotate(45deg)}
+  body.ff-su .tsec .tb{border-top:1px solid rgba(120,160,220,.12)}
+  body.ff-su #tray::-webkit-scrollbar,body.ff-su .tsec .tb::-webkit-scrollbar,body.ff-su .menu .drop::-webkit-scrollbar{width:5px}
+  body.ff-su #tray::-webkit-scrollbar-thumb,body.ff-su .tsec .tb::-webkit-scrollbar-thumb,body.ff-su .menu .drop::-webkit-scrollbar-thumb{background:rgba(120,160,220,.25);border-radius:3px}
+  body.ff-su #stylepanel .btn{border-color:rgba(255,255,255,.06);background:rgba(255,255,255,.03);color:#C9D3E6;font-weight:500}
+  body.ff-su #stylepanel .btn.on{background:linear-gradient(145deg,rgba(230,199,135,.24),rgba(89,210,255,.20));border-color:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 14px rgba(89,210,255,.16);color:#fff}
+  body.ff-su #stylepanel .sun{color:var(--mute);font-size:11px;letter-spacing:.02em}
+  body.ff-su #stylepanel .sun input{-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(230,199,135,.7),rgba(89,210,255,.7));outline:none}
+  body.ff-su #stylepanel .sun input::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #0B0F1B;box-shadow:0 0 0 1px rgba(89,210,255,.6),0 0 10px rgba(89,210,255,.55);cursor:pointer}
+  body.ff-su #stylepanel .sun input::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #0B0F1B;box-shadow:0 0 10px rgba(89,210,255,.55)}
+  body.ff-su #tags{font-size:11.5px;color:#C9D3E6}
+  body.ff-su input[type=checkbox]{accent-color:var(--cyan);width:14px;height:14px}
+  body.ff-su #props h4{font-family:'Cormorant Garamond','Inter',serif;font-size:17px;font-weight:600;letter-spacing:.01em;color:#F3E3BE}
+  body.ff-su #vcb{border:1px solid transparent;background:linear-gradient(rgba(11,15,27,.92),rgba(11,15,27,.92)) padding-box,var(--gb) border-box;padding:8px 12px}
+  body.ff-su #vcb .v-l{letter-spacing:.06em;font-size:10.5px;text-transform:uppercase;color:#DCC48E}
+  body.ff-su #vcb .v-v{font-family:'JetBrains Mono',monospace;font-weight:600;color:#F3E3BE;border-color:rgba(230,199,135,.45);background:rgba(230,199,135,.06)}
+  body.ff-su #vcb .v-v:focus{outline:none;box-shadow:0 0 0 2px rgba(230,199,135,.22)}
+  body.ff-su #hint{border:1px solid transparent;background:linear-gradient(rgba(11,15,27,.80),rgba(11,15,27,.80)) padding-box,var(--gb) border-box;padding:8px 12px;line-height:1.75}
+  body.ff-su #hint b,body.ff-su #instructor b{display:inline-block;padding:0 6px;border-radius:5px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 -1px 0 rgba(0,0,0,.4);font-weight:600;line-height:1.5;color:#F3F6FB;margin:1px 1px}
+  body.ff-su #ctxmenu,body.ff-su #keysmodal .kbox,body.ff-su #modelinfo .kbox,body.ff-su #tip{border:1px solid transparent;background:linear-gradient(rgba(11,15,27,.96),rgba(11,15,27,.96)) padding-box,var(--gb) border-box}
+  body.ff-su #ctxmenu{padding:6px;animation:ffIn .14s ease-out}
+  body.ff-su #ctxmenu button{border-radius:8px}
+  body.ff-su #keysmodal h3,body.ff-su #modelinfo h3{font-family:'Cormorant Garamond','Inter',serif;font-size:24px;font-weight:600;letter-spacing:.01em;color:#F3E3BE}
+  body.ff-su #keysmodal td:first-child{font-family:'JetBrains Mono',monospace;color:var(--cyan);font-size:11.5px}
+  body.ff-su #ffvig{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(120% 90% at 50% 45%,transparent 55%,rgba(3,5,12,.42) 100%),linear-gradient(180deg,rgba(3,5,12,.35),transparent 18%)}
   @media (max-width:760px){ #tray{display:none} #hint{display:none} }
 </style>
 </head>
@@ -404,7 +459,7 @@
 
 <!-- ===== 단독 프리폼 (?ff=1) = 스케치업 100% 셸 (2026-09-08 대표 지시) — 부팅 때 메뉴·툴바·단축키표를 이 틀로 갈아 끼운다 ===== -->
 <template id="ff-menus">
-  <span class="mtitle">🧊 프리폼</span>
+  <span class="mtitle"><i class="mk"></i><span class="wm">FreeForm</span><small>프리폼</small></span>
   <div class="menu"><button>파일</button><div class="drop">
     <div class="mi" data-cmd="ff-new">새로 만들기<span class="acc">Ctrl+N</span></div>
     <div class="mi" data-cmd="ff-open">열기…<span class="acc">Ctrl+O</span></div>
