@@ -634,6 +634,7 @@ const FF_ICO={
   xray:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h16M4 15h16M9 4v16M15 4v16" stroke-opacity=".55"/>',
   ortho:'<rect x="5" y="5" width="14" height="14"/><path d="M5 5l4-3h14v14l-4 3M9 2v14M23 2l-4 3"/>',
   reload:'<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/>',
+  smooth:'<path d="M3 16c3.5 0 3.5-8 7-8s3.5 8 7 8 4-4 4-4"/><path d="M3 20h18" stroke-opacity=".4"/>',
 };
 function ffSvg(k){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(FF_ICO[k]||'')+'</svg>'; }
 function ffIconize(id,k,label){ const el=$(id); if(!el) return; el.innerHTML=ffSvg(k)+(label?'<span>'+label+'</span>':''); el.classList.add('ico'); }
@@ -642,7 +643,7 @@ function ffIconizeShell(){
   ffIconize('v-iso','iso'); ffIconize('v-top','top'); ffIconize('v-front','front'); ffIconize('v-side','side'); ffIconize('v-back','back'); ffIconize('v-prev','prev'); ffIconize('v-next','next');
   ffIconize('b-light','light'); ffIconize('b-night','night'); ffIconize('b-shadow','shadow'); ffIconize('b-shot','shot'); ffIconize('b-glb','glb','GLB'); ffIconize('b-reload','reload');
   ffIconize('st-light','light','조명'); ffIconize('st-night','night','야간'); ffIconize('st-ceil','ceil','천장'); ffIconize('st-label','label','이름표'); ffIconize('st-shadow','shadow','그림자');
-  ffIconize('st-axes','axes','축'); ffIconize('st-xray','xray','X-ray'); ffIconize('st-ortho','ortho','평행투영'); ffSkyIcon();
+  ffIconize('st-axes','axes','축'); ffIconize('st-xray','xray','X-ray'); ffIconize('st-ortho','ortho','평행투영'); ffIconize('st-smooth','smooth','부드럽게'); ffSkyIcon();
 }
 function ffSkyIcon(){ const sb=$('st-sky'); if(!sb||!document.body.classList.contains('ff-su')) return false; sb.innerHTML=ffSvg(ST.sky==='image'?'skyimg':ST.sky==='sky'?'sky':'plain')+'<span>'+(ST.sky==='image'?'배경 그림':ST.sky==='sky'?'하늘·바닥':'단색')+'</span>'; sb.classList.add('ico'); return true; }
 
@@ -875,6 +876,7 @@ function ffStandaloneShell(){
   const mg=$('mi-grid'); if(mg) mg.onchange=()=>{ ST.gridMM=parseInt(mg.value)||10; };
   const ms=$('mi-sides'); if(ms) ms.onchange=()=>{ ST.circleSides=Math.max(6,Math.min(96,parseInt(ms.value)||24)); };
   const hint=$('hint'); if(hint) hint.innerHTML='<b>스케치업식:</b> Space 선택 · L 선 · R 사각형 · C 원 · A 호 · F 오프셋 · M 이동 · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · G 그룹 · O 궤도 · H 팬 · Z 줌 | 숫자=정확값 · Esc 취소 · ?=단축키표';
+  if(ST.smooth==null) ST.smooth=true;          // 부드러운 곡면 기본 켬
   ffSaveUIBuild();
   ffWPBarBuild();
   ffIconizeShell();
@@ -1761,6 +1763,70 @@ const geoSph=new THREE.SphereGeometry(1,20,14);
 // ---------------------------------------------------------------------------
 // 기본체 → 메시
 // ---------------------------------------------------------------------------
+
+// ===========================================================================
+// 부드러운 곡면 (2026-09-10) — 스케치업 Soften/Smooth
+//  삼각형마다 법선이 따로라 24각 원기둥의 옆면이 면마다 각지게 보였다.
+//  이웃 면과 각이 기준(기본 20°) 안이면 법선을 섞는다 — 곡면은 매끄러워지고
+//  상자 모서리(90°)는 그대로 각진다. 형상은 그대로, 음영만 바뀐다.
+// ===========================================================================
+function _ffSoften(g,deg){
+  if(!g||g.index) return false;                      // 인덱스 기하(상자 등)는 손대지 않는다
+  const pos=g.getAttribute('position'), nrm=g.getAttribute('normal');
+  if(!pos||!nrm) return false;
+  const n=pos.count; if(n<3||n%3) return false;
+  const P=pos.array, N=nrm.array, tri=n/3;
+  const cosT=Math.cos((deg==null?20:deg)*Math.PI/180);
+  const fn=new Float32Array(tri*3);
+  for(let t=0;t<tri;t++){
+    const i=t*9;
+    const ax=P[i],ay=P[i+1],az=P[i+2];
+    const ux=P[i+3]-ax,uy=P[i+4]-ay,uz=P[i+5]-az;
+    const vx=P[i+6]-ax,vy=P[i+7]-ay,vz=P[i+8]-az;
+    const cx=uy*vz-uz*vy, cy=uz*vx-ux*vz, cz=ux*vy-uy*vx;
+    const L=Math.hypot(cx,cy,cz)||1;
+    fn[t*3]=cx/L; fn[t*3+1]=cy/L; fn[t*3+2]=cz/L;
+  }
+  const map=new Map();
+  const key=(x,y,z)=>(Math.round(x*1e4)+','+Math.round(y*1e4)+','+Math.round(z*1e4));
+  for(let t=0;t<tri;t++) for(let j=0;j<3;j++){
+    const i=t*9+j*3;
+    const k=key(P[i],P[i+1],P[i+2]);
+    let a=map.get(k); if(!a){ a=[]; map.set(k,a); } a.push(t);
+  }
+  for(let t=0;t<tri;t++){
+    const nx=fn[t*3],ny=fn[t*3+1],nz=fn[t*3+2];
+    for(let j=0;j<3;j++){
+      const i=t*9+j*3;
+      const a=map.get(key(P[i],P[i+1],P[i+2]));
+      let sx=0,sy=0,sz=0;
+      if(a) for(let q=0;q<a.length;q++){
+        const o=a[q]*3;
+        if(nx*fn[o]+ny*fn[o+1]+nz*fn[o+2]>=cosT){ sx+=fn[o]; sy+=fn[o+1]; sz+=fn[o+2]; }
+      }
+      const L=Math.hypot(sx,sy,sz);
+      if(L>1e-6){ N[i]=sx/L; N[i+1]=sy/L; N[i+2]=sz/L; }
+      else { N[i]=nx; N[i+1]=ny; N[i+2]=nz; }
+    }
+  }
+  nrm.needsUpdate=true;
+  return true;
+}
+// 자유 층 매스의 곡면을 지금 설정대로 (다시 세우지 않고 법선만)
+function setSmooth(on){
+  ST.smooth=!!on;
+  let k=0;
+  scene.traverse(o=>{
+    if(!o.isMesh||!o.userData.obj) return;
+    const ob=o.userData.obj;
+    if(ob.kind!=='mass'||ob.floorId!=='freeform') return;
+    const g=o.geometry; if(!g||g.index) return;
+    g.computeVertexNormals();                        // 면마다 (각지게)
+    if(ST.smooth&&_ffSoften(g,ST.smoothDeg||20)) k++;
+  });
+  refreshStylePanel(); invalidate(true);
+  setStatus(statusLive,ST.smooth?('◡ 부드러운 곡면 켬 — '+(ST.smoothDeg||20)+'° 안의 이웃 면끼리 음영을 잇습니다 ('+k+'개 매스)'):'◡ 부드러운 곡면 끔 — 면마다 각지게');
+}
 function primMesh(p,obj){
   let mesh;
   if(FF_STANDALONE&&obj&&(obj.kind==='sketchEdge'||obj.kind==='sketchPt')&&(p.t==='box'||p.t==='cyl'||p.t==='edge3'||p.t==='pt3')){
@@ -1904,6 +1970,7 @@ function primMesh(p,obj){
   if(obj.meta&&obj.meta.shadow){ const s=obj.meta.shadow; mesh.castShadow=s==='both'||s==='cast'; mesh.receiveShadow=s==='both'||s==='receive'; }
   mesh.userData.obj=obj;
   mesh.name=obj.name||obj.kind;
+  if(FF_STANDALONE&&ST.smooth!==false&&obj.kind==='mass'&&obj.floorId==='freeform') _ffSoften(mesh.geometry,ST.smoothDeg||20);
   return mesh;
 }
 function makeLabel(text){
@@ -6684,13 +6751,13 @@ function refreshStylePanel(){
   set('st-sky',ST.sky!=='plain');
   const sb=$('st-sky'); if(sb&&!ffSkyIcon()) sb.textContent=(ST.sky==='image'?'🖼 배경 그림':ST.sky==='sky'?'🌄 하늘·바닥':'🌑 단색');
   set('st-label',ST.labels); set('st-shadow',ST.shadows); set('st-axes',ST.axes);
-  set('st-xray',ST.xray); set('st-ortho',ST.ortho);
+  set('st-xray',ST.xray); set('st-ortho',ST.ortho); set('st-smooth',ST.smooth!==false);
   const mi=(id,on)=>{ const el=$(id); if(el){ el.classList.toggle('chk',!!on); el.classList.toggle('unchk',!on); } };
   mi('mi-light',ST.lightsOn); mi('mi-night',ST.night); mi('mi-ceil',ST.ceil[ST.mode]);
   mi('mi-sky',ST.sky!=='plain');
   mi('mi-ff',ST.ffOn);
   mi('mi-label',ST.labels); mi('mi-shadow',ST.shadows); mi('mi-axes',ST.axes);
-  mi('mi-xray',ST.xray); mi('mi-ortho',ST.ortho);
+  mi('mi-xray',ST.xray); mi('mi-ortho',ST.ortho); mi('mi-smooth',ST.smooth!==false);
   mi('mi-tray',!document.body.classList.contains('tray-off')); mi('mi-tray2',!document.body.classList.contains('tray-off'));
   mi('mi-hiddengeom',ST.hiddenGeom); mi('mi-sections',ST.sectionsOn); mi('mi-sectioncut',ST.sectionCut); mi('mi-guides',ST.guidesOn); mi('mi-fog',ST.fogOn); mi('mi-edges',ST.edges);
   ['wire','hidden','shaded','textured','mono'].forEach(s=>mi('mi-fs-'+s,ST.faceStyle===s));
@@ -6784,6 +6851,7 @@ function menuCmd(cmd){
     case 'orbit': setMode('orbit'); break;
     case 'walk': setMode('walk'); break;
     case 'iso': case 'top': case 'front': case 'side': setView(cmd); break;
+    case 'smooth': setSmooth(ST.smooth===false); break;
     case 'wp-auto': ffSetWP('auto'); break;
     case 'wp-xy': ffSetWP('xy'); break;
     case 'wp-xz': ffSetWP('xz'); break;
@@ -6822,7 +6890,7 @@ document.querySelectorAll('.tsec .th').forEach(th=>{
 const _stWire={'st-light':()=>setLights(!ST.lightsOn),'st-night':()=>setNight(!ST.night),'st-ceil':toggleCeil,
   'st-sky':()=>setSky(ST.sky==='plain'?'sky':'plain'),
   'st-label':toggleLabels,'st-shadow':()=>setShadows(!ST.shadows),'st-axes':()=>setAxes(!ST.axes),
-  'st-xray':()=>setXray(!ST.xray),'st-ortho':()=>setOrtho(!ST.ortho)};
+  'st-xray':()=>setXray(!ST.xray),'st-ortho':()=>setOrtho(!ST.ortho),'st-smooth':()=>setSmooth(ST.smooth===false)};
 const _sun=$('st-sun'); if(_sun) _sun.addEventListener('input',()=>setSunT(_sun.value/100));
 const _sd=$('st-date'); if(_sd) _sd.addEventListener('input',()=>setSunDate(+_sd.value));
 const _sl=$('st-light'); if(_sl) _sl.addEventListener('input',()=>setLightDark(_sl.value/100,null));
@@ -6887,7 +6955,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setSmooth,_ffSoften,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,
