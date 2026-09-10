@@ -1055,7 +1055,7 @@ function _shape3Ghost(op){
 function shape3Move(e){
   const op=ST.op; const uv=_ff3UV(e,op.fr); if(!uv) return;
   if(op.shape==='pie'&&op.stage===2){ const C=op.pts[0]; const ang=Math.atan2(uv.v-C.v,uv.u-C.u); if(op.prev!=null){ let d=ang-op.prev; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI; op.sweep=Math.max(-359,Math.min(359,op.sweep+d*180/Math.PI)); } op.prev=ang; }
-  op.cur=uv; const r=_shape3Ghost(op); _ff3Mark(uv.snap,planePt(op.fr,uv.u,uv.v));
+  op.cur=uv; const r=_shape3Ghost(op); _ff3Mark(uv.snap,planePt(op.fr,uv.u,uv.v),_ff3Seg(op.fr,uv));
   const ts=vcbSides(); if(ts&&op.shape==='polygon'){ op.sides=ts; ST.polySides=ts; }
   const lbl={circle:['반지름',r.r],polygon:['반지름',r.r],rotrect:op.stage===1?['첫 변',Math.hypot(uv.u-op.pts[0].u,uv.v-op.pts[0].v)]:['폭',Math.abs(r.w||0)],arc:op.stage===1?['현',Math.hypot(uv.u-op.pts[0].u,uv.v-op.pts[0].v)]:['볼록',r.bulge],arc3:['3점 호',0],pie:op.stage===1?['반지름',Math.hypot(uv.u-op.pts[0].u,uv.v-op.pts[0].v)]:['각도',r.sweep]}[op.shape]||['',0];
   vcbShow('면 위 '+lbl[0],Math.round(lbl[1]||0),op.shape==='pie'&&op.stage===2?'°':'mm');
@@ -2643,8 +2643,14 @@ function _ff3SnapList(fr){
   return out;
 }
 // 평면 스냅 마커 — 3D 자리에 직접 (땅 그리기의 showSnap 과 같은 색 규약)
-function _ff3Mark(kind,w){
+function _ff3Seg(fr,uv){ const e2=uv&&uv.seg; if(!e2) return null; return {a:planePt(fr,e2.u1,e2.v1),b:planePt(fr,e2.u2,e2.v2)}; }
+function _ff3Mark(kind,w,seg){
   if(!kind||kind==='grid'){ hideSnap(); return; }
+  if(FF_STANDALONE){
+    _snapPaint(kind,new THREE.Vector3(w.x*MM,w.z*MM,w.y*MM),
+      seg?{a:new THREE.Vector3(seg.a.x*MM,seg.a.z*MM,seg.a.y*MM),b:new THREE.Vector3(seg.b.x*MM,seg.b.z*MM,seg.b.y*MM)}:null);
+    return;
+  }
   if(!snapMk){ snapMk=FF_STANDALONE?glowSprite(0xffffff,12):new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false})); if(!snapMk.isSprite) snapMk.scale.setScalar(0.045); snapMk.renderOrder=1000; scene.add(snapMk); }
   if(snapMk.isSprite) snapMk.scale.setScalar(_pxScale(12));
   snapMk.material.color.setHex(SNAP_COL[kind]||0xffffff);
@@ -2663,13 +2669,13 @@ function _ff3UV(e,fr){
   const R=Math.max(40,mmPerPx(pt)*16);                   // 16px — 땅 그리기와 같은 손맛
   const L=_ff3SnapList(fr);
   let best=null,bd=R;
-  L.pts.forEach(q=>{ const d=Math.hypot(q.u-uv.u,q.v-uv.v); if(d<bd){ bd=d; best={u:q.u,v:q.v,snap:'endpoint'}; } });
+  L.pts.forEach(q=>{ const d=Math.hypot(q.u-uv.u,q.v-uv.v); if(d<bd){ bd=d; best={u:q.u,v:q.v,snap:'endpoint',seg:null}; } });
   if(!best){
     bd=R;
     L.edges.forEach(ed=>{
       const mu=(ed.u1+ed.u2)/2,mv=(ed.v1+ed.v2)/2;
       const dm=Math.hypot(mu-uv.u,mv-uv.v);
-      if(dm<bd){ bd=dm; best={u:mu,v:mv,snap:'midpoint'}; }
+      if(dm<bd){ bd=dm; best={u:mu,v:mv,snap:'midpoint',seg:ed}; }
     });
   }
   if(!best){
@@ -2679,7 +2685,7 @@ function _ff3UV(e,fr){
       let t=((uv.u-ed.u1)*dx+(uv.v-ed.v1)*dy)/L2; t=Math.max(0,Math.min(1,t));
       const fu=ed.u1+dx*t,fv=ed.v1+dy*t;
       const d=Math.hypot(fu-uv.u,fv-uv.v);
-      if(d<bd){ bd=d; best={u:Math.round(fu),v:Math.round(fv),snap:'edge'}; }
+      if(d<bd){ bd=d; best={u:Math.round(fu),v:Math.round(fv),snap:'edge',seg:ed}; }
     });
   }
   if(best) return best;
@@ -2790,7 +2796,7 @@ function ff3Move(e){
   uv=_ff3Lock(op,uv);
   op.cur=uv;
   _ff3Ghost(op);
-  _ff3Mark(uv.snap,planePt(op.fr,uv.u,uv.v));            // 면 위에서도 스냅 마커
+  _ff3Mark(uv.snap,planePt(op.fr,uv.u,uv.v),_ff3Seg(op.fr,uv));            // 면 위에서도 스냅 마커 + 닿은 선분 강조
   const vBlue=Math.abs(op.fr.n.z)<0.95;
   const axName=op.axis==='v'?(vBlue?'파랑(위) 고정 · ':'세로 고정 · '):op.axis==='u'?'빨강(가로) 고정 · ':'';
   const snName=uv.snap?SNAP_NAME[uv.snap]+' · ':'';
@@ -3791,35 +3797,166 @@ function snap3(fid,p,z0m,extra){
   const T_MID=Math.min(2200,Math.max(50,14*mmpp));
   const T_EDGE=Math.min(1800,Math.max(40,12*mmpp));
   let best=null;
-  const pt=(v,kind)=>{ const d=Math.hypot(v.x-p.x,v.y-p.y); if(d<=T_END&&(!best||d<best.d)) best={x:v.x,y:v.y,d,kind}; };
+  const pt=(v,kind)=>{ const d=Math.hypot(v.x-p.x,v.y-p.y); if(d<=T_END&&(!best||d<best.d)) best={x:v.x,y:v.y,d,kind,seg:null}; };
   // 원점(0,0) 기준점 스냅 — 끝점과 같은 우선순위
   pt({x:(ST.axesO?ST.axesO.x:0),y:(ST.axesO?ST.axesO.y:0)},'origin');
   sd.verts.forEach(v=>pt(v,'endpoint'));
   if(extra) extra.forEach(v=>pt(v,'endpoint'));                 // 그리는 중인 사슬의 점들 (폐합용)
   if(sd.xpts) sd.xpts.forEach(v=>pt(v,'intersection'));          // 안내선 교차점 (스케치업 Intersection)
   if(sd.gpts) sd.gpts.forEach(v=>pt(v,'guide'));                  // 안내점 (줄자 Ctrl+클릭)
-  if(!best) sd.walls.forEach(w=>{const mx=(w.x1+w.x2)/2,my=(w.y1+w.y2)/2;const d=Math.hypot(mx-p.x,my-p.y); if(d<=T_MID&&(!best||d<best.d)) best={x:mx,y:my,d,kind:'midpoint'};});
+  if(!best) sd.walls.forEach(w=>{const mx=(w.x1+w.x2)/2,my=(w.y1+w.y2)/2;const d=Math.hypot(mx-p.x,my-p.y); if(d<=T_MID&&(!best||d<best.d)) best={x:mx,y:my,d,kind:'midpoint',seg:w};});
   if(!best){
-    let bd=T_EDGE,bp=null,bk='edge';
-    sd.walls.forEach(w=>{const q=closestOnSeg(p,w);const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;bp=q;bk='edge';}});
-    (sd.guides||[]).forEach(w=>{const q=closestOnSeg(p,w);const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;bp=q;bk='guide';}});
-    if(bp) best={x:bp.x,y:bp.y,d:bd,kind:bk};
+    let bd=T_EDGE,bp=null,bk='edge',bs=null;
+    sd.walls.forEach(w=>{const q=closestOnSeg(p,w);const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;bp=q;bk='edge';bs=w;}});
+    (sd.guides||[]).forEach(w=>{const q=closestOnSeg(p,w);const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;bp=q;bk='guide';bs=w;}});
+    if(bp) best={x:bp.x,y:bp.y,d:bd,kind:bk,seg:bs};
   }
-  return best?{x:Math.round(best.x),y:Math.round(best.y),kind:best.kind}:grid;
+  return best?{x:Math.round(best.x),y:Math.round(best.y),kind:best.kind,seg:best.seg||null}:grid;
 }
 const SNAP_COL={endpoint:0x2FA84F,midpoint:0x35C2CF,edge:0xE24C4C,origin:0x4C7DE2,intersection:0xFF5A5A,guide:0x9A9AFF,lock:0xE24CE2,axis:0xE24C4C,from:0xE24CE2};
 const SNAP_NAME={endpoint:'끝점',midpoint:'중간점',edge:'선 위',origin:'원점(0,0)',intersection:'교차점',guide:'안내선 위',lock:'방향 고정',axis:'축 위',from:'점에서'};
+
+// ===========================================================================
+// 접촉 표시 (2026-09-10 대표 지시 "점과 선이 컨택이 되었는지 확인이 안 된다")
+//   ① 종류마다 다른 모양 — 끝점=사각, 중간점=마름모, 선 위=빈 사각, 교차=X, 원점=원+십자
+//   ② 닿은 선분이 그 색으로 굵게 빛난다 (무엇에 붙었는지가 보인다)
+//   ③ 마커 뒤 헤일로 링 — 색을 못 봐도 '붙었다'가 보인다
+//   ④ 커서 옆 이름표 (끝점 / 중간점 / 선 위 …)
+//   ⑤ 클릭해서 실제로 붙는 순간 링이 한 번 퍼진다
+// ===========================================================================
+const SNAP_SHAPE={endpoint:'square',midpoint:'diamond',edge:'squareO',intersection:'cross',
+  origin:'circleO',guide:'diamondO',from:'dot',lock:'dot',axis:'dot'};
+const _snapTexC=new Map();
+function _snapTex(shape){
+  if(_snapTexC.has(shape)) return _snapTexC.get(shape);
+  const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
+  const g=x.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'rgba(255,255,255,.50)'); g.addColorStop(.42,'rgba(255,255,255,.12)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.fillRect(0,0,64,64);
+  x.strokeStyle='#fff'; x.fillStyle='#fff'; x.lineWidth=7; x.lineJoin='round'; x.lineCap='round';
+  const S=14;
+  const dia=(r)=>{ x.beginPath(); x.moveTo(32,32-r); x.lineTo(32+r,32); x.lineTo(32,32+r); x.lineTo(32-r,32); x.closePath(); };
+  if(shape==='square') x.fillRect(32-S,32-S,S*2,S*2);
+  else if(shape==='squareO') x.strokeRect(32-S+3,32-S+3,(S-3)*2,(S-3)*2);
+  else if(shape==='diamond'){ dia(S+4); x.fill(); }
+  else if(shape==='diamondO'){ dia(S+2); x.stroke(); }
+  else if(shape==='cross'){ x.beginPath(); x.moveTo(32-S,32-S); x.lineTo(32+S,32+S); x.moveTo(32+S,32-S); x.lineTo(32-S,32+S); x.stroke(); }
+  else if(shape==='circleO'){ x.beginPath(); x.arc(32,32,S-2,0,7); x.stroke(); x.lineWidth=4;
+    x.beginPath(); x.moveTo(32-S-7,32); x.lineTo(32+S+7,32); x.moveTo(32,32-S-7); x.lineTo(32,32+S+7); x.stroke(); }
+  else if(shape==='ring'){ x.lineWidth=5; x.beginPath(); x.arc(32,32,25,0,7); x.stroke(); }
+  else { x.beginPath(); x.arc(32,32,S,0,7); x.fill(); }
+  const t=new THREE.CanvasTexture(c); if(THREE.SRGBColorSpace) t.colorSpace=THREE.SRGBColorSpace;
+  _snapTexC.set(shape,t); return t;
+}
+function _shapeSprite(shape,color,px){
+  const m=new THREE.SpriteMaterial({map:_snapTex(shape),color:color||0xffffff,transparent:true,
+    depthTest:false,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:false});
+  const s=new THREE.Sprite(m); s.scale.setScalar(_pxScale(px||14)); s.renderOrder=1002; s.userData.px=px||14; return s;
+}
+const _snapMks=new Map();
+let snapRingMk=null, snapEdgeMk=null, snapPulseMk=null, _snapPulseT=0;
+function _snapShapeShow(shape,col,W,px){
+  _snapMks.forEach((s,k)=>{ if(k!==shape) s.visible=false; });
+  let mk=_snapMks.get(shape);
+  if(!mk){ mk=_shapeSprite(shape,col,px); mk.userData.shape=shape; _snapMks.set(shape,mk); scene.add(mk); }
+  mk.material.color.setHex(col);
+  mk.userData.px=px; mk.scale.setScalar(_pxScale(px));
+  mk.position.copy(W); mk.visible=true;
+}
+function _snapRingShow(col,W,px){
+  if(!snapRingMk){ snapRingMk=_shapeSprite('ring',col,px); snapRingMk.renderOrder=1001; scene.add(snapRingMk); }
+  snapRingMk.material.color.setHex(col); snapRingMk.material.opacity=0.55;
+  snapRingMk.userData.px=px; snapRingMk.scale.setScalar(_pxScale(px));
+  snapRingMk.position.copy(W); snapRingMk.visible=true;
+}
+// 닿은 선분을 그 색으로 굵게 — '무엇에' 붙었는지가 보인다
+function _snapEdgeShow(a,b,col){
+  if(!snapEdgeMk){
+    snapEdgeMk=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,8,1,true),
+      new THREE.MeshBasicMaterial({transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false}));
+    snapEdgeMk.renderOrder=999; scene.add(snapEdgeMk);
+  }
+  const d=new THREE.Vector3().subVectors(b,a); const L=d.length();
+  if(!(L>1e-6)){ snapEdgeMk.visible=false; return; }
+  snapEdgeMk.position.copy(a).addScaledVector(d,0.5);
+  snapEdgeMk.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.clone().normalize());
+  const r=Math.max(0.004,mmPerPx(snapEdgeMk.position)*3.4*MM);
+  snapEdgeMk.scale.set(r,L,r);
+  snapEdgeMk.material.color.setHex(col);
+  snapEdgeMk.visible=true;
+}
+function _snapEdgeHide(){ if(snapEdgeMk&&snapEdgeMk.visible){ snapEdgeMk.visible=false; } }
+// 커서 옆 이름표
+function _snapTip(kind){
+  const el=$('snaptip'); if(!el) return;
+  if(!kind||kind==='grid'||!ST.lastPtr){ el.style.display='none'; return; }
+  el.textContent=SNAP_NAME[kind]||'';
+  el.style.color='#'+('000000'+(SNAP_COL[kind]||0xffffff).toString(16)).slice(-6);
+  el.style.left=Math.min(ST.lastPtr.clientX+18,window.innerWidth-el.offsetWidth-8)+'px';
+  el.style.top=Math.min(ST.lastPtr.clientY+20,window.innerHeight-el.offsetHeight-8)+'px';
+  el.style.display='block';
+}
+// 스냅 표시 한 곳 — 땅 그리기와 평면 그리기가 같은 기호를 쓴다
+function _snapPaint(kind,W,seg){
+  if(!kind||kind==='grid'){ ffSnapHide(); return; }
+  const col=SNAP_COL[kind]||0xffffff;
+  const shape=SNAP_SHAPE[kind]||'dot';
+  if(FF_STANDALONE){
+    _snapShapeShow(shape,col,W,13);
+    _snapRingShow(col,W,30);
+    if(seg&&seg.a&&seg.b) _snapEdgeShow(seg.a,seg.b,col); else _snapEdgeHide();
+    _snapTip(kind);
+    ST.lastSnap={kind,W:W.clone()};
+  }
+  invalidate();
+}
+function ffSnapHide(){
+  let ch=false;
+  _snapMks.forEach(s=>{ if(s.visible){ s.visible=false; ch=true; } });
+  if(snapRingMk&&snapRingMk.visible){ snapRingMk.visible=false; ch=true; }
+  if(snapEdgeMk&&snapEdgeMk.visible){ snapEdgeMk.visible=false; ch=true; }
+  const el=$('snaptip'); if(el&&el.style.display!=='none') el.style.display='none';
+  ST.lastSnap=null;
+  if(ch) invalidate();
+}
+// 클릭해서 실제로 붙는 순간 — 링이 한 번 퍼진다
+function ffContactPulse(W,col){
+  if(!FF_STANDALONE||!W) return;
+  if(!snapPulseMk){ snapPulseMk=_shapeSprite('ring',0xffffff,20); snapPulseMk.renderOrder=1003; scene.add(snapPulseMk); }
+  snapPulseMk.material.color.setHex(col||0x7CF2D6);
+  snapPulseMk.position.copy(W); snapPulseMk.visible=true;
+  const t0=(typeof performance!=='undefined'?performance.now():Date.now());
+  clearInterval(_snapPulseT);
+  _snapPulseT=setInterval(()=>{
+    const k=((typeof performance!=='undefined'?performance.now():Date.now())-t0)/300;
+    if(k>=1||!snapPulseMk){ clearInterval(_snapPulseT); if(snapPulseMk){ snapPulseMk.visible=false; snapPulseMk.material.opacity=1; } invalidate(); return; }
+    snapPulseMk.scale.setScalar(_pxScale(16+40*k));
+    snapPulseMk.material.opacity=1-k*k;
+    invalidate();
+  },16);
+}
+const FF_DRAWTOOLS=new Set(['line','rect','circle','polygon','arc','arc3','pie','rotrect','freehand','tape','dim','offset','protractor','axes','text3d','section']);
+// 그리기 도구로 눌렀는데 그 자리가 붙는 자리였으면 확정 펄스
+function ffContactOnClick(){
+  if(!FF_STANDALONE) return;
+  const s=ST.lastSnap;
+  if(s&&s.kind&&s.kind!=='grid'&&FF_DRAWTOOLS.has(ST.tool)) ffContactPulse(s.W,SNAP_COL[s.kind]);
+}
 let snapMk=null;
 function showSnap(s,z0){
   if(s.kind==='grid'){ hideSnap(); return; }
-  if(!snapMk){ snapMk=FF_STANDALONE?glowSprite(0xffffff,12):new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false})); if(!snapMk.isSprite) snapMk.scale.setScalar(0.045); snapMk.renderOrder=1000; scene.add(snapMk); }
-  if(snapMk.isSprite) snapMk.scale.setScalar(_pxScale(12));
+  const W=new THREE.Vector3(s.x*MM,z0+0.03,s.y*MM);
+  if(FF_STANDALONE){                                       // 단독: 모양·헤일로·선분 강조·이름표
+    const seg=s.seg?{a:new THREE.Vector3(s.seg.x1*MM,z0+0.03,s.seg.y1*MM),b:new THREE.Vector3(s.seg.x2*MM,z0+0.03,s.seg.y2*MM)}:null;
+    _snapPaint(s.kind,W,seg); return;
+  }
+  if(!snapMk){ snapMk=new THREE.Mesh(geoSph,new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false})); snapMk.scale.setScalar(0.045); snapMk.renderOrder=1000; scene.add(snapMk); }
   snapMk.material.color.setHex(SNAP_COL[s.kind]||0xffffff);
-  snapMk.position.set(s.x*MM,z0+0.03,s.y*MM);
+  snapMk.position.copy(W);
   snapMk.visible=true;
   invalidate();
 }
-function hideSnap(){ if(snapMk&&snapMk.visible){ snapMk.visible=false; invalidate(); } }
+function hideSnap(){ if(FF_STANDALONE){ ffSnapHide(); return; } if(snapMk&&snapMk.visible){ snapMk.visible=false; invalidate(); } }
 // 선분이 그 층의 어떤 면(공간)을 지나는가 — 지나면 splitspace(면 분할)
 function segHitsSpace(fid,a,c){
   const sd=ST.snapData[fid]; if(!sd) return null;
@@ -5047,6 +5184,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
     else if(t==='rotate3'){ rotate3Click(e); drag=null; return; }
     else { commitActive(vcbTyped()); drag=null; return; }
   }
+  ffContactOnClick();                                        // 붙는 자리에서 눌렀으면 링이 한 번 퍼진다
   // 방향기가 먼저다 — 손잡이를 눌러 자라는 방향(축)을 바꾼다
   if(FF_STANDALONE&&!ST.op){
     const wh=_ffWPHandleAt(e.clientX,e.clientY);
@@ -5133,6 +5271,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   }
 });
 renderer.domElement.addEventListener('pointermove',e=>{
+  ST.lastPtr={clientX:e.clientX,clientY:e.clientY};      // 접촉 이름표가 이번 움직임 자리에 붙도록 — 맨 먼저
   if(ST.tool==='add'&&ST.add&&ST.add.ghost){ ghostFollow(e); }
   // 첫 클릭 전에도 스냅 마커 표시 (스케치업 추론 — 호버만으로 끝점/중간점/선에 흡착 예고)
   if((ST.tool==='line'||ST.tool==='rect'||ST.tool==='circle'||ST.tool==='arc'||ST.tool==='polygon'||ST.tool==='rotrect'||ST.tool==='arc3'||ST.tool==='pie'||ST.tool==='protractor'||ST.tool==='axes'||ST.tool==='freehand'||ST.tool==='text3d')&&!ST.op&&ST.mode==='orbit'){
@@ -6104,7 +6243,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,_dragAlong,mmPerPx,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,

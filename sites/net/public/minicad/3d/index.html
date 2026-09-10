@@ -104,6 +104,7 @@
   #vcb .v-v{width:84px;background:#242640;border:1px solid var(--line);color:var(--lime);border-radius:6px;padding:4px 7px;
     font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right}
   #vcb .v-u{font-size:11.5px;color:var(--mute)}
+  #snaptip{position:fixed;pointer-events:none;display:none;z-index:9;font-size:11px;font-weight:700;letter-spacing:.02em;padding:2px 7px;border-radius:6px;background:rgba(8,11,20,.86);border:1px solid rgba(255,255,255,.14);white-space:nowrap;text-shadow:0 0 10px currentColor}
   #tip{position:fixed;pointer-events:none;background:rgba(26,27,46,.95);border:1px solid var(--gold);color:var(--ink);padding:5px 9px;border-radius:7px;font-size:12px;display:none;z-index:6;white-space:nowrap}
   #tip small{color:var(--mute)}
   #hint{position:fixed;left:12px;bottom:12px;font-size:11.5px;color:var(--mute);background:rgba(26,27,46,.8);border:1px solid var(--line);border-radius:8px;padding:6px 10px;z-index:5;max-width:min(60vw,520px);line-height:1.5}
@@ -273,6 +274,8 @@
   body.ff-su #wpbar .sep{height:18px}
   body.ff-su #wpbar .wn{font-size:10.5px;color:var(--mute);padding-left:4px;font-family:'JetBrains Mono',monospace}
   @media (max-width:1100px){ body.ff-su #wpbar .btn span{display:none} body.ff-su #wpbar .wn{display:none} }
+  body.ff-su #snaptip{background:linear-gradient(rgba(8,11,20,.9),rgba(8,11,20,.9)) padding-box,var(--gb) border-box;border:1px solid transparent;
+    backdrop-filter:blur(10px);box-shadow:0 6px 18px rgba(0,0,0,.45)}
   @media (max-width:760px){ #tray{display:none} #hint{display:none} }
 </style>
 </head>
@@ -463,6 +466,7 @@
 
 <div id="vcb"><span class="v-l">이동</span><input class="v-v" inputmode="decimal" aria-label="수치 입력"><span class="v-u">mm</span></div>
 <div id="tip"></div>
+<div id="snaptip"></div>
 <div id="hint"><b>스케치업식:</b> Space 선택 · L 선 · R 사각형 · C 원 · A 호 · F 오프셋 · M 이동(Ctrl=복사) · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · D 치수 · G 배치 · O 궤도 · H 팬 · Z 줌 · X X-ray | 숫자=정확값 · Esc 취소 · ?=단축키표</div>
 <div id="empty">아직 받은 도면이 없습니다.<br>MiniCAD 창에서 <b>🧊 미니폼</b> 버튼을 누르거나 명령창에 <b>3d</b> 를 입력하세요.<br><small>열어 두면 평면을 고칠 때마다 바로 반영되고, 여기서 고치면 평면에 반영됩니다.</small></div>
 <div id="walkpad">
@@ -747,12 +751,12 @@
   <div style="text-align:right;margin-top:12px"><button class="btn" id="keys-close">닫기 (Esc)</button></div>
 </div></div>
 
-<script src="../js/data.js?v=3d49"></script>
-<script src="../js/library.js?v=3d49"></script>
+<script src="../js/data.js?v=3d50"></script>
+<script src="../js/library.js?v=3d50"></script>
 <!-- 2026-09-07: 매스 다면체(z 값) 계산은 2D 와 같은 파일을 쓴다 — 두 벌로 두면 평면과 3D 가 어긋난다 -->
-<script src="../js/sketch.js?v=3d49"></script>
-<script src="build3d.js?v=3d49"></script>
+<script src="../js/sketch.js?v=3d50"></script>
+<script src="build3d.js?v=3d50"></script>
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js"}}</script>
-<script type="module" src="view3d.js?v=3d49"></script>
+<script type="module" src="view3d.js?v=3d50"></script>
 </body>
 </html>
