@@ -606,6 +606,42 @@ function bindMenus(){
   document.querySelectorAll('#menubar .mi').forEach(mi=>{ mi.onclick=e=>{ e.stopPropagation(); closeMenus(); menuCmd(mi.dataset.cmd); }; });
 }
 function bindTools(){ document.querySelectorAll('#tools .btn').forEach(b=>{ b.onclick=()=>{ const t=b.dataset.t; if(t==='mkcomp'){ ffMakeGroup(); return; } if(t==='fit'){ fitView(true); return; } if(t==='prevview'){ camPrev(); return; } setTool(t); }; }); }
+
+// ---- 단독 셸: 상단 툴바·스타일 패널 아이콘도 큰 도구 세트와 같은 선형 SVG 로 (연동 뷰는 그대로) ----
+const FF_ICO={
+  orbit:'<circle cx="12" cy="12" r="6"/><ellipse cx="12" cy="12" rx="10" ry="3.5"/>',
+  walk:'<circle cx="13" cy="4.5" r="1.8"/><path d="M9 21l2.5-6 3 2 1.5 4M7 13l3-5 3.5-1 2.5 3 3 1M11 8l-1.5 5 2.5 2"/>',
+  iso:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>',
+  top:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5-8-4.5z" fill="currentColor" fill-opacity=".35"/>',
+  front:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5v9l-8-4.5z" fill="currentColor" fill-opacity=".35"/>',
+  side:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M20 7.5l-8 4.5v9l8-4.5z" fill="currentColor" fill-opacity=".35"/>',
+  back:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/><path d="M12 12l-8 4.5M12 12l8 4.5" stroke-dasharray="1.5 2"/>',
+  prev:'<path d="M15 5l-7 7 7 7"/>', next:'<path d="M9 5l7 7-7 7"/>',
+  light:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2h5c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/>',
+  night:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  ceil:'<path d="M4 9l8-5 8 5"/><path d="M6 9v10h12V9"/><path d="M9 19v-4h6v4"/>',
+  label:'<path d="M3 12l9-9h9v9l-9 9z"/><circle cx="16.5" cy="7.5" r="1.4"/>',
+  shadow:'<circle cx="12" cy="9" r="3.5"/><path d="M12 2.5v1.5M18.5 9H17M7 9H5.5M16.6 4.4l-1.1 1.1M8.5 5.5L7.4 4.4"/><path d="M4 19h16" stroke-width="2.4" stroke-opacity=".55"/><path d="M8 16h9"/>',
+  shot:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="13.5" r="3.5"/>',
+  glb:'<path d="M12 3v11M8 10l4 4 4-4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+  axes:'<path d="M12 21V9M12 9l8-4M12 9L4 5"/><circle cx="12" cy="9" r="1.4" fill="currentColor"/>',
+  sky:'<path d="M3 15h18"/><path d="M6 15a6 6 0 0 1 12 0"/><path d="M12 5v1.5M18.5 8.5l-1 1M5.5 8.5l1 1"/><path d="M4 19h16" stroke-dasharray="2 2"/>',
+  skyimg:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.6"/>',
+  plain:'<rect x="3" y="4" width="18" height="16" rx="2"/>',
+  xray:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h16M4 15h16M9 4v16M15 4v16" stroke-opacity=".55"/>',
+  ortho:'<rect x="5" y="5" width="14" height="14"/><path d="M5 5l4-3h14v14l-4 3M9 2v14M23 2l-4 3"/>',
+  reload:'<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/>',
+};
+function ffSvg(k){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(FF_ICO[k]||'')+'</svg>'; }
+function ffIconize(id,k,label){ const el=$(id); if(!el) return; el.innerHTML=ffSvg(k)+(label?'<span>'+label+'</span>':''); el.classList.add('ico'); }
+function ffIconizeShell(){
+  ffIconize('b-orbit','orbit','조감'); ffIconize('b-walk','walk','걷기');
+  ffIconize('v-iso','iso'); ffIconize('v-top','top'); ffIconize('v-front','front'); ffIconize('v-side','side'); ffIconize('v-back','back'); ffIconize('v-prev','prev'); ffIconize('v-next','next');
+  ffIconize('b-light','light'); ffIconize('b-night','night'); ffIconize('b-shadow','shadow'); ffIconize('b-shot','shot'); ffIconize('b-glb','glb','GLB'); ffIconize('b-reload','reload');
+  ffIconize('st-light','light','조명'); ffIconize('st-night','night','야간'); ffIconize('st-ceil','ceil','천장'); ffIconize('st-label','label','이름표'); ffIconize('st-shadow','shadow','그림자');
+  ffIconize('st-axes','axes','축'); ffIconize('st-xray','xray','X-ray'); ffIconize('st-ortho','ortho','평행투영'); ffSkyIcon();
+}
+function ffSkyIcon(){ const sb=$('st-sky'); if(!sb||!document.body.classList.contains('ff-su')) return false; sb.innerHTML=ffSvg(ST.sky==='image'?'skyimg':ST.sky==='sky'?'sky':'plain')+'<span>'+(ST.sky==='image'?'배경 그림':ST.sky==='sky'?'하늘·바닥':'단색')+'</span>'; sb.classList.add('ico'); return true; }
 function ffStandaloneShell(){
   document.body.classList.add('ff-su');           // 미래적 유리 프레임 (index.html body.ff-su 규칙)
   const mb=$('menubar'), tm=$('ff-menus'); if(mb&&tm){ mb.innerHTML=''; mb.appendChild(tm.content.cloneNode(true)); bindMenus(); }
@@ -618,6 +654,7 @@ function ffStandaloneShell(){
   const mg=$('mi-grid'); if(mg) mg.onchange=()=>{ ST.gridMM=parseInt(mg.value)||10; };
   const ms=$('mi-sides'); if(ms) ms.onchange=()=>{ ST.circleSides=Math.max(6,Math.min(96,parseInt(ms.value)||24)); };
   const hint=$('hint'); if(hint) hint.innerHTML='<b>스케치업식:</b> Space 선택 · L 선 · R 사각형 · C 원 · A 호 · F 오프셋 · M 이동 · Q 회전 · S 배율 · P 밀기끌기 · B 페인트 · E 지우개 · T 줄자 · G 그룹 · O 궤도 · H 팬 · Z 줌 | 숫자=정확값 · Esc 취소 · ?=단축키표';
+  ffIconizeShell();
   renderTags(); renderPaintPal(); renderSections();
 }
 // 단독 프리폼의 우클릭 메뉴 (스케치업 컨텍스트 메뉴)
@@ -1749,16 +1786,28 @@ function retunePointLights(){
     g.add(pl); ST.pointLights.push(pl);
   };
   const inten1=g=>{const m=g.userData.obj.meta||{};return (m.lightLen||m.linear)?9:6;};
-  // 2026-09-09 대표 지시 "빛의 모양" — 선형 등(lightLen)은 길이를 따라 광원을 줄지어
-  //  달아 빛이 일직선이 된다. 동그란 등은 종전대로 점 광원 하나 = 둥근 풀.
-  const subsOf=g=>{const m=g.userData.obj.meta||{};
-    return (m.lightLen>=700)?Math.min(5,Math.max(2,Math.round(m.lightLen/600))):1;};
-  const put1=g=>{
-    const m=g.userData.obj.meta||{}, n=subsOf(g);
-    if(n<=1){ mk(g,inten1(g),7,0); return; }
-    const step=m.lightLen/n;
-    for(let i=0;i<n;i++) mk(g,Math.max(3,12/n),5.5,-m.lightLen/2+step*(i+0.5));
+  // 2026-09-10 대표 지시 "각각의 조명을 공부해 사실적으로" — build3d 가 타입마다 적어 준
+  //  광원 명세(meta.emitters: 확산 pt / 원뿔 spot / up=천장 워시 / 색온도 / 세기·도달)를
+  //  그대로 켠다. 명세 없는 옛 문서는 종전 한 점 광원으로 물러난다.
+  const _emsOf=g=>{const m=g.userData.obj.meta||{};
+    if(Array.isArray(m.emitters)&&m.emitters.length) return m.emitters;
+    return [{k:'pt',x:0,z:m.lightZ||2200,c:'#FFE7B8',i:inten1(g),d:7}]; };
+  const mkE=(g,e)=>{
+    let l;
+    if(e.k==='spot'){
+      l=new THREE.SpotLight(new THREE.Color(e.c||'#FFE7B8'),e.i,e.d,e.ang||0.5,e.up?0.7:0.45,1.8);
+      l.position.set((e.x||0)*MM,e.z*MM,0);
+      l.target.position.set((e.x||0)*MM,e.up?e.z*MM+3:0,0);   // 아래 바닥 · up=천장 워시
+      g.add(l.target);
+    }else{
+      l=new THREE.PointLight(new THREE.Color(e.c||'#FFE7B8'),e.i,e.d,2);
+      l.position.set((e.x||0)*MM,e.z*MM,0);
+    }
+    l.visible=ST.lightsOn;
+    g.add(l); ST.pointLights.push(l);
   };
+  const subsOf=g=>_emsOf(g).length;
+  const put1=g=>_emsOf(g).forEach(e=>mkE(g,e));
   let demand=0; lightGroups.forEach(g=>{demand+=subsOf(g);});
   if(demand<=budget){
     lightGroups.forEach(put1);                            // 등마다 제 광원 — 선형은 줄지어
@@ -5633,7 +5682,7 @@ function refreshStylePanel(){
   const set=(id,on)=>{ const el=$(id); if(el) el.classList.toggle('on',!!on); };
   set('st-light',ST.lightsOn); set('st-night',ST.night); set('st-ceil',ST.ceil[ST.mode]);
   set('st-sky',ST.sky!=='plain');
-  const sb=$('st-sky'); if(sb) sb.textContent=(ST.sky==='image'?'🖼 배경 그림':ST.sky==='sky'?'🌄 하늘·바닥':'🌑 단색');
+  const sb=$('st-sky'); if(sb&&!ffSkyIcon()) sb.textContent=(ST.sky==='image'?'🖼 배경 그림':ST.sky==='sky'?'🌄 하늘·바닥':'🌑 단색');
   set('st-label',ST.labels); set('st-shadow',ST.shadows); set('st-axes',ST.axes);
   set('st-xray',ST.xray); set('st-ortho',ST.ortho);
   const mi=(id,on)=>{ const el=$(id); if(el){ el.classList.toggle('chk',!!on); el.classList.toggle('unchk',!on); } };
