@@ -22,7 +22,7 @@
     { "src": "/catalog/(usong|lx|specbook|plans)", "status": 308, "headers": { "Location": "/catalog/$1/" } },
     { "src": "/catalog/(usong|lx|specbook|plans)/", "dest": "/sites/net/catalog/$1/index.html" },
     {
-      "src": "/(minicad|estimate|estform|pms|work|daily|vector|editor|biz|order)",
+      "src": "/(minicad|estimate|estform|pms|work|daily|vector|editor|biz|order|spec)",
       "status": 308,
       "headers": { "Location": "/$1/" }
     },
@@ -37,7 +37,7 @@
       "headers": { "Location": "/system.html?next=/$1/" }
     },
     {
-      "src": "/(pms|work|daily|vector|editor|biz|order)(/.*)?",
+      "src": "/(pms|work|daily|vector|editor|biz|order|spec)(/.*)?",
       "missing": [
         { "type": "cookie", "key": "sb-gdcfqbdgubgpzusbtftf-auth-token" },
         { "type": "cookie", "key": "sb-gdcfqbdgubgpzusbtftf-auth-token.0" }
@@ -47,8 +47,10 @@
     },
     { "src": "/daily/dashboard/?", "dest": "/sites/net/daily/dashboard/index.html" },
     { "src": "/order/(door|wood|tile)", "status": 308, "headers": { "Location": "/order/$1/" } },
+    { "src": "/spec/(interior|electrical|mechanical)", "status": 308, "headers": { "Location": "/spec/$1/" } },
     { "src": "/order/(door|wood|tile)/", "dest": "/sites/net/order/$1/index.html" },
-    { "src": "/(minicad|estimate|estform|pms|work|daily|vector|editor|biz|order)/", "dest": "/sites/net/$1/index.html" },
+    { "src": "/spec/(interior|electrical|mechanical)/", "dest": "/sites/net/spec/$1/index.html" },
+    { "src": "/(minicad|estimate|estform|pms|work|daily|vector|editor|biz|order|spec)/", "dest": "/sites/net/$1/index.html" },
     { "src": "/(.*)", "dest": "/sites/net/$1" }
   ]
 }

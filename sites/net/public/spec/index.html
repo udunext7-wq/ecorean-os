@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#05070d">
+<meta name="robots" content="noindex">
+<title>ECOREAN 시방서 체크리스트 — 공종별</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --bg:#05070d; --bg2:#0c111c; --bg3:#111827; --line:#1c2536;
+    --text:#e8ecf4; --dim:#8b95a8; --accent:#4ade80; --accent-dim:rgba(74,222,128,.12);
+    --blue:#60a5fa; --amber:#fbbf24;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Pretendard','Inter Tight',-apple-system,'Malgun Gothic',sans-serif;line-height:1.55;font-size:15px;padding:0 16px}
+  .wrap{max-width:960px;margin:0 auto;padding-block:36px 60px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+  .logo{font-size:17px;font-weight:700;letter-spacing:.12em}
+  .logo span{color:var(--accent)}
+  .back{color:var(--dim);text-decoration:none;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:7px 13px}
+  .back:hover{background:var(--bg3);color:var(--text)}
+  h1{font-size:25px;font-weight:700;margin:22px 0 7px}
+  .sub{color:var(--dim);font-size:14px;margin-bottom:28px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+  a.card{display:block;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:22px 20px;text-decoration:none;color:inherit;transition:border-color .15s,background .15s}
+  a.card:hover{background:var(--bg3);border-color:#2f4368}
+  .ico{font-size:27px;line-height:1;margin-bottom:13px}
+  .card h2{font-size:16px;font-weight:700;margin-bottom:6px}
+  .card p{color:var(--dim);font-size:13px;margin-bottom:13px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;color:var(--accent);background:var(--accent-dim);border-radius:999px;padding:3px 9px}
+  .note{margin-top:30px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:17px 19px;font-size:13px;color:var(--dim)}
+  .note b{color:var(--text)}
+  .note ul{margin:9px 0 0 18px;display:grid;gap:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="logo">ECO<span>REAN</span></div>
+    <a class="back" href="/work/">← 직원 포털</a>
+  </div>
+
+  <h1>공종별 시방서 체크리스트</h1>
+  <p class="sub">140평 2층 단독주택 기준. 항목을 체크하며 진행하고, 사진·메모·기성 기록을 함께 남깁니다. 기록은 <b>이 브라우저에</b> 저장되니 백업 버튼으로 파일을 내려받아 두세요.</p>
+
+  <div class="grid">
+    <a class="card" href="/spec/interior/">
+      <div class="ico">🎨</div>
+      <h2>인테리어공사</h2>
+      <p>마감·목공·도장·타일·도배까지 실내 마감 전 공정의 검수 항목과 하자 유발 지점.</p>
+      <div class="tags"><span class="tag">사진 기록</span><span class="tag">기성 관리</span></div>
+    </a>
+
+    <a class="card" href="/spec/electrical/">
+      <div class="ico">⚡</div>
+      <h2>전기공사</h2>
+      <p>배관·배선·분전반·조명·약전. 회로 색상 코드표와 층별 필터를 함께 씁니다.</p>
+      <div class="tags"><span class="tag">회로 색상표</span><span class="tag">층별 필터</span></div>
+    </a>
+
+    <a class="card" href="/spec/mechanical/">
+      <div class="ico">🔧</div>
+      <h2>기계설비공사</h2>
+      <p>급배수·난방·환기·공조. 슬리브 위치 관리와 층별 점검 항목이 들어 있습니다.</p>
+      <div class="tags"><span class="tag">슬리브 관리</span><span class="tag">층별 필터</span></div>
+    </a>
+  </div>
+
+  <div class="note">
+    <b>쓰기 전에 알아 둘 것</b>
+    <ul>
+      <li>체크 내용·사진은 <b>지금 연 브라우저에만</b> 남습니다. 다른 기기·다른 직원 화면에는 안 보이고, 브라우저 기록을 지우면 사라집니다.</li>
+      <li>공종마다 저장 공간이 따로라 서로 섞이지 않습니다. 다만 <b>초기화</b>는 그 공종의 사진을 전부 지웁니다.</li>
+      <li>중요한 시점에는 각 화면의 <b>백업</b> 버튼으로 파일을 내려받아 두세요.</li>
+      <li>현장·발주·지출 기록은 <a href="/work/" style="color:var(--blue)">직원 포털</a>과 <a href="/biz/" style="color:var(--blue)">사업장부</a>에 남깁니다 — 이 체크리스트와는 아직 연결돼 있지 않습니다.</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>
