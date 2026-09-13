@@ -1260,6 +1260,37 @@ function sweepProfile(path,closed,base,profile){
   }
   return {verts,faces};
 }
+
+// 일반 3D 스윕 (2026-09-14 팔로우 미) — 단면(절대 3D 다각형)을 경로(절대 3D 폴리라인)를 따라.
+//  마디마다 직전 방향으로 밀어 이등분 평면에 자른다(마이터). 닫힌 경로는 한 바퀴 돌아 첫 마디도 마이터.
+//  단면은 첫 마디에 놓인 그대로 쓴다 — 경로 첫 구간에 수직이면 깨끗하고, 아니면 스케치업처럼 비스듬히 훑는다.
+function sweepProfile3(path,closed,profile){
+  if(!Array.isArray(path)||path.length<2||!Array.isArray(profile)||profile.length<3) return null;
+  const P=[]; path.forEach(p=>{ const q=P[P.length-1]; if(!q||Math.hypot(p.x-q.x,p.y-q.y,p.z-q.z)>1) P.push({x:+p.x,y:+p.y,z:+p.z}); });
+  if(closed&&P.length>2){ const a=P[0],b=P[P.length-1]; if(Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)<=1) P.pop(); }
+  const N=P.length; if(N<2||(closed&&N<3)) return null;
+  const dir=i=>_vNorm(_vSub(P[(i+1)%N],P[i]));
+  const K=profile.length;
+  const step=(ring,i)=>{                                    // ring(마디 i-1) → 마디 i 로 밀어 이등분 평면에
+    const dp=dir((i-1+N)%N);
+    const dn=(closed||i<N-1)?dir(i%N):dp;
+    let m=_vAdd(dp,dn); const L=_vLen(m);
+    m=(L<1e-6)?dp:_vScale(m,1/L);
+    let den=_vDot(dp,m); if(Math.abs(den)<0.25) den=den<0?-0.25:0.25;   // 예각 스파이크 제한
+    const Pp=P[(i-1+N)%N], Pi=P[i%N];
+    return ring.map(r=>{ const q=_vSub(r,Pp); const t=-_vDot(q,m)/den; return _vAdd(Pi,_vAdd(q,_vScale(dp,t))); });
+  };
+  let ring=profile.map(p=>({x:+p.x,y:+p.y,z:+p.z}));
+  if(closed){ let r=ring; for(let i=1;i<=N;i++) r=step(r,i); ring=r; }   // 한 바퀴 돌아온 것이 첫 마디의 마이터 단면
+  const rings=[ring];
+  for(let i=1;i<N;i++){ ring=step(ring,i); rings.push(ring); }
+  const verts=[],faces=[];
+  rings.forEach(r=>r.forEach(p=>verts.push({x:p.x,y:p.y,z:p.z})));
+  const segs=closed?N:N-1;
+  for(let i=0;i<segs;i++){ const A=i*K,B=((i+1)%N)*K; for(let k=0;k<K;k++){ const k2=(k+1)%K; faces.push({vs:[A+k,A+k2,B+k2,B+k]}); } }
+  if(!closed){ faces.push({vs:Array.from({length:K},(_,k)=>K-1-k)}); faces.push({vs:Array.from({length:K},(_,k)=>(N-1)*K+k)}); }
+  return {verts,faces};
+}
 // 훑은 것을 자유 매스로 — 안팎은 massSolid 의 부피 부호 교정이 맡는다
 function massFromSweep(name,sw,free,color){
   if(!sw||!sw.verts.length) return null;
@@ -1747,7 +1778,7 @@ if(typeof module!=='undefined'&&module.exports){
     massTopPts,massSlopes,massRidges,massCtx,massLean,massZAt,massTopProfile,profileAvg,pitchOf,pitchStr,
     planeFrom,planeUV,planePt,planeSame,ffPlaneBag,planeFaceVerts,planeExtrude,
     massLocalFrame,massFaceAt,massRayExit,massAddCut,massCutsVolume,
-    sweepProfile,massFromSweep,moldingProfile,
+    sweepProfile,sweepProfile3,massFromSweep,moldingProfile,
     massCSG,earTriangles,csgMergeFaces,massToCsgPolys,massFromCsgFaces,csgUnion,csgSubtract,csgIntersect,
     massFindFace,massPushFace,massExtrudeFaceNew,massVertXY,massRotate3,massFlip,massScaleAbout,massLocalBox,massFaceInfo,
     massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,massSplitFace,

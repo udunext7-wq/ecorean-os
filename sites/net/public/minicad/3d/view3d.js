@@ -167,7 +167,7 @@ const FF_HINT={
   pie:'<b>파이</b> — 중심 · 시작(반지름) · 끝(각도) = 부채꼴 면 · 숫자=각도',
   freehand:'<b>프리핸드</b> — 누른 채 끌어서 그리기 · 시작점으로 돌아오면 면',
   offset:'<b>오프셋</b> — 바닥 면·<b>매스의 면·벽면 위의 면</b> 클릭 후 안/밖 · <b>숫자=거리</b> · 결과는 그 면 위의 새 면 (P 로 뽑기/파내기)',
-  followme:'<b>팔로우 미</b> — ① 단면(벽면 위에 그린 면) 클릭 → ② 경로가 될 매스 클릭 (윗면=위 둘레 · 옆면=바닥 둘레). 몰딩·난간·프레임',
+  followme:'<b>팔로우 미</b> — <b>단면(면) 클릭 → 경로(선) 클릭</b>: 이어진 선을 끝까지 따라 훑고, 돌아오면 고리 · 경로는 바닥 선·벽면 선·3D 사슬 무엇이든 · <b>선을 먼저 골라 두고 면을 클릭해도</b> 됨 · 매스를 클릭하면 둘레(윗면=위 · 옆면=바닥). 몰딩·난간·프레임·파이프',
   paint:'<b>페인트</b> — 트레이에서 색상·이미지·마감 고르고 클릭=매스 전체 · <b>Ctrl+클릭=그 면만</b> · <b>Shift+클릭=같은 재질 전부 교체</b> · Alt+클릭=재질 추출 · ＋ 이미지로 재질 만들기',
   erase:'<b>지우개</b> — 클릭/끌기=삭제 · Shift+클릭=숨기기',
   tape:'<b>줄자</b> — 두 점=거리 · <b>선에서 시작=평행 안내선</b>(숫자=간격) · Shift=두 점 안내선 · <b>Ctrl+클릭=안내점</b> · 각도기=각도 안내선 · 재고 나서 <b>숫자 입력=모델 전체 크기 조정</b>',
@@ -400,16 +400,157 @@ function applySections(){
 }
 function clearSections(){ ST.sections.forEach(s=>{ scene.remove(s.mesh); }); ST.sections=[]; applySections(); renderSections(); setStatus(statusLive,'단면 모두 삭제'); }
 // --- 팔로우 미 (Follow Me) — 단면(수직 면 위의 면) → 경로(매스 둘레) ---
-function followClick(hit){
-  const obj=hit&&hit.object.userData.obj;
+
+// ===========================================================================
+// 팔로우 미 — 선(사슬)을 경로로 (2026-09-14 대표 지시 "단면과 선이 방향을 제시해도 팔로우미가 만들어지도록")
+//  경로는 바닥 선·평면 위 선·3D 사슬 무엇이든. 클릭한 선에서 이어진 선을 끝까지(갈래에서 멈춤) 따라가고,
+//  돌아오면 닫힌 고리. 미리 골라 둔 선들이 있으면 그 선들만 잇는다(스케치업 순서: 경로 선택 → 면 클릭).
+// ===========================================================================
+function _ffEdgeGraph3(){
+  const segs=[]; const key=p=>(Math.round(p.x)+','+Math.round(p.y)+','+Math.round(p.z));
+  const add=(id,a,b)=>{ segs.push({id,a,b,ka:key(a),kb:key(b)}); };
+  if(FF){
+    (FF.free.sketchEdges||[]).forEach(e=>{ const a=skPtById(e.a,FF.free),b=skPtById(e.b,FF.free); if(a&&b) add(e.id,{x:a.x,y:a.y,z:0},{x:b.x,y:b.y,z:0}); });
+    (FF.free.planes||[]).forEach(pl=>(pl.sketchEdges||[]).forEach(e=>{ const a=skPtById(e.a,pl),b=skPtById(e.b,pl); if(a&&b) add(e.id,planePt(pl,a.x,a.y),planePt(pl,b.x,b.y)); }));
+  }
+  const adj=new Map(); segs.forEach((sg,i)=>{ [sg.ka,sg.kb].forEach(k=>{ if(!adj.has(k)) adj.set(k,[]); adj.get(k).push(i); }); });
+  return {segs,adj,key};
+}
+// 한 선에서 출발해 이어진 사슬 — only(허용 인덱스 집합)가 있으면 그 안에서만
+function _ffWalkChain(G,start,only,exclude){
+  const ok=i=>(!only||only.has(i))&&!(exclude&&exclude.has(i));
+  const s0=G.segs[start];
+  const walk=(fromKey)=>{
+    const pts=[]; let cur=start,k=fromKey; const used=new Set([start]);
+    for(let guard=0;guard<20000;guard++){
+      const sg=G.segs[cur]; const nk=(sg.ka===k)?sg.kb:sg.ka; const np=(sg.ka===k)?sg.b:sg.a;
+      pts.push(np);
+      const nb=(G.adj.get(nk)||[]).filter(i=>i!==cur&&ok(i));
+      if(nb.length!==1) return {pts,closed:false};
+      const nx=nb[0]; if(used.has(nx)) return {pts,closed:true};
+      used.add(nx); cur=nx; k=nk;
+    }
+    return {pts,closed:false};
+  };
+  const fwd=walk(s0.ka);
+  if(fwd.closed) return {pts:[s0.a].concat(fwd.pts.slice(0,-1)),closed:true};
+  const back=walk(s0.kb);
+  return {pts:back.pts.slice().reverse().concat(fwd.pts),closed:false};
+}
+// 클릭한 선 객체의 3D 양 끝
+function _ffEdgeEnds3(obj){
+  if(!obj||obj.kind!=='sketchEdge'||!FF) return null;
+  if(obj.meta&&obj.meta.plane){
+    const pl=(FF.free.planes||[]).find(q=>planeSame(q,obj.meta.plane.origin,obj.meta.plane.n)); if(!pl) return null;
+    const e=skEdgeById(obj.id,pl); if(!e) return null;
+    const a=skPtById(e.a,pl),b=skPtById(e.b,pl); if(!a||!b) return null;
+    return {a:planePt(pl,a.x,a.y),b:planePt(pl,b.x,b.y)};
+  }
+  const m=obj.meta||{};
+  if(isFinite(m.x1)&&isFinite(m.y1)) return {a:{x:m.x1,y:m.y1,z:0},b:{x:m.x2,y:m.y2,z:0}};
+  const e=skEdgeById(obj.id,FF.free); if(!e) return null;
+  const a=skPtById(e.a,FF.free),b=skPtById(e.b,FF.free); if(!a||!b) return null;
+  return {a:{x:a.x,y:a.y,z:0},b:{x:b.x,y:b.y,z:0}};
+}
+function _ffSegIndexOf(G,ends){
+  if(!ends) return -1;
+  const ka=G.key(ends.a),kb=G.key(ends.b);
+  return G.segs.findIndex(sg=>(sg.ka===ka&&sg.kb===kb)||(sg.ka===kb&&sg.kb===ka));
+}
+// 단면 면의 변들 = 걷기에서 제외할 선분 인덱스
+function _ffFaceEdgeSet(G,face){
+  const out=new Set(); const pts=_ffFacePts3(face); if(!pts) return out;
+  for(let i=0;i<pts.length;i++){ const a=pts[i],b=pts[(i+1)%pts.length];
+    const ka=G.key(a),kb=G.key(b);
+    G.segs.forEach((sg,j)=>{ if((sg.ka===ka&&sg.kb===kb)||(sg.ka===kb&&sg.kb===ka)) out.add(j); }); }
+  return out;
+}
+function _ffChainFromEdge(obj,face){
+  const G=_ffEdgeGraph3(); const i=_ffSegIndexOf(G,_ffEdgeEnds3(obj)); if(i<0) return null;
+  const ch=_ffWalkChain(G,i,null,face?_ffFaceEdgeSet(G,face):null);
+  ch.fromEdge=obj; return ch;
+}
+function _ffChainFromEdges(objs){
+  const G=_ffEdgeGraph3(); const only=new Set();
+  objs.forEach(o=>{ const i=_ffSegIndexOf(G,_ffEdgeEnds3(o)); if(i>=0) only.add(i); });
+  if(!only.size) return null;
+  // 끝(허용 선이 하나뿐인 점)에서 출발하면 사슬이 한쪽으로 곧게 나온다
+  let start=[...only][0];
+  for(const i of only){ const sg=G.segs[i];
+    const da=(G.adj.get(sg.ka)||[]).filter(j=>only.has(j)).length, db=(G.adj.get(sg.kb)||[]).filter(j=>only.has(j)).length;
+    if(da===1||db===1){ start=i; break; } }
+  const ch=_ffWalkChain(G,start,only);
+  ch.n=only.size; return ch;
+}
+// 단면 면의 3D 다각형과 평면
+function _ffFacePts3(face){
+  const m=face&&face.meta; if(!m||!Array.isArray(m.poly)) return null;
+  if(m.plane){ const fr=_ffFrameFor(m.plane.origin,m.plane.n); return m.poly.map(p=>planePt(fr,p.x,p.y)); }
+  return m.poly.map(p=>({x:p.x,y:p.y,z:0}));
+}
+function _ffFacePlane3(face){
+  const m=face&&face.meta;
+  if(m&&m.plane) return {origin:m.plane.origin,n:m.plane.n};
+  return {origin:{x:0,y:0,z:0},n:{x:0,y:0,z:1}};
+}
+// 단면 + 경로 → 훑기 (경로는 단면 쪽 마디에서 시작하도록 돌린다)
+function _ffSweepFace(face,chain){
+  const prof=_ffFacePts3(face); if(!prof||prof.length<3){ setStatus(statusLive,'단면 면을 읽지 못했습니다'); return false; }
+  if(chain&&chain.fromEdge){ const re=_ffChainFromEdge(chain.fromEdge,face); if(re&&re.pts.length>=2) chain=re; }   // 단면 변은 갈래가 아니다
+  let pts=chain.pts.slice(); const closed=!!chain.closed;
+  if(pts.length<2){ setStatus(statusLive,'경로가 너무 짧습니다'); return false; }
+  const pl=_ffFacePlane3(face);
+  const c=prof.reduce((a,p)=>({x:a.x+p.x/prof.length,y:a.y+p.y/prof.length,z:a.z+p.z/prof.length}),{x:0,y:0,z:0});
+  const dPl=p=>Math.abs((p.x-pl.origin.x)*pl.n.x+(p.y-pl.origin.y)*pl.n.y+(p.z-pl.origin.z)*pl.n.z);
+  const dC=p=>Math.hypot(p.x-c.x,p.y-c.y,p.z-c.z);
+  let bi=0,bs=Infinity; pts.forEach((p,i)=>{ const sc=dPl(p)*4+dC(p); if(sc<bs){ bs=sc; bi=i; } });
+  if(closed){ pts=pts.slice(bi).concat(pts.slice(0,bi)); }
+  else if(bi>0&&bi>=pts.length-1-bi){ pts=pts.slice().reverse(); }       // 단면이 끝 쪽이면 뒤집어 거기서 출발
+  const d0=(function(){ const a=pts[0],b=pts[1]; const L=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z)||1; return {x:(b.x-a.x)/L,y:(b.y-a.y)/L,z:(b.z-a.z)/L}; })();
+  const along=Math.abs(d0.x*pl.n.x+d0.y*pl.n.y+d0.z*pl.n.z);
+  if(along<0.15){ setStatus(statusLive,'단면이 경로 방향을 가로지르지 않습니다 — 경로 첫 구간에 마주 보는 면을 단면으로'); return false; }
+  const op=ST.op; if(op&&op.g) _hl(op.g,false); cancelOp();
+  const L=pts.reduce((a,p,i)=>{ const q=pts[(i+1)%pts.length]; return a+((closed||i<pts.length-1)?Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z):0); },0);
+  emitEdit({type:'edit',op:'sweep3',floorId:'freeform',patch:{path:pts.map(p=>({x:Math.round(p.x),y:Math.round(p.y),z:Math.round(p.z)})),closed,
+    profile:prof.map(p=>({x:Math.round(p.x),y:Math.round(p.y),z:Math.round(p.z)})),faceId:face.id,name:'팔로우미',color:'#8B6F47'}});
+  setStatus(statusLive,'⌐ 팔로우 미 — '+prof.length+'점 단면을 경로 '+Math.round(L)+'mm 따라 훑음'+(closed?' (닫힌 고리)':'')+(along<0.7?' · 단면이 비스듬해 결과가 기울었습니다':''));
+  return true;
+}
+function followClick(hit,e){
+  // 팔로우 미는 점이 필요 없고, 면 안을 눌렀는데 선 집기 원기둥·점이 먼저 잡히면 안 된다 —
+  //  실제 클릭(e)일 때만 레이 위 히트 전체에서 단계에 맞는 종류(면 / 선 / 매스)를 250mm 깊이 안에서 고른다.
+  //  코드로 hit 만 넘기면(테스트·자동화) 그 hit 을 그대로 쓴다.
+  const hs=(e&&typeof e.clientX==='number')?hitsAt(e.clientX,e.clientY,{noSprite:true}):[];
+  const kindOf=h=>(h&&h.object.userData.obj&&h.object.userData.obj.kind)||'';
+  const pick=(prefs)=>{
+    if(!hs.length||kindOf(hit)===prefs[0]) return hit;
+    for(const k of prefs){ const h=hs.find(x=>kindOf(x)===k&&x.distance-hs[0].distance<0.25); if(h) return h; }
+    return prefs.includes(kindOf(hit))?hit:hs[0]; };
+  const st0=ST.op&&ST.op.type==='followme'?ST.op:null;
+  hit=pick(!st0?['sketchFace','sketchEdge','mass']:st0.path?['sketchFace']:['sketchEdge','mass','sketchFace']);
+  let obj=hit&&hit.object.userData.obj;
+  const isFace=o=>!!(o&&o.kind==='sketchFace'&&o.meta&&Array.isArray(o.meta.poly)&&ffEditable(o));
+  const isEdge=o=>!!(o&&o.kind==='sketchEdge'&&ffEditable(o));
   if(!ST.op||ST.op.type!=='followme'){
-    if(!obj||obj.kind!=='sketchFace'||!obj.meta||!obj.meta.plane||!ffEditable(obj)){ setStatus(statusLive,'⌐ 팔로우 미: ① 먼저 단면이 될 면(벽면 위에 그린 면)을 클릭'); return; }
-    const g=hit.object.parent; _hl(g,true);
-    ST.op={type:'followme',prof:obj,g,stage:1}; opOrbit(true); vcbShow('② 경로: 매스 클릭 (윗면=위 둘레 · 옆면=바닥 둘레)','','');
-    setStatus(statusLive,'⌐ 단면 잡음 — 이제 경로가 될 매스를 클릭 (윗면 클릭=위 둘레 · 옆면=바닥 둘레)'); return;
+    const pre=[...ST.selSet].map(g=>g.userData.obj).filter(isEdge);        // 미리 골라 둔 선 = 경로 (스케치업 순서)
+    if(isFace(obj)){
+      if(pre.length){ const ch=_ffChainFromEdges(pre); if(ch&&ch.pts.length>=2){ if(_ffSweepFace(obj,ch)) return; } }
+      const g=hit.object.parent; _hl(g,true);
+      ST.op={type:'followme',prof:obj,g,stage:1}; opOrbit(true); vcbShow('② 경로: 선 클릭 (이어진 선을 끝까지) · 매스 클릭=둘레','','');
+      setStatus(statusLive,'⌐ 단면 잡음 — 경로가 될 선을 클릭 (이어진 선은 끝까지, 돌아오면 고리) · 매스를 클릭하면 둘레'); return;
+    }
+    if(isEdge(obj)){
+      const ch=_ffChainFromEdge(obj); if(!ch||ch.pts.length<2){ setStatus(statusLive,'이 선의 경로를 못 찾았습니다'); return; }
+      ST.op={type:'followme',path:ch,stage:1}; opOrbit(true); vcbShow('② 단면이 될 면 클릭','','');
+      setStatus(statusLive,'⌐ 경로 잡음 ('+ch.pts.length+'점'+(ch.closed?' · 닫힌 고리':'')+') — 이제 단면이 될 면을 클릭'); return;
+    }
+    setStatus(statusLive,'⌐ 팔로우 미: 단면이 될 면, 또는 경로가 될 선을 클릭 (선을 먼저 골라 두고 면을 클릭해도 됩니다)'); return;
   }
   const op=ST.op;
-  if(!obj||obj.kind!=='mass'||!ffEditable(obj)){ setStatus(statusLive,'⌐ 경로는 프리폼 매스 (Esc=취소)'); return; }
+  if(op.path){ if(isFace(obj)){ _ffSweepFace(obj,op.path); return; } setStatus(statusLive,'⌐ 단면이 될 면을 클릭 (Esc=취소)'); return; }
+  if(isEdge(obj)){ const ch=_ffChainFromEdge(obj,op.prof); if(ch&&ch.pts.length>=2){ _ffSweepFace(op.prof,ch); return; } setStatus(statusLive,'이 선의 경로를 못 찾았습니다'); return; }
+  if(!obj||obj.kind!=='mass'||!ffEditable(obj)){ setStatus(statusLive,'⌐ 경로는 선 또는 프리폼 매스 (Esc=취소)'); return; }
+  if(!op.prof.meta.plane){ setStatus(statusLive,'매스 둘레는 세워진 단면(벽면 위 면)만 — 바닥 면은 선을 경로로'); return; }
   const m=FF.free.masses.find(x=>x.id===obj.id); if(!m){ setStatus(statusLive,'매스를 찾지 못했습니다'); return; }
   const nW=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
   const top=nW.y>0.7;
@@ -3604,6 +3745,17 @@ function ffApply(m){
       if(p.faceId){ const hf=_ffFindFace(p.faceId); if(hf) _skConsumeFace(hf.face,hf.bag); }   // 스케치업: 단면은 소비된다
       madeId=mm.id; ok=true; label='팔로우 미 ('+prof.length+'점 단면 · 경로 '+path.length+'변)'; break;
     }
+    case 'sweep3': {                                    // 팔로우 미 (일반 3D) — 단면 3D 다각형을 3D 경로 따라
+      const prof=(Array.isArray(p.profile)?p.profile:[]).map(q=>({x:N(q.x),y:N(q.y),z:N(q.z)}));
+      const path=(Array.isArray(p.path)?p.path:[]).map(q=>({x:N(q.x),y:N(q.y),z:N(q.z)}));
+      if(prof.length<3||path.length<2) return false;
+      const sw=sweepProfile3(path,!!p.closed,prof);
+      if(!sw) return no('경로가 너무 짧습니다');
+      const mm=massFromSweep(String(p.name||'팔로우미'),sw,bag,p.color||'#8B6F47');
+      if(!mm) return false;
+      if(p.faceId){ const hf=_ffFindFace(p.faceId); if(hf) _skConsumeFace(hf.face,hf.bag); }   // 스케치업: 단면은 소비된다
+      madeId=mm.id; ok=true; label='팔로우 미 ('+prof.length+'점 단면 · 경로 '+path.length+'점'+(p.closed?' · 닫힘':'')+')'; break;
+    }
     case 'massfromfaces': {                             // 절대 면 목록 → 매스 (OBJ 가져오기)
       const faces=(Array.isArray(p.faces)?p.faces:[]).map(r=>r.map(q=>({x:Number(q.x),y:Number(q.y),z:Number(q.z)}))).filter(r=>r.length>=3&&r.every(q=>fin(q.x,q.y,q.z)));
       if(!faces.length) return false;
@@ -3972,14 +4124,25 @@ function sendEdit(op,obj,patch){
   emitEdit({type:'edit',op,kind:KINDMAP[obj.kind],id:obj.id,floorId:obj.floorId,patch:patch||{}});
   return true;
 }
-function hitAt(cx,cy){
+// 레이 위의 히트 전체 (깊이 순 · 스프라이트 제외 옵션) — 도구가 종류 우선순위로 고를 때
+function hitsAt(cx,cy,opt){
+  const r=renderer.domElement.getBoundingClientRect();
+  const nd=new THREE.Vector2(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1);
+  ray.setFromCamera(nd,camera);
+  return ray.intersectObjects(ST.pickables,false).filter(h=>{
+    if(opt&&opt.noSprite&&h.object.isSprite) return false;
+    let o=h.object; while(o){ if(o.visible===false) return false; o=o.parent; } return true;
+  });
+}
+function hitAt(cx,cy,opt){
   const r=renderer.domElement.getBoundingClientRect();
   const nd=new THREE.Vector2(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1);
   ray.setFromCamera(nd,camera);
   const hits=ray.intersectObjects(ST.pickables,false).filter(h=>{
+    if(opt&&opt.noSprite&&h.object.isSprite) return false;
     let o=h.object; while(o){ if(o.visible===false) return false; o=o.parent; } return true;
   });
-  if(FF_STANDALONE){                                    // 발광 점(스프라이트)은 화면 8px 안이면 먼저 잡힌다 (스케치업 픽 조리개)
+  if(FF_STANDALONE&&!(opt&&opt.noSprite)){              // 발광 점(스프라이트)은 화면 8px 안이면 먼저 잡힌다 (스케치업 픽 조리개)
     let best=null,bd=8; ST.pickables.forEach(o=>{ if(!o.isSprite||!o.visible) return; const w=o.getWorldPosition(new THREE.Vector3()); const s=w.clone().project(camera); if(s.z>1) return; const sx=r.left+(s.x+1)/2*r.width, sy=r.top+(1-s.y)/2*r.height; const d=Math.hypot(sx-cx,sy-cy); if(d<bd){ bd=d; best={object:o,point:w,face:null,distance:camera.position.distanceTo(w)}; } });
     if(best) return best;
   }
@@ -6269,7 +6432,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
     case 'protractor': protractorClick(e); break;
     case 'axes': axesClick(e); break;
     case 'section': sectionClick(hit); break;
-    case 'followme': followClick(hit); break;
+    case 'followme': followClick(hit,e); break;
     case 'text3d': text3dClick(e); break;
     case 'zoomwin': if(!drag.touch) drag.zoomwin=true; break;
     case 'poscam': poscamDown(e); renderer.domElement.setPointerCapture(e.pointerId); break;
@@ -7284,7 +7447,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,ffArrowAxis,ffAxis3Toggle,ffShapeAxis,_ffShapeFirst,_ffAxis3Target,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setSmooth,_ffSoften,ffSetHdr,ffHdrClear,ffHdrLight,ffHdrExposure,ffHdrRestore,pickSkyFile,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,followClick,hitAt,hitsAt,_ffChainFromEdge,_ffChainFromEdges,_ffSweepFace,_ffEdgeGraph3,ffArrowAxis,ffAxis3Toggle,ffShapeAxis,_ffShapeFirst,_ffAxis3Target,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setSmooth,_ffSoften,ffSetHdr,ffHdrClear,ffHdrLight,ffHdrExposure,ffHdrRestore,pickSkyFile,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,
