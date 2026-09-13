@@ -325,6 +325,25 @@ async function test(name, fn) {
     ok(srv.live().length === 0 && srv.trashed().length === 2, '두 행 모두 휴지통');
   });
 
+  await test('22. 느린 받기 도중 저장·전송이 끝나도, 늦게 도착한 받기가 새 거래·수정을 지우지 않는다', async () => {
+    const srv = makeServer(), ls = makeStorage();
+    const p = openPage(srv, ls); await p.boot();
+    const old = p.addTx({ memo: '결제 전', amount: 100, cr: 1 }); await p.BIZDB.pushNow();
+    srv.slowGet = 60;
+    const pulling = p.BIZDB.pull();                 // GET 이 먼저 나감(새 거래 없는 목록)
+    await new Promise(r => setTimeout(r, 5));
+    p.addTx({ memo: '복귀 직후 입력', amount: 777 });
+    p.editTx(old.id, { cr: 0, settled: '2026-09-14' });
+    await p.BIZDB.pushNow();
+    await pulling;
+    srv.slowGet = 0;
+    ok(p.txByMemo('복귀 직후 입력').length === 1, '화면에서 사라지면 안 됨');
+    ok(p.state.tx.find(t => t.memo === '결제 전').cr === 0, '결제완료가 옛값으로 돌아가면 안 됨');
+    await p.BIZDB.pull(); await p.BIZDB.pushNow();
+    ok(srv.live().filter(r => r.memo === '복귀 직후 입력').length === 1, '서버 1건');
+    ok(srv.db.biz_tx.find(r => r.memo === '결제 전').is_credit === false, '서버도 결제완료');
+  });
+
   console.log(`\n합계: 통과 ${pass} · 실패 ${fail}`);
   process.exit(fail ? 1 : 0);
 })();

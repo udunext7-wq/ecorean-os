@@ -182,7 +182,9 @@
           cat: r.category, ico: r.icon || undefined,
           amount: n(r.amount), supply: n(r.supply_amount), vat: n(r.vat_amount), vatm: r.vat_mode,
           evid: r.evidence || undefined, acct: r.account || undefined, acct2: r.account_to || undefined,
-          site: r.site_name || '', partnerId: r.partner_id || undefined, poId: r.po_id || undefined,
+          /* 현장 이름은 site_id 가 가리키는 현재 이름을 따른다 — 포털에서 이름을 바꾸면 옛 이름으로는 id 를 못 찾아
+             다음 수정 때 site_id 가 null 로 덮였다 */
+          site: (r.site_id && siteNameById[r.site_id]) || r.site_name || '', partnerId: r.partner_id || undefined, poId: r.po_id || undefined,
           vendor: r.vendor || undefined,
           memo: r.memo || '', cr: r.is_credit ? 1 : 0,
           due: r.due_date || undefined, settled: r.settled_on || undefined,
@@ -219,14 +221,16 @@
         return {
           id: r.uid, tenant_id: TENANT, local_id: s(r.id), type: r.type === 'in' ? 'in' : 'out',
           category: r.cat || '기타', icon: s(r.ico), amount: n(r.amount), memo: s(r.memo),
-          day_of_month: Math.min(31, Math.max(1, n(r.day) || 1)), account: s(r.acct), start_ym: s(r.start)
+          day_of_month: Math.min(31, Math.max(1, n(r.day) || 1)), account: s(r.acct), start_ym: s(r.start),
+          skip_months: (r.skip || []).slice().sort()
         };
       },
       toObj: function (r) {
         return {
           uid: r.id, id: r.local_id ? (Number(r.local_id) || r.local_id) : numId(r.id),
           type: r.type, cat: r.category, ico: r.icon || undefined, amount: n(r.amount),
-          memo: r.memo || '', day: r.day_of_month, acct: r.account || undefined, start: r.start_ym || undefined
+          memo: r.memo || '', day: r.day_of_month, acct: r.account || undefined, start: r.start_ym || undefined,
+          skip: Array.isArray(r.skip_months) ? r.skip_months.slice() : []
         };
       }
     },
@@ -592,7 +596,19 @@
   var pushTimer = null, pushing = false, pushAgain = false, pollTimer = null;
   var synced = false;   /* 이번에 연 페이지가 서버에서 한 번이라도 받아왔는가 */
 
-  function pull() {
+  /* 받기와 보내기는 한 번에 하나씩, 순서대로.
+     받기 요청이 나간 뒤(서버 목록 확정) 저장·전송이 끝나고, 그 다음에 받기 응답이 병합되면
+     방금 올린 새 거래를 "서버에 없음 = 남이 지움"으로, 결제완료를 옛값으로 되돌렸다(모바일 앱 전환 직후). */
+  var syncLock = Promise.resolve();
+  function exclusive(fn) {
+    var run = syncLock.then(fn, fn);
+    syncLock = run.then(function () {}, function () {});
+    return run;
+  }
+  function pull() { return exclusive(pullNow); }
+  function push() { return exclusive(pushNow); }
+
+  function pullNow() {
     var state = cfg.getState();
     noteLocal(state);
     var migrating = state._sync !== SYNC_VER;
@@ -741,8 +757,7 @@
     return false;
   }
 
-  function push() {
-    if (pushing) { pushAgain = true; return Promise.resolve(); }
+  function pushNow() {
     var state = cfg.getState();
     if (!state) return Promise.resolve();
     noteLocal(state);
@@ -807,7 +822,7 @@
         persist();
         setStatus('ok', '동기화됨');
         pushing = false;
-        if (pushAgain) { pushAgain = false; return push(); }
+        
       })
       .catch(function (e) {
         persist();

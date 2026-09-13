@@ -120,6 +120,37 @@ function openPage(srv, storage, opts) {
   ok(srv.db.biz_tx.find(r => r.vendor === '짜장면').deleted_at == null, '실행취소로 살아남');
   ok(p3.errors.length === 0, '콘솔 오류 없음: ' + p3.errors.join(' | '));
 
+  console.log('▶ H. 검토 지적 수정분 — 금액 해석·id 고유·고정항목 건너뛰기·수정 중 이체 차단·현장 입력 기본값');
+  const W = p3.w;
+  ok(W.eval('normAmt("15,000.00")') === 15000, 'normAmt 소수점 (실제 ' + W.eval('normAmt("15,000.00")') + ')');
+  ok(W.eval('normAmt("-50,000")') === 50000 && W.eval('isNegAmt("-50,000")') === true && W.eval('isNegAmt("50,000")') === false, '음수 판별');
+  ok(W.eval('todayStr()===localDay()'), 'todayStr = 한국 날짜');
+  const ids = W.eval('Array.from({length:300},()=>newTxId())');
+  ok(new Set(ids).size === 300, '연속 발급 id 300개 모두 고유');
+  // 고정항목: 생성 → 삭제 → 다시 안 생김 → 서버 skip 기록
+  W.eval(`state.recurring.push({id:4242,type:'out',cat:'이자·금융',ico:'🏦',amount:560655,memo:'무쏘 할부',day:14,acct:'사업통장',start:ym(new Date())});applyRecurring();`);
+  const rtx = W.__P.state.tx.filter(t => t.rid === 4242);
+  ok(rtx.length === 1, '이달 고정거래 1건 생성');
+  W.deleteTx(rtx[0].id);
+  W.eval('applyRecurring()');
+  ok(W.__P.state.tx.filter(t => t.rid === 4242).length === 0, '지운 달은 다시 생기지 않음');
+  await p3.idle(); await W.BIZDB.pushNow();
+  const srec = srv.db.biz_recurring.find(r => r.local_id === '4242');
+  ok(srec && Array.isArray(srec.skip_months) && srec.skip_months.length === 1, '서버에 건너뛴 달 기록 (' + JSON.stringify(srec && srec.skip_months) + ')');
+  // 수정 중 이체 전환 차단
+  const any = W.__P.state.tx.find(t => !t.tf);
+  const nBefore = W.__P.state.tx.length;
+  W.openEdit(any.id); W.document.querySelector('#tTr').click(); W.document.querySelector('#saveTx').click();
+  ok(W.__P.state.tx.length === nBefore, '수정 중 이체로 저장해도 거래가 늘지 않음');
+  W.closeSheet('Add'); W.resetAddSheet();
+  await new Promise(r => setTimeout(r, 750));
+  // 현장 화면 기록 기본 = 지출
+  W.eval(`curSite='쌍용동1407'`);
+  W.document.querySelector('#sdAddTx').click();
+  ok(W.eval('form.type') === 'out', '현장 화면 거래 기본 유형 = 지출');
+  W.closeSheet('Add'); W.resetAddSheet();
+  ok(p3.errors.length === 0, '콘솔 오류 없음: ' + p3.errors.join(' | '));
+
   console.log('▶ G. v2 캐시(uid 없는 마지막 거래 + 그 뒤 받은 남의 거래가 base 에만)로 새 코드 첫 부팅');
   const srv2 = makeServer();
   const mine = srv2.addTx({ local_id: '1789051534826', memo: '계단컨트롤러', amount: 77000, tx_date: '2026-07-12', account: '사업통장', vendor: '네이버주문', category: '현장경비', supply_amount: 77000, vat_mode: 'none' });

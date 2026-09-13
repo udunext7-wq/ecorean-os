@@ -37,6 +37,7 @@ function makeServer() {
       return true;
     }));
   }
+  function rows0(table) { return db[table] || []; }
   function json(status, body) {
     return Promise.resolve({ ok: status < 300, status, text: () => Promise.resolve(body == null ? '' : JSON.stringify(body)) });
   }
@@ -48,6 +49,12 @@ function makeServer() {
     const body = opts.body ? JSON.parse(opts.body) : null;
     log.push({ method, table, params, body });
     if (server.offline) return Promise.reject(new TypeError('Failed to fetch'));
+    /* 느린 받기: 응답 내용은 요청 시점에 정해지고 도착만 늦다 (모바일 복귀 직후 pull) */
+    if (method === 'GET' && server.slowGet && table === 'biz_tx') {
+      const snap = JSON.parse(JSON.stringify(filterRows(rows0(table), params)));
+      await new Promise(r => setTimeout(r, server.slowGet));
+      return json(200, snap);
+    }
 
     if (table.startsWith('rpc/')) {
       const fn = table.slice(4);
