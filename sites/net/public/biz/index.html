@@ -7,7 +7,7 @@
 <script src="/app-cloud.js"></script>
 <!-- 고칠 때마다 ?v= 를 올린다. 안 올리면 브라우저가 옛 파일을 계속 써서
      화면(HTML)과 저장 계층(JS)의 버전이 어긋난다 — 내역이 안 보이는 원인이 된다. -->
-<script src="/biz/biz-db.js?v=biz16"></script>
+<script src="/biz/biz-db.js?v=biz17"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1247,6 +1247,8 @@ function load(){
    save() 는 화면 코드가 부르는 유일한 저장 진입점이라, 여기서 변경분만 서버로 밀어 올린다.
    → 통째 덮어쓰기 사고 없이 대표·경리가 같은 장부를 동시에 쓸 수 있다. */
 function save(){
+  /* 새 행 uid·지운 행 기록을 캐시와 한 번에 쓴다 — 따로 쓰면 다시 열 때 복제·오삭제가 난다(2026-09-13 사고) */
+  try{if(window.BIZDB&&BIZDB.beforeSave)BIZDB.beforeSave();}catch(e){}
   try{localStorage.setItem(KEY,JSON.stringify(state));snapshot();}catch(e){toast('저장 공간 오류');}
   /* 동기화가 실패해도 로컬 기록과 화면 갱신은 계속돼야 한다 — save() 는 모든 입력 경로가 지난다 */
   try{if(window.BIZDB&&BIZDB.schedulePush)BIZDB.schedulePush();}catch(e){}
@@ -1261,10 +1263,13 @@ const SNAP_RE=new RegExp('^'+SNAP_PFX.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(\\
 const SNAP_KEEP=14;
 function snapKeys(){return Object.keys(localStorage).filter(k=>SNAP_RE.test(k)).sort();}
 function snapDate(k){const m=String(k).match(SNAP_RE);return m?m[1]:k;}
+/* 스냅샷은 '그날 첫 저장 직후' 한 번 찍힌다 — 날짜만 보여주면 그날 전체로 오해한다(09-11: 저녁 입력 161건이 되돌리기로 휴지통행).
+   찍은 시각을 함께 넣고, 날짜는 한국 시간으로(예전엔 UTC 라 오전 9시 전 입력이 전날 칸에 들어갔다). */
+function localDay(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function snapshot(){
-  const dk=SNAP_PFX+new Date().toISOString().slice(0,10);
+  const dk=SNAP_PFX+localDay();
   if(!localStorage.getItem(dk)){
-    localStorage.setItem(dk,JSON.stringify(state));
+    localStorage.setItem(dk,JSON.stringify(Object.assign({},state,{_snapAt:new Date().toISOString()})));
     const ks=snapKeys();
     while(ks.length>SNAP_KEEP){
       const old=ks.shift();
@@ -2047,7 +2052,30 @@ function openEdit(id){
   updateMemoSugg();updateVendorSugg();openSheet('Add');
 }
 $('#delTx').onclick=()=>{if(form.editId!=null){const id=form.editId;closeSheet('Add');resetAddSheet();deleteTx(id);}};
+/* 방금 기록한 거래를 화면에 보여준다.
+   홈 목록은 '이번 달'만 보여서, 지난달 날짜로 기록하면 아무 변화가 없어 "안 써졌다"고 다시 입력하게 된다
+   (2026-09-13 모바일 보고: 안 된 줄 알고 다시 써서 두 건). → 그 달로 넘기고 그 날짜를 펼쳐 잠깐 강조한다. */
+function revealTx(t){
+  if(!t||txReturn==='site')return;
+  if(filter.range==='month'&&t.date&&t.date.slice(0,7)!==ym(view)){
+    view=new Date(+t.date.slice(0,4),+t.date.slice(5,7)-1,1);
+  }
+  if(filter.site&&t.site!==filter.site)filter.site='';
+  openDays.add(t.date);
+  render();
+  setTimeout(()=>{
+    const row=document.querySelector(`#list .tx[data-txid="${t.id}"]`);
+    if(!row)return;
+    try{row.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){row.scrollIntoView();}
+    row.style.transition='box-shadow .3s';row.style.boxShadow='0 0 0 2px var(--teal)';
+    setTimeout(()=>{row.style.boxShadow='';},2200);
+  },60);
+}
+let saveTxBusy=false;
 $('#saveTx').onclick=()=>{
+  /* 두 번 눌림 방지 — 시트가 닫히는 사이 한 번 더 눌려 같은 거래가 두 건 되는 것을 막는다 */
+  if(saveTxBusy)return;
+  saveTxBusy=true;setTimeout(()=>{saveTxBusy=false;},700);
   const amt=Number($('#amtInput').value.replace(/[^0-9]/g,''));
   if(!amt){toast('금액을 입력하세요');return;}
   const date=$('#dateInput').value||todayStr();
@@ -2070,13 +2098,31 @@ $('#saveTx').onclick=()=>{
              pc:form.pc||undefined, ct:form.ct||costTypeOf(form.cat), inv:form.inv||undefined};
   if(form.editId!=null){
     const t=state.tx.find(x=>x.id==form.editId);
-    if(t){Object.assign(t,{type:form.type,cat:form.cat,ico:form.ico,amount,memo,date,acct:form.acct,synced:false},biz);}
-    save();closeSheet('Add');resetAddSheet();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';render();renderStats();
-    toast('수정됨');return;
+    /* 수정하는 사이 다른 기기에서 지워졌으면 — 예전엔 '수정됨'만 띄우고 아무것도 저장되지 않았다 */
+    if(!t){
+      if(!confirm('이 거래는 수정하는 사이 다른 곳에서 삭제됐습니다.\n\n입력한 내용을 새 거래로 기록할까요?'))return;
+      form.editId=null;
+    }else{
+      Object.assign(t,{type:form.type,cat:form.cat,ico:form.ico,amount,memo,date,acct:form.acct,synced:false},biz);
+      save();closeSheet('Add');resetAddSheet();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';render();renderStats();
+      toast('수정됨');revealTx(t);return;
+    }
   }
-  state.tx.push(Object.assign({id:Date.now()+Math.floor(Math.random()*999),type:form.type,cat:form.cat,ico:form.ico,amount,memo,date,acct:form.acct,synced:false},biz));
-  save();closeSheet('Add');$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';render();renderStats();
-  toast(`${form.type==='in'?'매출':'지출'} ${won(amount)}원 기록됨${vatm==='excl'?' (부가세 별도 합산)':''}${form.cr?' · 외상':''}`);
+  /* 같은 날짜·유형·금액·거래처가 이미 있으면 한 번 묻는다 — "안 써진 줄 알고 다시 입력"을 여기서 잡는다 */
+  const dupes=state.tx.filter(x=>!x.tf&&x.date===date&&x.type===form.type&&x.amount===amount&&(x.vendor||'')===(vendor||''));
+  if(dupes.length){
+    const lines=dupes.slice(0,3).map(x=>`· ${x.date} ${x.cat}${x.vendor?' '+x.vendor:''} ${won(x.amount)}원${x.site?' 🏗️'+x.site:''}${x.memo?' · '+x.memo:''}`).join('\n');
+    if(!confirm(`같은 날짜·금액${vendor?'·거래처':''} 거래가 이미 ${dupes.length}건 기록돼 있습니다.\n\n${lines}\n\n방금 기록한 게 안 보여서 다시 누른 거라면 [취소] — 기록된 거래를 보여드립니다.\n정말 한 건 더 기록할까요?`)){
+      closeSheet('Add');resetAddSheet();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';
+      revealTx(dupes[dupes.length-1]);toast('이미 기록된 거래를 표시했습니다');
+      return;
+    }
+  }
+  const nt=Object.assign({id:Date.now()+Math.floor(Math.random()*999),type:form.type,cat:form.cat,ico:form.ico,amount,memo,date,acct:form.acct,synced:false},biz);
+  state.tx.push(nt);
+  save();closeSheet('Add');resetAddSheet();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';render();renderStats();
+  toast(`${form.type==='in'?'매출':'지출'} ${won(amount)}원 기록됨${vatm==='excl'?' (부가세 별도 합산)':''}${form.cr?' · 외상':''}${date.slice(0,7)!==ym(new Date())?` · ${+date.slice(5,7)}월 장부`:''}`);
+  revealTx(nt);
 };
 
 /* ============ 폼 : 고정거래 ============ */
@@ -2134,6 +2180,9 @@ function renderFixedList(){
   el.querySelectorAll('.rm').forEach(b=>b.onclick=()=>{state.recurring=state.recurring.filter(x=>x.id!=b.dataset.r);save();renderFixedList();renderFixedCard();toast('삭제됨');});
 }
 function applyRecurring(){
+  /* 서버에서 받기 전에 만들면, 다른 기기가 이미 만든 이달 고정항목을 모른 채 또 만든다
+     (2026-09: 무쏘 할부·급여가 기기 수만큼 3건씩 생겨 손으로 지웠다) */
+  if(window.BIZDB&&BIZDB.isSynced&&!BIZDB.isSynced())return;
   const now=new Date(),lim=new Date(now.getFullYear(),now.getMonth(),1);
   let added=0;
   state.recurring.forEach(r=>{
@@ -2403,7 +2452,9 @@ function rerenderAll(){
 }
 async function bootCloud(){
   if(!window.BIZDB){updateSyncBadge({phase:'offline',text:'오프라인'});return;}
-  BIZDB.configure({getState:()=>state,onChange:rerenderAll,onStatus:updateSyncBadge});
+  BIZDB.configure({getState:()=>state,onChange:rerenderAll,onStatus:updateSyncBadge,
+    /* 동기화가 state 를 바꾸면(받기·uid 기록) 캐시에도 바로 — 스냅샷·전송 예약 없이 */
+    persist:()=>{try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}});
   const hadSynced=BIZDB.hasSynced(),localN=state.tx.length;
   /* 이 기기가 처음 서버에 붙는데 로컬 장부가 있다면 — 서버에도 데이터가 있을 때만 물어본다 */
   if(!hadSynced&&localN){
@@ -2415,17 +2466,15 @@ async function bootCloud(){
       }
     }catch(e){}
   }
-  /* 스냅샷 복원 직후에는 '받기'를 먼저 하면 되돌린 내용이 서버 값에 다시 밀린다.
-     복원분을 먼저 올려 서버를 그 시점으로 만든 뒤에 받는다. */
+  /* 되돌리기 직후: 되돌린 행은 '아직 안 올린 내 변경'으로 표시돼 있고 휴지통 대상도 명시돼 있어서
+     받기를 먼저 해도 서버 값에 밀리지 않는다. 예전처럼 받기 전에 올리면 현장 목록을 모른 채 보내
+     거래의 현장 연결(site_id)이 비었다. */
   const restoring=localStorage.getItem(RESTORE_FLAG)==='1';
-  if(restoring){
-    localStorage.removeItem(RESTORE_FLAG);
-    try{await BIZDB.pushNow();toast('되돌린 내용을 서버에 반영했습니다');}
-    catch(e){toast('서버 반영 실패 · 이 기기에는 되돌아와 있습니다');}
-  }
+  if(restoring)localStorage.removeItem(RESTORE_FLAG);
   try{
     await BIZDB.boot();
     await BIZDB.pushNow();
+    if(restoring)toast(BIZDB.status.phase==='error'?'서버 반영 실패 · 이 기기에는 되돌아와 있습니다':'되돌린 내용을 서버에 반영했습니다');
     rerenderAll();
     loadClaims();
     refreshLedgerWarn();
@@ -2448,40 +2497,48 @@ $('#syncPull').onclick=()=>{
 function renderSnapChips(){
   const el=$('#snapChips');if(!el)return;
   const ks=snapKeys().reverse();
-  el.innerHTML=ks.length?ks.map(k=>`<div class="chipx" style="cursor:pointer" data-k="${k}">🕐 ${snapDate(k)}</div>`).join(''):'<div style="font-size:12px;color:var(--muted-2)">아직 스냅샷이 없습니다</div>';
+  el.innerHTML=ks.length?ks.map(k=>`<div class="chipx" style="cursor:pointer" data-k="${k}">🕐 ${snapLabel(k)}</div>`).join(''):'<div style="font-size:12px;color:var(--muted-2)">아직 스냅샷이 없습니다</div>';
   el.querySelectorAll('.chipx').forEach(b=>b.onclick=()=>restoreSnapshot(b.dataset.k));
 }
-/* 예전 스냅샷에는 서버 식별자(uid)가 없다. 지금 장부의 같은 기록과 이어 붙여야
-   복원이 '그 시점으로 되돌리기'가 되고, 전부 새 기록으로 중복 생성되지 않는다. */
-function relinkUids(d){
-  ['tx','accounts','recurring','goals','events'].forEach(col=>{
-    const byId={},byName={};
-    (state[col]||[]).forEach(o=>{
-      if(!o.uid)return;
-      if(o.id!==undefined&&o.id!==null)byId[String(o.id)]=o.uid;
-      if(o.name)byName[o.name]=o.uid;
-    });
-    (d[col]||[]).forEach(o=>{
-      if(o.uid)return;
-      const u=(o.id!==undefined&&o.id!==null&&byId[String(o.id)])||(o.name&&byName[o.name]);
-      if(u)o.uid=u;
-    });
-  });
+function snapLabel(k){
+  let at='';
+  try{const d=JSON.parse(localStorage.getItem(k)||'null');if(d&&d._snapAt){const t=new Date(d._snapAt);at=' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');}}catch(e){}
+  return snapDate(k)+at;
+}
+/* 되돌리기 계획 → 확인창 문구. 무엇이 휴지통으로 가는지(누가 입력했는지까지) 반드시 보여준다.
+   2026-09-11 사고: 「09-10 시점으로 되돌리기」가 사실은 그날 18:50 에 찍힌 스냅샷이라,
+   그 뒤 이사님이 입력한 쌍용동 거래 161건(입금 3.98억·지출 2.19억)이 말없이 휴지통으로 갔다. */
+function restorePlanText(plan){
+  const n=plan.trashTx.length;
+  if(!n)return '· 휴지통으로 가는 거래는 없습니다';
+  const dates=plan.trashTx.map(t=>t.date).sort();
+  const sample=plan.trashTx.slice().sort((a,b)=>b.amount-a.amount).slice(0,3)
+    .map(t=>`   - ${t.date} ${t.cat}${t.vendor?' '+t.vendor:''} ${won(t.amount)}원`).join('\n');
+  return `· ⚠️ 지금 장부의 거래 ${n}건(합계 ${won(plan.trashSum)}원)이 휴지통으로 갑니다\n`+
+    `   (거래일 ${dates[0]} ~ ${dates[dates.length-1]}${plan.trashOthers?` · 그중 ${plan.trashOthers}건은 다른 직원이 입력`:''})\n${sample}${n>3?'\n   …':''}`;
+}
+function applyRestore(plan,tag){
+  downloadBackup(tag);
+  try{
+    localStorage.setItem(KEY,JSON.stringify(Object.assign(defaults(),plan.data)));
+    localStorage.setItem(RESTORE_FLAG,'1');
+  }catch(e){toast('복원 저장 실패 · 저장 공간을 확인하세요');return;}
+  location.reload();
 }
 const RESTORE_FLAG='bocbiz_restore_pending'+(TENANT==='HQ'?'':':'+TENANT);
 function restoreSnapshot(k){
   let d=null;
   try{d=JSON.parse(localStorage.getItem(k)||'null');}catch(e){}
   if(!d||!Array.isArray(d.tx)){toast('이 스냅샷을 읽을 수 없습니다 (파일이 손상됨)');return;}
-  const when=snapDate(k);
-  if(!confirm(`${when} 시점으로 되돌립니다.\n\n· 거래 ${d.tx.length}건으로 장부 전체가 바뀝니다 (지금 ${state.tx.length}건)\n· 회사 공용 장부라 다른 직원 화면에서도 그 시점 상태가 됩니다\n· 지금 내용은 백업 파일로 먼저 내려받습니다\n\n계속할까요?`))return;
-  downloadBackup('되돌리기전');
-  relinkUids(d);
-  try{
-    localStorage.setItem(KEY,JSON.stringify(d));
-    localStorage.setItem(RESTORE_FLAG,'1');   /* 다시 열릴 때 '받기'가 아니라 '되돌린 내용 올리기'를 먼저 한다 */
-  }catch(e){toast('복원 저장 실패 · 저장 공간을 확인하세요');return;}
-  location.reload();
+  if(!window.BIZDB||!BIZDB.planRestore){toast('서버 연결 후 다시 시도하세요');return;}
+  const plan=BIZDB.planRestore(d);
+  const when=snapLabel(k);
+  if(!confirm(`${when} 에 찍힌 스냅샷으로 되돌립니다.\n(스냅샷은 그날 첫 기록 직후 한 번 찍힙니다 — 그 뒤 입력은 들어 있지 않습니다)\n\n· 거래 ${d.tx.length}건으로 장부 전체가 바뀝니다 (지금 ${state.tx.length}건)\n${restorePlanText(plan)}\n· 회사 공용 장부라 다른 직원 화면에서도 바뀝니다\n· 휴지통으로 간 거래는 설정 › 휴지통에서 되살릴 수 있습니다\n· 지금 내용은 백업 파일로 먼저 내려받습니다\n\n계속할까요?`))return;
+  if(plan.trashTx.length>=10){
+    const a=prompt(`거래 ${plan.trashTx.length}건이 휴지통으로 갑니다.\n정말 되돌리려면 「되돌리기」 라고 입력하세요.`);
+    if((a||'').trim()!=='되돌리기'){toast('취소했습니다 — 아무것도 바꾸지 않았습니다');return;}
+  }
+  applyRestore(plan,'되돌리기전');
 }
 /* ============ 월간 결산 리포트 ============ */
 let repView=new Date();repView.setDate(1);
@@ -2831,14 +2888,14 @@ $('#fileInput').onchange=e=>{
     let d=null;
     try{d=JSON.parse(r.result);}catch(err){}
     if(!d||!Array.isArray(d.tx)){toast('사업장부 백업 파일이 아닙니다');return;}
-    if(!confirm(`백업 파일로 되돌립니다.\n\n· 거래 ${d.tx.length}건으로 장부 전체가 바뀝니다\n· 회사 공용 장부라 다른 직원 화면에서도 바뀝니다\n· 지금 내용은 백업 파일로 먼저 내려받습니다\n\n계속할까요?`))return;
-    downloadBackup('복원전');
-    relinkUids(d);
-    try{
-      localStorage.setItem(KEY,JSON.stringify(Object.assign(defaults(),d)));
-      localStorage.setItem(RESTORE_FLAG,'1');
-    }catch(err){toast('복원 저장 실패 · 저장 공간을 확인하세요');return;}
-    location.reload();
+    if(!window.BIZDB||!BIZDB.planRestore){toast('서버 연결 후 다시 시도하세요');return;}
+    const plan=BIZDB.planRestore(d);
+    if(!confirm(`백업 파일로 되돌립니다.\n\n· 거래 ${d.tx.length}건으로 장부 전체가 바뀝니다 (지금 ${state.tx.length}건)\n${restorePlanText(plan)}\n· 회사 공용 장부라 다른 직원 화면에서도 바뀝니다\n· 지금 내용은 백업 파일로 먼저 내려받습니다\n\n계속할까요?`))return;
+    if(plan.trashTx.length>=10){
+      const a=prompt(`거래 ${plan.trashTx.length}건이 휴지통으로 갑니다.\n정말 되돌리려면 「되돌리기」 라고 입력하세요.`);
+      if((a||'').trim()!=='되돌리기'){toast('취소했습니다 — 아무것도 바꾸지 않았습니다');return;}
+    }
+    applyRestore(plan,'복원전');
   };
   r.readAsText(f);
 };

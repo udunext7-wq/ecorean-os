@@ -129,6 +129,11 @@
   /* 지우는 대신 휴지통으로 — 되살릴 수 있어야 실수로 사라지지 않는다 */
   function trashRows(table, uids) {
     if (!uids.length) return Promise.resolve(null);
+    /* 서버 가드(biz_tx_bulk_trash_guard)가 한 번에 많은 행을 휴지통으로 보내는 PATCH 를 막는다 —
+       고장 난 기기가 장부를 통째로 비우지 못하게. 의도한 대량 작업(전체삭제·되돌리기)은 RPC 로. */
+    if (table === 'biz_tx' && uids.length > BULK) {
+      return req('rpc/biz_trash_bulk', { method: 'POST', body: JSON.stringify({ p_tenant: TENANT, p_ids: uids }) });
+    }
     var me = sess(); var uid = me && me.user && me.user.id;
     return req(table + '?id=in.(' + uids.join(',') + ')', {
       method: 'PATCH', headers: { Prefer: 'return=minimal' },
@@ -247,43 +252,141 @@
     }
   };
 
-  /* ── base(마지막 동기화 스냅샷) ── */
-  function loadBase() {
+  /* ── 동기화 기준 v3 (2026-09-13) ─────────────────────────────────
+     v2 사고: '마지막 동기화 기준(base)'은 별도 키에 동기화할 때마다 저장했지만,
+     화면 캐시(ledger_biz_v1)는 사용자가 무언가 저장할 때만 기록됐다. 둘의 시점이 어긋나면
+       · 받아두기만 한 남의 거래 = "base 엔 있고 캐시엔 없음" = "내가 지웠다"로 오판 → 휴지통 (09-13 4차 중도금 1.5억 등 5건)
+       · 새 거래는 캐시에 uid 없이 남음 → 다시 열 때마다 "새 행 만들고 옛 행 휴지통" (같은 거래 5벌까지 복제)
+       · 같은 브라우저 탭 두 개가 base 하나를 나눠 써도 같은 오판
+     v3: 동기화 표시를 행 안에 둔다 → 캐시와 한 번에 기록되므로 어긋날 수 없다.
+       o._h    = 서버와 마지막으로 맞춘 내용의 해시 (없으면 아직 서버에 올린 적 없음)
+       _tomb   = 내가 지운 행 uid (명시 기록). "캐시에 없다"는 이제 아무 뜻도 아니다 — 지웠다는 기록이 있어야 지운다.
+       _base   = 현장 목록·예산의 마지막 서버 상태
+     그리고 동기화가 state 를 바꾸면 곧바로 캐시에 기록한다(cfg.persist). */
+  var SYNC_VER = 3;
+  var NAMES = ['tx', 'accounts', 'recurring', 'goals', 'events'];
+  var MGR_ONLY = { accounts: 1, recurring: 1, goals: 1 };
+  var BULK = 10;   /* 이보다 많은 거래를 한 번에 휴지통으로 보낼 때는 서버 가드를 통과하는 RPC 로 */
+
+  function loadBase() {   /* v2 기준 — 옛 캐시를 넘겨받을 때만 읽는다 */
     try { return JSON.parse(localStorage.getItem(BASE_KEY)) || {}; } catch (e) { return {}; }
   }
-  function saveBase(b) { try { localStorage.setItem(BASE_KEY, JSON.stringify(b)); } catch (e) {} }
-  function hashOf(row) { return JSON.stringify(row); }
+  /* 행 내용 해시. 서버 id 로 바꾸는 파생값(현장 id·순서)은 뺀다 — 현장 목록을 받기 전/후로 해시가 달라지면
+     "내가 고쳤다"로 오판해 전 행을 다시 올리게 된다. */
+  function syncHash(nm, o) {
+    var row = COLS[nm].toRow(o, 0);
+    delete row.sort_order;
+    if (nm === 'tx') { delete row.site_id; row.partner_id = s(o.partnerId); }
+    return JSON.stringify(row);
+  }
+  function legacyHash(nm, str) {
+    try {
+      var row = JSON.parse(str);
+      delete row.sort_order;
+      if (nm === 'tx') delete row.site_id;
+      return JSON.stringify(row);
+    } catch (e) { return '~'; }
+  }
+  function tombOf(state, nm) {
+    var t = state._tomb || (state._tomb = {});
+    return t[nm] || (t[nm] = []);
+  }
+  function baseOf(state) { return state._base || (state._base = {}); }
+  function persist() { if (cfg.persist) { try { cfg.persist(); } catch (e) {} } }
 
-  /* ── 3-way 병합 : base 를 기준으로 내 변경과 남의 변경을 합친다 ── */
-  function merge(colName, localArr, serverArr, base) {
-    var cfg2 = COLS[colName], b = base[colName] || (base[colName] = {});
-    var localByUid = {}, out = [], seen = {};
-    localArr.forEach(function (o) { if (o.uid) localByUid[o.uid] = o; });
-
-    serverArr.forEach(function (so) {
-      seen[so.uid] = 1;
-      var lo = localByUid[so.uid];
-      if (!lo) {
-        if (b[so.uid]) return;               /* 내가 지운 행 — 다시 살리지 않는다(삭제 push 대기) */
-        out.push(so);                         /* 다른 직원이 새로 넣은 행 */
-        b[so.uid] = hashOf(cfg2.toRow(so, out.length - 1));
-        return;
-      }
-      var mine = hashOf(cfg2.toRow(lo, 0));
-      if (b[so.uid] !== undefined && b[so.uid] !== mine) { out.push(lo); return; }  /* 내가 수정 중 → 내 것 유지 */
-      out.push(so);                                                                  /* 아니면 서버가 최신 */
-      b[so.uid] = hashOf(cfg2.toRow(so, out.length - 1));
+  /* 이 페이지가 들고 있던 행(uid) — 여기서 빠진 것만 '내가 지운 것'이다. 페이지마다 따로(메모리) */
+  var known = null;
+  function resetKnown(state) {
+    known = {};
+    NAMES.forEach(function (nm) {
+      var k = known[nm] = {};
+      (state[nm] || []).forEach(function (o) { if (o.uid) k[o.uid] = 1; });
     });
+  }
+  /* save() 직전·동기화 직전에 부른다: 새 행에 uid 를 붙이고, 사라진 행을 휴지통 목록에 적는다 */
+  function noteLocal(state) {
+    if (!state) return;
+    if (!known) { NAMES.forEach(function (nm) { (state[nm] || []).forEach(function (o) { if (!o.uid) o.uid = uuid(); }); }); resetKnown(state); return; }
+    NAMES.forEach(function (nm) {
+      var arr = state[nm] || [], tomb = tombOf(state, nm), now = {}, had = known[nm] || {};
+      arr.forEach(function (o) {
+        if (!o.uid) o.uid = uuid();
+        now[o.uid] = 1;
+        var ti = tomb.indexOf(o.uid);
+        if (ti !== -1) tomb.splice(ti, 1);
+        /* 지웠다가 되살림(실행취소) → 휴지통 전송이 이미 끝났을 수 있으니 다시 올려 서버에서도 살린다 */
+        if ((ti !== -1 || !had[o.uid]) && o._h !== undefined) delete o._h;
+      });
+      Object.keys(known[nm] || {}).forEach(function (u) { if (!now[u] && tomb.indexOf(u) === -1) tomb.push(u); });
+      known[nm] = now;
+    });
+  }
 
+  /* ── 병합 : 서버 목록 + 내 미전송 변경 ──
+     서버 행 · 로컬 없음        → 받는다 (내 휴지통 목록에 있을 때만 건너뜀)
+     서버 행 · 로컬 변경 없음   → 서버가 최신
+     서버 행 · 로컬 변경 있음   → 내 것 유지 (다음 push)
+     로컬만 · 올린 적 없음      → 새 행, 유지
+     로컬만 · 올린 적 있음      → 다른 곳에서 지워짐 → 따라서 뺀다 (내가 고치던 행이면 살려서 올린다) */
+  function keyOf(nm, o) {
+    if (nm === 'accounts') return o.name ? 'n:' + o.name : null;
+    return (o.id !== undefined && o.id !== null) ? 'i:' + String(o.id) : null;
+  }
+  function merge(nm, localArr, serverArr, tomb) {
+    var out = [], seen = {}, byUid = {}, orphanByKey = {}, onServer = {}, inTomb = {};
+    serverArr.forEach(function (so) { onServer[so.uid] = 1; });
+    tomb.forEach(function (u) { inTomb[u] = 1; });
     localArr.forEach(function (o) {
-      if (!o.uid) { out.push(o); return; }        /* 아직 서버에 없던 신규 */
-      if (seen[o.uid]) return;
-      if (b[o.uid] === undefined) { out.push(o); return; }   /* uid만 붙고 아직 push 안 됨 */
-      var mine = hashOf(cfg2.toRow(o, 0));
-      if (b[o.uid] !== mine) { out.push(o); return; }        /* 서버에서 지워졌지만 내가 수정 중 → 살림 */
-      delete b[o.uid];                                        /* 다른 직원이 삭제 → 내 쪽도 제거 */
+      if (o.uid) byUid[o.uid] = o;
+      /* 올린 적 없는 줄 알았는데 서버에 같은 기록(local_id)이 있으면 같은 행으로 잇는다 — 옛 캐시·스냅샷의 uid 없는 행 */
+      if (o._h === undefined && !onServer[o.uid]) { var k = keyOf(nm, o); if (k && !orphanByKey[k]) orphanByKey[k] = o; }
+    });
+    serverArr.forEach(function (so) {
+      var lo = byUid[so.uid];
+      if (!lo) {
+        var k = keyOf(nm, so);
+        if (k && orphanByKey[k]) { lo = orphanByKey[k]; delete orphanByKey[k]; delete byUid[lo.uid]; lo.uid = so.uid; byUid[so.uid] = lo; }
+      }
+      seen[so.uid] = 1;
+      if (inTomb[so.uid]) return;
+      so._h = syncHash(nm, so);
+      if (!lo) { out.push(so); return; }
+      var mine = syncHash(nm, lo);
+      if (lo._h === undefined) { out.push(mine === so._h ? so : lo); return; }
+      out.push(mine === lo._h ? so : lo);
+    });
+    localArr.forEach(function (o) {
+      if (seen[o.uid] || inTomb[o.uid]) return;
+      if (o._h === undefined) { out.push(o); return; }
+      if (syncHash(nm, o) !== o._h) { delete o._h; out.push(o); return; }
     });
     return out;
+  }
+
+  /* ── v2 캐시 넘겨받기 : 옛 base 로 각 행의 '서버와 맞춘 내용'을 복원한다. 아무것도 지우지 않는다. ── */
+  function migrateLegacy(state, serverByCol, trashed) {
+    var old = loadBase();
+    NAMES.forEach(function (nm) {
+      var b = old[nm] || {}, srv = serverByCol[nm] || {};
+      (state[nm] || []).forEach(function (o) {
+        if (!o.uid || o._h !== undefined) return;
+        var mine = syncHash(nm, o), so = srv[o.uid];
+        if (b[o.uid] !== undefined) {
+          var bh = legacyHash(nm, b[o.uid]);
+          if (!so) { o._h = mine; return; }                       /* 서버에서 사라짐 → 따라 뺀다 */
+          var sh = syncHash(nm, so);
+          /* 캐시가 서버와 다를 때 — '내 미전송 수정'인지 '받아두고 캐시에 못 쓴 남의 수정'인지 가린다.
+             v2 는 받은 내용을 캐시에 안 썼으므로 뒤쪽이 훨씬 흔하다. 행의 서버 수정시각(at)이 캐시와 다르면
+             캐시를 받은 뒤 서버가 바뀐 것 → 서버. 같으면 서버는 그대로고 내가 고친 것 → 올린다. */
+          if (mine === sh) o._h = sh;
+          else if (o.at && so.at && o.at !== so.at) o._h = mine;
+          else o._h = (sh === bh) ? bh : mine;
+        } else if (!so && trashed[o.uid]) {
+          o._h = mine;                                            /* 서버 휴지통에 있는 행 → 되살리지 않는다 */
+        }
+      });
+    });
+    state._base = {};
   }
 
   /* ── 현장 : 직원 포털 work_sites 를 공유 마스터로 사용 ── */
@@ -307,7 +410,7 @@
       return { names: names, contracts: contracts, rows: rows || [] };
     });
   }
-  function pushSites(state, serverSites) {
+  function pushSites(state, serverSites, baseNames) {
     var have = {}, ops = [];
     (serverSites.rows || []).forEach(function (r) { have[r.name] = r; });
 
@@ -325,10 +428,12 @@
         }));
       }
     });
-    /* 사업장부에서 뺀 현장은 지우지 않는다 — 직원 포털·발주서가 같은 행을 참조한다. 보관 처리만. */
+    /* 사업장부에서 뺀 현장은 지우지 않는다 — 직원 포털·발주서가 같은 행을 참조한다. 보관 처리만.
+       '뺀 현장' = 마지막으로 받은 목록엔 있었는데 지금 목록엔 없는 것. 서버에 있는데 내 목록에 없다고
+       보관하면, 방금 다른 직원이 만든 현장(아직 못 받음)까지 보관된다(2026-09-13 수정). */
     (serverSites.rows || []).forEach(function (r) {
       if (r.status === '보관') return;
-      if ((state.sites || []).indexOf(r.name) === -1) {
+      if ((baseNames || []).indexOf(r.name) !== -1 && (state.sites || []).indexOf(r.name) === -1) {
         ops.push(req('work_sites?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: '보관' }) }));
       }
     });
@@ -483,12 +588,14 @@
   }
 
   /* ── 공개 API ── */
-  var cfg = { getState: null, onChange: null };
+  var cfg = { getState: null, onChange: null, persist: null };
   var pushTimer = null, pushing = false, pushAgain = false, pollTimer = null;
+  var synced = false;   /* 이번에 연 페이지가 서버에서 한 번이라도 받아왔는가 */
 
   function pull() {
     var state = cfg.getState();
-    var base = loadBase();
+    noteLocal(state);
+    var migrating = state._sync !== SYNC_VER;
     setStatus('syncing', '불러오는 중');
     /* 2026-08-30 첫 로딩 개선:
        이전에는 나 → (장부·담당현장·직원명부) → 현장 → (거래·계좌·…) 4단계를 차례로 기다렸다.
@@ -499,10 +606,14 @@
       pullMe(), pullOrgs(), pullMyMembership(), pullStaffDirectory(),
       pullSites(), pullPartners(), pullProcesses(),
       getAll(COLS.tx.select), getAll(COLS.accounts.select), getAll(COLS.recurring.select),
-      getAll(COLS.goals.select), getAll(COLS.events.select), pullBudget()
+      getAll(COLS.goals.select), getAll(COLS.events.select), pullBudget(),
+      /* v2 캐시를 넘겨받을 때만: 서버 휴지통에 있는 행 — 낡은 캐시가 되살리지 않게 */
+      migrating ? getAll('biz_tx?select=id&tenant_id=eq.' + TENANT + '&deleted_at=not.is.null') : Promise.resolve([])
     ]).then(function (all) {
       var sites = all[4];
-      var res = [all[7], all[8], all[9], all[10], all[11], all[12]];
+      var res = [all[7], all[8], all[9], all[10], all[11], all[12], all[13]];
+      if (migrating) state._base = {};
+      var base = baseOf(state);
 
       /* ── 2026-08-30 중복 현장 사고 방지 ──
          첫 동기화 때 장부의 현장 이름을 그대로 새로 만드는 바람에,
@@ -552,10 +663,21 @@
       base.sitesHash = JSON.stringify({ s: sites.names, c: sites.contracts });  /* 기준 = 서버 상태 */
       return res;
     }).then(function (res) {
-      var names = ['tx', 'accounts', 'recurring', 'goals', 'events'];
-      names.forEach(function (nm, i) {
-        var server = (res[i] || []).map(COLS[nm].toObj);
-        state[nm] = merge(nm, state[nm] || [], server, base);
+      var base = baseOf(state);
+      var serverByCol = {};
+      var server = NAMES.map(function (nm, i) {
+        var list = (res[i] || []).map(COLS[nm].toObj), by = serverByCol[nm] = {};
+        list.forEach(function (o) { by[o.uid] = o; });
+        return list;
+      });
+      if (migrating) {
+        var trashed = {};
+        (res[6] || []).forEach(function (r) { trashed[r.id] = 1; });
+        migrateLegacy(state, serverByCol, trashed);
+        base = baseOf(state);
+      }
+      NAMES.forEach(function (nm, i) {
+        state[nm] = merge(nm, state[nm] || [], server[i], tombOf(state, nm));
       });
       /* 계좌 기본 3개(사업통장·현금·사업카드)는 기기마다 로컬에 미리 있다.
          서버에 같은 이름이 이미 있으면 서버 것(uid 있는 쪽)만 남긴다 —
@@ -564,7 +686,7 @@
       state.accounts.forEach(function (a) {
         var k = String(a.name), prev = seenName[k];
         if (!prev) { seenName[k] = a; dedup.push(a); return; }
-        if (!prev.uid && a.uid) { dedup[dedup.indexOf(prev)] = a; seenName[k] = a; }
+        if (prev._h === undefined && a._h !== undefined) { dedup[dedup.indexOf(prev)] = a; seenName[k] = a; }
       });
       state.accounts = dedup;
       /* 서버에 예산 행이 없으면 "예산 0" 이 서버의 상태다 — 그렇게 기준을 잡아야
@@ -579,7 +701,11 @@
       if (!state.accounts || !state.accounts.length) {
         state.accounts = [{ name: '사업통장', ico: '🏦', init: 0 }, { name: '현금', ico: '💵', init: 0 }, { name: '사업카드', ico: '💳', init: 0 }];
       }
-      saveBase(base);
+      state._sync = SYNC_VER;
+      noteLocal(state);        /* 기본 계좌 등 새 행에 uid */
+      resetKnown(state);       /* 병합으로 빠진 행(남이 지운 것)은 내 삭제가 아니다 */
+      persist();               /* 받은 내용을 캐시에 바로 — 안 그러면 다음에 열 때 낡은 캐시로 시작한다 */
+      synced = true;
       setStatus('ok', '동기화됨');
       if (cfg.onChange) cfg.onChange();
       return state;
@@ -589,31 +715,28 @@
     });
   }
 
+  function budgetHash(state) {
+    return JSON.stringify({ total: n(state.budgets && state.budgets.total), cats: (state.budgets && state.budgets.cats) || {} });
+  }
+  function sitesHashOf(state) {
+    return JSON.stringify({ s: state.sites || [], c: state.contracts || {} });
+  }
+
   /* 올릴 게 실제로 있는지 네트워크 없이 먼저 본다 — 부팅 직후 push 는 대개 보낼 게 없다 */
-  function hasPending(state, base) {
-    var MGR_ONLY = { accounts: 1, recurring: 1, goals: 1 };
-    var mgr = isManager();
-    var dirty = false;
-    Object.keys(COLS).forEach(function (nm) {
-      if (dirty) return;
-      if (MGR_ONLY[nm] && !mgr) return;
-      var c = COLS[nm], arr = state[nm] || [], b = base[nm] || {};
-      var alive = {};
+  function hasPending(state) {
+    var mgr = isManager(), base = baseOf(state);
+    for (var c = 0; c < NAMES.length; c++) {
+      var nm = NAMES[c];
+      if (MGR_ONLY[nm] && !mgr) continue;
+      if (tombOf(state, nm).length) return true;
+      var arr = state[nm] || [];
       for (var i = 0; i < arr.length; i++) {
-        var o = arr[i];
-        if (!o.uid) { dirty = true; return; }
-        alive[o.uid] = 1;
-        if (b[o.uid] !== hashOf(c.toRow(o, i))) { dirty = true; return; }
+        if (!arr[i].uid || arr[i]._h !== syncHash(nm, arr[i])) return true;
       }
-      var keys = Object.keys(b);
-      for (var j = 0; j < keys.length; j++) if (!alive[keys[j]]) { dirty = true; return; }
-    });
-    if (dirty) return true;
+    }
     if (mgr) {
-      var bh = JSON.stringify({ total: n(state.budgets && state.budgets.total), cats: (state.budgets && state.budgets.cats) || {} });
-      if (base.budget !== bh) return true;
-      var sh = JSON.stringify({ s: state.sites || [], c: state.contracts || {} });
-      if (base.sitesHash !== sh) return true;
+      if (base.budget !== budgetHash(state)) return true;
+      if (base.sitesHash !== sitesHashOf(state)) return true;
     }
     return false;
   }
@@ -621,68 +744,124 @@
   function push() {
     if (pushing) { pushAgain = true; return Promise.resolve(); }
     var state = cfg.getState();
-    var base = loadBase();
-    if (meProfile && !hasPending(state, base)) return Promise.resolve();
+    if (!state) return Promise.resolve();
+    noteLocal(state);
+    if (meProfile && sitesLoaded && !hasPending(state)) return Promise.resolve();
     pushing = true;
     setStatus('syncing', '저장 중');
+    var base = baseOf(state);
 
-    /* 현장 먼저 — 거래의 site_id 가 여기서 결정된다.
-       현장 목록·계약금액이 그대로면 왕복을 건너뛴다(저장 한 번에 GET 2회가 붙던 낭비). */
     /* 계좌·고정항목·목표·예산·현장은 회사 공용 자료라 서버가 관리자에게만 쓰기를 허용한다.
        직원이 이걸 밀어 올리려다 403 을 받으면 같은 push 안의 본인 거래까지 통째로 실패한다.
        → 관리자가 아니면 아예 보내지 않는다. */
     var mgr = false;
-    /* 내 역할을 모르는 채로 보내면 관리자를 직원으로 오판해 회사 자료가 안 올라간다 — 먼저 확인한다 */
-    return (meProfile ? Promise.resolve() : pullMe())
+    /* 내 역할을 모르는 채로 보내면 관리자를 직원으로 오판해 회사 자료가 안 올라간다 — 먼저 확인한다.
+       현장·거래처 이름표도 먼저 — 모르고 보내면 거래의 site_id 가 null 로 덮인다. */
+    return Promise.all([
+      meProfile ? null : pullMe(),
+      sitesLoaded ? null : pullSites(),
+      partnerList.length ? null : pullPartners()
+    ])
       .then(function () {
         mgr = isManager();
-        var siteHash = JSON.stringify({ s: state.sites || [], c: state.contracts || {} });
-        var sitesUnchanged = !mgr || ((base.sitesHash === siteHash) && sitesLoaded);
-        if (sitesUnchanged) return null;
-        return pullSites().then(function (sv) { return pushSites(state, sv); })
+        /* 현장 먼저 — 거래의 site_id 가 여기서 결정된다. 목록·계약금액이 그대로면 왕복을 건너뛴다. */
+        var siteHash = sitesHashOf(state);
+        if (!mgr || base.sitesHash === siteHash) return null;
+        var prev = null; try { prev = base.sitesHash ? JSON.parse(base.sitesHash) : null; } catch (e) {}
+        return pullSites().then(function (sv) { return pushSites(state, sv, prev ? prev.s : []); })
           .then(function () { return pullSites(); })
           .then(function () { base.sitesHash = siteHash; });
       })
       .then(function () {
         var jobs = [];
-        var MGR_ONLY = { accounts: 1, recurring: 1, goals: 1 };
-        Object.keys(COLS).forEach(function (nm) {
+        NAMES.forEach(function (nm) {
           if (MGR_ONLY[nm] && !mgr) return;
-          var c = COLS[nm], arr = state[nm] || [], b = base[nm] || (base[nm] = {});
-          var alive = {}, ins = [];
+          var c = COLS[nm], arr = state[nm] || [], ins = [], sent = [];
           arr.forEach(function (o, i) {
-            if (!o.uid) o.uid = uuid();
-            alive[o.uid] = 1;
-            var row = c.toRow(o, i), h = hashOf(row);
-            if (b[o.uid] !== h) { ins.push(row); b[o.uid] = h; }
+            var h = syncHash(nm, o);
+            if (o._h === h) return;
+            var row = c.toRow(o, i);
+            /* 올리는 행은 살아 있는 행이다 — 실행취소·되돌리기·'남이 지웠지만 내가 고친 행'을 서버에서도 살린다 */
+            if (c.softDelete) { row.deleted_at = null; row.deleted_by = null; }
+            ins.push(row); sent.push([o, h]);
           });
-          var gone = Object.keys(b).filter(function (u) { return !alive[u]; });
-          gone.forEach(function (u) { delete b[u]; });
-          if (ins.length) jobs.push(upsert(c.table, ins));
-          if (gone.length) jobs.push(c.softDelete ? trashRows(c.table, gone) : delRows(c.table, gone));
+          var gone = tombOf(state, nm).slice();
+          if (ins.length) jobs.push(upsert(c.table, ins).then(function () {
+            sent.forEach(function (p) { p[0]._h = p[1]; });
+          }));
+          if (gone.length) jobs.push((c.softDelete ? trashRows(c.table, gone) : delRows(c.table, gone)).then(function () {
+            var t = tombOf(state, nm);
+            gone.forEach(function (u) { var k = t.indexOf(u); if (k !== -1) t.splice(k, 1); });
+          }));
         });
-        var bh = JSON.stringify({ total: n(state.budgets && state.budgets.total), cats: (state.budgets && state.budgets.cats) || {} });
-        if (mgr && base.budget !== bh) { jobs.push(pushBudget(state)); base.budget = bh; }
-        return Promise.all(jobs);
+        var bh = budgetHash(state);
+        if (mgr && base.budget !== bh) jobs.push(pushBudget(state).then(function () { base.budget = bh; }));
+        /* 하나가 실패해도 성공한 쪽의 기록은 남긴다 — 다 끝난 뒤에 판정 */
+        return Promise.all(jobs.map(function (j) { return j.then(function () { return null; }, function (e) { return e || new Error('push'); }); }))
+          .then(function (errs) {
+            var err = errs.filter(Boolean)[0];
+            if (err) throw err;
+          });
       })
       .then(function () {
-        saveBase(base);
+        persist();
         setStatus('ok', '동기화됨');
         pushing = false;
         if (pushAgain) { pushAgain = false; return push(); }
       })
       .catch(function (e) {
+        persist();
         pushing = false;
-        setStatus(e && e.message === 'NOAUTH' ? 'offline' : 'error', e && e.message === 'NOAUTH' ? '로그인 필요 · 로컬에만 저장됨' : '저장 실패 · 로컬에는 남아있음', e);
+        pushAgain = false;
+        setStatus(e && e.message === 'NOAUTH' ? 'offline' : 'error', e && e.message === 'NOAUTH' ? '로그인 필요 · 이 기기에만 저장됨' : '서버 저장 실패 · 이 기기에는 남아 있음', e);
       });
   }
 
+  /* 스냅샷·백업 되돌리기 계획 — 무엇이 휴지통으로 가는지 먼저 계산해 확인창에 보여준다.
+     v2 는 '지금 장부 − 스냅샷'을 말없이 전부 휴지통으로 보냈다(09-11: 그날 저녁 입력 161건). */
+  function planRestore(snap) {
+    var state = cfg.getState();
+    noteLocal(state);
+    var data = JSON.parse(JSON.stringify(snap || {}));
+    var me = sess(), myId = me && me.user && me.user.id;
+    var trash = {}, trashTx = [], others = 0, sum = 0;
+    NAMES.forEach(function (nm) {
+      var byKey = {};
+      (state[nm] || []).forEach(function (o) { var k = keyOf(nm, o); if (k && o.uid) byKey[k] = o.uid; });
+      var keep = {};
+      (data[nm] || []).forEach(function (o) {
+        delete o._h;                                   /* 그 기기·그 시점의 동기화 표시는 버린다 → 되돌린 내용으로 다시 올림 */
+        if (!o.uid) { var k = keyOf(nm, o); if (k && byKey[k]) o.uid = byKey[k]; }
+        if (o.uid) keep[o.uid] = 1;
+      });
+      trash[nm] = (state[nm] || []).filter(function (o) { return o.uid && !keep[o.uid]; }).map(function (o) {
+        if (nm === 'tx') { trashTx.push(o); sum += n(o.amount); if (o.by && o.by !== myId) others++; }
+        return o.uid;
+      });
+    });
+    var tomb = {};
+    NAMES.forEach(function (nm) {
+      var t = tombOf(state, nm).slice();
+      trash[nm].forEach(function (u) { if (t.indexOf(u) === -1) t.push(u); });
+      tomb[nm] = t;
+    });
+    data._tomb = tomb;
+    data._base = JSON.parse(JSON.stringify(baseOf(state)));
+    data._sync = SYNC_VER;
+    delete data._snapAt;
+    return { data: data, trash: trash, trashTx: trashTx, trashSum: sum, trashOthers: others };
+  }
+
   window.BIZDB = {
-    configure: function (o) { cfg.getState = o.getState; cfg.onChange = o.onChange; statusCb = o.onStatus || null; },
+    configure: function (o) { cfg.getState = o.getState; cfg.onChange = o.onChange; cfg.persist = o.persist || null; statusCb = o.onStatus || null; },
     status: status,
     boot: pull,
     pull: pull,
     pushNow: push,
+    /* 화면의 save() 가 캐시에 쓰기 직전에 부른다 — 새 행 uid·지운 행 기록이 캐시와 함께 저장되게 */
+    beforeSave: function () { if (cfg.getState) noteLocal(cfg.getState()); },
+    planRestore: planRestore,
+    isSynced: function () { return synced; },
     schedulePush: function (ms) {
       clearTimeout(pushTimer);
       pushTimer = setTimeout(push, ms === undefined ? 900 : ms);
@@ -778,8 +957,12 @@
     uploadReceipt: uploadReceipt,
     signedUrl: signedUrl,
     removeReceipt: removeReceipt,
-    hasSynced: function () { var b = loadBase(); return !!(b.tx && Object.keys(b.tx).length); },
-    resetBase: function () { try { localStorage.removeItem(BASE_KEY); } catch (e) {} },
+    hasSynced: function () {
+      var st = cfg.getState && cfg.getState();
+      /* v3 표시가 있으면 이 기기는 이미 서버 장부를 쓰고 있다(되돌리기 직후엔 _h 가 비어 있어도) */
+      if (st && st._sync === SYNC_VER) return true;
+      var b = loadBase(); return !!(b.tx && Object.keys(b.tx).length);
+    },
     _req: req
   };
 })();
