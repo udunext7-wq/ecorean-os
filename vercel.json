@@ -27,6 +27,16 @@
       "headers": { "Location": "/$1/" }
     },
     { "src": "/freeform(/.*)?", "status": 308, "headers": { "Location": "/minicad/3d/?ff=1" } },
+    { "src": "/work/notes/econote-editor\\.js", "headers": { "Cache-Control": "public, max-age=31536000, immutable" }, "dest": "/sites/net/work/notes/econote-editor.js" },
+    {
+      "src": "/work/notes(/.*)?",
+      "missing": [
+        { "type": "cookie", "key": "sb-gdcfqbdgubgpzusbtftf-auth-token" },
+        { "type": "cookie", "key": "sb-gdcfqbdgubgpzusbtftf-auth-token.0" }
+      ],
+      "status": 307,
+      "headers": { "Location": "/login?next=/work/notes/" }
+    },
     {
       "src": "/(minicad|estimate|estform)(/.*)?",
       "missing": [

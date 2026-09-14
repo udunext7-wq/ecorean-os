@@ -12,7 +12,7 @@ const BUNDLE = fs.readFileSync(path.join(ROOT, 'econote-editor.js'), 'utf8');
 /* 번들은 실제와 같은 자리(인라인 스크립트 직전)에서 평가한다 — beforeParse 시점엔 document.body 가 없어 ProseMirror 가 죽는다 */
 const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
   .replace(/<style id="ecorean-gate-style">[^<]*<\/style>/, '')
-  .replace(/<script src="\/work\/notes\/econote-editor\.js[^"]*"><\/script>/, () => '<script>' + BUNDLE + '</script>')
+  .replace(/<script[^>]*src="\/work\/notes\/econote-editor\.js[^"]*"><\/script>/, () => '<script>' + BUNDLE + '</script>')
   .replace(/<script src="[^"]*"><\/script>/g, '')
   .replace(/<link[^>]*>/g, '');
 
@@ -56,7 +56,8 @@ function makeServer() {
   async function fetch(url, opts) {
     opts = opts || {}; const u = new URL(url); const method = opts.method || 'GET';
     log.push(method + ' ' + u.pathname + u.search);
-    const json = (b, st) => ({ ok: (st || 200) < 300, status: st || 200, text: async () => (b == null ? '' : JSON.stringify(b)) });
+    const json = (b, st, total) => ({ ok: (st || 200) < 300, status: st || 200, text: async () => (b == null ? '' : JSON.stringify(b)), headers: { get: k => (k === 'content-range' && total != null) ? '0-0/' + total : null } });
+    if (srv.delay) await sleep(srv.delay);
     if (u.pathname.startsWith('/storage/v1/')) {
       const p = u.pathname.slice('/storage/v1/'.length);
       if (p.startsWith('object/sign/')) { const b = JSON.parse(opts.body); return json(b.paths.map(x => ({ error: null, path: x, signedURL: '/object/sign/econote-media/' + x + '?token=T' }))); }
@@ -71,7 +72,9 @@ function makeServer() {
       let out = rows.filter(r => match(r, f));
       const or = u.searchParams.get('or');
       if (or) { const q = decodeURIComponent(or).match(/ilike\.\*(.*?)\*/)[1].toLowerCase(); out = out.filter(r => (r.title || '').toLowerCase().includes(q) || (r.content_text || '').toLowerCase().includes(q)); }
-      return json(out);
+      const ord = u.searchParams.get('order'); if (ord && ord.startsWith('updated_at.desc')) out = out.slice().sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
+      const lim = parseInt(u.searchParams.get('limit') || '0', 10);
+      return json(lim ? out.slice(0, lim) : out, 200, out.length);
     }
     if (method === 'POST') { const b = JSON.parse(opts.body); const r = Object.assign({ id: 'p' + (++seq), rev: 1, created_at: now(), updated_at: now(), deleted_at: null, icon: null, content_text: '', sort_order: 0 }, b); rows.push(r); return json([r], 201); }
     if (method === 'PATCH') {
@@ -82,7 +85,8 @@ function makeServer() {
     if (method === 'DELETE') { const hit = rows.filter(r => match(r, f)); hit.forEach(r => rows.splice(rows.indexOf(r), 1)); return json([]); }
     return json({ message: 'bad' }, 400);
   }
-  return { db, log, fetch };
+  const srv = { db, log, fetch, delay: 0 };
+  return srv;
 }
 
 function openPage(srv, url) {
@@ -185,9 +189,26 @@ function openPage(srv, url) {
     const imgNode = saved.content.find(n => n.type === 'image');
     ok(imgNode && imgNode.attrs.src === '' && imgNode.attrs.path === 'pimg/a.webp', '8 저장 문서에는 서명 URL 대신 path 만: ' + JSON.stringify(imgNode && imgNode.attrs));
     /* 9. 폴링: 다른 직원 수정 → 화면 갱신 */
-    srv.db.econote_pages[0] = Object.assign({}, srv.db.econote_pages[0], { rev: 99, title: '남이 바꾼 제목', updated_by_name: '이사님' });
-    E().poll(); await sleep(200);
+    const n0 = srv.log.length; await E().poll(); await sleep(50);
+    ok(srv.log.length - n0 === 1 && /limit=1/.test(srv.log[srv.log.length - 1]), '9 변화 없으면 폴링은 프로브 1건으로 끝: ' + srv.log.slice(n0).join(' | '));
+    srv.db.econote_pages[0] = Object.assign({}, srv.db.econote_pages[0], { rev: 99, title: '남이 바꾼 제목', updated_by_name: '이사님', updated_at: new Date(Date.now() + 5000).toISOString() });
+    $('#paper').scrollTop = 300;
+    const n1 = srv.log.length; await E().poll(); await sleep(200);
     ok($('#pgTitle').value === '남이 바꾼 제목' && E().cur.rev === 99, '9 폴링으로 남의 수정 반영');
+    ok(srv.log.slice(n1).length === 3 && /limit=1/.test(srv.log[n1]), '9 변화 있으면 프로브→목록→페이지 3건: ' + srv.log.slice(n1).join(' | '));
+    ok($('#editor .ProseMirror') && E().editor.isEditable, '9 편집기 재사용(파괴 없이 문서 교체)');
+    /* 10. 저장 요청이 나가 있는 동안의 편집은 유실되지 않는다 */
+    srv.delay = 250;
+    E().editor.commands.insertContentAt(E().editor.state.doc.content.size, '<p>첫 편집</p>'); await sleep(1500);
+    E().editor.commands.insertContentAt(E().editor.state.doc.content.size, '<p>요청 중 편집</p>'); await sleep(1200);
+    srv.delay = 0;
+    ok(/첫 편집/.test(srv.db.econote_pages[0].content_text) && /요청 중 편집/.test(srv.db.econote_pages[0].content_text) && !E().dirty, '10 요청 중 편집도 뒤이어 저장: ' + JSON.stringify(srv.db.econote_pages[0].content_text.slice(-30)) + ' dirty=' + E().dirty);
+    /* 11. 충돌이 걸린 상태에서는 다른 페이지로 이동하지 않는다(미저장분 보호) */
+    srv.db.econote_pages.push({ id: 'p2', parent_id: null, title: '둘째', rev: 1, content: { type: 'doc', content: [{ type: 'paragraph' }] }, content_text: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), deleted_at: null, sort_order: 1 });
+    srv.db.econote_pages[0] = Object.assign({}, srv.db.econote_pages[0], { rev: 500 });
+    E().editor.commands.insertContentAt(E().editor.state.doc.content.size, '<p>충돌 편집</p>'); await sleep(50);
+    await E().openPage('p2'); await sleep(100);
+    ok(E().cur.id === 'pimg' && $('#conflict').classList.contains('show'), '11 충돌 시 이동 중단 + 배너: cur=' + E().cur.id);
     ok(pg.errors.length === 0, '전역 오류 0: ' + pg.errors.join(' | '));
   }
   console.log('  ' + pass + ' passed, ' + fail + ' failed');

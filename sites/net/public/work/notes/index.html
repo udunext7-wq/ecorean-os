@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EcoNote — ECOREAN 직원 공용 노트</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 /* ── ECOREAN 직원 포털과 같은 팔레트 ── */
 :root{
@@ -195,6 +195,7 @@ main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
   .pg-title{font-size:26px}
   .top .hide-m{display:none}
 }
+@media (hover:none){.node .add{opacity:1}}
 @media print{aside,.top,.bar,.slash,.toast{display:none!important}.paper{overflow:visible}body{background:#fff;color:#000}.ProseMirror{color:#000}}
 </style>
 </head>
@@ -276,7 +277,7 @@ main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
 <div class="toast" id="toast"></div>
 <input type="file" id="fileIn" accept="image/*" multiple style="display:none">
 
-<script src="/work/notes/econote-editor.js?v=1"></script>
+<script async data-bundle src="/work/notes/econote-editor.js?v=1"></script>
 <script>
 (function () {
 'use strict';
@@ -303,7 +304,7 @@ function call(base, path, opts, _retried) {
     return fetch(base + path, o).then(function (r) {
       if (r.status === 401 && !_retried) return fresh(true).then(function () { return call(base, path, opts, true); });
       if (!r.ok) return r.text().then(function (b) { throw new Error(r.status + ' ' + String(b).slice(0, 240)); });
-      return r.text().then(function (b) { return b ? JSON.parse(b) : null; });
+      return r.text().then(function (b) { var j = b ? JSON.parse(b) : null; return (opts && opts.raw) ? { body: j, headers: r.headers } : j; });
     });
   });
 }
@@ -313,12 +314,22 @@ function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xx
 
 /* ═══════════ 상태 ═══════════ */
 var T = window.EcoTiptap;
+/* 번들(437KB)은 async 로 받는다 — 트리는 번들 없이 먼저 그리고, 편집기가 필요할 때만 기다린다 */
+var bundleP = new Promise(function (res, rej) {
+  if (window.EcoTiptap) return res();
+  var sc = document.querySelector('script[data-bundle]'); if (!sc) return rej(new Error('bundle tag'));
+  sc.addEventListener('load', res); sc.addEventListener('error', function () { rej(new Error('편집기 모듈을 불러오지 못했습니다')); });
+});
+function needT() { return bundleP.then(function () { T = window.EcoTiptap; if (!T) throw new Error('편집기 모듈을 불러오지 못했습니다'); }); }
 var $ = function (s) { return document.querySelector(s); };
 var me = { id: null, name: '', role: '' };
 var pages = [];          // 전체(휴지통 포함) 요약 행
 var cur = null;          // 현재 페이지 전체 행
 var editor = null;
-var dirty = false, saving = false, saveTimer = null, lastSavedAt = 0;
+var dirty = false, saving = null, saveTimer = null, lastSavedAt = 0;
+var editSeq = 0, saveWanted = false; /* 저장 요청이 나간 뒤 생긴 편집을 놓치지 않기 위한 일련번호 */
+var tick = { at: null, n: -1 }, pollBusy = false; /* 폴링 프로브: 마지막 updated_at + 행 수 */
+var barRaf = 0;
 var openSet = {};        // 트리 펼침 상태
 var viewTrash = false, searchQ = '';
 var signCache = {};      // path -> {url, exp}
@@ -387,7 +398,9 @@ $('#tree').addEventListener('click', function (e) {
   var n = e.target.closest('.node'); if (n) openPage(n.getAttribute('data-id'));
 });
 function loadTree() {
-  return rest('econote_pages?select=' + SUMMARY + ',created_at&order=sort_order.asc,created_at.asc').then(function (rows) { pages = rows || []; renderTree(); });
+  return rest('econote_pages?select=' + SUMMARY + ',created_at&order=sort_order.asc,created_at.asc').then(function (rows) { pages = rows || []; setTick(); renderTree(); });
+}
+function setTick() { var at = null; pages.forEach(function (p) { if (!at || p.updated_at > at) at = p.updated_at; }); tick.at = at; tick.n = pages.length;
 }
 
 /* ═══════════ 검색 ═══════════ */
@@ -442,6 +455,7 @@ function resolveImages(doc) {
 function stripImages(doc) { doc = JSON.parse(JSON.stringify(doc)); walk(doc, function (n) { if (n.type === 'image' && n.attrs && n.attrs.path) n.attrs.src = ''; }); return doc; }
 function uploadImages(files, pos) {
   if (!cur || !editor) return;
+  var page = cur, ed = editor;
   var list = Array.prototype.slice.call(files).filter(function (f) { return /^image\//.test(f.type); });
   if (!list.length) return;
   var ok = { 'image/jpeg': 1, 'image/png': 1, 'image/webp': 1, 'image/gif': 1 };
@@ -453,12 +467,13 @@ function uploadImages(files, pos) {
         if (!ok[blob.type]) throw new Error('지원하지 않는 형식: ' + (f.type || f.name));
         if (blob.size > 10485760) throw new Error('10MB 를 넘습니다: ' + f.name);
         var ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : blob.type === 'image/gif' ? 'gif' : 'jpg';
-        var path = cur.id + '/' + uuid() + '.' + ext;
+        var path = page.id + '/' + uuid() + '.' + ext;
         return store('object/' + BUCKET + '/' + path, { method: 'POST', headers: { 'Content-Type': blob.type, 'x-upsert': 'false' }, body: blob }).then(function () {
-          rest('econote_files', { method: 'POST', body: JSON.stringify({ page_id: cur.id, path: path, name: f.name, mime: blob.type, size: blob.size }), headers: { Prefer: 'return=minimal' } }).catch(function () {});
+          rest('econote_files', { method: 'POST', body: JSON.stringify({ page_id: page.id, path: path, name: f.name, mime: blob.type, size: blob.size }), headers: { Prefer: 'return=minimal' } }).catch(function () {});
           return signPaths([path]);
         }).then(function (m) {
           var attrs = { src: m[path], path: path, alt: f.name };
+          if (editor !== ed) return; /* 올리는 동안 다른 페이지로 이동함 */
           if (typeof pos === 'number') { editor.chain().focus().insertContentAt(pos, { type: 'image', attrs: attrs }).run(); pos = null; }
           else editor.chain().focus().setImage(attrs).run();
           done++; $('#saveSt').textContent = '이미지 올리는 중… ' + done + '/' + list.length;
@@ -493,7 +508,8 @@ function mkEditor(el, content, editable) {
         var files = ev.dataTransfer && ev.dataTransfer.files; if (!files || !files.length || editable === false) return false;
         var c = view.posAtCoords({ left: ev.clientX, top: ev.clientY }); uploadImages(files, c ? c.pos : undefined); return true;
       },
-      handleKeyDown: function (view, ev) { return slashKey(ev); }
+      handleKeyDown: function (view, ev) { return slashKey(ev); },
+      handleClick: function (view, pos, ev) { var a = ev.target && ev.target.closest && ev.target.closest('a[href]'); if (a && (ev.ctrlKey || ev.metaKey || editable === false)) { window.open(a.href, '_blank', 'noopener'); return true; } return false; }
     }
   });
 }
@@ -514,6 +530,7 @@ $('#bar').addEventListener('click', function (e) {
   if (CMDS[cmd]) CMDS[cmd](editor.chain().focus()).run();
 });
 $('#blockSel').addEventListener('change', function () { if (!editor) return; var v = this.value, c = editor.chain().focus(); (v === 'p' ? c.setParagraph() : c.toggleHeading({ level: +v.slice(1) })).run(); });
+function syncBarSoon() { if (barRaf) return; barRaf = requestAnimationFrame(function () { barRaf = 0; syncBar(); }); }
 function syncBar() {
   if (!editor) return; var bar = $('#bar');
   bar.querySelectorAll('button[data-cmd]').forEach(function (b) { var k = b.getAttribute('data-cmd'), on = false;
@@ -586,57 +603,82 @@ function slashWatch() {
 
 /* ═══════════ 페이지 열기 / 저장 ═══════════ */
 function setSt(t, cls) { var s = $('#saveSt'); s.textContent = t; s.className = 'st ' + (cls || ''); }
-function markDirty() { if (!cur) return; dirty = true; setSt('저장 안 됨', 'dirty'); clearTimeout(saveTimer); saveTimer = setTimeout(function () { save(); }, 1400); }
+function markDirty() { if (!cur) return; dirty = true; editSeq++; setSt('저장 안 됨', 'dirty'); clearTimeout(saveTimer); saveTimer = setTimeout(function () { save(); }, 1400); }
+function charCount() { var el = $('#charN'); if (el && editor) el.textContent = editor.storage.characterCount.characters().toLocaleString() + '자'; }
 function pageMeta() {
-  var p = cur; $('#pgMeta').innerHTML = '<span>만든 사람 <b>' + esc(p.created_by_name || '—') + '</b> ' + esc(fmtDt(p.created_at)) + '</span><span>마지막 수정 <b>' + esc(p.updated_by_name || '—') + '</b> ' + esc(fmtDt(p.updated_at)) + '</span>' + (editor ? '<span>' + editor.storage.characterCount.characters().toLocaleString() + '자</span>' : '');
+  var p = cur; $('#pgMeta').innerHTML = '<span>만든 사람 <b>' + esc(p.created_by_name || '—') + '</b> ' + esc(fmtDt(p.created_at)) + '</span><span>마지막 수정 <b>' + esc(p.updated_by_name || '—') + '</b> ' + esc(fmtDt(p.updated_at)) + '</span><span id="charN"></span>'; charCount();
   var ic = $('#pgIcon'); if (p.icon) { ic.textContent = p.icon; ic.className = 'pg-icon'; } else { ic.textContent = '아이콘 추가'; ic.className = 'pg-icon none'; }
   $('#crumb').innerHTML = ancestors(p.id).map(function (a) { return '<a href="?p=' + a.id + '" data-id="' + a.id + '">' + esc(a.icon || '') + ' ' + esc(titleOf(a) || '제목 없음') + '</a><i>›</i>'; }).join('') + '<span>' + esc(p.icon || '') + ' ' + esc(titleOf(p) || '제목 없음') + '</span>' + (p.deleted_at ? ' <span style="color:var(--red)">· 휴지통</span>' : '');
 }
 $('#crumb').addEventListener('click', function (e) { var a = e.target.closest('a[data-id]'); if (a) { e.preventDefault(); openPage(a.getAttribute('data-id')); } });
+/* 미저장분을 전부 서버에 보낸다. 'ok' | 'conflict' | 'error' */
+function flush() {
+  if (!dirty || !cur || !editor) return Promise.resolve('ok');
+  return save().then(function (st) { return (st === 'ok' && dirty) ? flush() : (st || 'ok'); });
+}
 function openPage(id, opts) {
   opts = opts || {};
-  if (cur && cur.id === id && !opts.force) { $('#side').classList.remove('open'); return; }
-  var go = dirty ? save() : Promise.resolve();
-  return go.then(function () { return rest('econote_pages?select=*&id=eq.' + id); }).then(function (rows) {
-    var p = rows && rows[0]; if (!p) { toast('페이지를 찾을 수 없습니다', true); return; }
+  if (cur && cur.id === id && !opts.force) { $('#side').classList.remove('open'); return Promise.resolve(); }
+  var keepScroll = opts.keepScroll && cur && cur.id === id, scrollY = keepScroll ? $('#paper').scrollTop : 0;
+  return flush().then(function (st) {
+    if (st === 'conflict') { toast('먼저 충돌을 해결해 주세요 (서버 내용 불러오기 / 덮어쓰기)', true); throw { abort: 1 }; }
+    if (st === 'error') { toast('저장이 안 돼서 이동하지 않았습니다. 잠시 후 다시 시도하세요', true); throw { abort: 1 }; }
+    return Promise.all([rest('econote_pages?select=*&id=eq.' + id), needT()]);
+  }).then(function (rs) {
+    var rows = rs[0], p = rows && rows[0]; if (!p) { toast('페이지를 찾을 수 없습니다', true); return; }
     return resolveImages(p.content || { type: 'doc', content: [{ type: 'paragraph' }] }).then(function (doc) {
-      if (editor) { editor.destroy(); editor = null; }
-      cur = p; dirty = false; clearTimeout(saveTimer); slashClose(); $('#conflict').classList.remove('show');
+      cur = p; dirty = false; saveWanted = false; clearTimeout(saveTimer); slashClose(); $('#conflict').classList.remove('show');
       $('#welcome').style.display = 'none'; $('#pageEl').style.display = '';
       $('#pgTitle').value = p.title || '';
       var ro = !!p.deleted_at;
-      editor = mkEditor($('#editor'), doc, !ro);
-      editor.on('update', function () { markDirty(); slashWatch(); pageMeta(); });
-      editor.on('selectionUpdate', function () { syncBar(); slashWatch(); });
-      editor.on('transaction', syncBar);
+      if (editor && editor.isEditable === !ro) {
+        editor.commands.setContent(doc, { emitUpdate: false }); /* 편집기 재사용 — 파괴·재생성보다 문서 교체가 싸다 */
+      } else {
+        if (editor) { editor.destroy(); editor = null; }
+        editor = mkEditor($('#editor'), doc, !ro);
+        editor.on('update', function () { markDirty(); slashWatch(); charCount(); });
+        editor.on('selectionUpdate', slashWatch);
+        editor.on('transaction', syncBarSoon);
+      }
       $('#bar').style.display = ro ? 'none' : ''; $('#pgTitle').readOnly = ro;
       pageMeta(); syncBar(); renderTree();
       var idx = pages.findIndex(function (x) { return x.id === p.id; }); if (idx >= 0) { pages[idx].rev = p.rev; pages[idx].updated_at = p.updated_at; }
       ancestors(p.id).forEach(function (a) { openSet[a.id] = true; }); try { localStorage.setItem('econote_open', JSON.stringify(openSet)); } catch (x) {}
       history.replaceState(null, '', '?p=' + p.id); $('#side').classList.remove('open');
       if (opts.focusTitle) $('#pgTitle').focus(); else if (!ro && opts.focus !== false) editor.commands.focus('end');
-      $('#paper').scrollTop = 0;
+      $('#paper').scrollTop = keepScroll ? scrollY : 0;
     });
-  }).catch(function (e) { toast('열기 실패: ' + e.message, true); });
+  }).catch(function (e) { if (!(e && e.abort)) toast('열기 실패: ' + e.message, true); });
 }
 function collect() {
   var doc = stripImages(editor.getJSON());
   return { title: $('#pgTitle').value.trim(), content: doc, content_text: editor.getText({ blockSeparator: '\n' }).slice(0, 20000), updated_by: me.id, updated_by_name: me.name };
 }
 function save(force) {
-  if (!cur || !editor || saving) return Promise.resolve();
-  if (!dirty && !force) return Promise.resolve();
-  saving = true; clearTimeout(saveTimer); setSt('저장 중…', 'dirty');
-  var body = collect(), myRev = cur.rev;
-  var q = 'econote_pages?id=eq.' + cur.id + (force ? '' : '&rev=eq.' + myRev);
-  return rest(q, { method: 'PATCH', body: JSON.stringify(body), headers: { Prefer: 'return=representation' } }).then(function (rows) {
-    saving = false;
-    if (!rows || !rows.length) { /* rev 불일치 = 다른 사람이 먼저 저장 */ setSt('충돌', 'err'); $('#conflict').classList.add('show'); return; }
-    var r = rows[0]; cur.rev = r.rev; cur.updated_at = r.updated_at; cur.updated_by_name = r.updated_by_name; cur.title = r.title; cur.content_text = r.content_text;
-    dirty = false; lastSavedAt = Date.now(); setSt('저장됨 ' + fmtDt(r.updated_at), 'ok');
-    var idx = pages.findIndex(function (x) { return x.id === cur.id; }); if (idx >= 0) { pages[idx].title = r.title; pages[idx].rev = r.rev; pages[idx].updated_at = r.updated_at; pages[idx].icon = r.icon; }
-    renderTree(); pageMeta(); $('#conflict').classList.remove('show');
-  }).catch(function (e) { saving = false; setSt('저장 실패', 'err'); toast('저장 실패: ' + e.message, true); saveTimer = setTimeout(function () { save(); }, 8000); });
+  if (!cur || !editor) return Promise.resolve('ok');
+  if (saving) { saveWanted = true; return saving; } /* 요청이 나가 있으면 끝난 뒤 한 번 더 */
+  if (!dirty && !force) return Promise.resolve('ok');
+  clearTimeout(saveTimer); setSt('저장 중…', 'dirty');
+  var body = collect(), myRev = cur.rev, seq0 = editSeq, page = cur;
+  var q = 'econote_pages?id=eq.' + page.id + (force ? '' : '&rev=eq.' + myRev);
+  var pr = rest(q, { method: 'PATCH', body: JSON.stringify(body), headers: { Prefer: 'return=representation' }, keepalive: true }).then(function (rows) {
+    saving = null;
+    if (!rows || !rows.length) { /* rev 불일치 = 다른 사람이 먼저 저장 */ setSt('충돌', 'err'); $('#conflict').classList.add('show'); return 'conflict'; }
+    var r = rows[0];
+    var idx = pages.findIndex(function (x) { return x.id === page.id; }), tp = idx >= 0 ? pages[idx] : null;
+    var treeChanged = !tp || tp.title !== r.title || tp.icon !== r.icon;
+    if (tp) { tp.title = r.title; tp.rev = r.rev; tp.updated_at = r.updated_at; tp.icon = r.icon; }
+    if (!tick.at || r.updated_at > tick.at) tick.at = r.updated_at; /* 내 저장은 폴링 재조회 사유가 아니다 */
+    if (cur !== page) return 'ok'; /* 저장 중에 다른 페이지로 넘어감 */
+    cur.rev = r.rev; cur.updated_at = r.updated_at; cur.updated_by_name = r.updated_by_name; cur.title = r.title; cur.content_text = r.content_text;
+    lastSavedAt = Date.now(); $('#conflict').classList.remove('show');
+    if (editSeq !== seq0 || saveWanted) { saveWanted = false; dirty = true; setSt('저장 안 됨', 'dirty'); saveTimer = setTimeout(function () { save(); }, 300); }
+    else { dirty = false; setSt('저장됨 ' + fmtDt(r.updated_at), 'ok'); }
+    if (treeChanged) renderTree();
+    pageMeta();
+    return 'ok';
+  }).catch(function (e) { saving = null; setSt('저장 실패', 'err'); toast('저장 실패: ' + e.message, true); saveTimer = setTimeout(function () { save(); }, 8000); return 'error'; });
+  saving = pr; return pr;
 }
 $('#cfLoad').addEventListener('click', function () { dirty = false; openPage(cur.id, { force: true }); });
 $('#cfForce').addEventListener('click', function () { dirty = true; save(true); });
@@ -649,7 +691,7 @@ $('#pgIcon').addEventListener('click', function () {
     rest('econote_pages?id=eq.' + cur.id, { method: 'PATCH', body: JSON.stringify({ icon: v }), headers: { Prefer: 'return=representation' } }).then(function (rows) { if (rows && rows[0]) { cur.icon = rows[0].icon; cur.rev = rows[0].rev; var p = byId(cur.id); if (p) p.icon = cur.icon; pageMeta(); renderTree(); } });
   });
 });
-document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (cur) { dirty = true; save(); } } });
+document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (cur) { if (dirty) save(); else toast('이미 저장돼 있습니다'); } } });
 window.addEventListener('beforeunload', function (e) { if (dirty) { save(); e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('visibilitychange', function () { if (document.hidden && dirty) save(); });
 
@@ -658,7 +700,7 @@ function createPage(parentId) {
   var sib = children(parentId || null, false); var so = sib.length ? Math.max.apply(null, sib.map(function (s) { return s.sort_order || 0; })) + 1 : 0;
   var row = { parent_id: parentId || null, title: '', sort_order: so, created_by: me.id, created_by_name: me.name, updated_by: me.id, updated_by_name: me.name, content: { type: 'doc', content: [{ type: 'paragraph' }] } };
   return rest('econote_pages', { method: 'POST', body: JSON.stringify(row), headers: { Prefer: 'return=representation' } }).then(function (rows) {
-    var p = rows[0]; pages.push(p); if (parentId) openSet[parentId] = true; viewTrash = false; searchQ = ''; $('#q').value = ''; renderTree();
+    var p = rows[0]; pages.push(p); setTick(); if (parentId) openSet[parentId] = true; viewTrash = false; searchQ = ''; $('#q').value = ''; renderTree();
     return openPage(p.id, { focusTitle: true });
   }).catch(function (e) { toast('만들기 실패: ' + e.message, true); });
 }
@@ -690,7 +732,8 @@ $('#delBtn').addEventListener('click', function () {
           rest('econote_files?select=path&page_id=in.(' + ids.join(',') + ')').then(function (files) {
             var paths = (files || []).map(function (f) { return f.path; });
             var p0 = paths.length ? store('object/' + BUCKET, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: paths }) }).catch(function () {}) : Promise.resolve();
-            return p0.then(function () { return rest('econote_pages?id=in.(' + ids.join(',') + ')', { method: 'DELETE', headers: { Prefer: 'return=minimal' } }); });
+            return p0.then(function () { return rest('econote_files?page_id=in.(' + ids.join(',') + ')', { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(function () {}); })
+              .then(function () { return rest('econote_pages?id=in.(' + ids.join(',') + ')', { method: 'DELETE', headers: { Prefer: 'return=minimal' } }); });
           }).then(function () { toast('영구 삭제했습니다'); cur = null; if (editor) { editor.destroy(); editor = null; } $('#pageEl').style.display = 'none'; $('#welcome').style.display = ''; history.replaceState(null, '', location.pathname); return loadTree(); }).catch(function (e) { toast('삭제 실패: ' + e.message, true); });
         });
       };
@@ -734,19 +777,27 @@ function showVersion(vid) {
 }
 
 /* ═══════════ 폴링 — 다른 직원의 변경 반영 ═══════════ */
+/* 20초마다 '가장 최근 updated_at + 행 수' 한 줄만 묻고(약 100B), 달라졌을 때만 목록 전체를 다시 받는다.
+   모든 변경(수정·이동·휴지통·복원)은 트리거가 updated_at 을 올리고, 생성·완전삭제는 행 수가 바뀐다. */
 function poll() {
-  if (document.hidden) return;
-  rest('econote_pages?select=' + SUMMARY + ',created_at&order=sort_order.asc,created_at.asc').then(function (rows) {
-    var before = JSON.stringify(pages.map(function (p) { return [p.id, p.parent_id, p.title, p.icon, p.sort_order, p.deleted_at]; }));
-    pages = rows || [];
-    var after = JSON.stringify(pages.map(function (p) { return [p.id, p.parent_id, p.title, p.icon, p.sort_order, p.deleted_at]; }));
-    if (before !== after && !searchQ) renderTree();
-    if (cur) { var s = byId(cur.id);
-      if (!s) { toast('이 페이지가 삭제되었습니다', true); return; }
-      if (s.rev !== cur.rev && !dirty && !saving) { openPage(cur.id, { force: true, focus: false }); toast((s.updated_by_name || '다른 직원') + ' 님의 수정을 반영했습니다'); }
-      else if (s.rev !== cur.rev && dirty) { /* 저장 때 rev 검사가 충돌을 잡는다 */ }
-    }
-  }).catch(function () {});
+  if (document.hidden || pollBusy) return Promise.resolve();
+  pollBusy = true;
+  return rest('econote_pages?select=updated_at&order=updated_at.desc&limit=1', { headers: { Prefer: 'count=exact' }, raw: true }).then(function (res) {
+    var at = res.body && res.body[0] ? res.body[0].updated_at : null;
+    var n = parseInt(String((res.headers && res.headers.get('content-range')) || '').split('/')[1], 10);
+    if (at === tick.at && n === tick.n) return; /* 변화 없음 — 여기서 끝(요청 1건) */
+    return rest('econote_pages?select=' + SUMMARY + ',created_at&order=sort_order.asc,created_at.asc').then(function (rows) {
+      var before = JSON.stringify(pages.map(function (p) { return [p.id, p.parent_id, p.title, p.icon, p.sort_order, p.deleted_at]; }));
+      pages = rows || []; setTick();
+      var after = JSON.stringify(pages.map(function (p) { return [p.id, p.parent_id, p.title, p.icon, p.sort_order, p.deleted_at]; }));
+      if (before !== after && !searchQ) renderTree();
+      if (cur) { var s = byId(cur.id);
+        if (!s) { toast('이 페이지가 삭제되었습니다', true); return; }
+        if (s.rev !== cur.rev && !dirty && !saving) { return openPage(cur.id, { force: true, focus: false, keepScroll: true }).then(function () { toast((s.updated_by_name || '다른 직원') + ' 님의 수정을 반영했습니다'); }); }
+        /* dirty 면 저장 때 rev 검사가 충돌을 잡는다 */
+      }
+    });
+  }).catch(function () {}).then(function () { pollBusy = false; });
 }
 setInterval(poll, 20000);
 document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
@@ -761,7 +812,6 @@ document.addEventListener('mousedown', function (e) { if (slash.open && !e.targe
 
 /* ═══════════ 부팅 ═══════════ */
 function boot() {
-  if (!T) { $('#tree').innerHTML = '<div class="empty">편집기 모듈을 불러오지 못했습니다. 새로고침해 주세요.</div>'; return; }
   var uid = A.session && A.session.user && A.session.user.id;
   if (!uid) { try { uid = JSON.parse(atob(A.session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub; } catch (e) {} }
   me.id = uid;
