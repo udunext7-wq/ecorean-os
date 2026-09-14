@@ -188,9 +188,25 @@ function skDetectFaces(bag){
     const old=oldByKey.get(key);
     faces.push(old?Object.assign(old,{pts:cyc}):{id:_skId('skf'),pts:cyc});
   });
+  // 구멍 (2026-09-15 스케치업: 면 안의 닫힌 고리는 바깥 면에 구멍을 낸다) — 점을 하나도 공유하지 않고
+  //  통째로 안에 든 면은 그것을 품은 가장 작은 면의 구멍. 중첩은 단계별(G⊂H⊂F 면 F.holes=[H], H.holes=[G]).
+  const polys=faces.map(f=>f.pts.map(id=>pts.get(id)));
+  const areas=polys.map(p=>Math.abs(skPolyArea(p)));
+  faces.forEach(f=>{ f.holes=[]; });
+  faces.forEach((f,i)=>{
+    const ids=new Set(f.pts); let parent=-1,pa=Infinity;
+    faces.forEach((g,j)=>{
+      if(j===i||areas[j]<=areas[i]||areas[j]>=pa) return;
+      if(g.pts.some(id=>ids.has(id))) return;
+      if(polys[i].every(p=>skPtInPoly(p,polys[j]))){ pa=areas[j]; parent=j; }
+    });
+    if(parent>=0) faces[parent].holes.push(f.id);
+  });
   b.sketchFaces=faces;
   return faces;
 }
+// 면의 구멍 다각형들 (구멍 면의 좌표)
+function skFaceHoles(f,bag){ const b=skArrs(bag); return (f&&Array.isArray(f.holes)?f.holes:[]).map(id=>b.sketchFaces.find(g=>g.id===id)).filter(Boolean).map(g=>skFacePoly(g,b)).filter(p=>p.length>=3); }
 function skFaceAt(x,y,bag){
   const b=skArrs(bag);let best=null,ba=Infinity;
   b.sketchFaces.forEach(f=>{const poly=skFacePoly(f,b);if(poly.length<3)return;if(skPtInPoly({x,y},poly)){const a=Math.abs(skPolyArea(poly));if(a<ba){ba=a;best=f;}}});
@@ -329,14 +345,21 @@ function massAbsPoly(m){
   return (m.pts||[]).map(p=>({x:Math.round(m.x+p.x*c-p.y*s),y:Math.round(m.y+p.x*s+p.y*c)}));
 }
 function massArea(m){return Math.abs(skPolyArea(massAbsPoly(m)));}
-function massFromPoly(poly,z,bag){
+function massFromPoly(poly,z,bag,holes){
   const b=skBag(bag);if(!Array.isArray(b.masses)) b.masses=[];
   // 2026-09-07: 감김을 여기서 한 번 바로잡아 둔다 (아래로 갈수록 고치기 어렵다)
   if(skPolyArea(poly)<0) poly=poly.slice().reverse();
   const c=skPolyCentroid(poly);
   const m={id:_skId('ms'),name:'매스'+(b.masses.length+1),x:Math.round(c.x),y:Math.round(c.y),angle:0,
     pts:poly.map(p=>({x:Math.round(p.x-c.x),y:Math.round(p.y-c.y)})),h_mm:Math.round(z),elev_mm:0,color:MASS_COLOR,locked:false};
-  b.masses.push(m);return m;
+  b.masses.push(m);
+  if(Array.isArray(holes)&&holes.length){                                   // 스케치업: 구멍 난 면을 뽑으면 관통 구멍
+    const ctx={ch:2400,fh:2800,fl:0}; const H=Math.round(z);
+    holes.forEach(hp=>{ if(!Array.isArray(hp)||hp.length<3) return;
+      const loc=hp.map(p=>({x:Math.round(p.x-c.x),y:Math.round(p.y-c.y)}));
+      massPunchThrough(m,loc.map(p=>({x:p.x,y:p.y,z:H})),loc.map(p=>({x:p.x,y:p.y,z:0})),ctx); });
+  }
+  return m;
 }
 // 면 폴리곤 + Z → 공간(둘레 벽 천장고=z) 또는 벽(높이=z). 활성 층 전용. 반환 {kind,id}|null
 function _skSolidify(poly,z,as){
@@ -1110,6 +1133,11 @@ function planeExtrude(pl,f,d,free){
       for(let i=0;i<N;i++){const j=(i+1)%N;F.push({vs:[i,j,N+j,N+i]});}
       return F;
     })()};
+  _massFixWinding(m,{ch:2400,fh:2800,fl:0});                                 // 감김을 바깥으로 (면 찾기·밀기끌기가 저장된 고리를 본다)
+  (skFaceHoles(f,pl)||[]).forEach(hp=>{                                     // 구멍 난 면 → 관통 구멍 (근·원 두 면 사이)
+    const nr=hp.map(p=>planePt(pl,p.x,p.y)).map(p=>({x:Math.round(p.x-cx),y:Math.round(p.y-cy),z:Math.round(p.z+lift)}));
+    const fr=nr.map(p=>({x:Math.round(p.x+off.x),y:Math.round(p.y+off.y),z:Math.round(p.z+off.z)}));
+    massPunchThrough(m,nr,fr,{ch:2400,fh:2800,fl:0}); });
   if(!Array.isArray(free.masses)) free.masses=[];
   free.masses.push(m);
   _skConsumeFace(f,pl);
@@ -1777,9 +1805,43 @@ function _massInsetFaceF(m,F,loop,ctx){
   for(let k=0;k<ring.length;k++) key.push(ring[(bj+k)%ring.length]); key.push(ring[bj]);          // 바깥 한 바퀴, 다리 점으로 돌아옴
   for(let k=0;k<inner.length;k++) key.push(inner[(bk-k+inner.length)%inner.length]); key.push(inner[bk]);   // 구멍은 반대로 한 바퀴
   const fi=m.solidFaces.indexOf(F);
-  m.solidFaces.splice(fi,1,{vs:key,mat:F.mat||null},{vs:inner.slice(),mat:F.mat||null});
+  const innerFace={vs:inner.slice(),mat:F.mat||null};
+  m.solidFaces.splice(fi,1,{vs:key,mat:F.mat||null},innerFace);
   m.open=m.open||false;
-  return {faces:2,inner:inner.slice()};
+  return {faces:2,inner:inner.slice(),L:L.slice(),innerFace};
+}
+// 서로 마주 보는 두 면(near·far — 같은 고리 순서의 로컬 3D 점)에 관통 구멍을 낸다: 양쪽에 열쇠구멍을 내고
+//  안쪽 면 둘을 지운 뒤 그 사이에 벽을 세운다. 벽은 구멍 축 쪽을 바깥으로(고체 → 빈 곳) 향한다.
+// 저장된 고리의 감김을 바깥으로 맞춘다 (planeExtrude 가 안팎이 뒤집힌 채 만들면 massSolid 는 보여 줄 때만 뒤집었다 —
+//  면 찾기·구멍 뚫기는 저장된 고리를 보므로 여기서 한 번 바로잡는다)
+function _massFixWinding(m,ctx){
+  if(!Array.isArray(m.solidVerts)||!Array.isArray(m.solidFaces)) return m;
+  const V=_massNumVerts(m,ctx); let v=0;
+  m.solidFaces.forEach(f=>{ if(f.vs.length<3) return; const c=faceCentroid3(V,f.vs), n=faceNormal(V,f.vs); v+=(c.x*n.x+c.y*n.y+c.z*n.z)*faceArea3(V,f.vs); });
+  if(v<0) m.solidFaces.forEach(f=>f.vs.reverse());
+  return m;
+}
+function massPunchThrough(m,nearLoop,farLoop,ctx){
+  if(!Array.isArray(nearLoop)||nearLoop.length<3||!Array.isArray(farLoop)||farLoop.length!==nearLoop.length) return null;
+  massToSolid(m,ctx); _massFixWinding(m,ctx);
+  const cen=pts=>pts.reduce((a,p)=>({x:a.x+p.x/pts.length,y:a.y+p.y/pts.length,z:a.z+p.z/pts.length}),{x:0,y:0,z:0});
+  const cN=cen(nearLoop), cF=cen(farLoop);
+  const ax=_vSub(cF,cN); const L=_vLen(ax)||1; const nN=_vScale(ax,-1/L), nF=_vScale(ax,1/L);   // near 면 법선은 far 반대쪽
+  const fN=massFindFace(m,cN,nN,ctx); if(!fN) return null;
+  const rN=_massInsetFaceF(m,fN.face,nearLoop,ctx); if(!rN) return null;
+  const fF=massFindFace(m,cF,nF,ctx); if(!fF) return null;
+  const rF=_massInsetFaceF(m,fF.face,farLoop,ctx); if(!rF) return null;
+  m.solidFaces=m.solidFaces.filter(f=>f!==rN.innerFace&&f!==rF.innerFace);
+  const V=_massNumVerts(m,ctx); const axis={x:(cN.x+cF.x)/2,y:(cN.y+cF.y)/2,z:(cN.z+cF.z)/2};
+  const n=nearLoop.length;
+  for(let k=0;k<n;k++){
+    const a=rN.L[k],b=rN.L[(k+1)%n],c=rF.L[(k+1)%n],d=rF.L[k];
+    let q=[a,b,c,d]; const nn=faceNormal(V,q); const qc=cen(q.map(i=>V[i]));
+    if(_vDot(nn,_vSub(axis,qc))<0) q=[a,d,c,b];                  // 구멍 축을 향하게 (고체에서 빈 곳으로)
+    m.solidFaces.push({vs:q,mat:fN.face.mat||null});
+  }
+  m.open=m.open||false;
+  return {walls:n};
 }
 // 그릴 모서리 (스케치업의 보이는 변) — 곡면의 부드러운 변(두 면 사이 0.5°~25°)은 숨기고,
 //  같은 평면의 분할선(≈0°)·꺾임(≥25°)·바깥 변은 그린다. 열쇠구멍의 다리 변(한 면 안에서 왕복)은 뺀다.
@@ -1952,6 +2014,6 @@ if(typeof module!=='undefined'&&module.exports){
     sweepProfile,sweepProfile3,massFromSweep,moldingProfile,
     massCSG,earTriangles,csgMergeFaces,massToCsgPolys,massFromCsgFaces,csgUnion,csgSubtract,csgIntersect,
     massFindFace,massPushFace,massExtrudeFaceNew,massVertXY,massRotate3,massFlip,massScaleAbout,massLocalBox,massFaceInfo,
-    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,massSplitFace,massSplitFaceChain,massInsetFace,massOnFaceRing,massDrawEdges,massDivide,massFindFaceByPts,_faceContains,
+    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,massSplitFace,massSplitFaceChain,massInsetFace,massOnFaceRing,massDrawEdges,massDivide,massFindFaceByPts,_faceContains,massPunchThrough,skFaceHoles,_massFixWinding,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

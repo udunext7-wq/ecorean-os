@@ -128,7 +128,9 @@ function normalizeDoc(doc){
   // 2026-09-04 점·선·면 스케치 + 매스 — id 참조를 좌표로 풀어 둔다
   const spt={}; const sketchPts=(d.sketchPts||[]).filter(p=>p&&isFinite(p.x)&&isFinite(p.y)).map(p=>{const o={id:p.id,x:num(p.x,0),y:num(p.y,0)};spt[p.id]=o;return o;});
   const sketchEdges=(d.sketchEdges||[]).map(e=>{const a=spt[e.a],b=spt[e.b];return (a&&b)?{id:e.id,a:e.a,b:e.b,x1:a.x,y1:a.y,x2:b.x,y2:b.y}:null;}).filter(Boolean);
-  const sketchFaces=(d.sketchFaces||[]).map(f=>{const poly=(f.pts||[]).map(id=>spt[id]).filter(Boolean).map(p=>({x:p.x,y:p.y}));return poly.length>=3?{id:f.id,polygon:poly,gen:f.gen||null}:null;}).filter(Boolean);   // gen = 원·다각형의 중심·반지름·변 수 (개체 정보에서 변 수 변경)
+  const _fpoly=(f,map)=>(f&&f.pts||[]).map(id=>map[id]).filter(Boolean).map(p=>({x:p.x,y:p.y}));
+  const _holes=(f,list,map)=>(Array.isArray(f.holes)?f.holes:[]).map(id=>list.find(g=>g&&g.id===id)).filter(Boolean).map(g=>_fpoly(g,map)).filter(p=>p.length>=3);
+  const sketchFaces=(d.sketchFaces||[]).map(f=>{const poly=_fpoly(f,spt);return poly.length>=3?{id:f.id,polygon:poly,gen:f.gen||null,holes:_holes(f,d.sketchFaces||[],spt)}:null;}).filter(Boolean);   // gen = 원·다각형의 중심·반지름·변 수 (개체 정보에서 변 수 변경)
   // 2026-09-07: h_mm 은 숫자일 수도, 살아 있는 참조({r:'ch'})일 수도 있다 — 그대로 통과시킨다.
   //  solidVerts/solidFaces 가 있으면 자유 다면체. 없으면 옛 각기둥 그대로.
   const _mctx={ch:num(meta.ceilingHeight_mm,2400),fh:num(meta.floorHeight_mm,2800),fl:0};
@@ -160,8 +162,8 @@ function normalizeDoc(doc){
         sketchEdges:(pl.sketchEdges||[]).map(e=>{const a=pm[e.a],b=pm[e.b];
           return (a&&b)?{id:e.id,x1:a.x,y1:a.y,x2:b.x,y2:b.y}:null;}).filter(Boolean),
         sketchFaces:(pl.sketchFaces||[]).map(f=>{
-          const poly=(f.pts||[]).map(id=>pm[id]).filter(Boolean).map(p=>({x:p.x,y:p.y}));
-          return poly.length>=3?{id:f.id,polygon:poly,gen:f.gen||null}:null;}).filter(Boolean)};
+          const poly=_fpoly(f,pm);
+          return poly.length>=3?{id:f.id,polygon:poly,gen:f.gen||null,holes:_holes(f,pl.sketchFaces||[],pm)}:null;}).filter(Boolean)};
     }).filter(Boolean),
     ceilH:num(meta.ceilingHeight_mm,2400),
   };
@@ -173,10 +175,10 @@ function normalizeDoc(doc){
 const SK={face:'#D4FF3D',edge:'#E8D48B',pt:'#F5F1EB',mass:'#B9C6D2'};
 function polyAreaAbs(poly){let a=0;for(let i=0,j=poly.length-1;i<poly.length;j=i++)a+=(poly[j].x+poly[i].x)*(poly[j].y-poly[i].y);return Math.abs(a/2);}
 function buildSketchFace(f){
-  const c=polyCentroid(f.polygon);
+  const c=polyCentroid(f.polygon); const holes=Array.isArray(f.holes)?f.holes:[];
   return {id:f.id,kind:'sketchFace',name:'면',x:0,y:0,rot:0,flip:false,
-    prims:[{t:'poly',pts:f.polygon,holes:[],z:2,color:SK.face,opacity:0.30,side:'top'}],
-    meta:{area:polyAreaAbs(f.polygon),cx:c.x,cy:c.y,poly:f.polygon,gen:f.gen||null}};
+    prims:[{t:'poly',pts:f.polygon,holes,z:2,color:SK.face,opacity:0.30,side:'top'}],
+    meta:{area:polyAreaAbs(f.polygon)-holes.reduce((a,h)=>a+polyAreaAbs(h),0),cx:c.x,cy:c.y,poly:f.polygon,holes,gen:f.gen||null}};
 }
 function buildSketchEdge(e){
   const L=Math.hypot(e.x2-e.x1,e.y2-e.y1);
@@ -199,10 +201,12 @@ function buildPlaneSketch(pl,objects){
     const verts=f.polygon.map(p=>P3(p.x,p.y));
     const c2=f.polygon.reduce((a,p)=>({x:a.x+p.x/f.polygon.length,y:a.y+p.y/f.polygon.length}),{x:0,y:0});
     const c3=P3(c2.x,c2.y);
+    const holes=Array.isArray(f.holes)?f.holes:[];
     objects.push({id:f.id,kind:'sketchFace',name:'면(벽)',x:0,y:0,rot:0,flip:false,
-      prims:[{t:'face3',plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n},uv:f.polygon,verts,
-        color:SK.face,opacity:0.30}],
-      meta:{area:polyAreaAbs(f.polygon),cx:c3.x,cy:c3.y,poly:f.polygon,gen:f.gen||null,
+      prims:[holes.length
+        ?{t:'face3h',plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n},outer:f.polygon,holes,color:SK.face,opacity:0.30}   // 구멍 난 벽면 면
+        :{t:'face3',plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n},uv:f.polygon,verts,color:SK.face,opacity:0.30}],
+      meta:{area:polyAreaAbs(f.polygon)-holes.reduce((a,h)=>a+polyAreaAbs(h),0),cx:c3.x,cy:c3.y,poly:f.polygon,holes,gen:f.gen||null,
         plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n}}});
   });
   pl.sketchEdges.forEach(e=>{

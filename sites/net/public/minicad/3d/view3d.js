@@ -3652,9 +3652,10 @@ function ffApply(m){
         break;
       }
       const poly=skFacePoly(hit.face,hit.bag); if(poly.length<3) return false;
+      const holes=skFaceHoles(hit.face,hit.bag);                       // 구멍 난 면 → 관통 구멍 (구멍 면은 스케치업처럼 그 자리에 남는다)
       _skConsumeFace(hit.face,hit.bag);
-      const mm=massFromPoly(poly,z,hit.bag);
-      madeId=mm.id; ok=true; label='면 → 매스 Z='+z;
+      const mm=massFromPoly(poly,z,hit.bag,holes);
+      madeId=mm.id; ok=true; label='면 → 매스 Z='+z+(holes.length?' (구멍 '+holes.length+')':'');
       break;
     }
     case 'setz': {
@@ -3897,7 +3898,8 @@ function ffApply(m){
       const pts=(Array.isArray(p.pts)?p.pts:[]).map(q=>({x:N(q.x),y:N(q.y)}));
       if(pts.length<3||!pts.every(q=>fin(q.x,q.y))) return false;
       const z=N(p.z); if(!(z>=1)) return false;
-      const mm=massFromPoly(pts,z,bag); if(!mm) return false;
+      const holes=(Array.isArray(p.holes)?p.holes:[]).map(hp=>(Array.isArray(hp)?hp:[]).map(q=>({x:N(q.x),y:N(q.y)})).filter(q=>fin(q.x,q.y))).filter(hp=>hp.length>=3);
+      const mm=massFromPoly(pts,z,bag,holes); if(!mm) return false;
       if(p.name) mm.name=String(p.name).slice(0,40);
       if(p.gid) mm.gid=String(p.gid);
       if(p.color) mm.color=String(p.color);
