@@ -160,8 +160,8 @@ const FF_HINT={
   line:'<b>선</b> — 클릭-클릭 사슬 · <b>어느 점이든 이어집니다</b>(높이가 달라도 — 작업 평면이 <b>자동</b>일 때) · <b>세 점이면 종이가 정해지고 고리를 닫으면 기울어진 면도 생깁니다</b> · <b>방향키 ↑→← = 파랑/빨강/초록 축 고정</b>(숫자=길이 · 같은 키=해제) · <b>위로 끌면 파랑(Z) 축</b>(숫자=높이, ↑=고정) · <b>고리가 닫히면 면</b> · <b>매스 면 위에 모서리에서 모서리로 그으면 면이 나뉜다</b>(나뉜 면은 각각 밀기끌기) · 벽면을 클릭하면 그 면이 종이 · Shift=방향 고정 · ←→↑=축 고정 · 숫자=길이 · [x,y] 절대 · &lt;dx,dy&gt; 상대 · Esc/더블클릭=끝',
   rect:'<b>사각형</b> — 두 모서리 클릭 → <b>바로 높이</b>(위로 끌어 3번째 클릭 또는 숫자) = 상자 · 벽면 위도 됨 · <b>첫 점 뒤 방향키 ↑→← = 도형의 면 바꾸기</b>(수평·초록파랑·빨강파랑) · <b>W=작업 평면</b>(바닥·정면·측면 — 자라는 축이 바뀐다) · <b>가로,세로</b> 입력 · Esc=면만',
   rotrect:'<b>회전 사각형</b> — 첫 변 두 점 클릭 → 폭 클릭 · 숫자=길이·폭',
-  circle:'<b>원</b> — 중심 클릭 → 반지름 · <b>숫자=반지름</b> · <b>24s=변 수</b>',
-  polygon:'<b>다각형</b> — 중심 클릭 → 반지름 · <b>6s=변 수</b>(기본 6) · 숫자=반지름',
+  circle:'<b>원</b> — 중심 클릭 → 반지름 · <b>숫자=반지름</b> · <b>24s=분할 수</b>(찍기 전·그리는 중·그린 직후 언제든 Enter) · 개체 정보에서도 변경',
+  polygon:'<b>다각형</b> — 중심 클릭 → 반지름 · <b>5s=변 수</b>(기본 6 · 찍기 전·그리는 중·그린 직후 언제든 Enter) · 숫자=반지름 · 그린 뒤 <b>개체 정보 「변 수」</b>로도 변경',
   arc:'<b>2점 호</b> — 시작 · 끝 · 불룩한 정도 · 숫자=불룩',
   arc3:'<b>3점 호</b> — 시작 · 호 위의 점 · 끝',
   pie:'<b>파이</b> — 중심 · 시작(반지름) · 끝(각도) = 부채꼴 면 · 숫자=각도',
@@ -1250,7 +1250,9 @@ function shape3Commit(exact){
   }
   const r=_shape3Poly(op); const plane={origin:op.fr.origin,ex:op.fr.ex,ey:op.fr.ey,n:op.fr.n};
   const poly=r.poly.map(q=>({x:Math.round(q.u),y:Math.round(q.v)}));
-  if(r.closed){ if(poly.length<3||Math.abs(polyArea(poly))<100*100){ setStatus(statusLive,'너무 작습니다'); return; } cancelOp(); emitEdit({type:'edit',op:'sketchpoly',floorId:'freeform',patch:{pts:poly,plane}}); setStatus(statusLive,'🧊 면 위 '+FF_STATUS[op.shape]+' → 면 (P 로 뽑기·파내기)'); ffAutoExtrude(_ffBagFor(plane)); return; }
+  let gen=null;
+  if(op.shape==='circle'||op.shape==='polygon'){ const P0=op.pts[0], cc=op.cur; gen={kind:op.shape,cx:Math.round(P0.u),cy:Math.round(P0.v),r:Math.round(Math.hypot(cc.u-P0.u,cc.v-P0.v)),n:poly.length}; }
+  if(r.closed){ if(poly.length<3||Math.abs(polyArea(poly))<100*100){ setStatus(statusLive,'너무 작습니다'); return; } cancelOp(); if(gen) ST.lastShape={gen,plane,auto:false}; emitEdit({type:'edit',op:'sketchpoly',floorId:'freeform',patch:{pts:poly,plane,gen}}); setStatus(statusLive,'🧊 면 위 '+FF_STATUS[op.shape]+' → 면 (P 로 뽑기·파내기)'); ffAutoExtrude(_ffBagFor(plane)); return; }
   const ops=[]; for(let i=0;i<poly.length-1;i++){ const a=poly[i],b=poly[i+1]; if(Math.hypot(b.x-a.x,b.y-a.y)<10) continue; ops.push({op:'sketchline',floorId:'freeform',patch:{x1:a.x,y1:a.y,x2:b.x,y2:b.y,plane}}); }
   cancelOp(); if(sendBatch(ops,'면 위 호')) setStatus(statusLive,'🧊 면 위 호 → 선 '+ops.length+'조각');
 }
@@ -2894,7 +2896,7 @@ function describe(obj){
   if(obj.kind==='door'||obj.kind==='window') return `${obj.name} <small>${m.subType||''}${m.sill?' · 창턱 '+m.sill:''}</small>`;
   if(obj.kind==='furniture'||obj.kind==='fixture') return `${obj.name} <small>${m.w}×${m.d}mm</small>`;
   if(obj.kind==='light') return `${obj.name} <small>${m.type}${m.linear?' · '+(m.linear/1000).toFixed(1)+'m':''}</small>`;
-  if(obj.kind==='sketchFace') return `면 <small>${((m.area||0)/1e6).toFixed(2)}㎡ · P(밀기끌기)=Z 높이 → 매스</small>`;
+  if(obj.kind==='sketchFace') return `면 <small>${((m.area||0)/1e6).toFixed(2)}㎡${m.gen?' · '+(m.gen.kind==='circle'?'원 '+m.gen.n+'분할':m.gen.n+'각형'):''} · P(밀기끌기)=Z 높이 → 매스</small>`;
   if(obj.kind==='sketchEdge') return `선 <small>${Math.round(m.L||0)}mm</small>`;
   if(obj.kind==='sketchPt') return `점 <small>${Math.round(obj.x)}, ${Math.round(obj.y)}</small>`;
   if(obj.kind==='mass') return `${obj.name} <small>H ${Math.round(m.h_mm||0)} · ${((m.area||0)/1e6).toFixed(2)}㎡${obj.elev?' · ↑'+obj.elev:''}</small>`;
@@ -3490,7 +3492,9 @@ function ffApply(m){
     case 'sketchcircle': {
       const cx=N(p.cx),cy=N(p.cy),r=N(p.r);
       if(!fin(cx,cy,r)||r<10) return false;
-      ok=!!skAddCircle(cx,cy,r,p.n||32,_ffBagFor(p.plane)); label='원 → 면'; break;
+      const fc=skAddCircle(cx,cy,r,p.n||32,_ffBagFor(p.plane));
+      if(fc) fc.gen={kind:p.kind||'circle',cx,cy,r,n:Math.max(3,Math.min(96,Math.round(p.n||32)))};   // 변 수를 나중에 바꿀 수 있게
+      ok=!!fc; label=(p.kind==='polygon'?(p.n||6)+'각형':'원')+' → 면'; break;
     }
     case 'sketchpoly': {
       if(!Array.isArray(p.pts)||p.pts.length<3) return false;
@@ -3499,7 +3503,20 @@ function ffApply(m){
       const f0=pts[0],l0=pts[pts.length-1];
       if(pts.length>3&&Math.hypot(f0.x-l0.x,f0.y-l0.y)<30) pts.pop();
       if(pts.length<3) return false;
-      ok=!!skAddPoly(pts,_ffBagFor(p.plane)); label=p.plane?'면 위 다각형 → 면':'다각형 → 면'; break;
+      const fp=skAddPoly(pts,_ffBagFor(p.plane));
+      if(fp&&p.gen&&fin(N(p.gen.cx),N(p.gen.cy),N(p.gen.r))) fp.gen={kind:p.gen.kind==='circle'?'circle':'polygon',cx:N(p.gen.cx),cy:N(p.gen.cy),r:N(p.gen.r),n:pts.length};
+      ok=!!fp; label=p.plane?'면 위 다각형 → 면':'다각형 → 면'; break;
+    }
+    case 'sketchregen': {                               // 원·다각형 면을 같은 중심·반지름으로 변 수만 바꿔 다시
+      const n=Math.max(3,Math.min(96,Math.round(N(p.n)||0))); if(!(n>=3)) return false;
+      let bag=null,f=null;
+      if(p.faceId){ const hf=_ffFindFace(p.faceId); if(hf){ bag=hf.bag; f=hf.face; } }
+      else { bag=_ffBagFor(p.plane||null); const cx=N(p.cx),cy=N(p.cy); f=(bag.sketchFaces||[]).find(q=>q.gen&&Math.abs(q.gen.cx-cx)<1&&Math.abs(q.gen.cy-cy)<1); }
+      if(!f||!f.gen) return no('변 수를 바꿀 수 있는 것은 원·다각형 면입니다');
+      const g=Object.assign({},f.gen);
+      skRemoveFace(f.id,bag);
+      const f2=skAddCircle(g.cx,g.cy,g.r,n,bag); if(!f2) return no('다시 만들지 못했습니다');
+      f2.gen=Object.assign(g,{n}); ok=true; label=(g.kind==='circle'?'원 분할':'다각형 변 수')+' '+n; break;
     }
     case 'sketchdel': {                                 // 모든 그래프(바닥+평면들)에서 찾는다
       ok=_ffAllBags().some(B=>skRemove(m.kind,m.id,B));
@@ -4111,6 +4128,7 @@ function ffRebase(){
   setStatus(true,'🧊 밑그림을 최신 평면으로 갈았습니다 — 자유 층은 그대로');
 }
 function ffNew(){
+  ST.lastShape=null;
   if(!ST.ffOn||!FF) return;
   FF.free={sketchPts:[],sketchEdges:[],sketchFaces:[],masses:[],planes:[],comps:[],
     furniture:[],fixtures:[],lights:[],electric:[],hvac:[]};
@@ -4234,6 +4252,61 @@ function vcbCoord(){ // 선 도구: "[x,y]" = 절대 좌표 · "<dx,dy>" = 상�
   const m=vcbRaw().match(/^([\[<])\s*(-?[\d.]+\s*(?:mm|cm|m)?)\s*[,;]\s*(-?[\d.]+\s*(?:mm|cm|m)?)\s*[\]>]?$/i);
   return m?{abs:m[1]==='[',x:parseLen(m[2]),y:parseLen(m[3])}:null;
 }
+
+// ===========================================================================
+// 다각형·원 변 수 "Ns" (2026-09-14 대표 지시 "5각형의 각을 변경하는 기능이 누락")
+//  스케치업처럼 찍기 전·그리는 중·그린 직후 언제 "5s" Enter 를 쳐도 먹는다.
+//  그린 뒤에는 면에 남긴 gen(중심·반지름·변 수)으로 같은 자리에 다시 만든다 (개체 정보 「변 수」도 같은 길).
+// ===========================================================================
+function vcbApplySides(){
+  const n=vcbSides(); if(!n) return false;
+  const op=ST.op, inp=vcb&&vcb.querySelector('.v-v');
+  const clear=()=>{ if(inp){ inp.value=''; delete inp.dataset.post; } };
+  if(op&&op.type==='circle'){                                        // 바닥 원·다각형 그리는 중
+    if(op.poly){ op.sides=n; ST.polySides=n; } else ST.circleSides=n;
+    clear(); if(ST.lastPtr) circleMove({clientX:ST.lastPtr.clientX,clientY:ST.lastPtr.clientY});
+    setStatus(statusLive,(op.poly?'다각형':'원')+' 변 수 '+n+' — 반지름을 클릭하거나 숫자 Enter (Ns 는 언제든)'); return true;
+  }
+  if(op&&op.type==='shape3'&&(op.shape==='polygon'||op.shape==='circle')){   // 면 위
+    if(op.shape==='polygon'){ op.sides=n; ST.polySides=n; } else ST.circleSides=n;
+    clear(); _shape3Ghost(op); vcbShow('면 위 반지름 ('+n+'s)',0,'mm');
+    setStatus(statusLive,(op.shape==='polygon'?'다각형':'원')+' 변 수 '+n); return true;
+  }
+  if(op&&op.type==='pp'&&op.autoBox&&ST.lastShape){                  // 방금 그린 다각형의 높이 단계 — 변 수를 바꾸고 높이 단계로 돌아온다
+    clear(); cancelOp(); ffRegenLastShape(n); return true;
+  }
+  if(!op){
+    if(ST.lastShape){ clear(); vcbHide(); ffRegenLastShape(n); return true; }      // 그린 직후
+    if(ST.tool==='polygon'||ST.tool==='circle'){                     // 찍기 전
+      if(ST.tool==='polygon') ST.polySides=n; else ST.circleSides=n;
+      clear(); vcbHide();
+      setStatus(statusLive,(ST.tool==='polygon'?'다각형 '+n+'각':'원 '+n+'분할')+' — 중심을 클릭하세요'); return true;
+    }
+  }
+  return false;
+}
+// 방금 그린 원·다각형을 같은 자리에 변 수만 바꿔 다시 (면이 이미 없어졌으면 조용히 실패)
+function ffRegenLastShape(n){
+  const L=ST.lastShape; if(!L||!L.gen) return false;
+  if(!canEdit()) return false;
+  { const bag=_ffBagFor(L.plane||null);                             // 그 면이 아직 있나 (새로 만들기·삭제 뒤면 없다)
+    const f=(bag.sketchFaces||[]).find(q=>q.gen&&Math.abs(q.gen.cx-L.gen.cx)<1&&Math.abs(q.gen.cy-L.gen.cy)<1);
+    if(!f){ ST.lastShape=null; return false; } }
+  const wasPlane=!!L.plane;
+  emitEdit({type:'edit',op:'sketchregen',floorId:'freeform',patch:{plane:L.plane||null,cx:L.gen.cx,cy:L.gen.cy,n}});
+  L.gen.n=n; if(L.gen.kind==='polygon') ST.polySides=n; else ST.circleSides=n;
+  setStatus(statusLive,(L.gen.kind==='circle'?'원 분할':'다각형 변 수')+' '+n+' — 같은 자리에 다시 만들었습니다'+(L.auto?' · 높이는 P 로':''));
+  if(L.auto&&FF_STANDALONE){ const bag=_ffBagFor(L.plane||null); ffAutoExtrude(bag); }   // 높이 단계 이어서
+  return true;
+}
+// 다시 만든 면을 다시 고른다 (id 가 바뀌므로 gen 으로 찾는다)
+function _ffReselectGen(gen,wasPlane){
+  if(!gen) return;
+  const find=()=>{ let g=null; (FF&&FF.group?FF.group.children:[]).forEach(x=>{ const o=x.userData.obj; if(g||!o||o.kind!=='sketchFace'||!o.meta||!o.meta.gen) return;
+      if(Math.abs(o.meta.gen.cx-gen.cx)<1&&Math.abs(o.meta.gen.cy-gen.cy)<1&&(!!o.meta.plane)===wasPlane) g=x; }); return g; };
+  const g=find(); if(g){ select(g); return; }
+  requestAnimationFrame(()=>{ const g2=find(); if(g2) select(g2); });
+}
 function vcbSides(){ // 원 도구: "6s" = 다각형 변 수
   const m=vcbRaw().match(/^(\d+)\s*s$/i); return m?Math.max(3,Math.min(64,parseInt(m[1],10))):null;
 }
@@ -4285,6 +4358,7 @@ function rayFromEvent(e){
   ray.setFromCamera(nd,camera);
 }
 function setTool(t){
+  if(ST.tool!==t) ST.lastShape=null;                                // 그린 직후 "Ns" 는 같은 도구에서만
   if(typeof buildGrips==='function') setTimeout(buildGrips,0);   // 2026-09-07 Z: 도구에 따라 그립 유무가 다르다
   cancelOp();
   clearGhost();
@@ -5376,10 +5450,12 @@ function commitCircle(exact){
   const c=op.c, fid=op.fid, z0=op.z0, n=sides||(op.poly?op.sides:(ST.circleSides||32));
   const poly=(N)=>Array.from({length:N},(_,i)=>{const t=i/N*Math.PI*2-Math.PI/2; return {x:Math.round(c.x+Math.cos(t)*r),y:Math.round(c.y+Math.sin(t)*r)};});
   spawnPendingFace(poly(n),z0);
-  emitEdit({type:'edit',op:'sketchcircle',floorId:fid,patch:{cx:c.x,cy:c.y,r,n}}); // 2026-09-04 점·선·면: 원 = 면 (Z 는 P 로)
-  setStatus(statusLive,'○ '+(sides?sides+'각형':'원')+' 면 r='+r+' — P(밀기끌기)로 Z 를 주면 매스');
+  const kind=op.poly?'polygon':'circle';
+  emitEdit({type:'edit',op:'sketchcircle',floorId:fid,patch:{cx:c.x,cy:c.y,r,n,kind}}); // 2026-09-04 점·선·면: 원 = 면 (Z 는 P 로)
+  setStatus(statusLive,'○ '+(sides?sides+'각형':'원')+' 면 r='+r+' — P(밀기끌기)로 Z 를 주면 매스 · Ns=변 수');
   cancelOp();
-  if(FF_STANDALONE&&ffAutoExtrude(FF.free)) return;
+  ST.lastShape={gen:{kind,cx:c.x,cy:c.y,r,n},plane:null,auto:false};          // 그린 직후 "Ns" 로 다시 만들기
+  if(FF_STANDALONE&&ffAutoExtrude(FF.free)){ ST.lastShape.auto=true; return; }
   setLast('반지름','mm',raw=>{ const v=parseLen(raw); if(v==null||v<100) return false; emitEdit({type:'edit',op:'sketchcircle',floorId:fid,patch:{cx:c.x,cy:c.y,r:Math.round(v),n}}); return true; });
 }
 // --- 호 (A · 스케치업 2-Point Arc) — 시작·끝·볼록 3클릭 → 벽 조각 사슬 (batch = Ctrl+Z 한 번) ---
@@ -6791,6 +6867,7 @@ function renderProps(obj,opts){
     html+=`<div class="p-note"><b style="color:#7FA8D4">파란 점(꼭짓점)을 끌면 그 점만 위아래로</b> — Shift=모서리 두 점 · Ctrl=천장고에 매달기(CH-300) · 숫자=정확한 높이 · 더블클릭=직전 높이 반복.<br>끌기=이동 · ↑=띄우기 · Q 회전 · P 윗면=높이 · Ctrl+끌기=복제 — 필요할 때 공간(바닥·천장·벽)이나 벽으로 바꿉니다.</div>`;
   }else if(obj.kind==='sketchFace'){
     html+=`<div class="p-row"><label>면적</label><span style="font-size:12px">${((m.area||0)/1e6).toFixed(2)} ㎡ · 꼭짓점 ${(m.poly||[]).length}</span></div>`;
+    if(m.gen) html+=`<div class="p-row"><label>변 수</label><input type="number" min="3" max="96" step="1" data-f="_sides" value="${m.gen.n}"> <span style="font-size:11px">${m.gen.kind==='circle'?'분할 (원)':'각형'} · r ${Math.round(m.gen.r)} mm</span></div>`;
     html+=`<div class="p-row"><label>Z 높이</label><input type="number" step="50" min="10" data-f="_z" value="${ST.lastPP>=10?ST.lastPP:(ST.defZ||2400)}"> <span style="font-size:11px">mm</span></div>`;
     html+=`<div class="p-row"><label>만들 것</label><select data-f="_as"><option value="solid">매스 (자유)</option><option value="space">공간 (바닥·천장·벽)</option><option value="wall">벽</option><option value="auto">자동 판별</option></select></div>`;
     html+=`<div class="p-btns"><button class="btn" data-a="ext">⬆ 객체 생성</button><button class="btn danger" data-a="del">🗑 삭제</button></div>`;
@@ -6836,6 +6913,15 @@ function renderProps(obj,opts){
   props.querySelectorAll('[data-f]').forEach(el=>{
     el.addEventListener('change',()=>{
       const f=el.dataset.f;
+      if(f==='_sides'){                                                  // 원·다각형 면의 변 수 — 같은 자리에 다시 만든다
+        const n=Math.max(3,Math.min(96,Math.round(Number(el.value)||0))); if(!(n>=3)) return; el.value=String(n);
+        const gen=obj.meta&&obj.meta.gen, wasPlane=!!(obj.meta&&obj.meta.plane);
+        if(!gen||!canEdit()) return;
+        emitEdit({type:'edit',op:'sketchregen',floorId:'freeform',patch:{faceId:obj.id,n}});
+        if(gen.kind==='polygon') ST.polySides=n; else ST.circleSides=n;
+        _ffReselectGen(Object.assign({},gen,{n}),wasPlane);
+        setStatus(statusLive,(gen.kind==='circle'?'원 분할':'다각형 변 수')+' '+n+' — 같은 중심·반지름으로 다시 만들었습니다'); return;
+      }
       if(f==='_z'||f==='_as') return;                                   // 스케치 면 Z·종류는 [객체 생성] 버튼에서
       if(f==='name'||f==='color'||f==='tag'||f==='shadow'){ sendEdit('set',obj,{[f]:el.value}); setStatus(statusLive,'수정 → 평면 반영'); return; } // 2026-09-04 매스 문자열 속성
       const v=(el.tagName==='SELECT'&&isNaN(Number(el.value)))?el.value:Number(el.value);
@@ -6885,7 +6971,7 @@ window.addEventListener('keydown',e=>{
   const tgt=e.target;
   if(tgt&&/INPUT|TEXTAREA|SELECT/.test(tgt.tagName)){
     if(tgt.closest&&tgt.closest('#vcb')){
-      if(e.key==='Enter'){ if(tgt.dataset.post) vcbPostEnter(); else commitActive(vcbTyped()); e.preventDefault(); }
+      if(e.key==='Enter'){ if(vcbApplySides()){ e.preventDefault(); return; } if(tgt.dataset.post) vcbPostEnter(); else commitActive(vcbTyped()); e.preventDefault(); }
       if(e.key==='Escape'){ if(tgt.dataset.post){ vcbPostOff(); tgt.blur(); } else cancelOp(); }
     }
     return;
@@ -6913,6 +6999,11 @@ window.addEventListener('keydown',e=>{
   }
   // 확정 직후 숫자 = 되돌려 그 값으로 다시 · x3 / /3 = 배열 복사 (스케치업)
   if(!ST.op&&ST.lastCommit&&!ctrl&&/^[0-9.\-x*\/]$/.test(e.key)){ if(vcbPostOn(e.key)){ e.preventDefault(); return; } }
+  if(!ST.op&&!ctrl&&FF_STANDALONE&&(ST.tool==='polygon'||ST.tool==='circle')&&/^[0-9]$/.test(e.key)){   // 찍기 전 "5s" — 변 수 미리
+    vcbShow(ST.tool==='polygon'?'변 수 (Ns) — 다각형':'분할 수 (Ns) — 원','','');
+    const i=vcb&&vcb.querySelector('.v-v'); if(i){ i.value=e.key; i.focus(); e.preventDefault(); } return;
+  }
+  if(e.key==='Enter'&&vcbApplySides()){ e.preventDefault(); return; }
   if(e.key==='Enter'&&ST.op){ commitActive(vcbTyped()); return; }
   if(k==='escape'){
     if(FF_STANDALONE&&ST.axisNext){ ST.axisNext=null; }
@@ -7447,7 +7538,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   sceneAdd,sceneGo,scenesLoad,renderOutliner,showCtx,hideCtx,saveFeedback,opOrbit,orbit,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
-  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,followClick,hitAt,hitsAt,_ffChainFromEdge,_ffChainFromEdges,_ffSweepFace,_ffEdgeGraph3,ffArrowAxis,ffAxis3Toggle,ffShapeAxis,_ffShapeFirst,_ffAxis3Target,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setSmooth,_ffSoften,ffSetHdr,ffHdrClear,ffHdrLight,ffHdrExposure,ffHdrRestore,pickSkyFile,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTrySplit,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,vcbApplySides,ffRegenLastShape,_ffReselectGen,followClick,hitAt,hitsAt,_ffChainFromEdge,_ffChainFromEdges,_ffSweepFace,_ffEdgeGraph3,ffArrowAxis,ffAxis3Toggle,ffShapeAxis,_ffShapeFirst,_ffAxis3Target,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setSmooth,_ffSoften,ffSetHdr,ffHdrClear,ffHdrLight,ffHdrExposure,ffHdrRestore,pickSkyFile,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,

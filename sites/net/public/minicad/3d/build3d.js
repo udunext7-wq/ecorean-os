@@ -128,7 +128,7 @@ function normalizeDoc(doc){
   // 2026-09-04 점·선·면 스케치 + 매스 — id 참조를 좌표로 풀어 둔다
   const spt={}; const sketchPts=(d.sketchPts||[]).filter(p=>p&&isFinite(p.x)&&isFinite(p.y)).map(p=>{const o={id:p.id,x:num(p.x,0),y:num(p.y,0)};spt[p.id]=o;return o;});
   const sketchEdges=(d.sketchEdges||[]).map(e=>{const a=spt[e.a],b=spt[e.b];return (a&&b)?{id:e.id,a:e.a,b:e.b,x1:a.x,y1:a.y,x2:b.x,y2:b.y}:null;}).filter(Boolean);
-  const sketchFaces=(d.sketchFaces||[]).map(f=>{const poly=(f.pts||[]).map(id=>spt[id]).filter(Boolean).map(p=>({x:p.x,y:p.y}));return poly.length>=3?{id:f.id,polygon:poly}:null;}).filter(Boolean);
+  const sketchFaces=(d.sketchFaces||[]).map(f=>{const poly=(f.pts||[]).map(id=>spt[id]).filter(Boolean).map(p=>({x:p.x,y:p.y}));return poly.length>=3?{id:f.id,polygon:poly,gen:f.gen||null}:null;}).filter(Boolean);   // gen = 원·다각형의 중심·반지름·변 수 (개체 정보에서 변 수 변경)
   // 2026-09-07: h_mm 은 숫자일 수도, 살아 있는 참조({r:'ch'})일 수도 있다 — 그대로 통과시킨다.
   //  solidVerts/solidFaces 가 있으면 자유 다면체. 없으면 옛 각기둥 그대로.
   const _mctx={ch:num(meta.ceilingHeight_mm,2400),fh:num(meta.floorHeight_mm,2800),fl:0};
@@ -161,7 +161,7 @@ function normalizeDoc(doc){
           return (a&&b)?{id:e.id,x1:a.x,y1:a.y,x2:b.x,y2:b.y}:null;}).filter(Boolean),
         sketchFaces:(pl.sketchFaces||[]).map(f=>{
           const poly=(f.pts||[]).map(id=>pm[id]).filter(Boolean).map(p=>({x:p.x,y:p.y}));
-          return poly.length>=3?{id:f.id,polygon:poly}:null;}).filter(Boolean)};
+          return poly.length>=3?{id:f.id,polygon:poly,gen:f.gen||null}:null;}).filter(Boolean)};
     }).filter(Boolean),
     ceilH:num(meta.ceilingHeight_mm,2400),
   };
@@ -176,7 +176,7 @@ function buildSketchFace(f){
   const c=polyCentroid(f.polygon);
   return {id:f.id,kind:'sketchFace',name:'면',x:0,y:0,rot:0,flip:false,
     prims:[{t:'poly',pts:f.polygon,holes:[],z:2,color:SK.face,opacity:0.30,side:'top'}],
-    meta:{area:polyAreaAbs(f.polygon),cx:c.x,cy:c.y,poly:f.polygon}};
+    meta:{area:polyAreaAbs(f.polygon),cx:c.x,cy:c.y,poly:f.polygon,gen:f.gen||null}};
 }
 function buildSketchEdge(e){
   const L=Math.hypot(e.x2-e.x1,e.y2-e.y1);
@@ -202,7 +202,7 @@ function buildPlaneSketch(pl,objects){
     objects.push({id:f.id,kind:'sketchFace',name:'면(벽)',x:0,y:0,rot:0,flip:false,
       prims:[{t:'face3',plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n},uv:f.polygon,verts,
         color:SK.face,opacity:0.30}],
-      meta:{area:polyAreaAbs(f.polygon),cx:c3.x,cy:c3.y,poly:f.polygon,
+      meta:{area:polyAreaAbs(f.polygon),cx:c3.x,cy:c3.y,poly:f.polygon,gen:f.gen||null,
         plane:{origin:pl.origin,ex:pl.ex,ey:pl.ey,n:pl.n}}});
   });
   pl.sketchEdges.forEach(e=>{
