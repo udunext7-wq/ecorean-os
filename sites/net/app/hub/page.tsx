@@ -25,6 +25,7 @@ const SECTIONS: HubSection[] = [
       { href: '/spec/', name: '시방서 체크리스트', desc: '인테리어 · 전기 · 기계설비 공종별 검수' },
       { href: '/work/#invoice', name: '계산서', desc: '직원 포털' },
       { href: '/biz/', name: '사업장부', desc: 'BOC BIZ' },
+      { href: '/work/notes/', name: 'EcoNote', desc: '직원 공용 노트 — 이미지 · YouTube · 이력' },
     ],
   },
   {

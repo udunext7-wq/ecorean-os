@@ -1,0 +1,17 @@
+{
+  "name": "econote-editor-bundle",
+  "private": true,
+  "description": "EcoNote 편집기 번들 — Tiptap 을 esbuild 로 묶어 sites/net/public/work/notes/econote-editor.js 로 낸다",
+  "scripts": { "build": "node build.mjs" },
+  "dependencies": {
+    "@tiptap/core": "^3",
+    "@tiptap/pm": "^3",
+    "@tiptap/starter-kit": "^3",
+    "@tiptap/extension-image": "^3",
+    "@tiptap/extension-youtube": "^3",
+    "@tiptap/extension-list": "^3",
+    "@tiptap/extension-table": "^3",
+    "@tiptap/extensions": "^3"
+  },
+  "devDependencies": { "esbuild": "^0.24" }
+}
