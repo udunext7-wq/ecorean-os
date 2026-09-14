@@ -1516,19 +1516,33 @@ function massCSG(kind,A,B,ctx){
 // ---------------------------------------------------------------------------
 function _massNumVerts(m,ctx){ return m.solidVerts.map(v=>({x:v.x,y:v.y,z:zNum(v.z,ctx)})); }
 // 로컬 점·법선으로 다면체의 원본 면(solidFaces 항목)을 찾는다
+// 면 평면에 투영해 짝홀 판정 — 열쇠구멍 고리도 맞게 (다리 변은 두 번 지나 상쇄)
+function _faceContains(verts,vs,n,p){
+  const ax=Math.abs(n.x),ay=Math.abs(n.y),az=Math.abs(n.z);
+  const P=v=>(az>=ax&&az>=ay)?{x:v.x,y:v.y}:(ax>=ay)?{x:v.y,y:v.z}:{x:v.z,y:v.x};
+  const q=P(p); let inside=false;
+  for(let i=0,j=vs.length-1;i<vs.length;j=i++){
+    const a=P(verts[vs[i]]),b=P(verts[vs[j]]);
+    if(((a.y>q.y)!==(b.y>q.y))&&(q.x<(b.x-a.x)*(q.y-a.y)/(b.y-a.y)+a.x)) inside=!inside;
+  }
+  return inside;
+}
 function massFindFace(m,lp,ln,ctx,tol){
   massToSolid(m,ctx);
   const verts=_massNumVerts(m,ctx);
-  let best=null,bd=(tol||25);
+  const T=(tol||25);
+  let best=null,bd=T,bestIn=null,bdIn=T;
   m.solidFaces.forEach((f,fi)=>{
     if(f.vs.length<3) return;
     const n=faceNormal(verts,f.vs);
     if(_vDot(n,ln)<0.8) return;
     const v0=verts[f.vs[0]];
     const d=Math.abs(_vDot(_vSub(lp,v0),n));
+    if(d>=T) return;
+    if(_faceContains(verts,f.vs,n,lp)&&d<bdIn){ bdIn=d; bestIn={fi,face:f,n,verts}; }   // 같은 평면의 조각이 여럿이면 점을 품은 것
     if(d<bd){ bd=d; best={fi,face:f,n,verts}; }
   });
-  return best;
+  return bestIn||best;
 }
 // 바닥을 0 으로 · 각기둥 짝이 살아 있으면 pts 를 밑면에 맞춘다 · 다시 각기둥이면 되돌린다
 function _massNormalize(m,ctx){
@@ -1582,9 +1596,10 @@ function _massExtrudeFaceInPlace(m,f,d,ctx){
   const cop=new Set(); m.solidFaces.forEach(g=>{ if(coplanar(g)) g.vs.forEach(i=>cop.add(i)); });
   const dup=new Map();                                  // 원본 인덱스 → 복제 인덱스
   const off=_vScale(n,d);
-  F.vs.forEach(i=>{ if(!cop.has(i)) return; const v=verts[i]; const ni=m.solidVerts.length; m.solidVerts.push({x:Math.round((v.x+off.x)*10)/10,y:Math.round((v.y+off.y)*10)/10,z:Math.round((v.z+off.z)*10)/10}); dup.set(i,ni); });
+  const uniq=[...new Set(F.vs)];                        // 열쇠구멍 고리는 같은 꼭짓점이 두 번 — 한 번만 옮긴다
+  uniq.forEach(i=>{ if(!cop.has(i)) return; const v=verts[i]; const ni=m.solidVerts.length; m.solidVerts.push({x:Math.round((v.x+off.x)*10)/10,y:Math.round((v.y+off.y)*10)/10,z:Math.round((v.z+off.z)*10)/10}); dup.set(i,ni); });
   // 옮길 꼭짓점 (공유 이웃이 전부 꺾인 면)
-  F.vs.forEach(i=>{ if(dup.has(i)) return; const v=m.solidVerts[i]; v.x=Math.round((v.x+off.x)*10)/10; v.y=Math.round((v.y+off.y)*10)/10; v.z=Math.round((zNum(v.z,ctx)+off.z)*10)/10; });
+  uniq.forEach(i=>{ if(dup.has(i)) return; const v=m.solidVerts[i]; v.x=Math.round((v.x+off.x)*10)/10; v.y=Math.round((v.y+off.y)*10)/10; v.z=Math.round((zNum(v.z,ctx)+off.z)*10)/10; });
   if(dup.size){
     const ring=F.vs.slice(); const L=ring.length; const newFaces=[];
     for(let k=0;k<L;k++){
@@ -1629,6 +1644,159 @@ function massSplitFace(m,lp,ln,a,b,ctx){
   m.solidFaces.splice(fi,1,{vs:r1,mat:F.mat||null},{vs:r2,mat:F.mat||null});
   m.open=m.open||false;
   return {faces:2};
+}
+// 면 고리 위의 자리 — 기존 꼭짓점(2.5mm)이면 그것, 모서리 위면 그 자리에 새 꼭짓점을 끼워 넣는다, 아니면 -1
+function _massPlaceOnRing(m,F,P,ctx){
+  const V=_massNumVerts(m,ctx); let vi=-1,bd=2.5;
+  F.vs.forEach(i=>{ const v=V[i]; const d=Math.hypot(v.x-P.x,v.y-P.y,v.z-P.z); if(d<bd){ bd=d; vi=i; } });
+  if(vi>=0) return vi;
+  const ring=F.vs;
+  for(let i=0;i<ring.length;i++){
+    const ia=ring[i], ib=ring[(i+1)%ring.length]; const A=V[ia],B=V[ib]; const AB=_vSub(B,A), L2=_vDot(AB,AB)||1;
+    const t=_vDot(_vSub(P,A),AB)/L2; if(t<=1e-4||t>=1-1e-4) continue;
+    const Q=_vAdd(A,_vScale(AB,t)); if(_vLen(_vSub(Q,P))>2.5) continue;
+    const ni=m.solidVerts.length; m.solidVerts.push({x:Math.round(Q.x*10)/10,y:Math.round(Q.y*10)/10,z:Math.round(Q.z*10)/10});
+    m.solidFaces.forEach(g=>{ for(let k=0;k<g.vs.length;k++){ const p=g.vs[k],q=g.vs[(k+1)%g.vs.length]; if((p===ia&&q===ib)||(p===ib&&q===ia)){ g.vs.splice(k+1,0,ni); return; } } });
+    return ni;
+  }
+  return -1;
+}
+// 점 P 가 고리 ring 의 변·꼭짓점 위(2.5mm)인가
+function _ringHas(V,ring,P,tol){
+  const T=tol||2.5;
+  for(let i=0;i<ring.length;i++){
+    const A=V[ring[i]],B=V[ring[(i+1)%ring.length]]; const AB=_vSub(B,A), L2=_vDot(AB,AB)||1;
+    let t=_vDot(_vSub(P,A),AB)/L2; t=Math.max(0,Math.min(1,t));
+    const Q=_vAdd(A,_vScale(AB,t)); if(_vLen(_vSub(Q,P))<=T) return true;
+  }
+  return false;
+}
+// 점이 그 평면의 어느 면 고리(모서리·꼭짓점) 위에 있나 — 분할 사슬의 시작·끝 판정
+function massOnFaceRing(m,ln,P,ctx){
+  massToSolid(m,ctx);
+  const V=_massNumVerts(m,ctx);
+  return m.solidFaces.some(f=>{
+    if(f.vs.length<3) return false;
+    const n=faceNormal(V,f.vs); if(_vDot(n,ln)<0.8) return false;
+    if(Math.abs(_vDot(_vSub(P,V[f.vs[0]]),n))>=25) return false;
+    return _ringHas(V,f.vs,P);
+  });
+}
+// 점들을 가장 많이 품은 같은 평면의 면 (고리 위 점은 어느 쪽이든 셈)
+function massFindFaceByPts(m,ln,pts,ctx){
+  massToSolid(m,ctx);
+  const V=_massNumVerts(m,ctx); let best=null,bc=-1,bd=25;
+  m.solidFaces.forEach((f,fi)=>{
+    if(f.vs.length<3) return;
+    const n=faceNormal(V,f.vs); if(_vDot(n,ln)<0.8) return;
+    const d=Math.abs(_vDot(_vSub(pts[0],V[f.vs[0]]),n)); if(d>=25) return;
+    let c=0; pts.forEach(P=>{ if(_ringHas(V,f.vs,P)||_faceContains(V,f.vs,n,P)) c++; });
+    if(c>bc||(c===bc&&d<bd)){ bc=c; bd=d; best={fi,face:f,n,verts:V,count:c}; }
+  });
+  return best;
+}
+// 면 위에 그린 점들(열린 사슬 또는 닫힌 고리)로 면을 나눈다 — 스케치업 "면 위에 그리면 나뉜다"
+//  · 닫힌 고리가 전부 면 안쪽 → 안쪽 면 + 열쇠구멍 바깥 면
+//  · 고리(모서리)에 닿은 점과 점 사이의 안쪽 구간 → 그 구간으로 두 조각 (직선·호·프리핸드 모두)
+//  · 모서리에 닿지 않는 자투리(안쪽에서 시작·끝나는 구간)는 stray 로 돌려준다 (면 위 스케치 선으로 남긴다)
+//  · 점이 하나라도 면 밖이면 null
+//  반환 {splits, inset, stray:[[점…]…]} — stray 의 점은 넘겨받은 객체 그대로
+function massDivide(m,ln,pts,closed,ctx){
+  if(!Array.isArray(pts)||pts.length<2) return null;
+  const f=massFindFaceByPts(m,ln,pts,ctx); if(!f) return null;
+  const V=f.verts, ring=f.face.vs, n=f.n;
+  const st=pts.map(P=>_ringHas(V,ring,P)?'ring':(_faceContains(V,ring,n,P)?'in':'out'));
+  if(st.some(x=>x==='out')) return null;
+  const res={splits:0,inset:0,stray:[]};
+  const onRing=P=>massOnFaceRing(m,ln,P,ctx);                        // 나눌수록 고리가 바뀌므로 그때그때 본다
+  if(closed){
+    if(pts.length<3) return null;
+    if(!st.some(x=>x==='ring')){ const r=_massInsetFaceF(m,f.face,pts,ctx); if(!r) return null; res.inset=1; return res; }
+    const k0=st.indexOf('ring'), L=pts.length, rot=[], rst=[];       // 모서리에 닿는 고리 → 그 점부터 돌린 열린 사슬로
+    for(let i=0;i<L;i++){ rot.push(pts[(k0+i)%L]); rst.push(st[(k0+i)%L]); }
+    rot.push(rot[0]); rst.push('ring');
+    return _massDivideRuns(m,ln,rot,rst,onRing,res,ctx);
+  }
+  return _massDivideRuns(m,ln,pts,st,onRing,res,ctx);
+}
+function _massDivideRuns(m,ln,pts,st,onRing,res,ctx){
+  let run=[pts[0]], fromRing=(st[0]==='ring');
+  const mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2,z:(a.z+b.z)/2});
+  for(let i=1;i<pts.length;i++){
+    run.push(pts[i]);
+    if(st[i]!=='ring') continue;
+    if(fromRing){
+      if(run.length===2&&onRing(mid(run[0],run[1]))){ /* 모서리를 따라가는 구간 — 이미 변이다 */ }
+      else{ const probe=run.length>=3?run[1]:mid(run[0],run[1]);
+        const r=massSplitFaceChain(m,probe,ln,run,ctx); if(r) res.splits++; else res.stray.push(run.slice()); }
+    } else res.stray.push(run.slice());                             // 안쪽에서 출발해 모서리에 닿음 — 자투리
+    run=[pts[i]]; fromRing=true;
+  }
+  if(run.length>=2) res.stray.push(run);                             // 끝이 모서리가 아닌 자투리
+  return res;
+}
+// 폴리라인(양 끝이 면 고리 위, 안쪽 점들은 면 위)으로 면을 두 조각으로 — massSplitFace 의 일반형 (호·프리핸드·사슬)
+function massSplitFaceChain(m,lp,ln,chain,ctx){
+  if(!Array.isArray(chain)||chain.length<2) return null;
+  if(chain.length===2) return massSplitFace(m,lp,ln,chain[0],chain[1],ctx);
+  const f=massFindFace(m,lp,ln,ctx); if(!f) return null;
+  const F=f.face;
+  const va=_massPlaceOnRing(m,F,chain[0],ctx); if(va<0) return null;
+  const vb=_massPlaceOnRing(m,F,chain[chain.length-1],ctx); if(vb<0||va===vb) return null;
+  const mid=[];
+  for(let i=1;i<chain.length-1;i++){ const P=chain[i]; m.solidVerts.push({x:Math.round(P.x*10)/10,y:Math.round(P.y*10)/10,z:Math.round(P.z*10)/10}); mid.push(m.solidVerts.length-1); }
+  const ring=F.vs; const ia=ring.indexOf(va), ib=ring.indexOf(vb); if(ia<0||ib<0) return null;
+  const r1=[],r2=[];
+  for(let k=ia;;k=(k+1)%ring.length){ r1.push(ring[k]); if(k===ib) break; }
+  for(let k=ib;;k=(k+1)%ring.length){ r2.push(ring[k]); if(k===ia) break; }
+  const fi=m.solidFaces.indexOf(F);
+  m.solidFaces.splice(fi,1,{vs:r1.concat(mid.slice().reverse()),mat:F.mat||null},{vs:r2.concat(mid),mat:F.mat||null});
+  m.open=m.open||false;
+  return {faces:2};
+}
+// 면 안쪽의 닫힌 고리 → 안쪽 면 + 바깥 면. 바깥 면은 구멍을 표현할 수 없으므로 고리와 다리 하나로 이어진
+//  열쇠구멍 한 고리로 만든다(3D 문자 구멍과 같은 수법). 다리 변은 한 면 안에서 두 번(왕복) 나오므로 그릴 때 알아보고 뺀다.
+function massInsetFace(m,lp,ln,loop,ctx){
+  if(!Array.isArray(loop)||loop.length<3) return null;
+  const f=massFindFace(m,lp,ln,ctx); if(!f) return null;
+  return _massInsetFaceF(m,f.face,loop,ctx);
+}
+function _massInsetFaceF(m,F,loop,ctx){
+  if(!F||!Array.isArray(loop)||loop.length<3) return null;
+  const V0=_massNumVerts(m,ctx);
+  const L=loop.map(P=>{ let vi=-1,bd=2.5; F.vs.forEach(i=>{ const v=V0[i]; const d=Math.hypot(v.x-P.x,v.y-P.y,v.z-P.z); if(d<bd){ bd=d; vi=i; } });
+    if(vi>=0) return vi; m.solidVerts.push({x:Math.round(P.x*10)/10,y:Math.round(P.y*10)/10,z:Math.round(P.z*10)/10}); return m.solidVerts.length-1; });
+  if(new Set(L).size<3) return null;
+  const V=_massNumVerts(m,ctx);
+  const nF=faceNormal(V,F.vs), nL=faceNormal(V,L);
+  const inner=_vDot(nF,nL)<0?L.slice().reverse():L.slice();      // 안쪽 면은 바깥 면과 같은 방향
+  const ring=F.vs;
+  let bj=0,bk=0,bd=Infinity;                                       // 다리: 가장 가까운 바깥·안쪽 꼭짓점 쌍
+  ring.forEach((vi,j)=>inner.forEach((li,k)=>{ const d=_vLen(_vSub(V[vi],V[li])); if(d<bd){ bd=d; bj=j; bk=k; } }));
+  const key=[];
+  for(let k=0;k<ring.length;k++) key.push(ring[(bj+k)%ring.length]); key.push(ring[bj]);          // 바깥 한 바퀴, 다리 점으로 돌아옴
+  for(let k=0;k<inner.length;k++) key.push(inner[(bk-k+inner.length)%inner.length]); key.push(inner[bk]);   // 구멍은 반대로 한 바퀴
+  const fi=m.solidFaces.indexOf(F);
+  m.solidFaces.splice(fi,1,{vs:key,mat:F.mat||null},{vs:inner.slice(),mat:F.mat||null});
+  m.open=m.open||false;
+  return {faces:2,inner:inner.slice()};
+}
+// 그릴 모서리 (스케치업의 보이는 변) — 곡면의 부드러운 변(두 면 사이 0.5°~25°)은 숨기고,
+//  같은 평면의 분할선(≈0°)·꺾임(≥25°)·바깥 변은 그린다. 열쇠구멍의 다리 변(한 면 안에서 왕복)은 뺀다.
+function massDrawEdges(m,ctx){
+  const S=massSolid(m,ctx); const map=new Map();
+  S.faces.forEach(f=>{
+    const n=f.n||faceNormal(S.verts,f.vs); const cnt=new Map();
+    for(let i=0;i<f.vs.length;i++){ const a=f.vs[i],b=f.vs[(i+1)%f.vs.length]; if(a===b) continue; const k=Math.min(a,b)+'_'+Math.max(a,b); cnt.set(k,(cnt.get(k)||0)+1); }
+    cnt.forEach((c,k)=>{ let e=map.get(k); if(!e){ e={k,ns:[],bridge:false}; map.set(k,e); } if(c>1) e.bridge=true; else e.ns.push(n); });
+  });
+  const SOFT=Math.cos(25*Math.PI/180), FLAT=Math.cos(0.5*Math.PI/180); const out=[];
+  map.forEach(e=>{
+    if(e.bridge) return;
+    if(e.ns.length===2){ const d=Math.abs(_vDot(e.ns[0],e.ns[1])); if(d>SOFT&&d<FLAT) return; }
+    const [a,b]=e.k.split('_').map(Number); out.push({a:S.verts[a],b:S.verts[b]});
+  });
+  return out;
 }
 // Ctrl+밀기끌기 — 원래 면은 두고 새 매스를 뽑는다
 function massExtrudeFaceNew(m,lp,ln,d,ctx,free){
@@ -1721,9 +1889,12 @@ function _massVIdx(m,pt,ctx){ const verts=_massNumVerts(m,ctx); let bi=-1,bd=1.5
 // 클릭한 면의 고리(로컬)·법선·면적 — 원본은 건드리지 않는다
 function massFaceRing(m,lp,ln,ctx){
   const S=massSolid(m,ctx);
-  let best=null,bd=25;
-  S.faces.forEach((f,fi)=>{ const n=f.n||faceNormal(S.verts,f.vs); if(_vDot(n,ln)<0.8) return; const d=Math.abs(_vDot(_vSub(lp,S.verts[f.vs[0]]),n)); if(d<bd){ bd=d; best={fi,ring:f.vs.map(i=>S.verts[i]),n,role:f.role,area:faceArea3(S.verts,f.vs)/1e6,mat:f.mat||null}; } });
-  return best;
+  let best=null,bd=25,bestIn=null,bdIn=25;
+  S.faces.forEach((f,fi)=>{ const n=f.n||faceNormal(S.verts,f.vs); if(_vDot(n,ln)<0.8) return; const d=Math.abs(_vDot(_vSub(lp,S.verts[f.vs[0]]),n)); if(d>=25) return;
+    const it={fi,ring:f.vs.map(i=>S.verts[i]),n,role:f.role,area:faceArea3(S.verts,f.vs)/1e6,mat:f.mat||null};
+    if(d<bdIn&&_faceContains(S.verts,f.vs,n,lp)){ bdIn=d; bestIn=it; }              // 같은 평면의 조각이 여럿이면 점을 품은 것
+    if(d<bd){ bd=d; best=it; } });
+  return bestIn||best;
 }
 // 모든 모서리 (로컬, 중복 제거)
 function massEdges(m,ctx){
@@ -1781,6 +1952,6 @@ if(typeof module!=='undefined'&&module.exports){
     sweepProfile,sweepProfile3,massFromSweep,moldingProfile,
     massCSG,earTriangles,csgMergeFaces,massToCsgPolys,massFromCsgFaces,csgUnion,csgSubtract,csgIntersect,
     massFindFace,massPushFace,massExtrudeFaceNew,massVertXY,massRotate3,massFlip,massScaleAbout,massLocalBox,massFaceInfo,
-    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,massSplitFace,
+    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,massSplitFace,massSplitFaceChain,massInsetFace,massOnFaceRing,massDrawEdges,massDivide,massFindFaceByPts,_faceContains,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }

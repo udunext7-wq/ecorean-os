@@ -61,11 +61,14 @@ const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.log((c?'  ✅ ':'  ❌ ')+m
     // 면 위 다각형 · 회전 사각형 (클릭 흐름)
     await J(`MC3DVIEW.setTool('polygon');__cl(1500,-600,350);__mv(1500,-600,450);__vcb('100');MC3DVIEW.commitActive(100);'ok'`); await sleep(200);
     await J(`MC3DVIEW.setTool('rotrect');__cl(1500,500,150);__cl(1500,800,150);__mv(1500,800,300);__cl(1500,800,300);'ok'`); await sleep(200);
-    m=await J(`__F().planes[0].sketchFaces.length`);
-    ck(m===3,'면 위 다각형·회전 사각형 → 면 3');
+    // 24차: 면 안에 다 들어오는 도형은 매스 면을 나눈다(면 +1), 면 밖으로 나가면 종전처럼 스케치 면 — 합이 3
+    m=await J(`({sf:__F().planes[0].sketchFaces.length,mf:massSolid(__M(),{ch:2400,fh:2800,fl:0}).faces.length-6})`);
+    ck(m.sf+m.mf===3&&m.mf>=1,'면 위 다각형·회전 사각형 → 면 3 (매스 분할 '+m.mf+' + 스케치 면 '+m.sf+')');
     // ---- 5. 면 위 프리핸드 ----
     await J(`MC3DVIEW.setTool('freehand');var P=[[1500,-900,100],[1500,-700,120],[1500,-650,280],[1500,-850,300],[1500,-900,100]];var a=__pt(P[0][0],P[0][1],P[0][2]);__ev('pointermove',a.x,a.y);__ev('pointerdown',a.x,a.y);P.forEach(q=>{var s=__pt(q[0],q[1],q[2]);__ev('pointermove',s.x,s.y);});__ev('pointerup',a.x,a.y);'ok'`); await sleep(250);
-    ck((await J(`__F().planes[0].sketchFaces.length`))===4,'면 위 프리핸드 닫힘 → 면 4');
+    m=await J(`({sf:__F().planes[0].sketchFaces.length,mf:massSolid(__M(),{ch:2400,fh:2800,fl:0}).faces.length-6})`);
+    ck(m.sf+m.mf===4,'면 위 프리핸드 닫힘 → 면 4 (매스 분할 '+m.mf+' + 스케치 면 '+m.sf+')');
+    await J(`__key('Escape');'ok'`); await sleep(100);
     // ---- 6. 면 축 회전 (rotate3) ----
     await J(`__box();__side();'ok'`); await sleep(200);
     await J(`MC3DVIEW.setTool('rotate');var p=__pt(1000,0,500);__ev('pointermove',p.x,p.y);__ev('pointerdown',p.x,p.y);__ev('pointerup',p.x,p.y);'ok'`); await sleep(80);

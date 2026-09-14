@@ -24,10 +24,17 @@ const fails=[]; let n=0; const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.lo
     await J(`__mv(1000,1500,4000);'ok'`); await sleep(200);
     m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,z:s&&s.W&&Math.round(s.W.y*1000),tip:__tip().txt}})()`);
     ck((m.kind==='midpoint'||m.kind==='endpoint')&&m.z===4000,'공중 윗면 모서리 중간점도 그 자리에서 잡힌다 '+JSON.stringify(m));
-    // 세로 모서리 중간 높이도 잡힌다
-    await J(`__mv(0,0,2000);'ok'`); await sleep(200);
+    // 세로 모서리 (카메라 쪽의 보이는 앞 모서리) — 3D 중간점은 원근에 맞게 정확히 z=2000 「중간점」, 그 밖의 높이는 「선 위」 그 자리 (24차: 화면 보간 → 레이 최근접점)
+    await J(`__mv(2000,1500,2000);'ok'`); await sleep(200);
     m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,z:s&&s.W&&Math.round(s.W.y*1000),tip:__tip().txt}})()`);
-    ck(m.kind==='edge'&&m.z>800&&m.z<3200&&m.tip==='선 위','세로 모서리의 중간 높이도 「선 위」로 그 자리에서 잡힌다 '+JSON.stringify(m));
+    ck(m.kind==='midpoint'&&m.z===2000&&m.tip==='중간점','세로 모서리의 3D 중간점(z=2000)이 원근에 맞게 「중간점」으로 잡힌다 '+JSON.stringify(m));
+    await J(`__mv(2000,1500,3000);'ok'`); await sleep(200);
+    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,z:s&&s.W&&Math.round(s.W.y*1000),tip:__tip().txt}})()`);
+    ck(m.kind==='edge'&&Math.abs(m.z-3000)<=60&&m.tip==='선 위','세로 모서리의 z=3000 높이도 「선 위」로 그 자리에서(±60mm) 잡힌다 '+JSON.stringify(m));
+    // 24차: 상자 뒤에 숨은 모서리는 잡지 않는다 (스케치업: X-ray 가 아니면 숨은 형상은 추론하지 않는다)
+    await J(`__mv(0,0,2000);'ok'`); await sleep(200);
+    m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,z:s&&s.W&&Math.round(s.W.y*1000)}})()`);
+    ck(!(m.kind==='edge'&&m.z>800&&m.z<3200),'상자 뒤에 숨은 세로 모서리(0,0)는 면을 뚫고 잡히지 않는다 '+JSON.stringify(m));
     // 작업 평면을 잡으면 투영 + 점선 안내 (자유 3D 선이 꺼진다)
     await J(`__key('Escape');MC3DVIEW.ffSetWP('xy',null,1,true);MC3DVIEW.setTool('line');__mv(2000,1500,4000);'ok'`); await sleep(250);
     m=await J(`(()=>{var s=MC3DVIEW.ST.lastSnap;return {kind:s&&s.kind,pz:s&&s.proj&&Math.round(s.proj.z),tip:__tip().txt,line:__proj()}})()`);

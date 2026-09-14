@@ -44,27 +44,28 @@ const fails=[]; let n=0; const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.lo
     f=await J(`__faces()`);
     ck(f.length===1&&f[0].n===16&&f[0].gen.kind==='circle','원 도구 "16s" → 16분할 원 '+JSON.stringify(f));
     await J(`__keyWin('Escape');'ok'`); await sleep(150);
-    // ── ⑥ 면 위(벽면) 다각형도 같은 흐름 — 상자 옆면에 5각형, 그린 뒤 "8s"
-    await J(`MC3DVIEW.ffNew();MC3DVIEW.emitEdit({type:'edit',op:'massfrompoly',floorId:'freeform',patch:{pts:[{x:0,y:0},{x:3000,y:0},{x:3000,y:2000},{x:0,y:2000}],z:2500,name:'W'}});MC3DVIEW.setView('front');MC3DVIEW.fitView(true);MC3DVIEW.setTool('polygon');MC3DVIEW.drawFrame();'ok'`); await sleep(400);
+    // ── ⑥ 면 위(벽면) 다각형 — 24차: 매스 면 위에 그리면 면이 나뉜다 (안쪽 5각 면 · 스케치 면은 안 생긴다)
+    await J(`MC3DVIEW.ffNew();MC3DVIEW.emitEdit({type:'edit',op:'massfrompoly',floorId:'freeform',patch:{pts:[{x:0,y:0},{x:3000,y:0},{x:3000,y:2000},{x:0,y:2000}],z:2500,name:'W'}});MC3DVIEW.setView('front');MC3DVIEW.fitView(true);MC3DVIEW.setTool('polygon');MC3DVIEW.drawFrame();
+      window.__mf=()=>{var S=massSolid(__F().masses[0],{ch:2400,fh:2800,fl:0});return {n:S.faces.length,sides:S.faces.map(f=>f.vs.length).sort((a,b)=>a-b)};};'ok'`); await sleep(400);
     await J(`__type('5s');'ok'`); await sleep(100);
     await J(`__cl(1500,2000,1200);__mv(2100,2000,1200);__cl(2100,2000,1200);'ok'`); await sleep(500);
-    f=await J(`__faces()`);
-    ck(f.length===1&&f[0].pl&&f[0].n===5&&f[0].gen&&f[0].gen.n===5,'벽면 위 5각형 + gen '+JSON.stringify(f));
+    f=await J(`__faces()`); m=await J(`__mf()`);
+    ck(f.length===0&&m.n===7&&m.sides.includes(5),'벽면 위 5각형 → 벽면이 나뉜다: 안쪽 5각 면 (스케치 면 0) '+JSON.stringify(m));
+    m=await J(`({op:MC3DVIEW.ST.op&&MC3DVIEW.ST.op.type,mode:MC3DVIEW.ST.op&&MC3DVIEW.ST.op.mode})`);
+    ck(m.op==='pp'&&m.mode==='pushface','나뉜 안쪽 면은 바로 밀기끌기 단계 '+JSON.stringify(m));
     await J(`__keyWin('Escape');'ok'`); await sleep(200);
     await J(`__type('8s');'ok'`); await sleep(500);
-    f=await J(`__faces()`);
-    ck(f.length===1&&f[0].pl&&f[0].n===8,'벽면 위 다각형도 그린 직후 "8s" → 8각형 '+JSON.stringify(f));
-    // ── ⑦ 벽면 다각형 개체 정보에서 변 수 바꾸기
-    await J(`MC3DVIEW.setTool('select');__cl(1500,2000,1200);'ok'`); await sleep(300);
-    m=await J(`(()=>{var i=document.querySelector('#props [data-f="_sides"]');return {has:!!i,val:i&&i.value}})()`);
-    ck(m.has&&m.val==='8','벽면 다각형도 개체 정보에 변 수 (8) '+JSON.stringify(m));
-    await J(`(()=>{var i=document.querySelector('#props [data-f="_sides"]');i.value='6';i.dispatchEvent(new Event('change',{bubbles:true}));return 1})()`); await sleep(500);
-    f=await J(`__faces()`);
-    ck(f.length===1&&f[0].pl&&f[0].n===6,'벽면 다각형 6각으로 재생성 '+JSON.stringify(f));
-    // ── ⑧ 범위 밖·잘못된 값은 거부 (2s → 최소 3)
-    await J(`(()=>{var i=document.querySelector('#props [data-f="_sides"]');i.value='2';i.dispatchEvent(new Event('change',{bubbles:true}));return 1})()`); await sleep(400);
-    f=await J(`__faces()`);
-    ck(f.length===1&&f[0].n>=3,'2 는 최소 3 으로 막힌다 '+JSON.stringify(f));
+    m=await J(`__mf()`);
+    ck(m.n===7&&m.sides.includes(8)&&!m.sides.includes(5),'벽면 위 다각형도 그린 직후 "8s" → 되돌리고 8각으로 다시 나눔 '+JSON.stringify(m));
+    // ── ⑦ 범위 밖은 최소 3 으로 (2s → 3각)
+    await J(`__keyWin('Escape');'ok'`); await sleep(150);
+    await J(`__type('2s');'ok'`); await sleep(500);
+    m=await J(`__mf()`);
+    ck(m.n===7&&m.sides.includes(3)&&!m.sides.includes(8),'2s 는 최소 3 각으로 '+JSON.stringify(m));
+    // ── ⑧ 나뉜 안쪽 면은 선택 도구로 하나의 면으로 잡힌다
+    await J(`__keyWin('Escape');MC3DVIEW.setTool('select');__cl(1500,2000,1200);'ok'`); await sleep(300);
+    m=await J(`(()=>{var p=MC3DVIEW.ST.parts[0];return {kind:p&&p.kind,ring:p&&p.ring&&p.ring.length}})()`);
+    ck(m.kind==='face'&&m.ring===3,'안쪽 면 클릭 → 그 면(3각)이 잡힌다 '+JSON.stringify(m));
     ck(b.errors.length===0,'콘솔 오류 0'+(b.errors.length?' — '+JSON.stringify(b.errors.slice(0,3)):''));
   }catch(e){ console.error('FAIL',e.message); fails.push('예외: '+e.message); } finally{ b.close(); }
   console.log(fails.length?('❌ '+fails.length+'/'+n+' 실패:\n - '+fails.join('\n - ')):('✅ 다각형 변 수 E2E '+n+'건 통과')); process.exit(fails.length?1:0); })();
