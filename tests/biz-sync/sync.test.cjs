@@ -344,6 +344,54 @@ async function test(name, fn) {
     ok(srv.db.biz_tx.find(r => r.memo === '결제 전').is_credit === false, '서버도 결제완료');
   });
 
+  await test('23. 새 기기 기본 계좌가 서버 계좌 설정을 덮거나, 이름 바꾼 계좌를 되살리지 않는다', async () => {
+    const srv = makeServer();
+    const A = openPage(srv, makeStorage()); await A.boot();
+    A.state.accounts = [{ name: '사업통장', ico: '🏦', init: 5000000, bank: '국민' }, { name: '현금', ico: '💵', init: 0 }, { name: '법인카드', ico: '💳', init: 0, kind: '카드' }];
+    A.save(); await A.BIZDB.pushNow();
+    const ls = makeStorage();
+    ls.setItem(KEY, JSON.stringify({ tx: [], accounts: [{ name: '사업통장', ico: '🏦', init: 0 }, { name: '현금', ico: '💵', init: 0 }, { name: '사업카드', ico: '💳', init: 0 }], recurring: [], goals: [], events: [], sites: [], contracts: {}, budgets: { total: 0, cats: {} } }));
+    const B = openPage(srv, ls); await B.boot();
+    const acc = srv.db.biz_accounts.find(r => r.name === '사업통장');
+    ok(acc.init_balance === 5000000 && acc.bank_name === '국민', '서버 잔액·은행 유지 (실제 ' + acc.init_balance + '/' + acc.bank_name + ')');
+    ok(!srv.db.biz_accounts.some(r => r.name === '사업카드'), '기본 사업카드 재생성 안 함');
+    ok(B.state.accounts.map(a => a.name).join(',') === '사업통장,현금,법인카드', 'B 화면 = 서버 계좌 (실제 ' + B.state.accounts.map(a => a.name).join(',') + ')');
+  });
+
+  await test('24. 현장 올리기는 내가 바꾼 것만 — 못 받은 포털 변경(계약금액·보관·삭제)을 되돌리지 않는다', async () => {
+    const srv = makeServer(), ls = makeStorage();
+    const A = openPage(srv, ls); await A.boot();
+    const ss = srv.db.work_sites.find(s => s.name === '쌍용동1407'), one = srv.db.work_sites.find(s => s.name === '1번필지');
+    // 포털에서: 계약 1.2억, 1번필지 보관
+    ss.contract_amount = 120000000; one.status = '보관';
+    A.state.sites.push('새현장B'); A.save(); await A.BIZDB.pushNow();
+    ok(srv.db.work_sites.find(s => s.name === '쌍용동1407').contract_amount === 120000000, '계약금액 유지');
+    ok(srv.db.work_sites.find(s => s.name === '1번필지').status === '보관', '보관 유지');
+    ok(srv.db.work_sites.some(s => s.name === '새현장B'), '내 현장은 올라감');
+    // 보관 현장을 내가 다시 꺼내면 계약금액은 건드리지 않음
+    one.contract_amount = 500000000;
+    await A.BIZDB.pull();
+    A.state.sites.push('1번필지'); A.save(); await A.BIZDB.pushNow();
+    const one2 = srv.db.work_sites.find(s => s.name === '1번필지');
+    ok(one2.status === '진행중' && one2.contract_amount === 500000000, '다시 꺼내도 계약금액 5억 유지 (실제 ' + one2.status + '/' + one2.contract_amount + ')');
+  });
+
+  await test('25. 다른 장부의 백업은 되돌리기를 거부하고, 서버에서도 장부가 바뀌지 않는다', async () => {
+    const srv = makeServer(), ls = makeStorage();
+    const p = openPage(srv, ls); await p.boot();
+    p.addTx({ memo: 'HQ 거래', amount: 1 }); await p.BIZDB.pushNow();
+    const backup = Object.assign(JSON.parse(JSON.stringify(p.state)), { _tenant: 'HQ' });
+    const lsC = makeStorage(); lsC.setItem('bocbiz_tenant', 'CORP');
+    const c = openPage(srv, lsC); await c.boot();
+    let threw = false; try { c.BIZDB.planRestore(backup); } catch (e) { threw = /다른 장부/.test(e.message); }
+    ok(threw, '표시가 있는 백업은 거부');
+    const old = JSON.parse(JSON.stringify(backup)); delete old._tenant;   // 표시 없는 옛 백업
+    const plan = c.BIZDB.planRestore(old);
+    lsC.setItem(KEY + ':CORP', JSON.stringify(plan.data)); lsC.setItem(KEY, JSON.stringify(plan.data));
+    const c2 = openPage(srv, lsC); await c2.boot();
+    ok(srv.db.biz_tx.find(r => r.memo === 'HQ 거래').tenant_id === 'HQ', '옛 백업이어도 행은 HQ 에 남음');
+  });
+
   console.log(`\n합계: 통과 ${pass} · 실패 ${fail}`);
   process.exit(fail ? 1 : 0);
 })();

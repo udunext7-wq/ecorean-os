@@ -86,7 +86,10 @@ function makeServer() {
         const key = table === 'biz_budget' ? 'tenant_id' : 'id';
         const hit = row[key] != null && rows.find(r => r[key] === row[key]);
         if (hit && merge) {
+          /* 서버 트리거 biz_keep_tenant 와 같은 규칙: 행의 장부(tenant_id)는 바뀌지 않는다 */
+          const keepTenant = hit.tenant_id;
           Object.assign(hit, row, { updated_at: now() });
+          if (keepTenant) hit.tenant_id = keepTenant;
         } else if (hit) {
           throw new Error('409 duplicate');
         } else {

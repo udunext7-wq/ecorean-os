@@ -203,7 +203,8 @@
           id: a.uid, tenant_id: TENANT, name: a.name, icon: a.ico || '🏦',
           init_balance: n(a.init), sort_order: i,
           bank_name: s(a.bank), account_no: s(a.no), holder: s(a.holder),
-          kind: a.kind || '통장', last_import_on: s(a.lastImp)
+          /* 종류를 안 고른 계좌를 '통장'으로 올리면 사업카드도 통장이 되어 카드 거래 증빙이 세금계산서로 잡혔다(HQ 09-11~) */
+          kind: a.kind || (/카드/.test(a.name || '') ? '카드' : /현금/.test(a.name || '') ? '현금' : '통장'), last_import_on: s(a.lastImp)
         };
       },
       toObj: function (r) {
@@ -336,6 +337,13 @@
     if (nm === 'accounts') return o.name ? 'n:' + o.name : null;
     return (o.id !== undefined && o.id !== null) ? 'i:' + String(o.id) : null;
   }
+  /* 기본 계좌 3개 = 표시(_seed)가 있거나, 옛 캐시에서 손대지 않은 모양(이름·잔액 0·은행정보 없음) */
+  var SEED_NAMES = ['사업통장', '현금', '사업카드'];
+  function isSeed(nm, o) {
+    if (nm !== 'accounts') return false;
+    if (o._seed) return true;
+    return SEED_NAMES.indexOf(o.name) !== -1 && !n(o.init) && !o.bank && !o.no && !o.holder && !o.lastImp;
+  }
   function merge(nm, localArr, serverArr, tomb) {
     var out = [], seen = {}, byUid = {}, orphanByKey = {}, onServer = {}, inTomb = {};
     serverArr.forEach(function (so) { onServer[so.uid] = 1; });
@@ -346,21 +354,26 @@
       if (o._h === undefined && !onServer[o.uid]) { var k = keyOf(nm, o); if (k && !orphanByKey[k]) orphanByKey[k] = o; }
     });
     serverArr.forEach(function (so) {
-      var lo = byUid[so.uid];
+      seen[so.uid] = 1;
+      /* 내가 지운 행 — 이어붙이기보다 먼저 거른다. 안 그러면 지운 뒤 같은 이름으로 새로 만든 계좌가 지운 행에 붙어 함께 사라진다 */
+      if (inTomb[so.uid]) return;
+      var lo = byUid[so.uid], relinked = false;
       if (!lo) {
         var k = keyOf(nm, so);
-        if (k && orphanByKey[k]) { lo = orphanByKey[k]; delete orphanByKey[k]; delete byUid[lo.uid]; lo.uid = so.uid; byUid[so.uid] = lo; }
+        if (k && orphanByKey[k]) { lo = orphanByKey[k]; delete orphanByKey[k]; delete byUid[lo.uid]; lo.uid = so.uid; byUid[so.uid] = lo; relinked = true; }
       }
-      seen[so.uid] = 1;
-      if (inTomb[so.uid]) return;
       so._h = syncHash(nm, so);
       if (!lo) { out.push(so); return; }
+      /* 이어붙인 행은 서버 내용으로 — 새 기기의 기본 계좌(잔액 0)가 서버 계좌 설정(잔액·은행)을 덮지 않게 */
+      if (relinked) { out.push(so); return; }
       var mine = syncHash(nm, lo);
       if (lo._h === undefined) { out.push(mine === so._h ? so : lo); return; }
       out.push(mine === lo._h ? so : lo);
     });
     localArr.forEach(function (o) {
       if (seen[o.uid] || inTomb[o.uid]) return;
+      /* 기기에 미리 깔린 기본 계좌 — 서버에 계좌가 있는데 짝이 없으면(이름을 바꿨거나 지웠음) 버린다 */
+      if (o._h === undefined && serverArr.length && isSeed(nm, o)) return;
       if (o._h === undefined) { out.push(o); return; }
       if (syncHash(nm, o) !== o._h) { delete o._h; out.push(o); return; }
     });
@@ -414,22 +427,28 @@
       return { names: names, contracts: contracts, rows: rows || [] };
     });
   }
-  function pushSites(state, serverSites, baseNames) {
-    var have = {}, ops = [];
+  /* 현장 올리기 — 3-way: '내가 바꾼 것'만 보낸다(마지막으로 받은 목록 prev 기준).
+     서버와 내 목록 두 쪽만 비교하면, 아직 못 받은 포털 쪽 변경(계약금액·보관·삭제)을 내 옛값으로 되돌렸다. */
+  function pushSites(state, serverSites, prev) {
+    var have = {}, ops = [], prevNames = (prev && prev.s) || [], prevC = (prev && prev.c) || {};
     (serverSites.rows || []).forEach(function (r) { have[r.name] = r; });
+    var baseNames = prevNames;
 
     (state.sites || []).forEach(function (name) {
-      var r = have[name], amt = n((state.contracts || {})[name]);
+      var r = have[name], amt = n((state.contracts || {})[name]), mineNew = prevNames.indexOf(name) === -1;
       if (!r) {
+        if (!mineNew) return;                     /* 받았던 현장이 서버에 없음 = 다른 곳에서 삭제 → 다시 만들지 않는다 */
         ops.push(req('work_sites', {
           method: 'POST', headers: { Prefer: 'return=representation' },
           body: JSON.stringify({ name: name, status: '진행중', contract_amount: amt, tenant_id: TENANT })
         }).then(function (res) { if (res && res[0]) siteIdByName[name] = res[0].id; }));
-      } else if (n(r.contract_amount) !== amt || r.status === '보관') {
-        ops.push(req('work_sites?id=eq.' + r.id, {
-          method: 'PATCH', headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify({ contract_amount: amt, status: r.status === '보관' ? '진행중' : r.status })
-        }));
+        return;
+      }
+      var body = {};
+      if (r.status === '보관' && mineNew) body.status = '진행중';                 /* 내가 다시 넣은 현장만 보관 해제 */
+      if (amt !== n(prevC[name]) && amt !== n(r.contract_amount)) body.contract_amount = amt;   /* 내가 바꾼 계약금액만 */
+      if (Object.keys(body).length) {
+        ops.push(req('work_sites?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) }));
       }
     });
     /* 사업장부에서 뺀 현장은 지우지 않는다 — 직원 포털·발주서가 같은 행을 참조한다. 보관 처리만.
@@ -471,18 +490,21 @@
   function saveOrg(row) {
     return req('biz_orgs', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify([row]) });
   }
+  /* 담당자 저장 — 예전엔 전부 지우고 다시 넣어서, 넣기가 실패하면 0명이 되고 포털에서 정한 역할(role)도 날아갔다.
+     새로 고른 사람만 추가(이미 있으면 그대로), 뺀 사람만 삭제. */
   function setSiteMembers(siteId, userIds) {
-    return req('work_site_members?site_id=eq.' + siteId, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
-      .then(function () {
-        if (!userIds.length) return null;
-        return req('work_site_members', {
-          method: 'POST', headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify(userIds.map(function (u) { return { site_id: siteId, user_id: u }; }))
-        });
-      });
+    var add = userIds.length ? req('work_site_members', {
+      method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+      body: JSON.stringify(userIds.map(function (u) { return { site_id: siteId, user_id: u }; }))
+    }) : Promise.resolve(null);
+    return add.then(function () {
+      return req('work_site_members?site_id=eq.' + siteId + (userIds.length ? '&user_id=not.in.(' + userIds.join(',') + ')' : ''),
+        { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+    });
   }
+  /* 조회 실패를 빈 목록으로 돌려주면, 그 상태로 저장했을 때 기존 배정이 전부 지워진다 → 실패는 실패로 */
   function listSiteMembers(siteId) {
-    return getAll('work_site_members?select=site_id,user_id,role&site_id=eq.' + siteId).catch(function () { return []; });
+    return getAll('work_site_members?select=site_id,user_id,role&site_id=eq.' + siteId);
   }
 
   /* ── 경비 청구 (개인 영역) ── */
@@ -503,12 +525,13 @@
   }
   function rejectClaim(id, reason) {
     return req('biz_expense_claims?id=eq.' + id, {
-      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      method: 'PATCH', headers: { Prefer: 'return=representation' },
       body: JSON.stringify({ status: 'rejected', reject_reason: reason || null })
-    });
+    }).then(function (r) { return mustChange(r, '반려'); });
   }
   function deleteClaim(id) {
-    return req('biz_expense_claims?id=eq.' + id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+    return req('biz_expense_claims?id=eq.' + id, { method: 'DELETE', headers: { Prefer: 'return=representation' } })
+      .then(function (r) { return mustChange(r, '청구 취소'); });
   }
 
   /* ── 공종(집계표) · 현장 실행예산 ──
@@ -520,8 +543,7 @@
       .catch(function () { return processList; });
   }
   function listSiteBudget(siteId) {
-    return getAll('biz_site_budget?select=*&site_id=eq.' + siteId + '&order=sort_order.asc')
-      .catch(function () { return []; });
+    return getAll('biz_site_budget?select=*&site_id=eq.' + siteId + '&order=sort_order.asc');
   }
   function saveSiteBudget(rows) {
     if (!rows.length) return Promise.resolve(null);
@@ -543,14 +565,23 @@
     return getAll('biz_tx?select=*&tenant_id=eq.' + TENANT + '&deleted_at=not.is.null&order=deleted_at.desc&limit=200')
       .catch(function () { return []; });
   }
-  function restoreTrash(id) {
-    return req('biz_tx?id=eq.' + id, {
-      method: 'PATCH', headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({ deleted_at: null, deleted_by: null })
-    });
+  /* PostgREST 는 권한(RLS) 때문에 0행이 바뀌어도 성공(204)을 준다 — 거짓 '완료' 토스트를 막으려고 바뀐 행을 받아 센다 */
+  function mustChange(res, what) {
+    if (!res || !res.length) throw new Error((what || '변경') + ' 권한이 없거나 이미 바뀐 항목입니다');
+    return res;
   }
+  function restoreTrash(id, extra) {
+    var body = { deleted_at: null, deleted_by: null };
+    if (extra) for (var k in extra) body[k] = extra[k];
+    return req('biz_tx?id=eq.' + id + '&deleted_at=not.is.null', {
+      method: 'PATCH', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(body)
+    }).then(function (r) { return mustChange(r, '되살리기'); });
+  }
+  /* 휴지통에 있는 행만 — 그사이 다른 기기가 되살린 거래를 영구 삭제하지 않게 */
   function purgeTrash(id) {
-    return req('biz_tx?id=eq.' + id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+    return req('biz_tx?id=eq.' + id + '&deleted_at=not.is.null', { method: 'DELETE', headers: { Prefer: 'return=representation' } })
+      .then(function (r) { return mustChange(r, '완전삭제'); });
   }
   function ledgerCounts() {
     return req('rpc/biz_ledger_counts', { method: 'POST', body: '{}' }).catch(function () { return []; });
@@ -655,6 +686,9 @@
 
       /* 현장도 3-way 병합. 서버 목록으로 통째 교체하면 아직 못 올린 로컬 현장이 사라진다. */
       var baseS = null; try { baseS = base.sitesHash ? JSON.parse(base.sitesHash) : null; } catch (e) {}
+      /* v2 캐시 넘겨받기: 캐시의 현장 목록·계약금액은 낡았을 수 있다 — 서버(보관 포함)를 기준으로 삼아
+         남이 보관한 현장을 되살리거나 계약금액을 옛값으로 되돌리지 않는다. 캐시에만 있는 현장은 새로 추가한 것으로 둔다. */
+      if (migrating) baseS = { s: (sites.rows || []).map(function (r) { return r.name; }), c: sites.contracts, m: 1 };
       var prevNames = state.sites || [], prevC = state.contracts || {};
       var names = sites.names.slice(), cts = {};
       if (!baseS) {
@@ -664,14 +698,14 @@
         prevNames.forEach(function (nm) {                       /* 내가 새로 추가한 현장 */
           if (names.indexOf(nm) === -1 && bn.indexOf(nm) === -1) names.push(nm);
         });
-        names = names.filter(function (nm) {                    /* 내가 뺀 현장 — 보관 push 대기 */
+        if (!baseS.m) names = names.filter(function (nm) {      /* 내가 뺀 현장 — 보관 push 대기 */
           return !(bn.indexOf(nm) !== -1 && prevNames.indexOf(nm) === -1);
         });
       }
       var bc = (baseS && baseS.c) || {};
       names.forEach(function (nm) {
         var sv = n(sites.contracts[nm]), lv = n(prevC[nm]), bv = n(bc[nm]);
-        var v = (lv !== bv) ? lv : sv;                           /* 내가 바꾼 계약금액이 이긴다 */
+        var v = (!baseS || !baseS.m) && lv !== bv ? lv : sv;     /* 내가 바꾼 계약금액이 이긴다(넘겨받기 때는 서버) */
         if (v) cts[nm] = v;
       });
       state.sites = names;
@@ -715,7 +749,7 @@
         base.budget = JSON.stringify({ total: n(srvBudget.total), cats: srvBudget.cats || {} });
       }
       if (!state.accounts || !state.accounts.length) {
-        state.accounts = [{ name: '사업통장', ico: '🏦', init: 0 }, { name: '현금', ico: '💵', init: 0 }, { name: '사업카드', ico: '💳', init: 0 }];
+        state.accounts = [{ name: '사업통장', ico: '🏦', init: 0, _seed: 1 }, { name: '현금', ico: '💵', init: 0, _seed: 1 }, { name: '사업카드', ico: '💳', init: 0, _seed: 1 }];
       }
       state._sync = SYNC_VER;
       noteLocal(state);        /* 기본 계좌 등 새 행에 uid */
@@ -723,7 +757,8 @@
       persist();               /* 받은 내용을 캐시에 바로 — 안 그러면 다음에 열 때 낡은 캐시로 시작한다 */
       synced = true;
       setStatus('ok', '동기화됨');
-      if (cfg.onChange) cfg.onChange();
+      /* 화면 그리기 오류가 '동기화 실패'로 보이면 직원은 저장이 안 된 줄 알고 다시 입력한다 — 받기 성공과 분리 */
+      if (cfg.onChange) { try { cfg.onChange(); } catch (e) { if (window.console) console.error('[biz] 화면 갱신 오류', e); } }
       return state;
     }).catch(function (e) {
       setStatus(e && e.message === 'NOAUTH' ? 'offline' : 'error', e && e.message === 'NOAUTH' ? '로그인 필요' : '동기화 실패', e);
@@ -783,7 +818,7 @@
         var siteHash = sitesHashOf(state);
         if (!mgr || base.sitesHash === siteHash) return null;
         var prev = null; try { prev = base.sitesHash ? JSON.parse(base.sitesHash) : null; } catch (e) {}
-        return pullSites().then(function (sv) { return pushSites(state, sv, prev ? prev.s : []); })
+        return pullSites().then(function (sv) { return pushSites(state, sv, prev); })
           .then(function () { return pullSites(); })
           .then(function () { base.sitesHash = siteHash; });
       })
@@ -802,7 +837,7 @@
           });
           var gone = tombOf(state, nm).slice();
           if (ins.length) jobs.push(upsert(c.table, ins).then(function () {
-            sent.forEach(function (p) { p[0]._h = p[1]; });
+            sent.forEach(function (p) { p[0]._h = p[1]; delete p[0]._seed; });
           }));
           if (gone.length) jobs.push((c.softDelete ? trashRows(c.table, gone) : delRows(c.table, gone)).then(function () {
             var t = tombOf(state, nm);
@@ -837,6 +872,10 @@
   function planRestore(snap) {
     var state = cfg.getState();
     noteLocal(state);
+    /* 다른 장부(개인↔법인)의 백업을 넣으면 같은 uid 로 올라가 원래 장부의 거래가 이 장부로 옮겨진다 */
+    if (snap && snap._tenant && snap._tenant !== TENANT) {
+      throw new Error('다른 장부(' + snap._tenant + ')의 백업입니다 — 그 장부로 전환한 뒤 복원하세요');
+    }
     var data = JSON.parse(JSON.stringify(snap || {}));
     var me = sess(), myId = me && me.user && me.user.id;
     var trash = {}, trashTx = [], others = 0, sum = 0;
@@ -849,6 +888,8 @@
         if (!o.uid) { var k = keyOf(nm, o); if (k && byKey[k]) o.uid = byKey[k]; }
         if (o.uid) keep[o.uid] = 1;
       });
+      /* 휴지통이 있는 거래만 되돌리기 대상 — 계좌·고정항목·목표·일정은 서버에서 영구 삭제되므로 건드리지 않는다 */
+      if (!COLS[nm].softDelete) { trash[nm] = []; return; }
       trash[nm] = (state[nm] || []).filter(function (o) { return o.uid && !keep[o.uid]; }).map(function (o) {
         if (nm === 'tx') { trashTx.push(o); sum += n(o.amount); if (o.by && o.by !== myId) others++; }
         return o.uid;
@@ -863,7 +904,7 @@
     data._tomb = tomb;
     data._base = JSON.parse(JSON.stringify(baseOf(state)));
     data._sync = SYNC_VER;
-    delete data._snapAt;
+    delete data._snapAt; delete data._tenant;
     return { data: data, trash: trash, trashTx: trashTx, trashSum: sum, trashOthers: others };
   }
 
@@ -954,8 +995,9 @@
     deleteSite: function (name) {
       var m = siteMetaByName[name];
       if (!m) return Promise.resolve(false);
-      return req('work_sites?id=eq.' + m.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
-        .then(function () {
+      return req('work_sites?id=eq.' + m.id, { method: 'DELETE', headers: { Prefer: 'return=representation' } })
+        .then(function (r) {
+          mustChange(r, '현장 삭제');
           delete siteMetaByName[name]; delete siteIdByName[name]; delete siteNameById[m.id];
           return true;
         });
@@ -964,8 +1006,8 @@
       var m = siteMetaByName[name];
       if (!m) return Promise.reject(new Error('현장을 찾을 수 없습니다'));
       return req('work_sites?id=eq.' + m.id, {
-        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: status })
-      }).then(function () { m.status = status; });
+        method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ status: status })
+      }).then(function (r) { mustChange(r, '현장 상태 변경'); m.status = status; });
     },
     partners: function () { return partnerList.slice(); },
     purchaseOrders: pullPurchaseOrders,

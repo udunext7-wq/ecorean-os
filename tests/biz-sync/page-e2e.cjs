@@ -151,6 +151,77 @@ function openPage(srv, storage, opts) {
   W.closeSheet('Add'); W.resetAddSheet();
   ok(p3.errors.length === 0, '콘솔 오류 없음: ' + p3.errors.join(' | '));
 
+  console.log('▶ I. 재검토 2차 — 이체 탭 후 받기·발행일 보존·필터 속 저장·영수증 업로드 중 저장·현장 저장 가드');
+  {
+    const d = W.document;
+    // I-1 이체 탭을 누르고 닫은 뒤 받기 → 동기화 실패가 뜨면 안 됨
+    d.querySelector('#fab').click(); d.querySelector('#tTr').click(); d.querySelector('#ovAdd').click();
+    srv.addTx({ memo: 'OTHER_STAFF', amount: 3300, tx_date: new Date().toISOString().slice(0, 10), created_by: 'other' });
+    await W.BIZDB.pull();
+    ok(W.BIZDB.status.phase === 'ok', '이체 탭 후 받기 상태 ok (실제 ' + W.BIZDB.status.phase + ')');
+    ok(W.__P.state.tx.some(t => t.memo === 'OTHER_STAFF'), '받은 거래가 들어옴');
+    // I-2 카드 거래 수정 → 세금계산서 거래 수정 시 발행일 유지
+    const cardT = W.__P.state.tx.find(t => !t.tf);
+    W.eval(`(()=>{const t=state.tx.find(x=>x.id==${cardT.id});t.evid='카드';})()`);
+    const invT = W.eval(`(()=>{const t={id:newTxId(),type:'out',cat:'자재비',ico:'🧱',amount:110000,supply:100000,vat:10000,vatm:'incl',evid:'세금계산서',inv:'2026-09-01',memo:'INV_ROW',date:'2026-09-02',acct:'사업통장',site:''};state.tx.push(t);save();return t.id;})()`);
+    W.openEdit(cardT.id); W.closeSheet('Add'); W.resetAddSheet();
+    W.openEdit(invT); d.querySelector('#memoInput').value = 'INV_ROW 수정';
+    await new Promise(r => setTimeout(r, 750));
+    d.querySelector('#saveTx').click();
+    ok(W.eval(`state.tx.find(x=>x.id==${invT}).inv`) === '2026-09-01', '수정 저장 후 발행일 유지 (실제 ' + W.eval(`state.tx.find(x=>x.id==${invT}).inv`) + ')');
+    await new Promise(r => setTimeout(r, 750));
+    // I-3 검색어가 남은 상태에서 저장 → 목록에 보임
+    d.querySelector('#searchInput').value = '커피'; d.querySelector('#searchInput').dispatchEvent(new W.Event('input'));
+    d.querySelector('#fab').click(); d.querySelector('#amtInput').value = '45000'; d.querySelector('#vendorInput').value = 'FILTER_TX'; d.querySelector('#saveTx').click();
+    ok(d.querySelector('#list').innerHTML.includes('FILTER_TX'), '검색어가 있어도 방금 저장한 거래가 보임');
+    await new Promise(r => setTimeout(r, 750));
+    // I-4 영수증 올리는 중 저장 막기 + 다른 거래에 붙지 않기
+    let release; const origUp = W.BIZDB.uploadReceipt, origSign = W.BIZDB.signedUrl;
+    W.BIZDB.uploadReceipt = () => new Promise(r => { release = () => r({ path: 'r/1.jpg', name: '1.jpg', type: 'image/jpeg' }); });
+    W.BIZDB.signedUrl = () => Promise.resolve('');
+    d.querySelector('#fab').click(); d.querySelector('#amtInput').value = '9900'; d.querySelector('#vendorInput').value = 'RECEIPT_TX';
+    const inp = d.querySelector('#attInput');
+    Object.defineProperty(inp, 'files', { configurable: true, get: () => [{ name: '1.jpg', type: 'image/jpeg' }] });
+    inp.dispatchEvent(new W.Event('change'));
+    d.querySelector('#saveTx').click();
+    ok(!W.__P.state.tx.some(t => t.vendor === 'RECEIPT_TX'), '업로드 중에는 저장되지 않음');
+    W.closeSheet('Add'); W.resetAddSheet();
+    W.openEdit(cardT.id);
+    release(); await new Promise(r => setTimeout(r, 30));
+    ok(W.eval('form.att.length') === (cardT.att || []).length, '끝난 영수증이 다른 거래 창에 붙지 않음');
+    W.closeSheet('Add'); W.resetAddSheet();
+    W.BIZDB.uploadReceipt = origUp; W.BIZDB.signedUrl = origSign;
+    await new Promise(r => setTimeout(r, 750));
+    // I-5 현장 화면에서 저장해도 홈 보기 달이 바뀌지 않음
+    W.eval(`filter.site='';view=new Date(2026,6,1);curSite='쌍용동1407'`);
+    d.querySelector('#sdAddTx').click(); d.querySelector('#amtInput').value = '5000'; d.querySelector('#dateInput').value = '2026-09-02'; d.querySelector('#vendorInput').value = 'SITE_TX';
+    d.querySelector('#saveTx').click();
+    ok(W.eval('view.getMonth()') === 6, '현장 화면 저장 후 홈 보기 달 유지');
+    // I-6 인건비는 부가세 없음 기본
+    await new Promise(r => setTimeout(r, 750));
+    W.closeSheet('SiteD');
+    d.querySelector('#fab').click();
+    const labor = [...d.querySelectorAll('#catList .cat')].find(c => c.dataset.n === '인건비'); labor.click();
+    ok(d.querySelector('#vatSel').value === 'none', '인건비 선택 시 부가세 없음 (실제 ' + d.querySelector('#vatSel').value + ')');
+    W.closeSheet('Add'); W.resetAddSheet();
+    // I-7 계좌 잔액: 외상·미래 날짜 제외
+    const bal0 = W.eval(`balanceOf('사업통장')`);
+    W.eval(`state.tx.push({id:newTxId(),type:'in',cat:'공사수입',amount:10000000,date:localDay(),acct:'사업통장',cr:1,memo:'CREDIT_IN'},{id:newTxId(),type:'out',cat:'인건비',amount:3000000,date:'2099-01-01',acct:'사업통장',memo:'FUTURE_OUT'});save();`);
+    ok(W.eval(`balanceOf('사업통장')`) === bal0, '외상 입금·미래 지출은 현재 잔액에 안 들어감');
+    W.eval(`state.tx=state.tx.filter(t=>t.memo!=='CREDIT_IN'&&t.memo!=='FUTURE_OUT');save();`);
+    // I-8 이익은 공급가 기준
+    W.eval(`state.tx.push({id:newTxId(),type:'in',cat:'공사수입',amount:110000000,supply:100000000,vat:10000000,vatm:'incl',evid:'세금계산서',date:localDay(),acct:'사업통장',site:'PL현장',memo:'PL'},{id:newTxId(),type:'out',cat:'인건비',amount:50000000,supply:50000000,vat:0,vatm:'none',evid:'',date:localDay(),acct:'사업통장',site:'PL현장',memo:'PL'});`);
+    ok(W.eval(`siteSummary('PL현장').profit`) === 50000000, '현장 이익 = 공급가 매출 − 원가 (실제 ' + W.eval(`siteSummary('PL현장').profit`) + ')');
+    W.eval(`state.tx=state.tx.filter(t=>t.memo!=='PL');save();`);
+    // I-9 법인세율: 2026 개시 사업연도 10/20%, 그 전 9/19%
+    ok(W.eval('corpTaxOf(3e8,new Date(2026,0,1))') === 40000000, '2026 사업연도 과표 3억 → 4,000만 (실제 ' + W.eval('corpTaxOf(3e8,new Date(2026,0,1))') + ')');
+    ok(Math.round(W.eval('corpTaxOf(3e8,new Date(2025,0,1))')) === 37000000, '2025 사업연도 과표 3억 → 3,700만');
+    // I-10 결산일 당일 오후도 올해 사업연도
+    ok(W.eval('fiscalRange(new Date(2026,11,31,14,0)).e.getFullYear()') === 2026, '12/31 14시 = 2026 사업연도');
+    await p3.idle();
+    ok(p3.errors.length === 0, '콘솔 오류 없음: ' + p3.errors.join(' | '));
+  }
+
   console.log('▶ G. v2 캐시(uid 없는 마지막 거래 + 그 뒤 받은 남의 거래가 base 에만)로 새 코드 첫 부팅');
   const srv2 = makeServer();
   const mine = srv2.addTx({ local_id: '1789051534826', memo: '계단컨트롤러', amount: 77000, tx_date: '2026-07-12', account: '사업통장', vendor: '네이버주문', category: '현장경비', supply_amount: 77000, vat_mode: 'none' });

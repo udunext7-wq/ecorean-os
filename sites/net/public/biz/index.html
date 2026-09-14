@@ -7,7 +7,7 @@
 <script src="/app-cloud.js"></script>
 <!-- 고칠 때마다 ?v= 를 올린다. 안 올리면 브라우저가 옛 파일을 계속 써서
      화면(HTML)과 저장 계층(JS)의 버전이 어긋난다 — 내역이 안 보이는 원인이 된다. -->
-<script src="/biz/biz-db.js?v=biz18"></script>
+<script src="/biz/biz-db.js?v=biz19"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1218,7 +1218,7 @@ function hashPin(p){let h=5381;const s='LOS·'+p;for(let i=0;i<s.length;i++)h=(h
 function defaults(){return{
   tx:[], budgets:{total:0,cats:{}},
   recurring:[], sites:[], events:[], contracts:{},
-  accounts:[{name:'사업통장',ico:'🏦',init:0},{name:'현금',ico:'💵',init:0},{name:'사업카드',ico:'💳',init:0}],
+  accounts:[{name:'사업통장',ico:'🏦',init:0,_seed:1},{name:'현금',ico:'💵',init:0,_seed:1},{name:'사업카드',ico:'💳',init:0,_seed:1}],
   goals:[],
   settings:{theme:'dark',pin:'',
     notion:{token:'',db:'',proxy:'https://corsproxy.io/?url='},
@@ -1269,7 +1269,7 @@ function localDay(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMont
 function snapshot(){
   const dk=SNAP_PFX+localDay();
   if(!localStorage.getItem(dk)){
-    localStorage.setItem(dk,JSON.stringify(Object.assign({},state,{_snapAt:new Date().toISOString()})));
+    localStorage.setItem(dk,JSON.stringify(Object.assign({},state,{_snapAt:new Date().toISOString(),_tenant:TENANT})));
     const ks=snapKeys();
     while(ks.length>SNAP_KEEP){
       const old=ks.shift();
@@ -1374,7 +1374,7 @@ function renderBudget(exp,list){
   }
   if(!b&&!hasCB){c.innerHTML=`<div class="empty" style="padding:14px 0"><span class="em">🎯</span>월 예산을 설정하면 소진율과 마감 예상 지출이 표시됩니다<br><span style="color:var(--teal);font-size:12px">설정 › 예산</span></div>`;return;}
   if(!b){c.innerHTML=catHtml.replace('class="catbud"','class="catbud" style="border-top:none;margin-top:0;padding-top:0"');return;}
-  const pct=exp/b*100, frac=monthElapsedFrac();
+  const pct=exp/b*100, frac=ym(view)===ym(new Date())?monthElapsedFrac():1;   /* 지난달을 볼 땐 이미 끝난 달 */
   const proj=frac>0.02?exp/frac:exp;
   const cls=pct>=100?'over':pct>=80?'warn':'';
   c.innerHTML=`<div class="bd-top">
@@ -1407,11 +1407,14 @@ function renderInsight(list,inc,exp){
 function updateProjection(){
   if(!state.budgets.total)return;
   const exp=sumOut(monthTx(view));
-  const frac=monthElapsedFrac(),proj=frac>0.02?exp/frac:exp;
+  const frac=ym(view)===ym(new Date())?monthElapsedFrac():1,proj=frac>0.02?exp/frac:exp;
   const el=$('#projV');if(el)el.textContent=won(proj);
 }
+/* 계좌 잔액 = 실제로 오간 돈. 외상(아직 안 받은·안 준 돈)과 미래 날짜(이달 고정항목 예약분)는 빼야
+   '현재 잔액'이 맞고, 90일 자금예측에서 같은 돈을 두 번 더하지 않는다 */
+function isCashNow(t){return !t.cr&&t.date<=todayStr();}
 function balanceOf(acct){const a=state.accounts.find(x=>x.name===acct);
-  return (a&&a.init||0)+state.tx.filter(t=>(t.acct||state.accounts[0].name)===acct).reduce((s,b)=>s+(b.type==='in'?b.amount:-b.amount),0);}
+  return (a&&a.init||0)+state.tx.filter(t=>isCashNow(t)&&(t.acct||state.accounts[0].name)===acct).reduce((s,b)=>s+(b.type==='in'?b.amount:-b.amount),0);}
 function renderAccounts(){
   $('#acctRow').innerHTML=state.accounts.map(a=>{
     const bal=balanceOf(a.name);
@@ -1561,18 +1564,22 @@ function fiscalRange(d){
   const fm=Math.min(12,Math.max(1,+bizOrg().fiscal_month||12));
   const y=d.getFullYear();
   const end=new Date(y,fm,0);                       // 올해 결산일
-  const s=(d<=end)?new Date(y-1,fm,1):new Date(y,fm,1);
-  const e=(d<=end)?end:new Date(y+1,fm,0);
+  /* 결산일 당일 오후(시각 포함)를 00:00 과 비교하면 다음 사업연도로 넘어가 거래 0건이 됐다 → 다음날 0시와 비교 */
+  const inThis=d<new Date(y,fm,1);
+  const s=inThis?new Date(y-1,fm,1):new Date(y,fm,1);
+  const e=inThis?end:new Date(y+1,fm,0);
   return {s,e};
 }
-function corpTaxOf(base){
-  /* 법인세율: 2억 이하 9% / 2억~200억 19% / 200억~3000억 21% / 3000억 초과 24% */
+/* 법인세율 — 2025 세법개정으로 2026.1.1 이후 개시 사업연도부터 구간마다 1%p 인상(국세청 법인세 세율표).
+   2억 이하 10% / 2억~200억 20% / 200억~3000억 22% / 3000억 초과 25%. 그 전 사업연도는 9/19/21/24%. */
+function corpRates(start){return (start&&start>=new Date(2026,0,1))?[0.10,0.20,0.22,0.25]:[0.09,0.19,0.21,0.24];}
+function corpTaxOf(base,start){
   if(base<=0)return 0;
-  const B=1e8;
-  if(base<=2*B)      return base*0.09;
-  if(base<=200*B)    return 2*B*0.09 + (base-2*B)*0.19;
-  if(base<=3000*B)   return 2*B*0.09 + 198*B*0.19 + (base-200*B)*0.21;
-  return 2*B*0.09 + 198*B*0.19 + 2800*B*0.21 + (base-3000*B)*0.24;
+  const B=1e8,[r1,r2,r3,r4]=corpRates(start);
+  if(base<=2*B)      return base*r1;
+  if(base<=200*B)    return 2*B*r1 + (base-2*B)*r2;
+  if(base<=3000*B)   return 2*B*r1 + 198*B*r2 + (base-200*B)*r3;
+  return 2*B*r1 + 198*B*r2 + 2800*B*r3 + (base-3000*B)*r4;
 }
 function renderCorpTax(){
   const wrap=$('#corpTaxWrap');if(!wrap)return;
@@ -1584,11 +1591,12 @@ function renderCorpTax(){
   const rows=state.tx.filter(t=>!t.tf&&inR(t));
   /* 공급가액 기준 — 부가세는 회사 돈이 아니다. 가지급금·가수금·배당은 손익이 아니라 뺀다 */
   const NON_PL=['가지급금(대표 대여)','가수금(대표 차입)','배당금'];
-  const sales=rows.filter(t=>t.type==='in' &&NON_PL.indexOf(t.cat)===-1).reduce((a,b)=>a+(b.supply||b.amount),0);
-  const costs=rows.filter(t=>t.type==='out'&&NON_PL.indexOf(t.cat)===-1).reduce((a,b)=>a+(b.supply||b.amount),0);
+  const sales=rows.filter(t=>t.type==='in' &&NON_PL.indexOf(t.cat)===-1).reduce((a,b)=>a+plAmt(b),0);
+  const costs=rows.filter(t=>t.type==='out'&&NON_PL.indexOf(t.cat)===-1).reduce((a,b)=>a+plAmt(b),0);
   const base=sales-costs;
-  const tax=Math.round(corpTaxOf(base)),local=Math.round(tax*0.1);
-  const adv=rows.filter(t=>t.type==='out'&&t.cat==='기업업무추진비').reduce((a,b)=>a+(b.supply||b.amount),0);
+  const tax=Math.round(corpTaxOf(base,s)),local=Math.round(tax*0.1);
+  const [cr1,cr2]=corpRates(s);
+  const adv=rows.filter(t=>t.type==='out'&&t.cat==='기업업무추진비').reduce((a,b)=>a+plAmt(b),0);
   const loan=rows.filter(t=>t.cat==='가지급금(대표 대여)').reduce((a,b)=>a+b.amount,0)
              -rows.filter(t=>t.cat==='가수금(대표 차입)').reduce((a,b)=>a+b.amount,0);
   const fmt=d=>`${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`;
@@ -1599,25 +1607,35 @@ function renderCorpTax(){
       <div class="ins"><div class="k">추정 과세표준</div><div class="v" style="color:${base>=0?'var(--text)':'var(--teal)'}">${base>=0?won(base):'결손 '+won(-base)}<small> 원</small></div></div>
       <div class="ins"><div class="k">법인세 + 지방소득세</div><div class="v" style="color:var(--gold)">${won(tax+local)}<small> 원</small></div></div>
     </div>
-    ${base>0?`<div style="font-size:11.5px;color:var(--muted);margin-top:9px;font-variant-numeric:tabular-nums">법인세 ${won(tax)}원 (2억 이하 9% / 초과분 19%) + 지방소득세 ${won(local)}원</div>`:''}
+    ${base>0?`<div style="font-size:11.5px;color:var(--muted);margin-top:9px;font-variant-numeric:tabular-nums">법인세 ${won(tax)}원 (2억 이하 ${Math.round(cr1*100)}% / 초과분 ${Math.round(cr2*100)}%) + 지방소득세 ${won(local)}원</div>`:''}
     ${loan?`<div class="note warn" style="margin-top:11px"><b>⚠️ 대표 가지급금 잔액 ${won(loan)}원</b><br>회사가 대표에게 빌려준 돈으로 잡힙니다. 결산 전에 회수하거나 급여·상여로 정리하지 않으면 <b>인정이자 익금산입 + 지급이자 손금불산입</b>이 붙습니다.</div>`:''}
     ${adv?`<div style="font-size:11.5px;color:var(--muted-2);margin-top:9px">기업업무추진비(접대비) ${won(adv)}원 — 수입금액별 한도 초과분은 손금 불산입됩니다. 3만원 초과는 반드시 적격증빙(법인카드·세금계산서).</div>`:''}
     <div style="font-size:11px;color:var(--muted-2);margin-top:10px">* 장부의 현금 기준 수치를 그대로 계산한 <b>단순 추정</b>입니다. 감가상각·퇴직급여충당·접대비 한도 등 세무조정과 이월결손금 공제가 빠져 있어 실제 신고세액과 다릅니다. 반드시 세무사 확인이 필요합니다.</div>`;
 }
 function renderVat(){
-  const c=$('#vatCard'),now=new Date(),q=Math.floor(now.getMonth()/3);
-  const s=new Date(now.getFullYear(),q*3,1),e=new Date(now.getFullYear(),q*3+3,1);
+  /* 개인사업자 과세기간은 반기(1~6·7~12월), 법인은 예정·확정이 분기 — 개인을 분기로 보면 확정신고 금액과 안 맞는다 */
+  const L=isCorp()?3:6;
+  const c=$('#vatCard'),now=new Date(),q=Math.floor(now.getMonth()/L);
+  const s=new Date(now.getFullYear(),q*L,1),e=new Date(now.getFullYear(),q*L+L,1);
   const inQ=t=>{const d=new Date(t.date+'T00:00');return d>=s&&d<e;};
   const svat=state.tx.filter(t=>t.type==='in'&&!t.tf&&inQ(t)).reduce((a,b)=>a+(b.vat||0),0);
   const bvat=state.tx.filter(t=>t.type==='out'&&!t.tf&&inQ(t)&&['세금계산서','카드','현금영수증'].includes(t.evid)).reduce((a,b)=>a+(b.vat||0),0);
   const due=svat-bvat;
   c.innerHTML=`<div class="ins-grid">
-    <div class="ins"><div class="k">매출세액 (${q*3+1}~${q*3+3}월)</div><div class="v" style="color:var(--teal)">${won(svat)}<small> 원</small></div></div>
+    <div class="ins"><div class="k">매출세액 (${q*L+1}~${q*L+L}월)</div><div class="v" style="color:var(--teal)">${won(svat)}<small> 원</small></div></div>
     <div class="ins"><div class="k">매입세액 (공제분)</div><div class="v" style="color:var(--blue)">${won(bvat)}<small> 원</small></div></div></div>
     <div style="margin-top:10px;padding:12px 14px;border-radius:12px;background:${due>0?'rgba(255,200,97,.08)':'rgba(46,230,200,.08)'};border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:12px;color:var(--muted)">납부 예상 (매출−매입)</span>
       <span style="font-family:var(--font-d);font-weight:600;font-variant-numeric:tabular-nums;color:${due>0?'var(--gold)':'var(--teal)'}">${due>=0?won(due):'환급 '+won(-due)} 원</span></div>
     <div style="font-size:11px;color:var(--muted-2);margin-top:8px">* 부가세를 입력한 거래 기준 단순 추정 · 간이영수증·증빙없음은 매입세액 불공제</div>`;
+}
+/* 손익용 금액 — 부가세는 매출도 원가도 아니다(공급가 기준, 원가계산서와 같은 원칙).
+   단 공제받지 못하는 매입 부가세(간이영수증·증빙 없음)는 그대로 비용이다. */
+const DEDUCT_EVID=['세금계산서','카드','현금영수증'];
+function plAmt(t){
+  if(!(t.vat>0&&t.supply))return t.amount;
+  if(t.type==='in')return t.supply;
+  return DEDUCT_EVID.includes(t.evid)?t.supply:t.amount;
 }
 function siteSummary(site){
   const txs=state.tx.filter(t=>!t.tf&&t.site===site);
@@ -1626,7 +1644,10 @@ function siteSummary(site){
   const out=txs.filter(t=>t.type==='out').reduce((a,b)=>a+b.amount,0);
   const pay=txs.filter(t=>t.type==='out'&&t.cr).reduce((a,b)=>a+b.amount,0);       // 미지급금
   const contract=state.contracts[site]||0;
-  return{billed,collected:billed-recv,recv,out,pay,profit:billed-out,contract,
+  /* 이익은 공급가 기준 — 총액으로 빼면 받은 부가세(낼 돈)가 이익으로 보였다 */
+  const sales=txs.filter(t=>t.type==='in').reduce((a,b)=>a+plAmt(b),0);
+  const cost=txs.filter(t=>t.type==='out').reduce((a,b)=>a+plAmt(b),0);
+  return{billed,sales,cost,collected:billed-recv,recv,out,pay,profit:sales-cost,contract,
     prog:contract?Math.min(100,billed/contract*100):null,cnt:txs.length};
 }
 function renderSiteStat(){
@@ -1637,7 +1658,7 @@ function renderSiteStat(){
   c.innerHTML=ents.map(([site,o],i)=>{
     return `<div class="siterow" data-site="${esc(site)}" style="cursor:pointer;margin-bottom:12px;${i<ents.length-1?'padding-bottom:11px;border-bottom:1px solid var(--border)':''}">
       <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:4px"><span>🏗️ ${esc(site)} <span style="color:var(--muted-2);font-size:11px">›</span></span><span style="font-family:var(--font-d);font-weight:600;font-variant-numeric:tabular-nums;color:${o.profit>=0?'var(--teal)':'var(--coral)'}">${o.profit>=0?'+':''}${won(o.profit)}</span></div>
-      <div style="display:flex;gap:12px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap"><span>매출 ${won(o.billed)}</span><span>지출 ${won(o.out)}</span>${o.recv?`<span style="color:var(--gold)">미수 ${won(o.recv)}</span>`:''}<span>수익률 ${o.billed?Math.round(o.profit/o.billed*100)+'%':'—'}</span></div>
+      <div style="display:flex;gap:12px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap"><span>매출 ${won(o.billed)}</span><span>지출 ${won(o.out)}</span>${o.recv?`<span style="color:var(--gold)">미수 ${won(o.recv)}</span>`:''}<span>수익률 ${o.billed?Math.round(o.profit/o.sales*100)+'%':'—'}</span></div>
       ${o.contract?`<div style="display:flex;align-items:center;gap:9px;margin-top:7px"><div style="flex:1;height:6px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;width:${o.prog}%;background:linear-gradient(90deg,var(--gold),var(--teal));border-radius:4px"></div></div><span style="font-family:var(--font-d);font-size:10.5px;color:var(--gold);font-variant-numeric:tabular-nums">기성 ${o.prog.toFixed(0)}% / 계약 ${won(o.contract)}</span></div>`:''}
     </div>`;}).join('');
   c.querySelectorAll('.siterow').forEach(r=>r.onclick=()=>openSiteSheet(r.dataset.site));
@@ -1659,7 +1680,7 @@ function renderSdStrip(){
   const o=siteSummary(curSite),el=$('#sdStrip');if(!el)return;
   el.innerHTML=`<div><div class="k">매출 (기성)</div><div class="v" style="color:var(--teal)">${won(o.billed)}</div></div>
     <div><div class="k">원가</div><div class="v" style="color:var(--coral)">${won(o.out)}</div></div>
-    <div><div class="k">이익${o.billed?` ${Math.round(o.profit/o.billed*100)}%`:''}</div><div class="v" style="color:${o.profit>=0?'var(--teal)':'var(--coral)'}">${won(o.profit)}</div></div>`;
+    <div><div class="k">이익${o.billed?` ${Math.round(o.profit/o.sales*100)}%`:''}</div><div class="v" style="color:${o.profit>=0?'var(--teal)':'var(--coral)'}">${won(o.profit)}</div></div>`;
 }
 function renderSiteTx(){
   const el=$('#sdList');if(!el)return;
@@ -1675,7 +1696,9 @@ function renderSiteTx(){
   el.innerHTML=dayToggleBarHtml(g.days.length)+g.html;
 }
 /* 현장 화면에서 거래를 누르면 수정 시트가 위에 뜨고, 닫으면 현장 화면으로 돌아온다 */
-bindLedgerClicks($('#sdList'),id=>{txReturn='site';closeSheet('SiteD');openEdit(id);},renderSiteTx);
+bindLedgerClicks($('#sdList'),id=>{
+  if(!state.tx.some(x=>x.id==id)){toast('이미 바뀐 거래입니다 · 목록을 새로 그립니다');renderSiteTx();return;}
+  txReturn='site';closeSheet('SiteD');openEdit(id);},renderSiteTx);
 function openSiteSheet(name){
   curSite=name;
   $('#sdTitle').textContent='🏗️ '+name;
@@ -1751,7 +1774,11 @@ function renderSdStatus(){
         renderSdStatus();
         /* 보관한 현장을 state.sites 에 남겨두면 다음 동기화가 '진행중'으로 되살린다 */
         if(s==='보관'){state.sites=state.sites.filter(x=>x!==curSite);save();closeSheet('SiteD');}
-        else if(state.sites.indexOf(curSite)===-1){state.sites.push(curSite);save();}
+        else if(state.sites.indexOf(curSite)===-1){
+          /* 보관에서 꺼낼 때 계약금액을 서버 값으로 되돌려 둔다 — 비어 있으면 0 으로 보이고 올릴 때 덮일 수 있다 */
+          const meta=BIZDB.siteMeta(curSite);if(meta&&meta.contract)state.contracts[curSite]=meta.contract;
+          state.sites.push(curSite);save();
+        }
         renderSiteTab();render();
         toast(`상태를 "${s}"(으)로 바꿨습니다`);
       }catch(e){toast('상태 변경 실패 · '+String(e.message||'').slice(0,40));}
@@ -1803,17 +1830,18 @@ $('#sdArchive').onclick=()=>{
    「삭제」를 직접 입력해야 하며, 지우기 전에 지금 장부를 파일로 내려받는다. */
 async function deleteSiteFlow(name){
   if(!isOwner()){toast('현장 삭제는 대표 계정만 할 수 있습니다');return;}
+  /* 발주 목록을 먼저 받는다 — 안 받은 채 세면 0건으로 보여 가벼운 확인 한 번으로 지워졌다 */
+  try{await refreshPO();}catch(e){}
   const r=siteRefs(name);
   const heavy=!!(r.tx||r.po);
-  const msg=heavy
-    ? `"${name}" 현장을 삭제합니다.\n\n· 거래 ${r.tx}건은 지워지지 않고 "현장 없음"으로 남습니다\n· 직원 포털의 공사일보·공정표는 함께 삭제됩니다\n· 발주서 ${r.po}건은 현장만 비워집니다\n· 먼저 백업 파일을 내려받습니다\n\n되돌릴 수 없습니다. 계속할까요?`
-    : `"${name}" 현장을 삭제할까요?\n\n연결된 거래·발주가 없어 완전히 삭제됩니다. 되돌릴 수 없습니다.`;
+  /* 거래·발주가 0건이어도 직원 포털의 공사일보·공정표·담당자·집계표는 함께 지워진다(서버 CASCADE) — 늘 같은 절차 */
+  const msg=`"${name}" 현장을 삭제합니다.\n\n`+
+    (heavy?`· 거래 ${r.tx}건은 지워지지 않고 "현장 없음"으로 남습니다\n· 발주서 ${r.po}건은 현장만 비워집니다\n`:'· 장부에 연결된 거래·발주는 없습니다\n')+
+    `· 직원 포털의 공사일보·공정표·담당자 배정·집계표는 함께 삭제됩니다\n· 먼저 백업 파일을 내려받습니다\n\n되돌릴 수 없습니다. 기록을 남기려면 [취소] 후 '보관'을 쓰세요. 계속할까요?`;
   if(!confirm(msg))return;
-  if(heavy){
-    downloadBackup('현장삭제전');
-    const a=prompt('마지막 확인입니다.\n정말 지우려면 「삭제」 라고 입력하세요.');
-    if((a||'').trim()!=='삭제'){toast('취소했습니다 — 아무것도 지우지 않았습니다');return;}
-  }
+  downloadBackup('현장삭제전');
+  const a=prompt('마지막 확인입니다.\n정말 지우려면 「삭제」 라고 입력하세요.');
+  if((a||'').trim()!=='삭제'){toast('취소했습니다 — 아무것도 지우지 않았습니다');return;}
   try{
     if(window.BIZDB&&BIZDB.deleteSite&&BIZDB.siteId(name))await BIZDB.deleteSite(name);
   }catch(e){toast('삭제 실패 · '+String(e.message||'').slice(0,50));return;}
@@ -1891,12 +1919,22 @@ function renderGoals(){
 }
 
 /* ============ 폼 : 거래 ============ */
+/* 계정과목 중 부가세가 없는 것 — 기본 '포함'이면 인건비 330만이 매입세액 30만으로 잡혀 공제·원가가 틀어진다 */
+const NOVAT_CATS=/^(인건비|직원급여|세금·보험|이자·금융|대표이사급여|가지급금|가수금|배당|이자수입|기업업무추진비)/;
+function applyCatVat(){
+  if(form.evidTouched||form.type==='tr')return;
+  if(NOVAT_CATS.test(form.cat||'')){$('#vatSel').value='none';$('#evidSel').value='';renderInvField();renderEvidHint();}
+}
 function renderCats(){
+  /* 이체 탭은 계정과목이 없다 — 이체를 한 번 누른 뒤 받기(폴링)가 화면을 다시 그리면 여기서 오류가 나
+     '동기화 실패'가 뜨고 목록이 멈췄다(직원이 "저장 안 됐다"고 다시 입력한 원인 중 하나) */
+  if(!CATS[form.type]){$('#catList').innerHTML='';return;}
   $('#catList').innerHTML=CATS[form.type].map(([n,i])=>`<div class="cat ${form.cat===n?'sel':''}" data-n="${n}" data-i="${i}"><div class="b">${i}</div><div class="t">${n}</div></div>`).join('');
   $$('#catList .cat').forEach(c=>c.onclick=()=>{
     form.cat=c.dataset.n;form.ico=c.dataset.i;
     form.ct='';                       /* 계정을 바꾸면 비목도 그 기본값을 따라가게 */
     renderCats();renderCostPills();
+    if(NOVAT_CATS.test(form.cat))applyCatVat();else if(form.editId==null)applyAcctEvidence(false);
   });
 }
 /* ── 계좌 종류 → 증빙·부가세 반자동 ──
@@ -1919,6 +1957,7 @@ function applyAcctEvidence(force){
   $('#vatSel').value='incl';
   form.evidTouched=false;
   renderInvField();renderEvidHint();
+  applyCatVat();
 }
 function renderEvidHint(){
   const el=$('#evidHint');if(!el)return;
@@ -1997,16 +2036,24 @@ function renderAtt(){
   });
 }
 $('#attBtn').onclick=()=>$('#attInput').click();
+/* 올리는 중에 저장하면 영수증이 빠지고, 끝난 뒤엔 그때 열려 있던 다른 거래에 붙었다 →
+   올리는 동안은 저장을 막고, 시작할 때의 거래(form.att 배열)에만 넣는다 */
+let attUploading=0;
 $('#attInput').onchange=async e=>{
   const files=[...e.target.files];e.target.value='';
   if(!files.length)return;
   if(!window.BIZDB){toast('서버 연결이 없어 첨부할 수 없습니다');return;}
+  const bag=form.att;let okN=0,failN=0;
+  attUploading++;
   toast(`영수증 ${files.length}장 올리는 중…`);
-  for(const f of files){
-    try{const meta=await BIZDB.uploadReceipt(f);form.att.push(meta);renderAtt();}
-    catch(err){toast('첨부 실패 · '+String(err.message||'').slice(0,40));}
-  }
-  toast('영수증이 첨부됐습니다');
+  try{
+    for(const f of files){
+      try{const meta=await BIZDB.uploadReceipt(f);if(form.att===bag){bag.push(meta);renderAtt();}okN++;}
+      catch(err){failN++;toast('첨부 실패 · '+String(err.message||'').slice(0,40));}
+    }
+  }finally{attUploading--;}
+  if(form.att!==bag){toast('거래 창을 닫아 영수증을 붙이지 않았습니다 · 다시 첨부하세요');return;}
+  if(okN)toast(failN?`영수증 ${okN}장 첨부 · ${failN}장 실패`:'영수증이 첨부됐습니다');
 };
 /* 거래처 추천 = 이 장부에서 자주 쓴 상호 + 직원 포털 협력업체 명부(partners) */
 function updateVendorSugg(){
@@ -2027,7 +2074,8 @@ function setType(t){form.type=t;
   else{if(!form.acct2||form.acct2===form.acct){const other=state.accounts.find(a=>a.name!==form.acct);form.acct2=other?other.name:form.acct;}renderAcctPills2();}
 }
 $('#tOut').onclick=()=>setType('out');$('#tIn').onclick=()=>setType('in');$('#tTr').onclick=()=>setType('tr');
-$('#amtInput').oninput=e=>{let v=e.target.value.replace(/[^0-9]/g,'');e.target.value=v?Number(v).toLocaleString('ko-KR'):'';};
+/* 붙여넣은 "15,000.00" 이 1,500,000 이 되지 않게 소수점 뒤는 버린다 */
+$('#amtInput').oninput=e=>{let v=String(e.target.value).split('.')[0].replace(/[^0-9]/g,'');e.target.value=v?Number(v).toLocaleString('ko-KR'):'';};
 $('#quickAmt').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   const q=+b.dataset.q;
@@ -2057,10 +2105,11 @@ function openEdit(id){
   form.acct=t.acct||state.accounts[0].name;renderAcctPills();
   form.site=t.site||'';form.cr=t.cr?1:0;form.due=t.due||'';form.att=(t.att||[]).slice();
   form.pc=t.pc||'';form.ct=t.ct||'';form.inv=t.inv||'';
-  renderSitePills();renderCrPills();renderAtt();renderProcPills();renderCostPills();renderInvField();
-  $('#vendorInput').value=t.vendor||'';
+  /* 증빙을 먼저 채운 뒤 발행일 칸을 그린다 — 반대로 하면 직전 거래의 증빙으로 판단해 발행일(form.inv)을 지웠다 */
   $('#vatSel').value=t.vatm||'none';
   $('#evidSel').value=t.evid!=null?t.evid:'세금계산서';
+  renderSitePills();renderCrPills();renderAtt();renderProcPills();renderCostPills();renderInvField();
+  $('#vendorInput').value=t.vendor||'';
   form.evidTouched=true;renderEvidHint();
   $('#amtInput').value=(t.vatm==='excl'?t.supply:t.amount).toLocaleString('ko-KR');
   $('#memoInput').value=t.memo||'';
@@ -2072,12 +2121,16 @@ $('#delTx').onclick=()=>{if(form.editId!=null){const id=form.editId;closeSheet('
 /* 방금 기록한 거래를 화면에 보여준다.
    홈 목록은 '이번 달'만 보여서, 지난달 날짜로 기록하면 아무 변화가 없어 "안 써졌다"고 다시 입력하게 된다
    (2026-09-13 모바일 보고: 안 된 줄 알고 다시 써서 두 건). → 그 달로 넘기고 그 날짜를 펼쳐 잠깐 강조한다. */
-function revealTx(t){
-  if(!t||txReturn==='site')return;
+function revealTx(t,fromSite){
+  if(!t||fromSite||txReturn==='site')return;
   if(filter.range==='month'&&t.date&&t.date.slice(0,7)!==ym(view)){
     view=new Date(+t.date.slice(0,4),+t.date.slice(5,7)-1,1);
   }
   if(filter.site&&t.site!==filter.site)filter.site='';
+  /* 검색어·유형 필터에 걸려도 방금 저장한 거래가 안 보인다 → 풀어준다 */
+  const hitType=filter.type==='all'||(filter.type==='cr'?(t.cr&&!t.tf):t.type===filter.type);
+  if(!hitType){filter.type='all';const ft=$('#filterType');if(ft)ft.value='all';}
+  if(filter.q){filter.q='';const si=$('#searchInput');if(si)si.value='';}
   openDays.add(t.date);
   render();
   setTimeout(()=>{
@@ -2092,7 +2145,9 @@ let saveTxBusy=false;
 $('#saveTx').onclick=()=>{
   /* 두 번 눌림 방지 — 시트가 닫히는 사이 한 번 더 눌려 같은 거래가 두 건 되는 것을 막는다 */
   if(saveTxBusy)return;
+  if(attUploading){toast('영수증을 올리는 중입니다 · 끝나면 다시 눌러주세요');return;}
   saveTxBusy=true;setTimeout(()=>{saveTxBusy=false;},700);
+  const fromSite=txReturn==='site';   /* closeSheet 가 txReturn 을 지우므로 먼저 잡아 둔다 */
   const amt=Number($('#amtInput').value.replace(/[^0-9]/g,''));
   if(!amt){toast('금액을 입력하세요');return;}
   const date=$('#dateInput').value||todayStr();
@@ -2124,7 +2179,7 @@ $('#saveTx').onclick=()=>{
     }else{
       Object.assign(t,{type:form.type,cat:form.cat,ico:form.ico,amount,memo,date,acct:form.acct,synced:false},biz);
       save();closeSheet('Add');resetAddSheet();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';render();renderStats();
-      toast('수정됨');revealTx(t);return;
+      toast('수정됨');revealTx(t,fromSite);return;
     }
   }
   /* 같은 날짜·유형·금액·거래처가 이미 있으면 한 번 묻는다 — "안 써진 줄 알고 다시 입력"을 여기서 잡는다 */
@@ -2133,7 +2188,7 @@ $('#saveTx').onclick=()=>{
     const lines=dupes.slice(0,3).map(x=>`· ${x.date} ${x.cat}${x.vendor?' '+x.vendor:''} ${won(x.amount)}원${x.site?' 🏗️'+x.site:''}${x.memo?' · '+x.memo:''}`).join('\n');
     if(!confirm(`같은 날짜·금액${vendor?'·거래처':''} 거래가 이미 ${dupes.length}건 기록돼 있습니다.\n\n${lines}\n\n방금 기록한 게 안 보여서 다시 누른 거라면 [취소] — 기록된 거래를 보여드립니다.\n정말 한 건 더 기록할까요?`)){
       closeSheet('Add');resetAddSheet();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';
-      revealTx(dupes[dupes.length-1]);toast('이미 기록된 거래를 표시했습니다');
+      revealTx(dupes[dupes.length-1],fromSite);toast('이미 기록된 거래를 표시했습니다');
       return;
     }
   }
@@ -2141,7 +2196,7 @@ $('#saveTx').onclick=()=>{
   state.tx.push(nt);
   save();closeSheet('Add');resetAddSheet();$('#amtInput').value='';$('#memoInput').value='';$('#vendorInput').value='';render();renderStats();
   toast(`${form.type==='in'?'매출':'지출'} ${won(amount)}원 기록됨${vatm==='excl'?' (부가세 별도 합산)':''}${form.cr?' · 외상':''}${date.slice(0,7)!==ym(new Date())?` · ${+date.slice(5,7)}월 장부`:''}`);
-  revealTx(nt);
+  revealTx(nt,fromSite);
 };
 
 /* ============ 폼 : 고정거래 ============ */
@@ -2202,6 +2257,8 @@ function applyRecurring(){
   /* 서버에서 받기 전에 만들면, 다른 기기가 이미 만든 이달 고정항목을 모른 채 또 만든다
      (2026-09: 무쏘 할부·급여가 기기 수만큼 3건씩 생겨 손으로 지웠다) */
   if(window.BIZDB&&BIZDB.isSynced&&!BIZDB.isSynced())return;
+  /* 직원 기기는 대표의 급여·할부 거래를 못 보므로(권한) "없다"고 보고 또 만든다 — 역할이 확인된 관리자만 */
+  if(window.BIZDB&&BIZDB.roleKnown&&!(BIZDB.roleKnown()&&BIZDB.isManager()))return;
   const now=new Date(),lim=new Date(now.getFullYear(),now.getMonth(),1);
   let added=0;
   state.recurring.forEach(r=>{
@@ -2241,9 +2298,10 @@ function taxYearItems(y){
   const items=[];
 
   /* ── 부가가치세 (공통 기간, 개인/법인만 성격이 다름) ── */
-  items.push({mm:1,dd:25,t:'부가가치세 2기 확정신고·납부',vat:{ps:(y-1)+'-07-01',pe:(y-1)+'-12-31'},
+  /* 법인은 예정신고(1~3월·7~9월)를 따로 하므로 확정신고 대상은 뒤 3개월만 — 전체로 잡으면 예정분이 두 번 계산된다 */
+  items.push({mm:1,dd:25,t:'부가가치세 2기 확정신고·납부',vat:{ps:(y-1)+(corp?'-10-01':'-07-01'),pe:(y-1)+'-12-31'},
     note:`대상기간 ${y-1}.7.1~${y-1}.12.31 · 준비물: ①매출 세금계산서 합계 ②매입 세금계산서 ③카드 매출·매입 ④현금영수증 ⑤수기(무증빙) 매출 — 1월 1일부터 자료 정리 시작`});
-  items.push({mm:7,dd:25,t:'부가가치세 1기 확정신고·납부',vat:{ps:y+'-01-01',pe:y+'-06-30'},
+  items.push({mm:7,dd:25,t:'부가가치세 1기 확정신고·납부',vat:{ps:y+(corp?'-04-01':'-01-01'),pe:y+'-06-30'},
     note:`대상기간 ${y}.1.1~${y}.6.30 · 준비물: ①매출 세금계산서 합계 ②매입 세금계산서 ③카드 매출·매입 ④현금영수증 ⑤수기 매출 — 7월 1일부터 자료 정리 시작`});
   if(corp){
     items.push({mm:4,dd:25,t:'부가가치세 1기 예정신고·납부 (법인)',vat:{ps:y+'-01-01',pe:y+'-03-31'},
@@ -2462,6 +2520,8 @@ function updateSyncBadge(st){
     : (st.phase==='error'?('오류 · '+(st.error&&st.error.message||'')).slice(0,80):st.text||'연결 대기');
 }
 function rerenderAll(){
+  /* 폴링이 청구 변경을 감지해도 청구 목록은 부팅 때만 받았다 — 받기 뒤에 함께 갱신 */
+  if(window.BIZDB&&BIZDB.isSynced&&BIZDB.isSynced()&&Date.now()-claimsLoadedAt>20000)loadClaims();
   applyOrgCats();renderOrgChip();applyRoleView();
   renderCats();renderAcctPills();renderSitePills();
   applyRecurring();
@@ -2550,7 +2610,7 @@ function restoreSnapshot(k){
   try{d=JSON.parse(localStorage.getItem(k)||'null');}catch(e){}
   if(!d||!Array.isArray(d.tx)){toast('이 스냅샷을 읽을 수 없습니다 (파일이 손상됨)');return;}
   if(!window.BIZDB||!BIZDB.planRestore){toast('서버 연결 후 다시 시도하세요');return;}
-  const plan=BIZDB.planRestore(d);
+  let plan;try{plan=BIZDB.planRestore(d);}catch(e){toast(String(e.message||e));return;}
   const when=snapLabel(k);
   if(!confirm(`${when} 에 찍힌 스냅샷으로 되돌립니다.\n(스냅샷은 그날 첫 기록 직후 한 번 찍힙니다 — 그 뒤 입력은 들어 있지 않습니다)\n\n· 거래 ${d.tx.length}건으로 장부 전체가 바뀝니다 (지금 ${state.tx.length}건)\n${restorePlanText(plan)}\n· 회사 공용 장부라 다른 직원 화면에서도 바뀝니다\n· 휴지통으로 간 거래는 설정 › 휴지통에서 되살릴 수 있습니다\n· 지금 내용은 백업 파일로 먼저 내려받습니다\n\n계속할까요?`))return;
   if(plan.trashTx.length>=10){
@@ -2814,7 +2874,7 @@ function renderAcKind(){
     p.onclick=()=>{acKind=p.dataset.k;renderAcKind();};
   });
 }
-$('#acInit').oninput=e=>{let v=e.target.value.replace(/[^0-9]/g,'');e.target.value=v?Number(v).toLocaleString('ko-KR'):'';};
+$('#acInit').oninput=e=>{const neg=/^s*-/.test(e.target.value);let v=e.target.value.replace(/[^0-9]/g,'');e.target.value=v?(neg?'-':'')+Number(v).toLocaleString('ko-KR'):(neg?'-':'');};
 $('#acSave').onclick=()=>{
   const name=$('#acName').value.trim();
   if(!name){toast('계좌 이름을 입력하세요');return;}
@@ -2824,7 +2884,7 @@ $('#acSave').onclick=()=>{
     bank:$('#acBank').value.trim()||undefined,
     holder:$('#acHolder').value.trim()||undefined,
     no:$('#acNo').value.trim()||undefined,
-    init:Number($('#acInit').value.replace(/[^0-9]/g,''))||0};
+    init:(/^s*-/.test($('#acInit').value)?-1:1)*(Number($('#acInit').value.replace(/[^0-9]/g,''))||0)};
   if(acIdx>=0){
     const old=state.accounts[acIdx].name;
     Object.assign(state.accounts[acIdx],data);
@@ -2895,14 +2955,14 @@ $('#exportCsv').onclick=()=>{if(!state.tx.length){toast('내보낼 데이터가 
   const rows=state.tx.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(t=>
     `${t.date},${t.tf?'이체':t.type==='in'?'매출':'지출'},${t.cat},${q(t.vendor)},${q(t.site)},${q(t.memo||t.cat)},${t.supply!=null?t.supply:t.amount},${t.vat||0},${t.amount},${q(t.acct)},${q(t.evid)},${t.cr?'외상':''},${t.tf?'이체':t.rid?'고정':''}`).join('\n');
   download('BOC_BIZ_장부_'+ym(new Date())+'.csv','\uFEFF'+head+rows,'text/csv');toast('CSV 저장됨');};
-$('#backupJson').onclick=()=>{download('BOC_BIZ_백업_'+Date.now()+'.json',JSON.stringify(state,null,2),'application/json');toast('백업 저장됨');};
+$('#backupJson').onclick=()=>{download('BOC_BIZ_백업_'+TENANT+'_'+Date.now()+'.json',JSON.stringify(Object.assign({},state,{_tenant:TENANT}),null,2),'application/json');toast('백업 저장됨');};
 $('#restoreJson').onclick=()=>$('#fileInput').click();
 /* 되돌릴 수 없는 작업 전에는 지금 상태를 파일로 먼저 내려받는다.
    서버 스냅샷·휴지통이 있어도, 손에 쥔 파일 하나가 마지막 안전망이다. */
 function downloadBackup(tag){
   try{
     const name=`ECOREAN_사업장부_${(bizOrg().name||TENANT).replace(/[\\/:*?"<>|]/g,'')}_${todayStr()}${tag?'_'+tag:''}.json`;
-    const blob=new Blob([JSON.stringify(state,null,1)],{type:'application/json'});
+    const blob=new Blob([JSON.stringify(Object.assign({},state,{_tenant:TENANT}),null,1)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
     document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);
@@ -2917,7 +2977,7 @@ $('#fileInput').onchange=e=>{
     try{d=JSON.parse(r.result);}catch(err){}
     if(!d||!Array.isArray(d.tx)){toast('사업장부 백업 파일이 아닙니다');return;}
     if(!window.BIZDB||!BIZDB.planRestore){toast('서버 연결 후 다시 시도하세요');return;}
-    const plan=BIZDB.planRestore(d);
+    let plan;try{plan=BIZDB.planRestore(d);}catch(e){toast(String(e.message||e));return;}
     if(!confirm(`백업 파일로 되돌립니다.\n\n· 거래 ${d.tx.length}건으로 장부 전체가 바뀝니다 (지금 ${state.tx.length}건)\n${restorePlanText(plan)}\n· 회사 공용 장부라 다른 직원 화면에서도 바뀝니다\n· 지금 내용은 백업 파일로 먼저 내려받습니다\n\n계속할까요?`))return;
     if(plan.trashTx.length>=10){
       const a=prompt(`거래 ${plan.trashTx.length}건이 휴지통으로 갑니다.\n정말 되돌리려면 「되돌리기」 라고 입력하세요.`);
@@ -3044,13 +3104,21 @@ async function openTrash(){
   $$('#trashList .trashrow').forEach(el=>{
     const id=el.dataset.id;
     el.querySelector('.restore').onclick=async()=>{
-      try{await BIZDB.restoreTrash(id);await BIZDB.pull();rerenderAll();openTrash();toast('되살렸습니다');}
-      catch(e){toast('되살리기 실패');}
+      const r=rows.find(x=>x.id===id);
+      /* 살아 있는 거래에 같은 기록이 있으면 먼저 묻는다 — 09-08~13 복제 사고로 휴지통에 같은 거래의 옛 사본이 남아 있다.
+         그대로 살리면 금액이 두 번 잡히고, 같은 번호(local_id)라 수정·삭제가 엉뚱한 행에 간다 → 새 번호를 준다 */
+      const sameId=r&&r.local_id&&state.tx.some(t=>String(t.id)===String(r.local_id));
+      const twins=r?state.tx.filter(t=>!t.tf&&t.date===r.tx_date&&t.amount===Number(r.amount)&&t.type===r.type&&(t.vendor||'')===(r.vendor||'')):[];
+      if((sameId||twins.length)&&!confirm(`장부에 같은 거래가 이미 있습니다.\n\n· ${String(r.tx_date).replace(/-/g,'.')} ${r.category}${r.vendor?' '+r.vendor:''} ${won(r.amount)}원\n\n되살리면 두 번 잡힙니다. 그래도 되살릴까요?`))return;
+      try{
+        await BIZDB.restoreTrash(id,sameId?{local_id:String(newTxId())}:null);
+        await BIZDB.pull();rerenderAll();openTrash();updateTrashHint();toast('되살렸습니다');
+      }catch(e){toast('되살리기 실패 · '+String(e.message||'').slice(0,50));}
     };
     el.querySelector('.rm').onclick=async()=>{
       if(!confirm('완전히 삭제하면 되돌릴 수 없습니다.\n정말 삭제할까요?'))return;
-      try{await BIZDB.purgeTrash(id);openTrash();toast('완전히 삭제했습니다');}
-      catch(e){toast('삭제 실패');}
+      try{await BIZDB.purgeTrash(id);openTrash();updateTrashHint();toast('완전히 삭제했습니다');}
+      catch(e){toast('삭제 실패 · '+String(e.message||'').slice(0,50));}
     };
   });
 }
@@ -3181,6 +3249,8 @@ $('#goOrg').onclick=()=>{renderOrgSheet();openSheet('Org');};
 $('#orgChip').onclick=()=>{renderOrgSheet();openSheet('Org');};
 $('#oSave').onclick=async()=>{
   if(!isMgr()){toast('사업자 정보는 대표·관리자만 바꿀 수 있습니다');return;}
+  /* 서버에서 사업자 정보를 못 받은 상태의 폼(기본값 '개인')으로 저장하면 법인 정보·사업자번호가 지워진다 */
+  if(!(window.BIZDB&&BIZDB.orgs&&BIZDB.orgs().length)){toast('사업자 정보를 서버에서 받은 뒤에 저장할 수 있습니다 · 동기화 후 다시 여세요');return;}
   const name=$('#oName').value.trim();
   if(!name){toast('상호(장부 이름)를 입력하세요');return;}
   const row={id:oform.id,name,biz_type:oform.biz_type,
@@ -3202,8 +3272,10 @@ $('#oSave').onclick=async()=>{
    직원이 내 돈 쓰고 → 상신 → 대표·경리 승인 → 그때 비로소 장부(biz_tx)에 잡힌다.
    승인 전 청구는 회사 손익에 섞이지 않는다. */
 let claims=[],cform={};
+let claimsLoadedAt=0;
 async function loadClaims(){
   if(!window.BIZDB||!BIZDB.listClaims)return;
+  claimsLoadedAt=Date.now();
   try{claims=await BIZDB.listClaims()||[];}catch(e){claims=[];}
   renderMyTab();
 }
@@ -3366,7 +3438,8 @@ function renderMyTab(){
   const el=$('#myClaims');
   if(el){
     if(!list.length)el.innerHTML=`<div class="empty" style="padding:16px 0"><span class="em">🧾</span>${mgr?'올라온 경비 청구가 없습니다':'올린 경비 청구가 없습니다'}<br><span style="color:var(--teal);font-size:12px">위 + 청구로 시작하세요</span></div>`;
-    else el.innerHTML=list.slice(0,20).map(x=>
+    /* 승인 대기를 먼저 — 날짜순 20건만 보이면 오래된 대기 건은 열 수가 없었다 */
+    else el.innerHTML=list.slice().sort((a,b)=>(a.status==='submitted'?0:1)-(b.status==='submitted'?0:1)).slice(0,Math.max(20,list.filter(x=>x.status==='submitted').length)).map(x=>
       `<div class="claim" data-claim="${esc(x.id)}">
         <div class="ci">${icoOf('out',x.category)}</div>
         <div class="cm"><div class="a">${esc(x.category)}${x.site_name?` · 🏗️${esc(x.site_name)}`:''}${(x.attachments&&x.attachments.length)?` <span class="clip">📎${x.attachments.length}</span>`:''}</div>
@@ -3418,7 +3491,7 @@ function costRates(){
 function siteCost(site){
   const rows=state.tx.filter(t=>!t.tf&&t.type==='out'&&t.site===site);
   const by={재료비:0,노무비:0,외주비:0,경비:0};
-  rows.forEach(t=>{const k=t.ct||costTypeOf(t.cat);by[k]=(by[k]||0)+(t.supply||t.amount);});
+  rows.forEach(t=>{const k=t.ct||costTypeOf(t.cat);by[k]=(by[k]||0)+plAmt(t);});
   const R=costRates();
   const legal={};
   legal.safety_insurance=Math.round(by.노무비*R.safety_insurance);
@@ -3461,10 +3534,11 @@ function costSheetHtml(site){
 }
 /* 집계표 : 공종별 예산(계약내역) 대비 실제 */
 let siteBudgetCache={};
-async function loadSiteBudget(site){
+async function loadSiteBudget(site,strict){
   const id=window.BIZDB?BIZDB.siteId(site):null;
   if(!id||!window.BIZDB.listSiteBudget)return [];
-  try{siteBudgetCache[site]=await BIZDB.listSiteBudget(id)||[];}catch(e){siteBudgetCache[site]=[];}
+  try{siteBudgetCache[site]=await BIZDB.listSiteBudget(id)||[];}
+  catch(e){if(strict)throw e;siteBudgetCache[site]=siteBudgetCache[site]||[];}
   return siteBudgetCache[site];
 }
 function tallyHtml(site){
@@ -3474,7 +3548,7 @@ function tallyHtml(site){
   rows.forEach(t=>{
     const k=t.pc||'(미지정)';
     const o=actual[k]=actual[k]||{재료비:0,노무비:0,외주비:0,경비:0,합계:0};
-    const ct=t.ct||costTypeOf(t.cat), v=t.supply||t.amount;
+    const ct=t.ct||costTypeOf(t.cat), v=plAmt(t);
     o[ct]=(o[ct]||0)+v;o.합계+=v;
   });
   const codes=[...new Set([...budget.map(b=>b.process_code),...Object.keys(actual).filter(k=>k!=='(미지정)')])];
@@ -3518,20 +3592,26 @@ function tallyHtml(site){
 }
 
 /* ── 집계표 입력 ── */
-let bgSite='',bgRows=[];
+let bgSite='',bgRows=[],bgReady=false;
 async function openBudget(site){
   if(!isMgr()){toast('집계표는 대표·관리자만 입력할 수 있습니다');return;}
   if(!window.BIZDB||!BIZDB.siteId(site)){toast('동기화가 끝난 뒤에 입력할 수 있습니다');return;}
-  bgSite=site;
+  bgSite=site;bgReady=false;
   $('#bgTitle').textContent=`집계표 · ${site}`;
   $('#bgRows').innerHTML='<div class="spin"></div>';
   openSheet('Budget');
-  const saved=await loadSiteBudget(site);
+  let saved;
+  try{saved=await loadSiteBudget(site,true);}
+  catch(e){$('#bgRows').innerHTML='<div class="empty" style="padding:16px 0"><span class="em">⚠️</span>집계표를 불러오지 못했습니다 · 닫고 다시 열어주세요</div>';return;}
+  if(bgSite!==site)return;
   const ps=procList();
+  /* 공종 목록을 못 받았으면 빈 표로 저장돼 기존 집계표가 지워질 수 있다 */
+  if(!ps.length){$('#bgRows').innerHTML='<div class="empty" style="padding:16px 0">공종 목록을 불러오는 중입니다 · 잠시 후 다시 열어주세요</div>';return;}
   bgRows=ps.map((p,i)=>{
     const s=saved.find(x=>x.process_code===p.code);
     return {code:p.code,name:p.name,m:s?s.material_amount:0,l:s?s.labor_amount:0,e:s?s.expense_amount:0,ord:i};
   });
+  bgReady=true;
   renderBgRows();
 }
 function renderBgRows(){
@@ -3565,6 +3645,7 @@ function renderBgTotal(){
 $('#bgSave').onclick=async()=>{
   const sid=BIZDB.siteId(bgSite);
   if(!sid)return;
+  if(!bgReady){toast('집계표를 불러온 뒤에 저장할 수 있습니다');return;}
   const keep=bgRows.filter(r=>r.m||r.l||r.e);
   const drop=bgRows.filter(r=>!(r.m||r.l||r.e)).map(r=>r.code);
   try{
@@ -3699,12 +3780,12 @@ function renderSiteTab(){
   }
   /* 이익이 나쁜 현장이 위로 오게 — 관리가 필요한 것부터 본다 */
   rows.sort((a,b)=>{
-    const ra=a[1].billed?a[1].profit/a[1].billed:0, rb=b[1].billed?b[1].profit/b[1].billed:0;
+    const ra=a[1].sales?a[1].profit/a[1].sales:0, rb=b[1].sales?b[1].profit/b[1].sales:0;
     return ra-rb;
   });
   el.innerHTML=rows.map(([name,o])=>{
     const st=siteStatusOf(name);
-    const rate=o.billed?o.profit/o.billed*100:null;
+    const rate=o.sales?o.profit/o.sales*100:null;
     const prog=o.contract?Math.min(100,o.billed/o.contract*100):null;
     const od=state.tx.filter(t=>t.site===name&&overdueDays(t)>0).length;
     const members=(window.BIZDB&&BIZDB.staffDirectory)?BIZDB.staffDirectory():[];
@@ -3749,19 +3830,24 @@ $('#addSiteBtn').onclick=()=>{
 };
 
 /* ============ 현장 담당자 배정 (관리자) ============ */
-let memSite='',memPicked=[];
+let memSite='',memPicked=[],memReady=false;
 async function openMembers(siteName){
   if(!isMgr()){toast('담당자 배정은 대표·관리자만 할 수 있습니다');return;}
   const sid=window.BIZDB?BIZDB.siteId(siteName):null;
   if(!sid){toast('먼저 동기화가 끝난 뒤에 배정할 수 있습니다');return;}
-  memSite=siteName;
+  memSite=siteName;memReady=false;
   $('#memDesc').textContent=`🏗️ ${siteName} — 배정된 직원만 이 현장의 거래를 볼 수 있습니다`;
   $('#memList').innerHTML='<div class="spin"></div>';
   openSheet('Member');
   try{
     const cur=await BIZDB.listSiteMembers(sid);
-    memPicked=cur.map(m=>m.user_id);
-  }catch(e){memPicked=[];}
+    if(memSite!==siteName)return;               /* 그사이 다른 현장을 열었음 */
+    memPicked=(cur||[]).map(m=>m.user_id);memReady=true;
+  }catch(e){
+    /* 못 불러온 채 빈 목록으로 저장하면 기존 배정이 전부 지워진다 — 저장을 막는다 */
+    $('#memList').innerHTML='<div class="empty" style="padding:16px 0"><span class="em">⚠️</span>담당자 목록을 불러오지 못했습니다 · 닫고 다시 열어주세요</div>';
+    return;
+  }
   renderMemList();
 }
 function renderMemList(){
@@ -3781,6 +3867,7 @@ function renderMemList(){
 $('#memSave').onclick=async()=>{
   const sid=window.BIZDB?BIZDB.siteId(memSite):null;
   if(!sid)return;
+  if(!memReady){toast('담당자 목록을 불러온 뒤에 저장할 수 있습니다');return;}
   try{
     await BIZDB.setSiteMembers(sid,memPicked);
     closeSheet('Member');toast(`담당자 ${memPicked.length}명 저장됨`);
@@ -3942,13 +4029,22 @@ function renderCashflow(){
     const w=weeks.find(x=>d>=x.s&&d<x.e);
     if(w)w[t.type==='in'?'in':'out']+=t.amount;
   });
-  /* 고정지출·고정수입도 앞으로 3개월치를 넣는다 */
+  /* 날짜가 앞으로인 확정 거래(외상 아님)는 그 주에 — 잔액에서 뺐으므로 여기서 한 번만 */
+  state.tx.forEach(t=>{
+    if(t.tf||t.cr||t.date<=todayStr())return;
+    const d=new Date(t.date+'T00:00');
+    const w=weeks.find(x=>d>=x.s&&d<x.e);
+    if(w)w[t.type==='in'?'in':'out']+=t.amount;
+  });
+  /* 고정지출·고정수입도 앞으로 3개월치를 넣는다 — 이미 거래로 만들어진 달·건너뛴 달은 빼고 */
   state.recurring.forEach(r=>{
     for(let m=0;m<4;m++){
       const base=new Date(today.getFullYear(),today.getMonth()+m,1);
       const last=new Date(base.getFullYear(),base.getMonth()+1,0).getDate();
       const d=new Date(base.getFullYear(),base.getMonth(),Math.min(r.day,last));
       if(d<today)continue;
+      const k=ym(base);
+      if((r.skip||[]).includes(k)||state.tx.some(t=>t.rid===r.id&&t.date.slice(0,7)===k))continue;
       const w=weeks.find(x=>d>=x.s&&d<x.e);
       if(w)w[r.type==='in'?'in':'out']+=r.amount;
     }
@@ -4228,9 +4324,11 @@ $('#impConfirm').onclick=()=>{
       /* 사업카드 계좌 = 적격증빙·부가세 포함 확정. 통장은 세금계산서로 두고 발행일을 채우게 한다 */
       ...(function(){
         const k=acctKindOf(impAcct||state.accounts[0].name);
-        if(it.type!=='out')return {vatm:'none',supply:it.amount,vat:0,evid:''};
-        if(k==='카드'){const sp=Math.round(it.amount/1.1);return {vatm:'incl',supply:sp,vat:it.amount-sp,evid:'카드'};}
-        return {vatm:'none',supply:it.amount,vat:0,evid:EVID_BY_KIND[k]||'세금계산서'};
+        /* 입금은 성격(공사대금·대여·이자)을 파일만으로 모른다 → 부가세·증빙을 가정하지 않는다 */
+        if(it.type!=='out'||NOVAT_CATS.test(it.cat))return {vatm:'none',supply:it.amount,vat:0,evid:''};
+        /* 지출은 직접 입력과 같은 규칙 — 예전엔 통장 지출을 '세금계산서'인데 부가세 0 으로 넣어 매입세액이 빠지고 원가에 부가세가 섞였다 */
+        const sp=Math.round(it.amount/1.1);
+        return {vatm:'incl',supply:sp,vat:it.amount-sp,evid:EVID_BY_KIND[k]||'세금계산서'};
       })(),cr:0,
       src:'import',dk:it.dk||undefined,att:[],synced:false});
   });
