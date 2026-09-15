@@ -237,10 +237,13 @@ html[data-font="mono"] .ProseMirror{font-family:"JetBrains Mono","D2Coding",Cons
 .ProseMirror div[data-type="detailsContent"]{padding:4px 0 2px 2px}
 .ProseMirror div[data-type="details"]:not(.is-open)>div>div[data-type="detailsContent"]{display:none}
 .ProseMirror .drag-over{outline:2px dashed var(--accent);outline-offset:6px;border-radius:8px}
-.drag-handle{width:22px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dim2);cursor:grab;font-size:15px;letter-spacing:-2px;user-select:none;opacity:.85}
-.drag-handle:hover{background:var(--bg3);color:var(--text)}
+.drag-handle{width:22px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dim2);cursor:grab;font-size:15px;letter-spacing:-2px;user-select:none;opacity:.8;position:relative;transition:opacity .1s,background .1s}
+.drag-handle:hover{background:var(--bg3);color:var(--text);opacity:1}
 .drag-handle::before{content:"⋮⋮"}
+.drag-handle::after{content:"";position:absolute;left:100%;top:-8px;bottom:-8px;width:12px} /* 글자까지의 빈틈을 메우는 투명 영역 */
 .drag-handle:active{cursor:grabbing}
+.drag-handle[data-dragging="true"]{opacity:.4}
+@media (hover:none){.drag-handle{display:none}}
 
 /* 템플릿 안내 */
 .tpl{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
@@ -451,7 +454,7 @@ html[data-font="mono"] .ProseMirror{font-family:"JetBrains Mono","D2Coding",Cons
 <div class="toast" id="toast"></div>
 <input type="file" id="fileIn" accept="image/*" multiple style="display:none">
 
-<script async data-bundle src="/work/notes/econote-editor.js?v=2"></script>
+<script async data-bundle src="/work/notes/econote-editor.js?v=3"></script>
 <script>
 (function () {
 'use strict';
@@ -860,7 +863,21 @@ function mkEditor(el, content, editable) {
   ];
   if (editable !== false) exts.push(T.DragHandle.configure({
     render: function () { var d = document.createElement('div'); d.className = 'drag-handle'; d.title = '끌어서 옮기기 · 클릭하면 메뉴'; d.addEventListener('click', function (e) { e.preventDefault(); blockMenu(d); }); return d; },
-    onNodeChange: function (o) { dragHandleNode = o.node ? { node: o.node, pos: o.pos } : null; }
+    onNodeChange: function (o) { dragHandleNode = o.node ? { node: o.node, pos: o.pos } : null; },
+    /* 블록 전체가 아니라 '첫 줄' 높이에 맞춰 세로 가운데, 글자에서 8px 떨어뜨린다 (Notion 과 같은 자리).
+       핸들과 글자 사이 빈틈은 .drag-handle::after 투명 영역이 메워 마우스가 건너가도 사라지지 않는다 */
+    getReferencedVirtualElement: function () {
+      var h = dragHandleNode; if (!h) return null;
+      var dom; try { dom = editor.view.nodeDOM(h.pos); } catch (e) { dom = null; }
+      if (!dom || dom.nodeType !== 1) return null;
+      var r = dom.getBoundingClientRect(), lh = parseFloat(getComputedStyle(dom).lineHeight);
+      var fl = dom.querySelector && dom.querySelector('p,h1,h2,h3,summary,[data-type="detailsSummary"],th,td,.co-body>p');
+      if (fl && fl !== dom) { var fr = fl.getBoundingClientRect(); lh = parseFloat(getComputedStyle(fl).lineHeight) || fr.height; r = { top: fr.top, left: r.left, right: r.right, width: r.width, height: fr.height, bottom: fr.bottom }; }
+      if (!isFinite(lh) || lh <= 0) lh = r.height;
+      var hgt = Math.min(lh, r.height) || r.height;
+      return { getBoundingClientRect: function () { return { top: r.top, left: r.left, right: r.right, bottom: r.top + hgt, width: r.width, height: hgt, x: r.left, y: r.top }; } };
+    },
+    computePositionConfig: { placement: 'left', strategy: 'absolute', middleware: [T.offset(8)] }
   }));
   return new T.Editor({
     element: el, editable: editable !== false, content: content || null, extensions: exts,

@@ -16,6 +16,7 @@ import { DragHandle } from '@tiptap/extension-drag-handle';
 import { Markdown } from '@tiptap/markdown';
 import { Subscript } from '@tiptap/extension-subscript';
 import { Superscript } from '@tiptap/extension-superscript';
+import { offset, shift } from '@floating-ui/dom';
 
 /* 서버 저장 이미지: src 는 서명 URL(수명 있음)이라 저장하지 않고, 버킷 경로(path)만 문서에 남긴다.
    불러올 때 path → 서명 URL 로 다시 채운다(페이지 쪽 resolveImages). width 는 % 또는 px. */
@@ -56,4 +57,4 @@ const Callout = Node.create({
 
 export { Editor, Node, Extension, Plugin, PluginKey, mergeAttributes,
   StarterKit, EcoImage as Image, Youtube, isValidYoutubeUrl, TaskList, TaskItem, TableKit, Placeholder, CharacterCount, Focus,
-  Highlight, TextStyle, Color, BackgroundColor, TextAlign, Details, DetailsSummary, DetailsContent, DragHandle, Markdown, Subscript, Superscript, Callout };
+  Highlight, TextStyle, Color, BackgroundColor, TextAlign, Details, DetailsSummary, DetailsContent, DragHandle, Markdown, Subscript, Superscript, Callout, offset, shift };
