@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
+const XLSX = require('../../scripts/econote/node_modules/xlsx');
 
 const ROOT = path.join(__dirname, '../../sites/net/public/work/notes');
 const BUNDLE = fs.readFileSync(path.join(ROOT, 'econote-editor.js'), 'utf8');
@@ -53,7 +54,7 @@ function makeServer() {
     n.updated_at = new Date(Date.now() + (++seq)).toISOString();
     return n;
   }
-  const srv = { db, log, delay: 0 };
+  const srv = { db, log, delay: 0, blobs: {} };
   srv.fetch = async function (url, opts) {
     opts = opts || {}; const u = new URL(url); const method = opts.method || 'GET';
     log.push(method + ' ' + u.pathname + u.search);
@@ -61,8 +62,9 @@ function makeServer() {
     if (srv.delay) await sleep(srv.delay);
     if (u.pathname.startsWith('/storage/v1/')) {
       const p = u.pathname.slice('/storage/v1/'.length);
-      if (p.startsWith('object/sign/')) { const b = JSON.parse(opts.body); return json(b.paths.map(x => ({ error: null, path: x, signedURL: '/object/sign/econote-media/' + x + '?token=T' }))); }
-      if (method === 'POST' && p.startsWith('object/econote-media/')) return json({ Key: p.slice(7) });
+      if (method === 'POST' && p.startsWith('object/sign/')) { const b = JSON.parse(opts.body); return json(b.paths.map(x => ({ error: null, path: x, signedURL: '/object/sign/econote-media/' + x + '?token=T' }))); }
+      if (method === 'POST' && p.startsWith('object/econote-media/')) { srv.blobs[p.slice('object/econote-media/'.length)] = { body: opts.body, type: (opts.headers || {})['Content-Type'] }; return json({ Key: p.slice(7) }); }
+      if (method === 'GET' && p.startsWith('object/sign/econote-media/')) { const b = srv.blobs[p.slice('object/sign/econote-media/'.length)]; if (!b) return json({ error: 'nofile' }, 404); return { ok: true, status: 200, arrayBuffer: async () => { if (b.body.arrayBuffer) return b.body.arrayBuffer(); const fr = new srv.win.FileReader(); await new Promise(res => { fr.onload = res; fr.readAsArrayBuffer(b.body); }); return Uint8Array.from(new Uint8Array(fr.result)).buffer; /* jsdom realm 의 ArrayBuffer 는 Node realm 의 XLSX 에서 instanceof 가 실패해 문자열로 취급된다 → 이쪽 realm 으로 복사. 브라우저는 realm 이 하나라 해당 없음 */ }, text: async () => '' }; }
       if (method === 'DELETE') return json([]);
       return json({ error: 'nope' }, 404);
     }
@@ -113,11 +115,12 @@ function openPage(srv, url) {
       win.Range.prototype.getBoundingClientRect = rect; win.Range.prototype.getClientRects = rects;
       win.Element.prototype.getClientRects = rects;
       win.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+      win.XLSX = XLSX; /* CDN 대신 로컬 SheetJS */
       const oc = win.HTMLAnchorElement.prototype.click; win.HTMLAnchorElement.prototype.click = function () { if (this.hasAttribute('download')) { downloads.push(this.download); return; } oc.call(this); };
       win.addEventListener('error', e => errors.push(e.message));
     }
   });
-  const w = dom.window;
+  const w = dom.window; srv.win = w;
   return { dom, w, errors, downloads, $: s => w.document.querySelector(s), $$: s => Array.from(w.document.querySelectorAll(s)), E: () => w.__ECONOTE };
 }
 function key(w, el, k, extra) { el.dispatchEvent(new w.KeyboardEvent('keydown', Object.assign({ key: k, bubbles: true, cancelable: true }, extra || {}))); }
@@ -152,7 +155,7 @@ function dragEvent(w, type, dt) { const e = new w.Event(type, { bubbles: true, c
     /* 슬래시 */
     E().editor.commands.focus('start');
     key(w, $('#editor .ProseMirror'), '/'); E().editor.commands.insertContent('/'); await sleep(30);
-    ok($('#slash').classList.contains('show') && $$('#slash .it').length === 21 && $$('#slash .grp').length === 4, 'A3 슬래시 메뉴 21종 4그룹: ' + $$('#slash .it').length);
+    ok($('#slash').classList.contains('show') && $$('#slash .it').length === 22 && $$('#slash .grp').length === 4, 'A3 슬래시 메뉴 22종 4그룹: ' + $$('#slash .it').length);
     E().editor.commands.insertContent('콜'); await sleep(30);
     ok($$('#slash .it').length === 1 && /콜아웃/.test($('#slash .it').textContent), 'A3 슬래시 필터 "콜"');
     key(w, $('#editor .ProseMirror'), 'Enter'); await sleep(30);
@@ -309,6 +312,60 @@ function dragEvent(w, type, dt) { const e = new w.Event(type, { bubbles: true, c
     key(w, w.document.body, '\\', { ctrlKey: true });
     ok($('#shell').classList.contains('sb-off'), 'C10 Ctrl+\\ 사이드바 접기');
     ok(pg.errors.length === 0, 'C 전역 오류 0: ' + pg.errors.join(' | '));
+  }
+  /* ───── D. 엑셀: 첨부 → 뷰어(시트·병합·숫자) → 표로 넣기 → 표를 엑셀로 → 엑셀 붙여넣기 ───── */
+  {
+    const srv = makeServer(); const pg = openPage(srv); const { w, $, $$, E } = pg;
+    await sleep(150); $('#newRootBtn').click(); await sleep(150);
+    const ws = XLSX.utils.aoa_to_sheet([['견적 내역', '', ''], ['품목', '수량', '단가'], ['타일', 10, 12000], ['합계', '', 120000]]);
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }, { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '견적'); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['b']]), '둘째');
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const U8 = w.Uint8Array || Uint8Array; const bytes = new U8(buf.byteLength); bytes.set(new Uint8Array(buf)); /* jsdom Blob 은 다른 realm 의 ArrayBuffer 를 문자열로 취급한다 */
+    const file = new w.File([bytes], '견적서.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    await E().uploadFiles([file]); await sleep(100);
+    const fnode = E().editor.getJSON().content.find(n => n.type === 'fileBlock');
+    ok(fnode && /\.xlsx$/.test(fnode.attrs.path) && fnode.attrs.name === '견적서.xlsx' && fnode.attrs.size === buf.byteLength, 'D1 파일 카드 노드: ' + JSON.stringify(fnode && fnode.attrs));
+    ok(Object.keys(srv.blobs).length === 1 && srv.blobs[fnode.attrs.path].type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'D1 버킷 업로드 + 엑셀 MIME');
+    ok(srv.db.econote_files.length === 1 && srv.db.econote_files[0].name === '견적서.xlsx', 'D1 첨부 목록 행');
+    const card = $('#editor .file-card');
+    ok(card && card.querySelector('.fc-icon').textContent === '📊' && $$('.fc-act button', card).map(b => b.textContent).join(',') === '열기,표로 넣기,내려받기', 'D1 카드 렌더(아이콘·버튼): ' + (card && $$('.fc-act button', card).map(b => b.textContent).join(',')));
+    /* 뷰어 */
+    card.querySelector('[data-file-act="open"]').click(); await sleep(300);
+    ok($('#modalBg').classList.contains('show') && $$('#xlTabs button').length === 2 && $('#xlTabs button.on') && $('#xlTabs button.on').textContent === '견적', 'D2 뷰어 시트 탭 2개: ' + ($('#xlSt') && $('#xlSt').textContent));
+    if (!$('#xlTabs button.on') || !/4행/.test($('#xlSt').textContent)) { console.log('  D2 abort: tabs=' + $$('#xlTabs button').map(b => b.textContent).join('|') + ' grid=' + $('#xlGrid').textContent.replace(/\s+/g, ' ').slice(0, 200)); ok(false, 'D2 뷰어 내용 이상'); process.exit(1); }
+    ok(/4행 × 3열 · 병합 2/.test($('#xlSt').textContent), 'D2 크기·병합 표시: ' + $('#xlSt').textContent);
+    const mergedTop = $('#xlGrid td[data-r="0"][data-c="0"]');
+    ok(mergedTop && mergedTop.getAttribute('colspan') === '3' && !$('#xlGrid td[data-r="0"][data-c="1"]'), 'D2 병합 셀 colspan=3, 덮인 셀 없음');
+    ok($('#xlGrid td[data-r="2"][data-c="1"]').classList.contains('n') && $('#xlGrid td[data-r="2"][data-c="2"]').textContent === '12000', 'D2 숫자 우측 정렬·값');
+    ok($$('#xlGrid thead th').length === 4 && $$('#xlGrid thead th')[1].textContent === 'A', 'D2 열 머리글 A,B,C');
+    $$('#xlTabs button')[1].click(); await sleep(30);
+    ok($('#xlTabs button.on').textContent === '둘째' && $('#xlGrid td[data-r="0"][data-c="0"]').textContent === 'b', 'D2 시트 전환');
+    $$('#xlTabs button')[0].click(); await sleep(30);
+    /* 표로 넣기: 2행부터(머리글 품목) */
+    $('#xlR0').value = '2'; $('#xlInsert').click(); await sleep(100);
+    const tbl = $('#editor table');
+    ok(tbl && $$('tr', tbl).length === 3 && $$('th', tbl).length === 3 && $$('th', tbl)[0].textContent === '품목', 'D3 표로 넣기 → 3행, 머리글 품목/수량/단가');
+    ok($('#editor table td[colspan="2"]') && $('#editor table td[colspan="2"]').textContent === '합계', 'D3 병합 → colspan=2 합계');
+    ok(!$('#modalBg').classList.contains('show'), 'D3 모달 닫힘');
+    /* 표 → 엑셀 */
+    let tnode = null; E().editor.state.doc.descendants(n => { if (n.type.name === 'table' && !tnode) tnode = n; });
+    const t = E().tableToAoa(tnode);
+    ok(t.aoa.length === 3 && t.aoa[1][1] === 10 && t.aoa[1][2] === 12000 && t.merges.length === 1 && t.merges[0].e.c === 1, 'D4 표 → aoa(숫자 변환·병합): ' + JSON.stringify(t));
+    await E().tableToXlsx(tnode, '견적표'); await sleep(50);
+    ok(pg.downloads.indexOf('견적표.xlsx') >= 0, 'D4 엑셀 내려받기 파일명: ' + pg.downloads.join(','));
+    /* 엑셀 붙여넣기(클립보드 HTML 표) → 노트 표 */
+    E().editor.chain().focus('end').insertContent('<table><tr><td>a</td><td>b</td></tr><tr><td>1</td><td>2</td></tr></table>').run(); await sleep(20);
+    ok($$('#editor table').length === 2 && $$('#editor table')[1].querySelectorAll('td').length === 4, 'D5 HTML 표 붙여넣기 → 표 2×2');
+    /* 자동 저장에 파일 카드가 남고, 마크다운 내보내기도 통과 */
+    await sleep(1700);
+    ok(srv.db.econote_pages[0].content.content.some(n => n.type === 'fileBlock'), 'D6 저장 문서에 파일 카드');
+    const md = await E().exportMd(srv.db.econote_pages[0].id);
+    ok(md && /견적서\.xlsx/.test(md.md) && /품목/.test(md.md), 'D6 마크다운에 파일명·표: ' + JSON.stringify(md && md.md.slice(0, 120)));
+    /* 허용 안 되는 파일 */
+    await E().uploadFiles([new w.File(['x'], '악성.exe', { type: 'application/octet-stream' })]); await sleep(30);
+    ok(Object.keys(srv.blobs).length === 1 && /엑셀/.test($('#toast').textContent), 'D7 exe 거부: ' + $('#toast').textContent);
+    ok(pg.errors.length === 0, 'D 전역 오류 0: ' + pg.errors.join(' | '));
   }
   console.log('  ' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);

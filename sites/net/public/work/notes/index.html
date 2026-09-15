@@ -245,6 +245,35 @@ html[data-font="mono"] .ProseMirror{font-family:"JetBrains Mono","D2Coding",Cons
 .drag-handle[data-dragging="true"]{opacity:.4}
 @media (hover:none){.drag-handle{display:none}}
 
+/* 첨부 파일 카드 · 엑셀 뷰어 */
+.file-card{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line2);border-radius:10px;background:var(--bg2);margin:.6em 0;user-select:none}
+.file-card.ProseMirror-selectednode{box-shadow:0 0 0 3px var(--blue)}
+.fc-icon{font-size:26px;flex:0 0 auto}
+.fc-meta{flex:1;min-width:0;display:flex;flex-direction:column}
+.fc-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-size{font-size:12px;color:var(--dim2)}
+.fc-act{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.fc-act button{font-size:12px;padding:4px 9px;border-radius:6px;border:1px solid var(--line2);color:var(--dim);background:var(--bg3)}
+.fc-act button:hover{color:var(--text);border-color:var(--accent-line)}
+.modal.xl-modal{width:min(1180px,100%)}
+.xl{display:flex;flex-direction:column;min-height:0;height:68vh}
+.xl-tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:8px;flex:0 0 auto}
+.xl-tabs button{padding:4px 10px;border-radius:6px;font-size:12.5px;color:var(--dim);white-space:nowrap}
+.xl-tabs button.on{background:var(--accent-dim);color:var(--accent)}
+.xl-grid{flex:1;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-height:0}
+.xl-grid table{border-collapse:separate;border-spacing:0;font-size:12.5px;font-family:"Pretendard Variable",Pretendard,"Malgun Gothic",sans-serif;table-layout:fixed}
+.xl-grid th,.xl-grid td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:2px 7px;white-space:pre;overflow:hidden;text-overflow:ellipsis;height:24px;vertical-align:middle;color:var(--text2)}
+.xl-grid th{background:var(--bg3);color:var(--dim);font-weight:500;text-align:center;position:sticky;top:0;z-index:2}
+.xl-grid td.rh{background:var(--bg3);color:var(--dim2);text-align:center;position:sticky;left:0;z-index:1}
+.xl-grid th.corner{left:0;z-index:3}
+.xl-grid td.n{text-align:right;font-variant-numeric:tabular-nums}
+.xl-grid td.hd{font-weight:600;color:var(--text);background:color-mix(in srgb,var(--bg3) 55%,transparent)}
+.xl-grid td.sel{outline:2px solid var(--accent-line);outline-offset:-2px}
+.xl-foot{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--dim);flex-wrap:wrap;flex:0 0 auto}
+.xl-foot input[type=number]{width:64px;background:var(--bg3);border:1px solid var(--line2);border-radius:6px;padding:3px 6px;font-size:12.5px}
+.xl-foot label{display:inline-flex;align-items:center;gap:4px;margin:0;font-size:12.5px}
+.xl-foot .sp{flex:1}
+
 /* 템플릿 안내 */
 .tpl{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
 .tpl button{border:1px dashed var(--line2);border-radius:8px;padding:6px 11px;font-size:12.5px;color:var(--dim)}
@@ -372,6 +401,7 @@ html[data-font="mono"] .ProseMirror{font-family:"JetBrains Mono","D2Coding",Cons
           <h2>EcoNote</h2>
           <p>직원 모두가 함께 쓰는 노트입니다. 왼쪽에서 페이지를 고르거나 새로 만드세요.</p>
           <p>본문에서 <kbd>/</kbd> 로 블록을 넣고, 블록 왼쪽 <b>⋮⋮</b> 를 끌어 순서를 바꿉니다. 사이드바 페이지도 끌어서 옮길 수 있고 <kbd>Delete</kbd> 로 휴지통에 보냅니다.</p>
+          <p>엑셀 파일(xlsx·csv)을 첨부하면 노트 안에서 시트를 열어 보고 <b>표로 넣기</b>로 바로 표가 됩니다. 엑셀에서 셀을 복사해 붙여 넣어도 표가 되고, 표는 <b>엑셀로 내려받기</b>가 됩니다.</p>
           <div class="cards">
             <button data-tpl="blank"><b>＋ 빈 페이지</b><small>처음부터</small></button>
             <button data-tpl="meeting"><b>📝 회의록</b><small>안건 · 결정 · 할 일</small></button>
@@ -421,13 +451,14 @@ html[data-font="mono"] .ProseMirror{font-family:"JetBrains Mono","D2Coding",Cons
               <button data-cmd="table" title="표">▦</button>
               <button data-cmd="image" title="이미지 (서버 저장)">🖼</button>
               <button data-cmd="youtube" title="YouTube 영상">▶</button>
+              <button data-cmd="file" title="엑셀·CSV·PDF 첨부 (서버 저장)">📊</button>
             </span>
             <span class="sep"></span>
             <span class="grp"><button data-cmd="undo" title="되돌리기 (Ctrl+Z)">↶</button><button data-cmd="redo" title="다시 실행 (Ctrl+Y)">↷</button></span>
             <span class="tbl"><span class="sep"></span>
               <button data-cmd="addRow" title="아래 행 추가">행＋</button><button data-cmd="addCol" title="오른쪽 열 추가">열＋</button>
               <button data-cmd="delRow" title="행 삭제">행－</button><button data-cmd="delCol" title="열 삭제">열－</button>
-              <button data-cmd="toggleHeader" title="머리글 행">머리글</button><button data-cmd="delTable" title="표 삭제">표✕</button>
+              <button data-cmd="toggleHeader" title="머리글 행">머리글</button><button data-cmd="tableXlsx" title="이 표를 엑셀로 내려받기">📊⬇</button><button data-cmd="delTable" title="표 삭제">표✕</button>
             </span>
           </div>
           <div class="tpl hide" id="tplBar"><span style="color:var(--dim2);font-size:12.5px;align-self:center">템플릿으로 시작:</span><button data-tpl="meeting">📝 회의록</button><button data-tpl="site">🏗️ 현장 일지</button><button data-tpl="check">☑ 체크리스트</button><button data-tpl="weekly">📅 주간 계획</button></div>
@@ -453,8 +484,9 @@ html[data-font="mono"] .ProseMirror{font-family:"JetBrains Mono","D2Coding",Cons
 <div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 <input type="file" id="fileIn" accept="image/*" multiple style="display:none">
+<input type="file" id="xlIn" accept=".xlsx,.xls,.xlsm,.csv,.pdf" multiple style="display:none">
 
-<script async data-bundle src="/work/notes/econote-editor.js?v=3"></script>
+<script async data-bundle src="/work/notes/econote-editor.js?v=4"></script>
 <script>
 (function () {
 'use strict';
@@ -520,7 +552,7 @@ function toast(m, err) { var t = $('#toast'); t.textContent = m; t.className = '
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function fmtDt(s) { if (!s) return ''; var d = new Date(s), n = new Date(); var same = d.toDateString() === n.toDateString(); var hh = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); return same ? '오늘 ' + hh : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hh; }
 function titleOf(p) { return (p && p.title && p.title.trim()) || ''; }
-function dl(name, text, mime) { var b = new Blob([text], { type: mime || 'text/plain;charset=utf-8' }); var u = URL.createObjectURL(b); var a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 2000); }
+function dl(name, data, mime) { var b = new Blob([data], { type: mime || 'text/plain;charset=utf-8' }); var u = URL.createObjectURL(b); var a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 2000); }
 function initials(n) { n = (n || '').trim(); return n ? n.slice(0, 1) : '?'; }
 
 /* ═══════════ 설정 (기기 + 서버 동기화) ═══════════ */
@@ -844,7 +876,157 @@ function uploadImages(files, pos) {
     });
   }, Promise.resolve()).then(function () { toast('이미지 ' + done + '장 저장됨'); markDirty(); }).catch(function (e) { toast('업로드 실패: ' + e.message, true); markDirty(); });
 }
-$('#fileIn').addEventListener('change', function () { uploadImages(this.files); this.value = ''; });
+$('#fileIn').addEventListener('change', function () { uploadAny(this.files); this.value = ''; });
+$('#xlIn').addEventListener('change', function () { uploadAny(this.files); this.value = ''; });
+function uploadAny(files, pos) { var list = Array.prototype.slice.call(files || []); var imgs = list.filter(function (f) { return /^image\//.test(f.type); }), rest = list.filter(function (f) { return !/^image\//.test(f.type); }); if (imgs.length) uploadImages(imgs, pos); if (rest.length) uploadFiles(rest, pos); }
+
+/* ── 엑셀·CSV·PDF 첨부: 파일은 버킷에, 문서엔 파일 카드(경로·이름·크기) ── */
+var FILE_MIME = { xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xlsm: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', csv: 'text/csv', pdf: 'application/pdf' };
+function extOf(name) { var m = /\.([a-z0-9]+)$/i.exec(name || ''); return m ? m[1].toLowerCase() : ''; }
+function uploadFiles(files, pos) {
+  if (!cur || !editor || !editor.isEditable) return Promise.resolve();
+  var page = cur, ed = editor;
+  var list = Array.prototype.slice.call(files).filter(function (f) { return FILE_MIME[extOf(f.name)]; });
+  var bad = Array.prototype.slice.call(files).filter(function (f) { return !FILE_MIME[extOf(f.name)] && !/^image\//.test(f.type); });
+  if (bad.length) toast('엑셀(xlsx·xls·csv)·PDF 만 첨부할 수 있습니다: ' + bad.map(function (f) { return f.name; }).join(', '), true);
+  if (!list.length) return Promise.resolve();
+  setSt('파일 올리는 중… 0/' + list.length, 'dirty'); var done = 0;
+  return list.reduce(function (chain, f) {
+    return chain.then(function () {
+      if (f.size > 15728640) throw new Error('15MB 를 넘습니다: ' + f.name);
+      var ext = extOf(f.name), mime = FILE_MIME[ext], path = page.id + '/' + uuid() + '.' + ext;
+      return store('object/' + BUCKET + '/' + path, { method: 'POST', headers: { 'Content-Type': mime, 'x-upsert': 'false' }, body: f }).then(function () {
+        rest('econote_files', { method: 'POST', body: JSON.stringify({ page_id: page.id, path: path, name: f.name, mime: mime, size: f.size }), headers: { Prefer: 'return=minimal' } }).catch(function () {});
+        if (editor !== ed) return;
+        var attrs = { path: path, name: f.name, size: f.size, mime: mime };
+        if (typeof pos === 'number') { editor.chain().focus().insertContentAt(pos, { type: 'fileBlock', attrs: attrs }).run(); pos = null; }
+        else editor.chain().focus().setFileBlock(attrs).run();
+        done++; setSt('파일 올리는 중… ' + done + '/' + list.length, 'dirty');
+      });
+    });
+  }, Promise.resolve()).then(function () { toast('파일 ' + done + '개 저장됨'); markDirty(); }).catch(function (e) { toast('업로드 실패: ' + e.message, true); markDirty(); });
+}
+function fileUrl(path, downloadName) { return signPaths([path]).then(function (m) { var u = m[path]; if (!u) throw new Error('파일 주소를 만들지 못했습니다'); return downloadName ? u + '&download=' + encodeURIComponent(downloadName) : u; }); }
+function fetchFileBuffer(path) { return fileUrl(path).then(function (u) { return fetch(u); }).then(function (r) { if (!r.ok) throw new Error('파일을 받지 못했습니다 (' + r.status + ')'); return r.arrayBuffer(); }); }
+/* SheetJS 는 엑셀을 열 때만 받아온다 (사업장부와 같은 CDN·버전) */
+function loadSheetJS() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (loadSheetJS._p) return loadSheetJS._p;
+  loadSheetJS._p = new Promise(function (res, rej) { var sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; sc.onload = function () { window.XLSX ? res(window.XLSX) : rej(new Error('XLSX 로드 실패')); }; sc.onerror = function () { loadSheetJS._p = null; rej(new Error('엑셀 모듈을 불러오지 못했습니다')); }; document.head.appendChild(sc); });
+  return loadSheetJS._p;
+}
+/* 카드 버튼은 ProseMirror 의 handleClick(mousedown→mouseup) 대신 DOM click 위임으로 받는다 — 어떤 환경에서도 같은 경로 */
+$('#editor').addEventListener('click', function (e) { var fb = e.target.closest && e.target.closest('[data-file-act]'); if (!fb) return; e.preventDefault(); e.stopPropagation(); fileAct(fb.closest('[data-file]'), fb.getAttribute('data-file-act')); });
+$('#editor').addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('[data-file-act]')) e.preventDefault(); });
+function fileAct(card, act) {
+  var a = { path: card.getAttribute('data-path'), name: card.getAttribute('data-name'), size: +card.getAttribute('data-size') || 0, mime: card.getAttribute('data-mime') };
+  if (!a.path) return toast('파일 경로가 없습니다', true);
+  if (act === 'dl') return fileUrl(a.path, a.name).then(function (u) { var l = document.createElement('a'); l.href = u; l.download = a.name; document.body.appendChild(l); l.click(); l.remove(); }).catch(function (e) { toast(e.message, true); });
+  if (act === 'view') return fileUrl(a.path).then(function (u) { window.open(u, '_blank', 'noopener'); }).catch(function (e) { toast(e.message, true); });
+  if (act === 'open' || act === 'table') return openSheetViewer(a, { insert: act === 'table' });
+}
+
+/* ── 엑셀 뷰어: 시트 탭 · 병합셀 · 서식값(w) · 숫자 우측 정렬 · 범위 골라 표로 넣기 ── */
+function colName(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+function sheetGrid(X, ws, opt) {
+  opt = opt || {}; var ref = ws['!ref']; if (!ref) return { rows: 0, cols: 0, html: '<div class="none" style="padding:14px;color:var(--dim2)">빈 시트</div>', aoa: [], merges: [] };
+  var R = X.utils.decode_range(ref), rows = R.e.r + 1, cols = R.e.c + 1, maxR = Math.min(rows, opt.maxRows || 400), maxC = Math.min(cols, 60);
+  var merges = (ws['!merges'] || []), span = {}, hide = {};
+  merges.forEach(function (m) { span[m.s.r + ':' + m.s.c] = { rs: m.e.r - m.s.r + 1, cs: m.e.c - m.s.c + 1 }; for (var r = m.s.r; r <= m.e.r; r++) for (var c = m.s.c; c <= m.e.c; c++) if (r !== m.s.r || c !== m.s.c) hide[r + ':' + c] = 1; });
+  var widths = (ws['!cols'] || []).map(function (c) { return c && (c.wpx || (c.wch ? Math.round(c.wch * 7 + 5) : 0)) || 0; });
+  var h = '<table><colgroup><col style="width:38px">' + Array.apply(null, Array(maxC)).map(function (_, c) { return '<col style="width:' + (widths[c] || 90) + 'px">'; }).join('') + '</colgroup><thead><tr><th class="corner"></th>' + Array.apply(null, Array(maxC)).map(function (_, c) { return '<th>' + colName(c) + '</th>'; }).join('') + '</tr></thead><tbody>';
+  var aoa = [];
+  for (var r = 0; r < maxR; r++) {
+    var row = [], tr = '<tr><td class="rh">' + (r + 1) + '</td>';
+    for (var c = 0; c < maxC; c++) {
+      var cell = ws[X.utils.encode_cell({ r: r, c: c })], v = cell ? (cell.w != null ? cell.w : (cell.v == null ? '' : String(cell.v))) : '';
+      row.push(cell ? (cell.v == null ? '' : cell.v) : '');
+      if (hide[r + ':' + c]) continue;
+      var sp = span[r + ':' + c], cls = (cell && cell.t === 'n' ? 'n' : '') + (r === 0 && opt.headerRow ? ' hd' : '');
+      tr += '<td' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + (sp ? ' rowspan="' + Math.min(sp.rs, maxR - r) + '" colspan="' + Math.min(sp.cs, maxC - c) + '"' : '') + ' data-r="' + r + '" data-c="' + c + '" title="' + esc(v) + '">' + esc(v) + '</td>';
+    }
+    aoa.push(row); h += tr + '</tr>';
+  }
+  h += '</tbody></table>' + (rows > maxR || cols > maxC ? '<div style="padding:8px;color:var(--dim2);font-size:12px">' + rows + '행 × ' + cols + '열 중 ' + maxR + '행 × ' + maxC + '열까지 표시</div>' : '');
+  return { rows: rows, cols: cols, shownRows: maxR, shownCols: maxC, html: h, merges: merges };
+}
+/* 시트 범위 → 노트 표 HTML (병합은 colspan/rowspan 으로) */
+function sheetToTableHtml(X, ws, r0, r1, c0, c1, headerRow) {
+  var span = {}, hide = {};
+  (ws['!merges'] || []).forEach(function (m) { if (m.e.r < r0 || m.s.r > r1 || m.e.c < c0 || m.s.c > c1) return; var sr = Math.max(m.s.r, r0), sc = Math.max(m.s.c, c0), er = Math.min(m.e.r, r1), ec = Math.min(m.e.c, c1); span[sr + ':' + sc] = { rs: er - sr + 1, cs: ec - sc + 1 }; for (var r = sr; r <= er; r++) for (var c = sc; c <= ec; c++) if (r !== sr || c !== sc) hide[r + ':' + c] = 1; });
+  var h = '<table><tbody>';
+  for (var r = r0; r <= r1; r++) {
+    h += '<tr>';
+    for (var c = c0; c <= c1; c++) {
+      if (hide[r + ':' + c]) continue;
+      var cell = ws[X.utils.encode_cell({ r: r, c: c })], v = cell ? (cell.w != null ? cell.w : (cell.v == null ? '' : String(cell.v))) : '';
+      var tag = (headerRow && r === r0) ? 'th' : 'td', sp = span[r + ':' + c];
+      h += '<' + tag + (sp ? ' rowspan="' + sp.rs + '" colspan="' + sp.cs + '"' : '') + '><p>' + esc(v) + '</p></' + tag + '>';
+    }
+    h += '</tr>';
+  }
+  return h + '</tbody></table>';
+}
+function openSheetViewer(a, opts) {
+  opts = opts || {};
+  modal('<div class="mh">📊 ' + esc(a.name) + '<div class="sp"></div><span style="font-weight:400;color:var(--dim2);font-size:12px" id="xlSt">불러오는 중…</span><button class="ibtn" id="mCancel">✕</button></div><div class="mb xl"><div class="xl-tabs" id="xlTabs"></div><div class="xl-grid" id="xlGrid"></div><div class="xl-foot" id="xlFoot"></div></div>', function (b) { b.querySelector('#mCancel').onclick = closeModal; });
+  $('#modalBox').classList.add('xl-modal');
+  return Promise.all([loadSheetJS(), fetchFileBuffer(a.path)]).then(function (rs) {
+    var X = rs[0], wb = X.read(rs[1], { type: 'array', cellDates: true, cellNF: true, cellText: true, raw: false });
+    if (!wb.SheetNames.length) throw new Error('시트가 없습니다');
+    var b = $('#modalBox'), tabs = b.querySelector('#xlTabs'), grid = b.querySelector('#xlGrid'), foot = b.querySelector('#xlFoot'); if (!tabs) return;
+    var curSheet = wb.SheetNames[0], sel = null;
+    function show(name) {
+      curSheet = name; var ws = wb.Sheets[name]; var g = sheetGrid(X, ws, { headerRow: true });
+      tabs.innerHTML = wb.SheetNames.map(function (n) { return '<button class="' + (n === name ? 'on' : '') + '" data-sh="' + esc(n) + '">' + esc(n) + '</button>'; }).join('');
+      $$('[data-sh]', tabs).forEach(function (t) { t.onclick = function () { show(t.getAttribute('data-sh')); }; });
+      grid.innerHTML = g.html; b.querySelector('#xlSt').textContent = g.rows + '행 × ' + g.cols + '열' + (g.merges.length ? ' · 병합 ' + g.merges.length : '');
+      var r1 = Math.min(g.rows, 100), c1 = Math.min(g.cols, 20);
+      foot.innerHTML = '<span>표로 넣을 범위</span><label>행 <input type="number" id="xlR0" min="1" max="' + g.rows + '" value="1"> ~ <input type="number" id="xlR1" min="1" max="' + g.rows + '" value="' + r1 + '"></label><label>열 <input type="number" id="xlC0" min="1" max="' + g.cols + '" value="1"> ~ <input type="number" id="xlC1" min="1" max="' + g.cols + '" value="' + c1 + '"></label><label><input type="checkbox" id="xlHdr" checked> 첫 행을 머리글로</label><div class="sp"></div><button class="btn" id="xlCsv">CSV 내려받기</button><button class="btn pri" id="xlInsert">표로 넣기</button>' + (g.rows > 100 || g.cols > 20 ? '<div style="flex-basis:100%;color:var(--dim2)">큰 시트는 100행 × 20열까지만 한 번에 표로 넣을 수 있습니다. 범위를 나눠 넣으세요.</div>' : '');
+      grid.onclick = function (e) { var td = e.target.closest('td[data-r]'); if (!td) return; var r = +td.getAttribute('data-r'), c = +td.getAttribute('data-c'); if (!sel || e.shiftKey === false) { sel = { r0: r, c0: c, r1: r, c1: c }; } if (e.shiftKey && sel) { sel.r1 = r; sel.c1 = c; } var a0 = Math.min(sel.r0, sel.r1), a1 = Math.max(sel.r0, sel.r1), b0 = Math.min(sel.c0, sel.c1), b1 = Math.max(sel.c0, sel.c1); foot.querySelector('#xlR0').value = a0 + 1; foot.querySelector('#xlR1').value = a1 + 1; foot.querySelector('#xlC0').value = b0 + 1; foot.querySelector('#xlC1').value = b1 + 1; $$('td.sel', grid).forEach(function (x) { x.classList.remove('sel'); }); $$('td[data-r]', grid).forEach(function (x) { var rr = +x.getAttribute('data-r'), cc = +x.getAttribute('data-c'); if (rr >= a0 && rr <= a1 && cc >= b0 && cc <= b1) x.classList.add('sel'); }); };
+      foot.querySelector('#xlCsv').onclick = function () { dl((a.name.replace(/\.[^.]+$/, '') || 'sheet') + '-' + name + '.csv', '\ufeff' + X.utils.sheet_to_csv(ws), 'text/csv;charset=utf-8'); };
+      foot.querySelector('#xlInsert').onclick = function () {
+        var R0 = Math.max(1, +foot.querySelector('#xlR0').value || 1) - 1, R1 = Math.min(g.rows, +foot.querySelector('#xlR1').value || g.rows) - 1, C0 = Math.max(1, +foot.querySelector('#xlC0').value || 1) - 1, C1 = Math.min(g.cols, +foot.querySelector('#xlC1').value || g.cols) - 1;
+        if (R1 < R0 || C1 < C0) return toast('범위가 비어 있습니다', true);
+        if ((R1 - R0 + 1) > 100 || (C1 - C0 + 1) > 20) return toast('한 번에 100행 × 20열까지 넣을 수 있습니다', true);
+        if (!editor || !editor.isEditable) return toast('이 페이지는 편집할 수 없습니다', true);
+        var html = sheetToTableHtml(X, ws, R0, R1, C0, C1, foot.querySelector('#xlHdr').checked);
+        closeModal(); editor.chain().focus('end').insertContent('<p></p>' + html + '<p></p>').run(); toast('표 ' + (R1 - R0 + 1) + '행 × ' + (C1 - C0 + 1) + '열을 넣었습니다');
+      };
+    }
+    show(curSheet);
+    if (opts.insert) { var f = $('#modalBox #xlFoot'); if (f) { f.style.outline = '2px solid var(--accent-line)'; f.style.borderRadius = '8px'; f.style.padding = '6px'; } }
+  }).catch(function (e) { var st = $('#modalBox #xlSt'); if (st) st.textContent = '열기 실패: ' + e.message; toast('엑셀 열기 실패: ' + e.message, true); });
+}
+/* 노트 표 → 엑셀 (병합 포함) */
+function tableToAoa(node) {
+  var aoa = [], merges = [], occ = {};
+  var ri = 0;
+  node.forEach(function (row) {
+    var ci = 0; aoa[ri] = aoa[ri] || [];
+    row.forEach(function (cell) {
+      while (occ[ri + ':' + ci]) ci++;
+      var rs = cell.attrs.rowspan || 1, cs = cell.attrs.colspan || 1, txt = cell.textContent;
+      var num = /^-?[\d,]+(\.\d+)?$/.test(txt.trim()) && txt.trim() !== '' ? Number(txt.replace(/,/g, '')) : null;
+      aoa[ri][ci] = (num !== null && isFinite(num)) ? num : txt;
+      if (rs > 1 || cs > 1) { merges.push({ s: { r: ri, c: ci }, e: { r: ri + rs - 1, c: ci + cs - 1 } }); for (var r = ri; r < ri + rs; r++) for (var c = ci; c < ci + cs; c++) { if (r !== ri || c !== ci) { occ[r + ':' + c] = 1; aoa[r] = aoa[r] || []; aoa[r][c] = ''; } } }
+      ci += cs;
+    });
+    ri++;
+  });
+  for (var i = 0; i < aoa.length; i++) { aoa[i] = aoa[i] || []; for (var j = 0; j < aoa[i].length; j++) if (aoa[i][j] === undefined) aoa[i][j] = ''; }
+  return { aoa: aoa, merges: merges };
+}
+function tableToXlsx(node, fname) {
+  return loadSheetJS().then(function (X) {
+    var t = tableToAoa(node), ws = X.utils.aoa_to_sheet(t.aoa); if (t.merges.length) ws['!merges'] = t.merges;
+    ws['!cols'] = (t.aoa[0] || []).map(function (_, c) { var w = 8; t.aoa.forEach(function (r) { var l = String(r[c] == null ? '' : r[c]).length; if (l > w) w = l; }); return { wch: Math.min(60, w + 2) }; });
+    var wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'Sheet1');
+    var out = X.write(wb, { type: 'array', bookType: 'xlsx' });
+    dl((fname || (cur && titleOf(cur)) || '표') + '.xlsx', out, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    toast('엑셀로 내려받았습니다 (' + t.aoa.length + '행)');
+  }).catch(function (e) { toast('엑셀 내보내기 실패: ' + e.message, true); });
+}
 
 /* ═══════════ 편집기 ═══════════ */
 function mkEditor(el, content, editable) {
@@ -859,7 +1041,7 @@ function mkEditor(el, content, editable) {
     T.Highlight.configure({ multicolor: true }), T.TextStyle, T.Color, T.Subscript, T.Superscript,
     T.TextAlign.configure({ types: ['heading', 'paragraph'] }),
     T.Details.configure({ persist: true }), T.DetailsSummary, T.DetailsContent,
-    T.Callout, T.Markdown
+    T.Callout, T.FileBlock, T.Markdown
   ];
   if (editable !== false) exts.push(T.DragHandle.configure({
     render: function () { var d = document.createElement('div'); d.className = 'drag-handle'; d.title = '끌어서 옮기기 · 클릭하면 메뉴'; d.addEventListener('click', function (e) { e.preventDefault(); blockMenu(d); }); return d; },
@@ -885,13 +1067,13 @@ function mkEditor(el, content, editable) {
       attributes: { spellcheck: SET.spell ? 'true' : 'false' },
       handlePaste: function (view, ev) {
         if (editable === false) return false;
-        var items = ev.clipboardData && ev.clipboardData.files; if (items && items.length) { uploadImages(items); return true; }
+        var items = ev.clipboardData && ev.clipboardData.files; if (items && items.length) { uploadAny(items); return true; }
         var txt = ev.clipboardData && ev.clipboardData.getData('text/plain'); if (txt && T.isValidYoutubeUrl(txt.trim())) { editor.chain().focus().setYoutubeVideo({ src: txt.trim() }).run(); return true; }
         return false;
       },
       handleDrop: function (view, ev) {
         var files = ev.dataTransfer && ev.dataTransfer.files; if (!files || !files.length || editable === false) return false;
-        var c = view.posAtCoords({ left: ev.clientX, top: ev.clientY }); uploadImages(files, c ? c.pos : undefined); return true;
+        var c = view.posAtCoords({ left: ev.clientX, top: ev.clientY }); uploadAny(files, c ? c.pos : undefined); return true;
       },
       handleKeyDown: function (view, ev) { return slashKey(ev); },
       handleClick: function (view, pos, ev) {
@@ -917,7 +1099,7 @@ function blockMenu(handle) {
   var h = dragHandleNode; if (!h || !editor) return;
   var node = h.node, pos = h.pos, end = pos + node.nodeSize;
   var html = '<div class="it" data-b="turn"><span class="k">⇄</span>블록 종류 바꾸기</div><div class="it" data-b="dup"><span class="k">⧉</span>복제</div><div class="it" data-b="up"><span class="k">↑</span>위로</div><div class="it" data-b="down"><span class="k">↓</span>아래로</div>' +
-    (node.type.name !== 'callout' ? '<div class="it" data-b="callout"><span class="k">💡</span>콜아웃으로 감싸기</div>' : '') + '<hr><div class="it danger" data-b="del"><span class="k">🗑</span>블록 삭제<kbd>Del</kbd></div>';
+    (node.type.name !== 'callout' ? '<div class="it" data-b="callout"><span class="k">💡</span>콜아웃으로 감싸기</div>' : '') + (node.type.name === 'table' ? '<div class="it" data-b="xlsx"><span class="k">📊</span>엑셀로 내려받기</div>' : '') + '<hr><div class="it danger" data-b="del"><span class="k">🗑</span>블록 삭제<kbd>Del</kbd></div>';
   var a = popAt(handle); popShow(html, a.x + 22, a.y - 6, function (p) {
     $$('[data-b]', p).forEach(function (b) { b.onmousedown = function (e) { e.preventDefault(); }; b.onclick = function () { var m = b.getAttribute('data-b'); popHide();
       if (m === 'del') editor.chain().focus().deleteRange({ from: pos, to: end }).run();
@@ -925,6 +1107,7 @@ function blockMenu(handle) {
       else if (m === 'callout') editor.chain().focus().setTextSelection({ from: pos + 1, to: end - 1 }).setCallout({ icon: '💡', tone: 'info' }).run();
       else if (m === 'turn') { editor.chain().focus().setTextSelection(pos + 1).run(); slash.open = true; slash.from = pos + 1; slash.sel = 0; slash.noDelete = true; slashRender(''); }
       else if (m === 'up' || m === 'down') moveBlock(pos, node, m);
+      else if (m === 'xlsx') tableToXlsx(node);
     }; });
   });
 }
@@ -949,6 +1132,8 @@ var CMDS = {
 function runCmd(cmd) {
   if (!editor || !editor.isEditable) return;
   if (cmd === 'image') return $('#fileIn').click();
+  if (cmd === 'file') return $('#xlIn').click();
+  if (cmd === 'tableXlsx') { var $p = editor.state.selection.$from, tn = null; for (var d = $p.depth; d >= 0; d--) if ($p.node(d).type.name === 'table') { tn = $p.node(d); break; } return tn ? tableToXlsx(tn) : toast('표 안에 커서를 두세요', true); }
   if (cmd === 'youtube') return promptBox('YouTube 영상', '영상 주소 (youtube.com / youtu.be)', '', 'https://www.youtube.com/watch?v=…', 'url').then(function (u) { if (!u) return; u = u.trim(); if (!T.isValidYoutubeUrl(u)) return toast('YouTube 주소가 아닙니다', true); editor.chain().focus().setYoutubeVideo({ src: u }).run(); });
   if (cmd === 'link') { var prev = editor.getAttributes('link').href || ''; return promptBox('링크', '주소', prev, 'https://', 'url').then(function (u) { if (u === null) return; u = u.trim(); if (!u) editor.chain().focus().extendMarkRange('link').unsetLink().run(); else editor.chain().focus().extendMarkRange('link').setLink({ href: /^(https?:|mailto:|tel:|\/)/.test(u) ? u : 'https://' + u }).run(); }); }
   if (CMDS[cmd]) CMDS[cmd](editor.chain().focus()).run();
@@ -1017,6 +1202,7 @@ var SLASH = [
   { g: '미디어', k: '▦', t: '표', d: '3×3 표', run: function (c) { return c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }); } },
   { g: '미디어', k: '🖼', t: '이미지', d: '사진 올리기 (서버 저장)', run: function () { setTimeout(function () { $('#fileIn').click(); }, 0); return null; } },
   { g: '미디어', k: '▶', t: 'YouTube', d: '영상 주소 붙여넣기', run: function () { setTimeout(function () { runCmd('youtube'); }, 0); return null; } },
+  { g: '미디어', k: '📊', t: '엑셀 · 파일', d: 'xlsx · csv · pdf 첨부 — 열어 보고 표로 넣기', run: function () { setTimeout(function () { $('#xlIn').click(); }, 0); return null; } },
   { g: '삽입', k: '📅', t: '오늘 날짜', d: '', run: function (c) { return c.insertContent(new Date().toLocaleDateString('ko-KR') + ' '); } },
   { g: '삽입', k: '🕘', t: '지금 시각', d: '날짜 + 시각', run: function (c) { return c.insertContent(new Date().toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) + ' '); } },
   { g: '삽입', k: '👤', t: '내 이름', d: '작성자 서명', run: function (c) { return c.insertContent(me.name + ' '); } },
@@ -1344,7 +1530,7 @@ function settingsDialog() {
 }
 $('#setBtn').addEventListener('click', settingsDialog);
 function shortcutsHelp() {
-  var rows = [['Ctrl K', '검색 · 빠른 이동 (글자 선택 중엔 링크)'], ['Ctrl S', '지금 저장'], ['Ctrl Alt N', '새 페이지'], ['Ctrl Shift D', '현재 페이지 복제'], ['Ctrl \\', '사이드바 접기/펴기'], ['Ctrl /', '이 도움말'], ['/', '블록 메뉴 (빈 줄에서)'], ['Ctrl B / I / U', '굵게 / 기울임 / 밑줄'], ['Ctrl Shift S', '취소선'], ['Ctrl E', '인라인 코드'], ['Ctrl Shift 8 / 7 / 9', '목록 / 번호 목록 / 체크리스트'], ['Ctrl Alt 1~3', '제목 1~3'], ['Ctrl Z / Y', '되돌리기 / 다시 실행'], ['Tab / Shift Tab', '목록 들여쓰기 / 내어쓰기'], ['사이드바 ↑↓ Enter', '페이지 이동 / 열기'], ['사이드바 Delete', '휴지통으로'], ['사이드바 F2 · 더블클릭', '이름 바꾸기'], ['사이드바 드래그', '순서 · 상위 변경'], ['⋮⋮ 드래그 / 클릭', '블록 이동 / 블록 메뉴']];
+  var rows = [['Ctrl K', '검색 · 빠른 이동 (글자 선택 중엔 링크)'], ['Ctrl S', '지금 저장'], ['Ctrl Alt N', '새 페이지'], ['Ctrl Shift D', '현재 페이지 복제'], ['Ctrl \\', '사이드바 접기/펴기'], ['Ctrl /', '이 도움말'], ['/', '블록 메뉴 (빈 줄에서)'], ['Ctrl B / I / U', '굵게 / 기울임 / 밑줄'], ['Ctrl Shift S', '취소선'], ['Ctrl E', '인라인 코드'], ['Ctrl Shift 8 / 7 / 9', '목록 / 번호 목록 / 체크리스트'], ['Ctrl Alt 1~3', '제목 1~3'], ['Ctrl Z / Y', '되돌리기 / 다시 실행'], ['Tab / Shift Tab', '목록 들여쓰기 / 내어쓰기'], ['사이드바 ↑↓ Enter', '페이지 이동 / 열기'], ['사이드바 Delete', '휴지통으로'], ['사이드바 F2 · 더블클릭', '이름 바꾸기'], ['사이드바 드래그', '순서 · 상위 변경'], ['⋮⋮ 드래그 / 클릭', '블록 이동 / 블록 메뉴'], ['엑셀에서 복사 → 붙여넣기', '셀 범위가 표로 들어옴'], ['표 안 📊⬇ · 블록 메뉴', '표를 엑셀로 내려받기']];
   modal('<div class="mh">⌨ 단축키<div class="sp"></div><button class="ibtn" id="mCancel">✕</button></div><div class="mb"><ul class="vlist">' + rows.map(function (r) { return '<li><kbd>' + esc(r[0]) + '</kbd><span class="sp">' + esc(r[1]) + '</span></li>'; }).join('') + '</ul></div>', function (b) { b.querySelector('#mCancel').onclick = closeModal; }, true);
 }
 /* 사이드바 접기·너비 */
@@ -1406,7 +1592,7 @@ function boot() {
     if (pid && byId(pid)) { if (byId(pid).deleted_at) viewTrash = true; openPage(pid, { focus: false }); }
   }).catch(function (e) { $('#tree').innerHTML = '<div class="empty">불러오기 실패: ' + esc(e.message) + '</div>'; });
 }
-window.__ECONOTE = { get editor() { return editor; }, get cur() { return cur; }, get pages() { return pages; }, get dirty() { return dirty; }, get prefs() { return prefs; }, get SET() { return SET; }, save: save, openPage: openPage, createPage: createPage, poll: poll, movePage: movePage, trashPage: trashPage, restorePage: restorePage, duplicatePage: duplicatePage, toggleFav: toggleFav, setProps: setProps, exportMd: exportMd, quickSwitch: quickSwitch, settingsDialog: settingsDialog, applyTpl: applyTpl, TPL: TPL, saveSettings: saveSettings, renameInline: renameInline };
+window.__ECONOTE = { get editor() { return editor; }, get cur() { return cur; }, get pages() { return pages; }, get dirty() { return dirty; }, get prefs() { return prefs; }, get SET() { return SET; }, save: save, openPage: openPage, createPage: createPage, poll: poll, movePage: movePage, trashPage: trashPage, restorePage: restorePage, duplicatePage: duplicatePage, toggleFav: toggleFav, setProps: setProps, exportMd: exportMd, quickSwitch: quickSwitch, settingsDialog: settingsDialog, applyTpl: applyTpl, TPL: TPL, saveSettings: saveSettings, renameInline: renameInline, uploadFiles: uploadFiles, openSheetViewer: openSheetViewer, tableToXlsx: tableToXlsx, tableToAoa: tableToAoa };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 </script>

@@ -55,6 +55,37 @@ const Callout = Node.create({
   },
 });
 
-export { Editor, Node, Extension, Plugin, PluginKey, mergeAttributes,
+/* 첨부 파일 카드(엑셀·CSV·PDF) — 파일은 버킷에, 문서엔 path·이름·크기만. 버튼 동작은 페이지 쪽 handleClick 이 [data-file-act] 로 받는다 */
+function fmtSize(n) { n = +n || 0; return n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : (n / 1048576).toFixed(1) + ' MB'; }
+function fileIcon(name, mime) { var e = String(name || '').toLowerCase(); if (/\.(xlsx|xls|xlsm)$/.test(e) || /spreadsheet|ms-excel/.test(mime || '')) return '📊'; if (/\.csv$/.test(e) || /csv/.test(mime || '')) return '📑'; if (/\.pdf$/.test(e)) return '📕'; return '📎'; }
+const FileBlock = Node.create({
+  name: 'fileBlock',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      path: { default: null, parseHTML: el => el.getAttribute('data-path') },
+      name: { default: '', parseHTML: el => el.getAttribute('data-name') || '' },
+      size: { default: 0, parseHTML: el => +el.getAttribute('data-size') || 0 },
+      mime: { default: '', parseHTML: el => el.getAttribute('data-mime') || '' },
+    };
+  },
+  parseHTML() { return [{ tag: 'div[data-file]' }]; },
+  renderHTML({ node }) {
+    const a = node.attrs, sheet = /\.(xlsx|xls|xlsm|csv)$/i.test(a.name || '');
+    return ['div', { 'data-file': '', 'data-path': a.path, 'data-name': a.name, 'data-size': a.size, 'data-mime': a.mime, class: 'file-card', contenteditable: 'false' },
+      ['span', { class: 'fc-icon' }, fileIcon(a.name, a.mime)],
+      ['span', { class: 'fc-meta' }, ['span', { class: 'fc-name' }, a.name || '파일'], ['span', { class: 'fc-size' }, fmtSize(a.size) + (sheet ? ' · 엑셀' : '')]],
+      ['span', { class: 'fc-act' },
+        ...(sheet ? [['button', { type: 'button', 'data-file-act': 'open' }, '열기'], ['button', { type: 'button', 'data-file-act': 'table' }, '표로 넣기']] : [['button', { type: 'button', 'data-file-act': 'view' }, '보기']]),
+        ['button', { type: 'button', 'data-file-act': 'dl' }, '내려받기']]];
+  },
+  addCommands() { return { setFileBlock: attrs => ({ commands }) => commands.insertContent({ type: this.name, attrs }) }; },
+  renderMarkdown: (node) => '[' + (node.attrs && node.attrs.name || '파일') + ']',
+});
+
+export { Editor, Node, Extension, Plugin, PluginKey, mergeAttributes, FileBlock,
   StarterKit, EcoImage as Image, Youtube, isValidYoutubeUrl, TaskList, TaskItem, TableKit, Placeholder, CharacterCount, Focus,
   Highlight, TextStyle, Color, BackgroundColor, TextAlign, Details, DetailsSummary, DetailsContent, DragHandle, Markdown, Subscript, Superscript, Callout, offset, shift };

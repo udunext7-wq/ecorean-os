@@ -25,6 +25,7 @@
     "@tiptap/starter-kit": "^3"
   },
   "devDependencies": {
-    "esbuild": "^0.24"
+    "esbuild": "^0.24",
+    "xlsx": "^0.18.5"
   }
 }
