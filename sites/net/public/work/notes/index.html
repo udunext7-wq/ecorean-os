@@ -260,15 +260,16 @@ html[data-font="mono"] .ProseMirror{font-family:"JetBrains Mono","D2Coding",Cons
 .xl-tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:8px;flex:0 0 auto}
 .xl-tabs button{padding:4px 10px;border-radius:6px;font-size:12.5px;color:var(--dim);white-space:nowrap}
 .xl-tabs button.on{background:var(--accent-dim);color:var(--accent)}
-.xl-grid{flex:1;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-height:0}
+.xl-grid{flex:1;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;min-height:0;color:#111;color-scheme:light}
 .xl-grid table{border-collapse:separate;border-spacing:0;font-size:12.5px;font-family:"Pretendard Variable",Pretendard,"Malgun Gothic",sans-serif;table-layout:fixed}
-.xl-grid th,.xl-grid td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:2px 7px;white-space:pre;overflow:hidden;text-overflow:ellipsis;height:24px;vertical-align:middle;color:var(--text2)}
-.xl-grid th{background:var(--bg3);color:var(--dim);font-weight:500;text-align:center;position:sticky;top:0;z-index:2}
-.xl-grid td.rh{background:var(--bg3);color:var(--dim2);text-align:center;position:sticky;left:0;z-index:1}
+.xl-grid th,.xl-grid td{border-right:1px solid #d9dee6;border-bottom:1px solid #d9dee6;padding:2px 7px;white-space:pre;overflow:hidden;text-overflow:ellipsis;height:24px;vertical-align:middle;color:#111;background:#fff}
+.xl-grid th{background:#f2f4f7;color:#5f6b7f;font-weight:500;text-align:center;position:sticky;top:0;z-index:2}
+.xl-grid td.rh{background:#f2f4f7;color:#8a94a6;text-align:center;position:sticky;left:0;z-index:1}
 .xl-grid th.corner{left:0;z-index:3}
 .xl-grid td.n{text-align:right;font-variant-numeric:tabular-nums}
-.xl-grid td.hd{font-weight:600;color:var(--text);background:color-mix(in srgb,var(--bg3) 55%,transparent)}
-.xl-grid td.sel{outline:2px solid var(--accent-line);outline-offset:-2px}
+.xl-grid td.hd{font-weight:600}
+.xl-grid td.sel{outline:2px solid #16a34a;outline-offset:-2px}
+.xl-legend{font-size:11.5px;color:var(--dim2)}
 .xl-foot{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--dim);flex-wrap:wrap;flex:0 0 auto}
 .xl-foot input[type=number]{width:64px;background:var(--bg3);border:1px solid var(--line2);border-radius:6px;padding:3px 6px;font-size:12.5px}
 .xl-foot label{display:inline-flex;align-items:center;gap:4px;margin:0;font-size:12.5px}
@@ -926,7 +927,65 @@ function fileAct(card, act) {
   if (act === 'open' || act === 'table') return openSheetViewer(a, { insert: act === 'table' });
 }
 
-/* ── 엑셀 뷰어: 시트 탭 · 병합셀 · 서식값(w) · 숫자 우측 정렬 · 범위 골라 표로 넣기 ── */
+/* ── xlsx 셀 서식(배경색·글꼴색·굵게·기울임·밑줄·정렬) — 무료 SheetJS 는 서식을 안 읽으므로 zip 안의 styles.xml·theme1.xml·sheetN.xml 을 직접 읽는다 ── */
+function loadFflate() {
+  if (window.fflate) return Promise.resolve(window.fflate);
+  if (loadFflate._p) return loadFflate._p;
+  loadFflate._p = new Promise(function (res, rej) { var sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js'; sc.onload = function () { window.fflate ? res(window.fflate) : rej(new Error('fflate')); }; sc.onerror = function () { loadFflate._p = null; rej(new Error('압축 모듈을 불러오지 못했습니다')); }; document.head.appendChild(sc); });
+  return loadFflate._p;
+}
+var XL_THEME_DEFAULT = ['FFFFFF', '000000', 'E7E6E6', '44546A', '4472C4', 'ED7D31', 'A5A5A5', 'FFC000', '5B9BD5', '70AD47']; /* lt1 dk1 lt2 dk2 accent1~6 (엑셀 theme 인덱스 순서: 0=lt1,1=dk1,2=lt2,3=dk2) */
+var XL_INDEXED = ['000000', 'FFFFFF', 'FF0000', '00FF00', '0000FF', 'FFFF00', 'FF00FF', '00FFFF', '000000', 'FFFFFF', 'FF0000', '00FF00', '0000FF', 'FFFF00', 'FF00FF', '00FFFF', '800000', '008000', '000080', '808000', '800080', '008080', 'C0C0C0', '808080', '9999FF', '993366', 'FFFFCC', 'CCFFFF', '660066', 'FF8080', '0066CC', 'CCCCFF', '000080', 'FF00FF', 'FFFF00', '00FFFF', '800080', '800000', '008080', '0000FF', '00CCFF', 'CCFFFF', 'CCFFCC', 'FFFF99', '99CCFF', 'FF99CC', 'CC99FF', 'FFCC99', '3366FF', '33CCCC', '99CC00', 'FFCC00', 'FF9900', 'FF6600', '666699', '969696', '003366', '339966', '003300', '333300', '993300', '993366', '333399', '333333'];
+function xlTint(hex, tint) { /* 엑셀 tint: HSL 의 L 만 조정 */
+  if (!tint) return hex; var r = parseInt(hex.slice(0, 2), 16) / 255, g = parseInt(hex.slice(2, 4), 16) / 255, b = parseInt(hex.slice(4, 6), 16) / 255;
+  var max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, h = 0, sat = 0;
+  if (max !== min) { var d = max - min; sat = l > .5 ? d / (2 - max - min) : d / (max + min); h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? ((b - r) / d + 2) : ((r - g) / d + 4); h /= 6; }
+  l = tint < 0 ? l * (1 + tint) : l * (1 - tint) + tint;
+  function f(n) { var k = (n + h * 12) % 12, a = sat * Math.min(l, 1 - l); var c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); return ('0' + Math.round(c * 255).toString(16)).slice(-2); }
+  return (f(0) + f(8) + f(4)).toUpperCase();
+}
+function parseXlsxStyles(buf, F) {
+  var u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  if (u8.length < 4 || u8[0] !== 0x50 || u8[1] !== 0x4b) return null; /* zip(xlsx) 아니면 서식 없음 */
+  var files = F.unzipSync(u8, { filter: function (f) { return /^xl\/(styles\.xml|workbook\.xml|theme\/theme1\.xml|_rels\/workbook\.xml\.rels|worksheets\/sheet\d+\.xml)$/.test(f.name) && f.originalSize < 12000000; } });
+  var td = new TextDecoder(); function txt(n) { return files[n] ? td.decode(files[n]) : ''; }
+  /* 테마 색 */
+  var theme = XL_THEME_DEFAULT.slice(), tx = txt('xl/theme/theme1.xml');
+  if (tx) { var order = ['lt1', 'dk1', 'lt2', 'dk2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6']; order.forEach(function (k, i) { var m = new RegExp('<a:' + k + '>([\\s\\S]*?)</a:' + k + '>').exec(tx); if (!m) return; var c = /(?:val|lastClr)="([0-9A-Fa-f]{6})"/.exec(m[1]); if (c) theme[i] = c[1].toUpperCase(); }); }
+  function colorOf(el) {
+    if (!el) return null; var rgb = el.getAttribute('rgb'), th = el.getAttribute('theme'), ix = el.getAttribute('indexed'), tint = parseFloat(el.getAttribute('tint') || '0');
+    if (el.getAttribute('auto') === '1') return null;
+    var hex = rgb ? rgb.slice(-6).toUpperCase() : th != null ? theme[+th] : ix != null ? XL_INDEXED[+ix] : null;
+    return hex ? xlTint(hex, tint) : null;
+  }
+  var doc = new DOMParser().parseFromString(txt('xl/styles.xml'), 'text/xml');
+  var fonts = Array.prototype.map.call(doc.querySelectorAll('fonts > font'), function (f) { return { color: colorOf(f.querySelector('color')), b: !!f.querySelector('b'), i: !!f.querySelector('i'), u: !!f.querySelector('u'), s: !!f.querySelector('strike') }; });
+  var fills = Array.prototype.map.call(doc.querySelectorAll('fills > fill'), function (f) { var pf = f.querySelector('patternFill'); if (!pf) return null; var pt = pf.getAttribute('patternType'); if (!pt || pt === 'none') return null; var fg = colorOf(pf.querySelector('fgColor')), bg = colorOf(pf.querySelector('bgColor')); return pt === 'solid' ? fg || bg : (fg || bg); });
+  var xfs = Array.prototype.map.call(doc.querySelectorAll('cellXfs > xf'), function (x) { var al = x.querySelector('alignment'); return { font: fonts[+x.getAttribute('fontId') || 0] || null, fill: fills[+x.getAttribute('fillId') || 0] || null, al: al ? al.getAttribute('horizontal') : null, wrap: !!(al && al.getAttribute('wrapText') === '1') }; });
+  /* 시트 이름 → 파일 */
+  var wbx = txt('xl/workbook.xml'), rels = txt('xl/_rels/workbook.xml.rels'), relMap = {};
+  rels.replace(/<Relationship [^>]*>/g, function (m) { var id = /Id="([^"]+)"/.exec(m), tg = /Target="([^"]+)"/.exec(m); if (id && tg) relMap[id[1]] = tg[1].replace(/^\/?(xl\/)?/, 'xl/'); return m; });
+  var out = {};
+  wbx.replace(/<sheet [^>]*>/g, function (m) {
+    var nm = /name="([^"]*)"/.exec(m), rid = /r:id="([^"]+)"/.exec(m); if (!nm || !rid) return m;
+    var name = nm[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+    var sx = txt(relMap[rid[1]] || ''); if (!sx) return m;
+    var cells = {}, any = false;
+    sx.replace(/<c r="([A-Z]+\d+)"([^>]*?)\/?>/g, function (mm, ref, attrs) { var si = /\ss="(\d+)"/.exec(attrs); if (!si) return mm; var xf = xfs[+si[1]]; if (!xf) return mm; var st = {}; if (xf.fill) st.bg = xf.fill; if (xf.font) { if (xf.font.color) st.fg = xf.font.color; if (xf.font.b) st.b = 1; if (xf.font.i) st.i = 1; if (xf.font.u) st.u = 1; if (xf.font.s) st.s = 1; } if (xf.al) st.al = xf.al; if (xf.wrap) st.wrap = 1; if (Object.keys(st).length) { cells[ref] = st; any = true; } return mm; });
+    if (any) out[name] = cells; return m;
+  });
+  return out;
+}
+function xlCellStyle(st) {
+  if (!st) return ''; var css = '';
+  if (st.bg) css += 'background:#' + st.bg + ';'; if (st.fg) css += 'color:#' + st.fg + ';';
+  if (st.b) css += 'font-weight:700;'; if (st.i) css += 'font-style:italic;'; if (st.u || st.s) css += 'text-decoration:' + (st.u ? 'underline' : '') + (st.s ? ' line-through' : '') + ';';
+  if (st.al === 'center' || st.al === 'centerContinuous') css += 'text-align:center;'; else if (st.al === 'right') css += 'text-align:right;'; else if (st.al === 'left') css += 'text-align:left;';
+  if (st.wrap) css += 'white-space:pre-wrap;';
+  return css;
+}
+
+/* ── 엑셀 뷰어: 시트 탭 · 병합셀 · 서식값(w) · 셀 서식 · 숫자 우측 정렬 · 범위 골라 표로 넣기 ── */
 function colName(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
 function sheetGrid(X, ws, opt) {
   opt = opt || {}; var ref = ws['!ref']; if (!ref) return { rows: 0, cols: 0, html: '<div class="none" style="padding:14px;color:var(--dim2)">빈 시트</div>', aoa: [], merges: [] };
@@ -942,8 +1001,9 @@ function sheetGrid(X, ws, opt) {
       var cell = ws[X.utils.encode_cell({ r: r, c: c })], v = cell ? (cell.w != null ? cell.w : (cell.v == null ? '' : String(cell.v))) : '';
       row.push(cell ? (cell.v == null ? '' : cell.v) : '');
       if (hide[r + ':' + c]) continue;
-      var sp = span[r + ':' + c], cls = (cell && cell.t === 'n' ? 'n' : '') + (r === 0 && opt.headerRow ? ' hd' : '');
-      tr += '<td' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + (sp ? ' rowspan="' + Math.min(sp.rs, maxR - r) + '" colspan="' + Math.min(sp.cs, maxC - c) + '"' : '') + ' data-r="' + r + '" data-c="' + c + '" title="' + esc(v) + '">' + esc(v) + '</td>';
+      var sp = span[r + ':' + c], cls = (cell && cell.t === 'n' ? 'n' : '') + (r === 0 && opt.headerRow && !opt.styles ? ' hd' : '');
+      var st = opt.styles ? xlCellStyle(opt.styles[colName(c) + (r + 1)]) : '';
+      tr += '<td' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + (st ? ' style="' + st + '"' : '') + (sp ? ' rowspan="' + Math.min(sp.rs, maxR - r) + '" colspan="' + Math.min(sp.cs, maxC - c) + '"' : '') + ' data-r="' + r + '" data-c="' + c + '" title="' + esc(v) + '">' + esc(v) + '</td>';
     }
     aoa.push(row); h += tr + '</tr>';
   }
@@ -971,16 +1031,17 @@ function openSheetViewer(a, opts) {
   opts = opts || {};
   modal('<div class="mh">📊 ' + esc(a.name) + '<div class="sp"></div><span style="font-weight:400;color:var(--dim2);font-size:12px" id="xlSt">불러오는 중…</span><button class="ibtn" id="mCancel">✕</button></div><div class="mb xl"><div class="xl-tabs" id="xlTabs"></div><div class="xl-grid" id="xlGrid"></div><div class="xl-foot" id="xlFoot"></div></div>', function (b) { b.querySelector('#mCancel').onclick = closeModal; });
   $('#modalBox').classList.add('xl-modal');
-  return Promise.all([loadSheetJS(), fetchFileBuffer(a.path)]).then(function (rs) {
-    var X = rs[0], wb = X.read(rs[1], { type: 'array', cellDates: true, cellNF: true, cellText: true, raw: false });
+  return Promise.all([loadSheetJS(), fetchFileBuffer(a.path), loadFflate().catch(function () { return null; })]).then(function (rs) {
+    var X = rs[0], buf = rs[1], F = rs[2], wb = X.read(buf, { type: 'array', cellDates: true, cellNF: true, cellText: true, cellStyles: true, raw: false });
+    var styles = null; if (F) { try { styles = parseXlsxStyles(buf, F); } catch (e) { styles = null; } }
     if (!wb.SheetNames.length) throw new Error('시트가 없습니다');
     var b = $('#modalBox'), tabs = b.querySelector('#xlTabs'), grid = b.querySelector('#xlGrid'), foot = b.querySelector('#xlFoot'); if (!tabs) return;
     var curSheet = wb.SheetNames[0], sel = null;
     function show(name) {
-      curSheet = name; var ws = wb.Sheets[name]; var g = sheetGrid(X, ws, { headerRow: true });
+      curSheet = name; var ws = wb.Sheets[name]; var stl = styles && styles[name] || null; var g = sheetGrid(X, ws, { headerRow: true, styles: stl });
       tabs.innerHTML = wb.SheetNames.map(function (n) { return '<button class="' + (n === name ? 'on' : '') + '" data-sh="' + esc(n) + '">' + esc(n) + '</button>'; }).join('');
       $$('[data-sh]', tabs).forEach(function (t) { t.onclick = function () { show(t.getAttribute('data-sh')); }; });
-      grid.innerHTML = g.html; b.querySelector('#xlSt').textContent = g.rows + '행 × ' + g.cols + '열' + (g.merges.length ? ' · 병합 ' + g.merges.length : '');
+      grid.innerHTML = g.html; b.querySelector('#xlSt').textContent = g.rows + '행 × ' + g.cols + '열' + (g.merges.length ? ' · 병합 ' + g.merges.length : '') + (stl ? ' · 셀 서식 ' + Object.keys(stl).length : (F ? '' : ' · 서식 모듈 없음'));
       var r1 = Math.min(g.rows, 100), c1 = Math.min(g.cols, 20);
       foot.innerHTML = '<span>표로 넣을 범위</span><label>행 <input type="number" id="xlR0" min="1" max="' + g.rows + '" value="1"> ~ <input type="number" id="xlR1" min="1" max="' + g.rows + '" value="' + r1 + '"></label><label>열 <input type="number" id="xlC0" min="1" max="' + g.cols + '" value="1"> ~ <input type="number" id="xlC1" min="1" max="' + g.cols + '" value="' + c1 + '"></label><label><input type="checkbox" id="xlHdr" checked> 첫 행을 머리글로</label><div class="sp"></div><button class="btn" id="xlCsv">CSV 내려받기</button><button class="btn pri" id="xlInsert">표로 넣기</button>' + (g.rows > 100 || g.cols > 20 ? '<div style="flex-basis:100%;color:var(--dim2)">큰 시트는 100행 × 20열까지만 한 번에 표로 넣을 수 있습니다. 범위를 나눠 넣으세요.</div>' : '');
       grid.onclick = function (e) { var td = e.target.closest('td[data-r]'); if (!td) return; var r = +td.getAttribute('data-r'), c = +td.getAttribute('data-c'); if (!sel || e.shiftKey === false) { sel = { r0: r, c0: c, r1: r, c1: c }; } if (e.shiftKey && sel) { sel.r1 = r; sel.c1 = c; } var a0 = Math.min(sel.r0, sel.r1), a1 = Math.max(sel.r0, sel.r1), b0 = Math.min(sel.c0, sel.c1), b1 = Math.max(sel.c0, sel.c1); foot.querySelector('#xlR0').value = a0 + 1; foot.querySelector('#xlR1').value = a1 + 1; foot.querySelector('#xlC0').value = b0 + 1; foot.querySelector('#xlC1').value = b1 + 1; $$('td.sel', grid).forEach(function (x) { x.classList.remove('sel'); }); $$('td[data-r]', grid).forEach(function (x) { var rr = +x.getAttribute('data-r'), cc = +x.getAttribute('data-c'); if (rr >= a0 && rr <= a1 && cc >= b0 && cc <= b1) x.classList.add('sel'); }); };
@@ -1592,7 +1653,7 @@ function boot() {
     if (pid && byId(pid)) { if (byId(pid).deleted_at) viewTrash = true; openPage(pid, { focus: false }); }
   }).catch(function (e) { $('#tree').innerHTML = '<div class="empty">불러오기 실패: ' + esc(e.message) + '</div>'; });
 }
-window.__ECONOTE = { get editor() { return editor; }, get cur() { return cur; }, get pages() { return pages; }, get dirty() { return dirty; }, get prefs() { return prefs; }, get SET() { return SET; }, save: save, openPage: openPage, createPage: createPage, poll: poll, movePage: movePage, trashPage: trashPage, restorePage: restorePage, duplicatePage: duplicatePage, toggleFav: toggleFav, setProps: setProps, exportMd: exportMd, quickSwitch: quickSwitch, settingsDialog: settingsDialog, applyTpl: applyTpl, TPL: TPL, saveSettings: saveSettings, renameInline: renameInline, uploadFiles: uploadFiles, openSheetViewer: openSheetViewer, tableToXlsx: tableToXlsx, tableToAoa: tableToAoa };
+window.__ECONOTE = { get editor() { return editor; }, get cur() { return cur; }, get pages() { return pages; }, get dirty() { return dirty; }, get prefs() { return prefs; }, get SET() { return SET; }, save: save, openPage: openPage, createPage: createPage, poll: poll, movePage: movePage, trashPage: trashPage, restorePage: restorePage, duplicatePage: duplicatePage, toggleFav: toggleFav, setProps: setProps, exportMd: exportMd, quickSwitch: quickSwitch, settingsDialog: settingsDialog, applyTpl: applyTpl, TPL: TPL, saveSettings: saveSettings, renameInline: renameInline, uploadFiles: uploadFiles, openSheetViewer: openSheetViewer, tableToXlsx: tableToXlsx, tableToAoa: tableToAoa, parseXlsxStyles: parseXlsxStyles, xlTint: xlTint };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 </script>

@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 const XLSX = require('../../scripts/econote/node_modules/xlsx');
+const fflate = require('../../scripts/econote/node_modules/fflate');
 
 const ROOT = path.join(__dirname, '../../sites/net/public/work/notes');
 const BUNDLE = fs.readFileSync(path.join(ROOT, 'econote-editor.js'), 'utf8');
@@ -115,7 +116,8 @@ function openPage(srv, url) {
       win.Range.prototype.getBoundingClientRect = rect; win.Range.prototype.getClientRects = rects;
       win.Element.prototype.getClientRects = rects;
       win.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
-      win.XLSX = XLSX; /* CDN 대신 로컬 SheetJS */
+      win.XLSX = XLSX; win.fflate = fflate; /* CDN 대신 로컬 SheetJS · fflate */
+      if (!win.TextDecoder) win.TextDecoder = TextDecoder; if (!win.TextEncoder) win.TextEncoder = TextEncoder;
       const oc = win.HTMLAnchorElement.prototype.click; win.HTMLAnchorElement.prototype.click = function () { if (this.hasAttribute('download')) { downloads.push(this.download); return; } oc.call(this); };
       win.addEventListener('error', e => errors.push(e.message));
     }
@@ -320,7 +322,12 @@ function dragEvent(w, type, dt) { const e = new w.Event(type, { bubbles: true, c
     const ws = XLSX.utils.aoa_to_sheet([['견적 내역', '', ''], ['품목', '수량', '단가'], ['타일', 10, 12000], ['합계', '', 120000]]);
     ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }, { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }];
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '견적'); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['b']]), '둘째');
-    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const buf0 = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    /* SheetJS(무료)는 서식을 못 쓰므로 zip 을 풀어 styles.xml 을 갈아 끼우고 셀에 s= 를 붙인다: B3 = 노랑 바탕·빨강 굵게·가운데, C3 = 테마 accent1 tint .5 바탕, A2 = 흰 글자·검정(테마 dk1) 바탕 */
+    const z = fflate.unzipSync(new Uint8Array(buf0));
+    z['xl/styles.xml'] = fflate.strToU8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><color theme="1"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFF0000"/></font><font><i/><u/><sz val="11"/><color indexed="9"/></font></fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor theme="4" tint="0.5"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor theme="1"/></patternFill></fill></fills><borders count="1"><border/></borders><cellXfs count="4"><xf fontId="0" fillId="0"/><xf fontId="1" fillId="2" applyFont="1" applyFill="1"><alignment horizontal="center"/></xf><xf fontId="0" fillId="3" applyFill="1"/><xf fontId="2" fillId="4" applyFont="1" applyFill="1"><alignment horizontal="right"/></xf></cellXfs></styleSheet>');
+    let sx = fflate.strFromU8(z['xl/worksheets/sheet1.xml']); sx = sx.replace('<c r="B3"', '<c r="B3" s="1"').replace('<c r="C3"', '<c r="C3" s="2"').replace('<c r="A2"', '<c r="A2" s="3"'); z['xl/worksheets/sheet1.xml'] = fflate.strToU8(sx);
+    const buf = fflate.zipSync(z).buffer;
     const U8 = w.Uint8Array || Uint8Array; const bytes = new U8(buf.byteLength); bytes.set(new Uint8Array(buf)); /* jsdom Blob 은 다른 realm 의 ArrayBuffer 를 문자열로 취급한다 */
     const file = new w.File([bytes], '견적서.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     await E().uploadFiles([file]); await sleep(100);
@@ -339,6 +346,13 @@ function dragEvent(w, type, dt) { const e = new w.Event(type, { bubbles: true, c
     ok(mergedTop && mergedTop.getAttribute('colspan') === '3' && !$('#xlGrid td[data-r="0"][data-c="1"]'), 'D2 병합 셀 colspan=3, 덮인 셀 없음');
     ok($('#xlGrid td[data-r="2"][data-c="1"]').classList.contains('n') && $('#xlGrid td[data-r="2"][data-c="2"]').textContent === '12000', 'D2 숫자 우측 정렬·값');
     ok($$('#xlGrid thead th').length === 4 && $$('#xlGrid thead th')[1].textContent === 'A', 'D2 열 머리글 A,B,C');
+    const b3 = $('#xlGrid td[data-r="2"][data-c="1"]').getAttribute('style') || '', c3 = $('#xlGrid td[data-r="2"][data-c="2"]').getAttribute('style') || '', a2 = $('#xlGrid td[data-r="1"][data-c="0"]').getAttribute('style') || '';
+    ok(/background:#FFFF00/.test(b3) && /color:#FF0000/.test(b3) && /font-weight:700/.test(b3) && /text-align:center/.test(b3), 'D2 셀 서식 B3 노랑 바탕·빨강 굵게·가운데: ' + b3);
+    const c3m = /background:#([0-9A-F]{6})/.exec(c3); const c3r = c3m ? parseInt(c3m[1].slice(0, 2), 16) : 0, c3b = c3m ? parseInt(c3m[1].slice(4, 6), 16) : 0;
+    ok(c3m && c3r > 0x80 && c3r < 0xC0 && c3b > 0xC8 && c3b > c3r, 'D2 테마 accent1 + tint .5 → 연한 파랑(원색 4472C4 보다 밝고 파란 기 유지): ' + c3);
+    ok(/background:#000000/.test(a2) && /color:#FFFFFF/.test(a2) && /font-style:italic/.test(a2) && /underline/.test(a2) && /text-align:right/.test(a2), 'D2 셀 서식 A2 검정 바탕·흰 글자(indexed 9)·기울임·밑줄·우측: ' + a2);
+    ok(/셀 서식 3/.test($('#xlSt').textContent), 'D2 상태 문구에 셀 서식 수: ' + $('#xlSt').textContent);
+    ok(E().xlTint('4472C4', 0.5).length === 6 && E().xlTint('808080', -0.5) === '404040', 'D2 tint 계산: ' + E().xlTint('808080', -0.5));
     $$('#xlTabs button')[1].click(); await sleep(30);
     ok($('#xlTabs button.on').textContent === '둘째' && $('#xlGrid td[data-r="0"][data-c="0"]').textContent === 'b', 'D2 시트 전환');
     $$('#xlTabs button')[0].click(); await sleep(30);

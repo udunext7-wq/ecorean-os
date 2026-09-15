@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "esbuild": "^0.24",
+    "fflate": "^0.8.2",
     "xlsx": "^0.18.5"
   }
 }
