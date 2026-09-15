@@ -75,10 +75,10 @@ m=box(); SK.massToSolid(m,ctx);
 const chain=[{x:-500,y:0,z:1000},{x:-300,y:-750,z:1000},{x:0,y:-100,z:1000},{x:300,y:750,z:1000},{x:600,y:0,z:1000}];
 r=SK.massDivide(m,up,chain,false,ctx);
 ck(r&&r.splits===1&&r.stray.length===2&&r.stray[0][0]===chain[0]&&r.stray[1][1]===chain[4]&&m.solidFaces.length===7,'열린 사슬 → 분할 1 · 자투리 2(넘긴 점 객체 그대로) '+JSON.stringify(r&&{s:r.splits,st:r.stray.map(x=>x.length)}));
-//  d) 면 밖으로 나가는 고리 → null (아무것도 안 바뀐다)
-m=box(); SK.massToSolid(m,ctx);
+//  d) 면 밖으로 나가는 고리 → (25차) 안쪽에 든 부분만 면이 되고, 밖의 구간은 stray (스케치업: 면 위 부분만 면)
+m=box(); SK.massToSolid(m,ctx); const vd=vol(m);
 r=SK.massDivide(m,up,[{x:800,y:0,z:1000},{x:1300,y:0,z:1000},{x:1300,y:400,z:1000},{x:800,y:400,z:1000}],true,ctx);
-ck(r===null&&m.solidFaces.length===6,'면 밖으로 나가는 고리 → null · 면 6 그대로');
+ck(r&&r.graph&&r.splits===1&&r.stray.length===3&&m.solidFaces.length===7&&near(vol(m),vd,1e-6),'면 밖으로 나가는 고리 → 안쪽 부분(200×400)만 새 면 · 밖 구간 3개 stray · 부피 그대로 '+JSON.stringify(r&&{s:r.splits,st:r.stray.length}));
 //  e) 이미 나뉜 면 위에 다시 원 → 점을 품은 조각(왼쪽)이 나뉜다
 m=box(); SK.massToSolid(m,ctx); SK.massSplitFace(m,top,up,{x:0,y:-750,z:1000},{x:0,y:750,z:1000},ctx);
 const circL=circ.map(p=>({x:p.x-500,y:p.y,z:p.z}));

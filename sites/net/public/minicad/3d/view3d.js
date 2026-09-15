@@ -1261,7 +1261,7 @@ function shape3Commit(exact){
   if(r.closed){ if(poly.length<3||Math.abs(polyArea(poly))<100*100){ setStatus(statusLive,'너무 작습니다'); return; } cancelOp();
     if(op.mass){                                                          // 매스 면 위 — 면이 나뉜다 (스케치업): 안쪽 면 + 바깥 면
       const d=ffTryDivide(op,r.poly,true);
-      if(d&&(d.splits||d.inset)){ if(gen) ST.lastShape={gen,plane,auto:false,mass:op.mass,fr:op.fr,snap:FF.hist[FF.histPos]}; setStatus(statusLive,'🧊 면 위 '+FF_STATUS[op.shape]+' → 면이 나뉘었습니다 — 안쪽 면을 P 로 뽑으면 돌출, 안으로 밀면 파임'); if(d.inset) ffAutoPushInner(op,r.poly); return; }
+      if(d&&(d.splits||d.inset)){ if(gen) ST.lastShape={gen,plane,auto:false,mass:op.mass,fr:op.fr,snap:FF.hist[FF.histPos]}; setStatus(statusLive,'🧊 면 위 '+(FF_STATUS[op.shape]||({circle:'○ 원',arc:'◜ 호',rect:'▭ 사각형'})[op.shape]||op.shape)+' → 면이 나뉘었습니다 — 안쪽 면을 P 로 뽑으면 돌출, 안으로 밀면 파임'); if(d.inset) ffAutoPushInner(op,r.poly); return; }
       if(d){ setStatus(statusLive,'🧊 면 위 '+FF_STATUS[op.shape]+' → 선'); return; }
     }
     if(gen) ST.lastShape={gen,plane,auto:false}; emitEdit({type:'edit',op:'sketchpoly',floorId:'freeform',patch:{pts:poly,plane,gen}}); setStatus(statusLive,'🧊 면 위 '+FF_STATUS[op.shape]+' → 면 (P 로 뽑기·파내기)'); ffAutoExtrude(_ffBagFor(plane)); return; }

@@ -56,17 +56,20 @@ const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.log((c?'  ✅ ':'  ❌ ')+m
     m=await J(`MC3DVIEW.ST.op&&MC3DVIEW.ST.op.type+':'+MC3DVIEW.ST.op.shape`);
     ck(m==='shape3:circle','벽면 클릭 → 면 위 원 op ('+m+')');
     await J(`var p=__pt(1500,0,500);__ev('pointermove',p.x,p.y);__vcb('200');MC3DVIEW.commitActive(200);'ok'`); await sleep(250);
-    m=await J(`({pl:(__F().planes||[]).length,nx:__F().planes[0]&&Math.round(__F().planes[0].n.x),f:(__F().planes[0]||{}).sketchFaces.length,pts:((__F().planes[0]||{}).sketchFaces[0]||{}).pts.length})`);
-    ck(m.pl===1&&m.nx===1&&m.f===1&&m.pts===24,'면 위 원 r=200 → 벽면 평면에 24각 면 '+JSON.stringify(m));
+    // 25차: 면 위의 원은 (모서리에 걸쳐도) 매스 면을 나눈다 — 스케치 종이는 안 생기고 매스 면이 +1
+    m=await J(`({pl:(__F().planes||[]).length,mf:massSolid(__M(),{ch:2400,fh:2800,fl:0}).faces.length-6,inner:(()=>{var S=massSolid(__M(),{ch:2400,fh:2800,fl:0});return Math.max.apply(null,S.faces.map(f=>f.vs.length));})()})`);
+    // 원이 면 모서리에 걸치면 안쪽 부분만 면(꼭짓점 21)이 되고 밖 구간은 스케치 선(면은 아님)
+    m.sf=await J(`(__F().planes[0]||{sketchFaces:[]}).sketchFaces.length`);
+    ck(m.mf>=1&&m.inner>=10&&m.sf===0,'면 위 원 r=200 → 매스 면이 나뉜다 (스케치 면 없음 · 안쪽 면 '+m.inner+'각) '+JSON.stringify(m));
     // 면 위 다각형 · 회전 사각형 (클릭 흐름)
     await J(`MC3DVIEW.setTool('polygon');__cl(1500,-600,350);__mv(1500,-600,450);__vcb('100');MC3DVIEW.commitActive(100);'ok'`); await sleep(200);
     await J(`MC3DVIEW.setTool('rotrect');__cl(1500,500,150);__cl(1500,800,150);__mv(1500,800,300);__cl(1500,800,300);'ok'`); await sleep(200);
     // 24차: 면 안에 다 들어오는 도형은 매스 면을 나눈다(면 +1), 면 밖으로 나가면 종전처럼 스케치 면 — 합이 3
-    m=await J(`({sf:__F().planes[0].sketchFaces.length,mf:massSolid(__M(),{ch:2400,fh:2800,fl:0}).faces.length-6})`);
+    m=await J(`({sf:(__F().planes[0]||{sketchFaces:[]}).sketchFaces.length,mf:massSolid(__M(),{ch:2400,fh:2800,fl:0}).faces.length-6})`);
     ck(m.sf+m.mf===3&&m.mf>=1,'면 위 다각형·회전 사각형 → 면 3 (매스 분할 '+m.mf+' + 스케치 면 '+m.sf+')');
     // ---- 5. 면 위 프리핸드 ----
     await J(`MC3DVIEW.setTool('freehand');var P=[[1500,-900,100],[1500,-700,120],[1500,-650,280],[1500,-850,300],[1500,-900,100]];var a=__pt(P[0][0],P[0][1],P[0][2]);__ev('pointermove',a.x,a.y);__ev('pointerdown',a.x,a.y);P.forEach(q=>{var s=__pt(q[0],q[1],q[2]);__ev('pointermove',s.x,s.y);});__ev('pointerup',a.x,a.y);'ok'`); await sleep(250);
-    m=await J(`({sf:__F().planes[0].sketchFaces.length,mf:massSolid(__M(),{ch:2400,fh:2800,fl:0}).faces.length-6})`);
+    m=await J(`({sf:(__F().planes[0]||{sketchFaces:[]}).sketchFaces.length,mf:massSolid(__M(),{ch:2400,fh:2800,fl:0}).faces.length-6})`);
     ck(m.sf+m.mf===4,'면 위 프리핸드 닫힘 → 면 4 (매스 분할 '+m.mf+' + 스케치 면 '+m.sf+')');
     await J(`__key('Escape');'ok'`); await sleep(100);
     // ---- 6. 면 축 회전 (rotate3) ----

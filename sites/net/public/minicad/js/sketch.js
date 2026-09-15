@@ -1730,6 +1730,69 @@ function massFindFaceByPts(m,ln,pts,ctx){
 //  · 점이 하나라도 면 밖이면 null
 //  반환 {splits, inset, stray:[[점…]…]} — stray 의 점은 넘겨받은 객체 그대로
 function massDivide(m,ln,pts,closed,ctx){
+  const r=massDivideLegacy(m,ln,pts,closed,ctx);
+  if(r&&(r.splits||r.inset)) return r;
+  // 한 조각 안에 안 들면(분할선에 걸친 원·여러 조각을 지나는 선) 평면 그래프로 — 25차
+  const g=massDivideGraph(m,ln,pts,closed,ctx);
+  return g||r;
+}
+// ---------------------------------------------------------------------------
+// 25차 (2026-09-15 대표 지시 "반으로 나뉜 면 가운데 원을 그리면 원이 분할선에 걸려 반원 둘로")
+//  같은 평면의 조각 전부를 2D 그래프(점·선, 열쇠구멍 다리 포함)로 풀고 새 선을 넣는다 — skAddEdge 가 교차점에서
+//  기존 선과 새 선을 서로 자르고, skDetectFaces 가 면(구멍 포함)을 다시 검출한다. 스케치업의 본뜻 그대로:
+//  선을 그으면 만나는 모든 선과 교차하고, 면은 그 결과대로 나뉜다. 지역 밖(원래 조각 어디에도 안 드는) 조각은 버리고
+//  그 새 선 구간은 stray 로 돌려준다.
+// ---------------------------------------------------------------------------
+function _polyInnerPt(poly){ const c=skPolyCentroid(poly); if(skPtInPoly(c,poly)) return c; const n=poly.length; for(let i=0;i<n;i++){ const a=poly[i],b=poly[(i+1)%n],d=poly[(i+2)%n]; const q={x:(a.x+b.x+d.x)/3,y:(a.y+b.y+d.y)/3}; if(skPtInPoly(q,poly)) return q; } return c; }
+function _keyhole2D(outer,holes){
+  let poly=outer.slice(); if(skPolyArea(poly)<0) poly.reverse();
+  holes.forEach(hraw=>{ const h=hraw.slice(); if(skPolyArea(h)>0) h.reverse();
+    let bi=0,bj=0,bd=Infinity; for(let i=0;i<poly.length;i++) for(let j=0;j<h.length;j++){ const d=Math.hypot(poly[i].x-h[j].x,poly[i].y-h[j].y); if(d<bd){ bd=d; bi=i; bj=j; } }
+    const rot=h.slice(bj).concat(h.slice(0,bj));
+    poly=poly.slice(0,bi+1).concat(rot,[rot[0]],[poly[bi]],poly.slice(bi+1)); });
+  return poly;
+}
+function massDivideGraph(m,ln,pts,closed,ctx){
+  if(!Array.isArray(pts)||pts.length<2) return null;
+  massToSolid(m,ctx); _massFixWinding(m,ctx);
+  const V=_massNumVerts(m,ctx); const nrm=_vNorm(ln);
+  const cop=[]; m.solidFaces.forEach((f,fi)=>{ if(f.vs.length<3) return; const n=faceNormal(V,f.vs); if(_vDot(n,nrm)<0.95) return; if(Math.abs(_vDot(_vSub(V[f.vs[0]],pts[0]),nrm))<5) cop.push(fi); });
+  if(!cop.length) return null;
+  const pl=planeFrom(pts[0],nrm);
+  const UV=P=>{ const q=planeUV(pl,P); return {x:q.u,y:q.v}; };
+  const bag={sketchPts:[],sketchEdges:[],sketchFaces:[]};
+  const oldRings=cop.map(fi=>m.solidFaces[fi].vs.map(i=>UV(V[i])));
+  oldRings.forEach(r=>{ for(let i=0;i<r.length;i++){ const a=r[i],b=r[(i+1)%r.length]; if(Math.hypot(b.x-a.x,b.y-a.y)<1) continue; skAddEdge(a.x,a.y,b.x,b.y,bag); } });
+  const nPts0=bag.sketchPts.length, nFaces0=bag.sketchFaces.length;
+  const uvs=pts.map(UV); const segs=[];
+  for(let i=0;i+1<uvs.length;i++) segs.push([i,i+1]); if(closed&&uvs.length>=3) segs.push([uvs.length-1,0]);
+  segs.forEach(([i,j])=>{ const a=uvs[i],b=uvs[j]; if(Math.hypot(b.x-a.x,b.y-a.y)>=SK_MIN_EDGE) skAddEdge(a.x,a.y,b.x,b.y,bag); });
+  const inRegion=p=>oldRings.some(r=>skPtInPoly(p,r));
+  const kept=bag.sketchFaces.filter(f=>{ const poly=skFacePoly(f,bag); return poly.length>=3&&inRegion(_polyInnerPt(poly)); });
+  if(kept.length<=cop.length) return null;   // 면이 늘지 않았다 = 아무것도 안 나뉨 (안쪽 자투리 선은 종전 경로가 stray 로 돌려준다)
+  const onOld=P=>cop.some(fi=>_ringHas(V,m.solidFaces[fi].vs,P));
+  const inset=(closed&&!pts.some(onOld)&&kept.some(f=>f.holes&&f.holes.length))?1:0;
+  // 3D 로 되돌리기 — 기존 꼭짓점은 재사용(2.5mm), 새 점은 추가
+  const newIdx=[];
+  const idxOf=P2=>{ const w=planePt(pl,P2.x,P2.y); let bi=-1,bd=2.5; for(let i=0;i<V.length;i++){ const v=V[i]; const d=Math.hypot(v.x-w.x,v.y-w.y,v.z-w.z); if(d<bd){ bd=d; bi=i; } } if(bi>=0) return bi;
+    const q={x:Math.round(w.x*10)/10,y:Math.round(w.y*10)/10,z:Math.round(w.z*10)/10}; m.solidVerts.push(q); V.push(q); newIdx.push(V.length-1); return V.length-1; };
+  const matOf=poly=>{ const c=_polyInnerPt(poly); for(let k=0;k<cop.length;k++){ if(skPtInPoly(c,oldRings[k])) return m.solidFaces[cop[k]].mat||null; } return m.solidFaces[cop[0]].mat||null; };
+  const newFaces=kept.map(f=>{ const outer=skFacePoly(f,bag); const holes=skFaceHoles(f,bag); const ring=holes.length?_keyhole2D(outer,holes):outer;
+    const vs=[]; ring.forEach(p=>{ const i=idxOf(p); if(!vs.length||vs[vs.length-1]!==i) vs.push(i); }); while(vs.length>1&&vs[0]===vs[vs.length-1]) vs.pop();
+    if(vs.length<3) return null; const n=faceNormal(V,vs); if(_vDot(n,nrm)<0) vs.reverse(); return {vs,mat:matOf(outer)}; }).filter(Boolean);
+  if(newFaces.length<cop.length) return null;
+  const copSet=new Set(cop);
+  const others=m.solidFaces.filter((f,i)=>!copSet.has(i));
+  // 새 경계 점을 꺾인 이웃 면의 변에도 끼운다 (균열 없이)
+  if(newIdx.length) others.forEach(G=>{ const ring=[]; for(let k=0;k<G.vs.length;k++){ const a=G.vs[k],b=G.vs[(k+1)%G.vs.length]; ring.push(a); const A=V[a],B=V[b]; const AB=_vSub(B,A),L2=_vDot(AB,AB)||1;
+      const ins=[]; newIdx.forEach(ni=>{ if(G.vs.includes(ni)) return; const P=V[ni]; const t=_vDot(_vSub(P,A),AB)/L2; if(t<=1e-4||t>=1-1e-4) return; const Q=_vAdd(A,_vScale(AB,t)); if(_vLen(_vSub(Q,P))<=2.5) ins.push({ni,t}); });
+      ins.sort((p,q)=>p.t-q.t).forEach(x=>ring.push(x.ni)); } G.vs=ring; });
+  m.solidFaces=others.concat(newFaces);
+  _massDropOrphans(m); m.open=m.open||false;
+  const stray=[]; segs.forEach(([i,j])=>{ const a=uvs[i],b=uvs[j]; if(!inRegion({x:(a.x+b.x)/2,y:(a.y+b.y)/2})) stray.push([pts[i],pts[j]]); });
+  return {splits:newFaces.length-cop.length,inset,stray,graph:true};
+}
+function massDivideLegacy(m,ln,pts,closed,ctx){
   if(!Array.isArray(pts)||pts.length<2) return null;
   const f=massFindFaceByPts(m,ln,pts,ctx); if(!f) return null;
   const V=f.verts, ring=f.face.vs, n=f.n;
@@ -2014,6 +2077,6 @@ if(typeof module!=='undefined'&&module.exports){
     sweepProfile,sweepProfile3,massFromSweep,moldingProfile,
     massCSG,earTriangles,csgMergeFaces,massToCsgPolys,massFromCsgFaces,csgUnion,csgSubtract,csgIntersect,
     massFindFace,massPushFace,massExtrudeFaceNew,massVertXY,massRotate3,massFlip,massScaleAbout,massLocalBox,massFaceInfo,
-    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,massSplitFace,massSplitFaceChain,massInsetFace,massOnFaceRing,massDrawEdges,massDivide,massFindFaceByPts,_faceContains,massPunchThrough,skFaceHoles,_massFixWinding,
+    massFaceRing,massEdges,massMoveVerts,massDeleteFace,massDeleteEdge,massReverseFace,massDeleteVertex,massSplitFace,massSplitFaceChain,massInsetFace,massOnFaceRing,massDrawEdges,massDivide,massDivideGraph,massDivideLegacy,massFindFaceByPts,_faceContains,massPunchThrough,skFaceHoles,_massFixWinding,
     massAbsPoly,massArea,massFromPoly,skArrs,skPoint,skAddEdge,skAddPoly,skAddRect,skAddCircle,skCirclePoly,skDetectFaces,skFaceAt,skFacePoly,skFaceArea,skFacePerimeter,skPolyArea,skPolyCentroid,skPtInPoly,skRemoveEdge,skRemovePoint,skRemoveFace,skRemove,skClear,skCount,skObb,skGuessKind,skEdgeLen,skEdgePts,skPtById,skEdgeById,skFaceById};
 }
