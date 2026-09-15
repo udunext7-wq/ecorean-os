@@ -78,11 +78,18 @@ sun.shadow.bias=-0.0006; sun.shadow.normalBias=0.02;
 scene.add(sun); scene.add(sun.target);
 
 let needRender=true;
-function invalidate(shadow){ needRender=true; if(shadow) renderer.shadowMap.needsUpdate=true; }
+function invalidate(shadow){ needRender=true; if(shadow){ if(_interacting()) _inter.shadowPending=true; else { renderer.shadowMap.needsUpdate=true; _inter.count.shadow++; } } }
+function _dprWanted(){ const n=ST.pickables.length, plq=ST.pointLights.length; return (n>6000||plq>96)?1:(n>3000||plq>48)?1.5:Math.min(window.devicePixelRatio||1,2); }
 
 const orbit=new OrbitControls(camera,renderer.domElement);
-orbit.enableDamping=true; orbit.dampingFactor=0.08;
-orbit.maxPolarAngle=Math.PI*0.495;
+orbit.enableDamping=true; orbit.dampingFactor=0.35;   // 2026-09-15 대표 지적 "회전이 원활하지 않다": 0.08 은 놓아도 한참 미끄러졌다 — 손을 따라오되 2~3프레임에 멈춘다
+orbit.maxPolarAngle=Math.PI*0.9;                       // 스케치업처럼 수평선 아래에서도 볼 수 있다
+orbit.rotateSpeed=0.9; orbit.zoomSpeed=1.15; orbit.panSpeed=1.0;
+// 상호작용(궤도·팬·줌·도구 동작·끌기) 중에는 그림자 재계산을 미루고 픽셀비를 1 로 낮춘다 — 끝나면 복원 (스케치업의 "움직일 때 가볍게")
+const _inter={orbit:false,last:0,low:false,shadowPending:false,lastShadow:0,dprFull:null,count:{shadow:0,low:0}};
+orbit.addEventListener('start',()=>{ _inter.orbit=true; _inter.last=performance.now(); });
+orbit.addEventListener('end',()=>{ _inter.orbit=false; _inter.last=performance.now(); });
+function _interacting(){ try{ return _inter.orbit||!!ST.op||!!(drag&&drag.moved&&drag.button===0); }catch(_){ return _inter.orbit||!!ST.op; } }   // drag 는 뒤에서 let 선언 — 초기화 전 호출은 TDZ 라 try
 orbit.screenSpacePanning=false;
 // 2026-09-03 스케치업식 마우스: 휠버튼 드래그=궤도 · 우클릭 드래그=팬 · 휠=줌 (+좌클릭 빈 곳=궤도 유지)
 orbit.mouseButtons={LEFT:null,MIDDLE:THREE.MOUSE.ROTATE,RIGHT:THREE.MOUSE.PAN}; // 좌클릭=선택/도구 · 휠버튼=궤도 · 우클릭=팬 (스케치업과 동일)
@@ -2388,7 +2395,7 @@ function retunePointLights(){
 function autoPerf(){
   const n=ST.pickables.length;
   const plq=ST.pointLights.length;   // 2026-09-09: 등마다 광원 — 많으면 픽셀비로 상쇄
-  renderer.setPixelRatio((n>6000||plq>96)?1:(n>3000||plq>48)?1.5:Math.min(window.devicePixelRatio||1,2));
+  if(!_inter.low) renderer.setPixelRatio(_dprWanted());
   if(ST.shadowsAuto){
     const want=n<=3500;
     if(want!==ST.shadows){ setShadows(want,true); setStatus(statusLive,_statusTxt+(want?'':' · 대형 도면 — 그림자 자동 OFF')); }
@@ -6691,6 +6698,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
 renderer.domElement.addEventListener('pointermove',e=>{
   ST.lastPtr={clientX:e.clientX,clientY:e.clientY};      // 접촉 이름표가 이번 움직임 자리에 붙도록 — 맨 먼저
   if(ST.tool==='add'&&ST.add&&ST.add.ghost){ ghostFollow(e); }
+  if(e.buttons&6){ return; }                              // 휠버튼 궤도·우클릭 팬 중 — 스냅·미리보기 계산은 쉰다 (카메라가 먼저)
   // 첫 클릭 전에도 스냅 마커 표시 (스케치업 추론 — 호버만으로 끝점/중간점/선에 흡착 예고)
   if((ST.tool==='line'||ST.tool==='rect'||ST.tool==='circle'||ST.tool==='arc'||ST.tool==='polygon'||ST.tool==='rotrect'||ST.tool==='arc3'||ST.tool==='pie'||ST.tool==='protractor'||ST.tool==='axes'||ST.tool==='freehand'||ST.tool==='text3d')&&!ST.op&&ST.mode==='orbit'){
     const fid=_hoverFloorId(e);
@@ -7676,6 +7684,12 @@ function loop(now){
   if(ST.mode==='orbit'){ if(orbit.enabled&&orbit.update()) needRender=true; }
   else { if(stepWalk(dt)) needRender=true; }
   if(ST.op) needRender=true;
+  // 상호작용 중: 픽셀비 1 · 그림자는 250ms 마다 한 번 — 끝나고 160ms 지나면 원래 픽셀비로 다시 그리고 밀린 그림자를 갱신
+  const inter=_interacting();
+  if(inter){ _inter.last=now; if(!_inter.low){ const want=_dprWanted(); if(want>1){ _inter.low=true; _inter.dprFull=want; renderer.setPixelRatio(1); _inter.count.low++; } }
+    if(_inter.shadowPending&&now-_inter.lastShadow>250){ renderer.shadowMap.needsUpdate=true; _inter.lastShadow=now; _inter.shadowPending=false; _inter.count.shadow++; needRender=true; } }
+  else{ if(_inter.low&&now-_inter.last>160){ _inter.low=false; renderer.setPixelRatio(_dprWanted()); needRender=true; }
+    if(_inter.shadowPending&&!_inter.low){ renderer.shadowMap.needsUpdate=true; _inter.shadowPending=false; _inter.count.shadow++; needRender=true; } }
   if(needRender){ drawFrame(); needRender=false; }
   requestAnimationFrame(loop);
 }
@@ -7713,6 +7727,7 @@ window.MC3DVIEW={ST,scene,THREE,_plBudget,get camera(){return camera;},renderer,
   massConvert3D,describe,spawnPendingFace,prismGhost, // 2026-09-04 점·선·면 스모크용
   // 2026-09-08 스케치업 100% (단독 프리폼) — E2E 훅
   followClick,freehandEnd,freehandDown,_rdp,text3dPolys,setAxesOrigin,renderPaintPal,ffEnterEdit,ffExitEdit,ffPickInside,ffDeleteSel,ffReverseSel,beginMoveSel,ffSelectWhole,ffPartAt,ffMoveEntry,ffPaintFaces,ffWhole,ffPartNearScreen,ffTryDivide,ffMassChainClick,ffMassChainFlush,ffAutoPushInner,_ffOnMassRing,_ffMassLocal,_ffMassEdgeLines,addGuidePoint,glowSprite,ffAutoExtrude,ffBlueHop,showSnap,hideSnap,ffSnapHide,ffContactPulse,ffContactOnClick,_snapPaint,_snapTex,SNAP_SHAPE,SNAP_COL,SNAP_NAME,snap3,_dragAlong,mmPerPx,vcbApplySides,vcbApplyPreRadius,ffRegenLastShape,_ffReselectGen,followClick,hitAt,hitsAt,_ffChainFromEdge,_ffChainFromEdges,_ffSweepFace,_ffEdgeGraph3,ffArrowAxis,ffAxis3Toggle,ffShapeAxis,_ffShapeFirst,_ffAxis3Target,ffPlaneThrough,ffEmitEdge3,ffLineBegin3,ffFree3,ffChain3Commit,ffChain3Flush,_ffFitPlane,_ffPlaneDist,ffMatProp,ffSetMatProp,_ffMatKey,ffMatEditor,ffAddImageMat,_ffTexUpload,MAT_PRESETS,_ffAll3D,_ffPick3D,_ffSnapOnPlane,ffCloudSave,ffCloudOpen,ffCloudLoad,ffCloudReady,ffApplyDoc,ffSaveBanner,ffSaveMeter,ffDocJSON,ffAutosave,FF_QUOTA,ffSetWP,ffWPFlip,ffWPCycle,ffWPFrame,ffWPGround,ffWPDraw,ffWPPickAxis,ffWPOriginPick,ffWPSetOrigin,ffWPFromFace,_ffWPHandleAt,WP_KINDS,_blueAligned,_blueDir,_screenDir,lineMove,_planePt,ffPaintMass,eraseExtras,renderSections,setIsolate,scenePlay,ffStats,ffPurge,ffParseOBJ,ffCustomMat,setSunDate,setLightDark,ffFlip,beginScaleGrip,buildScaleGrips,offsetFaceClick,ffFaceInfoAt,shape3Start,shape3Click,shape3Commit,_ffFacePick,_ffFrameFor,_localOfHit,exportOBJ,exportSTL,_exportTris,fmtLen,setLast,ffSolid,ffMakeGroup,ffMakeComp,ffExplode,ffCompUpdate,setSmooth,_ffSoften,ffSetHdr,ffHdrClear,ffHdrLight,ffHdrExposure,ffHdrRestore,pickSkyFile,setFaceStyle,setEdges,setFog,setHiddenGeom,setGuidesOn,applySections,clearSections,zoomWindow,
+  get inter(){ return _inter; }, interacting:_interacting,
   axesOn:()=>!!(axesGrp&&axesGrp.visible),
   selectById:(fid,id)=>{const g=findGroup(fid,id);if(g)select(g);return !!g;},
   selCount:()=>ST.selSet.size,

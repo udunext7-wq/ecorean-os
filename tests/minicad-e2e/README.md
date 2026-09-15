@@ -16,3 +16,4 @@ node tests/minicad-csg.cjs                  # 솔리드 도구 CSG 단위 (부�
 크롬 경로 `C:/Program Files/Google/Chrome/Application/chrome.exe` (cdp.cjs). ws 는 레포 devDependency.
 
 node tests/minicad-e2e/ff-divide-2.cjs   # 25차: 분할선에 걸친 원 → 반원 둘 (11건)
+node tests/minicad-e2e/ff-smooth.cjs      # 26차: 궤도 감쇠·상호작용 중 그림자 지연·픽셀비 낮춤 (7건)

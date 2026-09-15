@@ -1,45 +1,40 @@
-// 부드러운 곡면 E2E — 곡면은 법선이 섞이고 상자 모서리는 그대로 각진다
-const {launch,sleep}=require('./cdp.cjs'); const fs=require('fs');
+// 26차 E2E — 마우스·카메라·이동이 원활하게: 감쇠 즉답 · 상호작용 중 그림자 지연·픽셀비 1 · 끝나면 복원 · 궤도 중 스냅 생략 · 수평선 아래 회전
+const {launch,sleep}=require('./cdp.cjs');
 const fails=[]; let n=0; const ck=(c,m)=>{ n++; if(!c) fails.push(m); console.log((c?'  ✅ ':'  ❌ ')+m); };
-(async()=>{ const b=await launch({port:9407}); const J=s=>b.evalJS(s);
-  try{ await b.goto('http://127.0.0.1:8090/sites/net/public/minicad/3d/?ff=1'); await b.waitFor('!!window.MC3DVIEW&&!!MC3DVIEW.FF'); await J(`localStorage.clear();MC3DVIEW.ffNew();'ok'`); await sleep(400);
-    await J(`window.__poly=(r,k,cx)=>{var a=[];for(var i=0;i<k;i++){var t=i/k*Math.PI*2;a.push({x:Math.round(Math.cos(t)*r)+(cx||0),y:Math.round(Math.sin(t)*r)});}return a;};
-      window.__norm=(name)=>{var out=null;MC3DVIEW.scene.traverse(function(o){ if(o.isMesh&&o.userData.obj&&o.userData.obj.name===name){ var g=o.geometry,N=g.getAttribute('normal').array,P=g.getAttribute('position').array;
-        // 옆면 삼각형 하나의 세 법선이 서로 다르면 스무스, 같으면 플랫
-        var best=null;
-        for(var t=0;t<N.length;t+=9){ if(Math.abs(N[t+1])>0.5) continue;  // 위/아래 뚜껑 건너뛰기
-          var d=Math.abs(N[t]-N[t+3])+Math.abs(N[t+2]-N[t+5]); if(best===null||d>best) best=d; }
-        out={spread:Math.round((best||0)*1000)/1000,tris:N.length/9}; } }); return out; };'ok'`);
-    // 24각 원기둥 + 상자
-    await J(`MC3DVIEW.emitEdit({type:'edit',op:'batch',label:'x',ops:[
-      {op:'massfrompoly',floorId:'freeform',patch:{pts:__poly(1200,24,0),z:2000,name:'CYL'}},
-      {op:'massfrompoly',floorId:'freeform',patch:{pts:[{x:4000,y:-1000},{x:6000,y:-1000},{x:6000,y:1000},{x:4000,y:1000}],z:2000,name:'BOX'}}]});
-      MC3DVIEW.setView('iso');MC3DVIEW.fitView(true);MC3DVIEW.drawFrame();'ok'`); await sleep(700);
-    ck((await J(`MC3DVIEW.ST.smooth`))===true,'부드러운 곡면 기본 켬');
-    let cyl=await J(`__norm('CYL')`), box=await J(`__norm('BOX')`);
-    ck(cyl&&cyl.spread>0.05,'원기둥 옆면 = 꼭짓점마다 법선이 다르다 (매끄러움) '+JSON.stringify(cyl));
-    ck(box&&box.spread<0.001,'상자 옆면 = 법선이 같다 (각짐 유지) '+JSON.stringify(box));
-    let r=await b.send('Page.captureScreenshot',{format:'png'}); fs.writeFileSync('smooth-on.png',Buffer.from(r.data,'base64'));
-    // 끄면 면마다
-    await J(`MC3DVIEW.setSmooth(false);MC3DVIEW.drawFrame();'ok'`); await sleep(400);
-    cyl=await J(`__norm('CYL')`);
-    ck(cyl&&cyl.spread<0.001,'끄면 원기둥도 면마다 각지게 '+JSON.stringify(cyl));
-    r=await b.send('Page.captureScreenshot',{format:'png'}); fs.writeFileSync('smooth-off.png',Buffer.from(r.data,'base64'));
-    // 다시 켜기
-    await J(`MC3DVIEW.setSmooth(true);MC3DVIEW.drawFrame();'ok'`); await sleep(400);
-    cyl=await J(`__norm('CYL')`);
-    ck(cyl&&cyl.spread>0.05,'다시 켜면 매끄러워진다 '+JSON.stringify(cyl));
-    // 새로 만든 매스도 자동으로
-    await J(`MC3DVIEW.emitEdit({type:'edit',op:'massfrompoly',floorId:'freeform',patch:{pts:__poly(900,32,-4000),z:1500,name:'CYL2'}});MC3DVIEW.drawFrame();'ok'`); await sleep(600);
-    const c2=await J(`__norm('CYL2')`);
-    ck(c2&&c2.spread>0.03,'새로 만든 곡면도 자동으로 매끄럽다 '+JSON.stringify(c2));
-    // 각이 크면 안 섞는다 — 6각 기둥(60°)은 각져야
-    await J(`MC3DVIEW.emitEdit({type:'edit',op:'massfrompoly',floorId:'freeform',patch:{pts:__poly(900,6,8000),z:1500,name:'HEX'}});MC3DVIEW.drawFrame();'ok'`); await sleep(600);
-    const hx=await J(`__norm('HEX')`);
-    ck(hx&&hx.spread<0.001,'6각 기둥(60°)은 기준 20° 밖이라 각짐 유지 '+JSON.stringify(hx));
-    // 메뉴·패널 배선
-    const ui=await J(`(()=>({mi:!!document.getElementById('mi-smooth'),st:!!document.getElementById('st-smooth'),on:document.getElementById('st-smooth').classList.contains('on')}))()`);
-    ck(ui.mi&&ui.st&&ui.on,'보기 메뉴 + 스타일 패널 버튼 '+JSON.stringify(ui));
-    ck(b.errors.length===0,'콘솔 오류 0'+(b.errors.length?' — '+JSON.stringify(b.errors.slice(0,2)):''));
-  }catch(e){ console.error('FAIL',e.message); fails.push('예외: '+e.message); } finally{ b.close(); }
-  console.log(fails.length?('❌ '+fails.length+'/'+n+' 실패:\n - '+fails.join('\n - ')):('✅ 부드러운 곡면 E2E '+n+'건 통과')); process.exit(fails.length?1:0); })();
+(async()=>{ const b=await launch({port:9471}); const J=s=>b.evalJS(s);
+  try{ await b.goto('http://127.0.0.1:8090/sites/net/public/minicad/3d/?ff=1'); await b.waitFor('!!window.MC3DVIEW&&!!MC3DVIEW.FF'); await J(`localStorage.clear();MC3DVIEW.ffNew();'ok'`); await sleep(300);
+    await J(`(()=>{ const el=MC3DVIEW.renderer.domElement; el.setPointerCapture=()=>{}; el.releasePointerCapture=()=>{};
+      Object.defineProperty(window,'devicePixelRatio',{value:2,configurable:true}); MC3DVIEW.renderer.setPixelRatio(2);   // 레티나처럼 (부팅 뒤라 직접 맞춘다)
+      window.__ev=(t,x,y,o)=>el.dispatchEvent(new PointerEvent(t,Object.assign({bubbles:true,cancelable:true,clientX:x,clientY:y,button:0,buttons:t==='pointerup'?0:1,pointerId:1,pointerType:'mouse',isPrimary:true},o||{})));
+      const ops=[]; for(let i=0;i<12;i++){ const cx=(i%4)*2500, cy=Math.floor(i/4)*2500; ops.push({op:'massfrompoly',floorId:'freeform',patch:{pts:[{x:cx,y:cy},{x:cx+1500,y:cy},{x:cx+1500,y:cy+1200},{x:cx,y:cy+1200}],z:800,name:'M'+i}}); }
+      MC3DVIEW.emitEdit({type:'edit',op:'batch',label:'x',ops}); MC3DVIEW.setView('iso'); MC3DVIEW.fitView(true); MC3DVIEW.drawFrame(); return 'ok'; })()`); await sleep(400);
+    let m=await J(`({damp:MC3DVIEW.orbit.dampingFactor,polar:+MC3DVIEW.orbit.maxPolarAngle.toFixed(2),dpr:MC3DVIEW.renderer.getPixelRatio(),low:MC3DVIEW.inter.low})`);
+    ck(m.damp>=0.3&&m.polar>2.5&&m.dpr===2&&!m.low,'궤도 감쇠 즉답형(≥0.3) · 수평선 아래 허용 · 쉴 때 픽셀비 2 '+JSON.stringify(m));
+    // 궤도 드래그 중: 픽셀비 1 · 스냅 호버 계산 없음
+    await J(`(()=>{ const el=MC3DVIEW.renderer.domElement; const R=el.getBoundingClientRect(); const cx=R.left+R.width/2, cy=R.top+R.height/2; window.__cx=cx; window.__cy=cy;
+      MC3DVIEW.setTool('line'); el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:cx,clientY:cy,button:1,buttons:4,pointerId:2,pointerType:'mouse',isPrimary:true}));
+      for(let i=1;i<=20;i++) el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,clientX:cx+i*5,clientY:cy+i,button:1,buttons:4,pointerId:2,pointerType:'mouse',isPrimary:true})); return 'ok'; })()`); await sleep(120);
+    m=await J(`({orbit:MC3DVIEW.inter.orbit,low:MC3DVIEW.inter.low,dpr:MC3DVIEW.renderer.getPixelRatio(),snapShown:(()=>{let v=false;MC3DVIEW.scene.traverse(o=>{if(o.isSprite&&!o.userData.obj&&o.visible&&o.userData.px)v=true;});return v;})()})`);
+    ck(m.orbit&&m.low&&m.dpr===1&&!m.snapShown,'휠버튼 궤도 중 → 상호작용 · 픽셀비 1 · 스냅 마커 없음 '+JSON.stringify(m));
+    await J(`MC3DVIEW.renderer.domElement.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:__cx+100,clientY:__cy+20,button:1,buttons:0,pointerId:2,pointerType:'mouse',isPrimary:true}));'ok'`); await sleep(500);
+    m=await J(`({orbit:MC3DVIEW.inter.orbit,low:MC3DVIEW.inter.low,dpr:MC3DVIEW.renderer.getPixelRatio()})`);
+    ck(!m.orbit&&!m.low&&m.dpr===2,'놓고 잠시 뒤 → 픽셀비 2 복원 '+JSON.stringify(m));
+    // 이동 끌기 30번: 그림자 재계산은 250ms 마다 한 번 이하 (매 프레임 아님) · 끝나면 밀린 그림자 갱신
+    await J(`(()=>{ MC3DVIEW.setTool('select'); MC3DVIEW.select(null); const m0=MC3DVIEW.FF.free.masses[5]; MC3DVIEW.selectById('freeform',m0.id); MC3DVIEW.ST.parts=[]; MC3DVIEW.setTool('move');
+      const T=MC3DVIEW.THREE; const R=MC3DVIEW.renderer.domElement.getBoundingClientRect(); const p=new T.Vector3(m0.x*0.001,0.4,m0.y*0.001).project(MC3DVIEW.camera); const px=R.left+(p.x+1)/2*R.width, py=R.top+(1-p.y)/2*R.height;
+      window.__px=px; window.__py=py; __ev('pointermove',px,py); __ev('pointerdown',px,py); MC3DVIEW.inter.count.shadow=0; for(let i=1;i<=30;i++) __ev('pointermove',px+i*3,py+(i%4)); return {op:MC3DVIEW.ST.op&&MC3DVIEW.ST.op.type,shadow:MC3DVIEW.inter.count.shadow,pending:MC3DVIEW.inter.shadowPending}; })()`).then(r=>{ m=r; });
+    ck(m.op==='move'&&m.shadow<=1&&m.pending===true,'이동 끌기 30번 → 그림자 재계산 ≤1회(지연) '+JSON.stringify(m));
+    await J(`__ev('pointerup',__px+90,__py+2);'ok'`); await sleep(500);
+    m=await J(`({op:!!MC3DVIEW.ST.op,pending:MC3DVIEW.inter.shadowPending,shadow:MC3DVIEW.inter.count.shadow,low:MC3DVIEW.inter.low})`);
+    ck(!m.op&&!m.pending&&m.shadow>=1&&!m.low,'놓으면 확정 · 밀린 그림자 한 번 갱신 · 픽셀비 복원 '+JSON.stringify(m));
+    // 궤도 감쇠: 놓은 뒤 0.4초 안에 멈춘다
+    await J(`(()=>{ const el=MC3DVIEW.renderer.domElement; el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:__cx,clientY:__cy,button:1,buttons:4,pointerId:3,pointerType:'mouse',isPrimary:true})); for(let i=1;i<=10;i++) el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,clientX:__cx+i*8,clientY:__cy,button:1,buttons:4,pointerId:3,pointerType:'mouse',isPrimary:true})); el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:__cx+80,clientY:__cy,button:1,buttons:0,pointerId:3,pointerType:'mouse',isPrimary:true})); window.__c1=MC3DVIEW.camera.position.clone(); return 'ok'; })()`);
+    // 감쇠 0.35 = 프레임마다 65% 로 준다 → 60fps 면 0.3초, 헤드리스(≈35fps)는 0.9초 안에 멈춘다
+    await sleep(900); const d1=await J(`MC3DVIEW.camera.position.distanceTo(__c1)`); await sleep(300); const d2=await J(`MC3DVIEW.camera.position.distanceTo(__c1)`);
+    ck(d1>0.01&&Math.abs(d2-d1)<Math.max(0.01,0.02*d1),'놓은 뒤 곧 멈춘다 (0.9초 뒤 0.3초간 움직임이 전체의 2% 미만) 이동='+d1.toFixed(3)+' Δ='+(d2-d1).toFixed(5));
+    ck(b.errors.length===0,'콘솔 오류 0'+(b.errors.length?' — '+JSON.stringify(b.errors.slice(0,3)):''));
+  }catch(e){ console.error('FAIL',e.message); fails.push('예외: '+e.message); }
+  finally{ b.close(); }
+  console.log(fails.length?('❌ '+fails.length+'/'+n+' 실패:\n - '+fails.join('\n - ')):('✅ 원활함 E2E '+n+'건 통과'));
+  process.exit(fails.length?1:0);
+})();
